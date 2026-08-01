@@ -30,6 +30,20 @@ public sealed record SimilarityCase
     [JsonPropertyName("similarity")] public double Similarity { get; init; }
 }
 
+/// <summary>A reference case carrying the five set-similarity values at qval=1.</summary>
+public sealed record SetSimilarityCase
+{
+    [JsonPropertyName("id")] public int Id { get; init; }
+    [JsonPropertyName("category")] public string Category { get; init; } = "";
+    [JsonPropertyName("a")] public string A { get; init; } = "";
+    [JsonPropertyName("b")] public string B { get; init; } = "";
+    [JsonPropertyName("jaccard")] public double Jaccard { get; init; }
+    [JsonPropertyName("dice")] public double Dice { get; init; }
+    [JsonPropertyName("overlap")] public double Overlap { get; init; }
+    [JsonPropertyName("tversky")] public double Tversky { get; init; }
+    [JsonPropertyName("cosine")] public double Cosine { get; init; }
+}
+
 /// <summary>A reference case for LCS: two operands, subsequence and substring lengths.</summary>
 public sealed record LcsCase
 {

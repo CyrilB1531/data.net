@@ -23,6 +23,20 @@ fonction implémentée, jamais rétroactivement (§6.1 du brief).
 | — (LCS classique) | — | `Lcs.SubsequenceLength(a, b)` | Plus longue sous-séquence (ordre préservé, non contiguë). Base d'`Indel`. |
 | `SequenceMatcher(None,a,b).ratio()` | difflib | `RatcliffObershelp.Similarity(a, b)` | Gestalt `2·M/T`. `autojunk` **non** répliqué (identique pour ≤ 200 éléments ; [décision 0006](decisions/0006-ratcliff-autojunk.md)). |
 
+## DataNet.Text — similarité d'ensembles (multiensembles de q-grammes)
+
+| Python | Bibliothèque | C# | Différences |
+|---|---|---|---|
+| `Jaccard(qval=1).normalized_similarity(a, b)` | textdistance | `Jaccard.Similarity(a, b)` | Multiensembles (sacs) de q-grammes, `qval=1` par défaut. `\|A∩B\|/\|A∪B\|`. |
+| `Sorensen(qval=1).normalized_similarity(a, b)` | textdistance | `SorensenDice.Similarity(a, b)` | `2·\|A∩B\|/(\|A\|+\|B\|)`. |
+| `Overlap(qval=1).normalized_similarity(a, b)` | textdistance | `Overlap.Similarity(a, b)` | `\|A∩B\|/min(\|A\|,\|B\|)`. |
+| `Tversky(qval=1).normalized_similarity(a, b)` | textdistance | `Tversky.Similarity(a, b)` | `α=β=1` par défaut (⇒ Jaccard). |
+| `Cosine(qval=1).normalized_similarity(a, b)` | textdistance | `Cosine.Similarity(a, b)` | `\|A∩B\|/√(\|A\|·\|B\|)`. Passer `qval:2` pour des bigrammes de caractères. |
+
+> textdistance lève une exception sur certaines entrées vides ; DataNet définit
+> proprement : deux vides ⇒ `1`, une seule vide ⇒ `0`. L'oracle couvre les paires
+> non vides (`qval=1`), les bords sont couverts par des tests unitaires.
+
 ## Conventions
 
 - **Unité de comparaison.** Sauf mention contraire, les distances sur chaînes

@@ -32,6 +32,7 @@ from pathlib import Path
 from difflib import SequenceMatcher
 
 import jellyfish
+import textdistance as td
 from rapidfuzz.distance import DamerauLevenshtein, Indel, Levenshtein, OSA
 
 SEED = 20260801
@@ -380,6 +381,40 @@ def generate_ratcliff() -> dict:
     }
 
 
+def generate_set_similarity() -> dict:
+    # qval=1 (textdistance default) over non-empty pairs: textdistance raises on
+    # empty operands (its own edge quirk); DataNet defines those separately and
+    # covers them via unit tests. Multiset (bag) semantics.
+    rng = random.Random(SEED)
+    cases = []
+    for idx, (category, a, b) in enumerate(build_pairs(rng)):
+        if a == "" or b == "":
+            continue
+        cases.append({
+            "id": idx, "category": category, "a": a, "b": b,
+            "jaccard": td.Jaccard(qval=1).normalized_similarity(a, b),
+            "dice": td.Sorensen(qval=1).normalized_similarity(a, b),
+            "overlap": td.Overlap(qval=1).normalized_similarity(a, b),
+            "tversky": td.Tversky(qval=1).normalized_similarity(a, b),
+            "cosine": td.Cosine(qval=1).normalized_similarity(a, b),
+        })
+    return {
+        "metadata": {
+            "algorithm": "SetSimilarity",
+            "library": "textdistance",
+            "library_version": version("textdistance"),
+            "reference_calls": [
+                "textdistance.{Jaccard,Sorensen,Overlap,Tversky,Cosine}(qval=1).normalized_similarity",
+            ],
+            "qval": 1,
+            "semantics": "code_point",
+            "seed": SEED,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -392,6 +427,7 @@ def main() -> None:
         "jaro_winkler.json": generate_jaro_winkler,
         "lcs.json": generate_lcs,
         "ratcliff.json": generate_ratcliff,
+        "set_similarity.json": generate_set_similarity,
     }
     for filename, gen in generators.items():
         payload = gen()
