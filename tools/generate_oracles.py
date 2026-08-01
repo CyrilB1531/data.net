@@ -415,6 +415,53 @@ def generate_set_similarity() -> dict:
     }
 
 
+CURATED_WORDS = [
+    "Robert", "Rupert", "Rubin", "Ashcraft", "Ashcroft", "Tymczak", "Pfister",
+    "Honeyman", "Washington", "Lee", "Gutierrez", "Jackson", "VanDeusen", "Deusen",
+    "Knuth", "Euler", "Gauss", "Kant", "Lloyd", "Bob", "a", "MacDonald", "Christina",
+    "Catherine", "Smith", "Smyth", "Schmidt", "Jefferson", "Adams", "Wojcik",
+    "Nguyen", "Johnson", "Williams", "Brown", "Garcia", "Martinez", "Anderson",
+    "Thompson", "Phillip", "Xavier", "Yvonne", "Zachary", "Quinn", "Wright",
+    "Knight", "Gnome", "Psalm", "Thomas", "Theodore", "Czar", "Pizza", "Aegean",
+]
+
+
+def phonetic_words(rng: random.Random):
+    for w in CURATED_WORDS:
+        yield w
+    # Random pronounceable-ish alphabetic words, deterministic.
+    letters = "abcdefghijklmnopqrstuvwxyz"
+    for _ in range(350):
+        length = rng.randint(2, 11)
+        w = "".join(rng.choice(letters) for _ in range(length))
+        # Occasionally capitalize to exercise case handling.
+        yield w.capitalize() if rng.random() < 0.5 else w
+
+
+def generate_phonetics() -> dict:
+    rng = random.Random(SEED)
+    cases = []
+    for idx, word in enumerate(phonetic_words(rng)):
+        cases.append({
+            "id": idx,
+            "word": word,
+            "soundex": jellyfish.soundex(word),
+            "metaphone": jellyfish.metaphone(word),
+            "nysiis": jellyfish.nysiis(word),
+        })
+    return {
+        "metadata": {
+            "algorithm": "Phonetics",
+            "library": "jellyfish",
+            "library_version": version("jellyfish"),
+            "reference_calls": ["jellyfish.soundex", "jellyfish.metaphone", "jellyfish.nysiis"],
+            "seed": SEED,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -428,6 +475,7 @@ def main() -> None:
         "lcs.json": generate_lcs,
         "ratcliff.json": generate_ratcliff,
         "set_similarity.json": generate_set_similarity,
+        "phonetics.json": generate_phonetics,
     }
     for filename, gen in generators.items():
         payload = gen()

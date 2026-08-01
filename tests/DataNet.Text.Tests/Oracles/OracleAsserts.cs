@@ -55,11 +55,42 @@ public sealed record LcsCase
     [JsonPropertyName("substring")] public int Substring { get; init; }
 }
 
+/// <summary>A reference case for a phonetic encoder: a word and its jellyfish codes.</summary>
+public sealed record PhoneticCase
+{
+    [JsonPropertyName("id")] public int Id { get; init; }
+    [JsonPropertyName("word")] public string Word { get; init; } = "";
+    [JsonPropertyName("soundex")] public string Soundex { get; init; } = "";
+    [JsonPropertyName("metaphone")] public string Metaphone { get; init; } = "";
+    [JsonPropertyName("nysiis")] public string Nysiis { get; init; } = "";
+}
+
 /// <summary>Aggregating oracle assertions: report every mismatch, not just the first.</summary>
 public static class OracleAsserts
 {
     private const double DefaultTolerance = 1e-9;
     private const int ReportCap = 4000;
+
+    /// <summary>Asserts a string computation matches the oracle exactly for every case.</summary>
+    public static void ExactString<T>(
+        IReadOnlyList<T> cases,
+        Func<T, string> expected,
+        Func<T, string> actual,
+        Func<T, string> describe)
+    {
+        var failures = new StringBuilder();
+        foreach (T c in cases)
+        {
+            string e = expected(c);
+            string a = actual(c);
+            if (!string.Equals(e, a, StringComparison.Ordinal) && failures.Length < ReportCap)
+            {
+                failures.Append($"  {describe(c)}: expected \"{e}\", got \"{a}\"\n");
+            }
+        }
+
+        Assert.True(failures.Length == 0, $"{cases.Count} cases checked; mismatches:\n{failures}");
+    }
 
     /// <summary>Asserts an integer computation matches the oracle exactly for every case.</summary>
     public static void ExactInt<T>(

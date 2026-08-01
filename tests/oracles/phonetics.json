@@ -1,0 +1,2830 @@
+{
+ "metadata": {
+  "algorithm": "Phonetics",
+  "library": "jellyfish",
+  "library_version": "1.2.1",
+  "reference_calls": [
+   "jellyfish.soundex",
+   "jellyfish.metaphone",
+   "jellyfish.nysiis"
+  ],
+  "seed": 20260801,
+  "count": 402
+ },
+ "cases": [
+  {
+   "id": 0,
+   "word": "Robert",
+   "soundex": "R163",
+   "metaphone": "RBRT",
+   "nysiis": "RABAD"
+  },
+  {
+   "id": 1,
+   "word": "Rupert",
+   "soundex": "R163",
+   "metaphone": "RPRT",
+   "nysiis": "RAPAD"
+  },
+  {
+   "id": 2,
+   "word": "Rubin",
+   "soundex": "R150",
+   "metaphone": "RBN",
+   "nysiis": "RABAN"
+  },
+  {
+   "id": 3,
+   "word": "Ashcraft",
+   "soundex": "A261",
+   "metaphone": "AXKRFT",
+   "nysiis": "ASCRAFT"
+  },
+  {
+   "id": 4,
+   "word": "Ashcroft",
+   "soundex": "A261",
+   "metaphone": "AXKRFT",
+   "nysiis": "ASCRAFT"
+  },
+  {
+   "id": 5,
+   "word": "Tymczak",
+   "soundex": "T522",
+   "metaphone": "TMKSK",
+   "nysiis": "TYNCSAC"
+  },
+  {
+   "id": 6,
+   "word": "Pfister",
+   "soundex": "P236",
+   "metaphone": "PFSTR",
+   "nysiis": "FASTAR"
+  },
+  {
+   "id": 7,
+   "word": "Honeyman",
+   "soundex": "H555",
+   "metaphone": "HNMN",
+   "nysiis": "HANAYNAN"
+  },
+  {
+   "id": 8,
+   "word": "Washington",
+   "soundex": "W252",
+   "metaphone": "WXNKTN",
+   "nysiis": "WASANGTAN"
+  },
+  {
+   "id": 9,
+   "word": "Lee",
+   "soundex": "L000",
+   "metaphone": "L",
+   "nysiis": "LY"
+  },
+  {
+   "id": 10,
+   "word": "Gutierrez",
+   "soundex": "G362",
+   "metaphone": "KTRS",
+   "nysiis": "GATAR"
+  },
+  {
+   "id": 11,
+   "word": "Jackson",
+   "soundex": "J250",
+   "metaphone": "JKSN",
+   "nysiis": "JACSAN"
+  },
+  {
+   "id": 12,
+   "word": "VanDeusen",
+   "soundex": "V532",
+   "metaphone": "FNTSN",
+   "nysiis": "VANDASAN"
+  },
+  {
+   "id": 13,
+   "word": "Deusen",
+   "soundex": "D250",
+   "metaphone": "TSN",
+   "nysiis": "DASAN"
+  },
+  {
+   "id": 14,
+   "word": "Knuth",
+   "soundex": "K530",
+   "metaphone": "N0",
+   "nysiis": "NAT"
+  },
+  {
+   "id": 15,
+   "word": "Euler",
+   "soundex": "E460",
+   "metaphone": "ELR",
+   "nysiis": "EALAR"
+  },
+  {
+   "id": 16,
+   "word": "Gauss",
+   "soundex": "G200",
+   "metaphone": "KS",
+   "nysiis": "G"
+  },
+  {
+   "id": 17,
+   "word": "Kant",
+   "soundex": "K530",
+   "metaphone": "KNT",
+   "nysiis": "CAD"
+  },
+  {
+   "id": 18,
+   "word": "Lloyd",
+   "soundex": "L300",
+   "metaphone": "LT",
+   "nysiis": "LAYD"
+  },
+  {
+   "id": 19,
+   "word": "Bob",
+   "soundex": "B100",
+   "metaphone": "BB",
+   "nysiis": "BAB"
+  },
+  {
+   "id": 20,
+   "word": "a",
+   "soundex": "A000",
+   "metaphone": "A",
+   "nysiis": "A"
+  },
+  {
+   "id": 21,
+   "word": "MacDonald",
+   "soundex": "M235",
+   "metaphone": "MKTNLT",
+   "nysiis": "MCDANALD"
+  },
+  {
+   "id": 22,
+   "word": "Christina",
+   "soundex": "C623",
+   "metaphone": "XRSTN",
+   "nysiis": "CRASTAN"
+  },
+  {
+   "id": 23,
+   "word": "Catherine",
+   "soundex": "C365",
+   "metaphone": "K0RN",
+   "nysiis": "CATARAN"
+  },
+  {
+   "id": 24,
+   "word": "Smith",
+   "soundex": "S530",
+   "metaphone": "SM0",
+   "nysiis": "SNAT"
+  },
+  {
+   "id": 25,
+   "word": "Smyth",
+   "soundex": "S530",
+   "metaphone": "SM0",
+   "nysiis": "SNYT"
+  },
+  {
+   "id": 26,
+   "word": "Schmidt",
+   "soundex": "S530",
+   "metaphone": "SXMTT",
+   "nysiis": "SNAD"
+  },
+  {
+   "id": 27,
+   "word": "Jefferson",
+   "soundex": "J162",
+   "metaphone": "JFRSN",
+   "nysiis": "JAFARSAN"
+  },
+  {
+   "id": 28,
+   "word": "Adams",
+   "soundex": "A352",
+   "metaphone": "ATMS",
+   "nysiis": "ADAN"
+  },
+  {
+   "id": 29,
+   "word": "Wojcik",
+   "soundex": "W220",
+   "metaphone": "WJSK",
+   "nysiis": "WAJCAC"
+  },
+  {
+   "id": 30,
+   "word": "Nguyen",
+   "soundex": "N250",
+   "metaphone": "NKYN",
+   "nysiis": "NGAYAN"
+  },
+  {
+   "id": 31,
+   "word": "Johnson",
+   "soundex": "J525",
+   "metaphone": "JNSN",
+   "nysiis": "JANSAN"
+  },
+  {
+   "id": 32,
+   "word": "Williams",
+   "soundex": "W452",
+   "metaphone": "WLMS",
+   "nysiis": "WALAN"
+  },
+  {
+   "id": 33,
+   "word": "Brown",
+   "soundex": "B650",
+   "metaphone": "BRN",
+   "nysiis": "BRAON"
+  },
+  {
+   "id": 34,
+   "word": "Garcia",
+   "soundex": "G620",
+   "metaphone": "KRX",
+   "nysiis": "GARC"
+  },
+  {
+   "id": 35,
+   "word": "Martinez",
+   "soundex": "M635",
+   "metaphone": "MRTNS",
+   "nysiis": "MARTAN"
+  },
+  {
+   "id": 36,
+   "word": "Anderson",
+   "soundex": "A536",
+   "metaphone": "ANTRSN",
+   "nysiis": "ANDARSAN"
+  },
+  {
+   "id": 37,
+   "word": "Thompson",
+   "soundex": "T512",
+   "metaphone": "0MPSN",
+   "nysiis": "TANPSAN"
+  },
+  {
+   "id": 38,
+   "word": "Phillip",
+   "soundex": "P410",
+   "metaphone": "FLP",
+   "nysiis": "FALAP"
+  },
+  {
+   "id": 39,
+   "word": "Xavier",
+   "soundex": "X160",
+   "metaphone": "SFR",
+   "nysiis": "XAVAR"
+  },
+  {
+   "id": 40,
+   "word": "Yvonne",
+   "soundex": "Y150",
+   "metaphone": "FN",
+   "nysiis": "YVAN"
+  },
+  {
+   "id": 41,
+   "word": "Zachary",
+   "soundex": "Z260",
+   "metaphone": "SXR",
+   "nysiis": "ZACARY"
+  },
+  {
+   "id": 42,
+   "word": "Quinn",
+   "soundex": "Q500",
+   "metaphone": "KN",
+   "nysiis": "QAN"
+  },
+  {
+   "id": 43,
+   "word": "Wright",
+   "soundex": "W623",
+   "metaphone": "RT",
+   "nysiis": "WRAGT"
+  },
+  {
+   "id": 44,
+   "word": "Knight",
+   "soundex": "K523",
+   "metaphone": "NT",
+   "nysiis": "NAGT"
+  },
+  {
+   "id": 45,
+   "word": "Gnome",
+   "soundex": "G550",
+   "metaphone": "NM",
+   "nysiis": "GNAN"
+  },
+  {
+   "id": 46,
+   "word": "Psalm",
+   "soundex": "P245",
+   "metaphone": "PSLM",
+   "nysiis": "PSALN"
+  },
+  {
+   "id": 47,
+   "word": "Thomas",
+   "soundex": "T520",
+   "metaphone": "0MS",
+   "nysiis": "TAN"
+  },
+  {
+   "id": 48,
+   "word": "Theodore",
+   "soundex": "T360",
+   "metaphone": "0TR",
+   "nysiis": "TADAR"
+  },
+  {
+   "id": 49,
+   "word": "Czar",
+   "soundex": "C600",
+   "metaphone": "KSR",
+   "nysiis": "CSAR"
+  },
+  {
+   "id": 50,
+   "word": "Pizza",
+   "soundex": "P200",
+   "metaphone": "PS",
+   "nysiis": "PAS"
+  },
+  {
+   "id": 51,
+   "word": "Aegean",
+   "soundex": "A250",
+   "metaphone": "EJN",
+   "nysiis": "AGAN"
+  },
+  {
+   "id": 52,
+   "word": "Wvirvedwhi",
+   "soundex": "W161",
+   "metaphone": "FRFTH",
+   "nysiis": "WVARVADW"
+  },
+  {
+   "id": 53,
+   "word": "Sw",
+   "soundex": "S000",
+   "metaphone": "S",
+   "nysiis": "SW"
+  },
+  {
+   "id": 54,
+   "word": "Wofztxrwjr",
+   "soundex": "W123",
+   "metaphone": "WFSTKSRJR",
+   "nysiis": "WAFSTXRWJR"
+  },
+  {
+   "id": 55,
+   "word": "eckhy",
+   "soundex": "E200",
+   "metaphone": "EKH",
+   "nysiis": "ECKY"
+  },
+  {
+   "id": 56,
+   "word": "xvbnv",
+   "soundex": "X151",
+   "metaphone": "SFBNF",
+   "nysiis": "XVBNV"
+  },
+  {
+   "id": 57,
+   "word": "Bfcpialp",
+   "soundex": "B214",
+   "metaphone": "BFKPLP",
+   "nysiis": "BFCPALP"
+  },
+  {
+   "id": 58,
+   "word": "Dmtpbf",
+   "soundex": "D531",
+   "metaphone": "TMTPBF",
+   "nysiis": "DNTPBF"
+  },
+  {
+   "id": 59,
+   "word": "Rysct",
+   "soundex": "R230",
+   "metaphone": "RSKT",
+   "nysiis": "RYSCT"
+  },
+  {
+   "id": 60,
+   "word": "igw",
+   "soundex": "I200",
+   "metaphone": "IK",
+   "nysiis": "IGW"
+  },
+  {
+   "id": 61,
+   "word": "laykfjyq",
+   "soundex": "L212",
+   "metaphone": "LKFJK",
+   "nysiis": "LAYCFJYG"
+  },
+  {
+   "id": 62,
+   "word": "Nohplufwqe",
+   "soundex": "N141",
+   "metaphone": "NPLFK",
+   "nysiis": "NAPLAFWG"
+  },
+  {
+   "id": 63,
+   "word": "eufgneh",
+   "soundex": "E125",
+   "metaphone": "EFKN",
+   "nysiis": "EAFGN"
+  },
+  {
+   "id": 64,
+   "word": "mai",
+   "soundex": "M000",
+   "metaphone": "M",
+   "nysiis": "M"
+  },
+  {
+   "id": 65,
+   "word": "margeljg",
+   "soundex": "M624",
+   "metaphone": "MRJLJK",
+   "nysiis": "MARGALJG"
+  },
+  {
+   "id": 66,
+   "word": "Sfookq",
+   "soundex": "S120",
+   "metaphone": "SFKK",
+   "nysiis": "SFACG"
+  },
+  {
+   "id": 67,
+   "word": "pms",
+   "soundex": "P520",
+   "metaphone": "PMS",
+   "nysiis": "PN"
+  },
+  {
+   "id": 68,
+   "word": "lnvppqfv",
+   "soundex": "L512",
+   "metaphone": "LNFPKFF",
+   "nysiis": "LNVPGFV"
+  },
+  {
+   "id": 69,
+   "word": "hv",
+   "soundex": "H100",
+   "metaphone": "HF",
+   "nysiis": "HV"
+  },
+  {
+   "id": 70,
+   "word": "jil",
+   "soundex": "J400",
+   "metaphone": "JL",
+   "nysiis": "JAL"
+  },
+  {
+   "id": 71,
+   "word": "Pqymsruh",
+   "soundex": "P252",
+   "metaphone": "PKMSR",
+   "nysiis": "PGYNSR"
+  },
+  {
+   "id": 72,
+   "word": "vongtph",
+   "soundex": "V523",
+   "metaphone": "FNKTF",
+   "nysiis": "VANGTF"
+  },
+  {
+   "id": 73,
+   "word": "Tjrizselyme",
+   "soundex": "T262",
+   "metaphone": "TJRSSLM",
+   "nysiis": "TJRASALYN"
+  },
+  {
+   "id": 74,
+   "word": "Ocso",
+   "soundex": "O200",
+   "metaphone": "OKS",
+   "nysiis": "OCS"
+  },
+  {
+   "id": 75,
+   "word": "Iy",
+   "soundex": "I000",
+   "metaphone": "I",
+   "nysiis": "IY"
+  },
+  {
+   "id": 76,
+   "word": "nkwpkqosftt",
+   "soundex": "N212",
+   "metaphone": "NKPKKSFT",
+   "nysiis": "NCWPCGASFT"
+  },
+  {
+   "id": 77,
+   "word": "Sfgobknjiaj",
+   "soundex": "S121",
+   "metaphone": "SFKBKNJJ",
+   "nysiis": "SFGABNJAJ"
+  },
+  {
+   "id": 78,
+   "word": "Jgdlorez",
+   "soundex": "J346",
+   "metaphone": "JKTLRS",
+   "nysiis": "JGDLAR"
+  },
+  {
+   "id": 79,
+   "word": "Itbbwb",
+   "soundex": "I310",
+   "metaphone": "ITBB",
+   "nysiis": "ITBWB"
+  },
+  {
+   "id": 80,
+   "word": "Cqdlljwm",
+   "soundex": "C342",
+   "metaphone": "KKTLJM",
+   "nysiis": "CGDLJWN"
+  },
+  {
+   "id": 81,
+   "word": "Ruxistgq",
+   "soundex": "R223",
+   "metaphone": "RKSSTKK",
+   "nysiis": "RAXASTG"
+  },
+  {
+   "id": 82,
+   "word": "Atdaulkzuri",
+   "soundex": "A342",
+   "metaphone": "ATTLKSR",
+   "nysiis": "ATDALCSAR"
+  },
+  {
+   "id": 83,
+   "word": "Unz",
+   "soundex": "U520",
+   "metaphone": "UNS",
+   "nysiis": "UN"
+  },
+  {
+   "id": 84,
+   "word": "jiv",
+   "soundex": "J100",
+   "metaphone": "JF",
+   "nysiis": "JAV"
+  },
+  {
+   "id": 85,
+   "word": "crnkxv",
+   "soundex": "C652",
+   "metaphone": "KRNKKSF",
+   "nysiis": "CRNCXV"
+  },
+  {
+   "id": 86,
+   "word": "xg",
+   "soundex": "X000",
+   "metaphone": "SK",
+   "nysiis": "XG"
+  },
+  {
+   "id": 87,
+   "word": "mkgdjokkf",
+   "soundex": "M232",
+   "metaphone": "MKKTJKF",
+   "nysiis": "MCGDJACF"
+  },
+  {
+   "id": 88,
+   "word": "ohlwhyq",
+   "soundex": "O420",
+   "metaphone": "OLHK",
+   "nysiis": "OALWYG"
+  },
+  {
+   "id": 89,
+   "word": "Sysdouwaw",
+   "soundex": "S230",
+   "metaphone": "SSTW",
+   "nysiis": "SYSDAU"
+  },
+  {
+   "id": 90,
+   "word": "Jnfghybzvsv",
+   "soundex": "J512",
+   "metaphone": "JNFBSFSF",
+   "nysiis": "JNFGYBSVSV"
+  },
+  {
+   "id": 91,
+   "word": "kxarjkcpa",
+   "soundex": "K621",
+   "metaphone": "KKSRJKKP",
+   "nysiis": "CXARJCP"
+  },
+  {
+   "id": 92,
+   "word": "qn",
+   "soundex": "Q500",
+   "metaphone": "KN",
+   "nysiis": "QN"
+  },
+  {
+   "id": 93,
+   "word": "Wyzwt",
+   "soundex": "W230",
+   "metaphone": "ST",
+   "nysiis": "WYSWT"
+  },
+  {
+   "id": 94,
+   "word": "Tdlosxsy",
+   "soundex": "T420",
+   "metaphone": "TTLSKSS",
+   "nysiis": "TDLASXSY"
+  },
+  {
+   "id": 95,
+   "word": "Ksxnav",
+   "soundex": "K510",
+   "metaphone": "KSKSNF",
+   "nysiis": "CSXNAV"
+  },
+  {
+   "id": 96,
+   "word": "Jgsnm",
+   "soundex": "J500",
+   "metaphone": "JKSNM",
+   "nysiis": "JGSN"
+  },
+  {
+   "id": 97,
+   "word": "Gbnfyafonjb",
+   "soundex": "G151",
+   "metaphone": "KBNFYFNJB",
+   "nysiis": "GBNFYAFANJB"
+  },
+  {
+   "id": 98,
+   "word": "klxyjbbzhrm",
+   "soundex": "K422",
+   "metaphone": "KLKSJBSHRM",
+   "nysiis": "CLXYJBSZRN"
+  },
+  {
+   "id": 99,
+   "word": "Zpqdghkeyf",
+   "soundex": "Z123",
+   "metaphone": "SPKTKF",
+   "nysiis": "ZPGDGCAYF"
+  },
+  {
+   "id": 100,
+   "word": "Xruyh",
+   "soundex": "X600",
+   "metaphone": "SRH",
+   "nysiis": "XRY"
+  },
+  {
+   "id": 101,
+   "word": "vwgalatsfvr",
+   "soundex": "V243",
+   "metaphone": "FKLTSFFR",
+   "nysiis": "VWGALATSFVR"
+  },
+  {
+   "id": 102,
+   "word": "rocxkange",
+   "soundex": "R252",
+   "metaphone": "RKKSKNJ",
+   "nysiis": "RACXCANG"
+  },
+  {
+   "id": 103,
+   "word": "Ul",
+   "soundex": "U400",
+   "metaphone": "UL",
+   "nysiis": "UL"
+  },
+  {
+   "id": 104,
+   "word": "Hduqnylngi",
+   "soundex": "H325",
+   "metaphone": "HTKNLNJ",
+   "nysiis": "HDAGNYLNG"
+  },
+  {
+   "id": 105,
+   "word": "Nduj",
+   "soundex": "N320",
+   "metaphone": "NTJ",
+   "nysiis": "NDAJ"
+  },
+  {
+   "id": 106,
+   "word": "fytvkfrecqc",
+   "soundex": "F312",
+   "metaphone": "FTFKFRKKK",
+   "nysiis": "FYTVCFRACGC"
+  },
+  {
+   "id": 107,
+   "word": "Sl",
+   "soundex": "S400",
+   "metaphone": "SL",
+   "nysiis": "SL"
+  },
+  {
+   "id": 108,
+   "word": "Wdbliugoljg",
+   "soundex": "W314",
+   "metaphone": "TBLKLJK",
+   "nysiis": "WDBLAGALJG"
+  },
+  {
+   "id": 109,
+   "word": "Andsyvnwt",
+   "soundex": "A532",
+   "metaphone": "ANTSFNT",
+   "nysiis": "ANDSYVNWT"
+  },
+  {
+   "id": 110,
+   "word": "Zpt",
+   "soundex": "Z130",
+   "metaphone": "SPT",
+   "nysiis": "ZPT"
+  },
+  {
+   "id": 111,
+   "word": "Uvkmemopq",
+   "soundex": "U125",
+   "metaphone": "UFKMMPK",
+   "nysiis": "UVCNANAPG"
+  },
+  {
+   "id": 112,
+   "word": "Wsrhemiyb",
+   "soundex": "W265",
+   "metaphone": "SRHMB",
+   "nysiis": "WSRANAYB"
+  },
+  {
+   "id": 113,
+   "word": "ikzywazurbm",
+   "soundex": "I226",
+   "metaphone": "IKSWSRBM",
+   "nysiis": "ICSYWASARBN"
+  },
+  {
+   "id": 114,
+   "word": "Ijqupddcmmp",
+   "soundex": "I213",
+   "metaphone": "IJKPTKMP",
+   "nysiis": "IJGAPDCNP"
+  },
+  {
+   "id": 115,
+   "word": "Nhlqaprl",
+   "soundex": "N421",
+   "metaphone": "NHLKPRL",
+   "nysiis": "NLGAPRL"
+  },
+  {
+   "id": 116,
+   "word": "nfntoykmbk",
+   "soundex": "N153",
+   "metaphone": "NFNTKMBK",
+   "nysiis": "NFNTAYCNBC"
+  },
+  {
+   "id": 117,
+   "word": "nlyois",
+   "soundex": "N420",
+   "metaphone": "NLYS",
+   "nysiis": "NLY"
+  },
+  {
+   "id": 118,
+   "word": "Pqxiy",
+   "soundex": "P200",
+   "metaphone": "PKKS",
+   "nysiis": "PGXY"
+  },
+  {
+   "id": 119,
+   "word": "Ajhxmitkow",
+   "soundex": "A253",
+   "metaphone": "AJHKSMTK",
+   "nysiis": "AJXNATCAO"
+  },
+  {
+   "id": 120,
+   "word": "Engqanhfez",
+   "soundex": "E525",
+   "metaphone": "ENKKNHFS",
+   "nysiis": "ENGANF"
+  },
+  {
+   "id": 121,
+   "word": "mqjar",
+   "soundex": "M260",
+   "metaphone": "MKJR",
+   "nysiis": "MGJAR"
+  },
+  {
+   "id": 122,
+   "word": "Dakv",
+   "soundex": "D210",
+   "metaphone": "TKF",
+   "nysiis": "DACV"
+  },
+  {
+   "id": 123,
+   "word": "Avzcz",
+   "soundex": "A120",
+   "metaphone": "AFSKS",
+   "nysiis": "AVSC"
+  },
+  {
+   "id": 124,
+   "word": "utwx",
+   "soundex": "U320",
+   "metaphone": "UTKS",
+   "nysiis": "UTWX"
+  },
+  {
+   "id": 125,
+   "word": "qqpvxtqwjjg",
+   "soundex": "Q123",
+   "metaphone": "KPFKSTKJK",
+   "nysiis": "QGPVXTGWJG"
+  },
+  {
+   "id": 126,
+   "word": "ccl",
+   "soundex": "C400",
+   "metaphone": "KKL",
+   "nysiis": "CL"
+  },
+  {
+   "id": 127,
+   "word": "heyxtfewq",
+   "soundex": "H231",
+   "metaphone": "HKSTFK",
+   "nysiis": "HAYXTFAEG"
+  },
+  {
+   "id": 128,
+   "word": "fuuhes",
+   "soundex": "F200",
+   "metaphone": "FHS",
+   "nysiis": "FAH"
+  },
+  {
+   "id": 129,
+   "word": "kjvbr",
+   "soundex": "K160",
+   "metaphone": "KJFBR",
+   "nysiis": "CJVBR"
+  },
+  {
+   "id": 130,
+   "word": "dujuz",
+   "soundex": "D220",
+   "metaphone": "TJS",
+   "nysiis": "DAJ"
+  },
+  {
+   "id": 131,
+   "word": "Bu",
+   "soundex": "B000",
+   "metaphone": "B",
+   "nysiis": "B"
+  },
+  {
+   "id": 132,
+   "word": "Ccznwiceow",
+   "soundex": "C520",
+   "metaphone": "KKSNWS",
+   "nysiis": "CSNWACAO"
+  },
+  {
+   "id": 133,
+   "word": "fvyghxtwvlg",
+   "soundex": "F231",
+   "metaphone": "FFKSTFLK",
+   "nysiis": "FVYGXTWVLG"
+  },
+  {
+   "id": 134,
+   "word": "Ff",
+   "soundex": "F000",
+   "metaphone": "F",
+   "nysiis": "F"
+  },
+  {
+   "id": 135,
+   "word": "Ylhm",
+   "soundex": "Y450",
+   "metaphone": "LHM",
+   "nysiis": "YLN"
+  },
+  {
+   "id": 136,
+   "word": "tj",
+   "soundex": "T200",
+   "metaphone": "TJ",
+   "nysiis": "TJ"
+  },
+  {
+   "id": 137,
+   "word": "nxdn",
+   "soundex": "N235",
+   "metaphone": "NKSTN",
+   "nysiis": "NXDN"
+  },
+  {
+   "id": 138,
+   "word": "Fxxkuw",
+   "soundex": "F200",
+   "metaphone": "FKSK",
+   "nysiis": "FXCAU"
+  },
+  {
+   "id": 139,
+   "word": "Hpaceholgtm",
+   "soundex": "H124",
+   "metaphone": "HPSHLKTM",
+   "nysiis": "HPACAHALGTN"
+  },
+  {
+   "id": 140,
+   "word": "Mwneqmlce",
+   "soundex": "M254",
+   "metaphone": "MNKMLS",
+   "nysiis": "MWNAGNLC"
+  },
+  {
+   "id": 141,
+   "word": "Jesbgmd",
+   "soundex": "J212",
+   "metaphone": "JSBKMT",
+   "nysiis": "JASBGND"
+  },
+  {
+   "id": 142,
+   "word": "Viymay",
+   "soundex": "V500",
+   "metaphone": "FM",
+   "nysiis": "VAYNY"
+  },
+  {
+   "id": 143,
+   "word": "Rwg",
+   "soundex": "R200",
+   "metaphone": "RK",
+   "nysiis": "RWG"
+  },
+  {
+   "id": 144,
+   "word": "ffkgzihfz",
+   "soundex": "F212",
+   "metaphone": "FKKSFS",
+   "nysiis": "FCGSAF"
+  },
+  {
+   "id": 145,
+   "word": "Lkg",
+   "soundex": "L200",
+   "metaphone": "LKK",
+   "nysiis": "LCG"
+  },
+  {
+   "id": 146,
+   "word": "upv",
+   "soundex": "U100",
+   "metaphone": "UPF",
+   "nysiis": "UPV"
+  },
+  {
+   "id": 147,
+   "word": "Hplft",
+   "soundex": "H141",
+   "metaphone": "HPLFT",
+   "nysiis": "HPLFT"
+  },
+  {
+   "id": 148,
+   "word": "xttxzc",
+   "soundex": "X320",
+   "metaphone": "STKSSK",
+   "nysiis": "XTXSC"
+  },
+  {
+   "id": 149,
+   "word": "Nnayyviqh",
+   "soundex": "N120",
+   "metaphone": "NFKH",
+   "nysiis": "NAYVAGQ"
+  },
+  {
+   "id": 150,
+   "word": "dbjb",
+   "soundex": "D121",
+   "metaphone": "TBJB",
+   "nysiis": "DBJB"
+  },
+  {
+   "id": 151,
+   "word": "adc",
+   "soundex": "A320",
+   "metaphone": "ATK",
+   "nysiis": "ADC"
+  },
+  {
+   "id": 152,
+   "word": "Izbwu",
+   "soundex": "I210",
+   "metaphone": "ISBW",
+   "nysiis": "ISBW"
+  },
+  {
+   "id": 153,
+   "word": "adnzman",
+   "soundex": "A352",
+   "metaphone": "ATNSMN",
+   "nysiis": "ADNSNAN"
+  },
+  {
+   "id": 154,
+   "word": "jpiz",
+   "soundex": "J120",
+   "metaphone": "JPS",
+   "nysiis": "JP"
+  },
+  {
+   "id": 155,
+   "word": "dm",
+   "soundex": "D500",
+   "metaphone": "TM",
+   "nysiis": "DN"
+  },
+  {
+   "id": 156,
+   "word": "clmfqolv",
+   "soundex": "C451",
+   "metaphone": "KLMFKLF",
+   "nysiis": "CLNFGALV"
+  },
+  {
+   "id": 157,
+   "word": "Sczlbxaowb",
+   "soundex": "S412",
+   "metaphone": "SKSLBKSB",
+   "nysiis": "SCSLBXAOB"
+  },
+  {
+   "id": 158,
+   "word": "Tcacmoa",
+   "soundex": "T225",
+   "metaphone": "TKKM",
+   "nysiis": "TCACN"
+  },
+  {
+   "id": 159,
+   "word": "jzbhit",
+   "soundex": "J130",
+   "metaphone": "JSBHT",
+   "nysiis": "JSBAT"
+  },
+  {
+   "id": 160,
+   "word": "Iv",
+   "soundex": "I100",
+   "metaphone": "IF",
+   "nysiis": "IV"
+  },
+  {
+   "id": 161,
+   "word": "fgtrek",
+   "soundex": "F236",
+   "metaphone": "FKTRK",
+   "nysiis": "FGTRAC"
+  },
+  {
+   "id": 162,
+   "word": "jamdcz",
+   "soundex": "J532",
+   "metaphone": "JMTKS",
+   "nysiis": "JANDC"
+  },
+  {
+   "id": 163,
+   "word": "Oesjwleiu",
+   "soundex": "O240",
+   "metaphone": "OSJL",
+   "nysiis": "OASJWL"
+  },
+  {
+   "id": 164,
+   "word": "uoxsevy",
+   "soundex": "U210",
+   "metaphone": "UKSSF",
+   "nysiis": "UAXSAFY"
+  },
+  {
+   "id": 165,
+   "word": "uirhw",
+   "soundex": "U600",
+   "metaphone": "URH",
+   "nysiis": "UARW"
+  },
+  {
+   "id": 166,
+   "word": "upfqy",
+   "soundex": "U120",
+   "metaphone": "UPFK",
+   "nysiis": "UPFGY"
+  },
+  {
+   "id": 167,
+   "word": "yzt",
+   "soundex": "Y230",
+   "metaphone": "ST",
+   "nysiis": "YST"
+  },
+  {
+   "id": 168,
+   "word": "dxiftzjxb",
+   "soundex": "D213",
+   "metaphone": "TKSFTSJKSB",
+   "nysiis": "DXAFTSJXB"
+  },
+  {
+   "id": 169,
+   "word": "Uab",
+   "soundex": "U100",
+   "metaphone": "UB",
+   "nysiis": "UAB"
+  },
+  {
+   "id": 170,
+   "word": "lqen",
+   "soundex": "L250",
+   "metaphone": "LKN",
+   "nysiis": "LGAN"
+  },
+  {
+   "id": 171,
+   "word": "aspc",
+   "soundex": "A212",
+   "metaphone": "ASPK",
+   "nysiis": "ASPC"
+  },
+  {
+   "id": 172,
+   "word": "stsjomyece",
+   "soundex": "S325",
+   "metaphone": "STSJMYS",
+   "nysiis": "STSJANYAC"
+  },
+  {
+   "id": 173,
+   "word": "jabwqaqjvvj",
+   "soundex": "J122",
+   "metaphone": "JBKKJFJ",
+   "nysiis": "JABWGAGJVJ"
+  },
+  {
+   "id": 174,
+   "word": "wghsop",
+   "soundex": "W210",
+   "metaphone": "SP",
+   "nysiis": "WGSAP"
+  },
+  {
+   "id": 175,
+   "word": "qrs",
+   "soundex": "Q620",
+   "metaphone": "KRS",
+   "nysiis": "QR"
+  },
+  {
+   "id": 176,
+   "word": "Jrm",
+   "soundex": "J650",
+   "metaphone": "JRM",
+   "nysiis": "JRN"
+  },
+  {
+   "id": 177,
+   "word": "umkydqja",
+   "soundex": "U523",
+   "metaphone": "UMKTKJ",
+   "nysiis": "UNCYDGJ"
+  },
+  {
+   "id": 178,
+   "word": "Uyjrx",
+   "soundex": "U262",
+   "metaphone": "UJRKS",
+   "nysiis": "UYJRX"
+  },
+  {
+   "id": 179,
+   "word": "Qva",
+   "soundex": "Q100",
+   "metaphone": "KF",
+   "nysiis": "QV"
+  },
+  {
+   "id": 180,
+   "word": "Jihwvuqpg",
+   "soundex": "J121",
+   "metaphone": "JFKPK",
+   "nysiis": "JAWVAGPG"
+  },
+  {
+   "id": 181,
+   "word": "Lwwpegpolit",
+   "soundex": "L121",
+   "metaphone": "LPKPLT",
+   "nysiis": "LWPAGPALAT"
+  },
+  {
+   "id": 182,
+   "word": "Mzthytrwv",
+   "soundex": "M233",
+   "metaphone": "MS0TRF",
+   "nysiis": "MSTYTRWV"
+  },
+  {
+   "id": 183,
+   "word": "Jlswd",
+   "soundex": "J423",
+   "metaphone": "JLST",
+   "nysiis": "JLSWD"
+  },
+  {
+   "id": 184,
+   "word": "zaydwn",
+   "soundex": "Z350",
+   "metaphone": "STN",
+   "nysiis": "ZAYDWN"
+  },
+  {
+   "id": 185,
+   "word": "Ejv",
+   "soundex": "E210",
+   "metaphone": "EJF",
+   "nysiis": "EJV"
+  },
+  {
+   "id": 186,
+   "word": "Ogylxkqy",
+   "soundex": "O242",
+   "metaphone": "OJLKSKK",
+   "nysiis": "OGYLXCGY"
+  },
+  {
+   "id": 187,
+   "word": "Tmr",
+   "soundex": "T560",
+   "metaphone": "TMR",
+   "nysiis": "TNR"
+  },
+  {
+   "id": 188,
+   "word": "ukclyemzgwl",
+   "soundex": "U245",
+   "metaphone": "UKKLYMSKL",
+   "nysiis": "UCLYANSGWL"
+  },
+  {
+   "id": 189,
+   "word": "Ebkjz",
+   "soundex": "E120",
+   "metaphone": "EBKJS",
+   "nysiis": "EBCJ"
+  },
+  {
+   "id": 190,
+   "word": "Rwpwxeskw",
+   "soundex": "R122",
+   "metaphone": "RPKSSK",
+   "nysiis": "RWPWXASCW"
+  },
+  {
+   "id": 191,
+   "word": "lifwvizihfa",
+   "soundex": "L121",
+   "metaphone": "LFFSF",
+   "nysiis": "LAFWVASAF"
+  },
+  {
+   "id": 192,
+   "word": "jossdzzzl",
+   "soundex": "J232",
+   "metaphone": "JSTSL",
+   "nysiis": "JASDSL"
+  },
+  {
+   "id": 193,
+   "word": "wdeqkwvi",
+   "soundex": "W321",
+   "metaphone": "TKKF",
+   "nysiis": "WDAGCWV"
+  },
+  {
+   "id": 194,
+   "word": "ulmcncaj",
+   "soundex": "U452",
+   "metaphone": "ULMKNKJ",
+   "nysiis": "ULNCNCAJ"
+  },
+  {
+   "id": 195,
+   "word": "Qaormva",
+   "soundex": "Q651",
+   "metaphone": "KRMF",
+   "nysiis": "QARNV"
+  },
+  {
+   "id": 196,
+   "word": "Ajr",
+   "soundex": "A260",
+   "metaphone": "AJR",
+   "nysiis": "AJR"
+  },
+  {
+   "id": 197,
+   "word": "Mt",
+   "soundex": "M300",
+   "metaphone": "MT",
+   "nysiis": "MT"
+  },
+  {
+   "id": 198,
+   "word": "Fzc",
+   "soundex": "F200",
+   "metaphone": "FSK",
+   "nysiis": "FSC"
+  },
+  {
+   "id": 199,
+   "word": "Inesvax",
+   "soundex": "I521",
+   "metaphone": "INSFKS",
+   "nysiis": "INASVAX"
+  },
+  {
+   "id": 200,
+   "word": "euelja",
+   "soundex": "E420",
+   "metaphone": "ELJ",
+   "nysiis": "EALJ"
+  },
+  {
+   "id": 201,
+   "word": "Ntwabraznc",
+   "soundex": "N316",
+   "metaphone": "NTWBRSNK",
+   "nysiis": "NTWABRASNC"
+  },
+  {
+   "id": 202,
+   "word": "Opm",
+   "soundex": "O150",
+   "metaphone": "OPM",
+   "nysiis": "OPN"
+  },
+  {
+   "id": 203,
+   "word": "ehekp",
+   "soundex": "E210",
+   "metaphone": "EHKP",
+   "nysiis": "EHACP"
+  },
+  {
+   "id": 204,
+   "word": "Dxmekfeaqxc",
+   "soundex": "D252",
+   "metaphone": "TKSMKFKKSK",
+   "nysiis": "DXNACFAGXC"
+  },
+  {
+   "id": 205,
+   "word": "Jpscffzn",
+   "soundex": "J121",
+   "metaphone": "JPSKFSN",
+   "nysiis": "JPSCFSN"
+  },
+  {
+   "id": 206,
+   "word": "Vx",
+   "soundex": "V200",
+   "metaphone": "FKS",
+   "nysiis": "VX"
+  },
+  {
+   "id": 207,
+   "word": "Dhesizhkch",
+   "soundex": "D220",
+   "metaphone": "THSSHKX",
+   "nysiis": "DASASZC"
+  },
+  {
+   "id": 208,
+   "word": "vhdh",
+   "soundex": "V300",
+   "metaphone": "FHTH",
+   "nysiis": "VD"
+  },
+  {
+   "id": 209,
+   "word": "Xwsmtb",
+   "soundex": "X531",
+   "metaphone": "SSMTB",
+   "nysiis": "XWSNTB"
+  },
+  {
+   "id": 210,
+   "word": "Jybz",
+   "soundex": "J120",
+   "metaphone": "JBS",
+   "nysiis": "JYB"
+  },
+  {
+   "id": 211,
+   "word": "Hodrfkdv",
+   "soundex": "H361",
+   "metaphone": "HTRFKTF",
+   "nysiis": "HADRFCDV"
+  },
+  {
+   "id": 212,
+   "word": "awnqtbb",
+   "soundex": "A523",
+   "metaphone": "ANKTB",
+   "nysiis": "ANGTB"
+  },
+  {
+   "id": 213,
+   "word": "aogyejiyss",
+   "soundex": "A222",
+   "metaphone": "AJYJS",
+   "nysiis": "AGYAJY"
+  },
+  {
+   "id": 214,
+   "word": "Edolyxrm",
+   "soundex": "E342",
+   "metaphone": "ETLKSRM",
+   "nysiis": "EDALYXRN"
+  },
+  {
+   "id": 215,
+   "word": "Oibqghegbd",
+   "soundex": "O122",
+   "metaphone": "OBKKHKBT",
+   "nysiis": "OABGAGBD"
+  },
+  {
+   "id": 216,
+   "word": "Ajpd",
+   "soundex": "A213",
+   "metaphone": "AJPT",
+   "nysiis": "AJPD"
+  },
+  {
+   "id": 217,
+   "word": "ymyytyvaj",
+   "soundex": "Y531",
+   "metaphone": "MTFJ",
+   "nysiis": "YNYTYVAJ"
+  },
+  {
+   "id": 218,
+   "word": "Ychhjgxip",
+   "soundex": "Y210",
+   "metaphone": "XHJKKSP",
+   "nysiis": "YCHJGXAP"
+  },
+  {
+   "id": 219,
+   "word": "Szywad",
+   "soundex": "S300",
+   "metaphone": "SSWT",
+   "nysiis": "SYWAD"
+  },
+  {
+   "id": 220,
+   "word": "Wsyidyzxudp",
+   "soundex": "W232",
+   "metaphone": "SYTSKSTP",
+   "nysiis": "WSYADYSXADP"
+  },
+  {
+   "id": 221,
+   "word": "Khtllse",
+   "soundex": "K342",
+   "metaphone": "KHTLS",
+   "nysiis": "CTLS"
+  },
+  {
+   "id": 222,
+   "word": "bhxafxrsn",
+   "soundex": "B212",
+   "metaphone": "BHKSFKSRSN",
+   "nysiis": "BXAFXRSN"
+  },
+  {
+   "id": 223,
+   "word": "Ci",
+   "soundex": "C000",
+   "metaphone": "S",
+   "nysiis": "C"
+  },
+  {
+   "id": 224,
+   "word": "doxrk",
+   "soundex": "D262",
+   "metaphone": "TKSRK",
+   "nysiis": "DAXRC"
+  },
+  {
+   "id": 225,
+   "word": "Vhayjtteliz",
+   "soundex": "V234",
+   "metaphone": "FHJTLS",
+   "nysiis": "VAYJTAL"
+  },
+  {
+   "id": 226,
+   "word": "gxezpxo",
+   "soundex": "G212",
+   "metaphone": "KKSSPKS",
+   "nysiis": "GXASPX"
+  },
+  {
+   "id": 227,
+   "word": "suq",
+   "soundex": "S200",
+   "metaphone": "SK",
+   "nysiis": "SAG"
+  },
+  {
+   "id": 228,
+   "word": "Hl",
+   "soundex": "H400",
+   "metaphone": "HL",
+   "nysiis": "HL"
+  },
+  {
+   "id": 229,
+   "word": "lxtzpkdac",
+   "soundex": "L232",
+   "metaphone": "LKSTSPKTK",
+   "nysiis": "LXTSPCDAC"
+  },
+  {
+   "id": 230,
+   "word": "kmkxralu",
+   "soundex": "K526",
+   "metaphone": "KMKKSRL",
+   "nysiis": "CNCXRAL"
+  },
+  {
+   "id": 231,
+   "word": "epkt",
+   "soundex": "E123",
+   "metaphone": "EPKT",
+   "nysiis": "EPCT"
+  },
+  {
+   "id": 232,
+   "word": "Ar",
+   "soundex": "A600",
+   "metaphone": "AR",
+   "nysiis": "AR"
+  },
+  {
+   "id": 233,
+   "word": "uw",
+   "soundex": "U000",
+   "metaphone": "U",
+   "nysiis": "U"
+  },
+  {
+   "id": 234,
+   "word": "Fgwwljfmmd",
+   "soundex": "F242",
+   "metaphone": "FKLJFMT",
+   "nysiis": "FGWLJFND"
+  },
+  {
+   "id": 235,
+   "word": "Bg",
+   "soundex": "B200",
+   "metaphone": "BK",
+   "nysiis": "BG"
+  },
+  {
+   "id": 236,
+   "word": "Qmnqiupjluj",
+   "soundex": "Q521",
+   "metaphone": "KMNKPJLJ",
+   "nysiis": "QNGAPJLAJ"
+  },
+  {
+   "id": 237,
+   "word": "Qbjo",
+   "soundex": "Q120",
+   "metaphone": "KBJ",
+   "nysiis": "QBJ"
+  },
+  {
+   "id": 238,
+   "word": "nuv",
+   "soundex": "N100",
+   "metaphone": "NF",
+   "nysiis": "NAV"
+  },
+  {
+   "id": 239,
+   "word": "Eansmzzvdcl",
+   "soundex": "E525",
+   "metaphone": "ENSMSFTKL",
+   "nysiis": "EANSNSVDCL"
+  },
+  {
+   "id": 240,
+   "word": "dfncqvm",
+   "soundex": "D152",
+   "metaphone": "TFNKKFM",
+   "nysiis": "DFNCGVN"
+  },
+  {
+   "id": 241,
+   "word": "pokotuxpjx",
+   "soundex": "P232",
+   "metaphone": "PKTKSPJKS",
+   "nysiis": "PACATAXPJX"
+  },
+  {
+   "id": 242,
+   "word": "Gx",
+   "soundex": "G000",
+   "metaphone": "KKS",
+   "nysiis": "GX"
+  },
+  {
+   "id": 243,
+   "word": "alq",
+   "soundex": "A420",
+   "metaphone": "ALK",
+   "nysiis": "ALG"
+  },
+  {
+   "id": 244,
+   "word": "Tulueulr",
+   "soundex": "T446",
+   "metaphone": "TLLR",
+   "nysiis": "TALALR"
+  },
+  {
+   "id": 245,
+   "word": "Cg",
+   "soundex": "C000",
+   "metaphone": "KK",
+   "nysiis": "CG"
+  },
+  {
+   "id": 246,
+   "word": "ybuxcx",
+   "soundex": "Y120",
+   "metaphone": "BKSKKS",
+   "nysiis": "YBAXCX"
+  },
+  {
+   "id": 247,
+   "word": "Zlnygt",
+   "soundex": "Z452",
+   "metaphone": "SLNKT",
+   "nysiis": "ZLNYGT"
+  },
+  {
+   "id": 248,
+   "word": "plosi",
+   "soundex": "P420",
+   "metaphone": "PLS",
+   "nysiis": "PLAS"
+  },
+  {
+   "id": 249,
+   "word": "qorrqa",
+   "soundex": "Q620",
+   "metaphone": "KRK",
+   "nysiis": "QARG"
+  },
+  {
+   "id": 250,
+   "word": "ho",
+   "soundex": "H000",
+   "metaphone": "H",
+   "nysiis": "H"
+  },
+  {
+   "id": 251,
+   "word": "Pmytpui",
+   "soundex": "P531",
+   "metaphone": "PMTP",
+   "nysiis": "PNYTP"
+  },
+  {
+   "id": 252,
+   "word": "aoagqjxjx",
+   "soundex": "A200",
+   "metaphone": "AKKJKSJKS",
+   "nysiis": "AGJXJX"
+  },
+  {
+   "id": 253,
+   "word": "zicqv",
+   "soundex": "Z210",
+   "metaphone": "SKKF",
+   "nysiis": "ZACGV"
+  },
+  {
+   "id": 254,
+   "word": "grfcm",
+   "soundex": "G612",
+   "metaphone": "KRFKM",
+   "nysiis": "GRFCN"
+  },
+  {
+   "id": 255,
+   "word": "ugdtmg",
+   "soundex": "U235",
+   "metaphone": "UKTTMK",
+   "nysiis": "UGDTNG"
+  },
+  {
+   "id": 256,
+   "word": "Gaicrudver",
+   "soundex": "G263",
+   "metaphone": "KKRTFR",
+   "nysiis": "GACRADVAR"
+  },
+  {
+   "id": 257,
+   "word": "Xqkflt",
+   "soundex": "X143",
+   "metaphone": "SKKFLT",
+   "nysiis": "XGCFLT"
+  },
+  {
+   "id": 258,
+   "word": "Tdym",
+   "soundex": "T500",
+   "metaphone": "TTM",
+   "nysiis": "TDYN"
+  },
+  {
+   "id": 259,
+   "word": "xsf",
+   "soundex": "X100",
+   "metaphone": "SSF",
+   "nysiis": "XSF"
+  },
+  {
+   "id": 260,
+   "word": "qdh",
+   "soundex": "Q300",
+   "metaphone": "KTH",
+   "nysiis": "QD"
+  },
+  {
+   "id": 261,
+   "word": "vba",
+   "soundex": "V000",
+   "metaphone": "FB",
+   "nysiis": "VB"
+  },
+  {
+   "id": 262,
+   "word": "Vren",
+   "soundex": "V650",
+   "metaphone": "FRN",
+   "nysiis": "VRAN"
+  },
+  {
+   "id": 263,
+   "word": "izzz",
+   "soundex": "I200",
+   "metaphone": "IS",
+   "nysiis": "I"
+  },
+  {
+   "id": 264,
+   "word": "ulnbg",
+   "soundex": "U451",
+   "metaphone": "ULNBK",
+   "nysiis": "ULNBG"
+  },
+  {
+   "id": 265,
+   "word": "Ujd",
+   "soundex": "U230",
+   "metaphone": "UJT",
+   "nysiis": "UJD"
+  },
+  {
+   "id": 266,
+   "word": "Xcj",
+   "soundex": "X000",
+   "metaphone": "SKJ",
+   "nysiis": "XCJ"
+  },
+  {
+   "id": 267,
+   "word": "ayddotbn",
+   "soundex": "A331",
+   "metaphone": "ATTBN",
+   "nysiis": "AYDATBN"
+  },
+  {
+   "id": 268,
+   "word": "Abg",
+   "soundex": "A120",
+   "metaphone": "ABK",
+   "nysiis": "ABG"
+  },
+  {
+   "id": 269,
+   "word": "wjfgpqnmd",
+   "soundex": "W212",
+   "metaphone": "JFKPKNMT",
+   "nysiis": "WJFGPGND"
+  },
+  {
+   "id": 270,
+   "word": "Vjmoxqr",
+   "soundex": "V252",
+   "metaphone": "FJMKSKR",
+   "nysiis": "VJNAXGR"
+  },
+  {
+   "id": 271,
+   "word": "Uoht",
+   "soundex": "U300",
+   "metaphone": "UT",
+   "nysiis": "UAT"
+  },
+  {
+   "id": 272,
+   "word": "Muomyvwp",
+   "soundex": "M510",
+   "metaphone": "MMFP",
+   "nysiis": "MANYVWP"
+  },
+  {
+   "id": 273,
+   "word": "ldogxdgobh",
+   "soundex": "L323",
+   "metaphone": "LTKKSTKBH",
+   "nysiis": "LDAGXDGAB"
+  },
+  {
+   "id": 274,
+   "word": "Txrwohqlger",
+   "soundex": "T262",
+   "metaphone": "TKSRWKLJR",
+   "nysiis": "TXRWAGLGAR"
+  },
+  {
+   "id": 275,
+   "word": "Tlqmcgpz",
+   "soundex": "T425",
+   "metaphone": "TLKMKKPS",
+   "nysiis": "TLGNCGP"
+  },
+  {
+   "id": 276,
+   "word": "lrfepflpekk",
+   "soundex": "L611",
+   "metaphone": "LRFPFLPK",
+   "nysiis": "LRFAPFLPAC"
+  },
+  {
+   "id": 277,
+   "word": "aj",
+   "soundex": "A200",
+   "metaphone": "AJ",
+   "nysiis": "AJ"
+  },
+  {
+   "id": 278,
+   "word": "xkt",
+   "soundex": "X300",
+   "metaphone": "SKT",
+   "nysiis": "XCT"
+  },
+  {
+   "id": 279,
+   "word": "Ya",
+   "soundex": "Y000",
+   "metaphone": "Y",
+   "nysiis": "Y"
+  },
+  {
+   "id": 280,
+   "word": "htgu",
+   "soundex": "H320",
+   "metaphone": "HTK",
+   "nysiis": "HTG"
+  },
+  {
+   "id": 281,
+   "word": "Pfwrhpu",
+   "soundex": "P610",
+   "metaphone": "PFRHP",
+   "nysiis": "FWRP"
+  },
+  {
+   "id": 282,
+   "word": "Pswtyqb",
+   "soundex": "P232",
+   "metaphone": "PSTKB",
+   "nysiis": "PSWTYGB"
+  },
+  {
+   "id": 283,
+   "word": "Ywvmfvwbyk",
+   "soundex": "Y151",
+   "metaphone": "FMFFBK",
+   "nysiis": "YWVNFVWBYC"
+  },
+  {
+   "id": 284,
+   "word": "Yrys",
+   "soundex": "Y620",
+   "metaphone": "RS",
+   "nysiis": "YRY"
+  },
+  {
+   "id": 285,
+   "word": "Jwbminoy",
+   "soundex": "J155",
+   "metaphone": "JBMN",
+   "nysiis": "JWBNANY"
+  },
+  {
+   "id": 286,
+   "word": "Klxyzheqb",
+   "soundex": "K422",
+   "metaphone": "KLKSSHKB",
+   "nysiis": "CLXYSZAGB"
+  },
+  {
+   "id": 287,
+   "word": "nqipkgvpg",
+   "soundex": "N212",
+   "metaphone": "NKPKKFPK",
+   "nysiis": "NGAPCGVPG"
+  },
+  {
+   "id": 288,
+   "word": "osfvgxykyd",
+   "soundex": "O212",
+   "metaphone": "OSFFKKSKT",
+   "nysiis": "OSFVGXYCYD"
+  },
+  {
+   "id": 289,
+   "word": "obmswenxj",
+   "soundex": "O152",
+   "metaphone": "OBMSWNKSJ",
+   "nysiis": "OBNSWANXJ"
+  },
+  {
+   "id": 290,
+   "word": "Xtoqjrnp",
+   "soundex": "X326",
+   "metaphone": "STKJRNP",
+   "nysiis": "XTAGJRNP"
+  },
+  {
+   "id": 291,
+   "word": "blpwz",
+   "soundex": "B412",
+   "metaphone": "BLPS",
+   "nysiis": "BLPW"
+  },
+  {
+   "id": 292,
+   "word": "Rjs",
+   "soundex": "R200",
+   "metaphone": "RJS",
+   "nysiis": "RJ"
+  },
+  {
+   "id": 293,
+   "word": "Pd",
+   "soundex": "P300",
+   "metaphone": "PT",
+   "nysiis": "PD"
+  },
+  {
+   "id": 294,
+   "word": "spdz",
+   "soundex": "S132",
+   "metaphone": "SPTS",
+   "nysiis": "SPD"
+  },
+  {
+   "id": 295,
+   "word": "fxsrmeluwg",
+   "soundex": "F265",
+   "metaphone": "FKSSRMLK",
+   "nysiis": "FXSRNALAUG"
+  },
+  {
+   "id": 296,
+   "word": "mdpjilwrx",
+   "soundex": "M312",
+   "metaphone": "MTPJLRKS",
+   "nysiis": "MDPJALWRX"
+  },
+  {
+   "id": 297,
+   "word": "Vqbbvfh",
+   "soundex": "V210",
+   "metaphone": "FKBFFH",
+   "nysiis": "VGBVF"
+  },
+  {
+   "id": 298,
+   "word": "Jbtmkvfc",
+   "soundex": "J135",
+   "metaphone": "JBTMKFFK",
+   "nysiis": "JBTNCVFC"
+  },
+  {
+   "id": 299,
+   "word": "mlg",
+   "soundex": "M420",
+   "metaphone": "MLK",
+   "nysiis": "MLG"
+  },
+  {
+   "id": 300,
+   "word": "dbioxq",
+   "soundex": "D120",
+   "metaphone": "TBKSK",
+   "nysiis": "DBAXG"
+  },
+  {
+   "id": 301,
+   "word": "wof",
+   "soundex": "W100",
+   "metaphone": "WF",
+   "nysiis": "WAF"
+  },
+  {
+   "id": 302,
+   "word": "Kcjqbit",
+   "soundex": "K130",
+   "metaphone": "KKJKBT",
+   "nysiis": "CJGBAT"
+  },
+  {
+   "id": 303,
+   "word": "Nch",
+   "soundex": "N200",
+   "metaphone": "NX",
+   "nysiis": "NC"
+  },
+  {
+   "id": 304,
+   "word": "wpbczgtr",
+   "soundex": "W123",
+   "metaphone": "PBKSKTR",
+   "nysiis": "WPBCSGTR"
+  },
+  {
+   "id": 305,
+   "word": "wnndsazxfl",
+   "soundex": "W532",
+   "metaphone": "NTSSKSFL",
+   "nysiis": "WNDSASXFL"
+  },
+  {
+   "id": 306,
+   "word": "qquk",
+   "soundex": "Q200",
+   "metaphone": "KK",
+   "nysiis": "QGAC"
+  },
+  {
+   "id": 307,
+   "word": "Ki",
+   "soundex": "K000",
+   "metaphone": "K",
+   "nysiis": "C"
+  },
+  {
+   "id": 308,
+   "word": "duwf",
+   "soundex": "D100",
+   "metaphone": "TF",
+   "nysiis": "DAUF"
+  },
+  {
+   "id": 309,
+   "word": "Uugb",
+   "soundex": "U210",
+   "metaphone": "KB",
+   "nysiis": "UAGB"
+  },
+  {
+   "id": 310,
+   "word": "Lvqymi",
+   "soundex": "L125",
+   "metaphone": "LFKM",
+   "nysiis": "LVGYN"
+  },
+  {
+   "id": 311,
+   "word": "eeweaj",
+   "soundex": "E200",
+   "metaphone": "WJ",
+   "nysiis": "EAEAJ"
+  },
+  {
+   "id": 312,
+   "word": "nbumgo",
+   "soundex": "N152",
+   "metaphone": "NBMK",
+   "nysiis": "NBANG"
+  },
+  {
+   "id": 313,
+   "word": "Fesofxhv",
+   "soundex": "F212",
+   "metaphone": "FSFKSHF",
+   "nysiis": "FASAFXV"
+  },
+  {
+   "id": 314,
+   "word": "yjjondqf",
+   "soundex": "Y253",
+   "metaphone": "JNTKF",
+   "nysiis": "YJANDGF"
+  },
+  {
+   "id": 315,
+   "word": "Jso",
+   "soundex": "J000",
+   "metaphone": "JS",
+   "nysiis": "JS"
+  },
+  {
+   "id": 316,
+   "word": "fyhjya",
+   "soundex": "F200",
+   "metaphone": "FHJY",
+   "nysiis": "FYJY"
+  },
+  {
+   "id": 317,
+   "word": "Hckmmlkiu",
+   "soundex": "H254",
+   "metaphone": "HKMLK",
+   "nysiis": "HCNLC"
+  },
+  {
+   "id": 318,
+   "word": "xhdzhumzj",
+   "soundex": "X325",
+   "metaphone": "XHTSHMSJ",
+   "nysiis": "XDSZANSJ"
+  },
+  {
+   "id": 319,
+   "word": "rsngy",
+   "soundex": "R252",
+   "metaphone": "RSNJ",
+   "nysiis": "RSNGY"
+  },
+  {
+   "id": 320,
+   "word": "mhnakeyva",
+   "soundex": "M210",
+   "metaphone": "MHNKF",
+   "nysiis": "MNACAYV"
+  },
+  {
+   "id": 321,
+   "word": "ilmitv",
+   "soundex": "I453",
+   "metaphone": "ILMTF",
+   "nysiis": "ILNATV"
+  },
+  {
+   "id": 322,
+   "word": "kpapahru",
+   "soundex": "K116",
+   "metaphone": "KPPR",
+   "nysiis": "CPAPAR"
+  },
+  {
+   "id": 323,
+   "word": "Xnmbd",
+   "soundex": "X513",
+   "metaphone": "SNMBT",
+   "nysiis": "XNBD"
+  },
+  {
+   "id": 324,
+   "word": "kijcvtrpor",
+   "soundex": "K213",
+   "metaphone": "KJKFTRPR",
+   "nysiis": "CAJCVTRPAR"
+  },
+  {
+   "id": 325,
+   "word": "rdttnfso",
+   "soundex": "R351",
+   "metaphone": "RTTNFS",
+   "nysiis": "RDTNFS"
+  },
+  {
+   "id": 326,
+   "word": "spq",
+   "soundex": "S120",
+   "metaphone": "SPK",
+   "nysiis": "SPG"
+  },
+  {
+   "id": 327,
+   "word": "khc",
+   "soundex": "K000",
+   "metaphone": "KHK",
+   "nysiis": "C"
+  },
+  {
+   "id": 328,
+   "word": "Axdplm",
+   "soundex": "A231",
+   "metaphone": "AKSTPLM",
+   "nysiis": "AXDPLN"
+  },
+  {
+   "id": 329,
+   "word": "Vrcnh",
+   "soundex": "V625",
+   "metaphone": "FRKNH",
+   "nysiis": "VRCN"
+  },
+  {
+   "id": 330,
+   "word": "Glxd",
+   "soundex": "G423",
+   "metaphone": "KLKST",
+   "nysiis": "GLXD"
+  },
+  {
+   "id": 331,
+   "word": "kzaeyq",
+   "soundex": "K200",
+   "metaphone": "KSK",
+   "nysiis": "CSAYG"
+  },
+  {
+   "id": 332,
+   "word": "Rgiadbwezpg",
+   "soundex": "R231",
+   "metaphone": "RJTBWSPK",
+   "nysiis": "RGADBWASPG"
+  },
+  {
+   "id": 333,
+   "word": "Mqvb",
+   "soundex": "M210",
+   "metaphone": "MKFB",
+   "nysiis": "MGVB"
+  },
+  {
+   "id": 334,
+   "word": "Nfgttt",
+   "soundex": "N123",
+   "metaphone": "NFKT",
+   "nysiis": "NFGT"
+  },
+  {
+   "id": 335,
+   "word": "qappjvg",
+   "soundex": "Q121",
+   "metaphone": "KPJFK",
+   "nysiis": "QAPJVG"
+  },
+  {
+   "id": 336,
+   "word": "Awqjznn",
+   "soundex": "A250",
+   "metaphone": "AKJSN",
+   "nysiis": "AGJSN"
+  },
+  {
+   "id": 337,
+   "word": "Liwcfi",
+   "soundex": "L210",
+   "metaphone": "LKF",
+   "nysiis": "LAICF"
+  },
+  {
+   "id": 338,
+   "word": "Ml",
+   "soundex": "M400",
+   "metaphone": "ML",
+   "nysiis": "ML"
+  },
+  {
+   "id": 339,
+   "word": "Kgoi",
+   "soundex": "K000",
+   "metaphone": "KK",
+   "nysiis": "CG"
+  },
+  {
+   "id": 340,
+   "word": "Axxo",
+   "soundex": "A200",
+   "metaphone": "AKS",
+   "nysiis": "AX"
+  },
+  {
+   "id": 341,
+   "word": "Vovoxbhlzui",
+   "soundex": "V121",
+   "metaphone": "FFKSBHLS",
+   "nysiis": "VAVAXBLS"
+  },
+  {
+   "id": 342,
+   "word": "Eazvm",
+   "soundex": "E215",
+   "metaphone": "ESFM",
+   "nysiis": "EASVN"
+  },
+  {
+   "id": 343,
+   "word": "rxfm",
+   "soundex": "R215",
+   "metaphone": "RKSFM",
+   "nysiis": "RXFN"
+  },
+  {
+   "id": 344,
+   "word": "Rsuhx",
+   "soundex": "R220",
+   "metaphone": "RSKS",
+   "nysiis": "RSAX"
+  },
+  {
+   "id": 345,
+   "word": "bjtgwgibmpz",
+   "soundex": "B232",
+   "metaphone": "BJTKJBMPS",
+   "nysiis": "BJTGWGABNP"
+  },
+  {
+   "id": 346,
+   "word": "by",
+   "soundex": "B000",
+   "metaphone": "B",
+   "nysiis": "BY"
+  },
+  {
+   "id": 347,
+   "word": "aophzwij",
+   "soundex": "A122",
+   "metaphone": "AFSWJ",
+   "nysiis": "AFSWAJ"
+  },
+  {
+   "id": 348,
+   "word": "havpobdjbe",
+   "soundex": "H113",
+   "metaphone": "HFPBTJB",
+   "nysiis": "HAVPABDJB"
+  },
+  {
+   "id": 349,
+   "word": "Rccjwbxvqj",
+   "soundex": "R212",
+   "metaphone": "RKKJBKSFKJ",
+   "nysiis": "RCJWBXVGJ"
+  },
+  {
+   "id": 350,
+   "word": "Cj",
+   "soundex": "C000",
+   "metaphone": "KJ",
+   "nysiis": "CJ"
+  },
+  {
+   "id": 351,
+   "word": "ghhh",
+   "soundex": "G000",
+   "metaphone": "H",
+   "nysiis": "GH"
+  },
+  {
+   "id": 352,
+   "word": "Enkiahmryl",
+   "soundex": "E525",
+   "metaphone": "ENKMRL",
+   "nysiis": "ENCANRYL"
+  },
+  {
+   "id": 353,
+   "word": "Jtvx",
+   "soundex": "J312",
+   "metaphone": "JTFKS",
+   "nysiis": "JTVX"
+  },
+  {
+   "id": 354,
+   "word": "Cgmdngg",
+   "soundex": "C535",
+   "metaphone": "KKMTNK",
+   "nysiis": "CGNDNG"
+  },
+  {
+   "id": 355,
+   "word": "kncz",
+   "soundex": "K520",
+   "metaphone": "NKS",
+   "nysiis": "NC"
+  },
+  {
+   "id": 356,
+   "word": "Ciykhvututc",
+   "soundex": "C213",
+   "metaphone": "SKHFTTK",
+   "nysiis": "CAYCKVATATC"
+  },
+  {
+   "id": 357,
+   "word": "ixdgc",
+   "soundex": "I232",
+   "metaphone": "IKSTKK",
+   "nysiis": "IXDGC"
+  },
+  {
+   "id": 358,
+   "word": "hkxobvgtd",
+   "soundex": "H212",
+   "metaphone": "HKKSBFKTT",
+   "nysiis": "HCXABVGTD"
+  },
+  {
+   "id": 359,
+   "word": "Bclsmc",
+   "soundex": "B242",
+   "metaphone": "BKLSMK",
+   "nysiis": "BCLSNC"
+  },
+  {
+   "id": 360,
+   "word": "ypcleb",
+   "soundex": "Y124",
+   "metaphone": "PKLB",
+   "nysiis": "YPCLAB"
+  },
+  {
+   "id": 361,
+   "word": "Lwulfxyw",
+   "soundex": "L412",
+   "metaphone": "LWLFKS",
+   "nysiis": "LWALFXYW"
+  },
+  {
+   "id": 362,
+   "word": "Mebgbeu",
+   "soundex": "M121",
+   "metaphone": "MBKB",
+   "nysiis": "MABGB"
+  },
+  {
+   "id": 363,
+   "word": "Oc",
+   "soundex": "O200",
+   "metaphone": "OK",
+   "nysiis": "OC"
+  },
+  {
+   "id": 364,
+   "word": "mgscedfcd",
+   "soundex": "M231",
+   "metaphone": "MKSSTFKT",
+   "nysiis": "MGSCADFCD"
+  },
+  {
+   "id": 365,
+   "word": "Vx",
+   "soundex": "V200",
+   "metaphone": "FKS",
+   "nysiis": "VX"
+  },
+  {
+   "id": 366,
+   "word": "Wibhlyw",
+   "soundex": "W140",
+   "metaphone": "WBHL",
+   "nysiis": "WABLYW"
+  },
+  {
+   "id": 367,
+   "word": "Omgjzbc",
+   "soundex": "O521",
+   "metaphone": "OMKJSBK",
+   "nysiis": "ONGJSBC"
+  },
+  {
+   "id": 368,
+   "word": "hlrzadlzze",
+   "soundex": "H462",
+   "metaphone": "HLRSTLS",
+   "nysiis": "HLRSADLS"
+  },
+  {
+   "id": 369,
+   "word": "Jfthooxpn",
+   "soundex": "J132",
+   "metaphone": "JF0KSPN",
+   "nysiis": "JFTAXPN"
+  },
+  {
+   "id": 370,
+   "word": "Nuss",
+   "soundex": "N200",
+   "metaphone": "NS",
+   "nysiis": "N"
+  },
+  {
+   "id": 371,
+   "word": "Wkbvxuqung",
+   "soundex": "W212",
+   "metaphone": "KBFKSKNK",
+   "nysiis": "WCBVXAGANG"
+  },
+  {
+   "id": 372,
+   "word": "sp",
+   "soundex": "S100",
+   "metaphone": "SP",
+   "nysiis": "SP"
+  },
+  {
+   "id": 373,
+   "word": "Kbfbtgujb",
+   "soundex": "K132",
+   "metaphone": "KBFBTKJB",
+   "nysiis": "CBFBTGAJB"
+  },
+  {
+   "id": 374,
+   "word": "lqmims",
+   "soundex": "L255",
+   "metaphone": "LKMMS",
+   "nysiis": "LGNAN"
+  },
+  {
+   "id": 375,
+   "word": "Yeuafi",
+   "soundex": "Y100",
+   "metaphone": "YF",
+   "nysiis": "YAF"
+  },
+  {
+   "id": 376,
+   "word": "Nlhdo",
+   "soundex": "N430",
+   "metaphone": "NLHT",
+   "nysiis": "NLD"
+  },
+  {
+   "id": 377,
+   "word": "oeosyvaoq",
+   "soundex": "O212",
+   "metaphone": "OSFK",
+   "nysiis": "OASYVAG"
+  },
+  {
+   "id": 378,
+   "word": "Lo",
+   "soundex": "L000",
+   "metaphone": "L",
+   "nysiis": "L"
+  },
+  {
+   "id": 379,
+   "word": "Ehrx",
+   "soundex": "E620",
+   "metaphone": "ERKS",
+   "nysiis": "EARX"
+  },
+  {
+   "id": 380,
+   "word": "Dr",
+   "soundex": "D600",
+   "metaphone": "TR",
+   "nysiis": "DR"
+  },
+  {
+   "id": 381,
+   "word": "Kentlaaidrw",
+   "soundex": "K534",
+   "metaphone": "KNTLTR",
+   "nysiis": "CANTLADRW"
+  },
+  {
+   "id": 382,
+   "word": "Ihlr",
+   "soundex": "I460",
+   "metaphone": "ILR",
+   "nysiis": "IALR"
+  },
+  {
+   "id": 383,
+   "word": "Kd",
+   "soundex": "K300",
+   "metaphone": "KT",
+   "nysiis": "CD"
+  },
+  {
+   "id": 384,
+   "word": "aayxoojfy",
+   "soundex": "A221",
+   "metaphone": "KSJF",
+   "nysiis": "AYXAJFY"
+  },
+  {
+   "id": 385,
+   "word": "Ict",
+   "soundex": "I230",
+   "metaphone": "IKT",
+   "nysiis": "ICT"
+  },
+  {
+   "id": 386,
+   "word": "fikboc",
+   "soundex": "F212",
+   "metaphone": "FKBK",
+   "nysiis": "FACBAC"
+  },
+  {
+   "id": 387,
+   "word": "Rwkveovuxqs",
+   "soundex": "R211",
+   "metaphone": "RKFFKSKS",
+   "nysiis": "RWCVAVAXG"
+  },
+  {
+   "id": 388,
+   "word": "pinxplz",
+   "soundex": "P521",
+   "metaphone": "PNKSPLS",
+   "nysiis": "PANXPL"
+  },
+  {
+   "id": 389,
+   "word": "Odxg",
+   "soundex": "O320",
+   "metaphone": "OTKSK",
+   "nysiis": "ODXG"
+  },
+  {
+   "id": 390,
+   "word": "ctsj",
+   "soundex": "C320",
+   "metaphone": "KTSJ",
+   "nysiis": "CTSJ"
+  },
+  {
+   "id": 391,
+   "word": "Fydpqmg",
+   "soundex": "F312",
+   "metaphone": "FTPKMK",
+   "nysiis": "FYDPGNG"
+  },
+  {
+   "id": 392,
+   "word": "kqjerp",
+   "soundex": "K610",
+   "metaphone": "KKJRP",
+   "nysiis": "CGJARP"
+  },
+  {
+   "id": 393,
+   "word": "kohouytivo",
+   "soundex": "K310",
+   "metaphone": "KHTF",
+   "nysiis": "CAHAYTAV"
+  },
+  {
+   "id": 394,
+   "word": "Yjedgiunku",
+   "soundex": "Y232",
+   "metaphone": "JJNK",
+   "nysiis": "YJADGANC"
+  },
+  {
+   "id": 395,
+   "word": "zzlmmqgmk",
+   "soundex": "Z452",
+   "metaphone": "SLMKKMK",
+   "nysiis": "ZSLNGNC"
+  },
+  {
+   "id": 396,
+   "word": "joximhg",
+   "soundex": "J252",
+   "metaphone": "JKSMHK",
+   "nysiis": "JAXANMG"
+  },
+  {
+   "id": 397,
+   "word": "zfvp",
+   "soundex": "Z100",
+   "metaphone": "SFFP",
+   "nysiis": "ZFVP"
+  },
+  {
+   "id": 398,
+   "word": "Kcbwt",
+   "soundex": "K130",
+   "metaphone": "KKBT",
+   "nysiis": "CBWT"
+  },
+  {
+   "id": 399,
+   "word": "Zjrxvgwnzd",
+   "soundex": "Z621",
+   "metaphone": "SJRKSFKNST",
+   "nysiis": "ZJRXVGWNSD"
+  },
+  {
+   "id": 400,
+   "word": "Pfxhfg",
+   "soundex": "P212",
+   "metaphone": "PFKSHFK",
+   "nysiis": "FXFG"
+  },
+  {
+   "id": 401,
+   "word": "la",
+   "soundex": "L000",
+   "metaphone": "L",
+   "nysiis": "L"
+  }
+ ]
+}
