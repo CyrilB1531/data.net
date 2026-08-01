@@ -30,7 +30,7 @@ from importlib.metadata import version
 from pathlib import Path
 
 import jellyfish
-from rapidfuzz.distance import DamerauLevenshtein, Levenshtein, OSA
+from rapidfuzz.distance import DamerauLevenshtein, Indel, Levenshtein, OSA
 
 SEED = 20260801
 ORACLE_DIR = Path(__file__).resolve().parent.parent / "tests" / "oracles"
@@ -241,6 +241,97 @@ def generate_hamming() -> dict:
     }
 
 
+def generate_indel() -> dict:
+    return _edit_distance_corpus(
+        Indel, "Indel", "rapidfuzz",
+        ["rapidfuzz.distance.Indel.distance",
+         "rapidfuzz.distance.Indel.normalized_distance",
+         "rapidfuzz.distance.Indel.normalized_similarity"],
+    )
+
+
+def _jaro_reference(a: str, b: str) -> float:
+    """Standard Jaro similarity over code points (matches DataNet's Jaro core).
+
+    jellyfish agrees for normal inputs but diverges on the same degenerate
+    combining-mark / emoji strings as its Hamming (decision 0005). We therefore
+    generate from this reference and record the jellyfish divergence count.
+    """
+    l1, l2 = len(a), len(b)
+    if l1 == 0 or l2 == 0:
+        return 0.0
+    window = max(0, max(l1, l2) // 2 - 1)
+    m1 = [False] * l1
+    m2 = [False] * l2
+    matches = 0
+    for i in range(l1):
+        lo = max(0, i - window)
+        hi = min(i + window + 1, l2)
+        for j in range(lo, hi):
+            if not m2[j] and a[i] == b[j]:
+                m1[i] = m2[j] = True
+                matches += 1
+                break
+    if matches == 0:
+        return 0.0
+    t = 0
+    k = 0
+    for i in range(l1):
+        if m1[i]:
+            while not m2[k]:
+                k += 1
+            if a[i] != b[k]:
+                t += 1
+            k += 1
+    t //= 2
+    m = matches
+    return (m / l1 + m / l2 + (m - t) / m) / 3.0
+
+
+def _jaro_winkler_reference(a: str, b: str, p: float = 0.1) -> float:
+    jaro = _jaro_reference(a, b)
+    if jaro <= 0.7:
+        return jaro
+    limit = min(min(len(a), len(b)), 4)
+    prefix = 0
+    while prefix < limit and a[prefix] == b[prefix]:
+        prefix += 1
+    return jaro + prefix * p * (1.0 - jaro)
+
+
+def _similarity_reference_corpus(reference, jelly, algorithm: str) -> dict:
+    rng = random.Random(SEED)
+    diverge = 0
+    cases = []
+    for idx, (category, a, b) in enumerate(build_pairs(rng)):
+        ref = reference(a, b)
+        if abs(jelly(a, b) - ref) > 1e-9:
+            diverge += 1
+        cases.append({"id": idx, "category": category, "a": a, "b": b, "similarity": ref})
+    return {
+        "metadata": {
+            "algorithm": algorithm,
+            "library": "reference-standard",
+            "reference_calls": [f"standard {algorithm} over code points (see decision 0005)"],
+            "jellyfish_version": version("jellyfish"),
+            "jellyfish_divergences": diverge,
+            "semantics": "code_point",
+            "seed": SEED,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+def generate_jaro() -> dict:
+    return _similarity_reference_corpus(_jaro_reference, jellyfish.jaro_similarity, "Jaro")
+
+
+def generate_jaro_winkler() -> dict:
+    return _similarity_reference_corpus(
+        _jaro_winkler_reference, jellyfish.jaro_winkler_similarity, "JaroWinkler")
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -248,6 +339,9 @@ def main() -> None:
         "osa.json": generate_osa,
         "damerau.json": generate_damerau,
         "hamming.json": generate_hamming,
+        "indel.json": generate_indel,
+        "jaro.json": generate_jaro,
+        "jaro_winkler.json": generate_jaro_winkler,
     }
     for filename, gen in generators.items():
         payload = gen()

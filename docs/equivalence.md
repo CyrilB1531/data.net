@@ -15,6 +15,10 @@ fonction implémentée, jamais rétroactivement (§6.1 du brief).
 | `DamerauLevenshtein.distance(a, b)` | rapidfuzz | `DamerauLevenshtein.Distance(a, b)` | Damerau non restreint (Lowrance-Wagner). `"CA"/"ABC"` ⇒ 2. N'est pas une métrique. |
 | `DamerauLevenshtein.normalized_similarity(a, b)` | rapidfuzz | `DamerauLevenshtein.NormalizedSimilarity(a, b)` | `1 - dist/max(len)`. Identique. |
 | `hamming_distance(a, b)` | jellyfish | `Hamming.Distance(a, b)` | Positions différentes + écart de longueur. Coïncide avec jellyfish sur entrées normales ; écart documenté sur marques combinantes ([décision 0005](decisions/0005-hamming-jellyfish-divergence.md)). |
+| `Indel.distance(a, b)` | rapidfuzz | `Indel.Distance(a, b)` | Insertions/suppressions seules = `len(a)+len(b)-2·LCS`. Base de `fuzz.ratio`. |
+| `Indel.normalized_similarity(a, b)` | rapidfuzz | `Indel.NormalizedSimilarity(a, b)` | `1 - dist/(len(a)+len(b))`. **×100 = `fuzz.ratio`.** |
+| `jaro_similarity(a, b)` | jellyfish | `Jaro.Similarity(a, b)` | Vide ⇒ `0`. Coïncide avec jellyfish sauf quirks marques combinantes ([décision 0005](decisions/0005-hamming-jellyfish-divergence.md)). |
+| `jaro_winkler_similarity(a, b)` | jellyfish | `JaroWinkler.Similarity(a, b)` | Boost de préfixe uniquement si Jaro > 0,7 (seuil de Winkler), poids `0,1`, préfixe ≤ 4. |
 
 ## Conventions
 

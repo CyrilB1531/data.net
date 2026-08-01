@@ -1,13 +1,16 @@
-# 0005 — Hamming : écart assumé avec jellyfish
+# 0005 — Écart assumé avec jellyfish sur les marques combinantes (Hamming, Jaro)
 
 **Statut :** accepté · **Date :** 2026-08-01
 
 ## Contexte
 
-Le brief mappe Hamming sur `jellyfish.hamming_distance`. En validant, on a
-constaté que jellyfish 1.2.1 **diverge de la définition standard de Hamming sur
-62 cas / 1241** du corpus (≈ 5 %), tous des chaînes dégénérées comportant des
-marques combinantes / scripts mêlés.
+Le brief mappe Hamming sur `jellyfish.hamming_distance` et Jaro/Jaro-Winkler sur
+`jellyfish.jaro*`. En validant, on a constaté que jellyfish 1.2.1 **diverge de la
+définition standard sur ≈ 5 % du corpus** (Hamming : 62/1241), toujours des
+chaînes dégénérées comportant des marques combinantes / émojis / scripts mêlés.
+Le même phénomène affecte `jaro_similarity` et `jaro_winkler_similarity` sur ces
+mêmes entrées (le nombre exact est enregistré dans `jellyfish_divergences` des
+métadonnées de chaque oracle).
 
 Investigation :
 
@@ -25,15 +28,18 @@ bizarrerie non spécifiée.
 
 ## Décision
 
-- **Implémenter la définition standard** de Hamming : nombre de positions
-  différentes sur le préfixe commun (comparaison de points de code, ou d'unités
-  UTF-16 selon `TextElement`), plus la différence de longueur.
-- **Générer l'oracle depuis une référence explicite** de cette même définition
-  (`_hamming_reference` dans `tools/generate_oracles.py`), et non depuis la sortie
-  de jellyfish. Le générateur **compte et enregistre** le nombre de divergences
-  jellyfish (`jellyfish_divergences` dans les métadonnées) pour la traçabilité.
-- **Ancrer la parité jellyfish sur les entrées saines** via des cas de test écrits
-  à la main (`[InlineData]`) dont les valeurs sont exactement celles de jellyfish.
+- **Implémenter la définition standard** (Hamming : positions différentes +
+  écart de longueur ; Jaro/Jaro-Winkler : algorithme classique avec seuil de
+  boost à 0,7 pour Winkler), sur points de code ou unités UTF-16 selon
+  `TextElement`.
+- **Générer chaque oracle depuis une référence explicite** de cette définition
+  (`_hamming_reference`, `_jaro_reference`, `_jaro_winkler_reference` dans
+  `tools/generate_oracles.py`), et non depuis la sortie de jellyfish. Le
+  générateur **compte et enregistre** le nombre de divergences jellyfish
+  (`jellyfish_divergences`) pour la traçabilité.
+- **Ancrer la parité jellyfish sur les entrées saines** via des cas de test
+  écrits à la main (`[InlineData]`) dont les valeurs sont exactement celles de
+  jellyfish (noms réels : MARTHA/MARHTA, DWAYNE/DUANE, DIXON/DICKSONX…).
 
 ## Conséquences
 

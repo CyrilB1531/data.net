@@ -20,6 +20,16 @@ public sealed record EditDistanceCase
     [JsonPropertyName("normalized_similarity")] public double NormalizedSimilarity { get; init; }
 }
 
+/// <summary>A reference case for a similarity metric: two operands and a similarity in [0, 1].</summary>
+public sealed record SimilarityCase
+{
+    [JsonPropertyName("id")] public int Id { get; init; }
+    [JsonPropertyName("category")] public string Category { get; init; } = "";
+    [JsonPropertyName("a")] public string A { get; init; } = "";
+    [JsonPropertyName("b")] public string B { get; init; } = "";
+    [JsonPropertyName("similarity")] public double Similarity { get; init; }
+}
+
 /// <summary>Aggregating oracle assertions: report every mismatch, not just the first.</summary>
 public static class OracleAsserts
 {
