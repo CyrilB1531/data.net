@@ -1,0 +1,21 @@
+<Project>
+
+  <!-- Shared properties for every project in the solution. -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- Provenance / packaging metadata (§10). -->
+    <Company>TextSimilarity contributors</Company>
+    <Authors>TextSimilarity contributors</Authors>
+    <Copyright>Copyright 2026 TextSimilarity contributors</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+</Project>

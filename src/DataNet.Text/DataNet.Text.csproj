@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- LTS target for broad reach as a published library (see
+         docs/decisions/0001-target-framework.md). -->
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>DataNet.Text</RootNamespace>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- NuGet package identity. No external runtime dependencies by design:
+         this is the native "text" gap of the DataNet toolkit. -->
+    <PackageId>DataNet.Text</PackageId>
+    <Description>String distances, similarity metrics, tokenizers and text vectorizers for .NET — native, allocation-lean, no Python at runtime.</Description>
+    <PackageTags>text;similarity;levenshtein;distance;fuzzy;tfidf;nlp;datanet</PackageTags>
+  </PropertyGroup>
+
+</Project>

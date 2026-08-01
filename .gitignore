@@ -1,0 +1,28 @@
+# .NET build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+
+# BenchmarkDotNet
+BenchmarkDotNet.Artifacts/
+
+# Test / coverage
+[Tt]est[Rr]esults/
+*.trx
+coverage*.json
+coverage*.xml
+*.coverage
+
+# Python oracle tooling (dev-time only, never shipped)
+.venv*/
+tools/__pycache__/
+*.pyc
+
+# IDE / OS
+.vs/
+.idea/
+.vscode/
+*.user
+.DS_Store

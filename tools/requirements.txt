@@ -1,0 +1,5 @@
+# Dépendances de DÉVELOPPEMENT uniquement (génération des oracles).
+# Ne font pas partie du paquet distribué. Licences permissives (MIT).
+# python-Levenshtein (GPL) est délibérément exclu — voir docs/decisions/0003.
+rapidfuzz>=3.14,<4
+jellyfish>=1.2,<2

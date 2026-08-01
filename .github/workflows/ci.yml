@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test:
+    name: Build, test, pack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          # net8.0 is the library target; installing the 8 SDK/runtime means the
+          # test host runs natively (no roll-forward needed on CI).
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test (with coverage)
+        run: >
+          dotnet test --configuration Release --no-build
+          --collect:"XPlat Code Coverage"
+          --logger "trx;LogFileName=test-results.trx"
+
+      - name: Pack
+        run: dotnet pack src/DataNet.Text/DataNet.Text.csproj --configuration Release --no-build --output ./artifacts
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/*.trx'
+
+      - name: Upload NuGet package
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget
+          path: ./artifacts/*.nupkg
+
+  oracles-fresh:
+    name: Oracles are reproducible
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Regenerate oracles and check for drift
+        run: |
+          pip install -r tools/requirements.txt
+          python tools/generate_oracles.py
+          if ! git diff --quiet -- tests/oracles; then
+            echo "::error::Committed oracle corpora differ from a fresh generation. Run tools/generate_oracles.py and commit the result."
+            git --no-pager diff --stat -- tests/oracles
+            exit 1
+          fi
