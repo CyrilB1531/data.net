@@ -1,10 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <!-- Only the net10 runtime is installed locally/CI; roll a net8 test host
-         forward. See docs/decisions/0001-target-framework.md. -->
-    <RollForward>LatestMajor</RollForward>
+    <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>

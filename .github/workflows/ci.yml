@@ -16,9 +16,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          # net8.0 is the library target; installing the 8 SDK/runtime means the
-          # test host runs natively (no roll-forward needed on CI).
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Restore
         run: dotnet restore

@@ -8,6 +8,9 @@ artifacts/
 # BenchmarkDotNet
 BenchmarkDotNet.Artifacts/
 
+# Cross-language bench results are machine-specific (not authoritative)
+bench/results/
+
 # Test / coverage
 [Tt]est[Rr]esults/
 *.trx

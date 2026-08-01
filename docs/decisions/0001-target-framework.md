@@ -1,28 +1,30 @@
-# 0001 — Cible de framework : `net8.0`
+# 0001 — Cible de framework : `net10.0`
 
-**Statut :** accepté · **Date :** 2026-08-01
+**Statut :** accepté · **Date :** 2026-08-01 · **Révisé :** 2026-08-01
 
 ## Contexte
 
-Le brief demande `net8.0` (LTS), avec `netstandard2.0` seulement si un besoin de
-compatibilité descendante est avéré. La machine de développement / CI ne dispose
-que du **runtime .NET 10** (aucun runtime .NET 8 installé).
+Le brief suggérait `net8.0` (LTS). La machine de développement / CI dispose du
+**runtime .NET 10**. Après arbitrage, la cible retenue est explicitement
+**`net10.0`**.
 
 ## Décision
 
-- La bibliothèque `DataNet.Text` cible **`net8.0`** : LTS, large adoption, socle
-  d'API stable, et supporté par le SDK .NET 10.
-- Les projets **exécutables** (tests, benchmarks) ciblent aussi `net8.0` mais
-  fixent `<RollForward>LatestMajor</RollForward>` afin de s'exécuter sur le
-  runtime .NET 10 présent, sans exiger l'installation du runtime 8.
-- `netstandard2.0` **non** ajouté pour l'instant : aucun consommateur .NET
-  Framework / Unity identifié. À reconsidérer si un tel besoin apparaît (coût :
-  polyfills pour `Span`, `ArrayPool`, etc.).
+- La bibliothèque `DataNet.Text` **et** les projets exécutables (tests,
+  benchmarks) ciblent **`net10.0`**.
+- Le `RollForward` qui servait à exécuter un hôte `net8.0` sur le runtime 10 est
+  **retiré** : il n'a plus lieu d'être puisqu'on cible directement le runtime
+  présent.
+- `netstandard2.0` **non** ajouté : aucun consommateur .NET Framework / Unity
+  identifié. À reconsidérer si un tel besoin apparaît (coût : polyfills pour
+  `Span`, `ArrayPool`, etc.).
 
 ## Conséquences
 
-- Compilation et packaging visent des consommateurs `net8.0+`.
-- Le comportement testé est celui du runtime 10 via roll-forward ; c'est
-  acceptable car les API utilisées (`Span`, `ArrayPool`, `Rune`) sont stables
-  entre 8 et 10. Si un jour un écart de runtime est suspecté, installer le
-  runtime 8 et retirer le roll-forward pour tester à l'identique.
+- Compilation et packaging visent des consommateurs **`net10.0+`**. C'est un
+  choix assumé en faveur des dernières API et performances runtime, au prix d'une
+  portée plus étroite que `net8.0` LTS. Si un consommateur sur LTS 8 se présente,
+  ajouter `net8.0` au `TargetFrameworks` (multi-ciblage) plutôt que de rétrograder.
+- Le comportement testé est celui du runtime 10, à l'identique du runtime de
+  production ciblé — plus de décalage test/prod introduit par le roll-forward.
+- La CI installe le SDK **10.0.x**.

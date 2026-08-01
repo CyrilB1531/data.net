@@ -27,6 +27,8 @@ l'absence de bibliothèque .NET équivalente. DataNet lève ce frein.
 Voir l'[**inventaire de migration à trois colonnes**](docs/migration/README.md) :
 c'est la carte du projet (utiliser / écrire / trancher).
 
+> Cible : **.NET 10** (`net10.0`). Voir [`docs/decisions/0001`](docs/decisions/0001-target-framework.md).
+
 ## État
 
 | Lot | Contenu | État |
