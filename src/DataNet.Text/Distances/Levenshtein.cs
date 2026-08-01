@@ -25,6 +25,11 @@ namespace DataNet.Text.Distances;
 /// </remarks>
 public static class Levenshtein
 {
+    // Below this pattern length the DP beats Myers (the equality-table setup
+    // dominates); above 64 the single-word Myers no longer applies.
+    private const int MyersMinPatternLength = 16;
+    private const int MyersMaxPatternLength = 64;
+
     /// <summary>
     /// Computes the Levenshtein distance between <paramref name="a"/> and
     /// <paramref name="b"/>.
@@ -40,7 +45,7 @@ public static class Levenshtein
     {
         return element == TextElement.CodePoint
             ? DistanceCodePoints(a, b, out _, out _)
-            : Distance<char>(a, b);
+            : DistanceChars(a, b);
     }
 
     /// <summary>
@@ -62,7 +67,7 @@ public static class Levenshtein
         }
         else
         {
-            distance = Distance<char>(a, b);
+            distance = DistanceChars(a, b);
             maxLen = Math.Max(a.Length, b.Length);
         }
 
@@ -90,9 +95,67 @@ public static class Levenshtein
     public static int Distance<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
         where T : IEquatable<T>
     {
-        // Strip the common prefix and suffix. This is result-preserving and
-        // collapses the DP band on near-equal inputs — the common case in
-        // record matching — to near nothing.
+        Trim(ref a, ref b);
+        if (a.Length == 0)
+        {
+            return b.Length;
+        }
+        if (b.Length == 0)
+        {
+            return a.Length;
+        }
+        // Keep the shorter operand as the DP row: O(min(n, m)) memory.
+        if (b.Length > a.Length)
+        {
+            ReadOnlySpan<T> tmp = a;
+            a = b;
+            b = tmp;
+        }
+        return Dp(a, b);
+    }
+
+    /// <summary>
+    /// Character fast path: identical result to <see cref="Distance{T}"/> over
+    /// <see cref="char"/>, but takes the bit-parallel Myers route when it applies.
+    /// </summary>
+    private static int DistanceChars(ReadOnlySpan<char> a, ReadOnlySpan<char> b)
+    {
+        Trim(ref a, ref b);
+        if (a.Length == 0)
+        {
+            return b.Length;
+        }
+        if (b.Length == 0)
+        {
+            return a.Length;
+        }
+        if (b.Length > a.Length)
+        {
+            ReadOnlySpan<char> tmp = a;
+            a = b;
+            b = tmp;
+        }
+
+        // b is the shorter operand (the Myers "pattern"); a is the text. Myers
+        // wins from a modest pattern length up: below it, building the equality
+        // table costs more than the tiny DP, so we stay on the DP. (Measured
+        // crossover ~16; see docs/guides/performance.md.)
+        if (b.Length >= MyersMinPatternLength && b.Length <= MyersMaxPatternLength
+            && Myers.TryDistance(b, a, out int d))
+        {
+            return d;
+        }
+        return Dp(a, b);
+    }
+
+    /// <summary>Strips the common prefix and suffix in place (result-preserving).</summary>
+    /// <remarks>
+    /// Collapses the DP band on near-equal inputs — the common case in record
+    /// matching — to near nothing.
+    /// </remarks>
+    private static void Trim<T>(ref ReadOnlySpan<T> a, ref ReadOnlySpan<T> b)
+        where T : IEquatable<T>
+    {
         int start = 0;
         int endA = a.Length;
         int endB = b.Length;
@@ -106,27 +169,15 @@ public static class Levenshtein
             endB--;
         }
 
-        ReadOnlySpan<T> sa = a[start..endA];
-        ReadOnlySpan<T> sb = b[start..endB];
+        a = a[start..endA];
+        b = b[start..endB];
+    }
 
-        if (sa.Length == 0)
-        {
-            return sb.Length;
-        }
-        if (sb.Length == 0)
-        {
-            return sa.Length;
-        }
-
-        // Keep the rolling DP row on the shorter operand: O(min(n, m)) memory.
-        if (sb.Length > sa.Length)
-        {
-            ReadOnlySpan<T> tmp = sa;
-            sa = sb;
-            sb = tmp;
-        }
-
-        int width = sb.Length + 1;
+    /// <summary>Rolling-row DP over trimmed operands where <paramref name="b"/> is the shorter.</summary>
+    private static int Dp<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
+        where T : IEquatable<T>
+    {
+        int width = b.Length + 1;
         int[] rented = ArrayPool<int>.Shared.Rent(width);
         try
         {
@@ -136,16 +187,16 @@ public static class Levenshtein
                 row[j] = j;
             }
 
-            for (int i = 1; i <= sa.Length; i++)
+            for (int i = 1; i <= a.Length; i++)
             {
                 int diagonal = row[0]; // D[i-1][j-1]
                 row[0] = i;            // D[i][0]
-                T ai = sa[i - 1];
+                T ai = a[i - 1];
 
                 for (int j = 1; j < width; j++)
                 {
                     int above = row[j];                     // D[i-1][j]
-                    int cost = ai.Equals(sb[j - 1]) ? 0 : 1;
+                    int cost = ai.Equals(b[j - 1]) ? 0 : 1;
                     int value = diagonal + cost;            // substitution / match
                     int deletion = above + 1;
                     int insertion = row[j - 1] + 1;         // D[i][j-1], already updated
@@ -163,7 +214,7 @@ public static class Levenshtein
                 }
             }
 
-            return row[sb.Length];
+            return row[b.Length];
         }
         finally
         {

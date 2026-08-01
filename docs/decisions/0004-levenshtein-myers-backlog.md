@@ -1,6 +1,6 @@
-# 0004 — Levenshtein : optimisation bit-parallèle (Myers) — backlog
+# 0004 — Levenshtein : optimisation bit-parallèle (Myers)
 
-**Statut :** identifié, non implémenté · **Date :** 2026-08-01
+**Statut :** mono-mot livré ; multi-mots au backlog · **Date :** 2026-08-01
 
 ## Contexte
 
@@ -14,12 +14,19 @@ avec `w = 64` bits par mot machine.
 La performance étant l'argument central du projet, cet écart algorithmique doit
 être comblé pour les chaînes moyennes/longues.
 
-## Décision (à venir)
+## Fait
 
-- Implémenter Myers bit-parallèle comme **chemin rapide** de `Distance` quand le
-  motif tient sur un petit nombre de mots de 64 bits (cas ultra-courant), en
-  conservant le DP générique comme repli (`Distance<T>` pour éléments arbitraires,
-  et alphabets larges/points de code hors ASCII si besoin).
+- **Myers mono-mot livré** (`src/DataNet.Text/Distances/Myers.cs`), branché comme
+  chemin rapide de `Distance` sur le chemin `char` pour un motif de longueur
+  16–64 en Latin-1 ; repli sur le DP sinon. Zéro allocation (table `Peq` en
+  `stackalloc`). Validé sans code de test supplémentaire par les cas d'oracle BMP
+  (`Distance_default_utf16_matches_rapidfuzz_for_bmp_cases`).
+
+## À faire
+
+- **Myers multi-mots (blocs)** pour les motifs > 64 : c'est ce qui manque pour
+  rattraper rapidfuzz sur les chaînes longues (tranches 128/512 du banc).
+- Étendre le chemin rapide au mode point de code (`Distance<int>`) et à `Indel`.
 - Étendre à `Indel` (base de `fuzz.ratio`, lot 4), qui a sa propre variante
   bit-parallèle.
 - **Le filet de sécurité est déjà en place** : les 1235 cas d'oracle rapidfuzz +

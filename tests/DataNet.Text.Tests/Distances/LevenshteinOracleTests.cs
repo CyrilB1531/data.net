@@ -45,6 +45,47 @@ public sealed class LevenshteinOracleTests
     }
 
     [Fact]
+    public void Distance_default_utf16_matches_rapidfuzz_for_bmp_cases()
+    {
+        // For strings confined to the Basic Multilingual Plane, a UTF-16 code unit
+        // *is* a code point, so the default (Utf16Unit) path — which routes through
+        // the Myers bit-parallel fast path for short Latin-1 operands — must equal
+        // the rapidfuzz value. This is what exercises Myers against the corpus.
+        var failures = new StringBuilder();
+        int examined = 0;
+
+        foreach (LevenshteinCase c in Corpus.Cases)
+        {
+            if (ContainsSurrogate(c.A) || ContainsSurrogate(c.B))
+            {
+                continue; // supplementary plane: UTF-16 and code points diverge by design
+            }
+
+            int actual = Levenshtein.Distance(c.A, c.B); // default = Utf16Unit
+            examined++;
+            if (actual != c.Distance)
+            {
+                Append(failures, c, $"utf16 distance expected {c.Distance}, got {actual}");
+            }
+        }
+
+        Assert.True(examined > 500, $"expected many BMP cases, only checked {examined}");
+        AssertNoFailures(failures, examined);
+    }
+
+    private static bool ContainsSurrogate(string s)
+    {
+        foreach (char ch in s)
+        {
+            if (char.IsSurrogate(ch))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    [Fact]
     public void NormalizedDistance_matches_rapidfuzz_within_tolerance()
     {
         var failures = new StringBuilder();

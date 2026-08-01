@@ -56,27 +56,29 @@ python bench/compare.py                                        # tableau
 ```
 
 Mesure indicative (rapidfuzz 3.14.5 / Python 3.12 ; DataNet.Text / .NET 10 ;
-machine de dev — chiffres non normatifs) :
+machine de dev bruitée — chiffres non normatifs), **après** l'ajout du chemin
+rapide Myers mono-mot (motif 16–64, Latin-1) :
 
-| Longueur | Python (rapidfuzz) | C# (DataNet.Text) | Rapport |
-|---:|---:|---:|---|
-| 8 | 175 ns/paire | **34 ns/paire** | **5,2× C# plus rapide** |
-| 32 | **309 ns/paire** | 1 429 ns/paire | 4,6× Python plus rapide |
-| 128 | **2,5 µs/paire** | 39,6 µs/paire | 16× Python plus rapide |
-| 512 | **20 µs/paire** | 755 µs/paire | 37× Python plus rapide |
+| Longueur | Python (rapidfuzz) | C# (DataNet.Text) | Rapport | Chemin C# |
+|---:|---:|---:|---|---|
+| 8 | 175 ns/paire | **35 ns/paire** | **5,0× C# plus rapide** | DP |
+| 32 | **309 ns/paire** | ~350 ns/paire | ≈ parité | Myers |
+| 128 | **2,5 µs/paire** | 34 µs/paire | ~14× Python | DP (motif > 64) |
+| 512 | **20 µs/paire** | 630 µs/paire | ~31× Python | DP (motif > 64) |
 
 **Lecture honnête.**
 
-- Sur chaînes **courtes**, C# domine : pas d'overhead d'appel interpréteur→C par
-  paire. C'est le cas typique du rapprochement de noms/identifiants.
-- Sur chaînes **longues**, rapidfuzz écrase : son noyau C utilise l'algorithme
-  **bit-parallèle de Myers** (`O(nm/w)`, `w`=64), là où notre implémentation est
-  un DP naïf `O(nm)`. L'écart n'est donc pas un problème de langage mais
-  d'algorithme.
-- **Action.** Implémenter Myers bit-parallèle pour `Distance` (et `Indel`) est la
-  prochaine optimisation ; la validation est déjà en place (les 1235 cas d'oracle
-  + tests de propriétés valideront instantanément la nouvelle implémentation).
-  Suivi dans [`../decisions/0004-levenshtein-myers-backlog.md`](../decisions/0004-levenshtein-myers-backlog.md).
+- **Chaînes courtes (≤ ~40)** — le cas typique du rapprochement de noms /
+  identifiants : C# est au niveau ou devant Python. Le mono-mot de Myers a fait
+  passer la tranche 32 de 4,6× *plus lent* à la parité ; sous 16 caractères le DP
+  reste le plus rapide (construire la table d'égalité coûterait plus que le calcul).
+- **Chaînes longues (motif > 64)** — rapidfuzz garde l'avantage : son noyau C
+  utilise le Myers **multi-mots** (`O(nm/w)`), là où l'on retombe sur le DP `O(nm)`.
+  L'écart n'est pas un problème de langage mais d'algorithme.
+- **Fait / à faire.** Le Myers **mono-mot** est livré (chemin rapide de `Distance`,
+  validé par les cas d'oracle BMP). Le Myers **multi-mots** pour les longues
+  chaînes reste au backlog — voir
+  [`../decisions/0004-levenshtein-myers-backlog.md`](../decisions/0004-levenshtein-myers-backlog.md).
 
 > rapidfuzz expose aussi des API **batch** (`process.cdist`) qui amortissent la
 > frontière Python→C : plus rapides que la boucle par-paire mesurée ici. La
