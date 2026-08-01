@@ -37,6 +37,14 @@ fonction implémentée, jamais rétroactivement (§6.1 du brief).
 > proprement : deux vides ⇒ `1`, une seule vide ⇒ `0`. L'oracle couvre les paires
 > non vides (`qval=1`), les bords sont couverts par des tests unitaires.
 
+## DataNet.Text — encodages phonétiques
+
+| Python | Bibliothèque | C# | Différences |
+|---|---|---|---|
+| `soundex(s)` | jellyfish | `Soundex.Encode(s)` | Lettre initiale + 3 chiffres. Parité exacte (402 mots). |
+| `metaphone(s)` | jellyfish | `Metaphone.Encode(s)` | Parité sur mots réels ; quirks jellyfish sur non-mots non reproduits ([décision 0007](decisions/0007-metaphone-scope.md)). |
+| `nysiis(s)` | jellyfish | `Nysiis.Encode(s)` | Variante non tronquée. Parité exacte (402 mots). |
+
 ## Conventions
 
 - **Unité de comparaison.** Sauf mention contraire, les distances sur chaînes

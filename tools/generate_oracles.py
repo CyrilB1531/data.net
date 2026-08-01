@@ -438,6 +438,44 @@ def phonetic_words(rng: random.Random):
         yield w.capitalize() if rng.random() < 0.5 else w
 
 
+METAPHONE_WORDS = [
+    "Thomas", "Theodore", "Catherine", "Christina", "Christopher", "Character",
+    "Chemistry", "School", "Schmidt", "Knight", "Knife", "Knuth", "Gnome", "Sign",
+    "Design", "Gnat", "Wright", "Write", "Wrong", "Psalm", "Pneumonia", "Phone",
+    "Phoenix", "Philip", "Elephant", "Rough", "Though", "Through", "Laugh", "Ghost",
+    "Judge", "Bridge", "Edge", "Dodge", "Special", "Social", "Musician", "Nation",
+    "Action", "Mission", "Passion", "Ocean", "Ancient", "Efficient", "Thumb",
+    "Climb", "Lamb", "Comb", "Dumb", "Xavier", "Xylophone", "Box", "Fox", "Exam",
+    "Cent", "City", "Cycle", "Cat", "Cool", "Music", "Quick", "Queen", "Square",
+    "Zero", "Zone", "Buzz", "Vision", "Version", "Washington", "Jackson", "Jefferson",
+    "Robert", "Rupert", "Rubin", "Ashcraft", "Ashcroft", "Tymczak", "Pfister",
+    "Honeyman", "Gutierrez", "MacDonald", "Anderson", "Williams", "Thompson",
+    "Nicholas", "Vaughan", "Hugh", "Leigh", "Callaghan", "Gough", "Naughton",
+    "Aegean", "Caesar", "Scene", "Science", "Scissors", "Fascinate", "Discipline",
+    "Yellow", "Yes", "Young", "Beyond", "Layer", "Player", "Day", "Boy", "Guy",
+    "Whale", "White", "Where", "Which", "Whisper", "Hour", "Honest", "Heir", "Herb",
+    "Ghana", "Spaghetti", "Bologna", "Lasagna", "Champagne", "Foreign", "Reign",
+]
+
+
+def generate_metaphone() -> dict:
+    cases = []
+    for idx, word in enumerate(METAPHONE_WORDS):
+        cases.append({"id": idx, "word": word, "metaphone": jellyfish.metaphone(word)})
+    return {
+        "metadata": {
+            "algorithm": "Metaphone",
+            "library": "jellyfish",
+            "library_version": version("jellyfish"),
+            "reference_calls": ["jellyfish.metaphone"],
+            "corpus": "real English words/names (see decision 0007)",
+            "seed": SEED,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def generate_phonetics() -> dict:
     rng = random.Random(SEED)
     cases = []
@@ -476,6 +514,7 @@ def main() -> None:
         "ratcliff.json": generate_ratcliff,
         "set_similarity.json": generate_set_similarity,
         "phonetics.json": generate_phonetics,
+        "metaphone.json": generate_metaphone,
     }
     for filename, gen in generators.items():
         payload = gen()

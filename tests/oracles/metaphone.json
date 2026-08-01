@@ -1,0 +1,630 @@
+{
+ "metadata": {
+  "algorithm": "Metaphone",
+  "library": "jellyfish",
+  "library_version": "1.2.1",
+  "reference_calls": [
+   "jellyfish.metaphone"
+  ],
+  "corpus": "real English words/names (see decision 0007)",
+  "seed": 20260801,
+  "count": 123
+ },
+ "cases": [
+  {
+   "id": 0,
+   "word": "Thomas",
+   "metaphone": "0MS"
+  },
+  {
+   "id": 1,
+   "word": "Theodore",
+   "metaphone": "0TR"
+  },
+  {
+   "id": 2,
+   "word": "Catherine",
+   "metaphone": "K0RN"
+  },
+  {
+   "id": 3,
+   "word": "Christina",
+   "metaphone": "XRSTN"
+  },
+  {
+   "id": 4,
+   "word": "Christopher",
+   "metaphone": "XRSTFR"
+  },
+  {
+   "id": 5,
+   "word": "Character",
+   "metaphone": "XRKTR"
+  },
+  {
+   "id": 6,
+   "word": "Chemistry",
+   "metaphone": "XMSTR"
+  },
+  {
+   "id": 7,
+   "word": "School",
+   "metaphone": "SXL"
+  },
+  {
+   "id": 8,
+   "word": "Schmidt",
+   "metaphone": "SXMTT"
+  },
+  {
+   "id": 9,
+   "word": "Knight",
+   "metaphone": "NT"
+  },
+  {
+   "id": 10,
+   "word": "Knife",
+   "metaphone": "NF"
+  },
+  {
+   "id": 11,
+   "word": "Knuth",
+   "metaphone": "N0"
+  },
+  {
+   "id": 12,
+   "word": "Gnome",
+   "metaphone": "NM"
+  },
+  {
+   "id": 13,
+   "word": "Sign",
+   "metaphone": "S"
+  },
+  {
+   "id": 14,
+   "word": "Design",
+   "metaphone": "TS"
+  },
+  {
+   "id": 15,
+   "word": "Gnat",
+   "metaphone": "NT"
+  },
+  {
+   "id": 16,
+   "word": "Wright",
+   "metaphone": "RT"
+  },
+  {
+   "id": 17,
+   "word": "Write",
+   "metaphone": "RT"
+  },
+  {
+   "id": 18,
+   "word": "Wrong",
+   "metaphone": "RNK"
+  },
+  {
+   "id": 19,
+   "word": "Psalm",
+   "metaphone": "PSLM"
+  },
+  {
+   "id": 20,
+   "word": "Pneumonia",
+   "metaphone": "NMN"
+  },
+  {
+   "id": 21,
+   "word": "Phone",
+   "metaphone": "FN"
+  },
+  {
+   "id": 22,
+   "word": "Phoenix",
+   "metaphone": "FNKS"
+  },
+  {
+   "id": 23,
+   "word": "Philip",
+   "metaphone": "FLP"
+  },
+  {
+   "id": 24,
+   "word": "Elephant",
+   "metaphone": "ELFNT"
+  },
+  {
+   "id": 25,
+   "word": "Rough",
+   "metaphone": "RKH"
+  },
+  {
+   "id": 26,
+   "word": "Though",
+   "metaphone": "0KH"
+  },
+  {
+   "id": 27,
+   "word": "Through",
+   "metaphone": "0RKH"
+  },
+  {
+   "id": 28,
+   "word": "Laugh",
+   "metaphone": "LKH"
+  },
+  {
+   "id": 29,
+   "word": "Ghost",
+   "metaphone": "KHST"
+  },
+  {
+   "id": 30,
+   "word": "Judge",
+   "metaphone": "JJ"
+  },
+  {
+   "id": 31,
+   "word": "Bridge",
+   "metaphone": "BRJ"
+  },
+  {
+   "id": 32,
+   "word": "Edge",
+   "metaphone": "EJ"
+  },
+  {
+   "id": 33,
+   "word": "Dodge",
+   "metaphone": "TJ"
+  },
+  {
+   "id": 34,
+   "word": "Special",
+   "metaphone": "SPXL"
+  },
+  {
+   "id": 35,
+   "word": "Social",
+   "metaphone": "SXL"
+  },
+  {
+   "id": 36,
+   "word": "Musician",
+   "metaphone": "MSXN"
+  },
+  {
+   "id": 37,
+   "word": "Nation",
+   "metaphone": "NXN"
+  },
+  {
+   "id": 38,
+   "word": "Action",
+   "metaphone": "AKXN"
+  },
+  {
+   "id": 39,
+   "word": "Mission",
+   "metaphone": "MXN"
+  },
+  {
+   "id": 40,
+   "word": "Passion",
+   "metaphone": "PXN"
+  },
+  {
+   "id": 41,
+   "word": "Ocean",
+   "metaphone": "OSN"
+  },
+  {
+   "id": 42,
+   "word": "Ancient",
+   "metaphone": "ANSNT"
+  },
+  {
+   "id": 43,
+   "word": "Efficient",
+   "metaphone": "EFSNT"
+  },
+  {
+   "id": 44,
+   "word": "Thumb",
+   "metaphone": "0M"
+  },
+  {
+   "id": 45,
+   "word": "Climb",
+   "metaphone": "KLM"
+  },
+  {
+   "id": 46,
+   "word": "Lamb",
+   "metaphone": "LM"
+  },
+  {
+   "id": 47,
+   "word": "Comb",
+   "metaphone": "KM"
+  },
+  {
+   "id": 48,
+   "word": "Dumb",
+   "metaphone": "TM"
+  },
+  {
+   "id": 49,
+   "word": "Xavier",
+   "metaphone": "SFR"
+  },
+  {
+   "id": 50,
+   "word": "Xylophone",
+   "metaphone": "SLFN"
+  },
+  {
+   "id": 51,
+   "word": "Box",
+   "metaphone": "BKS"
+  },
+  {
+   "id": 52,
+   "word": "Fox",
+   "metaphone": "FKS"
+  },
+  {
+   "id": 53,
+   "word": "Exam",
+   "metaphone": "EKSM"
+  },
+  {
+   "id": 54,
+   "word": "Cent",
+   "metaphone": "SNT"
+  },
+  {
+   "id": 55,
+   "word": "City",
+   "metaphone": "ST"
+  },
+  {
+   "id": 56,
+   "word": "Cycle",
+   "metaphone": "SKL"
+  },
+  {
+   "id": 57,
+   "word": "Cat",
+   "metaphone": "KT"
+  },
+  {
+   "id": 58,
+   "word": "Cool",
+   "metaphone": "KL"
+  },
+  {
+   "id": 59,
+   "word": "Music",
+   "metaphone": "MSK"
+  },
+  {
+   "id": 60,
+   "word": "Quick",
+   "metaphone": "KK"
+  },
+  {
+   "id": 61,
+   "word": "Queen",
+   "metaphone": "KN"
+  },
+  {
+   "id": 62,
+   "word": "Square",
+   "metaphone": "SKR"
+  },
+  {
+   "id": 63,
+   "word": "Zero",
+   "metaphone": "SR"
+  },
+  {
+   "id": 64,
+   "word": "Zone",
+   "metaphone": "SN"
+  },
+  {
+   "id": 65,
+   "word": "Buzz",
+   "metaphone": "BS"
+  },
+  {
+   "id": 66,
+   "word": "Vision",
+   "metaphone": "FXN"
+  },
+  {
+   "id": 67,
+   "word": "Version",
+   "metaphone": "FRXN"
+  },
+  {
+   "id": 68,
+   "word": "Washington",
+   "metaphone": "WXNKTN"
+  },
+  {
+   "id": 69,
+   "word": "Jackson",
+   "metaphone": "JKSN"
+  },
+  {
+   "id": 70,
+   "word": "Jefferson",
+   "metaphone": "JFRSN"
+  },
+  {
+   "id": 71,
+   "word": "Robert",
+   "metaphone": "RBRT"
+  },
+  {
+   "id": 72,
+   "word": "Rupert",
+   "metaphone": "RPRT"
+  },
+  {
+   "id": 73,
+   "word": "Rubin",
+   "metaphone": "RBN"
+  },
+  {
+   "id": 74,
+   "word": "Ashcraft",
+   "metaphone": "AXKRFT"
+  },
+  {
+   "id": 75,
+   "word": "Ashcroft",
+   "metaphone": "AXKRFT"
+  },
+  {
+   "id": 76,
+   "word": "Tymczak",
+   "metaphone": "TMKSK"
+  },
+  {
+   "id": 77,
+   "word": "Pfister",
+   "metaphone": "PFSTR"
+  },
+  {
+   "id": 78,
+   "word": "Honeyman",
+   "metaphone": "HNMN"
+  },
+  {
+   "id": 79,
+   "word": "Gutierrez",
+   "metaphone": "KTRS"
+  },
+  {
+   "id": 80,
+   "word": "MacDonald",
+   "metaphone": "MKTNLT"
+  },
+  {
+   "id": 81,
+   "word": "Anderson",
+   "metaphone": "ANTRSN"
+  },
+  {
+   "id": 82,
+   "word": "Williams",
+   "metaphone": "WLMS"
+  },
+  {
+   "id": 83,
+   "word": "Thompson",
+   "metaphone": "0MPSN"
+  },
+  {
+   "id": 84,
+   "word": "Nicholas",
+   "metaphone": "NXLS"
+  },
+  {
+   "id": 85,
+   "word": "Vaughan",
+   "metaphone": "FKHN"
+  },
+  {
+   "id": 86,
+   "word": "Hugh",
+   "metaphone": "HKH"
+  },
+  {
+   "id": 87,
+   "word": "Leigh",
+   "metaphone": "LKH"
+  },
+  {
+   "id": 88,
+   "word": "Callaghan",
+   "metaphone": "KLKHN"
+  },
+  {
+   "id": 89,
+   "word": "Gough",
+   "metaphone": "KKH"
+  },
+  {
+   "id": 90,
+   "word": "Naughton",
+   "metaphone": "NTN"
+  },
+  {
+   "id": 91,
+   "word": "Aegean",
+   "metaphone": "EJN"
+  },
+  {
+   "id": 92,
+   "word": "Caesar",
+   "metaphone": "KSR"
+  },
+  {
+   "id": 93,
+   "word": "Scene",
+   "metaphone": "SSN"
+  },
+  {
+   "id": 94,
+   "word": "Science",
+   "metaphone": "SSNS"
+  },
+  {
+   "id": 95,
+   "word": "Scissors",
+   "metaphone": "SSSRS"
+  },
+  {
+   "id": 96,
+   "word": "Fascinate",
+   "metaphone": "FSSNT"
+  },
+  {
+   "id": 97,
+   "word": "Discipline",
+   "metaphone": "TSSPLN"
+  },
+  {
+   "id": 98,
+   "word": "Yellow",
+   "metaphone": "YL"
+  },
+  {
+   "id": 99,
+   "word": "Yes",
+   "metaphone": "YS"
+  },
+  {
+   "id": 100,
+   "word": "Young",
+   "metaphone": "YNK"
+  },
+  {
+   "id": 101,
+   "word": "Beyond",
+   "metaphone": "BYNT"
+  },
+  {
+   "id": 102,
+   "word": "Layer",
+   "metaphone": "LYR"
+  },
+  {
+   "id": 103,
+   "word": "Player",
+   "metaphone": "PLYR"
+  },
+  {
+   "id": 104,
+   "word": "Day",
+   "metaphone": "T"
+  },
+  {
+   "id": 105,
+   "word": "Boy",
+   "metaphone": "B"
+  },
+  {
+   "id": 106,
+   "word": "Guy",
+   "metaphone": "K"
+  },
+  {
+   "id": 107,
+   "word": "Whale",
+   "metaphone": "WL"
+  },
+  {
+   "id": 108,
+   "word": "White",
+   "metaphone": "WT"
+  },
+  {
+   "id": 109,
+   "word": "Where",
+   "metaphone": "WR"
+  },
+  {
+   "id": 110,
+   "word": "Which",
+   "metaphone": "WX"
+  },
+  {
+   "id": 111,
+   "word": "Whisper",
+   "metaphone": "WSPR"
+  },
+  {
+   "id": 112,
+   "word": "Hour",
+   "metaphone": "HR"
+  },
+  {
+   "id": 113,
+   "word": "Honest",
+   "metaphone": "HNST"
+  },
+  {
+   "id": 114,
+   "word": "Heir",
+   "metaphone": "HR"
+  },
+  {
+   "id": 115,
+   "word": "Herb",
+   "metaphone": "HRB"
+  },
+  {
+   "id": 116,
+   "word": "Ghana",
+   "metaphone": "KHN"
+  },
+  {
+   "id": 117,
+   "word": "Spaghetti",
+   "metaphone": "SPKHT"
+  },
+  {
+   "id": 118,
+   "word": "Bologna",
+   "metaphone": "BLKN"
+  },
+  {
+   "id": 119,
+   "word": "Lasagna",
+   "metaphone": "LSKN"
+  },
+  {
+   "id": 120,
+   "word": "Champagne",
+   "metaphone": "XMPKN"
+  },
+  {
+   "id": 121,
+   "word": "Foreign",
+   "metaphone": "FR"
+  },
+  {
+   "id": 122,
+   "word": "Reign",
+   "metaphone": "R"
+  }
+ ]
+}
