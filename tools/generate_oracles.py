@@ -29,7 +29,8 @@ import random
 from importlib.metadata import version
 from pathlib import Path
 
-from rapidfuzz.distance import Levenshtein
+import jellyfish
+from rapidfuzz.distance import DamerauLevenshtein, Levenshtein, OSA
 
 SEED = 20260801
 ORACLE_DIR = Path(__file__).resolve().parent.parent / "tests" / "oracles"
@@ -91,6 +92,13 @@ def build_pairs(rng: random.Random):
         ("a😀b", "ab"),
         ("👨‍👩‍👧", "👨‍👩‍👦"),  # ZWJ sequences: differ by code points
         ("中文测试", "中文考试"),
+        # Transposition-focused: exercise OSA vs unrestricted Damerau-Levenshtein.
+        ("ab", "ba"),
+        ("abcd", "acbd"),
+        ("CA", "ABC"),   # OSA=3, DL=2
+        ("ca", "abc"),
+        ("a cat", "an act"),
+        ("converse", "conserve"),
     ]
     for a, b in edge:
         yield "edge", a, b
@@ -148,9 +156,99 @@ def generate_levenshtein() -> dict:
     }
 
 
+def _edit_distance_corpus(module, algorithm: str, library: str, calls: list[str]) -> dict:
+    """Build an oracle for any rapidfuzz edit-distance module (Levenshtein/OSA/DL)."""
+    rng = random.Random(SEED)
+    cases = []
+    for idx, (category, a, b) in enumerate(build_pairs(rng)):
+        cases.append(
+            {
+                "id": idx,
+                "category": category,
+                "a": a,
+                "b": b,
+                "distance": module.distance(a, b),
+                "normalized_distance": module.normalized_distance(a, b),
+                "normalized_similarity": module.normalized_similarity(a, b),
+            }
+        )
+    return {
+        "metadata": {
+            "algorithm": algorithm,
+            "library": library,
+            "library_version": version(library),
+            "reference_calls": calls,
+            "semantics": "code_point",
+            "seed": SEED,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+def generate_osa() -> dict:
+    return _edit_distance_corpus(
+        OSA, "OSA", "rapidfuzz",
+        ["rapidfuzz.distance.OSA.distance",
+         "rapidfuzz.distance.OSA.normalized_distance",
+         "rapidfuzz.distance.OSA.normalized_similarity"],
+    )
+
+
+def generate_damerau() -> dict:
+    return _edit_distance_corpus(
+        DamerauLevenshtein, "DamerauLevenshtein", "rapidfuzz",
+        ["rapidfuzz.distance.DamerauLevenshtein.distance",
+         "rapidfuzz.distance.DamerauLevenshtein.normalized_distance",
+         "rapidfuzz.distance.DamerauLevenshtein.normalized_similarity"],
+    )
+
+
+def _hamming_reference(a: str, b: str) -> int:
+    """Standard Hamming distance over code points: positional mismatches over the
+    common prefix, plus the length difference.
+
+    Note: jellyfish.hamming_distance matches this for all normal inputs but
+    diverges on ~5% of degenerate combining-mark strings (an unexplained quirk of
+    its Rust core — not NFC normalization, not byte-level). DataNet implements the
+    standard definition; see docs/decisions/0005-hamming-jellyfish-divergence.md.
+    """
+    m = min(len(a), len(b))
+    return sum(1 for i in range(m) if a[i] != b[i]) + abs(len(a) - len(b))
+
+
+def generate_hamming() -> dict:
+    rng = random.Random(SEED)
+    diverge = 0
+    cases = []
+    for idx, (category, a, b) in enumerate(build_pairs(rng)):
+        ref = _hamming_reference(a, b)
+        if jellyfish.hamming_distance(a, b) != ref:
+            diverge += 1
+        cases.append({"id": idx, "category": category, "a": a, "b": b, "distance": ref})
+    return {
+        "metadata": {
+            "algorithm": "Hamming",
+            "library": "reference-standard",
+            "reference_calls": ["standard code-point Hamming (see decision 0005)"],
+            "jellyfish_version": version("jellyfish"),
+            "jellyfish_divergences": diverge,
+            "semantics": "code_point",
+            "seed": SEED,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
-    generators = {"levenshtein.json": generate_levenshtein}
+    generators = {
+        "levenshtein.json": generate_levenshtein,
+        "osa.json": generate_osa,
+        "damerau.json": generate_damerau,
+        "hamming.json": generate_hamming,
+    }
     for filename, gen in generators.items():
         payload = gen()
         path = ORACLE_DIR / filename

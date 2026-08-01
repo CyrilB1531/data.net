@@ -10,6 +10,11 @@ fonction implémentée, jamais rétroactivement (§6.1 du brief).
 | `Levenshtein.distance(a, b)` | rapidfuzz | `Levenshtein.Distance(a, b)` | Compare des **unités UTF-16** par défaut ; passer `TextElement.CodePoint` pour la parité exacte avec Python sur les caractères hors BMP (émojis…). Poids `(1,1,1)`. |
 | `Levenshtein.normalized_distance(a, b)` | rapidfuzz | `Levenshtein.NormalizedDistance(a, b)` | `distance / max(len(a), len(b))`, `0` si les deux sont vides. Identique. |
 | `Levenshtein.normalized_similarity(a, b)` | rapidfuzz | `Levenshtein.NormalizedSimilarity(a, b)` | `1 - normalized_distance`. Deux chaînes vides ⇒ `1`. Identique. |
+| `OSA.distance(a, b)` | rapidfuzz | `Osa.Distance(a, b)` | Alignement optimal (Damerau restreint) : transposition adjacente autorisée, sans réédition. Diffère du Damerau complet (`"CA"/"ABC"` ⇒ 3 vs 2). |
+| `OSA.normalized_similarity(a, b)` | rapidfuzz | `Osa.NormalizedSimilarity(a, b)` | `1 - dist/max(len)`. Identique. |
+| `DamerauLevenshtein.distance(a, b)` | rapidfuzz | `DamerauLevenshtein.Distance(a, b)` | Damerau non restreint (Lowrance-Wagner). `"CA"/"ABC"` ⇒ 2. N'est pas une métrique. |
+| `DamerauLevenshtein.normalized_similarity(a, b)` | rapidfuzz | `DamerauLevenshtein.NormalizedSimilarity(a, b)` | `1 - dist/max(len)`. Identique. |
+| `hamming_distance(a, b)` | jellyfish | `Hamming.Distance(a, b)` | Positions différentes + écart de longueur. Coïncide avec jellyfish sur entrées normales ; écart documenté sur marques combinantes ([décision 0005](decisions/0005-hamming-jellyfish-divergence.md)). |
 
 ## Conventions
 

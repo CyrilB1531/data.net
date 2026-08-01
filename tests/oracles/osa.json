@@ -1,17 +1,12 @@
 {
  "metadata": {
-  "algorithm": "Levenshtein",
+  "algorithm": "OSA",
   "library": "rapidfuzz",
   "library_version": "3.14.5",
   "reference_calls": [
-   "rapidfuzz.distance.Levenshtein.distance",
-   "rapidfuzz.distance.Levenshtein.normalized_distance",
-   "rapidfuzz.distance.Levenshtein.normalized_similarity"
-  ],
-  "weights": [
-   1,
-   1,
-   1
+   "rapidfuzz.distance.OSA.distance",
+   "rapidfuzz.distance.OSA.normalized_distance",
+   "rapidfuzz.distance.OSA.normalized_similarity"
   ],
   "semantics": "code_point",
   "seed": 20260801,
@@ -158,18 +153,18 @@
    "category": "edge",
    "a": "ab",
    "b": "ba",
-   "distance": 2,
-   "normalized_distance": 1.0,
-   "normalized_similarity": 0.0
+   "distance": 1,
+   "normalized_distance": 0.5,
+   "normalized_similarity": 0.5
   },
   {
    "id": 16,
    "category": "edge",
    "a": "abcd",
    "b": "acbd",
-   "distance": 2,
-   "normalized_distance": 0.5,
-   "normalized_similarity": 0.5
+   "distance": 1,
+   "normalized_distance": 0.25,
+   "normalized_similarity": 0.75
   },
   {
    "id": 17,
@@ -194,9 +189,9 @@
    "category": "edge",
    "a": "a cat",
    "b": "an act",
-   "distance": 3,
-   "normalized_distance": 0.5,
-   "normalized_similarity": 0.5
+   "distance": 2,
+   "normalized_distance": 0.3333333333333333,
+   "normalized_similarity": 0.6666666666666667
   },
   {
    "id": 20,
