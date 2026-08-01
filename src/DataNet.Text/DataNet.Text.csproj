@@ -14,4 +14,8 @@
     <PackageTags>text;similarity;levenshtein;distance;fuzzy;tfidf;nlp;datanet</PackageTags>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="DataNet.Text.Tests" />
+  </ItemGroup>
+
 </Project>

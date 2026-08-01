@@ -606,6 +606,40 @@ def generate_tfidfvectorizer() -> dict:
     }
 
 
+def generate_hashingvectorizer() -> dict:
+    from sklearn.feature_extraction.text import HashingVectorizer as SkHV
+    from sklearn.utils.murmurhash import murmurhash3_32
+
+    hashes = {t: int(murmurhash3_32(t.encode("utf-8"), seed=0)) for t in ["cat", "the", "dog", "hello", "a", "mat"]}
+    configs = [
+        {"n_features": 16, "alternate_sign": True, "norm": None},
+        {"n_features": 16, "alternate_sign": True, "norm": "l2"},
+        {"n_features": 16, "alternate_sign": False, "norm": None},
+        {"n_features": 8, "ngram_min": 1, "ngram_max": 2, "norm": None},
+    ]
+    cases = []
+    for idx, cfg in enumerate(configs):
+        hv = SkHV(
+            n_features=cfg["n_features"],
+            alternate_sign=cfg.get("alternate_sign", True),
+            norm=cfg.get("norm", "l2"),
+            ngram_range=(cfg.get("ngram_min", 1), cfg.get("ngram_max", 1)),
+        )
+        x = hv.fit_transform(CORPUS_A)
+        cases.append({"id": idx, "config": cfg, "docs": CORPUS_A, "matrix": x.toarray().tolist()})
+    return {
+        "metadata": {
+            "algorithm": "HashingVectorizer",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": ["sklearn.feature_extraction.text.HashingVectorizer", "sklearn.utils.murmurhash.murmurhash3_32"],
+            "murmur3": hashes,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -623,6 +657,7 @@ def main() -> None:
         "metaphone.json": generate_metaphone,
         "countvectorizer.json": generate_countvectorizer,
         "tfidfvectorizer.json": generate_tfidfvectorizer,
+        "hashingvectorizer.json": generate_hashingvectorizer,
     }
     for filename, gen in generators.items():
         payload = gen()
