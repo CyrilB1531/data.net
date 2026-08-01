@@ -55,6 +55,8 @@ fonction implémentée, jamais rétroactivement (§6.1 du brief).
 | `CountVectorizer(min_df=…, max_df=…)` | scikit-learn | `MinDf`, `MaxDf` | `<1` = proportion, `≥1` = compte absolu (sémantique sklearn `_limit_features`). |
 | `CountVectorizer(strip_accents="unicode")` | scikit-learn | `StripAccents = true` | Décomposition NFKD + suppression des marques combinantes. |
 | `scipy.sparse` (CSR) | scipy | `CsrMatrix` | Format CSR maison : `ToDense`, normes L1/L2, `NormalizeRows`, produit matrice-vecteur. |
+| `TfidfVectorizer()` | scikit-learn | `new TfidfVectorizer()` | `smooth_idf` + normalisation L2 par défaut. `idf = ln((1+n)/(1+df)) + 1`. Parité sur 7 configs. |
+| `TfidfTransformer()` | scikit-learn | `new TfidfTransformer()` | `use_idf`, `smooth_idf`, `sublinear_tf`, `norm` (L1/L2/aucune). |
 
 ## Conventions
 

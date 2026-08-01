@@ -563,6 +563,49 @@ def generate_countvectorizer() -> dict:
     }
 
 
+TFIDF_CASES = [
+    {"config": {}, "docs": CORPUS_A},
+    {"config": {"sublinear_tf": True}, "docs": CORPUS_A},
+    {"config": {"smooth_idf": False}, "docs": CORPUS_A},
+    {"config": {"norm": None}, "docs": CORPUS_A},
+    {"config": {"use_idf": False}, "docs": CORPUS_A},
+    {"config": {"ngram_min": 1, "ngram_max": 2}, "docs": CORPUS_A},
+    {"config": {"norm": "l1"}, "docs": CORPUS_A},
+]
+
+
+def generate_tfidfvectorizer() -> dict:
+    cases = []
+    for idx, case in enumerate(TFIDF_CASES):
+        cfg = case["config"]
+        tv = SkTfidfVectorizer(
+            ngram_range=(cfg.get("ngram_min", 1), cfg.get("ngram_max", 1)),
+            use_idf=cfg.get("use_idf", True),
+            smooth_idf=cfg.get("smooth_idf", True),
+            sublinear_tf=cfg.get("sublinear_tf", False),
+            norm=cfg.get("norm", "l2") if "norm" in cfg else "l2",
+        )
+        x = tv.fit_transform(case["docs"])
+        cases.append({
+            "id": idx,
+            "config": cfg,
+            "docs": case["docs"],
+            "feature_names": tv.get_feature_names_out().tolist(),
+            "idf": tv.idf_.tolist() if cfg.get("use_idf", True) else None,
+            "matrix": x.toarray().tolist(),
+        })
+    return {
+        "metadata": {
+            "algorithm": "TfidfVectorizer",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": ["sklearn.feature_extraction.text.TfidfVectorizer"],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -579,6 +622,7 @@ def main() -> None:
         "phonetics.json": generate_phonetics,
         "metaphone.json": generate_metaphone,
         "countvectorizer.json": generate_countvectorizer,
+        "tfidfvectorizer.json": generate_tfidfvectorizer,
     }
     for filename, gen in generators.items():
         payload = gen()
