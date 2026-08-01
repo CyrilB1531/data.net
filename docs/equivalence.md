@@ -45,6 +45,17 @@ fonction implémentée, jamais rétroactivement (§6.1 du brief).
 | `metaphone(s)` | jellyfish | `Metaphone.Encode(s)` | Parité sur mots réels ; quirks jellyfish sur non-mots non reproduits ([décision 0007](decisions/0007-metaphone-scope.md)). |
 | `nysiis(s)` | jellyfish | `Nysiis.Encode(s)` | Variante non tronquée. Parité exacte (402 mots). |
 
+## DataNet.Text — vectorisation creuse
+
+| Python | Bibliothèque | C# | Différences |
+|---|---|---|---|
+| `CountVectorizer()` | scikit-learn | `new CountVectorizer()` | Vocabulaire trié, `token_pattern` `\b\w\w+\b` (mono-caractères écartés), `lowercase` par défaut. Parité sur 10 configs. |
+| `CountVectorizer(ngram_range=(1,2))` | scikit-learn | `new CountVectorizer(new(){ NgramRange=(1,2) })` | n-grammes de mots joints par espace. |
+| `CountVectorizer(analyzer="char"/"char_wb")` | scikit-learn | `Analyzer = AnalyzerKind.Char / CharWordBoundary` | n-grammes de caractères (avec/sans franchissement de frontière). |
+| `CountVectorizer(min_df=…, max_df=…)` | scikit-learn | `MinDf`, `MaxDf` | `<1` = proportion, `≥1` = compte absolu (sémantique sklearn `_limit_features`). |
+| `CountVectorizer(strip_accents="unicode")` | scikit-learn | `StripAccents = true` | Décomposition NFKD + suppression des marques combinantes. |
+| `scipy.sparse` (CSR) | scipy | `CsrMatrix` | Format CSR maison : `ToDense`, normes L1/L2, `NormalizeRows`, produit matrice-vecteur. |
+
 ## Conventions
 
 - **Unité de comparaison.** Sauf mention contraire, les distances sur chaînes

@@ -34,6 +34,8 @@ from difflib import SequenceMatcher
 import jellyfish
 import textdistance as td
 from rapidfuzz.distance import DamerauLevenshtein, Indel, Levenshtein, OSA
+from sklearn.feature_extraction.text import CountVectorizer as SkCountVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer as SkTfidfVectorizer
 
 SEED = 20260801
 ORACLE_DIR = Path(__file__).resolve().parent.parent / "tests" / "oracles"
@@ -500,6 +502,67 @@ def generate_phonetics() -> dict:
     }
 
 
+CORPUS_A = [
+    "the cat sat on the mat",
+    "a cat and a dog",
+    "the dog barked loudly",
+    "cats and dogs are friends",
+    "the quick brown fox",
+]
+CORPUS_ACCENTS = ["Café crème", "Cafe creme", "Élève à l'école", "eleve a l ecole"]
+
+
+def _build_count_vectorizer(cfg: dict):
+    return SkCountVectorizer(
+        analyzer=cfg.get("analyzer", "word"),
+        ngram_range=(cfg.get("ngram_min", 1), cfg.get("ngram_max", 1)),
+        min_df=cfg.get("min_df", 1),
+        max_df=cfg.get("max_df", 1.0),
+        binary=cfg.get("binary", False),
+        lowercase=cfg.get("lowercase", True),
+        strip_accents="unicode" if cfg.get("strip_accents", False) else None,
+        stop_words=cfg.get("stop_words", None),
+    )
+
+
+COUNT_CASES = [
+    {"config": {}, "docs": CORPUS_A},
+    {"config": {"ngram_min": 1, "ngram_max": 2}, "docs": CORPUS_A},
+    {"config": {"min_df": 2}, "docs": CORPUS_A},
+    {"config": {"max_df": 0.5}, "docs": CORPUS_A},
+    {"config": {"binary": True}, "docs": CORPUS_A},
+    {"config": {"stop_words": ["the", "a", "and"]}, "docs": CORPUS_A},
+    {"config": {"lowercase": False}, "docs": CORPUS_A},
+    {"config": {"strip_accents": True}, "docs": CORPUS_ACCENTS},
+    {"config": {"analyzer": "char", "ngram_min": 2, "ngram_max": 3}, "docs": CORPUS_A[:3]},
+    {"config": {"analyzer": "char_wb", "ngram_min": 2, "ngram_max": 3}, "docs": CORPUS_A[:3]},
+]
+
+
+def generate_countvectorizer() -> dict:
+    cases = []
+    for idx, case in enumerate(COUNT_CASES):
+        cv = _build_count_vectorizer(case["config"])
+        x = cv.fit_transform(case["docs"])
+        cases.append({
+            "id": idx,
+            "config": case["config"],
+            "docs": case["docs"],
+            "feature_names": cv.get_feature_names_out().tolist(),
+            "matrix": x.toarray().astype(int).tolist(),
+        })
+    return {
+        "metadata": {
+            "algorithm": "CountVectorizer",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": ["sklearn.feature_extraction.text.CountVectorizer"],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -515,6 +578,7 @@ def main() -> None:
         "set_similarity.json": generate_set_similarity,
         "phonetics.json": generate_phonetics,
         "metaphone.json": generate_metaphone,
+        "countvectorizer.json": generate_countvectorizer,
     }
     for filename, gen in generators.items():
         payload = gen()

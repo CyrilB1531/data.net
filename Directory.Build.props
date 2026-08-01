@@ -6,7 +6,6 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Deterministic>true</Deterministic>
-    <InvariantGlobalization>true</InvariantGlobalization>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
     <!-- Provenance / packaging metadata (§10). -->
