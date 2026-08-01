@@ -29,6 +29,8 @@ import random
 from importlib.metadata import version
 from pathlib import Path
 
+from difflib import SequenceMatcher
+
 import jellyfish
 from rapidfuzz.distance import DamerauLevenshtein, Indel, Levenshtein, OSA
 
@@ -332,6 +334,52 @@ def generate_jaro_winkler() -> dict:
         _jaro_winkler_reference, jellyfish.jaro_winkler_similarity, "JaroWinkler")
 
 
+def generate_lcs() -> dict:
+    rng = random.Random(SEED)
+    cases = []
+    for idx, (category, a, b) in enumerate(build_pairs(rng)):
+        subsequence = (len(a) + len(b) - Indel.distance(a, b)) // 2
+        substring = SequenceMatcher(None, a, b, autojunk=False).find_longest_match(0, len(a), 0, len(b)).size
+        cases.append({
+            "id": idx, "category": category, "a": a, "b": b,
+            "subsequence": subsequence, "substring": substring,
+        })
+    return {
+        "metadata": {
+            "algorithm": "Lcs",
+            "library": "rapidfuzz+difflib",
+            "reference_calls": [
+                "subsequence: (len(a)+len(b)-rapidfuzz.distance.Indel.distance)//2",
+                "substring: difflib.SequenceMatcher(autojunk=False).find_longest_match(...).size",
+            ],
+            "semantics": "code_point",
+            "seed": SEED,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+def generate_ratcliff() -> dict:
+    rng = random.Random(SEED)
+    cases = []
+    for idx, (category, a, b) in enumerate(build_pairs(rng)):
+        similarity = SequenceMatcher(None, a, b, autojunk=False).ratio()
+        cases.append({"id": idx, "category": category, "a": a, "b": b, "similarity": similarity})
+    return {
+        "metadata": {
+            "algorithm": "RatcliffObershelp",
+            "library": "difflib",
+            "reference_calls": ["difflib.SequenceMatcher(None, a, b, autojunk=False).ratio()"],
+            "autojunk": False,
+            "semantics": "code_point",
+            "seed": SEED,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -342,6 +390,8 @@ def main() -> None:
         "indel.json": generate_indel,
         "jaro.json": generate_jaro,
         "jaro_winkler.json": generate_jaro_winkler,
+        "lcs.json": generate_lcs,
+        "ratcliff.json": generate_ratcliff,
     }
     for filename, gen in generators.items():
         payload = gen()

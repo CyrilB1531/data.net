@@ -57,53 +57,7 @@ public static class Indel
     public static int Distance<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
         where T : IEquatable<T>
     {
-        return a.Length + b.Length - 2 * LongestCommonSubsequenceLength(a, b);
-    }
-
-    /// <summary>Length of the longest common subsequence, via rolling-row DP.</summary>
-    internal static int LongestCommonSubsequenceLength<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
-        where T : IEquatable<T>
-    {
-        if (a.Length == 0 || b.Length == 0)
-        {
-            return 0;
-        }
-
-        // Keep the DP row on the shorter operand.
-        if (b.Length > a.Length)
-        {
-            ReadOnlySpan<T> tmp = a;
-            a = b;
-            b = tmp;
-        }
-
-        int width = b.Length + 1;
-        int[] rented = ArrayPool<int>.Shared.Rent(width);
-        try
-        {
-            Span<int> row = rented.AsSpan(0, width);
-            row.Clear();
-
-            for (int i = 1; i <= a.Length; i++)
-            {
-                int diagonal = row[0]; // L[i-1][j-1]
-                T ai = a[i - 1];
-                for (int j = 1; j < width; j++)
-                {
-                    int above = row[j]; // L[i-1][j]
-                    row[j] = ai.Equals(b[j - 1])
-                        ? diagonal + 1
-                        : Math.Max(above, row[j - 1]);
-                    diagonal = above;
-                }
-            }
-
-            return row[b.Length];
-        }
-        finally
-        {
-            ArrayPool<int>.Shared.Return(rented);
-        }
+        return a.Length + b.Length - 2 * Lcs.SubsequenceLength(a, b);
     }
 
     private static int DistanceCodePoints(ReadOnlySpan<char> a, ReadOnlySpan<char> b, out int lenA, out int lenB)

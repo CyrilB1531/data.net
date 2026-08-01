@@ -30,6 +30,17 @@ public sealed record SimilarityCase
     [JsonPropertyName("similarity")] public double Similarity { get; init; }
 }
 
+/// <summary>A reference case for LCS: two operands, subsequence and substring lengths.</summary>
+public sealed record LcsCase
+{
+    [JsonPropertyName("id")] public int Id { get; init; }
+    [JsonPropertyName("category")] public string Category { get; init; } = "";
+    [JsonPropertyName("a")] public string A { get; init; } = "";
+    [JsonPropertyName("b")] public string B { get; init; } = "";
+    [JsonPropertyName("subsequence")] public int Subsequence { get; init; }
+    [JsonPropertyName("substring")] public int Substring { get; init; }
+}
+
 /// <summary>Aggregating oracle assertions: report every mismatch, not just the first.</summary>
 public static class OracleAsserts
 {

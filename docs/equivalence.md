@@ -19,6 +19,9 @@ fonction implémentée, jamais rétroactivement (§6.1 du brief).
 | `Indel.normalized_similarity(a, b)` | rapidfuzz | `Indel.NormalizedSimilarity(a, b)` | `1 - dist/(len(a)+len(b))`. **×100 = `fuzz.ratio`.** |
 | `jaro_similarity(a, b)` | jellyfish | `Jaro.Similarity(a, b)` | Vide ⇒ `0`. Coïncide avec jellyfish sauf quirks marques combinantes ([décision 0005](decisions/0005-hamming-jellyfish-divergence.md)). |
 | `jaro_winkler_similarity(a, b)` | jellyfish | `JaroWinkler.Similarity(a, b)` | Boost de préfixe uniquement si Jaro > 0,7 (seuil de Winkler), poids `0,1`, préfixe ≤ 4. |
+| `SequenceMatcher(None,a,b).find_longest_match(...).size` | difflib | `Lcs.SubstringLength(a, b)` | Plus longue sous-chaîne commune (contiguë). Même départage que difflib. |
+| — (LCS classique) | — | `Lcs.SubsequenceLength(a, b)` | Plus longue sous-séquence (ordre préservé, non contiguë). Base d'`Indel`. |
+| `SequenceMatcher(None,a,b).ratio()` | difflib | `RatcliffObershelp.Similarity(a, b)` | Gestalt `2·M/T`. `autojunk` **non** répliqué (identique pour ≤ 200 éléments ; [décision 0006](decisions/0006-ratcliff-autojunk.md)). |
 
 ## Conventions
 
