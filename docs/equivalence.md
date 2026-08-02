@@ -58,6 +58,13 @@ fonction implémentée, jamais rétroactivement (§6.1 du brief).
 | `TfidfVectorizer()` | scikit-learn | `new TfidfVectorizer()` | `smooth_idf` + normalisation L2 par défaut. `idf = ln((1+n)/(1+df)) + 1`. Parité sur 7 configs. |
 | `TfidfTransformer()` | scikit-learn | `new TfidfTransformer()` | `use_idf`, `smooth_idf`, `sublinear_tf`, `norm` (L1/L2/aucune). |
 | `HashingVectorizer()` | scikit-learn | `new HashingVectorizer()` | Astuce de hachage, sans vocabulaire. MurmurHash3-32 (graine 0) reproduit ; signe alterné + normalisation L2 par défaut. |
+| `CountVectorizer(stop_words="english")` | scikit-learn | `StopWords = StopWords.English` | Liste de 318 mots vides de sklearn (identique). Toute collection personnalisée est acceptée. |
+
+## DataNet.Text — racinisation (stemming)
+
+| Python | Bibliothèque | C# | Différences |
+|---|---|---|---|
+| `PorterStemmer(mode=ORIGINAL_ALGORITHM).stem(w)` | nltk | `PorterStemmer.Stem(w)` | Algorithme de Porter (1980), 5 étapes. Parité exacte (86 mots). |
 
 ## Conventions
 

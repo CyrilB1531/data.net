@@ -6,7 +6,7 @@
   "reference_calls": [
    "sklearn.feature_extraction.text.CountVectorizer"
   ],
-  "count": 10
+  "count": 11
  },
  "cases": [
   {
@@ -765,6 +765,105 @@
   {
    "id": 6,
    "config": {
+    "stop_words": "english"
+   },
+   "docs": [
+    "the cat sat on the mat",
+    "a cat and a dog",
+    "the dog barked loudly",
+    "cats and dogs are friends",
+    "the quick brown fox"
+   ],
+   "feature_names": [
+    "barked",
+    "brown",
+    "cat",
+    "cats",
+    "dog",
+    "dogs",
+    "fox",
+    "friends",
+    "loudly",
+    "mat",
+    "quick",
+    "sat"
+   ],
+   "matrix": [
+    [
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     1
+    ],
+    [
+     0,
+     0,
+     1,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     1,
+     0,
+     1,
+     0,
+     1,
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     1,
+     0,
+     0,
+     0,
+     0,
+     1,
+     0,
+     0,
+     0,
+     1,
+     0
+    ]
+   ]
+  },
+  {
+   "id": 7,
+   "config": {
     "lowercase": false
    },
    "docs": [
@@ -886,7 +985,7 @@
    ]
   },
   {
-   "id": 7,
+   "id": 8,
    "config": {
     "strip_accents": true
    },
@@ -930,7 +1029,7 @@
    ]
   },
   {
-   "id": 8,
+   "id": 9,
    "config": {
     "analyzer": "char",
     "ngram_min": 2,
@@ -1265,7 +1364,7 @@
    ]
   },
   {
-   "id": 9,
+   "id": 10,
    "config": {
     "analyzer": "char_wb",
     "ngram_min": 2,

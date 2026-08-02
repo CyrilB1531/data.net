@@ -1,5 +1,8 @@
-# Dépendances de DÉVELOPPEMENT uniquement (génération des oracles).
-# Ne font pas partie du paquet distribué. Licences permissives (MIT).
-# python-Levenshtein (GPL) est délibérément exclu — voir docs/decisions/0003.
+# Dependencies for DEVELOPMENT only (oracle generation).
+# Not part of the distributed package. Permissive licenses (MIT / BSD / Apache).
+# python-Levenshtein (GPL) is deliberately excluded — see docs/decisions/0003.
 rapidfuzz>=3.14,<4
 jellyfish>=1.2,<2
+textdistance>=4.6,<5
+scikit-learn>=1.9,<2
+nltk>=3.9,<4

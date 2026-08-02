@@ -532,6 +532,7 @@ COUNT_CASES = [
     {"config": {"max_df": 0.5}, "docs": CORPUS_A},
     {"config": {"binary": True}, "docs": CORPUS_A},
     {"config": {"stop_words": ["the", "a", "and"]}, "docs": CORPUS_A},
+    {"config": {"stop_words": "english"}, "docs": CORPUS_A},
     {"config": {"lowercase": False}, "docs": CORPUS_A},
     {"config": {"strip_accents": True}, "docs": CORPUS_ACCENTS},
     {"config": {"analyzer": "char", "ngram_min": 2, "ngram_max": 3}, "docs": CORPUS_A[:3]},
@@ -640,6 +641,54 @@ def generate_hashingvectorizer() -> dict:
     }
 
 
+PORTER_WORDS = [
+    # step 1a
+    "caresses", "ponies", "ties", "caress", "cats",
+    # step 1b
+    "feed", "agreed", "plastered", "bled", "motoring", "sing", "conflated",
+    "troubled", "sized", "hopping", "tanned", "falling", "hissing", "fizzed",
+    "failing", "filing",
+    # step 1c
+    "happy", "sky",
+    # step 2
+    "relational", "conditional", "rational", "valenci", "hesitanci", "digitizer",
+    "conformabli", "radicalli", "differentli", "vileli", "analogousli",
+    "vietnamization", "predication", "operator", "feudalism", "decisiveness",
+    "hopefulness", "callousness", "formaliti", "sensitiviti", "sensibiliti",
+    # step 3
+    "triplicate", "formative", "formalize", "electriciti", "electrical",
+    "hopeful", "goodness",
+    # step 4
+    "revival", "allowance", "inference", "airliner", "gyroscopic", "adjustable",
+    "defensible", "irritant", "replacement", "adjustment", "dependent",
+    "adoption", "homologous", "communism", "activate", "angulariti",
+    "homologou", "effective", "bowdlerize",
+    # step 5
+    "probate", "rate", "cease", "controll", "roll",
+    # common words
+    "running", "runner", "easily", "fairly", "national", "generalization",
+    "organization", "happiness", "argument", "arguing", "meetings",
+]
+
+
+def generate_porter() -> dict:
+    from nltk.stem.porter import PorterStemmer  # noqa: PLC0415 (lazy: sandbox import guard)
+
+    stemmer = PorterStemmer(mode=PorterStemmer.ORIGINAL_ALGORITHM)
+    cases = [{"id": i, "word": w, "stem": stemmer.stem(w)} for i, w in enumerate(PORTER_WORDS)]
+    return {
+        "metadata": {
+            "algorithm": "PorterStemmer",
+            "library": "nltk",
+            "library_version": version("nltk"),
+            "mode": "ORIGINAL_ALGORITHM",
+            "reference_calls": ["nltk.stem.porter.PorterStemmer(mode=ORIGINAL_ALGORITHM)"],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -658,6 +707,7 @@ def main() -> None:
         "countvectorizer.json": generate_countvectorizer,
         "tfidfvectorizer.json": generate_tfidfvectorizer,
         "hashingvectorizer.json": generate_hashingvectorizer,
+        "porter.json": generate_porter,
     }
     for filename, gen in generators.items():
         payload = gen()

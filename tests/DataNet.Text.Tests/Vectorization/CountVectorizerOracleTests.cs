@@ -66,9 +66,16 @@ public sealed class CountVectorizerOracleTests
         int ngramMin = config.TryGetProperty("ngram_min", out JsonElement nmin) ? nmin.GetInt32() : 1;
         int ngramMax = config.TryGetProperty("ngram_max", out JsonElement nmax) ? nmax.GetInt32() : 1;
 
-        IReadOnlyCollection<string>? stopWords = config.TryGetProperty("stop_words", out JsonElement sw) && sw.ValueKind == JsonValueKind.Array
-            ? sw.EnumerateArray().Select(e => e.GetString()!).ToArray()
-            : null;
+        IReadOnlyCollection<string>? stopWords = null;
+        if (config.TryGetProperty("stop_words", out JsonElement sw))
+        {
+            stopWords = sw.ValueKind switch
+            {
+                JsonValueKind.Array => sw.EnumerateArray().Select(e => e.GetString()!).ToArray(),
+                JsonValueKind.String when sw.GetString() == "english" => StopWords.English,
+                _ => null,
+            };
+        }
 
         return new CountVectorizerOptions
         {

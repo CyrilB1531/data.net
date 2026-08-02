@@ -1,0 +1,444 @@
+{
+ "metadata": {
+  "algorithm": "PorterStemmer",
+  "library": "nltk",
+  "library_version": "3.10.1",
+  "mode": "ORIGINAL_ALGORITHM",
+  "reference_calls": [
+   "nltk.stem.porter.PorterStemmer(mode=ORIGINAL_ALGORITHM)"
+  ],
+  "count": 86
+ },
+ "cases": [
+  {
+   "id": 0,
+   "word": "caresses",
+   "stem": "caress"
+  },
+  {
+   "id": 1,
+   "word": "ponies",
+   "stem": "poni"
+  },
+  {
+   "id": 2,
+   "word": "ties",
+   "stem": "ti"
+  },
+  {
+   "id": 3,
+   "word": "caress",
+   "stem": "caress"
+  },
+  {
+   "id": 4,
+   "word": "cats",
+   "stem": "cat"
+  },
+  {
+   "id": 5,
+   "word": "feed",
+   "stem": "feed"
+  },
+  {
+   "id": 6,
+   "word": "agreed",
+   "stem": "agre"
+  },
+  {
+   "id": 7,
+   "word": "plastered",
+   "stem": "plaster"
+  },
+  {
+   "id": 8,
+   "word": "bled",
+   "stem": "bled"
+  },
+  {
+   "id": 9,
+   "word": "motoring",
+   "stem": "motor"
+  },
+  {
+   "id": 10,
+   "word": "sing",
+   "stem": "sing"
+  },
+  {
+   "id": 11,
+   "word": "conflated",
+   "stem": "conflat"
+  },
+  {
+   "id": 12,
+   "word": "troubled",
+   "stem": "troubl"
+  },
+  {
+   "id": 13,
+   "word": "sized",
+   "stem": "size"
+  },
+  {
+   "id": 14,
+   "word": "hopping",
+   "stem": "hop"
+  },
+  {
+   "id": 15,
+   "word": "tanned",
+   "stem": "tan"
+  },
+  {
+   "id": 16,
+   "word": "falling",
+   "stem": "fall"
+  },
+  {
+   "id": 17,
+   "word": "hissing",
+   "stem": "hiss"
+  },
+  {
+   "id": 18,
+   "word": "fizzed",
+   "stem": "fizz"
+  },
+  {
+   "id": 19,
+   "word": "failing",
+   "stem": "fail"
+  },
+  {
+   "id": 20,
+   "word": "filing",
+   "stem": "file"
+  },
+  {
+   "id": 21,
+   "word": "happy",
+   "stem": "happi"
+  },
+  {
+   "id": 22,
+   "word": "sky",
+   "stem": "sky"
+  },
+  {
+   "id": 23,
+   "word": "relational",
+   "stem": "relat"
+  },
+  {
+   "id": 24,
+   "word": "conditional",
+   "stem": "condit"
+  },
+  {
+   "id": 25,
+   "word": "rational",
+   "stem": "ration"
+  },
+  {
+   "id": 26,
+   "word": "valenci",
+   "stem": "valenc"
+  },
+  {
+   "id": 27,
+   "word": "hesitanci",
+   "stem": "hesit"
+  },
+  {
+   "id": 28,
+   "word": "digitizer",
+   "stem": "digit"
+  },
+  {
+   "id": 29,
+   "word": "conformabli",
+   "stem": "conform"
+  },
+  {
+   "id": 30,
+   "word": "radicalli",
+   "stem": "radic"
+  },
+  {
+   "id": 31,
+   "word": "differentli",
+   "stem": "differ"
+  },
+  {
+   "id": 32,
+   "word": "vileli",
+   "stem": "vile"
+  },
+  {
+   "id": 33,
+   "word": "analogousli",
+   "stem": "analog"
+  },
+  {
+   "id": 34,
+   "word": "vietnamization",
+   "stem": "vietnam"
+  },
+  {
+   "id": 35,
+   "word": "predication",
+   "stem": "predic"
+  },
+  {
+   "id": 36,
+   "word": "operator",
+   "stem": "oper"
+  },
+  {
+   "id": 37,
+   "word": "feudalism",
+   "stem": "feudal"
+  },
+  {
+   "id": 38,
+   "word": "decisiveness",
+   "stem": "decis"
+  },
+  {
+   "id": 39,
+   "word": "hopefulness",
+   "stem": "hope"
+  },
+  {
+   "id": 40,
+   "word": "callousness",
+   "stem": "callous"
+  },
+  {
+   "id": 41,
+   "word": "formaliti",
+   "stem": "formal"
+  },
+  {
+   "id": 42,
+   "word": "sensitiviti",
+   "stem": "sensit"
+  },
+  {
+   "id": 43,
+   "word": "sensibiliti",
+   "stem": "sensibl"
+  },
+  {
+   "id": 44,
+   "word": "triplicate",
+   "stem": "triplic"
+  },
+  {
+   "id": 45,
+   "word": "formative",
+   "stem": "form"
+  },
+  {
+   "id": 46,
+   "word": "formalize",
+   "stem": "formal"
+  },
+  {
+   "id": 47,
+   "word": "electriciti",
+   "stem": "electr"
+  },
+  {
+   "id": 48,
+   "word": "electrical",
+   "stem": "electr"
+  },
+  {
+   "id": 49,
+   "word": "hopeful",
+   "stem": "hope"
+  },
+  {
+   "id": 50,
+   "word": "goodness",
+   "stem": "good"
+  },
+  {
+   "id": 51,
+   "word": "revival",
+   "stem": "reviv"
+  },
+  {
+   "id": 52,
+   "word": "allowance",
+   "stem": "allow"
+  },
+  {
+   "id": 53,
+   "word": "inference",
+   "stem": "infer"
+  },
+  {
+   "id": 54,
+   "word": "airliner",
+   "stem": "airlin"
+  },
+  {
+   "id": 55,
+   "word": "gyroscopic",
+   "stem": "gyroscop"
+  },
+  {
+   "id": 56,
+   "word": "adjustable",
+   "stem": "adjust"
+  },
+  {
+   "id": 57,
+   "word": "defensible",
+   "stem": "defens"
+  },
+  {
+   "id": 58,
+   "word": "irritant",
+   "stem": "irrit"
+  },
+  {
+   "id": 59,
+   "word": "replacement",
+   "stem": "replac"
+  },
+  {
+   "id": 60,
+   "word": "adjustment",
+   "stem": "adjust"
+  },
+  {
+   "id": 61,
+   "word": "dependent",
+   "stem": "depend"
+  },
+  {
+   "id": 62,
+   "word": "adoption",
+   "stem": "adopt"
+  },
+  {
+   "id": 63,
+   "word": "homologous",
+   "stem": "homolog"
+  },
+  {
+   "id": 64,
+   "word": "communism",
+   "stem": "commun"
+  },
+  {
+   "id": 65,
+   "word": "activate",
+   "stem": "activ"
+  },
+  {
+   "id": 66,
+   "word": "angulariti",
+   "stem": "angular"
+  },
+  {
+   "id": 67,
+   "word": "homologou",
+   "stem": "homolog"
+  },
+  {
+   "id": 68,
+   "word": "effective",
+   "stem": "effect"
+  },
+  {
+   "id": 69,
+   "word": "bowdlerize",
+   "stem": "bowdler"
+  },
+  {
+   "id": 70,
+   "word": "probate",
+   "stem": "probat"
+  },
+  {
+   "id": 71,
+   "word": "rate",
+   "stem": "rate"
+  },
+  {
+   "id": 72,
+   "word": "cease",
+   "stem": "ceas"
+  },
+  {
+   "id": 73,
+   "word": "controll",
+   "stem": "control"
+  },
+  {
+   "id": 74,
+   "word": "roll",
+   "stem": "roll"
+  },
+  {
+   "id": 75,
+   "word": "running",
+   "stem": "run"
+  },
+  {
+   "id": 76,
+   "word": "runner",
+   "stem": "runner"
+  },
+  {
+   "id": 77,
+   "word": "easily",
+   "stem": "easili"
+  },
+  {
+   "id": 78,
+   "word": "fairly",
+   "stem": "fairli"
+  },
+  {
+   "id": 79,
+   "word": "national",
+   "stem": "nation"
+  },
+  {
+   "id": 80,
+   "word": "generalization",
+   "stem": "gener"
+  },
+  {
+   "id": 81,
+   "word": "organization",
+   "stem": "organ"
+  },
+  {
+   "id": 82,
+   "word": "happiness",
+   "stem": "happi"
+  },
+  {
+   "id": 83,
+   "word": "argument",
+   "stem": "argument"
+  },
+  {
+   "id": 84,
+   "word": "arguing",
+   "stem": "argu"
+  },
+  {
+   "id": 85,
+   "word": "meetings",
+   "stem": "meet"
+  }
+ ]
+}
