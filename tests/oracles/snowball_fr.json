@@ -1,0 +1,773 @@
+{
+ "metadata": {
+  "algorithm": "FrenchSnowballStemmer",
+  "library": "nltk",
+  "library_version": "3.10.1",
+  "reference_calls": [
+   "nltk.stem.snowball.SnowballStemmer('french')"
+  ],
+  "count": 152
+ },
+ "cases": [
+  {
+   "id": 0,
+   "word": "continuellement",
+   "stem": "continuel"
+  },
+  {
+   "id": 1,
+   "word": "amoureusement",
+   "stem": "amour"
+  },
+  {
+   "id": 2,
+   "word": "national",
+   "stem": "national"
+  },
+  {
+   "id": 3,
+   "word": "nationale",
+   "stem": "national"
+  },
+  {
+   "id": 4,
+   "word": "nationaux",
+   "stem": "national"
+  },
+  {
+   "id": 5,
+   "word": "finalement",
+   "stem": "final"
+  },
+  {
+   "id": 6,
+   "word": "rapidement",
+   "stem": "rapid"
+  },
+  {
+   "id": 7,
+   "word": "organisation",
+   "stem": "organis"
+  },
+  {
+   "id": 8,
+   "word": "organiser",
+   "stem": "organis"
+  },
+  {
+   "id": 9,
+   "word": "organisé",
+   "stem": "organis"
+  },
+  {
+   "id": 10,
+   "word": "développement",
+   "stem": "développ"
+  },
+  {
+   "id": 11,
+   "word": "information",
+   "stem": "inform"
+  },
+  {
+   "id": 12,
+   "word": "maison",
+   "stem": "maison"
+  },
+  {
+   "id": 13,
+   "word": "maisons",
+   "stem": "maison"
+  },
+  {
+   "id": 14,
+   "word": "cheval",
+   "stem": "cheval"
+  },
+  {
+   "id": 15,
+   "word": "chevaux",
+   "stem": "cheval"
+  },
+  {
+   "id": 16,
+   "word": "journal",
+   "stem": "journal"
+  },
+  {
+   "id": 17,
+   "word": "journaux",
+   "stem": "journal"
+  },
+  {
+   "id": 18,
+   "word": "heureuse",
+   "stem": "heureux"
+  },
+  {
+   "id": 19,
+   "word": "heureux",
+   "stem": "heureux"
+  },
+  {
+   "id": 20,
+   "word": "finir",
+   "stem": "fin"
+  },
+  {
+   "id": 21,
+   "word": "finissait",
+   "stem": "fin"
+  },
+  {
+   "id": 22,
+   "word": "finissant",
+   "stem": "fin"
+  },
+  {
+   "id": 23,
+   "word": "mangé",
+   "stem": "mang"
+  },
+  {
+   "id": 24,
+   "word": "mangée",
+   "stem": "mang"
+  },
+  {
+   "id": 25,
+   "word": "mangées",
+   "stem": "mang"
+  },
+  {
+   "id": 26,
+   "word": "manger",
+   "stem": "mang"
+  },
+  {
+   "id": 27,
+   "word": "mangez",
+   "stem": "mang"
+  },
+  {
+   "id": 28,
+   "word": "parlions",
+   "stem": "parlion"
+  },
+  {
+   "id": 29,
+   "word": "parlait",
+   "stem": "parl"
+  },
+  {
+   "id": 30,
+   "word": "parlerons",
+   "stem": "parl"
+  },
+  {
+   "id": 31,
+   "word": "chanter",
+   "stem": "chant"
+  },
+  {
+   "id": 32,
+   "word": "chantez",
+   "stem": "chant"
+  },
+  {
+   "id": 33,
+   "word": "chantait",
+   "stem": "chant"
+  },
+  {
+   "id": 34,
+   "word": "chanteront",
+   "stem": "chant"
+  },
+  {
+   "id": 35,
+   "word": "beauté",
+   "stem": "beaut"
+  },
+  {
+   "id": 36,
+   "word": "activité",
+   "stem": "activ"
+  },
+  {
+   "id": 37,
+   "word": "possibilité",
+   "stem": "possibil"
+  },
+  {
+   "id": 38,
+   "word": "capacité",
+   "stem": "capac"
+  },
+  {
+   "id": 39,
+   "word": "réalité",
+   "stem": "réalit"
+  },
+  {
+   "id": 40,
+   "word": "société",
+   "stem": "societ"
+  },
+  {
+   "id": 41,
+   "word": "qualité",
+   "stem": "qualit"
+  },
+  {
+   "id": 42,
+   "word": "important",
+   "stem": "import"
+  },
+  {
+   "id": 43,
+   "word": "importante",
+   "stem": "import"
+  },
+  {
+   "id": 44,
+   "word": "importants",
+   "stem": "import"
+  },
+  {
+   "id": 45,
+   "word": "différent",
+   "stem": "différent"
+  },
+  {
+   "id": 46,
+   "word": "différence",
+   "stem": "différent"
+  },
+  {
+   "id": 47,
+   "word": "présidence",
+   "stem": "président"
+  },
+  {
+   "id": 48,
+   "word": "gentiment",
+   "stem": "gent"
+  },
+  {
+   "id": 49,
+   "word": "vraiment",
+   "stem": "vrai"
+  },
+  {
+   "id": 50,
+   "word": "seulement",
+   "stem": "seul"
+  },
+  {
+   "id": 51,
+   "word": "notamment",
+   "stem": "not"
+  },
+  {
+   "id": 52,
+   "word": "évidemment",
+   "stem": "évident"
+  },
+  {
+   "id": 53,
+   "word": "constamment",
+   "stem": "const"
+  },
+  {
+   "id": 54,
+   "word": "production",
+   "stem": "product"
+  },
+  {
+   "id": 55,
+   "word": "création",
+   "stem": "création"
+  },
+  {
+   "id": 56,
+   "word": "administration",
+   "stem": "administr"
+  },
+  {
+   "id": 57,
+   "word": "communication",
+   "stem": "commun"
+  },
+  {
+   "id": 58,
+   "word": "génération",
+   "stem": "géner"
+  },
+  {
+   "id": 59,
+   "word": "technologie",
+   "stem": "technolog"
+  },
+  {
+   "id": 60,
+   "word": "psychologie",
+   "stem": "psycholog"
+  },
+  {
+   "id": 61,
+   "word": "biologie",
+   "stem": "biolog"
+  },
+  {
+   "id": 62,
+   "word": "logique",
+   "stem": "logiqu"
+  },
+  {
+   "id": 63,
+   "word": "musique",
+   "stem": "musiqu"
+  },
+  {
+   "id": 64,
+   "word": "physique",
+   "stem": "physiqu"
+  },
+  {
+   "id": 65,
+   "word": "grandeur",
+   "stem": "grandeur"
+  },
+  {
+   "id": 66,
+   "word": "chaleur",
+   "stem": "chaleur"
+  },
+  {
+   "id": 67,
+   "word": "couleur",
+   "stem": "couleur"
+  },
+  {
+   "id": 68,
+   "word": "douleur",
+   "stem": "douleur"
+  },
+  {
+   "id": 69,
+   "word": "bonheur",
+   "stem": "bonheur"
+  },
+  {
+   "id": 70,
+   "word": "malheur",
+   "stem": "malheur"
+  },
+  {
+   "id": 71,
+   "word": "premier",
+   "stem": "premi"
+  },
+  {
+   "id": 72,
+   "word": "première",
+   "stem": "premi"
+  },
+  {
+   "id": 73,
+   "word": "dernier",
+   "stem": "derni"
+  },
+  {
+   "id": 74,
+   "word": "dernière",
+   "stem": "derni"
+  },
+  {
+   "id": 75,
+   "word": "policier",
+   "stem": "polici"
+  },
+  {
+   "id": 76,
+   "word": "policière",
+   "stem": "polici"
+  },
+  {
+   "id": 77,
+   "word": "voiture",
+   "stem": "voitur"
+  },
+  {
+   "id": 78,
+   "word": "nature",
+   "stem": "natur"
+  },
+  {
+   "id": 79,
+   "word": "culture",
+   "stem": "cultur"
+  },
+  {
+   "id": 80,
+   "word": "structure",
+   "stem": "structur"
+  },
+  {
+   "id": 81,
+   "word": "aventure",
+   "stem": "aventur"
+  },
+  {
+   "id": 82,
+   "word": "peinture",
+   "stem": "peintur"
+  },
+  {
+   "id": 83,
+   "word": "rationnel",
+   "stem": "rationnel"
+  },
+  {
+   "id": 84,
+   "word": "personnel",
+   "stem": "personnel"
+  },
+  {
+   "id": 85,
+   "word": "naturel",
+   "stem": "naturel"
+  },
+  {
+   "id": 86,
+   "word": "culturel",
+   "stem": "culturel"
+  },
+  {
+   "id": 87,
+   "word": "actuel",
+   "stem": "actuel"
+  },
+  {
+   "id": 88,
+   "word": "grandir",
+   "stem": "grand"
+  },
+  {
+   "id": 89,
+   "word": "choisir",
+   "stem": "chois"
+  },
+  {
+   "id": 90,
+   "word": "réussir",
+   "stem": "réuss"
+  },
+  {
+   "id": 91,
+   "word": "réfléchir",
+   "stem": "réflech"
+  },
+  {
+   "id": 92,
+   "word": "établir",
+   "stem": "établ"
+  },
+  {
+   "id": 93,
+   "word": "accomplir",
+   "stem": "accompl"
+  },
+  {
+   "id": 94,
+   "word": "aimer",
+   "stem": "aim"
+  },
+  {
+   "id": 95,
+   "word": "aimé",
+   "stem": "aim"
+  },
+  {
+   "id": 96,
+   "word": "aimait",
+   "stem": "aim"
+  },
+  {
+   "id": 97,
+   "word": "aimeront",
+   "stem": "aim"
+  },
+  {
+   "id": 98,
+   "word": "aimerais",
+   "stem": "aim"
+  },
+  {
+   "id": 99,
+   "word": "donner",
+   "stem": "don"
+  },
+  {
+   "id": 100,
+   "word": "donné",
+   "stem": "don"
+  },
+  {
+   "id": 101,
+   "word": "donnait",
+   "stem": "don"
+  },
+  {
+   "id": 102,
+   "word": "petit",
+   "stem": "pet"
+  },
+  {
+   "id": 103,
+   "word": "petite",
+   "stem": "petit"
+  },
+  {
+   "id": 104,
+   "word": "petits",
+   "stem": "petit"
+  },
+  {
+   "id": 105,
+   "word": "petites",
+   "stem": "petit"
+  },
+  {
+   "id": 106,
+   "word": "grand",
+   "stem": "grand"
+  },
+  {
+   "id": 107,
+   "word": "grande",
+   "stem": "grand"
+  },
+  {
+   "id": 108,
+   "word": "grands",
+   "stem": "grand"
+  },
+  {
+   "id": 109,
+   "word": "rouge",
+   "stem": "roug"
+  },
+  {
+   "id": 110,
+   "word": "rouges",
+   "stem": "roug"
+  },
+  {
+   "id": 111,
+   "word": "jaune",
+   "stem": "jaun"
+  },
+  {
+   "id": 112,
+   "word": "jaunes",
+   "stem": "jaun"
+  },
+  {
+   "id": 113,
+   "word": "libre",
+   "stem": "libr"
+  },
+  {
+   "id": 114,
+   "word": "libres",
+   "stem": "libr"
+  },
+  {
+   "id": 115,
+   "word": "riche",
+   "stem": "rich"
+  },
+  {
+   "id": 116,
+   "word": "riches",
+   "stem": "rich"
+  },
+  {
+   "id": 117,
+   "word": "connaissance",
+   "stem": "connaiss"
+  },
+  {
+   "id": 118,
+   "word": "puissance",
+   "stem": "puissanc"
+  },
+  {
+   "id": 119,
+   "word": "naissance",
+   "stem": "naissanc"
+  },
+  {
+   "id": 120,
+   "word": "croissance",
+   "stem": "croissanc"
+  },
+  {
+   "id": 121,
+   "word": "assurance",
+   "stem": "assur"
+  },
+  {
+   "id": 122,
+   "word": "facilement",
+   "stem": "facil"
+  },
+  {
+   "id": 123,
+   "word": "difficilement",
+   "stem": "difficil"
+  },
+  {
+   "id": 124,
+   "word": "heureusement",
+   "stem": "heureux"
+  },
+  {
+   "id": 125,
+   "word": "malheureusement",
+   "stem": "malheur"
+  },
+  {
+   "id": 126,
+   "word": "certainement",
+   "stem": "certain"
+  },
+  {
+   "id": 127,
+   "word": "utiliser",
+   "stem": "utilis"
+  },
+  {
+   "id": 128,
+   "word": "utilisé",
+   "stem": "utilis"
+  },
+  {
+   "id": 129,
+   "word": "utilisation",
+   "stem": "utilis"
+  },
+  {
+   "id": 130,
+   "word": "réalisation",
+   "stem": "réalis"
+  },
+  {
+   "id": 131,
+   "word": "réaliser",
+   "stem": "réalis"
+  },
+  {
+   "id": 132,
+   "word": "réalisé",
+   "stem": "réalis"
+  },
+  {
+   "id": 133,
+   "word": "gouvernement",
+   "stem": "gouvern"
+  },
+  {
+   "id": 134,
+   "word": "changement",
+   "stem": "chang"
+  },
+  {
+   "id": 135,
+   "word": "mouvement",
+   "stem": "mouv"
+  },
+  {
+   "id": 136,
+   "word": "sentiment",
+   "stem": "sent"
+  },
+  {
+   "id": 137,
+   "word": "moment",
+   "stem": "moment"
+  },
+  {
+   "id": 138,
+   "word": "document",
+   "stem": "docu"
+  },
+  {
+   "id": 139,
+   "word": "belle",
+   "stem": "bel"
+  },
+  {
+   "id": 140,
+   "word": "belles",
+   "stem": "bel"
+  },
+  {
+   "id": 141,
+   "word": "vieille",
+   "stem": "vieil"
+  },
+  {
+   "id": 142,
+   "word": "nouvelle",
+   "stem": "nouvel"
+  },
+  {
+   "id": 143,
+   "word": "nouvelles",
+   "stem": "nouvel"
+  },
+  {
+   "id": 144,
+   "word": "ancienne",
+   "stem": "ancien"
+  },
+  {
+   "id": 145,
+   "word": "ancien",
+   "stem": "ancien"
+  },
+  {
+   "id": 146,
+   "word": "manière",
+   "stem": "mani"
+  },
+  {
+   "id": 147,
+   "word": "matière",
+   "stem": "mati"
+  },
+  {
+   "id": 148,
+   "word": "lumière",
+   "stem": "lumi"
+  },
+  {
+   "id": 149,
+   "word": "rivière",
+   "stem": "rivi"
+  },
+  {
+   "id": 150,
+   "word": "prière",
+   "stem": "prier"
+  },
+  {
+   "id": 151,
+   "word": "carrière",
+   "stem": "carri"
+  }
+ ]
+}

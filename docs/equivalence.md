@@ -66,6 +66,7 @@ fonction implémentée, jamais rétroactivement (§6.1 du brief).
 |---|---|---|---|
 | `PorterStemmer(mode=ORIGINAL_ALGORITHM).stem(w)` | nltk | `PorterStemmer.Stem(w)` | Algorithme de Porter (1980), 5 étapes. Parité exacte (86 mots). |
 | `SnowballStemmer("english").stem(w)` | nltk | `EnglishSnowballStemmer.Stem(w)` | Porter2 : régions R1/R2, exceptions. Parité exacte (190 mots). |
+| `SnowballStemmer("french").stem(w)` | nltk | `FrenchSnowballStemmer.Stem(w)` | Snowball français : région RV, 6 étapes, entrée normalisée NFC. Parité exacte (152 mots). |
 
 ## Conventions
 

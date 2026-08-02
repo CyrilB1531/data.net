@@ -732,6 +732,53 @@ def generate_snowball_en() -> dict:
     }
 
 
+SNOWBALL_FR_WORDS = [
+    "continuellement", "amoureusement", "national", "nationale", "nationaux", "finalement",
+    "rapidement", "organisation", "organiser", "organisé", "développement", "information",
+    "maison", "maisons", "cheval", "chevaux", "journal", "journaux", "heureuse", "heureux",
+    "finir", "finissait", "finissant", "mangé", "mangée", "mangées", "manger", "mangez",
+    "parlions", "parlait", "parlerons", "chanter", "chantez", "chantait", "chanteront",
+    "beauté", "activité", "possibilité", "capacité", "réalité", "société", "qualité",
+    "important", "importante", "importants", "différent", "différence", "présidence",
+    "gentiment", "vraiment", "seulement", "notamment", "évidemment", "constamment",
+    "production", "création", "administration", "communication", "génération",
+    "technologie", "psychologie", "biologie", "logique", "musique", "physique",
+    "grandeur", "chaleur", "couleur", "douleur", "bonheur", "malheur",
+    "premier", "première", "dernier", "dernière", "policier", "policière",
+    "voiture", "nature", "culture", "structure", "aventure", "peinture",
+    "national", "rationnel", "personnel", "naturel", "culturel", "actuel",
+    "grandir", "choisir", "réussir", "réfléchir", "établir", "accomplir",
+    "aimer", "aimé", "aimait", "aimeront", "aimerais", "donner", "donné", "donnait",
+    "petit", "petite", "petits", "petites", "grand", "grande", "grands",
+    "rouge", "rouges", "jaune", "jaunes", "libre", "libres", "riche", "riches",
+    "connaissance", "puissance", "naissance", "croissance", "assurance",
+    "facilement", "difficilement", "heureusement", "malheureusement", "certainement",
+    "utiliser", "utilisé", "utilisation", "réalisation", "réaliser", "réalisé",
+    "gouvernement", "changement", "mouvement", "sentiment", "moment", "document",
+    "belle", "belles", "vieille", "nouvelle", "nouvelles", "ancienne", "ancien",
+    "manière", "matière", "lumière", "rivière", "prière", "carrière",
+]
+
+
+def generate_snowball_fr() -> dict:
+    from nltk.stem.snowball import SnowballStemmer  # noqa: PLC0415
+
+    stemmer = SnowballStemmer("french")
+    seen = set()
+    words = [w for w in SNOWBALL_FR_WORDS if not (w in seen or seen.add(w))]
+    cases = [{"id": i, "word": w, "stem": stemmer.stem(w)} for i, w in enumerate(words)]
+    return {
+        "metadata": {
+            "algorithm": "FrenchSnowballStemmer",
+            "library": "nltk",
+            "library_version": version("nltk"),
+            "reference_calls": ["nltk.stem.snowball.SnowballStemmer('french')"],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -752,6 +799,7 @@ def main() -> None:
         "hashingvectorizer.json": generate_hashingvectorizer,
         "porter.json": generate_porter,
         "snowball_en.json": generate_snowball_en,
+        "snowball_fr.json": generate_snowball_fr,
     }
     for filename, gen in generators.items():
         payload = gen()

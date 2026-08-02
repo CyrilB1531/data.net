@@ -34,7 +34,7 @@ c'est la carte du projet (utiliser / écrire / trancher).
 | Lot | Contenu | État |
 |---|---|---|
 | 1 | Distances & similarité de chaînes | ✅ **complet** — Levenshtein (+ Myers), OSA, Damerau-Levenshtein, Hamming, Jaro, Jaro-Winkler, Indel, LCS, Ratcliff-Obershelp, Jaccard, Dice, Overlap, Tversky, Cosine, Soundex, Metaphone, NYSIIS |
-| 2 | Tokenisation & vectorisation creuse | 🚧 CSR, tokeniseurs (mot/char/char_wb), CountVectorizer, TfidfVectorizer, HashingVectorizer, Porter, mots vides EN. Reste : Snowball EN/FR |
+| 2 | Tokenisation & vectorisation creuse | ✅ **complet** — CSR, tokeniseurs (mot/char/char_wb), CountVectorizer, TfidfVectorizer, HashingVectorizer, Porter, Snowball EN/FR, mots vides EN |
 | 3 | Embeddings & recherche sémantique (ONNX) | à venir |
 | 4 | Appariement approximatif applicatif (fuzz/process) | à venir |
 
