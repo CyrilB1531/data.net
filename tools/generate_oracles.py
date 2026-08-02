@@ -689,6 +689,49 @@ def generate_porter() -> dict:
     }
 
 
+SNOWBALL_EN_WORDS = PORTER_WORDS + [
+    "generous", "generously", "generation", "communism", "communication", "arsenic",
+    "national", "nationally", "rationalization", "sensational", "consciously",
+    "beautiful", "beautifully", "happily", "quickly", "slowly", "friendly",
+    "management", "development", "government", "measurement", "achievement",
+    "creation", "relation", "position", "decision", "television", "discussion",
+    "activity", "sensitivity", "productivity", "ability", "possibility",
+    "organize", "realize", "recognize", "characterize", "modernize",
+    "connected", "connecting", "connection", "connects", "connect",
+    "studies", "studied", "studying", "study", "cries", "cried", "crying",
+    "agreement", "agreed", "agreeing", "agrees", "agree",
+    "controlling", "controlled", "controls", "control", "rolling", "rolled",
+    "flying", "denying", "trying", "buying", "playing", "enjoying",
+    "hopeful", "careful", "wonderful", "powerful", "successful",
+    "goodness", "happiness", "kindness", "darkness", "weakness",
+    "faithfully", "hopefully", "carefully", "exactly", "absolutely",
+    "biology", "psychology", "technology", "apology", "analogy",
+    "universities", "abilities", "cities", "parties", "countries",
+    "running", "runner", "runs", "swimmer", "swimming", "beginner", "beginning",
+    "european", "america", "france", "england", "computer", "internet",
+    "walking", "talked", "jumped", "wanted", "needed", "worked", "looked",
+]
+
+
+def generate_snowball_en() -> dict:
+    from nltk.stem.snowball import SnowballStemmer  # noqa: PLC0415
+
+    stemmer = SnowballStemmer("english")
+    seen = set()
+    words = [w for w in SNOWBALL_EN_WORDS if not (w in seen or seen.add(w))]
+    cases = [{"id": i, "word": w, "stem": stemmer.stem(w)} for i, w in enumerate(words)]
+    return {
+        "metadata": {
+            "algorithm": "EnglishSnowballStemmer",
+            "library": "nltk",
+            "library_version": version("nltk"),
+            "reference_calls": ["nltk.stem.snowball.SnowballStemmer('english')"],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -708,6 +751,7 @@ def main() -> None:
         "tfidfvectorizer.json": generate_tfidfvectorizer,
         "hashingvectorizer.json": generate_hashingvectorizer,
         "porter.json": generate_porter,
+        "snowball_en.json": generate_snowball_en,
     }
     for filename, gen in generators.items():
         payload = gen()

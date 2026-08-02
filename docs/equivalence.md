@@ -65,6 +65,7 @@ fonction implémentée, jamais rétroactivement (§6.1 du brief).
 | Python | Bibliothèque | C# | Différences |
 |---|---|---|---|
 | `PorterStemmer(mode=ORIGINAL_ALGORITHM).stem(w)` | nltk | `PorterStemmer.Stem(w)` | Algorithme de Porter (1980), 5 étapes. Parité exacte (86 mots). |
+| `SnowballStemmer("english").stem(w)` | nltk | `EnglishSnowballStemmer.Stem(w)` | Porter2 : régions R1/R2, exceptions. Parité exacte (190 mots). |
 
 ## Conventions
 
