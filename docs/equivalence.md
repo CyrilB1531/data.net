@@ -68,6 +68,13 @@ fonction implémentée, jamais rétroactivement (§6.1 du brief).
 | `SnowballStemmer("english").stem(w)` | nltk | `EnglishSnowballStemmer.Stem(w)` | Porter2 : régions R1/R2, exceptions. Parité exacte (190 mots). |
 | `SnowballStemmer("french").stem(w)` | nltk | `FrenchSnowballStemmer.Stem(w)` | Snowball français : région RV, 6 étapes, entrée normalisée NFC. Parité exacte (152 mots). |
 
+## DataNet.Embeddings — tokenisation de sous-mots & pooling
+
+| Python | Bibliothèque | C# | Différences |
+|---|---|---|---|
+| `Tokenizer(WordPiece(vocab)).encode(t)` | tokenizers (HF) | `new WordPieceTokenizer(vocab).Encode(t)` | Plus long préfixe glouton, continuation `##`, `[UNK]`. Pré-tokenisation `\w+\|[^\w\s]+`. Parité exacte. |
+| mean pooling + `F.normalize` | sentence-transformers | `Pooler.MeanPoolAndNormalize(...)` | Moyenne masquée (padding exclu) + normalisation L2. |
+
 ## Conventions
 
 - **Unité de comparaison.** Sauf mention contraire, les distances sur chaînes

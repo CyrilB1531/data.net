@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>DataNet.Embeddings</RootNamespace>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <PackageId>DataNet.Embeddings</PackageId>
+    <Description>Sub-word tokenizers, pooling and semantic (kNN) search for .NET. ONNX Runtime is isolated to this package so DataNet.Text stays dependency-free.</Description>
+    <PackageTags>embeddings;onnx;wordpiece;semantic-search;knn;nlp;datanet</PackageTags>
+  </PropertyGroup>
+
+  <!-- ONNX Runtime will be added in the ONNX session wave; the tokenizers,
+       pooling and kNN search below have no external dependencies. -->
+
+</Project>

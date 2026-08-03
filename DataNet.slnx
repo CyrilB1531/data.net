@@ -3,9 +3,11 @@
     <Project Path="bench/DataNet.Text.Benchmarks/DataNet.Text.Benchmarks.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/DataNet.Embeddings/DataNet.Embeddings.csproj" />
     <Project Path="src/DataNet.Text/DataNet.Text.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/DataNet.Embeddings.Tests/DataNet.Embeddings.Tests.csproj" />
     <Project Path="tests/DataNet.Text.Tests/DataNet.Text.Tests.csproj" />
   </Folder>
 </Solution>

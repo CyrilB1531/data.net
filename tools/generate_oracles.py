@@ -779,6 +779,78 @@ def generate_snowball_fr() -> dict:
     }
 
 
+WORDPIECE_VOCAB = [
+    "[UNK]", "the", "cat", "dog", "play", "un", "love", "run", "quick", "brown",
+    "fox", "jump", "hello", "world", "token", "embed", "semantic", "search", "is",
+    "are", "and", "this", "big", "a", ".", "!", "?",
+    "##s", "##ing", "##ed", "##er", "##aff", "##able", "##ly", "##ner", "##ning",
+    "##ization", "##ize", "##ding", "##dings", "##ger", "##gest", "##a", "##b", "##c",
+]
+WORDPIECE_TEXTS = [
+    "the cats playing",
+    "unaffable",
+    "unknownxyz",
+    "quick brown fox jumps.",
+    "tokenization is embedding embeddings",
+    "hello world!",
+    "the dog runs and the cat plays",
+    "bigger biggest",
+    "lovely love loved lover",
+]
+
+
+def generate_wordpiece() -> dict:
+    from tokenizers import Tokenizer  # noqa: PLC0415
+    from tokenizers.models import WordPiece
+    from tokenizers.pre_tokenizers import Whitespace
+
+    vocab = {tok: i for i, tok in enumerate(WORDPIECE_VOCAB)}
+    wp = WordPiece(vocab, unk_token="[UNK]", max_input_chars_per_word=100)
+    tokenizer = Tokenizer(wp)
+    tokenizer.pre_tokenizer = Whitespace()
+
+    cases = []
+    for i, text in enumerate(WORDPIECE_TEXTS):
+        enc = tokenizer.encode(text)
+        cases.append({"id": i, "text": text, "tokens": enc.tokens, "ids": enc.ids})
+    return {
+        "metadata": {
+            "algorithm": "WordPiece",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "vocab": vocab,
+            "unk_token": "[UNK]",
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+def generate_pooling() -> dict:
+    rng = random.Random(SEED)
+    cases = []
+    for cid, (seq, dim) in enumerate([(4, 6), (5, 8), (3, 4), (6, 5)]):
+        emb = [[rng.uniform(-1, 1) for _ in range(dim)] for _ in range(seq)]
+        mask = [1 if rng.random() < 0.7 or t == 0 else 0 for t in range(seq)]
+        active = sum(mask) or 1
+        pooled = [sum(emb[t][d] for t in range(seq) if mask[t]) / active for d in range(dim)]
+        norm = sum(v * v for v in pooled) ** 0.5
+        normalized = [v / norm for v in pooled] if norm > 0 else pooled
+        cases.append({
+            "id": cid, "seq": seq, "dim": dim,
+            "embeddings": emb, "mask": mask, "pooled_normalized": normalized,
+        })
+    return {
+        "metadata": {
+            "algorithm": "MeanPooling",
+            "library": "reference",
+            "reference_calls": ["mean pool with attention mask + L2 normalize (sentence-transformers recipe)"],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -800,6 +872,8 @@ def main() -> None:
         "porter.json": generate_porter,
         "snowball_en.json": generate_snowball_en,
         "snowball_fr.json": generate_snowball_fr,
+        "wordpiece.json": generate_wordpiece,
+        "pooling.json": generate_pooling,
     }
     for filename, gen in generators.items():
         payload = gen()
