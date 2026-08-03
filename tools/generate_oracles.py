@@ -851,6 +851,39 @@ def generate_pooling() -> dict:
     }
 
 
+def generate_knn() -> dict:
+    import numpy as np  # noqa: PLC0415
+
+    rng = random.Random(SEED)
+    n_items, dim, n_queries, k = 60, 16, 6, 5
+    corpus = [[rng.uniform(-1, 1) for _ in range(dim)] for _ in range(n_items)]
+    queries = [[rng.uniform(-1, 1) for _ in range(dim)] for _ in range(n_queries)]
+
+    c = np.array(corpus, dtype=np.float64)
+    c = c / np.linalg.norm(c, axis=1, keepdims=True)
+    cases = []
+    for i, raw in enumerate(queries):
+        q = np.array(raw, dtype=np.float64)
+        q = q / np.linalg.norm(q)
+        sims = c @ q
+        order = np.argsort(-sims, kind="stable")[:k]
+        results = [{"index": int(j), "score": float(sims[j])} for j in order]
+        cases.append({"id": i, "query": raw, "k": k, "results": results})
+
+    return {
+        "metadata": {
+            "algorithm": "CosineKnn",
+            "library": "numpy",
+            "library_version": version("numpy"),
+            "reference_calls": ["brute-force cosine similarity + argsort"],
+            "dim": dim,
+            "count": len(cases),
+        },
+        "corpus": corpus,
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -874,6 +907,7 @@ def main() -> None:
         "snowball_fr.json": generate_snowball_fr,
         "wordpiece.json": generate_wordpiece,
         "pooling.json": generate_pooling,
+        "knn.json": generate_knn,
     }
     for filename, gen in generators.items():
         payload = gen()
