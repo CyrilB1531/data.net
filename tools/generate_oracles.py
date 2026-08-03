@@ -932,6 +932,42 @@ def generate_fuzz() -> dict:
     }
 
 
+PROCESS_CHOICES = [
+    "new york mets", "new york yankees", "boston red sox", "atlanta braves",
+    "new york knicks", "brooklyn nets", "los angeles lakers", "chicago bulls",
+]
+PROCESS_CASES = [
+    {"query": "new york", "limit": 5, "cutoff": 0.0},
+    {"query": "new york", "limit": 3, "cutoff": 0.0},
+    {"query": "new york mets", "limit": 5, "cutoff": 80.0},
+    {"query": "brooklyn", "limit": 2, "cutoff": 0.0},
+    {"query": "lakers", "limit": 5, "cutoff": 50.0},
+]
+
+
+def generate_process() -> dict:
+    from rapidfuzz import process  # noqa: PLC0415
+
+    cases = []
+    for i, case in enumerate(PROCESS_CASES):
+        res = process.extract(case["query"], PROCESS_CHOICES, limit=case["limit"], score_cutoff=case["cutoff"])
+        cases.append({
+            "id": i, "query": case["query"], "limit": case["limit"], "cutoff": case["cutoff"],
+            "results": [{"choice": c, "score": s, "index": idx} for (c, s, idx) in res],
+        })
+    return {
+        "metadata": {
+            "algorithm": "Process",
+            "library": "rapidfuzz",
+            "library_version": version("rapidfuzz"),
+            "reference_calls": ["rapidfuzz.process.extract (default scorer WRatio)"],
+            "choices": PROCESS_CHOICES,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -957,6 +993,7 @@ def main() -> None:
         "pooling.json": generate_pooling,
         "knn.json": generate_knn,
         "fuzz.json": generate_fuzz,
+        "process.json": generate_process,
     }
     for filename, gen in generators.items():
         payload = gen()

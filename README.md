@@ -35,8 +35,8 @@ c'est la carte du projet (utiliser / écrire / trancher).
 |---|---|---|
 | 1 | Distances & similarité de chaînes | ✅ **complet** — Levenshtein (+ Myers), OSA, Damerau-Levenshtein, Hamming, Jaro, Jaro-Winkler, Indel, LCS, Ratcliff-Obershelp, Jaccard, Dice, Overlap, Tversky, Cosine, Soundex, Metaphone, NYSIIS |
 | 2 | Tokenisation & vectorisation creuse | ✅ **complet** — CSR, tokeniseurs (mot/char/char_wb), CountVectorizer, TfidfVectorizer, HashingVectorizer, Porter, Snowball EN/FR, mots vides EN |
-| 3 | Embeddings & recherche sémantique (ONNX) | à venir |
-| 4 | Appariement approximatif applicatif (fuzz/process) | à venir |
+| 3 | Embeddings & recherche sémantique (ONNX) | 🚧 WordPiece, pooling, kNN SIMD, inférence ONNX. Reste : SentencePiece |
+| 4 | Appariement approximatif applicatif (fuzz/process) | ✅ **complet** — `fuzz.*` (ratio/partial/token_sort/token_set/WRatio), `process.extract`/`extractOne`, déduplication avec blocking |
 
 Toutes les briques du lot 1 sont validées par oracle contre rapidfuzz / jellyfish
 / textdistance / difflib (voir [`docs/equivalence.md`](docs/equivalence.md)).
@@ -76,11 +76,14 @@ développement. Voir [`tools/README.md`](tools/README.md).
 
 ```
 DataNet.sln
-├── src/DataNet.Text/            distances, métriques, tokeniseurs, vectoriseurs
-├── tests/DataNet.Text.Tests/    xUnit : oracles + propriétés
-├── tests/oracles/               corpus JSON figés (générés depuis Python)
+├── src/DataNet.Text/            distances, métriques, tokeniseurs, vectoriseurs, racineurs (sans dépendance)
+├── src/DataNet.Embeddings/      tokeniseurs sous-mots, pooling, kNN SIMD, inférence ONNX (ONNX Runtime isolé ici)
+├── src/DataNet.Fuzzy/           fuzz.*, process.extract, déduplication
+├── tests/                       xUnit : oracles + propriétés (un projet par module)
+├── tests/oracles/               corpus JSON figés (générés depuis Python) + modèle ONNX synthétique
 ├── bench/DataNet.Text.Benchmarks/  BenchmarkDotNet
 ├── tools/generate_oracles.py    génération des références
+├── Directory.Build.props        (racine) ; src|tests/Directory.Packages.props (CPM)
 └── docs/                        guides, tableau d'équivalence, journal de décisions
 ```
 

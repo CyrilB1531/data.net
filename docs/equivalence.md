@@ -86,6 +86,9 @@ fonction implémentée, jamais rétroactivement (§6.1 du brief).
 | `fuzz.token_sort_ratio(a, b)` | rapidfuzz | `Fuzz.TokenSortRatio(a, b)` | Tri des jetons puis `ratio`. |
 | `fuzz.token_set_ratio(a, b)` | rapidfuzz | `Fuzz.TokenSetRatio(a, b)` | Jetons communs vs différences. |
 | `fuzz.WRatio(a, b)` | rapidfuzz | `Fuzz.WRatio(a, b)` | Combinaison pondérée selon le rapport de longueurs. |
+| `process.extract(q, choices, limit=…, score_cutoff=…)` | rapidfuzz | `Process.Extract(q, choices, limit:…, scoreCutoff:…)` | Scoreur par défaut `WRatio`, tri score décroissant (départage par index), seuil, court-circuit. |
+| `process.extractOne(q, choices)` | rapidfuzz | `Process.ExtractOne(q, choices)` | Meilleur candidat ou `null`. |
+| déduplication avec blocking | — (patron applicatif) | `Deduplicator.FindClusters(...)` | Partitionnement par clé de blocking + clôture transitive (union-find). Évite le O(n²). |
 
 ## Conventions
 
