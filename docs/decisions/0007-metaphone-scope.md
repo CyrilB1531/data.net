@@ -1,28 +1,29 @@
-# 0007 — Metaphone : périmètre de validation (mots réels)
+# 0007 — Metaphone: validation scope (real words)
 
-**Statut :** accepté · **Date :** 2026-08-01
+**Status:** accepted · **Date:** 2026-08-01
 
-## Contexte
+## Context
 
-`Metaphone.Encode` reproduit `jellyfish.metaphone` sur les **mots réels** — son
-domaine d'emploi. Contrairement à Soundex et NYSIIS (validés sur 402 entrées, y
-compris des chaînes aléatoires), la Metaphone de jellyfish présente sur des
-**suites de lettres dégénérées** (non-mots : `"ghhh"`, `"Uugb"`, `"xhdzhumzj"`…)
-des comportements propres à son implémentation C, difficiles à distinguer d'une
-bizarrerie et sans valeur pratique à reproduire (ex. traitement des voyelles
-initiales doublées, ou d'un `H` isolé après un digramme déjà consommé).
+`Metaphone.Encode` reproduces `jellyfish.metaphone` on **real words** — its domain
+of use. Unlike Soundex and NYSIIS (validated on 402 inputs, including random
+strings), jellyfish's Metaphone exhibits, on **degenerate letter sequences**
+(non-words: `"ghhh"`, `"Uugb"`, `"xhdzhumzj"`…), behaviors specific to its C
+implementation, hard to distinguish from a quirk and of no practical value to
+reproduce (e.g. handling of doubled initial vowels, or of an isolated `H` after an
+already-consumed digraph).
 
-## Décision
+## Decision
 
-- **Valider Metaphone sur un corpus de mots réels** (`metaphone.json`, ~120 noms
-  et mots anglais choisis pour couvrir les règles : `TH`, `CH`, `SH`, `PH`,
-  `GH`/`GHT`, `GN` final, `KN`/`WR`/`PN` initiaux, `DGE`, `-TION`, `-SION`, `MB`
-  final, `SCH`, `X` initial…). Parité exacte avec jellyfish sur ce corpus.
-- Le corpus aléatoire partagé (`phonetics.json`) reste réservé à Soundex et
-  NYSIIS, qui y atteignent 100 %.
+- **Validate Metaphone on a real-word corpus** (`metaphone.json`, ~120 English
+  names and words chosen to cover the rules: `TH`, `CH`, `SH`, `PH`, `GH`/`GHT`,
+  final `GN`, initial `KN`/`WR`/`PN`, `DGE`, `-TION`, `-SION`, final `MB`, `SCH`,
+  initial `X`…). Exact parity with jellyfish on that corpus.
+- The shared random corpus (`phonetics.json`) stays reserved for Soundex and
+  NYSIIS, which reach 100% on it.
 
-## Conséquences
+## Consequences
 
-- `Metaphone.Encode` est fidèle à jellyfish pour tout mot réel — l'usage visé.
-- Les divergences sur des non-mots adversariaux ne sont pas reproduites ; c'est
-  un écart assumé et documenté (§5 du brief), pas une régression.
+- `Metaphone.Encode` is faithful to jellyfish for any real word — the intended
+  use.
+- Divergences on adversarial non-words are not reproduced; this is a deliberate,
+  documented trade-off (§5 of the brief), not a regression.

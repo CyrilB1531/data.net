@@ -1,86 +1,94 @@
 # Performance
 
-La performance est l'argument de vente face à Python, donc elle est mesurée dès
-le lot 1 avec [BenchmarkDotNet](https://benchmarkdotnet.org/), pas estimée.
+Performance is the selling point against Python, so it is measured from Lot 1 with
+[BenchmarkDotNet](https://benchmarkdotnet.org/), not estimated.
 
-## Reproduire
+## Reproduce
 
 ```bash
 dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter '*Levenshtein*'
+dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter '*VectorizerBenchmarks*' '*FuzzBenchmarks*'
 ```
 
-## Principes appliqués
+## Principles applied
 
-- **`ReadOnlySpan<char>` partout.** Les entrées ne sont jamais copiées ; les
-  littéraux `string` s'y convertissent sans allocation.
-- **`ArrayPool<int>` pour la matrice de programmation dynamique.** La ligne DP est
-  louée puis rendue : **zéro allocation managée par appel**, donc aucune pression
-  sur le GC même sous forte charge.
-- **Ligne DP roulante sur le plus court opérande** → mémoire `O(min(n, m))`.
-- **Rognage des préfixes/suffixes communs** → effondre la bande DP sur les entrées
-  quasi identiques (le cas courant en rapprochement d'enregistrements).
+- **`ReadOnlySpan<char>` everywhere.** Inputs are never copied; `string` literals
+  convert with no allocation.
+- **`ArrayPool<int>` for the dynamic-programming matrices.** The DP row is rented
+  then returned: **zero managed allocation per call**, so no GC pressure even
+  under heavy load.
+- **Rolling DP row on the shorter operand** → `O(min(n, m))` memory.
+- **Common prefix/suffix trimming** → collapses the DP band on near-equal inputs
+  (the common case in record matching).
 
-## Chiffres indicatifs — Levenshtein
+## Levenshtein — indicative numbers
 
-Mesure `--job short` (itérations réduites : les moyennes sont bruitées, mais la
-colonne allocation est fiable). Rejouer en job complet avant publication.
+Short-job measurement (reduced iterations: means are noisy, but the allocation
+column is reliable). Re-run with a full job before quoting.
 
-| Méthode | Longueur | Moyenne | Alloué |
+| Method | Length | Mean | Allocated |
 |---|---|---:|---:|
-| `Distance` (UTF-16) | 8 | ~37 ns | **0 B** |
-| `Distance` (point de code) | 8 | ~208 ns | **0 B** |
-| `Distance` (UTF-16) | 64 | ~7,0 µs | **0 B** |
-| `Distance` (UTF-16) | 512 | ~0,73 ms | **0 B** |
+| `Distance` (UTF-16) | 8 | ~35 ns | **0 B** |
+| `Distance` (code point) | 8 | ~208 ns | **0 B** |
+| `Distance` (UTF-16) | 64 | ~7.0 µs | **0 B** |
+| `Distance` (UTF-16) | 512 | ~0.73 ms | **0 B** |
 
-**Lecture.**
+**Zero allocation** at every size is the structural result. On very short inputs
+the code-point mode costs ~5× the UTF-16 mode (the decode pass dominates when the
+computation itself is tiny); from 64+ characters the gap closes. Hence the choice:
+**UTF-16 by default**, `CodePoint` on demand.
 
-- **Zéro allocation** à toutes les tailles : c'est le résultat structurant.
-- Sur entrées **très courtes** (8), le mode `CodePoint` coûte ~5× le mode UTF-16 :
-  la passe de décodage domine quand le calcul lui-même est minuscule. Dès 64+
-  caractères, l'écart se referme (le décodage devient négligeable devant le DP
-  quadratique). D'où le choix : **UTF-16 par défaut**, `CodePoint` à la demande.
+## Compared to Python (rapidfuzz) — Levenshtein
 
-> Les barres d'erreur du job court sont larges ; ne pas citer ces moyennes comme
-> chiffres définitifs.
+Cross-language bench with **identical methodology on both sides** (same committed
+ASCII corpus, ns/pair throughput, auto-scaling, best-of-5). See
+[`bench/README.md`](../../bench/README.md).
 
-## Comparaison face à Python (rapidfuzz)
+Indicative measurement (rapidfuzz 3.14.5 / Python 3.12; DataNet.Text / .NET 10;
+noisy dev machine — non-authoritative), **after** adding the single-word Myers
+fast path (pattern 16–64, Latin-1):
 
-Banc croisé à **méthodologie identique des deux côtés** (même corpus ASCII
-committé, débit ns/paire, autoscaling, best-of-5). Voir [`bench/README.md`](../../bench/README.md)
-pour lancer :
-
-```bash
-python bench/python/bench_levenshtein.py                       # rapidfuzz
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- compare   # DataNet.Text
-python bench/compare.py                                        # tableau
-```
-
-Mesure indicative (rapidfuzz 3.14.5 / Python 3.12 ; DataNet.Text / .NET 10 ;
-machine de dev bruitée — chiffres non normatifs), **après** l'ajout du chemin
-rapide Myers mono-mot (motif 16–64, Latin-1) :
-
-| Longueur | Python (rapidfuzz) | C# (DataNet.Text) | Rapport | Chemin C# |
+| Length | Python (rapidfuzz) | C# (DataNet.Text) | Ratio | C# path |
 |---:|---:|---:|---|---|
-| 8 | 175 ns/paire | **35 ns/paire** | **5,0× C# plus rapide** | DP |
-| 32 | **309 ns/paire** | ~350 ns/paire | ≈ parité | Myers |
-| 128 | **2,5 µs/paire** | 34 µs/paire | ~14× Python | DP (motif > 64) |
-| 512 | **20 µs/paire** | 630 µs/paire | ~31× Python | DP (motif > 64) |
+| 8 | 175 ns/pair | **35 ns/pair** | **5.0× C# faster** | DP |
+| 32 | **309 ns/pair** | ~350 ns/pair | ≈ parity | Myers |
+| 128 | **2.5 µs/pair** | 34 µs/pair | ~14× Python | DP (pattern > 64) |
+| 512 | **20 µs/pair** | 630 µs/pair | ~31× Python | DP (pattern > 64) |
 
-**Lecture honnête.**
-
-- **Chaînes courtes (≤ ~40)** — le cas typique du rapprochement de noms /
-  identifiants : C# est au niveau ou devant Python. Le mono-mot de Myers a fait
-  passer la tranche 32 de 4,6× *plus lent* à la parité ; sous 16 caractères le DP
-  reste le plus rapide (construire la table d'égalité coûterait plus que le calcul).
-- **Chaînes longues (motif > 64)** — rapidfuzz garde l'avantage : son noyau C
-  utilise le Myers **multi-mots** (`O(nm/w)`), là où l'on retombe sur le DP `O(nm)`.
-  L'écart n'est pas un problème de langage mais d'algorithme.
-- **Fait / à faire.** Le Myers **mono-mot** est livré (chemin rapide de `Distance`,
-  validé par les cas d'oracle BMP). Le Myers **multi-mots** pour les longues
-  chaînes reste au backlog — voir
+- **Short strings (≤ ~40)** — the typical name/identifier matching case: C# is at
+  or ahead of Python. Single-word Myers moved the length-32 bucket from 4.6×
+  *slower* to parity; below 16 characters the DP stays fastest.
+- **Long strings (pattern > 64)** — rapidfuzz keeps the edge: its C core uses
+  **multi-word** Myers (`O(nm/w)`) where we fall back to the DP (`O(nm)`). Not a
+  language problem, an algorithm one.
+- **Done / to do.** Single-word Myers is shipped (fast path of `Distance`,
+  validated by the BMP oracle cases). Multi-word Myers for long strings remains a
+  backlog item — see
   [`../decisions/0004-levenshtein-myers-backlog.md`](../decisions/0004-levenshtein-myers-backlog.md).
 
-> rapidfuzz expose aussi des API **batch** (`process.cdist`) qui amortissent la
-> frontière Python→C : plus rapides que la boucle par-paire mesurée ici. La
-> comparaison ci-dessus reflète l'usage « une paire à la fois » qu'écrit un
-> utilisateur Python courant.
+## Vectorizers and fuzzy matching
+
+Short-job measurement, `[MemoryDiagnoser]` (dev machine — indicative).
+
+**Vectorizers**, fit+transform over a synthetic corpus:
+
+| Method | 200 docs | 1000 docs |
+|---|---:|---:|
+| `CountVectorizer` | ~4.2 ms | ~9.0 ms |
+| `TfidfVectorizer` | ~4.3 ms | ~9.1 ms |
+| `CountVectorizer` (bigrams) | ~4.8 ms | ~14.7 ms |
+| `HashingVectorizer` | ~3.6 ms | ~8.6 ms |
+
+**Fuzzy ratios**, on a ~43-character sentence pair:
+
+| Method | Mean | Allocated |
+|---|---:|---:|
+| `Fuzz.Ratio` | ~2.5 µs | **0 B** |
+| `Fuzz.TokenSortRatio` | ~5.3 µs | 1.3 KB |
+| `Fuzz.TokenSetRatio` | ~15 µs | 5.6 KB |
+| `Fuzz.WRatio` | ~25 µs | 7.0 KB |
+| `Fuzz.PartialRatio` | ~460 µs | 0 B |
+
+> `PartialRatio` is markedly slower: the current sliding-window scan is `O(n·m²)`
+> (a full Indel per window). It is correct and zero-alloc, but a bit-parallel or
+> block-based optimization is a clear backlog item for long inputs.

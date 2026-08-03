@@ -1,52 +1,53 @@
-# Démarrage rapide
+# Quickstart
 
-Comparer deux chaînes en quelques lignes.
+Compare two strings in a few lines.
 
-## Installer
+## Install
 
 ```bash
 dotnet add package DataNet.Text
 ```
 
-> Le paquet n'a **aucune dépendance externe** : c'est du .NET pur, sans Python à
-> l'exécution.
+> The package has **no external dependencies**: it's pure .NET, with no Python at
+> runtime.
 
-## Comparer deux chaînes
+## Compare two strings
 
 ```csharp
 using DataNet.Text.Distances;
 
-// Distance d'édition brute : nombre d'insertions/suppressions/substitutions.
+// Raw edit distance: number of insertions/deletions/substitutions.
 int d = Levenshtein.Distance("kitten", "sitting");     // 3
 
-// Similarité normalisée dans [0, 1] : 1 = identiques.
+// Normalized similarity in [0, 1]: 1 = identical.
 double sim = Levenshtein.NormalizedSimilarity("kitten", "sitting"); // 0.5714…
 
-// Distance normalisée : 1 - similarité.
+// Normalized distance: 1 - similarity.
 double nd = Levenshtein.NormalizedDistance("kitten", "sitting");    // 0.4286…
 ```
 
-Les littéraux `string` se convertissent implicitement en `ReadOnlySpan<char>`,
-donc aucun tampon n'est alloué pour les entrées.
+`string` literals convert implicitly to `ReadOnlySpan<char>`, so no buffer is
+allocated for the inputs.
 
-## Unicode : choisir l'unité de comparaison
+## Unicode: choosing the comparison unit
 
-Par défaut, la comparaison porte sur les **unités UTF-16** (`char`) — le choix
-.NET natif, le plus rapide. Pour reproduire *exactement* le résultat de Python /
-rapidfuzz sur des caractères hors du plan multilingue de base (émojis,
-idéogrammes rares), demander la comparaison par **point de code** :
+By default, comparison is over **UTF-16 units** (`char`) — the native .NET choice
+and the fastest. To reproduce Python / rapidfuzz results *exactly* on characters
+outside the Basic Multilingual Plane (emoji, rare ideographs), request **code
+point** comparison:
 
 ```csharp
-// "a😀" -> "a" : l'émoji est UN point de code, mais DEUX unités UTF-16.
-Levenshtein.Distance("a\U0001F600", "a");                        // 2 (unités UTF-16)
-Levenshtein.Distance("a\U0001F600", "a", TextElement.CodePoint); // 1 (comme Python)
+// "a😀" -> "a": the emoji is ONE code point, but TWO UTF-16 units.
+Levenshtein.Distance("a\U0001F600", "a");                        // 2 (UTF-16 units)
+Levenshtein.Distance("a\U0001F600", "a", TextElement.CodePoint); // 1 (like Python)
 ```
 
-C'est le piège Unicode n°1 du portage depuis Python ; il est documenté en détail
-dans [`../decisions/0002-unicode-comparison-unit.md`](../decisions/0002-unicode-comparison-unit.md).
+This is Unicode pitfall #1 when porting from Python; it's documented in detail in
+[`../decisions/0002-unicode-comparison-unit.md`](../decisions/0002-unicode-comparison-unit.md).
 
-## Et ensuite
+## Next
 
-- [Choisir sa métrique](choisir-sa-metrique.md) _(à venir)_
-- [Migrer depuis rapidfuzz](../migration/README.md)
-- [Tableau d'équivalence Python → C#](../equivalence.md)
+- [From string to vector](vectorization.md) — bag of words, TF-IDF, cosine
+- [Semantic search with embeddings](embeddings.md)
+- [Migrating from rapidfuzz](migrating-from-rapidfuzz.md)
+- [Python → C# equivalence table](../equivalence.md)

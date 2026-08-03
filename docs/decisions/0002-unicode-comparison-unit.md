@@ -1,38 +1,38 @@
-# 0002 — Unité de comparaison Unicode
+# 0002 — Unicode comparison unit
 
-**Statut :** accepté · **Date :** 2026-08-01
+**Status:** accepted · **Date:** 2026-08-01
 
-## Contexte
+## Context
 
-C'est le piège n°1 du portage (§5). En Python 3, une `str` s'itère en **points de
-code**. En C#, une `string` s'itère en **unités UTF-16** : un caractère hors du
-plan multilingue de base (émoji, idéogramme rare) est une paire de substitution
-et occupe deux positions. Une distance d'édition naïve en C# diverge donc de
-Python sur ces entrées.
+This is porting pitfall #1 (§5). In Python 3, a `str` iterates over **code
+points**. In C#, a `string` iterates over **UTF-16 code units**: a character
+outside the Basic Multilingual Plane (emoji, rare ideograph) is a surrogate pair
+and occupies two positions. A naive edit distance in C# therefore diverges from
+Python on such inputs.
 
-Trois unités possibles : unité UTF-16 (`char`), point de code (scalaire Unicode),
-ou grappe de graphèmes (caractère perçu, ex. émoji + modificateur de teint).
+Three possible units: UTF-16 unit (`char`), code point (Unicode scalar), or
+grapheme cluster (perceived character, e.g. emoji + skin-tone modifier).
 
-## Décision
+## Decision
 
-- **Par défaut : unité UTF-16** (`TextElement.Utf16Unit`). C'est le choix .NET
-  natif, sans allocation, et il coïncide avec Python pour tout texte du BMP —
-  soit l'immense majorité des cas réels.
-- **Parité exacte avec Python : point de code** (`TextElement.CodePoint`),
-  proposé sur chaque algorithme concerné. Coût : une passe de décodage en tampon
-  loué (`ArrayPool`). C'est ce mode que rejoue la suite d'oracle (rapidfuzz
-  travaille sur des points de code).
-- **Grappe de graphèmes : différée.** Nécessite `StringInfo`/segmentation, alloue,
-  et n'a pas d'oracle Python direct dans les bibliothèques ciblées. À ajouter si
-  un besoin concret apparaît (ex. comparaison « perçue » d'émojis composites).
+- **Default: UTF-16 unit** (`TextElement.Utf16Unit`). It is the native .NET
+  choice, allocation-free, and agrees with Python for all BMP text — the vast
+  majority of real cases.
+- **Exact parity with Python: code point** (`TextElement.CodePoint`), offered on
+  every affected algorithm. Cost: one decode pass into a pooled buffer
+  (`ArrayPool`). This is the mode the oracle suite replays (rapidfuzz works on
+  code points).
+- **Grapheme cluster: deferred.** Requires `StringInfo`/segmentation, allocates,
+  and has no direct Python oracle in the targeted libraries. To be added if a
+  concrete need appears (e.g. "perceived" comparison of composite emoji).
 
-Les surrogates isolés sont préservés tels quels (valeur d'unité), comme le fait
-une `str` Python, plutôt que de lever une exception.
+Lone surrogates are preserved as-is (unit value), like a Python `str`, rather than
+throwing.
 
-## Conséquences
+## Consequences
 
-- La documentation et le tableau d'équivalence signalent explicitement le mode
-  par défaut et quand passer en `CodePoint`.
-- Les corpus d'oracle sont générés en sémantique point de code et rejoués avec
-  `TextElement.CodePoint` ; des tests unitaires dédiés vérifient la divergence
-  attendue UTF-16 vs point de code sur des entrées supplémentaires.
+- Documentation and the equivalence table explicitly flag the default mode and
+  when to switch to `CodePoint`.
+- Oracle corpora are generated with code-point semantics and replayed with
+  `TextElement.CodePoint`; dedicated unit tests verify the expected UTF-16 vs
+  code-point divergence on supplementary input.

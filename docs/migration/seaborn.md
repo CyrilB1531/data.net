@@ -1,32 +1,31 @@
 # seaborn → .NET
 
-**Verdict : à trancher.** La *capacité* de tracer existe (ScottPlot / Plotly.NET),
-mais les **abstractions statistiques** de seaborn (API tidy, `histplot`/`kdeplot`,
-`regplot`, `heatmap`, `pairplot`, palettes) n'ont pas d'équivalent clé en main :
-on reconstruit chaque graphe. Une fine couche de presets pourrait être écrite si
-le besoin se confirme.
+**Verdict: decide.** The *capability* to plot exists (ScottPlot / Plotly.NET), but
+seaborn's **statistical abstractions** (tidy API, `histplot`/`kdeplot`, `regplot`,
+`heatmap`, `pairplot`, palettes) have no out-of-the-box equivalent: each chart is
+rebuilt. A thin layer of presets could be written if the need is confirmed.
 
-| Besoin seaborn | .NET |
+| seaborn need | .NET |
 |---|---|
-| Histogramme / densité | ScottPlot (`Add.Histogram`) + calcul KDE à la main |
-| Nuage + régression (`regplot`) | ScottPlot : scatter + droite ajustée (Math.NET `Fit.Line`) |
-| Heatmap de corrélation | ScottPlot (`Add.Heatmap`) sur une matrice calculée |
-| `pairplot` | ⚠️ manque — grille de sous-graphes à assembler soi-même |
+| Histogram / density | ScottPlot (`Add.Histogram`) + KDE computed by hand |
+| Scatter + regression (`regplot`) | ScottPlot: scatter + fitted line (Math.NET `Fit.Line`) |
+| Correlation heatmap | ScottPlot (`Add.Heatmap`) over a computed matrix |
+| `pairplot` | ⚠️ gap — assemble the subplot grid yourself |
 
 ```csharp
 using ScottPlot;
 
 var plot = new Plot();
-plot.Add.Histogram(values, binCount: 30);   // pas de KDE automatique
+plot.Add.Histogram(values, binCount: 30);   // no automatic KDE
 plot.SavePng("dist.png", 700, 500);
 ```
 
-## Pièges
+## Pitfalls
 
-- **API tidy absente.** seaborn consomme un `DataFrame` « long » et infère
-  couleurs/facettes ; côté .NET on prépare les séries explicitement.
-- **Presets statistiques manquants** (`kdeplot`, bandes de confiance,
-  `pairplot`) : c'est le vrai delta. Candidat à une petite lib de helpers
-  au-dessus de ScottPlot, *si l'usage réel le demande* — pas avant.
+- **No tidy API.** seaborn consumes a "long" `DataFrame` and infers
+  colors/facets; on the .NET side you prepare the series explicitly.
+- **Missing statistical presets** (`kdeplot`, confidence bands, `pairplot`): that
+  is the real delta. A candidate for a small helper library on top of ScottPlot,
+  *if real usage demands it* — not before.
 
-_Guide à étoffer au fil des besoins réels._
+_Guide to be expanded as real needs arise._

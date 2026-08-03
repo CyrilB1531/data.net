@@ -1,29 +1,29 @@
-# Outils de développement — génération des oracles
+# Development tools — oracle generation
 
-`generate_oracles.py` produit les corpus de référence figés sous
-`tests/oracles/`, à partir des bibliothèques Python canoniques. **Ces
-bibliothèques sont des dépendances de développement uniquement** — jamais
-d'exécution : le livrable C# ne dépend que du JSON committé.
+`generate_oracles.py` produces the frozen reference corpora under
+`tests/oracles/`, from the canonical Python libraries. **These libraries are
+development dependencies only** — never runtime ones: the C# deliverable depends
+only on the committed JSON.
 
-## Régénérer
+## Regenerate
 
 ```bash
 python -m venv .venv-oracles
-. .venv-oracles/bin/activate          # Windows : .venv-oracles\Scripts\activate
+. .venv-oracles/bin/activate          # Windows: .venv-oracles\Scripts\activate
 pip install -r tools/requirements.txt
 python tools/generate_oracles.py
 ```
 
-Le script est **déterministe** (graine fixe, aucun horodatage) : régénérer sur une
-autre machine produit un fichier identique — les diffs restent lisibles et
-révisables. Committer le JSON régénéré fait partie du changement.
+The script is **deterministic** (fixed seed, no timestamps): regenerating on
+another machine produces an identical file — diffs stay readable and reviewable.
+Committing the regenerated JSON is part of the change.
 
-## Règles
+## Rules
 
-- **Sémantique point de code.** rapidfuzz/jellyfish itèrent sur des points de
-  code ; la suite C# rejoue donc avec `TextElement.CodePoint`. Aucun surrogate
-  isolé n'est émis (il ne survivrait pas à l'aller-retour JSON).
-- **Provenance.** On *exécute* ces libs pour générer des données — ce qui ne crée
-  aucun droit sur les sorties — mais on ne **transcrit** aucun code. `python-
-  Levenshtein` (GPL) est exclu même de la génération, par hygiène. Voir
+- **Code-point semantics.** rapidfuzz/jellyfish iterate over code points; the C#
+  suite therefore replays with `TextElement.CodePoint`. No lone surrogate is
+  emitted (it would not survive the JSON round-trip).
+- **Provenance.** We *run* these libraries to generate data — which creates no
+  right over the outputs — but we do not **transcribe** any code. `python-
+  Levenshtein` (GPL) is excluded even from generation, for hygiene. See
   [`../docs/decisions/0003-provenance-and-licensing.md`](../docs/decisions/0003-provenance-and-licensing.md).

@@ -1,30 +1,27 @@
-# 0001 — Cible de framework : `net10.0`
+# 0001 — Target framework: `net10.0`
 
-**Statut :** accepté · **Date :** 2026-08-01 · **Révisé :** 2026-08-01
+**Status:** accepted · **Date:** 2026-08-01 · **Revised:** 2026-08-01
 
-## Contexte
+## Context
 
-Le brief suggérait `net8.0` (LTS). La machine de développement / CI dispose du
-**runtime .NET 10**. Après arbitrage, la cible retenue est explicitement
-**`net10.0`**.
+The brief suggested `net8.0` (LTS). The development / CI machine has the **.NET 10
+runtime**. After weighing it, the chosen target is explicitly **`net10.0`**.
 
-## Décision
+## Decision
 
-- La bibliothèque `DataNet.Text` **et** les projets exécutables (tests,
-  benchmarks) ciblent **`net10.0`**.
-- Le `RollForward` qui servait à exécuter un hôte `net8.0` sur le runtime 10 est
-  **retiré** : il n'a plus lieu d'être puisqu'on cible directement le runtime
-  présent.
-- `netstandard2.0` **non** ajouté : aucun consommateur .NET Framework / Unity
-  identifié. À reconsidérer si un tel besoin apparaît (coût : polyfills pour
-  `Span`, `ArrayPool`, etc.).
+- The `DataNet.Text` library **and** the executable projects (tests, benchmarks)
+  target **`net10.0`**.
+- The `RollForward` that let a `net8.0` host run on the 10 runtime is **removed**:
+  it's no longer needed since we target the runtime that's present.
+- `netstandard2.0` **not** added: no .NET Framework / Unity consumer identified.
+  Reconsider if such a need appears (cost: polyfills for `Span`, `ArrayPool`, etc.).
 
-## Conséquences
+## Consequences
 
-- Compilation et packaging visent des consommateurs **`net10.0+`**. C'est un
-  choix assumé en faveur des dernières API et performances runtime, au prix d'une
-  portée plus étroite que `net8.0` LTS. Si un consommateur sur LTS 8 se présente,
-  ajouter `net8.0` au `TargetFrameworks` (multi-ciblage) plutôt que de rétrograder.
-- Le comportement testé est celui du runtime 10, à l'identique du runtime de
-  production ciblé — plus de décalage test/prod introduit par le roll-forward.
-- La CI installe le SDK **10.0.x**.
+- Building and packaging target **`net10.0+`** consumers. This is a deliberate
+  choice favoring the latest APIs and runtime performance, at the price of a
+  narrower reach than `net8.0` LTS. If an LTS-8 consumer appears, add `net8.0` to
+  `TargetFrameworks` (multi-targeting) rather than downgrading.
+- The behavior under test is that of the 10 runtime, identical to the targeted
+  production runtime — no test/prod gap introduced by roll-forward.
+- CI installs the **10.0.x** SDK.

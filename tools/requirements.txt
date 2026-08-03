@@ -1,4 +1,4 @@
-# Dependencies for DEVELOPMENT only (oracle generation).
+# DEVELOPMENT-only dependencies (oracle generation).
 # Not part of the distributed package. Permissive licenses (MIT / BSD / Apache).
 # python-Levenshtein (GPL) is deliberately excluded — see docs/decisions/0003.
 rapidfuzz>=3.14,<4
@@ -8,5 +8,6 @@ scikit-learn>=1.9,<2
 nltk>=3.9,<4
 tokenizers>=0.23,<1
 numpy>=1.26
+sentencepiece>=0.2,<1
 # onnx is only needed to (re)build the tiny synthetic test model, not for
 # generate_oracles.py: onnx>=1.16

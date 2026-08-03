@@ -1,15 +1,15 @@
 # statsmodels → .NET
 
-**Verdict : à trancher.** Le socle (régression linéaire, distributions, tests de
-base) existe ; l'**économétrie riche** (GLM détaillés, ARIMA/SARIMAX, modèles
-mixtes, résumés type R avec p-values et intervalles) n'a **pas** de bon
-équivalent .NET. C'est un candidat à du code natif *si votre usage le justifie*.
+**Verdict: decide.** The foundation (linear regression, distributions, basic
+tests) exists; **rich econometrics** (detailed GLMs, ARIMA/SARIMAX, mixed models,
+R-style summaries with p-values and confidence intervals) has **no** good .NET
+equivalent. It is a candidate for native code *if your usage justifies it*.
 
-| Besoin statsmodels | .NET |
+| statsmodels need | .NET |
 |---|---|
-| Régression linéaire, moindres carrés | **Math.NET Numerics** (`Fit`, `MultipleRegression`) |
-| Distributions, tests d'hypothèse de base | **Math.NET** (`Distributions`), Accord.NET |
-| GLM avancés, séries temporelles, résumés économétriques | ⚠️ **manque** — à écrire ou à contourner |
+| Linear regression, least squares | **Math.NET Numerics** (`Fit`, `MultipleRegression`) |
+| Distributions, basic hypothesis tests | **Math.NET** (`Distributions`), Accord.NET |
+| Advanced GLMs, time series, econometric summaries | ⚠️ **gap** — write or work around |
 
 ```csharp
 using MathNet.Numerics;
@@ -19,15 +19,15 @@ using MathNet.Numerics;
 double r2 = GoodnessOfFit.RSquared(xs.Select(x => a + b * x), ys);
 ```
 
-## Pièges
+## Pitfalls
 
-- **Pas de « summary() » riche.** Erreurs standard, IC, p-values des
-  coefficients ne sont pas fournis clés en main : à calculer soi-même (matrice de
-  covariance des estimateurs) ou à porter.
-- **Séries temporelles.** Rien d'équivalent à `SARIMAX`/`statespace` : soit on
-  restreint le périmètre, soit c'est un lot natif à part entière.
+- **No rich `summary()`.** Standard errors, confidence intervals, coefficient
+  p-values are not provided out of the box: compute them yourself (the estimator
+  covariance matrix) or port them.
+- **Time series.** Nothing equivalent to `SARIMAX`/`statespace`: either restrict
+  the scope, or make it a native lot of its own.
 
-> Avant tout développement natif ici, confronter au **besoin réel** : souvent une
-> régression + quelques tests suffisent, et Math.NET couvre déjà.
+> Before any native development here, weigh the **real need**: a regression plus a
+> few tests is often enough, and Math.NET already covers that.
 
-_Guide à étoffer au fil des besoins réels._
+_Guide to be expanded as real needs arise._

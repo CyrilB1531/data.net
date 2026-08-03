@@ -1,12 +1,12 @@
 # pandas → .NET
 
-**Verdict : utiliser, en acceptant plus de rugosité.** L'équivalent existe mais
-il est moins mûr et moins ergonomique que pandas ; prévoir de la colle.
+**Verdict: use it, accepting more roughness.** The equivalent exists but is less
+mature and less ergonomic than pandas; expect some glue.
 
-| Besoin pandas | .NET recommandé |
+| pandas need | Recommended .NET |
 |---|---|
-| `DataFrame` général, IO CSV, colonnes typées | **`Microsoft.Data.Analysis`** |
-| Séries temporelles, indices riches | **Deedle** (origine F#, excellent en time series) |
+| General `DataFrame`, CSV IO, typed columns | **`Microsoft.Data.Analysis`** |
+| Time series, rich indices | **Deedle** (F# origin, excellent at time series) |
 
 ```bash
 dotnet add package Microsoft.Data.Analysis
@@ -20,15 +20,15 @@ df["price"] = df["price"].Multiply(1.2);
 DataFrame expensive = df.Filter(df["price"].ElementwiseGreaterThan(100));
 ```
 
-## Pièges
+## Pitfalls
 
-- **`groupby` / `pivot`.** Moins complet et moins fluide que pandas ; parfois
-  plus simple de faire le regroupement en LINQ sur les colonnes.
-- **Index.** Pas d'index d'étiquettes façon pandas dans `Microsoft.Data.Analysis`
-  (indexation positionnelle). Deedle s'en rapproche davantage.
-- **Valeurs manquantes.** Gestion des `null`/NaN différente de pandas ; vérifier
-  colonne par colonne.
-- **Colle DataNet.** Une passerelle `DataFrame` ↔ matrice creuse
-  (`DataNet.Text`) est prévue quand le lot 2 (vectorisation) atterrira.
+- **`groupby` / `pivot`.** Less complete and less fluent than pandas; sometimes
+  it's simpler to group with LINQ over the columns.
+- **Index.** No label index like pandas in `Microsoft.Data.Analysis` (positional
+  indexing). Deedle is closer.
+- **Missing values.** `null`/NaN handling differs from pandas; check column by
+  column.
+- **DataNet glue.** A `DataFrame` ↔ sparse-matrix bridge (`DataNet.Text`) is
+  planned to connect vectorization with tabular data.
 
-_Guide à étoffer au fil des besoins réels._
+_Guide to be expanded as real needs arise._

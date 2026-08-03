@@ -1,47 +1,48 @@
 # DataNet
 
-Une boîte à outils **data science pour C#/.NET**, dans une philosophie honnête :
+A **data-science toolkit for C#/.NET**, built on an honest premise:
 
-> On ne réécrit pas Python. On **utilise** l'écosystème .NET là où il est bon, et
-> on n'**écrit du code natif** que là où .NET a un trou réel : le **texte**
-> (similarité, vectorisation, recherche sémantique). Le tout **sans Python à
-> l'exécution**.
+> Don't rewrite Python. Use the .NET ecosystem where it's strong, and write native
+> code only where .NET has a real gap: **text** (similarity, vectorization,
+> semantic search). All of it **with no Python at runtime**.
 
-## Pourquoi
+## Why
 
-Python domine l'analyse de données par son écosystème et son flux exploratoire,
-pas par le langage — ses performances viennent de noyaux C/Fortran. C# apporte le
-typage statique, un vrai parallélisme sans GIL, un refactoring sûr et un
-déploiement simple. Le seul frein objectif dans le domaine du texte était
-l'absence de bibliothèque .NET équivalente. DataNet lève ce frein.
+Python dominates data analysis through its ecosystem and its exploratory notebook
+workflow — not through the language itself; its performance comes from C/Fortran
+kernels. C# brings static typing, real parallelism without a global interpreter
+lock, safe refactoring, and simple deployment. The only objective reason to stay
+on Python for this domain was the lack of an equivalent .NET library. DataNet
+removes that reason.
 
-## Deux livrables
+## Two deliverables
 
-1. **Code natif** là où c'est un trou → le paquet [`DataNet.Text`](src/DataNet.Text)
-   (distances de chaînes, vectorisation, embeddings, fuzzy) — allocation-lean,
-   `Span`, SIMD, zéro dépendance externe.
-2. **Guides de migration** « je viens de Python » → [`docs/migration/`](docs/migration/README.md),
-   qui pour chaque besoin (NumPy, pandas, scikit-learn, statsmodels, PyTorch,
-   matplotlib, seaborn) indique la brique .NET à utiliser et les pièges.
+1. **Native code** where there's a gap → the packages below (string distances,
+   vectorization, embeddings, fuzzy matching) — allocation-lean, `Span`-based,
+   SIMD, zero external dependencies in the core.
+2. **Migration guides** for people coming from Python → [`docs/migration/`](docs/migration/README.md),
+   which, for each need (NumPy, pandas, scikit-learn, statsmodels, PyTorch,
+   matplotlib, seaborn), points to the right .NET building block and the pitfalls.
 
-Voir l'[**inventaire de migration à trois colonnes**](docs/migration/README.md) :
-c'est la carte du projet (utiliser / écrire / trancher).
+See the [**three-column migration inventory**](docs/migration/README.md): it's the
+project map (use / build / decide).
 
-> Cible : **.NET 10** (`net10.0`). Voir [`docs/decisions/0001`](docs/decisions/0001-target-framework.md).
+> Target: **.NET 10** (`net10.0`). See [`docs/decisions/0001`](docs/decisions/0001-target-framework.md).
 
-## État
+## Status — every lot of the project brief is delivered
 
-| Lot | Contenu | État |
+| Lot | Contents | Status |
 |---|---|---|
-| 1 | Distances & similarité de chaînes | ✅ **complet** — Levenshtein (+ Myers), OSA, Damerau-Levenshtein, Hamming, Jaro, Jaro-Winkler, Indel, LCS, Ratcliff-Obershelp, Jaccard, Dice, Overlap, Tversky, Cosine, Soundex, Metaphone, NYSIIS |
-| 2 | Tokenisation & vectorisation creuse | ✅ **complet** — CSR, tokeniseurs (mot/char/char_wb), CountVectorizer, TfidfVectorizer, HashingVectorizer, Porter, Snowball EN/FR, mots vides EN |
-| 3 | Embeddings & recherche sémantique (ONNX) | ✅ **complet** — WordPiece, **SentencePiece**, pooling, kNN SIMD, inférence ONNX |
-| 4 | Appariement approximatif applicatif (fuzz/process) | ✅ **complet** — `fuzz.*` (ratio/partial/token_sort/token_set/WRatio), `process.extract`/`extractOne`, déduplication avec blocking |
+| 1 | String distances & similarity | ✅ **complete** — Levenshtein (+ Myers), OSA, Damerau-Levenshtein, Hamming, Jaro, Jaro-Winkler, Indel, LCS, Ratcliff-Obershelp, Jaccard, Dice, Overlap, Tversky, Cosine, Soundex, Metaphone, NYSIIS |
+| 2 | Tokenization & sparse vectorization | ✅ **complete** — CSR, tokenizers (word/char/char_wb), CountVectorizer, TfidfVectorizer, HashingVectorizer, Porter, Snowball EN/FR, English stop words |
+| 3 | Embeddings & semantic search | ✅ **complete** — WordPiece, SentencePiece, pooling, SIMD kNN, ONNX inference |
+| 4 | Applied fuzzy matching | ✅ **complete** — `fuzz.*` (ratio/partial/token_sort/token_set/WRatio), `process.extract`/`extractOne`, blocking deduplication |
 
-Toutes les briques du lot 1 sont validées par oracle contre rapidfuzz / jellyfish
-/ textdistance / difflib (voir [`docs/equivalence.md`](docs/equivalence.md)).
+Every building block is oracle-validated against rapidfuzz / jellyfish /
+textdistance / difflib / scikit-learn / nltk / HuggingFace tokenizers /
+sentencepiece / numpy / ONNX Runtime (see [`docs/equivalence.md`](docs/equivalence.md)).
 
-## Démarrer
+## Getting started
 
 ```bash
 dotnet add package DataNet.Text
@@ -54,44 +55,46 @@ Levenshtein.Distance("kitten", "sitting");             // 3
 Levenshtein.NormalizedSimilarity("kitten", "sitting"); // 0.5714…
 ```
 
-Guide complet : [`docs/guides/quickstart.md`](docs/guides/quickstart.md).
+Full guide: [`docs/guides/quickstart.md`](docs/guides/quickstart.md). See also the
+[vectorization](docs/guides/vectorization.md), [embeddings](docs/guides/embeddings.md)
+and [fuzzy-matching](docs/guides/migrating-from-rapidfuzz.md) guides.
 
-## Développer
+## Developing
 
 ```bash
-dotnet build                                   # compile la solution
-dotnet test                                    # rejoue les oracles + tests de propriétés
+dotnet build                                   # build the solution
+dotnet test                                    # replay oracles + property tests
 dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter '*Levenshtein*'
 ```
 
-### Validation par oracles
+### Oracle validation
 
-La conformité au comportement Python est **prouvée**, pas supposée (§4 du brief) :
-`tools/generate_oracles.py` fige quelques milliers de cas de référence issus de
-rapidfuzz/jellyfish dans `tests/oracles/*.json` (versionnés) ; la suite C# les
-rejoue avec une tolérance de `1e-9`. Python n'est qu'une dépendance de
-développement. Voir [`tools/README.md`](tools/README.md).
+Conformance to Python behavior is **proven**, not assumed (§4 of the brief):
+`tools/generate_oracles.py` freezes a few thousand reference cases from
+rapidfuzz/jellyfish/etc. into `tests/oracles/*.json` (versioned); the C# suite
+replays them with a `1e-9` tolerance. Python is a development-only dependency. See
+[`tools/README.md`](tools/README.md).
 
 ## Structure
 
 ```
 DataNet.sln
-├── src/DataNet.Text/            distances, métriques, tokeniseurs, vectoriseurs, racineurs (sans dépendance)
-├── src/DataNet.Embeddings/      tokeniseurs sous-mots, pooling, kNN SIMD, inférence ONNX (ONNX Runtime isolé ici)
-├── src/DataNet.Fuzzy/           fuzz.*, process.extract, déduplication
-├── tests/                       xUnit : oracles + propriétés (un projet par module)
-├── tests/oracles/               corpus JSON figés (générés depuis Python) + modèle ONNX synthétique
+├── src/DataNet.Text/            distances, metrics, tokenizers, vectorizers, stemmers (no dependencies)
+├── src/DataNet.Embeddings/      sub-word tokenizers, pooling, SIMD kNN, ONNX inference (ONNX Runtime isolated here)
+├── src/DataNet.Fuzzy/           fuzz.*, process.extract, deduplication
+├── tests/                       xUnit: oracles + properties (one project per module)
+├── tests/oracles/               frozen JSON corpora (generated from Python) + a synthetic ONNX model
 ├── bench/DataNet.Text.Benchmarks/  BenchmarkDotNet
-├── tools/generate_oracles.py    génération des références
-├── Directory.Build.props        (racine) ; src|tests/Directory.Packages.props (CPM)
-└── docs/                        guides, tableau d'équivalence, journal de décisions
+├── tools/generate_oracles.py    reference generation
+├── Directory.Build.props        (root); src|tests/Directory.Packages.props (central package management)
+└── docs/                        guides, equivalence table, decision log
 ```
 
-## Licence
+## License
 
-[Apache-2.0](LICENSE). Voir [`NOTICE`](NOTICE) et
-[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) pour les attributions. Le choix
-de licence et la règle de provenance du code sont documentés dans
+[Apache-2.0](LICENSE). See [`NOTICE`](NOTICE) and
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) for attributions. The license
+choice and the code-provenance rule are documented in
 [`docs/decisions/0003-provenance-and-licensing.md`](docs/decisions/0003-provenance-and-licensing.md).
 
-_Ce dépôt ne constitue pas un avis juridique._
+_This repository is not legal advice._
