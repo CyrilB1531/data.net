@@ -1,0 +1,53 @@
+name: Release
+
+# Publishes the NuGet packages to GitHub Packages when a version tag is pushed,
+# e.g.:  git tag v0.1.0 && git push origin v0.1.0
+#
+# GitHub Packages authenticates with the automatic GITHUB_TOKEN — no nuget.org
+# account and no manually-created API key are required.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Derive version from tag
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Test
+        run: dotnet test --configuration Release
+
+      - name: Pack
+        run: |
+          for proj in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
+            dotnet pack "$proj" --configuration Release -o artifacts \
+              -p:Version=${{ steps.version.outputs.value }}
+          done
+
+      - name: Push to GitHub Packages
+        run: |
+          dotnet nuget push "artifacts/*.nupkg" \
+            --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+            --api-key "${{ secrets.GITHUB_TOKEN }}" \
+            --skip-duplicate
+
+      - name: Upload packages as build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: artifacts/*.nupkg

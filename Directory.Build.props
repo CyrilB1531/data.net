@@ -8,13 +8,27 @@
     <Deterministic>true</Deterministic>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
-    <!-- Provenance / packaging metadata (§10). -->
-    <Company>TextSimilarity contributors</Company>
-    <Authors>TextSimilarity contributors</Authors>
-    <Copyright>Copyright 2026 TextSimilarity contributors</Copyright>
+    <!-- Package identity / provenance (§10). -->
+    <Version>0.1.0</Version>
+    <Company>DataNet contributors</Company>
+    <Authors>DataNet contributors</Authors>
+    <Copyright>Copyright 2026 DataNet contributors</Copyright>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/CyrilB1531/data.net</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/CyrilB1531/data.net</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!-- Symbols + deterministic CI builds for a clean published package. -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
+
+  <!-- Ship the repository README inside every published package (NuGet renders it). -->
+  <ItemGroup Condition="'$(IsPackable)' != 'false'">
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
 
 </Project>

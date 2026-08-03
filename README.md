@@ -90,6 +90,37 @@ DataNet.sln
 └── docs/                        guides, equivalence table, decision log
 ```
 
+## Publishing
+
+Three NuGet packages are produced: `DataNet.Text`, `DataNet.Embeddings`,
+`DataNet.Fuzzy`. Package metadata (version, license, README, repository) is shared
+in `Directory.Build.props`.
+
+**GitHub Packages** (no nuget.org account needed — uses GitHub's automatic token).
+Tag a version and push; the [`release`](.github/workflows/release.yml) workflow
+packs and publishes:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+To consume them, add a source pointing at the owner's feed (with a GitHub token
+that has `read:packages`):
+
+```bash
+dotnet nuget add source "https://nuget.pkg.github.com/CyrilB1531/index.json" \
+  --name github --username CyrilB1531 --password <GITHUB_TOKEN>
+dotnet add package DataNet.Text
+```
+
+**nuget.org** (optional, needs a free account + API key). Once you have a key:
+
+```bash
+dotnet pack src/DataNet.Text -c Release -o artifacts
+dotnet nuget push "artifacts/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key <KEY>
+```
+
 ## License
 
 [Apache-2.0](LICENSE). See [`NOTICE`](NOTICE) and

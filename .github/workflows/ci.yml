@@ -31,7 +31,10 @@ jobs:
           --logger "trx;LogFileName=test-results.trx"
 
       - name: Pack
-        run: dotnet pack src/DataNet.Text/DataNet.Text.csproj --configuration Release --no-build --output ./artifacts
+        run: |
+          for proj in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
+            dotnet pack "$proj" --configuration Release --no-build --output ./artifacts
+          done
 
       - name: Upload test results
         if: always()
