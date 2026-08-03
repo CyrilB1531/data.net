@@ -35,7 +35,7 @@ c'est la carte du projet (utiliser / écrire / trancher).
 |---|---|---|
 | 1 | Distances & similarité de chaînes | ✅ **complet** — Levenshtein (+ Myers), OSA, Damerau-Levenshtein, Hamming, Jaro, Jaro-Winkler, Indel, LCS, Ratcliff-Obershelp, Jaccard, Dice, Overlap, Tversky, Cosine, Soundex, Metaphone, NYSIIS |
 | 2 | Tokenisation & vectorisation creuse | ✅ **complet** — CSR, tokeniseurs (mot/char/char_wb), CountVectorizer, TfidfVectorizer, HashingVectorizer, Porter, Snowball EN/FR, mots vides EN |
-| 3 | Embeddings & recherche sémantique (ONNX) | 🚧 WordPiece, pooling, kNN SIMD, inférence ONNX. Reste : SentencePiece |
+| 3 | Embeddings & recherche sémantique (ONNX) | ✅ **complet** — WordPiece, **SentencePiece**, pooling, kNN SIMD, inférence ONNX |
 | 4 | Appariement approximatif applicatif (fuzz/process) | ✅ **complet** — `fuzz.*` (ratio/partial/token_sort/token_set/WRatio), `process.extract`/`extractOne`, déduplication avec blocking |
 
 Toutes les briques du lot 1 sont validées par oracle contre rapidfuzz / jellyfish

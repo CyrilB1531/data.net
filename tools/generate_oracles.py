@@ -968,6 +968,35 @@ def generate_process() -> dict:
     }
 
 
+def generate_sentencepiece() -> dict:
+    import sentencepiece as spm  # noqa: PLC0415
+
+    sp = spm.SentencePieceProcessor(model_file=str(ORACLE_DIR / "tiny_sp.model"))
+    vocab = [{"piece": sp.id_to_piece(i), "score": sp.get_score(i), "id": i} for i in range(sp.get_piece_size())]
+    texts = [
+        "the quick brown fox", "tokenization", "hello world",
+        "machine learning and data science", "the cat sat on the mat",
+        "natural language processing", "xyzabc", "a b c",
+        "unigram models find the best segmentation", "programming",
+    ]
+    cases = [
+        {"id": k, "text": t, "pieces": sp.encode(t, out_type=str), "ids": sp.encode(t, out_type=int)}
+        for k, t in enumerate(texts)
+    ]
+    return {
+        "metadata": {
+            "algorithm": "SentencePiece",
+            "library": "sentencepiece",
+            "library_version": version("sentencepiece"),
+            "model": "tiny_sp.model (self-trained unigram, identity normalizer)",
+            "unk_id": sp.unk_id(),
+            "vocab": vocab,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -992,6 +1021,7 @@ def main() -> None:
         "wordpiece.json": generate_wordpiece,
         "pooling.json": generate_pooling,
         "knn.json": generate_knn,
+        "sentencepiece.json": generate_sentencepiece,
         "fuzz.json": generate_fuzz,
         "process.json": generate_process,
     }
