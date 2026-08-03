@@ -75,6 +75,7 @@ fonction implémentée, jamais rétroactivement (§6.1 du brief).
 | `Tokenizer(WordPiece(vocab)).encode(t)` | tokenizers (HF) | `new WordPieceTokenizer(vocab).Encode(t)` | Plus long préfixe glouton, continuation `##`, `[UNK]`. Pré-tokenisation `\w+\|[^\w\s]+`. Parité exacte. |
 | mean pooling + `F.normalize` | sentence-transformers | `Pooler.MeanPoolAndNormalize(...)` | Moyenne masquée (padding exclu) + normalisation L2. |
 | `util.semantic_search` / `corpus @ query` | sentence-transformers / numpy | `new EmbeddingIndex(dim).Search(q, k)` | Cosinus exhaustif vectorisé SIMD. Top-k, départage par index croissant. |
+| `onnxruntime.InferenceSession(...).run(...)` + pooling | onnxruntime | `new OnnxTextEmbedder(path).Embed(ids, mask)` | Charge un modèle ONNX (poids non redistribués), exécute, mean-pool + L2. Passe `token_type_ids` seulement si le modèle le déclare. |
 
 ## Conventions
 

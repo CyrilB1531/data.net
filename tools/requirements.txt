@@ -6,3 +6,7 @@ jellyfish>=1.2,<2
 textdistance>=4.6,<5
 scikit-learn>=1.9,<2
 nltk>=3.9,<4
+tokenizers>=0.23,<1
+numpy>=1.26
+# onnx is only needed to (re)build the tiny synthetic test model, not for
+# generate_oracles.py: onnx>=1.16

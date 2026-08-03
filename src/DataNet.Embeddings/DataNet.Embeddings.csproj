@@ -10,7 +10,10 @@
     <PackageTags>embeddings;onnx;wordpiece;semantic-search;knn;nlp;datanet</PackageTags>
   </PropertyGroup>
 
-  <!-- ONNX Runtime will be added in the ONNX session wave; the tokenizers,
-       pooling and kNN search below have no external dependencies. -->
+  <!-- ONNX Runtime is the one external dependency, isolated to this package so
+       DataNet.Text stays dependency-free. Only the OnnxTextEmbedder type uses it. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
+  </ItemGroup>
 
 </Project>
