@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/DataNet.Text/DataNet.Text.csproj" />
+    <ProjectReference Include="../../src/DataNet.Fuzzy/DataNet.Fuzzy.csproj" />
   </ItemGroup>
 
 </Project>
