@@ -4,10 +4,12 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/DataNet.Embeddings/DataNet.Embeddings.csproj" />
+    <Project Path="src/DataNet.Fuzzy/DataNet.Fuzzy.csproj" />
     <Project Path="src/DataNet.Text/DataNet.Text.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/DataNet.Embeddings.Tests/DataNet.Embeddings.Tests.csproj" />
+    <Project Path="tests/DataNet.Fuzzy.Tests/DataNet.Fuzzy.Tests.csproj" />
     <Project Path="tests/DataNet.Text.Tests/DataNet.Text.Tests.csproj" />
   </Folder>
 </Solution>

@@ -77,6 +77,16 @@ fonction implémentée, jamais rétroactivement (§6.1 du brief).
 | `util.semantic_search` / `corpus @ query` | sentence-transformers / numpy | `new EmbeddingIndex(dim).Search(q, k)` | Cosinus exhaustif vectorisé SIMD. Top-k, départage par index croissant. |
 | `onnxruntime.InferenceSession(...).run(...)` + pooling | onnxruntime | `new OnnxTextEmbedder(path).Embed(ids, mask)` | Charge un modèle ONNX (poids non redistribués), exécute, mean-pool + L2. Passe `token_type_ids` seulement si le modèle le déclare. |
 
+## DataNet.Fuzzy — appariement approximatif applicatif
+
+| Python | Bibliothèque | C# | Différences |
+|---|---|---|---|
+| `fuzz.ratio(a, b)` | rapidfuzz | `Fuzz.Ratio(a, b)` | Similarité Indel ×100. Sensible à la casse (aucun prétraitement, comme rapidfuzz). |
+| `fuzz.partial_ratio(a, b)` | rapidfuzz | `Fuzz.PartialRatio(a, b)` | Meilleure fenêtre glissante (plus court sur plus long ; les deux sens si longueurs égales). |
+| `fuzz.token_sort_ratio(a, b)` | rapidfuzz | `Fuzz.TokenSortRatio(a, b)` | Tri des jetons puis `ratio`. |
+| `fuzz.token_set_ratio(a, b)` | rapidfuzz | `Fuzz.TokenSetRatio(a, b)` | Jetons communs vs différences. |
+| `fuzz.WRatio(a, b)` | rapidfuzz | `Fuzz.WRatio(a, b)` | Combinaison pondérée selon le rapport de longueurs. |
+
 ## Conventions
 
 - **Unité de comparaison.** Sauf mention contraire, les distances sur chaînes

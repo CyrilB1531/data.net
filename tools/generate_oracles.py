@@ -884,6 +884,54 @@ def generate_knn() -> dict:
     }
 
 
+FUZZ_PAIRS = [
+    ("fuzzy wuzzy was a bear", "wuzzy fuzzy was a bear"),
+    ("new york mets", "new york mets"),
+    ("new york mets", "the wonderful new york mets"),
+    ("mariners vs angels", "los angeles angels of anaheim at seattle mariners"),
+    ("hello world", "world hello"),
+    ("a", "ab"), ("", ""), ("abc", "abcd"),
+    ("Hello", "hello"), ("New York!", "york new"),
+    ("the quick brown fox", "the brown quick fox"),
+    ("apple", "apple pie"), ("apple pie", "apple"),
+    ("data science", "science of data"), ("machine learning", "learning machine models"),
+    ("kitten", "sitting"), ("levenshtein", "levenstein"),
+    ("this is a test", "this is a test!"),
+    ("one two three four", "four three two one"),
+    ("café", "cafe"), ("naïve", "naive"),
+    ("abcdefgh", "abcdefgh"), ("abcdefgh", "hgfedcba"),
+    ("python programming", "programming in python"),
+    ("the cat", "cat"), ("supercalifragilistic", "super"),
+    ("john smith", "smith, john"), ("jonathan", "john"),
+    ("123 main st", "123 main street"), ("dr smith", "doctor smith"),
+]
+
+
+def generate_fuzz() -> dict:
+    from rapidfuzz import fuzz  # noqa: PLC0415
+
+    cases = []
+    for i, (a, b) in enumerate(FUZZ_PAIRS):
+        cases.append({
+            "id": i, "a": a, "b": b,
+            "ratio": fuzz.ratio(a, b),
+            "partial_ratio": fuzz.partial_ratio(a, b),
+            "token_sort_ratio": fuzz.token_sort_ratio(a, b),
+            "token_set_ratio": fuzz.token_set_ratio(a, b),
+            "wratio": fuzz.WRatio(a, b),
+        })
+    return {
+        "metadata": {
+            "algorithm": "Fuzz",
+            "library": "rapidfuzz",
+            "library_version": version("rapidfuzz"),
+            "reference_calls": ["rapidfuzz.fuzz.{ratio,partial_ratio,token_sort_ratio,token_set_ratio,WRatio}"],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -908,6 +956,7 @@ def main() -> None:
         "wordpiece.json": generate_wordpiece,
         "pooling.json": generate_pooling,
         "knn.json": generate_knn,
+        "fuzz.json": generate_fuzz,
     }
     for filename, gen in generators.items():
         payload = gen()

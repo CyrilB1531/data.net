@@ -1,0 +1,313 @@
+{
+ "metadata": {
+  "algorithm": "Fuzz",
+  "library": "rapidfuzz",
+  "library_version": "3.14.5",
+  "reference_calls": [
+   "rapidfuzz.fuzz.{ratio,partial_ratio,token_sort_ratio,token_set_ratio,WRatio}"
+  ],
+  "count": 30
+ },
+ "cases": [
+  {
+   "id": 0,
+   "a": "fuzzy wuzzy was a bear",
+   "b": "wuzzy fuzzy was a bear",
+   "ratio": 90.9090909090909,
+   "partial_ratio": 93.02325581395348,
+   "token_sort_ratio": 100.0,
+   "token_set_ratio": 100.0,
+   "wratio": 95.0
+  },
+  {
+   "id": 1,
+   "a": "new york mets",
+   "b": "new york mets",
+   "ratio": 100.0,
+   "partial_ratio": 100.0,
+   "token_sort_ratio": 100.0,
+   "token_set_ratio": 100.0,
+   "wratio": 100.0
+  },
+  {
+   "id": 2,
+   "a": "new york mets",
+   "b": "the wonderful new york mets",
+   "ratio": 65.0,
+   "partial_ratio": 100.0,
+   "token_sort_ratio": 65.0,
+   "token_set_ratio": 100.0,
+   "wratio": 90.0
+  },
+  {
+   "id": 3,
+   "a": "mariners vs angels",
+   "b": "los angeles angels of anaheim at seattle mariners",
+   "ratio": 35.820895522388064,
+   "partial_ratio": 61.53846153846154,
+   "token_sort_ratio": 50.74626865671642,
+   "token_set_ratio": 90.9090909090909,
+   "wratio": 85.5
+  },
+  {
+   "id": 4,
+   "a": "hello world",
+   "b": "world hello",
+   "ratio": 45.45454545454546,
+   "partial_ratio": 62.5,
+   "token_sort_ratio": 100.0,
+   "token_set_ratio": 100.0,
+   "wratio": 95.0
+  },
+  {
+   "id": 5,
+   "a": "a",
+   "b": "ab",
+   "ratio": 66.66666666666667,
+   "partial_ratio": 100.0,
+   "token_sort_ratio": 66.66666666666667,
+   "token_set_ratio": 66.66666666666666,
+   "wratio": 90.0
+  },
+  {
+   "id": 6,
+   "a": "",
+   "b": "",
+   "ratio": 100.0,
+   "partial_ratio": 100.0,
+   "token_sort_ratio": 100.0,
+   "token_set_ratio": 0.0,
+   "wratio": 0.0
+  },
+  {
+   "id": 7,
+   "a": "abc",
+   "b": "abcd",
+   "ratio": 85.71428571428572,
+   "partial_ratio": 100.0,
+   "token_sort_ratio": 85.71428571428572,
+   "token_set_ratio": 85.71428571428571,
+   "wratio": 85.71428571428572
+  },
+  {
+   "id": 8,
+   "a": "Hello",
+   "b": "hello",
+   "ratio": 80.0,
+   "partial_ratio": 88.88888888888889,
+   "token_sort_ratio": 80.0,
+   "token_set_ratio": 80.0,
+   "wratio": 80.0
+  },
+  {
+   "id": 9,
+   "a": "New York!",
+   "b": "york new",
+   "ratio": 35.29411764705882,
+   "partial_ratio": 50.0,
+   "token_sort_ratio": 70.58823529411764,
+   "token_set_ratio": 70.58823529411765,
+   "wratio": 67.05882352941177
+  },
+  {
+   "id": 10,
+   "a": "the quick brown fox",
+   "b": "the brown quick fox",
+   "ratio": 68.42105263157895,
+   "partial_ratio": 68.96551724137932,
+   "token_sort_ratio": 100.0,
+   "token_set_ratio": 100.0,
+   "wratio": 95.0
+  },
+  {
+   "id": 11,
+   "a": "apple",
+   "b": "apple pie",
+   "ratio": 71.42857142857143,
+   "partial_ratio": 100.0,
+   "token_sort_ratio": 71.42857142857143,
+   "token_set_ratio": 100.0,
+   "wratio": 90.0
+  },
+  {
+   "id": 12,
+   "a": "apple pie",
+   "b": "apple",
+   "ratio": 71.42857142857143,
+   "partial_ratio": 100.0,
+   "token_sort_ratio": 71.42857142857143,
+   "token_set_ratio": 100.0,
+   "wratio": 90.0
+  },
+  {
+   "id": 13,
+   "a": "data science",
+   "b": "science of data",
+   "ratio": 51.85185185185186,
+   "partial_ratio": 73.6842105263158,
+   "token_sort_ratio": 88.88888888888889,
+   "token_set_ratio": 100.0,
+   "wratio": 95.0
+  },
+  {
+   "id": 14,
+   "a": "machine learning",
+   "b": "learning machine models",
+   "ratio": 46.15384615384615,
+   "partial_ratio": 66.66666666666667,
+   "token_sort_ratio": 82.05128205128204,
+   "token_set_ratio": 100.0,
+   "wratio": 95.0
+  },
+  {
+   "id": 15,
+   "a": "kitten",
+   "b": "sitting",
+   "ratio": 61.53846153846154,
+   "partial_ratio": 66.66666666666667,
+   "token_sort_ratio": 61.53846153846154,
+   "token_set_ratio": 61.53846153846154,
+   "wratio": 61.53846153846154
+  },
+  {
+   "id": 16,
+   "a": "levenshtein",
+   "b": "levenstein",
+   "ratio": 95.23809523809523,
+   "partial_ratio": 90.0,
+   "token_sort_ratio": 95.23809523809523,
+   "token_set_ratio": 95.23809523809524,
+   "wratio": 95.23809523809523
+  },
+  {
+   "id": 17,
+   "a": "this is a test",
+   "b": "this is a test!",
+   "ratio": 96.55172413793103,
+   "partial_ratio": 100.0,
+   "token_sort_ratio": 96.55172413793103,
+   "token_set_ratio": 96.55172413793103,
+   "wratio": 96.55172413793103
+  },
+  {
+   "id": 18,
+   "a": "one two three four",
+   "b": "four three two one",
+   "ratio": 50.0,
+   "partial_ratio": 60.0,
+   "token_sort_ratio": 100.0,
+   "token_set_ratio": 100.0,
+   "wratio": 95.0
+  },
+  {
+   "id": 19,
+   "a": "café",
+   "b": "cafe",
+   "ratio": 75.0,
+   "partial_ratio": 85.71428571428572,
+   "token_sort_ratio": 75.0,
+   "token_set_ratio": 75.0,
+   "wratio": 75.0
+  },
+  {
+   "id": 20,
+   "a": "naïve",
+   "b": "naive",
+   "ratio": 80.0,
+   "partial_ratio": 80.0,
+   "token_sort_ratio": 80.0,
+   "token_set_ratio": 80.0,
+   "wratio": 80.0
+  },
+  {
+   "id": 21,
+   "a": "abcdefgh",
+   "b": "abcdefgh",
+   "ratio": 100.0,
+   "partial_ratio": 100.0,
+   "token_sort_ratio": 100.0,
+   "token_set_ratio": 100.0,
+   "wratio": 100.0
+  },
+  {
+   "id": 22,
+   "a": "abcdefgh",
+   "b": "hgfedcba",
+   "ratio": 12.5,
+   "partial_ratio": 22.22222222222222,
+   "token_sort_ratio": 12.5,
+   "token_set_ratio": 12.5,
+   "wratio": 12.5
+  },
+  {
+   "id": 23,
+   "a": "python programming",
+   "b": "programming in python",
+   "ratio": 56.41025641025641,
+   "partial_ratio": 75.86206896551724,
+   "token_sort_ratio": 92.3076923076923,
+   "token_set_ratio": 100.0,
+   "wratio": 95.0
+  },
+  {
+   "id": 24,
+   "a": "the cat",
+   "b": "cat",
+   "ratio": 60.0,
+   "partial_ratio": 100.0,
+   "token_sort_ratio": 60.0,
+   "token_set_ratio": 100.0,
+   "wratio": 90.0
+  },
+  {
+   "id": 25,
+   "a": "supercalifragilistic",
+   "b": "super",
+   "ratio": 40.0,
+   "partial_ratio": 100.0,
+   "token_sort_ratio": 40.0,
+   "token_set_ratio": 40.0,
+   "wratio": 90.0
+  },
+  {
+   "id": 26,
+   "a": "john smith",
+   "b": "smith, john",
+   "ratio": 47.61904761904761,
+   "partial_ratio": 66.66666666666667,
+   "token_sort_ratio": 95.23809523809523,
+   "token_set_ratio": 95.23809523809524,
+   "wratio": 90.47619047619048
+  },
+  {
+   "id": 27,
+   "a": "jonathan",
+   "b": "john",
+   "ratio": 66.66666666666667,
+   "partial_ratio": 85.71428571428572,
+   "token_sort_ratio": 66.66666666666667,
+   "token_set_ratio": 66.66666666666666,
+   "wratio": 77.14285714285715
+  },
+  {
+   "id": 28,
+   "a": "123 main st",
+   "b": "123 main street",
+   "ratio": 84.61538461538461,
+   "partial_ratio": 100.0,
+   "token_sort_ratio": 84.61538461538461,
+   "token_set_ratio": 84.61538461538461,
+   "wratio": 84.61538461538461
+  },
+  {
+   "id": 29,
+   "a": "dr smith",
+   "b": "doctor smith",
+   "ratio": 80.0,
+   "partial_ratio": 93.33333333333333,
+   "token_sort_ratio": 80.0,
+   "token_set_ratio": 80.0,
+   "wratio": 85.5
+  }
+ ]
+}
