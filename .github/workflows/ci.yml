@@ -79,10 +79,12 @@ jobs:
 
       - name: Regenerate oracles and check for drift
         run: |
-          # --only-binary :all: refuses source distributions, so no setup.py from a
-          # downloaded package executes. Verified that every pinned dependency
-          # publishes wheels.
-          pip install --only-binary :all: -r tools/requirements.txt
+          # Install from the generated lock, not the human-edited input:
+          #   --require-hashes    every artefact must match a recorded hash, which
+          #                       also pins the transitive graph (nltk pulls regex,
+          #                       scikit-learn pulls scipy, and so on)
+          #   --only-binary :all: no source distribution, so no setup.py executes
+          pip install --only-binary :all: --require-hashes -r tools/requirements.lock.txt
           python tools/generate_oracles.py
           if ! git diff --quiet -- tests/oracles; then
             echo "::error::Committed oracle corpora differ from a fresh generation. Run tools/generate_oracles.py and commit the result."
