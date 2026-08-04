@@ -851,6 +851,28 @@ SNOWBALL_PT_WORDS = [
 ]
 
 
+SNOWBALL_IT_WORDS = [
+    "speranza", "speranze", "musico", "musica", "musici", "musiche",
+    "realismo", "realismi", "amabile", "amabili", "possibile", "possibili",
+    "artista", "artisti", "formoso", "formosa", "formosi", "formose",
+    "conoscimento", "sentimento", "sentimenti",
+    "computatore", "computatori", "generazione", "generazioni",
+    "lavoratore", "lavoratori", "importante", "importanti", "distanza", "distanze",
+    "biologia", "biologie", "soluzione", "soluzioni", "rivoluzione", "rivoluzioni",
+    "esistenza", "esistenze", "pazienza",
+    "rapidamente", "chiaramente", "effettivamente", "attivamente",
+    "realmente", "generalmente", "possibilmente",
+    "citta", "città", "capacita", "capacità", "attivita", "attività",
+    "attiva", "attivo", "attive", "attivi", "creativo", "creativa",
+    "cantare", "canto", "canti", "cantiamo", "cantarono", "cantava", "canterebbe",
+    "cantando", "cantato", "cantata", "cantate", "cantati",
+    "credere", "credi", "crediamo", "credono", "credendo", "creduto",
+    "finire", "finisci", "finiamo", "finirono", "finendo", "finito",
+    "casa", "case", "libro", "libri", "carta", "carte", "sole", "mare",
+    "paese", "paesi", "caffè", "abbandonare", "abbandonato",
+]
+
+
 def _snowball_corpus(language: str, algorithm: str, words: list[str]) -> dict:
     """Freeze nltk's Snowball output for one language into an oracle payload."""
     from nltk.stem.snowball import SnowballStemmer  # noqa: PLC0415
@@ -877,6 +899,10 @@ def generate_snowball_es() -> dict:
 
 def generate_snowball_pt() -> dict:
     return _snowball_corpus("portuguese", "PortugueseSnowballStemmer", SNOWBALL_PT_WORDS)
+
+
+def generate_snowball_it() -> dict:
+    return _snowball_corpus("italian", "ItalianSnowballStemmer", SNOWBALL_IT_WORDS)
 
 
 WORDPIECE_VOCAB = [
@@ -1121,6 +1147,7 @@ def main() -> None:
         "snowball_fr.json": generate_snowball_fr,
         "snowball_es.json": generate_snowball_es,
         "snowball_pt.json": generate_snowball_pt,
+        "snowball_it.json": generate_snowball_it,
         "wordpiece.json": generate_wordpiece,
         "pooling.json": generate_pooling,
         "knn.json": generate_knn,

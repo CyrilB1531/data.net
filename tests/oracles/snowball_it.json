@@ -1,0 +1,493 @@
+{
+ "metadata": {
+  "algorithm": "ItalianSnowballStemmer",
+  "library": "nltk",
+  "library_version": "3.10.1",
+  "reference_calls": [
+   "nltk.stem.snowball.SnowballStemmer('italian')"
+  ],
+  "count": 96
+ },
+ "cases": [
+  {
+   "id": 0,
+   "word": "speranza",
+   "stem": "speranz"
+  },
+  {
+   "id": 1,
+   "word": "speranze",
+   "stem": "speranz"
+  },
+  {
+   "id": 2,
+   "word": "musico",
+   "stem": "music"
+  },
+  {
+   "id": 3,
+   "word": "musica",
+   "stem": "music"
+  },
+  {
+   "id": 4,
+   "word": "musici",
+   "stem": "music"
+  },
+  {
+   "id": 5,
+   "word": "musiche",
+   "stem": "music"
+  },
+  {
+   "id": 6,
+   "word": "realismo",
+   "stem": "realism"
+  },
+  {
+   "id": 7,
+   "word": "realismi",
+   "stem": "realism"
+  },
+  {
+   "id": 8,
+   "word": "amabile",
+   "stem": "amabil"
+  },
+  {
+   "id": 9,
+   "word": "amabili",
+   "stem": "amabil"
+  },
+  {
+   "id": 10,
+   "word": "possibile",
+   "stem": "possibil"
+  },
+  {
+   "id": 11,
+   "word": "possibili",
+   "stem": "possibil"
+  },
+  {
+   "id": 12,
+   "word": "artista",
+   "stem": "artist"
+  },
+  {
+   "id": 13,
+   "word": "artisti",
+   "stem": "artist"
+  },
+  {
+   "id": 14,
+   "word": "formoso",
+   "stem": "formos"
+  },
+  {
+   "id": 15,
+   "word": "formosa",
+   "stem": "formos"
+  },
+  {
+   "id": 16,
+   "word": "formosi",
+   "stem": "formos"
+  },
+  {
+   "id": 17,
+   "word": "formose",
+   "stem": "formos"
+  },
+  {
+   "id": 18,
+   "word": "conoscimento",
+   "stem": "conosc"
+  },
+  {
+   "id": 19,
+   "word": "sentimento",
+   "stem": "sent"
+  },
+  {
+   "id": 20,
+   "word": "sentimenti",
+   "stem": "sent"
+  },
+  {
+   "id": 21,
+   "word": "computatore",
+   "stem": "comput"
+  },
+  {
+   "id": 22,
+   "word": "computatori",
+   "stem": "comput"
+  },
+  {
+   "id": 23,
+   "word": "generazione",
+   "stem": "gener"
+  },
+  {
+   "id": 24,
+   "word": "generazioni",
+   "stem": "gener"
+  },
+  {
+   "id": 25,
+   "word": "lavoratore",
+   "stem": "lavor"
+  },
+  {
+   "id": 26,
+   "word": "lavoratori",
+   "stem": "lavor"
+  },
+  {
+   "id": 27,
+   "word": "importante",
+   "stem": "import"
+  },
+  {
+   "id": 28,
+   "word": "importanti",
+   "stem": "import"
+  },
+  {
+   "id": 29,
+   "word": "distanza",
+   "stem": "distanz"
+  },
+  {
+   "id": 30,
+   "word": "distanze",
+   "stem": "distanz"
+  },
+  {
+   "id": 31,
+   "word": "biologia",
+   "stem": "biolog"
+  },
+  {
+   "id": 32,
+   "word": "biologie",
+   "stem": "biolog"
+  },
+  {
+   "id": 33,
+   "word": "soluzione",
+   "stem": "soluzion"
+  },
+  {
+   "id": 34,
+   "word": "soluzioni",
+   "stem": "soluzion"
+  },
+  {
+   "id": 35,
+   "word": "rivoluzione",
+   "stem": "rivolu"
+  },
+  {
+   "id": 36,
+   "word": "rivoluzioni",
+   "stem": "rivolu"
+  },
+  {
+   "id": 37,
+   "word": "esistenza",
+   "stem": "esistt"
+  },
+  {
+   "id": 38,
+   "word": "esistenze",
+   "stem": "esistt"
+  },
+  {
+   "id": 39,
+   "word": "pazienza",
+   "stem": "pazienz"
+  },
+  {
+   "id": 40,
+   "word": "rapidamente",
+   "stem": "rapid"
+  },
+  {
+   "id": 41,
+   "word": "chiaramente",
+   "stem": "chiar"
+  },
+  {
+   "id": 42,
+   "word": "effettivamente",
+   "stem": "effett"
+  },
+  {
+   "id": 43,
+   "word": "attivamente",
+   "stem": "attiv"
+  },
+  {
+   "id": 44,
+   "word": "realmente",
+   "stem": "realment"
+  },
+  {
+   "id": 45,
+   "word": "generalmente",
+   "stem": "general"
+  },
+  {
+   "id": 46,
+   "word": "possibilmente",
+   "stem": "possibil"
+  },
+  {
+   "id": 47,
+   "word": "citta",
+   "stem": "citt"
+  },
+  {
+   "id": 48,
+   "word": "città",
+   "stem": "citt"
+  },
+  {
+   "id": 49,
+   "word": "capacita",
+   "stem": "capac"
+  },
+  {
+   "id": 50,
+   "word": "capacità",
+   "stem": "capac"
+  },
+  {
+   "id": 51,
+   "word": "attivita",
+   "stem": "attiv"
+  },
+  {
+   "id": 52,
+   "word": "attività",
+   "stem": "attiv"
+  },
+  {
+   "id": 53,
+   "word": "attiva",
+   "stem": "attiv"
+  },
+  {
+   "id": 54,
+   "word": "attivo",
+   "stem": "attiv"
+  },
+  {
+   "id": 55,
+   "word": "attive",
+   "stem": "attiv"
+  },
+  {
+   "id": 56,
+   "word": "attivi",
+   "stem": "attiv"
+  },
+  {
+   "id": 57,
+   "word": "creativo",
+   "stem": "creat"
+  },
+  {
+   "id": 58,
+   "word": "creativa",
+   "stem": "creat"
+  },
+  {
+   "id": 59,
+   "word": "cantare",
+   "stem": "cant"
+  },
+  {
+   "id": 60,
+   "word": "canto",
+   "stem": "cant"
+  },
+  {
+   "id": 61,
+   "word": "canti",
+   "stem": "cant"
+  },
+  {
+   "id": 62,
+   "word": "cantiamo",
+   "stem": "cant"
+  },
+  {
+   "id": 63,
+   "word": "cantarono",
+   "stem": "cant"
+  },
+  {
+   "id": 64,
+   "word": "cantava",
+   "stem": "cant"
+  },
+  {
+   "id": 65,
+   "word": "canterebbe",
+   "stem": "cant"
+  },
+  {
+   "id": 66,
+   "word": "cantando",
+   "stem": "cant"
+  },
+  {
+   "id": 67,
+   "word": "cantato",
+   "stem": "cant"
+  },
+  {
+   "id": 68,
+   "word": "cantata",
+   "stem": "cant"
+  },
+  {
+   "id": 69,
+   "word": "cantate",
+   "stem": "cant"
+  },
+  {
+   "id": 70,
+   "word": "cantati",
+   "stem": "cant"
+  },
+  {
+   "id": 71,
+   "word": "credere",
+   "stem": "cred"
+  },
+  {
+   "id": 72,
+   "word": "credi",
+   "stem": "cred"
+  },
+  {
+   "id": 73,
+   "word": "crediamo",
+   "stem": "cred"
+  },
+  {
+   "id": 74,
+   "word": "credono",
+   "stem": "cred"
+  },
+  {
+   "id": 75,
+   "word": "credendo",
+   "stem": "cred"
+  },
+  {
+   "id": 76,
+   "word": "creduto",
+   "stem": "cred"
+  },
+  {
+   "id": 77,
+   "word": "finire",
+   "stem": "fin"
+  },
+  {
+   "id": 78,
+   "word": "finisci",
+   "stem": "fin"
+  },
+  {
+   "id": 79,
+   "word": "finiamo",
+   "stem": "fin"
+  },
+  {
+   "id": 80,
+   "word": "finirono",
+   "stem": "fin"
+  },
+  {
+   "id": 81,
+   "word": "finendo",
+   "stem": "fin"
+  },
+  {
+   "id": 82,
+   "word": "finito",
+   "stem": "fin"
+  },
+  {
+   "id": 83,
+   "word": "casa",
+   "stem": "cas"
+  },
+  {
+   "id": 84,
+   "word": "case",
+   "stem": "cas"
+  },
+  {
+   "id": 85,
+   "word": "libro",
+   "stem": "libr"
+  },
+  {
+   "id": 86,
+   "word": "libri",
+   "stem": "libr"
+  },
+  {
+   "id": 87,
+   "word": "carta",
+   "stem": "cart"
+  },
+  {
+   "id": 88,
+   "word": "carte",
+   "stem": "cart"
+  },
+  {
+   "id": 89,
+   "word": "sole",
+   "stem": "sol"
+  },
+  {
+   "id": 90,
+   "word": "mare",
+   "stem": "mar"
+  },
+  {
+   "id": 91,
+   "word": "paese",
+   "stem": "paes"
+  },
+  {
+   "id": 92,
+   "word": "paesi",
+   "stem": "paes"
+  },
+  {
+   "id": 93,
+   "word": "caffè",
+   "stem": "caff"
+  },
+  {
+   "id": 94,
+   "word": "abbandonare",
+   "stem": "abbandon"
+  },
+  {
+   "id": 95,
+   "word": "abbandonato",
+   "stem": "abbandon"
+  }
+ ]
+}
