@@ -1,5 +1,9 @@
 namespace DataNet.Internal;
 
+
+// CA2249 (use string.Contains instead of IndexOf): circular here — this file IS
+// the netstandard2.0 polyfill for Contains(char), so it cannot call it.
+#pragma warning disable CA2249
 /// <summary>
 /// Polyfill extensions for the <see cref="string"/> char overloads that exist on
 /// net10 but not on netstandard2.0. On net10 the built-in instance methods take

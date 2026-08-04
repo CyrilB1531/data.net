@@ -49,7 +49,7 @@ public static class Nysiis
         {
             s = "N" + s[2..];
         }
-        else if (s.StartsWith("K", StringComparison.Ordinal))
+        else if (s.StartsWith('K'))
         {
             s = "C" + s[1..];
         }

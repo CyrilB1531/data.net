@@ -17,6 +17,9 @@ public static class LevenshteinCrossLang
     private const double MinTimeSeconds = 0.5;
     private const int RepeatCount = 5;
 
+    // Cached: JsonSerializerOptions is expensive to construct and caches metadata.
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+
     public static void Run(string[] args)
     {
         // Resolve paths relative to the current working directory (repo root when
@@ -55,7 +58,7 @@ public static class LevenshteinCrossLang
         };
 
         Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
-        File.WriteAllText(outPath, JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true }) + "\n");
+        File.WriteAllText(outPath, JsonSerializer.Serialize(payload, JsonOptions) + "\n");
         Console.WriteLine($"-> {outPath}");
     }
 
