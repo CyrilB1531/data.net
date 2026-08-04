@@ -1,0 +1,538 @@
+{
+ "metadata": {
+  "algorithm": "PortugueseSnowballStemmer",
+  "library": "nltk",
+  "library_version": "3.10.1",
+  "reference_calls": [
+   "nltk.stem.snowball.SnowballStemmer('portuguese')"
+  ],
+  "count": 105
+ },
+ "cases": [
+  {
+   "id": 0,
+   "word": "esperança",
+   "stem": "esper"
+  },
+  {
+   "id": 1,
+   "word": "esperanças",
+   "stem": "esper"
+  },
+  {
+   "id": 2,
+   "word": "musico",
+   "stem": "music"
+  },
+  {
+   "id": 3,
+   "word": "musica",
+   "stem": "music"
+  },
+  {
+   "id": 4,
+   "word": "musicos",
+   "stem": "music"
+  },
+  {
+   "id": 5,
+   "word": "musicas",
+   "stem": "music"
+  },
+  {
+   "id": 6,
+   "word": "realismo",
+   "stem": "realism"
+  },
+  {
+   "id": 7,
+   "word": "amável",
+   "stem": "amável"
+  },
+  {
+   "id": 8,
+   "word": "amáveis",
+   "stem": "amáv"
+  },
+  {
+   "id": 9,
+   "word": "possível",
+   "stem": "possível"
+  },
+  {
+   "id": 10,
+   "word": "possíveis",
+   "stem": "possív"
+  },
+  {
+   "id": 11,
+   "word": "artista",
+   "stem": "artist"
+  },
+  {
+   "id": 12,
+   "word": "artistas",
+   "stem": "artist"
+  },
+  {
+   "id": 13,
+   "word": "formoso",
+   "stem": "formos"
+  },
+  {
+   "id": 14,
+   "word": "formosa",
+   "stem": "formos"
+  },
+  {
+   "id": 15,
+   "word": "formosos",
+   "stem": "formos"
+  },
+  {
+   "id": 16,
+   "word": "formosas",
+   "stem": "formos"
+  },
+  {
+   "id": 17,
+   "word": "conhecimento",
+   "stem": "conhec"
+  },
+  {
+   "id": 18,
+   "word": "conhecimentos",
+   "stem": "conhec"
+  },
+  {
+   "id": 19,
+   "word": "sentimento",
+   "stem": "sentiment"
+  },
+  {
+   "id": 20,
+   "word": "sentimentos",
+   "stem": "sentiment"
+  },
+  {
+   "id": 21,
+   "word": "computador",
+   "stem": "comput"
+  },
+  {
+   "id": 22,
+   "word": "computadores",
+   "stem": "comput"
+  },
+  {
+   "id": 23,
+   "word": "geração",
+   "stem": "geraçã"
+  },
+  {
+   "id": 24,
+   "word": "gerações",
+   "stem": "geraçõ"
+  },
+  {
+   "id": 25,
+   "word": "trabalhador",
+   "stem": "trabalh"
+  },
+  {
+   "id": 26,
+   "word": "trabalhadores",
+   "stem": "trabalh"
+  },
+  {
+   "id": 27,
+   "word": "importante",
+   "stem": "import"
+  },
+  {
+   "id": 28,
+   "word": "importantes",
+   "stem": "import"
+  },
+  {
+   "id": 29,
+   "word": "distância",
+   "stem": "distânc"
+  },
+  {
+   "id": 30,
+   "word": "distâncias",
+   "stem": "distânc"
+  },
+  {
+   "id": 31,
+   "word": "biologia",
+   "stem": "biolog"
+  },
+  {
+   "id": 32,
+   "word": "biologias",
+   "stem": "biolog"
+  },
+  {
+   "id": 33,
+   "word": "solução",
+   "stem": "soluçã"
+  },
+  {
+   "id": 34,
+   "word": "soluções",
+   "stem": "soluçõ"
+  },
+  {
+   "id": 35,
+   "word": "revolução",
+   "stem": "revolu"
+  },
+  {
+   "id": 36,
+   "word": "revoluções",
+   "stem": "revolu"
+  },
+  {
+   "id": 37,
+   "word": "existência",
+   "stem": "existent"
+  },
+  {
+   "id": 38,
+   "word": "existências",
+   "stem": "existent"
+  },
+  {
+   "id": 39,
+   "word": "paciência",
+   "stem": "paciênc"
+  },
+  {
+   "id": 40,
+   "word": "rapidamente",
+   "stem": "rapid"
+  },
+  {
+   "id": 41,
+   "word": "claramente",
+   "stem": "clar"
+  },
+  {
+   "id": 42,
+   "word": "efetivamente",
+   "stem": "efet"
+  },
+  {
+   "id": 43,
+   "word": "ativamente",
+   "stem": "ativ"
+  },
+  {
+   "id": 44,
+   "word": "realmente",
+   "stem": "realment"
+  },
+  {
+   "id": 45,
+   "word": "geralmente",
+   "stem": "geral"
+  },
+  {
+   "id": 46,
+   "word": "possivelmente",
+   "stem": "possivel"
+  },
+  {
+   "id": 47,
+   "word": "cidade",
+   "stem": "cidad"
+  },
+  {
+   "id": 48,
+   "word": "cidades",
+   "stem": "cidad"
+  },
+  {
+   "id": 49,
+   "word": "capacidade",
+   "stem": "capac"
+  },
+  {
+   "id": 50,
+   "word": "capacidades",
+   "stem": "capac"
+  },
+  {
+   "id": 51,
+   "word": "atividade",
+   "stem": "ativ"
+  },
+  {
+   "id": 52,
+   "word": "atividades",
+   "stem": "ativ"
+  },
+  {
+   "id": 53,
+   "word": "ativa",
+   "stem": "ativ"
+  },
+  {
+   "id": 54,
+   "word": "ativo",
+   "stem": "ativ"
+  },
+  {
+   "id": 55,
+   "word": "ativas",
+   "stem": "ativ"
+  },
+  {
+   "id": 56,
+   "word": "ativos",
+   "stem": "ativ"
+  },
+  {
+   "id": 57,
+   "word": "criativo",
+   "stem": "criativ"
+  },
+  {
+   "id": 58,
+   "word": "criativa",
+   "stem": "criativ"
+  },
+  {
+   "id": 59,
+   "word": "cantar",
+   "stem": "cant"
+  },
+  {
+   "id": 60,
+   "word": "canto",
+   "stem": "cant"
+  },
+  {
+   "id": 61,
+   "word": "cantas",
+   "stem": "cant"
+  },
+  {
+   "id": 62,
+   "word": "cantamos",
+   "stem": "cant"
+  },
+  {
+   "id": 63,
+   "word": "cantaram",
+   "stem": "cant"
+  },
+  {
+   "id": 64,
+   "word": "cantava",
+   "stem": "cant"
+  },
+  {
+   "id": 65,
+   "word": "cantaria",
+   "stem": "cant"
+  },
+  {
+   "id": 66,
+   "word": "cantariam",
+   "stem": "cant"
+  },
+  {
+   "id": 67,
+   "word": "cantaremos",
+   "stem": "cant"
+  },
+  {
+   "id": 68,
+   "word": "cantasse",
+   "stem": "cant"
+  },
+  {
+   "id": 69,
+   "word": "cantaste",
+   "stem": "cant"
+  },
+  {
+   "id": 70,
+   "word": "cantando",
+   "stem": "cant"
+  },
+  {
+   "id": 71,
+   "word": "comer",
+   "stem": "com"
+  },
+  {
+   "id": 72,
+   "word": "comes",
+   "stem": "com"
+  },
+  {
+   "id": 73,
+   "word": "comemos",
+   "stem": "com"
+  },
+  {
+   "id": 74,
+   "word": "comeram",
+   "stem": "com"
+  },
+  {
+   "id": 75,
+   "word": "comeria",
+   "stem": "com"
+  },
+  {
+   "id": 76,
+   "word": "comendo",
+   "stem": "com"
+  },
+  {
+   "id": 77,
+   "word": "comido",
+   "stem": "com"
+  },
+  {
+   "id": 78,
+   "word": "partir",
+   "stem": "part"
+  },
+  {
+   "id": 79,
+   "word": "partes",
+   "stem": "part"
+  },
+  {
+   "id": 80,
+   "word": "partimos",
+   "stem": "part"
+  },
+  {
+   "id": 81,
+   "word": "partiram",
+   "stem": "part"
+  },
+  {
+   "id": 82,
+   "word": "partiria",
+   "stem": "part"
+  },
+  {
+   "id": 83,
+   "word": "partindo",
+   "stem": "part"
+  },
+  {
+   "id": 84,
+   "word": "partido",
+   "stem": "part"
+  },
+  {
+   "id": 85,
+   "word": "casa",
+   "stem": "cas"
+  },
+  {
+   "id": 86,
+   "word": "casas",
+   "stem": "cas"
+  },
+  {
+   "id": 87,
+   "word": "livro",
+   "stem": "livr"
+  },
+  {
+   "id": 88,
+   "word": "livros",
+   "stem": "livr"
+  },
+  {
+   "id": 89,
+   "word": "papel",
+   "stem": "papel"
+  },
+  {
+   "id": 90,
+   "word": "papéis",
+   "stem": "pap"
+  },
+  {
+   "id": 91,
+   "word": "sol",
+   "stem": "sol"
+  },
+  {
+   "id": 92,
+   "word": "mar",
+   "stem": "mar"
+  },
+  {
+   "id": 93,
+   "word": "país",
+   "stem": "país"
+  },
+  {
+   "id": 94,
+   "word": "países",
+   "stem": "país"
+  },
+  {
+   "id": 95,
+   "word": "café",
+   "stem": "caf"
+  },
+  {
+   "id": 96,
+   "word": "bebê",
+   "stem": "beb"
+  },
+  {
+   "id": 97,
+   "word": "coração",
+   "stem": "coraçã"
+  },
+  {
+   "id": 98,
+   "word": "corações",
+   "stem": "coraçõ"
+  },
+  {
+   "id": 99,
+   "word": "nação",
+   "stem": "naçã"
+  },
+  {
+   "id": 100,
+   "word": "nações",
+   "stem": "naçõ"
+  },
+  {
+   "id": 101,
+   "word": "irmã",
+   "stem": "irmã"
+  },
+  {
+   "id": 102,
+   "word": "irmãs",
+   "stem": "irmãs"
+  },
+  {
+   "id": 103,
+   "word": "logia",
+   "stem": "log"
+  },
+  {
+   "id": 104,
+   "word": "logias",
+   "stem": "log"
+  }
+ ]
+}

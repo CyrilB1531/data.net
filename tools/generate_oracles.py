@@ -828,6 +828,29 @@ SNOWBALL_ES_WORDS = [
 ]
 
 
+SNOWBALL_PT_WORDS = [
+    "esperança", "esperanças", "musico", "musica", "musicos", "musicas",
+    "realismo", "amável", "amáveis", "possível", "possíveis",
+    "artista", "artistas", "formoso", "formosa", "formosos", "formosas",
+    "conhecimento", "conhecimentos", "sentimento", "sentimentos",
+    "computador", "computadores", "geração", "gerações", "trabalhador", "trabalhadores",
+    "importante", "importantes", "distância", "distâncias",
+    "biologia", "biologias", "solução", "soluções", "revolução", "revoluções",
+    "existência", "existências", "paciência",
+    "rapidamente", "claramente", "efetivamente", "ativamente",
+    "realmente", "geralmente", "possivelmente",
+    "cidade", "cidades", "capacidade", "capacidades", "atividade", "atividades",
+    "ativa", "ativo", "ativas", "ativos", "criativo", "criativa",
+    "cantar", "canto", "cantas", "cantamos", "cantaram", "cantava", "cantaria",
+    "cantariam", "cantaremos", "cantasse", "cantaste", "cantando",
+    "comer", "comes", "comemos", "comeram", "comeria", "comendo", "comido",
+    "partir", "partes", "partimos", "partiram", "partiria", "partindo", "partido",
+    "casa", "casas", "livro", "livros", "papel", "papéis", "sol", "mar",
+    "país", "países", "café", "bebê", "coração", "corações",
+    "nação", "nações", "irmã", "irmãs", "logia", "logias",
+]
+
+
 def _snowball_corpus(language: str, algorithm: str, words: list[str]) -> dict:
     """Freeze nltk's Snowball output for one language into an oracle payload."""
     from nltk.stem.snowball import SnowballStemmer  # noqa: PLC0415
@@ -850,6 +873,10 @@ def _snowball_corpus(language: str, algorithm: str, words: list[str]) -> dict:
 
 def generate_snowball_es() -> dict:
     return _snowball_corpus("spanish", "SpanishSnowballStemmer", SNOWBALL_ES_WORDS)
+
+
+def generate_snowball_pt() -> dict:
+    return _snowball_corpus("portuguese", "PortugueseSnowballStemmer", SNOWBALL_PT_WORDS)
 
 
 WORDPIECE_VOCAB = [
@@ -1093,6 +1120,7 @@ def main() -> None:
         "snowball_en.json": generate_snowball_en,
         "snowball_fr.json": generate_snowball_fr,
         "snowball_es.json": generate_snowball_es,
+        "snowball_pt.json": generate_snowball_pt,
         "wordpiece.json": generate_wordpiece,
         "pooling.json": generate_pooling,
         "knn.json": generate_knn,

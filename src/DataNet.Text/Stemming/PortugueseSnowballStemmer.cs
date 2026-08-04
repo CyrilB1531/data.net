@@ -1,0 +1,399 @@
+using System.Text;
+
+namespace DataNet.Text.Stemming;
+
+// SonarLint S3776: cognitive complexity: faithful port of a published rule-engine; decomposing it would break the 1:1 mapping with the reference that makes divergences auditable.
+// SonarLint S3267: the suffix scans early-return and mutate in place, which Where cannot express.
+// CA1845 (use span-based string.Concat): that overload does not exist on
+// netstandard2.0. The Substring form is what makes this file compile there.
+#pragma warning disable CA1845
+// CA1845 (use span-based string.Concat): that overload does not exist on
+// netstandard2.0. The Substring form is what makes this file compile there.
+#pragma warning disable CA1845
+#pragma warning disable S3776, S3267
+
+/// <summary>
+/// The Portuguese Snowball stemming algorithm.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Reference behavior: <c>nltk.stem.snowball.SnowballStemmer("portuguese")</c>. An
+/// original implementation of the published Snowball algorithm, using the RV/R1/R2
+/// regions and the standard step ordering. Input is lowercased. Thread-safe.
+/// </para>
+/// <para>
+/// Two quirks distinguish it from the Spanish algorithm. Nasal <c>ã</c> and
+/// <c>õ</c> are expanded to <c>a~</c> and <c>o~</c> for the duration of the run so
+/// the tilde is not treated as a vowel — which is why <c>geração</c> stems to
+/// <c>geraçã</c> and not <c>geraç</c>. And acute accents are *kept*: unlike
+/// Spanish, there is no final accent-stripping step, so <c>país</c> stems to
+/// itself.
+/// </para>
+/// </remarks>
+public static class PortugueseSnowballStemmer
+{
+    /// <summary>Returns the Portuguese Snowball stem of <paramref name="word"/>.</summary>
+    public static string Stem(string word)
+    {
+        Guard.NotNull(word);
+        // Compose accents (NFC) so 'á' etc. are single code points, as the rules expect.
+        string s = word.ToLowerInvariant().Normalize(NormalizationForm.FormC);
+        if (s.Length < 2)
+        {
+            return s;
+        }
+        return new Worker(s).Run();
+    }
+
+    private sealed class Worker
+    {
+        private string _s;
+        private readonly int _rv;
+        private readonly int _r1;
+        private readonly int _r2;
+
+        public Worker(string s)
+        {
+            // Expand the nasals so '~' — a non-vowel — separates them from what follows.
+            _s = s.Replace("ã", "a~").Replace("õ", "o~");
+            _r1 = Region(_s, 0);
+            _r2 = Region(_s, _r1);
+            _rv = ComputeRv(_s);
+        }
+
+        public string Run()
+        {
+            string original = _s;
+
+            Step1();
+            bool altered = _s != original;
+
+            if (!altered)
+            {
+                string beforeStep2 = _s;
+                Step2();
+                altered = _s != beforeStep2;
+            }
+
+            if (altered)
+            {
+                // Step 3: a final i left behind by step 1 or 2, when it follows a c.
+                if (Ends("i") && InRv(1) && _s.Length >= 2 && _s[_s.Length - 2] == 'c')
+                {
+                    Delete(1);
+                }
+            }
+            else
+            {
+                Step4();
+            }
+
+            Step5();
+
+            // Restore the nasals.
+            return _s.Replace("a~", "ã").Replace("o~", "õ");
+        }
+
+        private static bool IsVowel(char c) =>
+            c is 'a' or 'e' or 'i' or 'o' or 'u' or 'á' or 'é' or 'í' or 'ó' or 'ú' or 'â' or 'ê' or 'ô';
+
+        private static int Region(string s, int from)
+        {
+            int i = from;
+            while (i < s.Length && !IsVowel(s[i]))
+            {
+                i++;
+            }
+            while (i < s.Length && IsVowel(s[i]))
+            {
+                i++;
+            }
+            return i < s.Length ? i + 1 : s.Length;
+        }
+
+        private static int ComputeRv(string s)
+        {
+            int n = s.Length;
+            if (n < 2)
+            {
+                return n;
+            }
+            if (!IsVowel(s[1]))
+            {
+                int i = 2;
+                while (i < n && !IsVowel(s[i]))
+                {
+                    i++;
+                }
+                return i < n ? i + 1 : n;
+            }
+            if (IsVowel(s[0]))
+            {
+                int i = 2;
+                while (i < n && IsVowel(s[i]))
+                {
+                    i++;
+                }
+                return i < n ? i + 1 : n;
+            }
+            return Math.Min(3, n);
+        }
+
+        private bool InRv(int suffixLen) => _s.Length - suffixLen >= _rv;
+        private bool InR1(int suffixLen) => _s.Length - suffixLen >= _r1;
+        private bool InR2(int suffixLen) => _s.Length - suffixLen >= _r2;
+        private bool Ends(string suffix) => _s.EndsWith(suffix, StringComparison.Ordinal);
+        private void Delete(int len) => _s = _s.Substring(0, _s.Length - len);
+        private void Replace(int suffixLen, string repl) => _s = _s.Substring(0, _s.Length - suffixLen) + repl;
+
+        private string? LongestSuffix(string[] candidates)
+        {
+            string? best = null;
+            foreach (string c in candidates)
+            {
+                if (Ends(c) && (best is null || c.Length > best.Length))
+                {
+                    best = c;
+                }
+            }
+            return best;
+        }
+
+        /// <summary>The longest candidate that both ends the word and lies inside RV.</summary>
+        private string? LongestSuffixInRv(string[] candidates)
+        {
+            string? best = null;
+            foreach (string c in candidates)
+            {
+                if (Ends(c) && InRv(c.Length) && (best is null || c.Length > best.Length))
+                {
+                    best = c;
+                }
+            }
+            return best;
+        }
+
+        // Step 1 groups. Note the nasal expansion: "ação" is spelled "aça~o" here.
+        private static readonly string[] S1Delete =
+        [
+            "amentos", "imentos", "amento", "imento", "adoras", "ismos", "istas",
+            "anças", "ança", "ezas", "icos", "icas", "osos", "osas", "ismo", "ista", "eza", "ico",
+            "ica", "oso", "osa", "ável", "ível",
+        ];
+        private static readonly string[] S1DeleteThenIc = ["aça~o", "aço~es", "adores", "adora", "ador", "antes", "ância", "ante"];
+        private static readonly string[] S1Logia = ["logias", "logia"];
+        private static readonly string[] S1Ucao = ["uço~es", "uça~o"];
+        private static readonly string[] S1Encia = ["ências", "ência"];
+        private static readonly string[] S1Idade = ["idades", "idade"];
+        private static readonly string[] S1Iva = ["ivas", "ivos", "iva", "ivo"];
+        private static readonly string[] S1Ira = ["iras", "ira"];
+
+        private void Step1()
+        {
+            string? hit = null;
+            string[]? group = null;
+            foreach (string[] g in new[] { S1Delete, S1DeleteThenIc, S1Logia, S1Ucao, S1Encia, S1Idade, S1Iva, S1Ira })
+            {
+                string? candidate = LongestSuffix(g);
+                if (candidate is not null && (hit is null || candidate.Length > hit.Length))
+                {
+                    hit = candidate;
+                    group = g;
+                }
+            }
+
+            string? adverb = LongestSuffix(["amente", "mente"]);
+            if (adverb is not null && (hit is null || adverb.Length > hit.Length))
+            {
+                StepAdverb(adverb);
+                return;
+            }
+
+            if (hit is null || group is null)
+            {
+                return;
+            }
+
+            int n = hit.Length;
+            if (ReferenceEquals(group, S1Delete))
+            {
+                if (InR2(n))
+                {
+                    Delete(n);
+                }
+            }
+            else if (ReferenceEquals(group, S1DeleteThenIc))
+            {
+                if (InR2(n))
+                {
+                    Delete(n);
+                    if (Ends("ic") && InR2(2))
+                    {
+                        Delete(2);
+                    }
+                }
+            }
+            else if (ReferenceEquals(group, S1Logia))
+            {
+                if (InR2(n))
+                {
+                    Replace(n, "log");
+                }
+            }
+            else if (ReferenceEquals(group, S1Ucao))
+            {
+                if (InR2(n))
+                {
+                    Replace(n, "u");
+                }
+            }
+            else if (ReferenceEquals(group, S1Encia))
+            {
+                if (InR2(n))
+                {
+                    Replace(n, "ente");
+                }
+            }
+            else if (ReferenceEquals(group, S1Idade))
+            {
+                if (InR2(n))
+                {
+                    Delete(n);
+                    foreach (string pre in new[] { "abil", "ic", "iv" })
+                    {
+                        if (Ends(pre) && InR2(pre.Length))
+                        {
+                            Delete(pre.Length);
+                            break;
+                        }
+                    }
+                }
+            }
+            else if (ReferenceEquals(group, S1Iva))
+            {
+                if (InR2(n))
+                {
+                    Delete(n);
+                    if (Ends("at") && InR2(2))
+                    {
+                        Delete(2);
+                    }
+                }
+            }
+            else
+            {
+                // S1Ira: only after an e, and only inside RV.
+                if (InRv(n) && _s.Length > n && _s[_s.Length - n - 1] == 'e')
+                {
+                    Replace(n, "ir");
+                }
+            }
+        }
+
+        private void StepAdverb(string adverb)
+        {
+            if (adverb == "amente")
+            {
+                if (!InR1(6))
+                {
+                    return;
+                }
+                Delete(6);
+                if (Ends("iv") && InR2(2))
+                {
+                    Delete(2);
+                    if (Ends("at") && InR2(2))
+                    {
+                        Delete(2);
+                    }
+                    return;
+                }
+                foreach (string pre in new[] { "os", "ic", "ad" })
+                {
+                    if (Ends(pre) && InR2(2))
+                    {
+                        Delete(2);
+                        return;
+                    }
+                }
+                return;
+            }
+
+            if (!InR2(5))
+            {
+                return;
+            }
+            Delete(5);
+            foreach (string pre in new[] { "ante", "avel", "ível" })
+            {
+                if (Ends(pre) && InR2(pre.Length))
+                {
+                    Delete(pre.Length);
+                    return;
+                }
+            }
+        }
+
+        private static readonly string[] Step2Suffixes =
+        [
+            "aríamos", "eríamos", "iríamos", "ássemos", "êssemos", "íssemos", "aríeis", "eríeis",
+            "iríeis", "ásseis", "ésseis", "ísseis", "áramos", "éramos", "íramos", "aremos",
+            "eremos", "iremos", "ariam", "eriam", "iriam", "assem", "essem", "issem", "ara~o",
+            "era~o", "ira~o", "arias", "erias", "irias", "ardes", "erdes", "irdes", "asses",
+            "esses", "isses", "astes", "estes", "istes", "áreis", "areis", "éreis", "ereis",
+            "íreis", "ireis", "áveis", "íamos", "armos", "ermos", "irmos", "aria", "eria",
+            "iria", "asse", "esse", "isse", "aste", "este", "iste", "arei", "erei", "irei",
+            "aram", "eram", "iram", "avam", "arem", "erem", "irem", "ando", "endo", "indo",
+            "adas", "idas", "arás", "aras", "erás", "eras", "irás", "avas", "ares", "eres",
+            "ires", "íeis", "ados", "idos", "ámos", "amos", "emos", "imos", "iras", "ada",
+            "ida", "ará", "ara", "erá", "era", "irá", "ava", "iam", "ado", "ido", "ias",
+            "ais", "eis", "ira", "ear", "ar", "er", "ir", "am", "ia", "ei", "am", "as",
+            "es", "is", "eu", "iu", "ou",
+        ];
+
+        private void Step2()
+        {
+            // Longest-first, but a candidate rejected by RV does not end the search:
+            // "amáveis" must fall through from "áveis" (outside RV) to "eis".
+            string? hit = LongestSuffixInRv(Step2Suffixes);
+            if (hit is not null)
+            {
+                Delete(hit.Length);
+            }
+        }
+
+        private static readonly string[] Step4Suffixes = ["os", "a", "i", "o", "á", "í", "ó"];
+
+        private void Step4()
+        {
+            string? hit = LongestSuffix(Step4Suffixes);
+            if (hit is not null && InRv(hit.Length))
+            {
+                Delete(hit.Length);
+            }
+        }
+
+        private void Step5()
+        {
+            string? e = LongestSuffix(["e", "é", "ê"]);
+            if (e is not null && InRv(e.Length))
+            {
+                Delete(e.Length);
+                if (Ends("gu") && InRv(1))
+                {
+                    Delete(1);
+                }
+                else if (Ends("ci") && InRv(1))
+                {
+                    Delete(1);
+                }
+                return;
+            }
+
+            if (Ends("ç"))
+            {
+                Replace(1, "c");
+            }
+        }
+    }
+}
