@@ -28,10 +28,10 @@ namespace DataNet.Text.Distances;
 /// </remarks>
 public static class Levenshtein
 {
-    // Below this pattern length the DP beats Myers (the equality-table setup
-    // dominates); above 64 the single-word Myers no longer applies.
+    // Below this pattern length the DP beats Myers: the equality-table setup
+    // dominates. There is no upper bound any more — patterns longer than one
+    // machine word take the blocked variant.
     private const int MyersMinPatternLength = 16;
-    private const int MyersMaxPatternLength = 64;
 
     /// <summary>
     /// Computes the Levenshtein distance between <paramref name="a"/> and
@@ -143,8 +143,7 @@ public static class Levenshtein
         // wins from a modest pattern length up: below it, building the equality
         // table costs more than the tiny DP, so we stay on the DP. (Measured
         // crossover ~16; see docs/guides/performance.md.)
-        if (b.Length >= MyersMinPatternLength && b.Length <= MyersMaxPatternLength
-            && Myers.TryDistance(b, a, out int d))
+        if (b.Length >= MyersMinPatternLength && Myers.TryDistance(b, a, out int d))
         {
             return d;
         }
