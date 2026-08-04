@@ -45,40 +45,36 @@ public static class PortugueseSnowballStemmer
         return new Worker(s).Run();
     }
 
-    private sealed class Worker
+    private sealed class Worker : RomanceSnowballWorker
     {
-        private string _s;
-        private readonly int _rv;
-        private readonly int _r1;
-        private readonly int _r2;
+        private static readonly Func<char, bool> Vowels = c =>
+            c is 'a' or 'e' or 'i' or 'o' or 'u' or 'á' or 'é' or 'í' or 'ó' or 'ú' or 'â' or 'ê' or 'ô';
 
-        public Worker(string s)
+
+        // Nasals are expanded before the base computes regions: the tilde must act
+        // as a consonant, or the vowel before it would close a region early.
+        public Worker(string s) : base(s.Replace("ã", "a~").Replace("õ", "o~"), Vowels)
         {
-            // Expand the nasals so '~' — a non-vowel — separates them from what follows.
-            _s = s.Replace("ã", "a~").Replace("õ", "o~");
-            _r1 = Region(_s, 0);
-            _r2 = Region(_s, _r1);
-            _rv = ComputeRv(_s);
         }
 
         public string Run()
         {
-            string original = _s;
+            string original = S;
 
             Step1();
-            bool altered = _s != original;
+            bool altered = S != original;
 
             if (!altered)
             {
-                string beforeStep2 = _s;
+                string beforeStep2 = S;
                 Step2();
-                altered = _s != beforeStep2;
+                altered = S != beforeStep2;
             }
 
             if (altered)
             {
                 // Step 3: a final i left behind by step 1 or 2, when it follows a c.
-                if (Ends("i") && InRv(1) && _s.Length >= 2 && _s[_s.Length - 2] == 'c')
+                if (Ends("i") && InRv(1) && S.Length >= 2 && S[S.Length - 2] == 'c')
                 {
                     Delete(1);
                 }
@@ -91,87 +87,10 @@ public static class PortugueseSnowballStemmer
             Step5();
 
             // Restore the nasals.
-            return _s.Replace("a~", "ã").Replace("o~", "õ");
+            return S.Replace("a~", "ã").Replace("o~", "õ");
         }
 
-        private static bool IsVowel(char c) =>
-            c is 'a' or 'e' or 'i' or 'o' or 'u' or 'á' or 'é' or 'í' or 'ó' or 'ú' or 'â' or 'ê' or 'ô';
 
-        private static int Region(string s, int from)
-        {
-            int i = from;
-            while (i < s.Length && !IsVowel(s[i]))
-            {
-                i++;
-            }
-            while (i < s.Length && IsVowel(s[i]))
-            {
-                i++;
-            }
-            return i < s.Length ? i + 1 : s.Length;
-        }
-
-        private static int ComputeRv(string s)
-        {
-            int n = s.Length;
-            if (n < 2)
-            {
-                return n;
-            }
-            if (!IsVowel(s[1]))
-            {
-                int i = 2;
-                while (i < n && !IsVowel(s[i]))
-                {
-                    i++;
-                }
-                return i < n ? i + 1 : n;
-            }
-            if (IsVowel(s[0]))
-            {
-                int i = 2;
-                while (i < n && IsVowel(s[i]))
-                {
-                    i++;
-                }
-                return i < n ? i + 1 : n;
-            }
-            return Math.Min(3, n);
-        }
-
-        private bool InRv(int suffixLen) => _s.Length - suffixLen >= _rv;
-        private bool InR1(int suffixLen) => _s.Length - suffixLen >= _r1;
-        private bool InR2(int suffixLen) => _s.Length - suffixLen >= _r2;
-        private bool Ends(string suffix) => _s.EndsWith(suffix, StringComparison.Ordinal);
-        private void Delete(int len) => _s = _s.Substring(0, _s.Length - len);
-        private void Replace(int suffixLen, string repl) => _s = _s.Substring(0, _s.Length - suffixLen) + repl;
-
-        private string? LongestSuffix(string[] candidates)
-        {
-            string? best = null;
-            foreach (string c in candidates)
-            {
-                if (Ends(c) && (best is null || c.Length > best.Length))
-                {
-                    best = c;
-                }
-            }
-            return best;
-        }
-
-        /// <summary>The longest candidate that both ends the word and lies inside RV.</summary>
-        private string? LongestSuffixInRv(string[] candidates)
-        {
-            string? best = null;
-            foreach (string c in candidates)
-            {
-                if (Ends(c) && InRv(c.Length) && (best is null || c.Length > best.Length))
-                {
-                    best = c;
-                }
-            }
-            return best;
-        }
 
         // Step 1 groups. Note the nasal expansion: "ação" is spelled "aça~o" here.
         private static readonly string[] S1Delete =
@@ -283,7 +202,7 @@ public static class PortugueseSnowballStemmer
             else
             {
                 // S1Ira: only after an e, and only inside RV.
-                if (InRv(n) && _s.Length > n && _s[_s.Length - n - 1] == 'e')
+                if (InRv(n) && S.Length > n && S[S.Length - n - 1] == 'e')
                 {
                     Replace(n, "ir");
                 }
@@ -379,11 +298,9 @@ public static class PortugueseSnowballStemmer
             if (e is not null && InRv(e.Length))
             {
                 Delete(e.Length);
-                if (Ends("gu") && InRv(1))
-                {
-                    Delete(1);
-                }
-                else if (Ends("ci") && InRv(1))
+                // Both cases drop the same single character; the spec lists them
+                // separately, but the action is identical.
+                if ((Ends("gu") || Ends("ci")) && InRv(1))
                 {
                     Delete(1);
                 }
