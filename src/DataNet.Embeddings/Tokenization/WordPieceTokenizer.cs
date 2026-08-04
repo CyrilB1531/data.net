@@ -21,7 +21,9 @@ public sealed record TokenizationResult(IReadOnlyList<string> Tokens, IReadOnlyL
 /// </remarks>
 public sealed class WordPieceTokenizer
 {
-    private static readonly Regex PreTokenPattern = new(@"\w+|[^\w\s]+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    // Bounded so a pathological input fails instead of hanging the caller.
+    private static readonly Regex PreTokenPattern =
+        new(@"\w+|[^\w\s]+", RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexDefaults.MatchTimeout);
 
     private readonly IReadOnlyDictionary<string, int> _vocab;
     private readonly string _unkToken;

@@ -54,7 +54,9 @@ internal sealed class TextAnalyzer
         _kind = kind;
         _minN = ngramRange.Min;
         _maxN = ngramRange.Max;
-        _tokenPattern = new Regex(tokenPattern, RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        // The pattern comes from the caller, so an unbounded match would let a
+        // crafted pattern/document pair hang the thread. Bound it.
+        _tokenPattern = new Regex(tokenPattern, RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexDefaults.MatchTimeout);
         _stopWords = stopWords is null ? null : new HashSet<string>(stopWords, StringComparer.Ordinal);
     }
 
