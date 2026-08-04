@@ -3,6 +3,10 @@ using DataNet.Embeddings.Search;
 
 namespace DataNet.Text.Benchmarks;
 
+
+// SonarLint S2245: a seeded Random builds a reproducible benchmark corpus; no
+// security use. Same justification as the sibling benchmark files.
+#pragma warning disable S2245
 /// <summary>
 /// Micro-benchmarks for <see cref="VectorMath"/> — the sharpest measurable
 /// difference between the two builds of the libraries.
