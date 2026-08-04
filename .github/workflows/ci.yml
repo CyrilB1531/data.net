@@ -16,7 +16,12 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - name: Markdown lint
-        run: npx --yes markdownlint-cli2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
+        # Pinned and --ignore-scripts: `npx --yes <name>` resolves the latest
+        # version on demand and runs its lifecycle scripts, so the code executed
+        # in CI could change with no commit here.
+        run: >
+          npx --yes --ignore-scripts markdownlint-cli2@0.23.2
+          "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
       - name: C# format check
         run: dotnet format DataNet.slnx --verify-no-changes
 
@@ -74,7 +79,10 @@ jobs:
 
       - name: Regenerate oracles and check for drift
         run: |
-          pip install -r tools/requirements.txt
+          # --only-binary :all: refuses source distributions, so no setup.py from a
+          # downloaded package executes. Verified that every pinned dependency
+          # publishes wheels.
+          pip install --only-binary :all: -r tools/requirements.txt
           python tools/generate_oracles.py
           if ! git diff --quiet -- tests/oracles; then
             echo "::error::Committed oracle corpora differ from a fresh generation. Run tools/generate_oracles.py and commit the result."

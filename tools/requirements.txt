@@ -1,13 +1,21 @@
 # DEVELOPMENT-only dependencies (oracle generation).
 # Not part of the distributed package. Permissive licenses (MIT / BSD / Apache).
 # python-Levenshtein (GPL) is deliberately excluded — see docs/decisions/0003.
-rapidfuzz>=3.14,<4
-jellyfish>=1.2,<2
-textdistance>=4.6,<5
-scikit-learn>=1.9,<2
-nltk>=3.9,<4
-tokenizers>=0.23,<1
-numpy>=1.26
-sentencepiece>=0.2,<1
+#
+# Versions are pinned exactly, not ranged. These libraries are not merely build
+# inputs: the committed corpora under tests/oracles/ ARE their output, and CI
+# regenerates and diffs them on every pull request. Under a range, a silent
+# minor release would land as an unexplained oracle diff on an unrelated change.
+# Bump deliberately, and regenerate the corpora in the same commit.
+#
+# Install with --only-binary :all: so that no source distribution runs setup.py.
+rapidfuzz==3.14.5
+jellyfish==1.2.1
+textdistance==4.6.3
+scikit-learn==1.9.0
+nltk==3.10.1
+tokenizers==0.23.1
+numpy==2.5.1
+sentencepiece==0.2.2
 # onnx is only needed to (re)build the tiny synthetic test model, not for
-# generate_oracles.py: onnx>=1.16
+# generate_oracles.py: onnx==1.16.0
