@@ -10,9 +10,14 @@ jobs:
   analyze:
     name: Build and analyze
     runs-on: ubuntu-latest
-    # SONAR_TOKEN is not exposed to pull requests from forks, so the job would
-    # fail rather than skip. Guard instead of failing loudly on every fork PR.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    # SONAR_TOKEN reaches neither fork pull requests nor Dependabot: Dependabot
+    # runs read from a separate secrets store, and its branches live in this
+    # repository, so a fork-only guard lets them through to fail on an empty
+    # token. A dependency bump changes no source, so skip rather than analyse.
+    if: >-
+      github.event_name == 'push' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       github.actor != 'dependabot[bot]')
 
     steps:
       - name: Set up JDK 17
