@@ -2,6 +2,11 @@ using System;
 
 namespace DataNet.Text.Stemming;
 
+
+// CA1845 (use span-based string.Concat): that overload does not exist on
+// netstandard2.0. The Substring form is what makes this file compile there —
+// the same reason the four language stemmers carry this suppression.
+#pragma warning disable CA1845
 /// <summary>
 /// The Snowball scaffolding shared by the Romance stemmers.
 /// </summary>
