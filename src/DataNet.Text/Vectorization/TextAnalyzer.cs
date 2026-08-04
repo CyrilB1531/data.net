@@ -4,6 +4,11 @@ using System.Text.RegularExpressions;
 
 namespace DataNet.Text.Vectorization;
 
+
+// SonarLint S3267: the suggested Select does not compile on netstandard2.0 —
+// MatchCollection implements only the non-generic IEnumerable there, so LINQ
+// would need a Cast<Match>() and an extra allocation in a per-document path.
+#pragma warning disable S3267
 /// <summary>The kind of tokens a vectorizer extracts.</summary>
 public enum AnalyzerKind
 {

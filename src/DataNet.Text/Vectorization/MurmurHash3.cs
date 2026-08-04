@@ -1,5 +1,8 @@
 namespace DataNet.Text.Vectorization;
 
+// SonarLint S907: the canonical MurmurHash3 tail fall-through, kept verbatim from the reference.
+#pragma warning disable S907
+
 /// <summary>
 /// MurmurHash3 x86 32-bit, matching the hash scikit-learn uses for feature hashing
 /// (<c>sklearn.utils.murmurhash.murmurhash3_32</c>) with seed 0.

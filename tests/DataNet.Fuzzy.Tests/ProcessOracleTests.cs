@@ -46,7 +46,7 @@ public sealed class ProcessOracleTests
         string[] choices = ["apple", "banana", "orange"];
         ExtractResult? best = Process.ExtractOne("appel", choices);
         Assert.NotNull(best);
-        Assert.Equal("apple", best!.Value.Choice);
+        Assert.Equal("apple", best.Value.Choice);
     }
 
     [Fact]

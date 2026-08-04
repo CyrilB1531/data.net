@@ -1,5 +1,8 @@
 namespace DataNet.Embeddings.Tokenization;
 
+// SonarLint S3776: cognitive complexity: a faithful implementation of a published rule-engine; decomposing it would break the 1:1 mapping with the reference that makes divergences auditable.
+#pragma warning disable S3776
+
 /// <summary>A vocabulary piece: its string, log-probability score and id.</summary>
 public readonly record struct SentencePiece(string Piece, double Score, int Id);
 

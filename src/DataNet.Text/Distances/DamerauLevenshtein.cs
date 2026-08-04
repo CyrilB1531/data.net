@@ -3,6 +3,10 @@ using DataNet.Text.Internal;
 
 namespace DataNet.Text.Distances;
 
+// SonarLint S3776: cognitive complexity: a faithful implementation of a published rule-engine; decomposing it would break the 1:1 mapping with the reference that makes divergences auditable.
+// SonarLint S4136: the overloads are grouped by concern, with the generic core deliberately last.
+#pragma warning disable S3776, S4136
+
 /// <summary>
 /// Unrestricted Damerau-Levenshtein distance (insertions, deletions,
 /// substitutions and transpositions of adjacent characters).

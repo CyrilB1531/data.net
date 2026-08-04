@@ -2,6 +2,9 @@ using System.Text;
 
 namespace DataNet.Text.Stemming;
 
+// SonarLint S3776: cognitive complexity: a faithful implementation of a published rule-engine; decomposing it would break the 1:1 mapping with the reference that makes divergences auditable.
+#pragma warning disable S3776
+
 /// <summary>
 /// The Porter stemming algorithm (Martin Porter, 1980) for English.
 /// </summary>

@@ -3,6 +3,9 @@ using DataNet.Text.Vectorization;
 
 namespace DataNet.Text.Benchmarks;
 
+// SonarLint S2245: a seeded Random builds a reproducible benchmark corpus; no security use.
+#pragma warning disable S2245
+
 /// <summary>Fit+transform throughput for the sparse vectorizers over a synthetic corpus.</summary>
 [MemoryDiagnoser]
 public class VectorizerBenchmarks

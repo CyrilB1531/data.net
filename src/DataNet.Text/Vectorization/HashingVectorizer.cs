@@ -2,6 +2,9 @@ using System.Text;
 
 namespace DataNet.Text.Vectorization;
 
+// SonarLint S3776: cognitive complexity: a faithful implementation of a published rule-engine; decomposing it would break the 1:1 mapping with the reference that makes divergences auditable.
+#pragma warning disable S3776
+
 /// <summary>Options for <see cref="HashingVectorizer"/>.</summary>
 /// <remarks>Defaults mirror <c>sklearn.feature_extraction.text.HashingVectorizer</c>.</remarks>
 public sealed record HashingVectorizerOptions
@@ -62,7 +65,7 @@ public sealed class HashingVectorizer
             {
                 int h = MurmurHash3.Hash32(Encoding.UTF8.GetBytes(term));
                 int index = (int)(Math.Abs((long)h) % nf);
-                double sign = _options.AlternateSign ? (h >= 0 ? 1.0 : -1.0) : 1.0;
+                double sign = _options.AlternateSign && h < 0 ? -1.0 : 1.0;
                 accumulator[index] = accumulator.TryGetValue(index, out double v) ? v + sign : sign;
             }
 

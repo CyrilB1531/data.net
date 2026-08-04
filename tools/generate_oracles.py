@@ -40,6 +40,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer as SkTfidfVectorizer
 SEED = 20260801
 ORACLE_DIR = Path(__file__).resolve().parent.parent / "tests" / "oracles"
 
+# Fixture strings reused across several corpora.
+QUICK_FOX = "the quick brown fox"
+METS = "new york mets"
+UNK_TOKEN = "[UNK]"
+
 # Code-point ranges per category. Surrogates (0xD800..0xDFFF) are filtered out.
 RANGES = {
     "ascii": [(0x20, 0x7E)],
@@ -100,7 +105,7 @@ def build_pairs(rng: random.Random):
         # Transposition-focused: exercise OSA vs unrestricted Damerau-Levenshtein.
         ("ab", "ba"),
         ("abcd", "acbd"),
-        ("CA", "ABC"),   # OSA=3, DL=2
+        ("CA", "ABC"),   # OSA gives 3, unrestricted Damerau gives 2
         ("ca", "abc"),
         ("a cat", "an act"),
         ("converse", "conserve"),
@@ -507,7 +512,7 @@ CORPUS_A = [
     "a cat and a dog",
     "the dog barked loudly",
     "cats and dogs are friends",
-    "the quick brown fox",
+    QUICK_FOX,
 ]
 CORPUS_ACCENTS = ["Café crème", "Cafe creme", "Élève à l'école", "eleve a l ecole"]
 
@@ -780,7 +785,7 @@ def generate_snowball_fr() -> dict:
 
 
 WORDPIECE_VOCAB = [
-    "[UNK]", "the", "cat", "dog", "play", "un", "love", "run", "quick", "brown",
+    UNK_TOKEN, "the", "cat", "dog", "play", "un", "love", "run", "quick", "brown",
     "fox", "jump", "hello", "world", "token", "embed", "semantic", "search", "is",
     "are", "and", "this", "big", "a", ".", "!", "?",
     "##s", "##ing", "##ed", "##er", "##aff", "##able", "##ly", "##ner", "##ning",
@@ -805,7 +810,7 @@ def generate_wordpiece() -> dict:
     from tokenizers.pre_tokenizers import Whitespace
 
     vocab = {tok: i for i, tok in enumerate(WORDPIECE_VOCAB)}
-    wp = WordPiece(vocab, unk_token="[UNK]", max_input_chars_per_word=100)
+    wp = WordPiece(vocab, unk_token=UNK_TOKEN, max_input_chars_per_word=100)
     tokenizer = Tokenizer(wp)
     tokenizer.pre_tokenizer = Whitespace()
 
@@ -819,7 +824,7 @@ def generate_wordpiece() -> dict:
             "library": "tokenizers",
             "library_version": version("tokenizers"),
             "vocab": vocab,
-            "unk_token": "[UNK]",
+            "unk_token": UNK_TOKEN,
             "count": len(cases),
         },
         "cases": cases,
@@ -831,7 +836,8 @@ def generate_pooling() -> dict:
     cases = []
     for cid, (seq, dim) in enumerate([(4, 6), (5, 8), (3, 4), (6, 5)]):
         emb = [[rng.uniform(-1, 1) for _ in range(dim)] for _ in range(seq)]
-        mask = [1 if rng.random() < 0.7 or t == 0 else 0 for t in range(seq)]
+        # Seeded RNG: the corpus must regenerate byte-identically. Not security.
+        mask = [1 if rng.random() < 0.7 or t == 0 else 0 for t in range(seq)]  # NOSONAR
         active = sum(mask) or 1
         pooled = [sum(emb[t][d] for t in range(seq) if mask[t]) / active for d in range(dim)]
         norm = sum(v * v for v in pooled) ** 0.5
@@ -886,13 +892,13 @@ def generate_knn() -> dict:
 
 FUZZ_PAIRS = [
     ("fuzzy wuzzy was a bear", "wuzzy fuzzy was a bear"),
-    ("new york mets", "new york mets"),
-    ("new york mets", "the wonderful new york mets"),
+    (METS, METS),
+    (METS, "the wonderful new york mets"),
     ("mariners vs angels", "los angeles angels of anaheim at seattle mariners"),
     ("hello world", "world hello"),
     ("a", "ab"), ("", ""), ("abc", "abcd"),
     ("Hello", "hello"), ("New York!", "york new"),
-    ("the quick brown fox", "the brown quick fox"),
+    (QUICK_FOX, "the brown quick fox"),
     ("apple", "apple pie"), ("apple pie", "apple"),
     ("data science", "science of data"), ("machine learning", "learning machine models"),
     ("kitten", "sitting"), ("levenshtein", "levenstein"),
@@ -933,13 +939,13 @@ def generate_fuzz() -> dict:
 
 
 PROCESS_CHOICES = [
-    "new york mets", "new york yankees", "boston red sox", "atlanta braves",
+    METS, "new york yankees", "boston red sox", "atlanta braves",
     "new york knicks", "brooklyn nets", "los angeles lakers", "chicago bulls",
 ]
 PROCESS_CASES = [
     {"query": "new york", "limit": 5, "cutoff": 0.0},
     {"query": "new york", "limit": 3, "cutoff": 0.0},
-    {"query": "new york mets", "limit": 5, "cutoff": 80.0},
+    {"query": METS, "limit": 5, "cutoff": 80.0},
     {"query": "brooklyn", "limit": 2, "cutoff": 0.0},
     {"query": "lakers", "limit": 5, "cutoff": 50.0},
 ]
@@ -974,7 +980,7 @@ def generate_sentencepiece() -> dict:
     sp = spm.SentencePieceProcessor(model_file=str(ORACLE_DIR / "tiny_sp.model"))
     vocab = [{"piece": sp.id_to_piece(i), "score": sp.get_score(i), "id": i} for i in range(sp.get_piece_size())]
     texts = [
-        "the quick brown fox", "tokenization", "hello world",
+        QUICK_FOX, "tokenization", "hello world",
         "machine learning and data science", "the cat sat on the mat",
         "natural language processing", "xyzabc", "a b c",
         "unigram models find the best segmentation", "programming",

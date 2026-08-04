@@ -3,6 +3,9 @@ using DataNet.Text.Distances;
 
 namespace DataNet.Text.Benchmarks;
 
+// SonarLint S2245: a seeded Random builds a reproducible benchmark corpus; no security use.
+#pragma warning disable S2245
+
 /// <summary>
 /// Micro-benchmarks for <see cref="Levenshtein"/>. Performance is the project's
 /// selling point (§7), so it is measured from Lot 1, not bolted on later.
