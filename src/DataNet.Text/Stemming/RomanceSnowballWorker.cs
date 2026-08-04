@@ -6,6 +6,10 @@ namespace DataNet.Text.Stemming;
 // CA1845 (use span-based string.Concat): that overload does not exist on
 // netstandard2.0. The Substring form is what makes this file compile there —
 // the same reason the four language stemmers carry this suppression.
+// SonarLint S3267: the suffix scans early-return and mutate in place, which
+// Where cannot express — and they run per token, where a LINQ pipeline would
+// allocate on every call.
+#pragma warning disable S3267
 #pragma warning disable CA1845
 /// <summary>
 /// The Snowball scaffolding shared by the Romance stemmers.

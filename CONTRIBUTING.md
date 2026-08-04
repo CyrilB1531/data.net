@@ -150,6 +150,12 @@ SonarAnalyzer running through Roslyn.
 A suppression needs a justification a reviewer can disagree with. "Too noisy" is
 not one.
 
+**When suppressed code moves, the suppression does not follow it.** Extracting a
+method into a new file leaves the `#pragma` behind in the file the code left, and
+the rule reappears against the new one. This has already happened twice while
+extracting the shared Snowball framework — `CA1845`, then `S3267`. Nothing
+enforces it, so check the analyser after any extraction, not just the build.
+
 ## Licensing and provenance
 
 The project is Apache-2.0. Two hard rules, expanded in
