@@ -86,9 +86,21 @@ alongside the implementation.
    cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python <repo>/tools/generate_oracles.py
    ```
 
-   Run it from a neutral working directory. Importing `nltk` with the repository
-   root on `sys.path` trips a sandbox import guard, which is why `PYTHONSAFEPATH`
-   and the `cd` are not optional.
+   Run it from a neutral working directory. `nltk` refuses to import its own
+   dependencies when they appear to live *under* the current directory, so the
+   run fails — even with `PYTHONSAFEPATH` set — whenever the working directory is
+   an ancestor of the virtualenv:
+
+   ```text
+   ImportError: Blocked import of regex from current working directory for security reasons
+   ```
+
+   Running from `/tmp` with the virtualenv inside the repository satisfies this.
+   Running from the repository root, or from `~`, does not.
+
+   Check the generator's own exit code, not a pipeline's. `python … | tail` reports
+   `tail`'s status, so a failed generation looks successful — and the drift check
+   that follows then proves nothing, because nothing was regenerated.
 3. Add a test that replays the corpus, with a `1e-9` tolerance for floating-point
    results and exact comparison for strings.
 
@@ -96,6 +108,22 @@ Generation must be deterministic: a fixed seed, no wall-clock timestamps, no
 unordered iteration. The `Oracles are reproducible` CI job regenerates and fails
 on any drift, so a corpus that is not byte-reproducible will block the pull
 request.
+
+### Dependencies
+
+`tools/requirements.txt` is the human-edited input; `tools/requirements.lock.txt`
+is generated and pins the whole resolved graph with hashes. CI installs from the
+lock, so a transitive bump cannot change the corpora behind your back. After
+editing the input, regenerate:
+
+```bash
+pip install pip-tools
+pip-compile --generate-hashes --strip-extras   --output-file tools/requirements.lock.txt tools/requirements.txt
+```
+
+Then regenerate the corpora and confirm they are unchanged. If they move, the
+dependency bump changed reference output — resolve that deliberately, in the same
+commit, rather than letting it land on someone else's pull request.
 
 Where behavior deliberately diverges from the Python reference, record it in
 [`docs/decisions/`](docs/decisions/) rather than in a code comment alone — see
