@@ -70,6 +70,7 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | `SnowballStemmer("spanish").stem(w)` | nltk | `SpanishSnowballStemmer.Stem(w)` | Spanish Snowball: attached-pronoun step 0, accents stripped last. Exact parity (127 words). |
 | `SnowballStemmer("portuguese").stem(w)` | nltk | `PortugueseSnowballStemmer.Stem(w)` | Portuguese Snowball: nasal `a~`/`o~` expansion, accents kept. Exact parity (105 words). |
 | `SnowballStemmer("italian").stem(w)` | nltk | `ItalianSnowballStemmer.Stem(w)` | Italian Snowball: acute→grave folding, `u`/`i` marking. Exact parity (96 words); `enza`→`te` follows nltk over the published text, see [0008](decisions/0008-italian-enza-nltk-divergence.md). |
+| `SnowballStemmer("german").stem(w)` | nltk | `GermanSnowballStemmer.Stem(w)` | German Snowball: `ß`→`ss`, `u`/`y` marking, R1 floored at 3, no RV region. Exact parity (88 words). |
 
 ## DataNet.Embeddings — sub-word tokenization & pooling
 

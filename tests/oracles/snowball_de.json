@@ -1,0 +1,453 @@
+{
+ "metadata": {
+  "algorithm": "GermanSnowballStemmer",
+  "library": "nltk",
+  "library_version": "3.10.1",
+  "reference_calls": [
+   "nltk.stem.snowball.SnowballStemmer('german')"
+  ],
+  "count": 88
+ },
+ "cases": [
+  {
+   "id": 0,
+   "word": "straße",
+   "stem": "strass"
+  },
+  {
+   "id": 1,
+   "word": "strasse",
+   "stem": "strass"
+  },
+  {
+   "id": 2,
+   "word": "größe",
+   "stem": "gross"
+  },
+  {
+   "id": 3,
+   "word": "grosse",
+   "stem": "gross"
+  },
+  {
+   "id": 4,
+   "word": "fuß",
+   "stem": "fuss"
+  },
+  {
+   "id": 5,
+   "word": "füße",
+   "stem": "fuss"
+  },
+  {
+   "id": 6,
+   "word": "kraut",
+   "stem": "kraut"
+  },
+  {
+   "id": 7,
+   "word": "kräuter",
+   "stem": "kraut"
+  },
+  {
+   "id": 8,
+   "word": "haus",
+   "stem": "haus"
+  },
+  {
+   "id": 9,
+   "word": "häuser",
+   "stem": "haus"
+  },
+  {
+   "id": 10,
+   "word": "baum",
+   "stem": "baum"
+  },
+  {
+   "id": 11,
+   "word": "bäume",
+   "stem": "baum"
+  },
+  {
+   "id": 12,
+   "word": "schönheit",
+   "stem": "schonheit"
+  },
+  {
+   "id": 13,
+   "word": "schönheiten",
+   "stem": "schonheit"
+  },
+  {
+   "id": 14,
+   "word": "freiheit",
+   "stem": "freiheit"
+  },
+  {
+   "id": 15,
+   "word": "möglichkeit",
+   "stem": "moglich"
+  },
+  {
+   "id": 16,
+   "word": "möglichkeiten",
+   "stem": "moglich"
+  },
+  {
+   "id": 17,
+   "word": "wohnung",
+   "stem": "wohnung"
+  },
+  {
+   "id": 18,
+   "word": "wohnungen",
+   "stem": "wohnung"
+  },
+  {
+   "id": 19,
+   "word": "zeitung",
+   "stem": "zeitung"
+  },
+  {
+   "id": 20,
+   "word": "zeitungen",
+   "stem": "zeitung"
+  },
+  {
+   "id": 21,
+   "word": "rechnung",
+   "stem": "rechnung"
+  },
+  {
+   "id": 22,
+   "word": "ergebnis",
+   "stem": "ergebnis"
+  },
+  {
+   "id": 23,
+   "word": "ergebnisse",
+   "stem": "ergebnis"
+  },
+  {
+   "id": 24,
+   "word": "geheimnis",
+   "stem": "geheimnis"
+  },
+  {
+   "id": 25,
+   "word": "kenntnis",
+   "stem": "kenntnis"
+  },
+  {
+   "id": 26,
+   "word": "praktisch",
+   "stem": "praktisch"
+  },
+  {
+   "id": 27,
+   "word": "praktische",
+   "stem": "praktisch"
+  },
+  {
+   "id": 28,
+   "word": "politisch",
+   "stem": "polit"
+  },
+  {
+   "id": 29,
+   "word": "politischen",
+   "stem": "polit"
+  },
+  {
+   "id": 30,
+   "word": "freundlich",
+   "stem": "freundlich"
+  },
+  {
+   "id": 31,
+   "word": "freundliche",
+   "stem": "freundlich"
+  },
+  {
+   "id": 32,
+   "word": "freundlichen",
+   "stem": "freundlich"
+  },
+  {
+   "id": 33,
+   "word": "wirklich",
+   "stem": "wirklich"
+  },
+  {
+   "id": 34,
+   "word": "wirkliche",
+   "stem": "wirklich"
+  },
+  {
+   "id": 35,
+   "word": "wichtig",
+   "stem": "wichtig"
+  },
+  {
+   "id": 36,
+   "word": "wichtige",
+   "stem": "wichtig"
+  },
+  {
+   "id": 37,
+   "word": "wichtigen",
+   "stem": "wichtig"
+  },
+  {
+   "id": 38,
+   "word": "richtig",
+   "stem": "richtig"
+  },
+  {
+   "id": 39,
+   "word": "richtiges",
+   "stem": "richtig"
+  },
+  {
+   "id": 40,
+   "word": "lachend",
+   "stem": "lachend"
+  },
+  {
+   "id": 41,
+   "word": "singend",
+   "stem": "singend"
+  },
+  {
+   "id": 42,
+   "word": "arbeitend",
+   "stem": "arbeit"
+  },
+  {
+   "id": 43,
+   "word": "kinder",
+   "stem": "kind"
+  },
+  {
+   "id": 44,
+   "word": "kindern",
+   "stem": "kind"
+  },
+  {
+   "id": 45,
+   "word": "kindes",
+   "stem": "kind"
+  },
+  {
+   "id": 46,
+   "word": "kinde",
+   "stem": "kind"
+  },
+  {
+   "id": 47,
+   "word": "kind",
+   "stem": "kind"
+  },
+  {
+   "id": 48,
+   "word": "guten",
+   "stem": "gut"
+  },
+  {
+   "id": 49,
+   "word": "gutes",
+   "stem": "gut"
+  },
+  {
+   "id": 50,
+   "word": "gutem",
+   "stem": "gut"
+  },
+  {
+   "id": 51,
+   "word": "guter",
+   "stem": "gut"
+  },
+  {
+   "id": 52,
+   "word": "gute",
+   "stem": "gut"
+  },
+  {
+   "id": 53,
+   "word": "gut",
+   "stem": "gut"
+  },
+  {
+   "id": 54,
+   "word": "schnellsten",
+   "stem": "schnell"
+  },
+  {
+   "id": 55,
+   "word": "schnellste",
+   "stem": "schnell"
+  },
+  {
+   "id": 56,
+   "word": "schnellst",
+   "stem": "schnell"
+  },
+  {
+   "id": 57,
+   "word": "schnell",
+   "stem": "schnell"
+  },
+  {
+   "id": 58,
+   "word": "männer",
+   "stem": "mann"
+  },
+  {
+   "id": 59,
+   "word": "männern",
+   "stem": "mann"
+  },
+  {
+   "id": 60,
+   "word": "frauen",
+   "stem": "frau"
+  },
+  {
+   "id": 61,
+   "word": "frau",
+   "stem": "frau"
+  },
+  {
+   "id": 62,
+   "word": "mann",
+   "stem": "mann"
+  },
+  {
+   "id": 63,
+   "word": "arbeiten",
+   "stem": "arbeit"
+  },
+  {
+   "id": 64,
+   "word": "arbeitet",
+   "stem": "arbeitet"
+  },
+  {
+   "id": 65,
+   "word": "arbeitete",
+   "stem": "arbeitet"
+  },
+  {
+   "id": 66,
+   "word": "gearbeitet",
+   "stem": "gearbeitet"
+  },
+  {
+   "id": 67,
+   "word": "arbeite",
+   "stem": "arbeit"
+  },
+  {
+   "id": 68,
+   "word": "spielen",
+   "stem": "spiel"
+  },
+  {
+   "id": 69,
+   "word": "spielt",
+   "stem": "spielt"
+  },
+  {
+   "id": 70,
+   "word": "spielte",
+   "stem": "spielt"
+  },
+  {
+   "id": 71,
+   "word": "gespielt",
+   "stem": "gespielt"
+  },
+  {
+   "id": 72,
+   "word": "laufen",
+   "stem": "lauf"
+  },
+  {
+   "id": 73,
+   "word": "läuft",
+   "stem": "lauft"
+  },
+  {
+   "id": 74,
+   "word": "lief",
+   "stem": "lief"
+  },
+  {
+   "id": 75,
+   "word": "gelaufen",
+   "stem": "gelauf"
+  },
+  {
+   "id": 76,
+   "word": "sprechen",
+   "stem": "sprech"
+  },
+  {
+   "id": 77,
+   "word": "spricht",
+   "stem": "spricht"
+  },
+  {
+   "id": 78,
+   "word": "sprach",
+   "stem": "sprach"
+  },
+  {
+   "id": 79,
+   "word": "gesprochen",
+   "stem": "gesproch"
+  },
+  {
+   "id": 80,
+   "word": "der",
+   "stem": "der"
+  },
+  {
+   "id": 81,
+   "word": "die",
+   "stem": "die"
+  },
+  {
+   "id": 82,
+   "word": "das",
+   "stem": "das"
+  },
+  {
+   "id": 83,
+   "word": "und",
+   "stem": "und"
+  },
+  {
+   "id": 84,
+   "word": "ist",
+   "stem": "ist"
+  },
+  {
+   "id": 85,
+   "word": "ein",
+   "stem": "ein"
+  },
+  {
+   "id": 86,
+   "word": "eine",
+   "stem": "ein"
+  },
+  {
+   "id": 87,
+   "word": "einen",
+   "stem": "ein"
+  }
+ ]
+}
