@@ -2,6 +2,9 @@ using System.Text;
 
 namespace DataNet.Text.Stemming;
 
+// SonarLint S3776: cognitive complexity: a faithful implementation of a published rule-engine; decomposing it would break the 1:1 mapping with the reference that makes divergences auditable.
+#pragma warning disable S3776
+
 /// <summary>
 /// The English Snowball ("Porter2") stemming algorithm.
 /// </summary>
@@ -58,7 +61,7 @@ public static class EnglishSnowballStemmer
         }
 
         var w = new Worker(s);
-        return w.Stem();
+        return w.Run();
     }
 
     private sealed class Worker
@@ -92,7 +95,7 @@ public static class EnglishSnowballStemmer
             _r2 = Region(_s, _r1);
         }
 
-        public string Stem()
+        public string Run()
         {
             Step0();
             Step1a();
@@ -242,7 +245,24 @@ public static class EnglishSnowballStemmer
                 return;
             }
 
-            string? suffix = Ends("ingly") ? "ingly" : Ends("edly") ? "edly" : Ends("ing") ? "ing" : Ends("ed") ? "ed" : null;
+            // Longest first: "ingly"/"edly" must win over "ing"/"ed".
+            string? suffix = null;
+            if (Ends("ingly"))
+            {
+                suffix = "ingly";
+            }
+            else if (Ends("edly"))
+            {
+                suffix = "edly";
+            }
+            else if (Ends("ing"))
+            {
+                suffix = "ing";
+            }
+            else if (Ends("ed"))
+            {
+                suffix = "ed";
+            }
             if (suffix is null || !ContainsVowelBefore(suffix.Length))
             {
                 return;

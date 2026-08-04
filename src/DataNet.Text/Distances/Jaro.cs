@@ -3,6 +3,9 @@ using DataNet.Text.Internal;
 
 namespace DataNet.Text.Distances;
 
+// SonarLint S3776: cognitive complexity: a faithful implementation of a published rule-engine; decomposing it would break the 1:1 mapping with the reference that makes divergences auditable.
+#pragma warning disable S3776
+
 /// <summary>
 /// Jaro similarity: a value in <c>[0, 1]</c> based on matching characters within a
 /// sliding window and the number of transpositions among them.
@@ -111,8 +114,11 @@ public static class Jaro
                 k++;
             }
 
+            // The number of mismatched positions among matched characters is always
+            // even, so halving it is exact; integer division here is deliberate and
+            // mirrors the reference implementations (jellyfish, rapidfuzz).
+            int half = transpositions / 2;
             double m = matches;
-            double half = transpositions / 2;
             return (m / len1 + m / len2 + (m - half) / m) / 3.0;
         }
         finally

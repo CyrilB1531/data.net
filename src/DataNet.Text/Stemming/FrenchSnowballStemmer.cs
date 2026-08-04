@@ -2,6 +2,10 @@ using System.Text;
 
 namespace DataNet.Text.Stemming;
 
+// SonarLint S3776: cognitive complexity: a faithful implementation of a published rule-engine; decomposing it would break the 1:1 mapping with the reference that makes divergences auditable.
+// SonarLint S3267: the suffix scans early-return and mutate in place, which Where cannot express — and they run per token.
+#pragma warning disable S3776, S3267
+
 /// <summary>
 /// The French Snowball stemming algorithm.
 /// </summary>
@@ -24,7 +28,7 @@ public static class FrenchSnowballStemmer
         {
             return s;
         }
-        return new Worker(s).Stem();
+        return new Worker(s).Run();
     }
 
     private sealed class Worker
@@ -43,7 +47,7 @@ public static class FrenchSnowballStemmer
             _rv = ComputeRv(_s);
         }
 
-        public string Stem()
+        public string Run()
         {
             // Control flow is driven by whether a step actually ALTERED the word,
             // not merely matched a suffix (Snowball semantics).
@@ -154,7 +158,7 @@ public static class FrenchSnowballStemmer
         private void Delete(int len) => _s = _s[..^len];
         private void Replace(int suffixLen, string repl) => _s = _s.Substring(0, _s.Length - suffixLen) + repl;
 
-        private bool Step1()
+        private void Step1()
         {
             // (a) delete if in R2
             foreach (string suf in new[] { "ances", "iqUes", "ismes", "ables", "istes", "ance", "iqUe", "isme", "able", "iste", "eux" })
@@ -165,7 +169,7 @@ public static class FrenchSnowballStemmer
                     {
                         Delete(suf.Length);
                     }
-                    return true;
+                    return;
                 }
             }
 
@@ -189,7 +193,7 @@ public static class FrenchSnowballStemmer
                             }
                         }
                     }
-                    return true;
+                    return;
                 }
             }
 
@@ -201,7 +205,7 @@ public static class FrenchSnowballStemmer
                     {
                         Replace(suf.Length, "log");
                     }
-                    return true;
+                    return;
                 }
             }
             foreach (string suf in new[] { "usions", "utions", "usion", "ution" })
@@ -212,7 +216,7 @@ public static class FrenchSnowballStemmer
                     {
                         Replace(suf.Length, "u");
                     }
-                    return true;
+                    return;
                 }
             }
             foreach (string suf in new[] { "ences", "ence" })
@@ -223,7 +227,7 @@ public static class FrenchSnowballStemmer
                     {
                         Replace(suf.Length, "ent");
                     }
-                    return true;
+                    return;
                 }
             }
 
@@ -262,7 +266,7 @@ public static class FrenchSnowballStemmer
                             Replace(3, "i");
                         }
                     }
-                    return true;
+                    return;
                 }
             }
 
@@ -300,7 +304,7 @@ public static class FrenchSnowballStemmer
                             Delete(2);
                         }
                     }
-                    return true;
+                    return;
                 }
             }
 
@@ -327,7 +331,7 @@ public static class FrenchSnowballStemmer
                             }
                         }
                     }
-                    return true;
+                    return;
                 }
             }
 
@@ -336,7 +340,7 @@ public static class FrenchSnowballStemmer
                 if (Ends(suf))
                 {
                     Replace(suf.Length, "eau");
-                    return true;
+                    return;
                 }
             }
             if (Ends("aux"))
@@ -345,7 +349,7 @@ public static class FrenchSnowballStemmer
                 {
                     Replace(3, "al");
                 }
-                return true;
+                return;
             }
             foreach (string suf in new[] { "euses", "euse" })
             {
@@ -359,7 +363,7 @@ public static class FrenchSnowballStemmer
                     {
                         Replace(suf.Length, "eux");
                     }
-                    return true;
+                    return;
                 }
             }
             foreach (string suf in new[] { "issements", "issement" })
@@ -370,7 +374,7 @@ public static class FrenchSnowballStemmer
                     {
                         Delete(suf.Length);
                     }
-                    return true;
+                    return;
                 }
             }
             if (Ends("amment"))
@@ -380,7 +384,7 @@ public static class FrenchSnowballStemmer
                     Replace(6, "ant");
                     _step1RemovedMent = true;
                 }
-                return true;
+                return;
             }
             if (Ends("emment"))
             {
@@ -389,7 +393,7 @@ public static class FrenchSnowballStemmer
                     Replace(6, "ent");
                     _step1RemovedMent = true;
                 }
-                return true;
+                return;
             }
             foreach (string suf in new[] { "ments", "ment" })
             {
@@ -401,14 +405,13 @@ public static class FrenchSnowballStemmer
                         Delete(suf.Length);
                         _step1RemovedMent = true;
                     }
-                    return true;
+                    return;
                 }
             }
 
-            return false;
         }
 
-        private bool Step2a()
+        private void Step2a()
         {
             foreach (string suf in new[]
             {
@@ -425,22 +428,21 @@ public static class FrenchSnowballStemmer
                     if (before >= 0 && !IsVowel(_s[before]))
                     {
                         Delete(suf.Length);
-                        return true;
+                        return;
                     }
-                    return false;
+                    return;
                 }
             }
-            return false;
         }
 
-        private bool Step2b()
+        private void Step2b()
         {
             foreach (string suf in new[] { "eraIent", "erions", "èrent", "erais", "erait", "eriez", "erons", "eront", "erai", "eras", "erez", "ées", "era", "iez", "ée", "és", "er", "ez", "é" })
             {
                 if (Ends(suf) && InRv(suf.Length))
                 {
                     Delete(suf.Length);
-                    return true;
+                    return;
                 }
             }
             foreach (string suf in new[]
@@ -456,7 +458,7 @@ public static class FrenchSnowballStemmer
                     {
                         Delete(1);
                     }
-                    return true;
+                    return;
                 }
             }
             foreach (string suf in new[] { "ions" })
@@ -464,10 +466,9 @@ public static class FrenchSnowballStemmer
                 if (Ends(suf) && InR2(suf.Length))
                 {
                     Delete(suf.Length);
-                    return true;
+                    return;
                 }
             }
-            return false;
         }
 
         private void Step3()

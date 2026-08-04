@@ -34,18 +34,20 @@ public sealed class LevenshteinPropertyTests
 
         for (int t = 0; t < Trials; t++)
         {
-            string a = RandomString(rng, alphabet, 8);
-            string b = RandomString(rng, alphabet, 8);
-            string c = RandomString(rng, alphabet, 8);
+            // Named x/y/z rather than a/b/c: the symmetry check deliberately swaps the
+            // arguments, which reads as a mistake when the locals mirror the parameters.
+            string x = RandomString(rng, alphabet, 8);
+            string y = RandomString(rng, alphabet, 8);
+            string z = RandomString(rng, alphabet, 8);
 
-            int dab = Levenshtein.Distance(a, b);
-            int dba = Levenshtein.Distance(b, a);
-            int dbc = Levenshtein.Distance(b, c);
-            int dac = Levenshtein.Distance(a, c);
+            int dab = Levenshtein.Distance(x, y);
+            int dba = Levenshtein.Distance(y, x);
+            int dbc = Levenshtein.Distance(y, z);
+            int dac = Levenshtein.Distance(x, z);
 
             Assert.True(dab >= 0, "non-negativity");
-            Assert.Equal(0, Levenshtein.Distance(a, a)); // identity (reflexive)
-            Assert.True(dab == 0 == string.Equals(a, b, StringComparison.Ordinal),
+            Assert.Equal(0, Levenshtein.Distance(x, x)); // identity (reflexive)
+            Assert.True(dab == 0 == string.Equals(x, y, StringComparison.Ordinal),
                 "identity of indiscernibles"); // d==0 iff equal
             Assert.Equal(dab, dba); // symmetry
             Assert.True(dac <= dab + dbc,

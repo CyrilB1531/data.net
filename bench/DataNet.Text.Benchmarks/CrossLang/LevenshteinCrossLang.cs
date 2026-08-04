@@ -15,7 +15,7 @@ namespace DataNet.Text.Benchmarks.CrossLang;
 public static class LevenshteinCrossLang
 {
     private const double MinTimeSeconds = 0.5;
-    private const int Repeats = 5;
+    private const int RepeatCount = 5;
 
     public static void Run(string[] args)
     {
@@ -49,7 +49,7 @@ public static class LevenshteinCrossLang
                 Os = Environment.OSVersion.ToString(),
                 Mode = mode.ToString(),
                 MinTimeS = MinTimeSeconds,
-                Repeats = Repeats,
+                Repeats = RepeatCount,
             },
             Results = results,
         };
@@ -64,7 +64,7 @@ public static class LevenshteinCrossLang
         int n = pairs.Count;
         double best = double.PositiveInfinity;
 
-        for (int r = 0; r < Repeats; r++)
+        for (int r = 0; r < RepeatCount; r++)
         {
             long iters = 1;
             while (true)

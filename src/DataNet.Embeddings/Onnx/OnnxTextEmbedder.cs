@@ -86,7 +86,7 @@ public sealed class OnnxTextEmbedder : IDisposable
         }
 
         using IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results = _session.Run(inputs, [_outputName]);
-        Tensor<float> output = results.First().AsTensor<float>();
+        Tensor<float> output = results[0].AsTensor<float>();
 
         // Expected shape [1, seqLen, dim]; if the model already pools to [1, dim],
         // treat it as a single token with a full mask.

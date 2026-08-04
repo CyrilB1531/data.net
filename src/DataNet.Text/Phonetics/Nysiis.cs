@@ -2,6 +2,9 @@ using System.Text;
 
 namespace DataNet.Text.Phonetics;
 
+// SonarLint S3776: cognitive complexity: a faithful implementation of a published rule-engine; decomposing it would break the 1:1 mapping with the reference that makes divergences auditable.
+#pragma warning disable S3776
+
 /// <summary>
 /// NYSIIS (New York State Identification and Intelligence System) phonetic encoding.
 /// </summary>
@@ -119,12 +122,21 @@ public static class Nysiis
             }
             else if (c == 'H')
             {
-                // Between two vowels H stays; after a vowel it becomes 'A';
-                // after a consonant it takes the previous letter (usually a duplicate
-                // that collapses away, but not always).
-                replacement = IsVowel(prev)
-                    ? (IsVowel(next) ? "H" : "A")
-                    : prev.ToString();
+                // Between two vowels H is kept. After a vowel that is followed by a
+                // consonant it becomes the letter A. After a consonant it takes the
+                // previous letter, usually a duplicate that then collapses away.
+                if (!IsVowel(prev))
+                {
+                    replacement = prev.ToString();
+                }
+                else if (IsVowel(next))
+                {
+                    replacement = "H";
+                }
+                else
+                {
+                    replacement = "A";
+                }
             }
             else if (c == 'W')
             {

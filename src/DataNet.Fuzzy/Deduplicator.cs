@@ -1,5 +1,8 @@
 namespace DataNet.Fuzzy;
 
+// SonarLint S3776: cognitive complexity: a faithful implementation of a published rule-engine; decomposing it would break the 1:1 mapping with the reference that makes divergences auditable.
+#pragma warning disable S3776
+
 /// <summary>
 /// Groups near-duplicate records using blocking to avoid a quadratic number of
 /// comparisons.

@@ -3,6 +3,9 @@ using DataNet.Text.Internal;
 
 namespace DataNet.Text.Distances;
 
+// SonarLint S4136: the overloads are grouped by concern, with the generic core deliberately last.
+#pragma warning disable S4136
+
 /// <summary>
 /// Longest common subsequence and longest common substring lengths.
 /// </summary>

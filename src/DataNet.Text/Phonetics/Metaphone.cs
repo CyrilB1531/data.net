@@ -2,6 +2,10 @@ using System.Text;
 
 namespace DataNet.Text.Phonetics;
 
+// SonarLint S3776: cognitive complexity: a faithful implementation of a published rule-engine; decomposing it would break the 1:1 mapping with the reference that makes divergences auditable.
+// SonarLint S127: digraph consumption advances the loop variable by design.
+#pragma warning disable S3776, S127
+
 /// <summary>
 /// Metaphone phonetic encoding (Lawrence Philips, 1990).
 /// </summary>

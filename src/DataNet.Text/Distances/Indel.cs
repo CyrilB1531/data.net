@@ -3,6 +3,9 @@ using DataNet.Text.Internal;
 
 namespace DataNet.Text.Distances;
 
+// SonarLint S4136: the overloads are grouped by concern, with the generic core deliberately last.
+#pragma warning disable S4136
+
 /// <summary>
 /// Indel distance: the number of insertions and deletions (no substitutions) to
 /// transform one sequence into another — equivalently <c>len(a) + len(b) - 2·LCS</c>.
