@@ -67,7 +67,8 @@ jobs:
             /o:"cyrilb1531" \
             /d:sonar.token="$SONAR_TOKEN" \
             /d:sonar.host.url="https://sonarcloud.io" \
-            /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml"
+            /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
+            /d:sonar.python.version="3.12"
 
           dotnet build DataNet.slnx --configuration Release
 
