@@ -32,18 +32,25 @@ jobs:
       - name: Test
         run: dotnet test --configuration Release
 
+      # Derived from the tag name, which GitHub's own guidance treats as
+      # untrusted. Same reasoning as release-nuget-org.yml: keep it as data.
       - name: Pack
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
         run: |
           for proj in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
             dotnet pack "$proj" --configuration Release -o artifacts \
-              -p:Version=${{ steps.version.outputs.value }}
+              -p:Version="$VERSION"
           done
 
       - name: Push to GitHub Packages
+        env:
+          OWNER: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           dotnet nuget push "artifacts/*.nupkg" \
-            --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
-            --api-key "${{ secrets.GITHUB_TOKEN }}" \
+            --source "https://nuget.pkg.github.com/$OWNER/index.json" \
+            --api-key "$GITHUB_TOKEN" \
             --skip-duplicate
 
       - name: Upload packages as build artifacts
