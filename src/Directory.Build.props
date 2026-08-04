@@ -14,6 +14,7 @@
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)Shared/GlobalUsings.cs" Link="Internal/GlobalUsings.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared/Guard.cs" Link="Internal/Guard.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/RegexDefaults.cs" Link="Internal/RegexDefaults.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared/StringCompat.cs" Link="Internal/StringCompat.cs" />
   </ItemGroup>
 
