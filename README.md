@@ -67,6 +67,11 @@ dotnet test                                    # replay oracles + property tests
 dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter '*Levenshtein*'
 ```
 
+The project follows **GitHub flow**: `main` is always releasable, and every change
+arrives through a short-lived branch and a pull request. Branch conventions, the
+definition of done, the oracle-validation procedure and the analyzer-suppression
+policy are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 ### Oracle validation
 
 Conformance to Python behavior is **proven**, not assumed (§4 of the brief):
