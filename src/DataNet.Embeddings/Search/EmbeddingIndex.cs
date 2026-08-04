@@ -19,7 +19,8 @@ public sealed class EmbeddingIndex
 {
     private readonly int _dim;
     private readonly bool _normalize;
-    private readonly List<float> _data = [];
+    private float[] _data = Array.Empty<float>();
+    private int _length;
     private int _count;
 
     /// <summary>Creates an index for vectors of the given dimension.</summary>
@@ -49,8 +50,19 @@ public sealed class EmbeddingIndex
             throw new ArgumentException($"vector length {vector.Length} != dimension {_dim}.", nameof(vector));
         }
 
-        int start = _data.Count;
-        _data.AddRange(vector);
+        if (_data.Length < _length + _dim)
+        {
+            int newCapacity = _data.Length == 0 ? Math.Max(_dim * 4, _dim) : _data.Length * 2;
+            if (newCapacity < _length + _dim)
+            {
+                newCapacity = _length + _dim;
+            }
+            Array.Resize(ref _data, newCapacity);
+        }
+
+        int start = _length;
+        vector.CopyTo(_data.AsSpan(start, _dim));
+        _length += _dim;
         if (_normalize)
         {
             NormalizeStored(start);
@@ -86,7 +98,7 @@ public sealed class EmbeddingIndex
             q = owned;
         }
 
-        ReadOnlySpan<float> data = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_data);
+        ReadOnlySpan<float> data = _data.AsSpan(0, _length);
         var scored = new SearchResult[_count];
         for (int item = 0; item < _count; item++)
         {

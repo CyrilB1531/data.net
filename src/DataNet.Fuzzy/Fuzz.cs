@@ -20,16 +20,16 @@ public static class Fuzz
     /// <summary>Indel similarity ×100 — the base ratio.</summary>
     public static double Ratio(string a, string b)
     {
-        ArgumentNullException.ThrowIfNull(a);
-        ArgumentNullException.ThrowIfNull(b);
+        Guard.NotNull(a);
+        Guard.NotNull(b);
         return 100.0 * Indel.NormalizedSimilarity(a, b);
     }
 
     /// <summary>Best <see cref="Ratio"/> between the shorter string and any substring of the longer.</summary>
     public static double PartialRatio(string a, string b)
     {
-        ArgumentNullException.ThrowIfNull(a);
-        ArgumentNullException.ThrowIfNull(b);
+        Guard.NotNull(a);
+        Guard.NotNull(b);
         if (a.Length == 0 && b.Length == 0)
         {
             return 100.0;
@@ -117,8 +117,8 @@ public static class Fuzz
     /// </summary>
     public static double WRatio(string a, string b)
     {
-        ArgumentNullException.ThrowIfNull(a);
-        ArgumentNullException.ThrowIfNull(b);
+        Guard.NotNull(a);
+        Guard.NotNull(b);
         if (a.Length == 0 || b.Length == 0)
         {
             return 0.0;
@@ -150,7 +150,7 @@ public static class Fuzz
     {
         var copy = (string[])tokens.Clone();
         Array.Sort(copy, StringComparer.Ordinal);
-        return string.Join(' ', copy);
+        return string.Join(" ", copy);
     }
 
     private static double TokenSet(string a, string b, bool partial)
@@ -169,7 +169,7 @@ public static class Fuzz
         var diffB = new SortedSet<string>(setB, StringComparer.Ordinal);
         diffB.ExceptWith(setA);
 
-        string sect = string.Join(' ', intersection);
+        string sect = string.Join(" ", intersection);
         string combinedA = Join(intersection, diffA);
         string combinedB = Join(intersection, diffB);
 
@@ -184,6 +184,6 @@ public static class Fuzz
     {
         var all = new List<string>(first);
         all.AddRange(second);
-        return string.Join(' ', all).Trim();
+        return string.Join(" ", all).Trim();
     }
 }

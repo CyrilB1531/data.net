@@ -32,7 +32,7 @@ public sealed class SentencePieceTokenizer
     /// <param name="unkId">The unknown-piece id (default 0).</param>
     public SentencePieceTokenizer(IReadOnlyList<SentencePiece> vocab, int unkId = 0)
     {
-        ArgumentNullException.ThrowIfNull(vocab);
+        Guard.NotNull(vocab);
         _pieces = new Dictionary<string, SentencePiece>(vocab.Count, StringComparer.Ordinal);
         double minScore = 0;
         foreach (SentencePiece p in vocab)
@@ -53,7 +53,7 @@ public sealed class SentencePieceTokenizer
     /// <summary>Tokenizes <paramref name="text"/> into unigram pieces and their ids.</summary>
     public TokenizationResult Encode(string text)
     {
-        ArgumentNullException.ThrowIfNull(text);
+        Guard.NotNull(text);
         string s = Preprocess(text);
         if (s.Length == 0)
         {
@@ -64,7 +64,10 @@ public sealed class SentencePieceTokenizer
         var best = new double[n + 1];
         var startAt = new int[n + 1];
         var idAt = new int[n + 1];
-        Array.Fill(best, double.NegativeInfinity);
+        for (int f = 0; f < best.Length; f++)
+        {
+            best[f] = double.NegativeInfinity;
+        }
         best[0] = 0;
 
         for (int i = 0; i < n; i++)
@@ -132,6 +135,6 @@ public sealed class SentencePieceTokenizer
             return string.Empty;
         }
         // add_dummy_prefix + escape whitespace to the meta symbol.
-        return Meta + string.Join(Meta, parts);
+        return Meta + string.Join(Meta.ToString(), parts);
     }
 }

@@ -19,7 +19,7 @@ public static class PorterStemmer
     /// <summary>Returns the Porter stem of <paramref name="word"/>.</summary>
     public static string Stem(string word)
     {
-        ArgumentNullException.ThrowIfNull(word);
+        Guard.NotNull(word);
         if (word.Length <= 2)
         {
             return word.ToLowerInvariant();

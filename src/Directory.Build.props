@@ -1,0 +1,27 @@
+<Project>
+
+  <!-- Chain to the repository-root Directory.Build.props (MSBuild otherwise stops
+       at the nearest one). -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Compile-time polyfills (records/init, Index/Range, nullable attrs…) so the
+       netstandard2.0 target builds. PrivateAssets=all: no runtime dependency. -->
+  <ItemGroup>
+    <PackageReference Include="PolySharp" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Shared internal helpers compiled into every library. -->
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/GlobalUsings.cs" Link="Internal/GlobalUsings.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/Guard.cs" Link="Internal/Guard.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/StringCompat.cs" Link="Internal/StringCompat.cs" />
+  </ItemGroup>
+
+  <!-- Span, Memory, ArrayPool and Vector<T> are in-box on net10 but need these
+       packages on netstandard2.0. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Memory" />
+    <PackageReference Include="System.Numerics.Vectors" />
+  </ItemGroup>
+
+</Project>

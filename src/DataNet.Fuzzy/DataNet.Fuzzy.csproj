@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks>
     <RootNamespace>DataNet.Fuzzy</RootNamespace>
     <PackageId>DataNet.Fuzzy</PackageId>
     <Description>Applied fuzzy string matching for .NET (rapidfuzz-compatible fuzz ratios, process.extract, dedup). No external dependencies.</Description>

@@ -17,7 +17,7 @@ public static class FrenchSnowballStemmer
     /// <summary>Returns the French Snowball stem of <paramref name="word"/>.</summary>
     public static string Stem(string word)
     {
-        ArgumentNullException.ThrowIfNull(word);
+        Guard.NotNull(word);
         // Compose accents (NFC) so 'è' etc. are single code points, as the rules expect.
         string s = word.ToLowerInvariant().Normalize(NormalizationForm.FormC);
         if (s.Length < 2)
@@ -152,7 +152,7 @@ public static class FrenchSnowballStemmer
         private bool InR2(int suffixLen) => _s.Length - suffixLen >= _r2;
         private bool Ends(string suffix) => _s.EndsWith(suffix, StringComparison.Ordinal);
         private void Delete(int len) => _s = _s[..^len];
-        private void Replace(int suffixLen, string repl) => _s = string.Concat(_s.AsSpan(0, _s.Length - suffixLen), repl);
+        private void Replace(int suffixLen, string repl) => _s = _s.Substring(0, _s.Length - suffixLen) + repl;
 
         private bool Step1()
         {
@@ -474,11 +474,11 @@ public static class FrenchSnowballStemmer
         {
             if (_s.EndsWith('Y'))
             {
-                _s = string.Concat(_s.AsSpan(0, _s.Length - 1), "i");
+                _s = _s.Substring(0, _s.Length - 1) + "i";
             }
             else if (_s.EndsWith('ç'))
             {
-                _s = string.Concat(_s.AsSpan(0, _s.Length - 1), "c");
+                _s = _s.Substring(0, _s.Length - 1) + "c";
             }
         }
 

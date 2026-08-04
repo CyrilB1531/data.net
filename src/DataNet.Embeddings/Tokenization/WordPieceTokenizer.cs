@@ -43,7 +43,7 @@ public sealed class WordPieceTokenizer
         int maxCharsPerWord = 100,
         bool lowercase = false)
     {
-        ArgumentNullException.ThrowIfNull(vocab);
+        Guard.NotNull(vocab);
         if (!vocab.TryGetValue(unkToken, out int unkId))
         {
             throw new ArgumentException($"The unknown token '{unkToken}' is not in the vocabulary.", nameof(unkToken));
@@ -60,7 +60,7 @@ public sealed class WordPieceTokenizer
     /// <summary>Tokenizes <paramref name="text"/> into sub-word tokens and their ids.</summary>
     public TokenizationResult Encode(string text)
     {
-        ArgumentNullException.ThrowIfNull(text);
+        Guard.NotNull(text);
         if (_lowercase)
         {
             text = text.ToLowerInvariant();

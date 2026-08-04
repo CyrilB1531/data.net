@@ -13,15 +13,21 @@ public static class VectorMath
             throw new ArgumentException($"length mismatch: {a.Length} vs {b.Length}.");
         }
 
+        float sum = 0;
+        int i = 0;
+#if NET5_0_OR_GREATER
+        // SIMD path (the span-based Vector<T> constructor is net-only).
         int width = Vector<float>.Count;
         var acc = Vector<float>.Zero;
-        int i = 0;
         for (; i <= a.Length - width; i += width)
         {
             acc += new Vector<float>(a.Slice(i, width)) * new Vector<float>(b.Slice(i, width));
         }
-
-        float sum = Vector.Sum(acc);
+        for (int j = 0; j < width; j++)
+        {
+            sum += acc[j];
+        }
+#endif
         for (; i < a.Length; i++)
         {
             sum += a[i] * b[i];
@@ -30,5 +36,5 @@ public static class VectorMath
     }
 
     /// <summary>Computes the Euclidean (L2) norm of a vector.</summary>
-    public static float L2Norm(ReadOnlySpan<float> v) => MathF.Sqrt(Dot(v, v));
+    public static float L2Norm(ReadOnlySpan<float> v) => (float)Math.Sqrt(Dot(v, v));
 }

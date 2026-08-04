@@ -27,7 +27,9 @@ removes that reason.
 See the [**three-column migration inventory**](docs/migration/README.md): it's the
 project map (use / build / decide).
 
-> Target: **.NET 10** (`net10.0`). See [`docs/decisions/0001`](docs/decisions/0001-target-framework.md).
+> Targets: **.NET 10** (`net10.0`, all fast paths) and **.NET Standard 2.0**
+> (broad reach — also .NET Framework 4.6.1+, Mono, Xamarin, Unity). A single
+> package carries both. See [`docs/decisions/0001`](docs/decisions/0001-target-framework.md).
 
 ## Status — every lot of the project brief is delivered
 

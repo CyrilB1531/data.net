@@ -29,9 +29,9 @@ public static class Deduplicator
         Func<T, T, double> similarity,
         double threshold)
     {
-        ArgumentNullException.ThrowIfNull(records);
-        ArgumentNullException.ThrowIfNull(blockingKey);
-        ArgumentNullException.ThrowIfNull(similarity);
+        Guard.NotNull(records);
+        Guard.NotNull(blockingKey);
+        Guard.NotNull(similarity);
 
         var uf = new UnionFind(records.Count);
 

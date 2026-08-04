@@ -125,7 +125,7 @@ internal sealed class TextAnalyzer
             }
             for (int i = 0; i + n <= count; i++)
             {
-                terms.Add(string.Join(' ', tokens.GetRange(i, n)));
+                terms.Add(string.Join(" ", tokens.GetRange(i, n)));
             }
         }
         return terms;

@@ -81,7 +81,7 @@ internal static class QgramCounts
         {
             for (int i = 0; i + qval <= s.Length; i++)
             {
-                Add(counts, new string(s.Slice(i, qval)));
+                Add(counts, s.Slice(i, qval).ToString());
             }
         }
 
