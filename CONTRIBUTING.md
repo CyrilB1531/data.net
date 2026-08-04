@@ -1,0 +1,145 @@
+# Contributing
+
+## Branching model — GitHub flow
+
+`main` is always releasable. All work happens on a short-lived branch off `main`
+and comes back through a pull request. Nothing is committed straight to `main`.
+
+```bash
+git switch main && git pull
+git switch -c feat/spanish-snowball-stemmer
+# … work, commit …
+git push -u origin feat/spanish-snowball-stemmer
+gh pr create --fill
+```
+
+Branch naming — `<type>/<short-kebab-summary>`, optionally prefixed with the
+issue number (`feat/2-spanish-snowball-stemmer`):
+
+| Prefix | For |
+| --- | --- |
+| `feat/` | a new algorithm or public capability |
+| `fix/` | a correctness fix |
+| `perf/` | a measured optimization (attach before/after numbers) |
+| `docs/` | documentation only |
+| `chore/` | build, CI, tooling, dependencies |
+
+Keep a branch to one concern. "One algorithm at a time, complete" applies to
+branches too: a new stemmer branch carries its implementation, its oracle corpus
+and its tests — and nothing else. If you find an unrelated problem while working,
+open an issue rather than widening the branch.
+
+Reference the issue from the pull request (`Closes #12`) so it closes on merge.
+
+### Review, with a single maintainer
+
+The project currently has one maintainer, who reviews and merges every pull
+request. That constrains how `main` can be protected: **GitHub does not let you
+approve your own pull request**, so a rule requiring an approving review would
+block every PR here — there would be nobody able to give it.
+
+Protection is therefore built on checks rather than approvals. A pull request may
+merge once CI is green:
+
+| Job | What it guards |
+| --- | --- |
+| `Lint (markdown + C# format)` | markdownlint, and `dotnet format --verify-no-changes` |
+| `Build, test, pack` | the build, the full test suite, and that the packages still pack |
+| `Oracles are reproducible` | that the committed corpora match a fresh generation |
+
+"Require approvals" stays off until a second maintainer joins. Self-merging after
+green checks is the expected flow here, not a shortcut — the pull request still
+earns its keep as the place CI runs against the merge result, and as the record
+of why a change was made.
+
+## Definition of done
+
+A change is not finished until all of these hold:
+
+1. **`dotnet build` is clean.** Warnings are errors repository-wide
+   (`TreatWarningsAsErrors` in the root `Directory.Build.props`), covering `src`,
+   `tests` and `bench` alike — so a warning fails the build.
+2. **`dotnet test` passes**, and any new algorithm replays a frozen oracle
+   corpus. Conformance is *proven*, never assumed — see below.
+3. **Lint is clean**: `dotnet format --verify-no-changes` and markdownlint.
+4. **Public API carries XML documentation**, naming the Python function whose
+   behavior it matches.
+
+```bash
+dotnet build DataNet.slnx -c Release
+dotnet test DataNet.slnx -c Release
+dotnet format DataNet.slnx --verify-no-changes
+npx markdownlint-cli2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
+```
+
+## Oracle validation
+
+New algorithms are validated by replaying reference outputs captured from the
+canonical Python library — not by trusting that the C# passes tests someone wrote
+alongside the implementation.
+
+1. Add a generator section to [`tools/generate_oracles.py`](tools/generate_oracles.py).
+2. Regenerate, and commit the resulting `tests/oracles/*.json`:
+
+   ```bash
+   cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python <repo>/tools/generate_oracles.py
+   ```
+
+   Run it from a neutral working directory. Importing `nltk` with the repository
+   root on `sys.path` trips a sandbox import guard, which is why `PYTHONSAFEPATH`
+   and the `cd` are not optional.
+3. Add a test that replays the corpus, with a `1e-9` tolerance for floating-point
+   results and exact comparison for strings.
+
+Generation must be deterministic: a fixed seed, no wall-clock timestamps, no
+unordered iteration. The `Oracles are reproducible` CI job regenerates and fails
+on any drift, so a corpus that is not byte-reproducible will block the pull
+request.
+
+Where behavior deliberately diverges from the Python reference, record it in
+[`docs/decisions/`](docs/decisions/) rather than in a code comment alone — see
+[`0005`](docs/decisions/0005-hamming-jellyfish-divergence.md) for the shape of
+one.
+
+## Analyzer suppressions
+
+Deliberate suppressions live in the source, as a `#pragma warning disable` with a
+comment giving the reason:
+
+```csharp
+// SonarLint S3776: cognitive complexity: faithful port of a published
+// rule-engine; decomposing it would break the 1:1 mapping with the reference.
+#pragma warning disable S3776
+```
+
+Do not reach for `.editorconfig` or `.vscode/settings.json` for SonarLint rules.
+SonarLint reads neither: it ignores `.editorconfig` entirely, and `sonarlint.rules`
+is declared application-scope in the extension manifest, so VS Code silently drops
+it from a workspace file. The pragma works because SonarLint's C# analysis is
+SonarAnalyzer running through Roslyn.
+
+A suppression needs a justification a reviewer can disagree with. "Too noisy" is
+not one.
+
+## Licensing and provenance
+
+The project is Apache-2.0. Two hard rules, expanded in
+[`0003`](docs/decisions/0003-provenance-and-licensing.md):
+
+- **Never transcribe GPL-licensed code.** Implement from the *published algorithm
+  description*. This is why the stemmers and phonetic encoders are original
+  implementations rather than ports of an existing codebase — and it is not a
+  formality: an oracle proves the behavior matches without the source needing to.
+- **Never commit model weights.** Test fixtures are small and synthetic.
+
+New third-party attributions go in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
+
+## Performance claims
+
+Performance is a stated selling point, so numbers are measured, not asserted.
+Benchmarks live in [`bench/`](bench/README.md). Attach before/after figures to any
+`perf/` pull request, and say which machine produced them.
+
+Verify what you are actually measuring before quoting a result. A benchmark that
+silently exercises the wrong build or the wrong code path will still produce
+confident-looking numbers.
