@@ -46,6 +46,7 @@ merge once CI is green:
 | `Lint (markdown + C# format)` | markdownlint, and `dotnet format --verify-no-changes` |
 | `Build, test, pack` | the build, the full test suite, and that the packages still pack |
 | `Oracles are reproducible` | that the committed corpora match a fresh generation |
+| `Build and analyze` | publishes analysis and coverage to SonarQube Cloud |
 
 "Require approvals" stays off until a second maintainer joins. Self-merging after
 green checks is the expected flow here, not a shortcut — the pull request still
