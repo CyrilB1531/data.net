@@ -107,149 +107,39 @@ public static class PortugueseSnowballStemmer
         private static readonly string[] S1Iva = ["ivas", "ivos", "iva", "ivo"];
         private static readonly string[] S1Ira = ["iras", "ira"];
 
-        private void Step1()
+        private void Step1() => ApplyLongestRule(
+        [
+            new(S1Delete, DeleteIfInR2),
+            new(S1DeleteThenIc, n => DeleteInR2ThenStrip(n, ["ic"])),
+            new(S1Logia, n => ReplaceIfInR2(n, "log")),
+            new(S1Ucao, n => ReplaceIfInR2(n, "u")),
+            new(S1Encia, n => ReplaceIfInR2(n, "ente")),
+            new(S1Idade, n => DeleteInR2ThenStrip(n, ["abil", "ic", "iv"])),
+            new(S1Iva, n => DeleteInR2ThenStrip(n, ["at"])),
+            new(S1Ira, ReplaceIraAfterE),
+            new(Adverbs, StepAdverb),
+        ]);
+
+        /// <summary>"ira"/"iras" become "ir", but only inside RV and only after an e.</summary>
+        private void ReplaceIraAfterE(int n)
         {
-            string? hit = null;
-            string[]? group = null;
-            foreach (string[] g in new[] { S1Delete, S1DeleteThenIc, S1Logia, S1Ucao, S1Encia, S1Idade, S1Iva, S1Ira })
+            if (InRv(n) && S.Length > n && S[S.Length - n - 1] == 'e')
             {
-                string? candidate = LongestSuffix(g);
-                if (candidate is not null && (hit is null || candidate.Length > hit.Length))
-                {
-                    hit = candidate;
-                    group = g;
-                }
-            }
-
-            string? adverb = LongestSuffix(["amente", "mente"]);
-            if (adverb is not null && (hit is null || adverb.Length > hit.Length))
-            {
-                StepAdverb(adverb);
-                return;
-            }
-
-            if (hit is null || group is null)
-            {
-                return;
-            }
-
-            int n = hit.Length;
-            if (ReferenceEquals(group, S1Delete))
-            {
-                if (InR2(n))
-                {
-                    Delete(n);
-                }
-            }
-            else if (ReferenceEquals(group, S1DeleteThenIc))
-            {
-                if (InR2(n))
-                {
-                    Delete(n);
-                    if (Ends("ic") && InR2(2))
-                    {
-                        Delete(2);
-                    }
-                }
-            }
-            else if (ReferenceEquals(group, S1Logia))
-            {
-                if (InR2(n))
-                {
-                    Replace(n, "log");
-                }
-            }
-            else if (ReferenceEquals(group, S1Ucao))
-            {
-                if (InR2(n))
-                {
-                    Replace(n, "u");
-                }
-            }
-            else if (ReferenceEquals(group, S1Encia))
-            {
-                if (InR2(n))
-                {
-                    Replace(n, "ente");
-                }
-            }
-            else if (ReferenceEquals(group, S1Idade))
-            {
-                if (InR2(n))
-                {
-                    Delete(n);
-                    foreach (string pre in new[] { "abil", "ic", "iv" })
-                    {
-                        if (Ends(pre) && InR2(pre.Length))
-                        {
-                            Delete(pre.Length);
-                            break;
-                        }
-                    }
-                }
-            }
-            else if (ReferenceEquals(group, S1Iva))
-            {
-                if (InR2(n))
-                {
-                    Delete(n);
-                    if (Ends("at") && InR2(2))
-                    {
-                        Delete(2);
-                    }
-                }
-            }
-            else
-            {
-                // S1Ira: only after an e, and only inside RV.
-                if (InRv(n) && S.Length > n && S[S.Length - n - 1] == 'e')
-                {
-                    Replace(n, "ir");
-                }
+                Replace(n, "ir");
             }
         }
 
-        private void StepAdverb(string adverb)
-        {
-            if (adverb == "amente")
-            {
-                if (!InR1(6))
-                {
-                    return;
-                }
-                Delete(6);
-                if (Ends("iv") && InR2(2))
-                {
-                    Delete(2);
-                    if (Ends("at") && InR2(2))
-                    {
-                        Delete(2);
-                    }
-                    return;
-                }
-                foreach (string pre in new[] { "os", "ic", "ad" })
-                {
-                    if (Ends(pre) && InR2(2))
-                    {
-                        Delete(2);
-                        return;
-                    }
-                }
-                return;
-            }
+        private static readonly string[] Adverbs = ["amente", "mente"];
 
-            if (!InR2(5))
+        private void StepAdverb(int n)
+        {
+            if (n == 6)
             {
-                return;
+                StripAmente(["os", "ic", "ad"]);
             }
-            Delete(5);
-            foreach (string pre in new[] { "ante", "avel", "ível" })
+            else
             {
-                if (Ends(pre) && InR2(pre.Length))
-                {
-                    Delete(pre.Length);
-                    return;
-                }
+                StripMente(["ante", "avel", "ível"]);
             }
         }
 

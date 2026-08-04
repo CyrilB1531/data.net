@@ -127,6 +127,133 @@ internal abstract class RomanceSnowballWorker
     /// <summary>Replaces a suffix of <paramref name="suffixLen"/> characters with <paramref name="repl"/>.</summary>
     protected void Replace(int suffixLen, string repl) => S = S.Substring(0, S.Length - suffixLen) + repl;
 
+    /// <summary>What to do with a matched suffix of the given length.</summary>
+    protected delegate void SuffixAction(int suffixLength);
+
+    /// <summary>One line of a Snowball step: a set of suffixes and the action they trigger.</summary>
+    protected readonly struct SuffixRule
+    {
+        /// <summary>The suffixes this rule matches.</summary>
+        public string[] Suffixes { get; }
+
+        /// <summary>What to do when one of them is the longest match.</summary>
+        public SuffixAction Action { get; }
+
+        /// <summary>Creates a rule.</summary>
+        public SuffixRule(string[] suffixes, SuffixAction action)
+        {
+            Suffixes = suffixes;
+            Action = action;
+        }
+    }
+
+    /// <summary>
+    /// Runs the action of whichever rule owns the longest suffix ending the word.
+    /// </summary>
+    /// <remarks>
+    /// The published steps are tables of "longest among these suffixes, then do
+    /// this", and the groups overlap — Spanish "amente" has to beat "mente",
+    /// Italian "azione" has to beat "ione". Matching per group in sequence gets
+    /// that wrong, so the longest is chosen across every rule at once.
+    /// </remarks>
+    protected void ApplyLongestRule(SuffixRule[] rules)
+    {
+        string? best = null;
+        SuffixAction? action = null;
+        foreach (SuffixRule rule in rules)
+        {
+            string? candidate = LongestSuffix(rule.Suffixes);
+            if (candidate is not null && (best is null || candidate.Length > best.Length))
+            {
+                best = candidate;
+                action = rule.Action;
+            }
+        }
+        action?.Invoke(best!.Length);
+    }
+
+    /// <summary>Deletes the suffix if it lies in R2.</summary>
+    protected void DeleteIfInR2(int suffixLen)
+    {
+        if (InR2(suffixLen))
+        {
+            Delete(suffixLen);
+        }
+    }
+
+    /// <summary>Deletes the suffix if it lies in RV.</summary>
+    protected void DeleteIfInRv(int suffixLen)
+    {
+        if (InRv(suffixLen))
+        {
+            Delete(suffixLen);
+        }
+    }
+
+    /// <summary>Replaces the suffix if it lies in R2.</summary>
+    protected void ReplaceIfInR2(int suffixLen, string replacement)
+    {
+        if (InR2(suffixLen))
+        {
+            Replace(suffixLen, replacement);
+        }
+    }
+
+    /// <summary>
+    /// Deletes the suffix if it lies in R2, then strips the first of
+    /// <paramref name="preceders"/> that now ends the word and also lies in R2.
+    /// </summary>
+    protected void DeleteInR2ThenStrip(int suffixLen, string[] preceders)
+    {
+        if (!InR2(suffixLen))
+        {
+            return;
+        }
+        Delete(suffixLen);
+        foreach (string pre in preceders)
+        {
+            if (Ends(pre) && InR2(pre.Length))
+            {
+                Delete(pre.Length);
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// The "-amente" branch, identical in shape across the Romance algorithms:
+    /// delete in R1, then strip "iv" (and "at" behind it) in R2, otherwise strip the
+    /// first of <paramref name="others"/> in R2. Only the last list differs.
+    /// </summary>
+    protected void StripAmente(string[] others)
+    {
+        if (!InR1(6))
+        {
+            return;
+        }
+        Delete(6);
+        if (Ends("iv") && InR2(2))
+        {
+            Delete(2);
+            if (Ends("at") && InR2(2))
+            {
+                Delete(2);
+            }
+            return;
+        }
+        foreach (string pre in others)
+        {
+            if (Ends(pre) && InR2(pre.Length))
+            {
+                Delete(pre.Length);
+                return;
+            }
+        }
+    }
+
+    /// <summary>The "-mente" branch: delete in R2, then strip a preceding marker in R2.</summary>
+    protected void StripMente(string[] preceders) => DeleteInR2ThenStrip(5, preceders);
+
     /// <summary>The longest candidate that ends the word, or null.</summary>
     protected string? LongestSuffix(string[] candidates)
     {

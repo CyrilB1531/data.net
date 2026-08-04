@@ -165,143 +165,29 @@ public static class SpanishSnowballStemmer
         private static readonly string[] Step1Idad = ["idades", "idad"];
         private static readonly string[] Step1Iva = ["ivas", "ivos", "iva", "ivo"];
 
-        private void Step1()
+        private void Step1() => ApplyLongestRule(
+        [
+            new(Step1Delete, DeleteIfInR2),
+            new(Step1DeleteThenIc, n => DeleteInR2ThenStrip(n, ["ic"])),
+            new(Step1Logia, n => ReplaceIfInR2(n, "log")),
+            new(Step1Ucion, n => ReplaceIfInR2(n, "u")),
+            new(Step1Encia, n => ReplaceIfInR2(n, "ente")),
+            new(Step1Idad, n => DeleteInR2ThenStrip(n, ["abil", "ic", "iv"])),
+            new(Step1Iva, n => DeleteInR2ThenStrip(n, ["at"])),
+            new(Adverbs, StepAdverb),
+        ]);
+
+        private static readonly string[] Adverbs = ["amente", "mente"];
+
+        private void StepAdverb(int n)
         {
-            // Pick the single longest match over every group at once.
-            string? hit = null;
-            string[]? group = null;
-            foreach (string[] g in new[] { Step1Delete, Step1DeleteThenIc, Step1Logia, Step1Ucion, Step1Encia, Step1Idad, Step1Iva })
+            if (n == 6)
             {
-                string? candidate = LongestSuffix(g);
-                if (candidate is not null && (hit is null || candidate.Length > hit.Length))
-                {
-                    hit = candidate;
-                    group = g;
-                }
+                StripAmente(["os", "ic", "ad"]);
             }
-
-            // "amente" and "mente" are handled apart: they are longest-matched against
-            // each other, and only compete with the groups above on length.
-            string? adverb = LongestSuffix(["amente", "mente"]);
-            if (adverb is not null && (hit is null || adverb.Length > hit.Length))
+            else
             {
-                StepAdverb(adverb);
-                return;
-            }
-
-            if (hit is null || group is null)
-            {
-                return;
-            }
-
-            int n = hit.Length;
-            if (ReferenceEquals(group, Step1Delete))
-            {
-                if (InR2(n))
-                {
-                    Delete(n);
-                }
-            }
-            else if (ReferenceEquals(group, Step1DeleteThenIc))
-            {
-                if (InR2(n))
-                {
-                    Delete(n);
-                    if (Ends("ic") && InR2(2))
-                    {
-                        Delete(2);
-                    }
-                }
-            }
-            else if (ReferenceEquals(group, Step1Logia))
-            {
-                if (InR2(n))
-                {
-                    Replace(n, "log");
-                }
-            }
-            else if (ReferenceEquals(group, Step1Ucion))
-            {
-                if (InR2(n))
-                {
-                    Replace(n, "u");
-                }
-            }
-            else if (ReferenceEquals(group, Step1Encia))
-            {
-                if (InR2(n))
-                {
-                    Replace(n, "ente");
-                }
-            }
-            else if (ReferenceEquals(group, Step1Idad))
-            {
-                if (InR2(n))
-                {
-                    Delete(n);
-                    foreach (string pre in new[] { "abil", "ic", "iv" })
-                    {
-                        if (Ends(pre) && InR2(pre.Length))
-                        {
-                            Delete(pre.Length);
-                            break;
-                        }
-                    }
-                }
-            }
-            else if (InR2(n))
-            {
-                // Step1Iva
-                Delete(n);
-                if (Ends("at") && InR2(2))
-                {
-                    Delete(2);
-                }
-            }
-        }
-
-        private void StepAdverb(string adverb)
-        {
-            if (adverb == "amente")
-            {
-                if (!InR1(6))
-                {
-                    return;
-                }
-                Delete(6);
-                if (Ends("iv") && InR2(2))
-                {
-                    Delete(2);
-                    if (Ends("at") && InR2(2))
-                    {
-                        Delete(2);
-                    }
-                    return;
-                }
-                foreach (string pre in new[] { "os", "ic", "ad" })
-                {
-                    if (Ends(pre) && InR2(2))
-                    {
-                        Delete(2);
-                        return;
-                    }
-                }
-                return;
-            }
-
-            // "mente"
-            if (!InR2(5))
-            {
-                return;
-            }
-            Delete(5);
-            foreach (string pre in new[] { "ante", "able", "ible" })
-            {
-                if (Ends(pre) && InR2(pre.Length))
-                {
-                    Delete(pre.Length);
-                    return;
-                }
+                StripMente(["ante", "able", "ible"]);
             }
         }
 

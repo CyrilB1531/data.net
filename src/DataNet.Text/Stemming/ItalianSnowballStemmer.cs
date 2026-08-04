@@ -168,138 +168,48 @@ public static class ItalianSnowballStemmer
         private static readonly string[] S1Ita = ["ità"];
         private static readonly string[] S1Ivo = ["ivo", "ivi", "iva", "ive"];
 
-        private void Step1()
+        private void Step1() => ApplyLongestRule(
+        [
+            new(S1Delete, DeleteIfInR2),
+            new(S1DeleteThenIc, n => DeleteInR2ThenStrip(n, ["ic"])),
+            new(S1Logia, n => ReplaceIfInR2(n, "log")),
+            new(S1Uzione, n => ReplaceIfInR2(n, "u")),
+            // nltk replaces "enza"/"enze" with "te", not "ente" as the published
+            // description reads: esistenza -> esistte, trimmed by step 3a to esistt.
+            // nltk is the reference the corpus is frozen from; see decision 0008.
+            new(S1Enza, n => ReplaceIfInR2(n, "te")),
+            // The only step-1 group gated on RV rather than R2.
+            new(S1Amento, DeleteIfInRv),
+            new(S1Ita, n => DeleteInR2ThenStrip(n, ["abil", "ic", "iv"])),
+            new(S1Ivo, DeleteIvo),
+            new(Adverbs, StepAmente),
+        ]);
+
+        /// <summary>"ivo"/"iva" delete in R2, then "at", then "ic" — two levels, unlike the others.</summary>
+        private void DeleteIvo(int n)
         {
-            string? hit = null;
-            string[]? group = null;
-            foreach (string[] g in new[] { S1Delete, S1DeleteThenIc, S1Logia, S1Uzione, S1Enza, S1Amento, S1Ita, S1Ivo })
-            {
-                string? candidate = LongestSuffix(g);
-                if (candidate is not null && (hit is null || candidate.Length > hit.Length))
-                {
-                    hit = candidate;
-                    group = g;
-                }
-            }
-
-            // "amente" competes on length with the groups above.
-            if (Ends("amente") && (hit is null || 6 > hit.Length))
-            {
-                StepAmente();
-                return;
-            }
-
-            if (hit is null || group is null)
+            if (!InR2(n))
             {
                 return;
             }
-
-            int n = hit.Length;
-            if (ReferenceEquals(group, S1Delete))
+            Delete(n);
+            if (Ends("at") && InR2(2))
             {
-                if (InR2(n))
-                {
-                    Delete(n);
-                }
-            }
-            else if (ReferenceEquals(group, S1DeleteThenIc))
-            {
-                if (InR2(n))
-                {
-                    Delete(n);
-                    if (Ends("ic") && InR2(2))
-                    {
-                        Delete(2);
-                    }
-                }
-            }
-            else if (ReferenceEquals(group, S1Logia))
-            {
-                if (InR2(n))
-                {
-                    Replace(n, "log");
-                }
-            }
-            else if (ReferenceEquals(group, S1Uzione))
-            {
-                if (InR2(n))
-                {
-                    Replace(n, "u");
-                }
-            }
-            else if (ReferenceEquals(group, S1Enza))
-            {
-                // nltk replaces "enza"/"enze" with "te", not with "ente" as the
-                // published description reads: esistenza -> esistte, which step 3a
-                // then trims to esistt. nltk is the reference this corpus is frozen
-                // from, so match it and record the divergence in decision 0008.
-                if (InR2(n))
-                {
-                    Replace(n, "te");
-                }
-            }
-            else if (ReferenceEquals(group, S1Amento))
-            {
-                // The only step-1 group gated on RV rather than R2.
-                if (InRv(n))
-                {
-                    Delete(n);
-                }
-            }
-            else if (ReferenceEquals(group, S1Ita))
-            {
-                if (InR2(n))
-                {
-                    Delete(n);
-                    foreach (string pre in new[] { "abil", "ic", "iv" })
-                    {
-                        if (Ends(pre) && InR2(pre.Length))
-                        {
-                            Delete(pre.Length);
-                            break;
-                        }
-                    }
-                }
-            }
-            else if (InR2(n))
-            {
-                // S1Ivo
-                Delete(n);
-                if (Ends("at") && InR2(2))
+                Delete(2);
+                if (Ends("ic") && InR2(2))
                 {
                     Delete(2);
-                    if (Ends("ic") && InR2(2))
-                    {
-                        Delete(2);
-                    }
                 }
             }
         }
 
-        private void StepAmente()
+        // Italian has no bare "-mente" rule in this position; "mente" sits in S1Delete.
+        private static readonly string[] Adverbs = ["amente"];
+
+        private void StepAmente(int n)
         {
-            if (!InR1(6))
-            {
-                return;
-            }
-            Delete(6);
-            if (Ends("iv") && InR2(2))
-            {
-                Delete(2);
-                if (Ends("at") && InR2(2))
-                {
-                    Delete(2);
-                }
-                return;
-            }
-            foreach (string pre in new[] { "abil", "os", "ic" })
-            {
-                if (Ends(pre) && InR2(pre.Length))
-                {
-                    Delete(pre.Length);
-                    return;
-                }
-            }
+            _ = n;
+            StripAmente(["abil", "os", "ic"]);
         }
 
         private static readonly string[] Step2Suffixes =
