@@ -11,6 +11,12 @@ updates:
     commit-message:
       prefix: chore
     groups:
-      # One PR for routine action bumps rather than one per action.
+      # One PR for routine bumps rather than one per action — but minor and patch
+      # only. Majors are the updates that can change behaviour, so they arrive
+      # individually and can be judged on their own merits. Grouping them means a
+      # six-action block that can only be taken or refused whole, and two of the
+      # four workflows are tag/dispatch-triggered, so no pull request exercises
+      # them: an unreviewed major there surfaces at publish time.
       actions:
         patterns: ['*']
+        update-types: [minor, patch]
