@@ -260,8 +260,18 @@ def generate_indel() -> dict:
     )
 
 
-def _jaro_reference(a: str, b: str) -> float:
+def _jaro_reference(a: str, b: str) -> float:  # NOSONAR S3776
     """Standard Jaro similarity over code points (matches DataNet's Jaro core).
+
+    Cognitive complexity is deliberately left above the threshold. This is a
+    transcription of the published Jaro algorithm — match window, then
+    transposition count — and its C# counterpart, Jaro.SimilarityCore, carries the
+    same suppression for the same reason: decomposing it would break the
+    one-to-one mapping with the reference that makes any divergence auditable.
+
+    The argument is stronger here than in the C#. This function GENERATES the
+    reference data every other component is validated against, so "the tests still
+    pass" would be circular: the tests compare against exactly this output.
 
     jellyfish agrees for normal inputs but diverges on the same degenerate
     combining-mark / emoji strings as its Hamming (decision 0005). We therefore
