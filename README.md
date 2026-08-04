@@ -1,5 +1,7 @@
 # DataNet
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=CyrilB1531_data.net&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=CyrilB1531_data.net)
+
 A **data-science toolkit for C#/.NET**, built on an honest premise:
 
 > Don't rewrite Python. Use the .NET ecosystem where it's strong, and write native
