@@ -66,7 +66,7 @@ public sealed class HashingVectorizer
                 accumulator[index] = accumulator.TryGetValue(index, out double v) ? v + sign : sign;
             }
 
-            foreach (int col in accumulator.Keys.Order())
+            foreach (int col in accumulator.Keys.OrderBy(c => c))
             {
                 double value = accumulator[col];
                 if (value != 0.0)

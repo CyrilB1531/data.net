@@ -41,7 +41,7 @@ public sealed class OnnxTextEmbedder : IDisposable
         string tokenTypeIdsName = "token_type_ids",
         string? outputName = null)
     {
-        ArgumentNullException.ThrowIfNull(modelPath);
+        Guard.NotNull(modelPath);
         _session = options is null ? new InferenceSession(modelPath) : new InferenceSession(modelPath, options);
         _inputIdsName = inputIdsName;
         _attentionMaskName = attentionMaskName;
@@ -64,8 +64,8 @@ public sealed class OnnxTextEmbedder : IDisposable
     /// <param name="attentionMask">Attention mask (same length as <paramref name="inputIds"/>).</param>
     public float[] Embed(IReadOnlyList<long> inputIds, IReadOnlyList<long> attentionMask)
     {
-        ArgumentNullException.ThrowIfNull(inputIds);
-        ArgumentNullException.ThrowIfNull(attentionMask);
+        Guard.NotNull(inputIds);
+        Guard.NotNull(attentionMask);
         if (inputIds.Count != attentionMask.Count)
         {
             throw new ArgumentException("inputIds and attentionMask must have equal length.");
@@ -96,7 +96,7 @@ public sealed class OnnxTextEmbedder : IDisposable
 
         if (rank == 2)
         {
-            var pooledDirect = flat[..dim];
+            float[] pooledDirect = flat.AsSpan(0, dim).ToArray();
             Pooler.L2Normalize(pooledDirect);
             return pooledDirect;
         }

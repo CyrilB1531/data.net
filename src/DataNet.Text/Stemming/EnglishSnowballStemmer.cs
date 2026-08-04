@@ -46,7 +46,7 @@ public static class EnglishSnowballStemmer
     /// <summary>Returns the English Snowball stem of <paramref name="word"/>.</summary>
     public static string Stem(string word)
     {
-        ArgumentNullException.ThrowIfNull(word);
+        Guard.NotNull(word);
         string s = word.ToLowerInvariant();
         if (s.Length <= 2)
         {
@@ -145,7 +145,7 @@ public static class EnglishSnowballStemmer
         private bool Ends(string suffix) => _s.EndsWith(suffix, StringComparison.Ordinal);
 
         private void Replace(string suffix, string replacement) =>
-            _s = string.Concat(_s.AsSpan(0, _s.Length - suffix.Length), replacement);
+            _s = _s.Substring(0, _s.Length - suffix.Length) + replacement;
 
         private bool ContainsVowelBefore(int suffixLen)
         {
@@ -276,7 +276,7 @@ public static class EnglishSnowballStemmer
         {
             if (_s.Length > 2 && (_s[^1] == 'y' || _s[^1] == 'Y') && !IsVowel(_s[^2]))
             {
-                _s = string.Concat(_s.AsSpan(0, _s.Length - 1), "i");
+                _s = _s.Substring(0, _s.Length - 1) + "i";
             }
         }
 

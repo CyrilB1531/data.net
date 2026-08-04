@@ -29,8 +29,8 @@ public static class Process
         int? limit = 5,
         double scoreCutoff = 0.0)
     {
-        ArgumentNullException.ThrowIfNull(query);
-        ArgumentNullException.ThrowIfNull(choices);
+        Guard.NotNull(query);
+        Guard.NotNull(choices);
         scorer ??= Fuzz.WRatio;
 
         var hits = new List<ExtractResult>();

@@ -117,8 +117,10 @@ public sealed class CountVectorizer
 
         // Kept terms, sorted -> final column index.
         var kept = new List<string>();
-        foreach ((string term, int col) in provisional)
+        foreach (KeyValuePair<string, int> entry in provisional)
         {
+            string term = entry.Key;
+            int col = entry.Value;
             if (df[col] >= low && df[col] <= high)
             {
                 kept.Add(term);
@@ -135,8 +137,10 @@ public sealed class CountVectorizer
 
         // Map provisional columns to final columns (or -1 if dropped).
         var remap = new int[provisional.Count];
-        foreach ((string term, int col) in provisional)
+        foreach (KeyValuePair<string, int> entry in provisional)
         {
+            string term = entry.Key;
+            int col = entry.Value;
             remap[col] = _vocabulary.TryGetValue(term, out int finalCol) ? finalCol : -1;
         }
 
@@ -179,8 +183,10 @@ public sealed class CountVectorizer
         for (int row = 0; row < perDoc.Count; row++)
         {
             var mapped = new Dictionary<int, int>();
-            foreach ((int provCol, int count) in perDoc[row])
+            foreach (KeyValuePair<int, int> entry in perDoc[row])
             {
+                int provCol = entry.Key;
+                int count = entry.Value;
                 int finalCol = remap[provCol];
                 if (finalCol >= 0)
                 {
@@ -196,7 +202,7 @@ public sealed class CountVectorizer
 
     private void AppendRow(Dictionary<int, int> counts, List<double> values, List<int> columns)
     {
-        foreach (int col in counts.Keys.Order())
+        foreach (int col in counts.Keys.OrderBy(c => c))
         {
             columns.Add(col);
             values.Add(_options.Binary ? 1.0 : counts[col]);

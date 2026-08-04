@@ -27,9 +27,9 @@ public sealed class CsrMatrix
     /// <summary>Creates a CSR matrix from raw arrays (not copied).</summary>
     public CsrMatrix(int rowCount, int columnCount, double[] values, int[] columnIndices, int[] rowPointers)
     {
-        ArgumentNullException.ThrowIfNull(values);
-        ArgumentNullException.ThrowIfNull(columnIndices);
-        ArgumentNullException.ThrowIfNull(rowPointers);
+        Guard.NotNull(values);
+        Guard.NotNull(columnIndices);
+        Guard.NotNull(rowPointers);
         if (rowPointers.Length != rowCount + 1)
         {
             throw new ArgumentException("rowPointers length must be rowCount + 1.", nameof(rowPointers));
