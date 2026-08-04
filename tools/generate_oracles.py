@@ -794,6 +794,64 @@ def generate_snowball_fr() -> dict:
     }
 
 
+# --- Additional Snowball languages -----------------------------------------------
+# Word lists target that language's suffix families, plus short and irregular
+# words that exercise the region (RV/R1/R2) boundaries.
+
+SNOWBALL_ES_WORDS = [
+    # step 0: attached object pronouns
+    "damelo", "dámelo", "haciéndola", "haciendolo", "vámonos", "escribirle", "decirles",
+    "comprarlo", "cantándome", "construyendolo", "dárselo", "mostrárselas",
+    # step 1: nominal / adjectival suffixes
+    "esperanza", "esperanzas", "musico", "musica", "musicos", "musicas",
+    "realismo", "realismos", "amable", "amables", "posible", "posibles",
+    "artista", "artistas", "hermoso", "hermosa", "hermosos", "hermosas",
+    "conocimiento", "conocimientos", "sentimiento", "sentimientos",
+    "computadora", "computador", "generación", "generaciones", "trabajador", "trabajadores",
+    "importante", "importantes", "distancia", "distancias",
+    "biología", "biologías", "solución", "soluciones", "revolución", "revoluciones",
+    "existencia", "existencias", "paciencia",
+    "rapidamente", "rápidamente", "claramente", "efectivamente", "activamente",
+    "realmente", "generalmente", "posiblemente", "amablemente",
+    "ciudad", "ciudades", "capacidad", "capacidades", "actividad", "actividades",
+    "activa", "activo", "activas", "activos", "creativo", "creativa",
+    # step 2: verb endings
+    "cantar", "canto", "cantas", "cantamos", "cantaron", "cantaban", "cantaría",
+    "cantarían", "cantaremos", "cantase", "cantaste", "cantando",
+    "comer", "comes", "comemos", "comieron", "comería", "comiendo", "comido",
+    "vivir", "vives", "vivimos", "vivieron", "viviría", "viviendo", "vivido",
+    "construyendo", "construyeron", "leyendo", "leyeron", "oyendo",
+    "distinguen", "distinguir", "sigue", "siguen", "pague", "paguen",
+    # short / residual
+    "casa", "casas", "libro", "libros", "papel", "papeles", "sol", "mar",
+    "país", "países", "café", "bebé", "and", "yo", "el", "la",
+]
+
+
+def _snowball_corpus(language: str, algorithm: str, words: list[str]) -> dict:
+    """Freeze nltk's Snowball output for one language into an oracle payload."""
+    from nltk.stem.snowball import SnowballStemmer  # noqa: PLC0415
+
+    stemmer = SnowballStemmer(language)
+    seen = set()
+    unique = [w for w in words if not (w in seen or seen.add(w))]
+    cases = [{"id": i, "word": w, "stem": stemmer.stem(w)} for i, w in enumerate(unique)]
+    return {
+        "metadata": {
+            "algorithm": algorithm,
+            "library": "nltk",
+            "library_version": version("nltk"),
+            "reference_calls": [f"nltk.stem.snowball.SnowballStemmer('{language}')"],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+def generate_snowball_es() -> dict:
+    return _snowball_corpus("spanish", "SpanishSnowballStemmer", SNOWBALL_ES_WORDS)
+
+
 WORDPIECE_VOCAB = [
     UNK_TOKEN, "the", "cat", "dog", "play", "un", "love", "run", "quick", "brown",
     "fox", "jump", "hello", "world", "token", "embed", "semantic", "search", "is",
@@ -1034,6 +1092,7 @@ def main() -> None:
         "porter.json": generate_porter,
         "snowball_en.json": generate_snowball_en,
         "snowball_fr.json": generate_snowball_fr,
+        "snowball_es.json": generate_snowball_es,
         "wordpiece.json": generate_wordpiece,
         "pooling.json": generate_pooling,
         "knn.json": generate_knn,
