@@ -4,7 +4,7 @@
 mature and less ergonomic than pandas; expect some glue.
 
 | pandas need | Recommended .NET |
-|---|---|
+| --- | --- |
 | General `DataFrame`, CSV IO, typed columns | **`Microsoft.Data.Analysis`** |
 | Time series, rich indices | **Deedle** (F# origin, excellent at time series) |
 

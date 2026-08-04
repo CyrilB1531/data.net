@@ -3,7 +3,7 @@
 **Verdict: use what exists.** Plotting is well covered in .NET.
 
 | matplotlib need | Recommended .NET |
-|---|---|
+| --- | --- |
 | Static charts (PNG/SVG), scientific | **ScottPlot** — mature, fast, simple API |
 | Interactive charts (HTML/notebook) | **Plotly.NET** |
 | WPF/Avalonia integration | OxyPlot, ScottPlot.WPF/.Avalonia |

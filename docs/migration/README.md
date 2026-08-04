@@ -12,7 +12,7 @@ native code where .NET has a real gap: **text** (similarity, vectorization).
 ## The three columns
 
 | Python | Role | .NET recommendation | Verdict |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **PyTorch** | tensors, autograd, training, GPU | [TorchSharp](https://github.com/dotnet/TorchSharp) (= libtorch); [ONNX Runtime](https://onnxruntime.ai/) for inference only | ✅ **Use** |
 | **matplotlib** | plotting | [ScottPlot](https://scottplot.net/), [Plotly.NET](https://plotly.net/), OxyPlot | ✅ **Use** |
 | **NumPy** | N-dim arrays, dense algebra | [Math.NET Numerics](https://numerics.mathdotnet.com/) (+ native MKL/OpenBLAS provider); `System.Numerics.Tensors` | ✅ **Use** |
@@ -32,16 +32,16 @@ A single area truly justifies native code: **text**. That's
 the brief):
 
 1. **String distances & similarity** — Levenshtein, Damerau-Levenshtein,
-   Jaro-Winkler, Jaccard, Ratcliff-Obershelp, phonetics… _(done)_
+   Jaro-Winkler, Jaccard, Ratcliff-Obershelp, phonetics… *(done)*
 2. **Tokenization & sparse vectorization** — `CountVectorizer`, `TfidfVectorizer`
-   (exact sklearn semantics), home-grown CSR matrix. _(done)_
-3. **Embeddings & semantic search** — ONNX Runtime + sub-word tokenizers. _(done)_
-4. **Applied fuzzy matching** — `rapidfuzz.fuzz` / `process` equivalents. _(done)_
+   (exact sklearn semantics), home-grown CSR matrix. *(done)*
+3. **Embeddings & semantic search** — ONNX Runtime + sub-word tokenizers. *(done)*
+4. **Applied fuzzy matching** — `rapidfuzz.fuzz` / `process` equivalents. *(done)*
 
 ## Per-library guides
 
 | Guide | Status |
-|---|---|
+| --- | --- |
 | [NumPy → .NET](numpy.md) | draft |
 | [pandas → .NET](pandas.md) | draft |
 | [scikit-learn → .NET](sklearn.md) | draft |

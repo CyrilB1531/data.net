@@ -32,7 +32,7 @@ project map (use / build / decide).
 ## Status — every lot of the project brief is delivered
 
 | Lot | Contents | Status |
-|---|---|---|
+| --- | --- | --- |
 | 1 | String distances & similarity | ✅ **complete** — Levenshtein (+ Myers), OSA, Damerau-Levenshtein, Hamming, Jaro, Jaro-Winkler, Indel, LCS, Ratcliff-Obershelp, Jaccard, Dice, Overlap, Tversky, Cosine, Soundex, Metaphone, NYSIIS |
 | 2 | Tokenization & sparse vectorization | ✅ **complete** — CSR, tokenizers (word/char/char_wb), CountVectorizer, TfidfVectorizer, HashingVectorizer, Porter, Snowball EN/FR, English stop words |
 | 3 | Embeddings & semantic search | ✅ **complete** — WordPiece, SentencePiece, pooling, SIMD kNN, ONNX inference |
@@ -77,8 +77,8 @@ replays them with a `1e-9` tolerance. Python is a development-only dependency. S
 
 ## Structure
 
-```
-DataNet.sln
+```text
+DataNet.slnx
 ├── src/DataNet.Text/            distances, metrics, tokenizers, vectorizers, stemmers (no dependencies)
 ├── src/DataNet.Embeddings/      sub-word tokenizers, pooling, SIMD kNN, ONNX inference (ONNX Runtime isolated here)
 ├── src/DataNet.Fuzzy/           fuzz.*, process.extract, deduplication

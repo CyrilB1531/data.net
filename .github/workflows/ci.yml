@@ -7,6 +7,19 @@ on:
     branches: [main]
 
 jobs:
+  lint:
+    name: Lint (markdown + C# format)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Markdown lint
+        run: npx --yes markdownlint-cli2 "README.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
+      - name: C# format check
+        run: dotnet format DataNet.slnx --verify-no-changes
+
   build-test:
     name: Build, test, pack
     runs-on: ubuntu-latest

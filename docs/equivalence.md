@@ -6,7 +6,7 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 ## DataNet.Text — distances & similarity
 
 | Python | Library | C# | Differences |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `Levenshtein.distance(a, b)` | rapidfuzz | `Levenshtein.Distance(a, b)` | Compares **UTF-16 units** by default; pass `TextElement.CodePoint` for exact parity with Python on non-BMP characters (emoji…). Weights `(1,1,1)`. |
 | `Levenshtein.normalized_distance(a, b)` | rapidfuzz | `Levenshtein.NormalizedDistance(a, b)` | `distance / max(len(a), len(b))`, `0` if both empty. Identical. |
 | `Levenshtein.normalized_similarity(a, b)` | rapidfuzz | `Levenshtein.NormalizedSimilarity(a, b)` | `1 - normalized_distance`. Two empty strings ⇒ `1`. Identical. |
@@ -26,7 +26,7 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 ## DataNet.Text — set similarity (q-gram multisets)
 
 | Python | Library | C# | Differences |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `Jaccard(qval=1).normalized_similarity(a, b)` | textdistance | `Jaccard.Similarity(a, b)` | Multisets (bags) of q-grams, `qval=1` by default. `\|A∩B\|/\|A∪B\|`. |
 | `Sorensen(qval=1).normalized_similarity(a, b)` | textdistance | `SorensenDice.Similarity(a, b)` | `2·\|A∩B\|/(\|A\|+\|B\|)`. |
 | `Overlap(qval=1).normalized_similarity(a, b)` | textdistance | `Overlap.Similarity(a, b)` | `\|A∩B\|/min(\|A\|,\|B\|)`. |
@@ -40,7 +40,7 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 ## DataNet.Text — phonetic encoding
 
 | Python | Library | C# | Differences |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `soundex(s)` | jellyfish | `Soundex.Encode(s)` | Initial letter + 3 digits. Exact parity (402 words). |
 | `metaphone(s)` | jellyfish | `Metaphone.Encode(s)` | Parity on real words; jellyfish non-word quirks not reproduced ([decision 0007](decisions/0007-metaphone-scope.md)). |
 | `nysiis(s)` | jellyfish | `Nysiis.Encode(s)` | Non-truncated variant. Exact parity (402 words). |
@@ -48,7 +48,7 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 ## DataNet.Text — sparse vectorization
 
 | Python | Library | C# | Differences |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `CountVectorizer()` | scikit-learn | `new CountVectorizer()` | Sorted vocabulary, `token_pattern` `\b\w\w+\b` (single characters dropped), `lowercase` by default. Parity across 10 configs. |
 | `CountVectorizer(ngram_range=(1,2))` | scikit-learn | `new CountVectorizer(new(){ NgramRange=(1,2) })` | Word n-grams joined by a space. |
 | `CountVectorizer(analyzer="char"/"char_wb")` | scikit-learn | `Analyzer = AnalyzerKind.Char / CharWordBoundary` | Character n-grams (with/without crossing word boundaries). |
@@ -63,7 +63,7 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 ## DataNet.Text — stemming
 
 | Python | Library | C# | Differences |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `PorterStemmer(mode=ORIGINAL_ALGORITHM).stem(w)` | nltk | `PorterStemmer.Stem(w)` | Porter (1980) algorithm, 5 steps. Exact parity (86 words). |
 | `SnowballStemmer("english").stem(w)` | nltk | `EnglishSnowballStemmer.Stem(w)` | Porter2: R1/R2 regions, exceptions. Exact parity (190 words). |
 | `SnowballStemmer("french").stem(w)` | nltk | `FrenchSnowballStemmer.Stem(w)` | French Snowball: RV region, 6 steps, NFC-normalized input. Exact parity (152 words). |
@@ -71,7 +71,7 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 ## DataNet.Embeddings — sub-word tokenization & pooling
 
 | Python | Library | C# | Differences |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `Tokenizer(WordPiece(vocab)).encode(t)` | tokenizers (HF) | `new WordPieceTokenizer(vocab).Encode(t)` | Greedy longest match, `##` continuation, `[UNK]`. Pre-tokenization `\w+\|[^\w\s]+`. Exact parity. |
 | `Tokenizer(Unigram(...)).encode(t)` / `sp.encode(t)` | tokenizers / sentencepiece | `new SentencePieceTokenizer(vocab).Encode(t)` | Unigram via Viterbi (max log-probability). `▁` prefix, `identity` normalizer. Exact parity. |
 | mean pooling + `F.normalize` | sentence-transformers | `Pooler.MeanPoolAndNormalize(...)` | Masked mean (padding excluded) + L2 normalization. |
@@ -81,7 +81,7 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 ## DataNet.Fuzzy — applied fuzzy matching
 
 | Python | Library | C# | Differences |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `fuzz.ratio(a, b)` | rapidfuzz | `Fuzz.Ratio(a, b)` | Indel similarity ×100. Case-sensitive (no preprocessing, like rapidfuzz). |
 | `fuzz.partial_ratio(a, b)` | rapidfuzz | `Fuzz.PartialRatio(a, b)` | Best sliding window (shorter over longer; both directions when lengths are equal). |
 | `fuzz.token_sort_ratio(a, b)` | rapidfuzz | `Fuzz.TokenSortRatio(a, b)` | Sort tokens then `ratio`. |

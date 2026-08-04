@@ -27,7 +27,7 @@ Short-job measurement (reduced iterations: means are noisy, but the allocation
 column is reliable). Re-run with a full job before quoting.
 
 | Method | Length | Mean | Allocated |
-|---|---|---:|---:|
+| --- | --- | ---: | ---: |
 | `Distance` (UTF-16) | 8 | ~35 ns | **0 B** |
 | `Distance` (code point) | 8 | ~208 ns | **0 B** |
 | `Distance` (UTF-16) | 64 | ~7.0 µs | **0 B** |
@@ -49,7 +49,7 @@ noisy dev machine — non-authoritative), **after** adding the single-word Myers
 fast path (pattern 16–64, Latin-1):
 
 | Length | Python (rapidfuzz) | C# (DataNet.Text) | Ratio | C# path |
-|---:|---:|---:|---|---|
+| ---: | ---: | ---: | --- | --- |
 | 8 | 175 ns/pair | **35 ns/pair** | **5.0× C# faster** | DP |
 | 32 | **309 ns/pair** | ~350 ns/pair | ≈ parity | Myers |
 | 128 | **2.5 µs/pair** | 34 µs/pair | ~14× Python | DP (pattern > 64) |
@@ -73,7 +73,7 @@ Short-job measurement, `[MemoryDiagnoser]` (dev machine — indicative).
 **Vectorizers**, fit+transform over a synthetic corpus:
 
 | Method | 200 docs | 1000 docs |
-|---|---:|---:|
+| --- | ---: | ---: |
 | `CountVectorizer` | ~4.2 ms | ~9.0 ms |
 | `TfidfVectorizer` | ~4.3 ms | ~9.1 ms |
 | `CountVectorizer` (bigrams) | ~4.8 ms | ~14.7 ms |
@@ -82,7 +82,7 @@ Short-job measurement, `[MemoryDiagnoser]` (dev machine — indicative).
 **Fuzzy ratios**, on a ~43-character sentence pair:
 
 | Method | Mean | Allocated |
-|---|---:|---:|
+| --- | ---: | ---: |
 | `Fuzz.Ratio` | ~2.5 µs | **0 B** |
 | `Fuzz.TokenSortRatio` | ~5.3 µs | 1.3 KB |
 | `Fuzz.TokenSetRatio` | ~15 µs | 5.6 KB |
