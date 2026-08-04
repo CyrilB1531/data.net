@@ -6,6 +6,9 @@ namespace DataNet.Embeddings.Tests;
 
 public sealed class WordPieceTokenizerTests
 {
+    private static readonly string[] AbTokens = ["ab", "##c"];
+    private static readonly string[] UnkTokens = ["[UNK]"];
+
     private static WordPieceTokenizer BuildFromOracle(JsonDocument doc)
     {
         JsonElement vocabEl = doc.RootElement.GetProperty("metadata").GetProperty("vocab");
@@ -43,7 +46,7 @@ public sealed class WordPieceTokenizerTests
     {
         var vocab = new Dictionary<string, int> { ["[UNK]"] = 0, ["ab"] = 1, ["##c"] = 2 };
         var t = new WordPieceTokenizer(vocab);
-        Assert.Equal(new[] { "ab", "##c" }, t.Encode("abc").Tokens);
-        Assert.Equal(new[] { "[UNK]" }, t.Encode("xyz").Tokens);
+        Assert.Equal(AbTokens, t.Encode("abc").Tokens);
+        Assert.Equal(UnkTokens, t.Encode("xyz").Tokens);
     }
 }

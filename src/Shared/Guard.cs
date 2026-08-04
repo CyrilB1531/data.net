@@ -29,4 +29,20 @@ internal static class Guard
         }
 #endif
     }
+
+    /// <summary>Throws <see cref="ArgumentOutOfRangeException"/> if <paramref name="value"/> is below <paramref name="min"/>.</summary>
+    public static void NotLessThan(
+        int value,
+        int min,
+        [CallerArgumentExpression(nameof(value))] string? paramName = null)
+    {
+#if NET8_0_OR_GREATER
+        ArgumentOutOfRangeException.ThrowIfLessThan(value, min, paramName);
+#else
+        if (value < min)
+        {
+            throw new ArgumentOutOfRangeException(paramName, value, $"Must be at least {min}.");
+        }
+#endif
+    }
 }

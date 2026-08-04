@@ -3,6 +3,12 @@ using DataNet.Fuzzy;
 
 namespace DataNet.Text.Benchmarks;
 
+
+// CA1822 (mark members static): BenchmarkDotNet rejects static benchmarks —
+// "Benchmarks MUST be instance methods, static methods are not supported."
+// The build succeeds either way, so following this rule breaks the benchmarks
+// at run time rather than compile time.
+#pragma warning disable CA1822
 /// <summary>Per-call cost of the fuzzy ratios on representative sentence pairs.</summary>
 [MemoryDiagnoser]
 public class FuzzBenchmarks

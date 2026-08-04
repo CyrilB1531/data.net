@@ -28,10 +28,7 @@ public sealed class EmbeddingIndex
     /// <param name="normalize">L2-normalize vectors on insertion and queries on search (default true).</param>
     public EmbeddingIndex(int dimension, bool normalize = true)
     {
-        if (dimension < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(dimension));
-        }
+        Guard.NotLessThan(dimension, 1);
         _dim = dimension;
         _normalize = normalize;
     }
@@ -77,10 +74,7 @@ public sealed class EmbeddingIndex
         {
             throw new ArgumentException($"query length {query.Length} != dimension {_dim}.", nameof(query));
         }
-        if (k < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(k));
-        }
+        Guard.NotLessThan(k, 1);
 
         float[]? owned = null;
         ReadOnlySpan<float> q = query;
