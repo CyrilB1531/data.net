@@ -18,10 +18,24 @@ public static class EnglishSnowballStemmer
 {
     private static readonly Dictionary<string, string> Exceptions1 = new(StringComparer.Ordinal)
     {
-        ["skis"] = "ski", ["skies"] = "sky", ["dying"] = "die", ["lying"] = "lie", ["tying"] = "tie",
-        ["idly"] = "idl", ["gently"] = "gentl", ["ugly"] = "ugli", ["early"] = "earli", ["only"] = "onli",
-        ["singly"] = "singl", ["sky"] = "sky", ["news"] = "news", ["howe"] = "howe", ["atlas"] = "atlas",
-        ["cosmos"] = "cosmos", ["bias"] = "bias", ["andes"] = "andes",
+        ["skis"] = "ski",
+        ["skies"] = "sky",
+        ["dying"] = "die",
+        ["lying"] = "lie",
+        ["tying"] = "tie",
+        ["idly"] = "idl",
+        ["gently"] = "gentl",
+        ["ugly"] = "ugli",
+        ["early"] = "earli",
+        ["only"] = "onli",
+        ["singly"] = "singl",
+        ["sky"] = "sky",
+        ["news"] = "news",
+        ["howe"] = "howe",
+        ["atlas"] = "atlas",
+        ["cosmos"] = "cosmos",
+        ["bias"] = "bias",
+        ["andes"] = "andes",
     };
 
     private static readonly HashSet<string> Exceptions2 = new(StringComparer.Ordinal)

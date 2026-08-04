@@ -5,7 +5,6 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>DataNet.Text</RootNamespace>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
     <!-- NuGet package identity. No external runtime dependencies by design:
          this is the native "text" gap of the DataNet toolkit. -->

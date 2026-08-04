@@ -6,7 +6,7 @@ R-style summaries with p-values and confidence intervals) has **no** good .NET
 equivalent. It is a candidate for native code *if your usage justifies it*.
 
 | statsmodels need | .NET |
-|---|---|
+| --- | --- |
 | Linear regression, least squares | **Math.NET Numerics** (`Fit`, `MultipleRegression`) |
 | Distributions, basic hypothesis tests | **Math.NET** (`Distributions`), Accord.NET |
 | Advanced GLMs, time series, econometric summaries | ⚠️ **gap** — write or work around |
@@ -30,4 +30,4 @@ double r2 = GoodnessOfFit.RSquared(xs.Select(x => a + b * x), ys);
 > Before any native development here, weigh the **real need**: a regression plus a
 > few tests is often enough, and Math.NET already covers that.
 
-_Guide to be expanded as real needs arise._
+*Guide to be expanded as real needs arise.*

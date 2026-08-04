@@ -3,7 +3,6 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>DataNet.Embeddings</RootNamespace>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
     <PackageId>DataNet.Embeddings</PackageId>
     <Description>Sub-word tokenizers, pooling and semantic (kNN) search for .NET. ONNX Runtime is isolated to this package so DataNet.Text stays dependency-free.</Description>

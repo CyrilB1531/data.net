@@ -3,7 +3,6 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>DataNet.Fuzzy</RootNamespace>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <PackageId>DataNet.Fuzzy</PackageId>
     <Description>Applied fuzzy string matching for .NET (rapidfuzz-compatible fuzz ratios, process.extract, dedup). No external dependencies.</Description>
     <PackageTags>fuzzy;matching;rapidfuzz;fuzzywuzzy;dedup;nlp;datanet</PackageTags>

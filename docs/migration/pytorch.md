@@ -4,7 +4,7 @@
 C++ engine as PyTorch), with autograd, `nn` modules and CUDA.
 
 | PyTorch need | Recommended .NET |
-|---|---|
+| --- | --- |
 | Tensors, autograd, training, GPU | **TorchSharp** (`TorchSharp`) |
 | Inference of a pretrained model, without training | **ONNX Runtime** (`Microsoft.ML.OnnxRuntime`) |
 | Keras/TF models | TensorFlow.NET |
@@ -34,4 +34,4 @@ y.backward();                 // autograd, like PyTorch
   load with ONNX Runtime: lighter than TorchSharp. That is the path taken by
   `DataNet.Embeddings`.
 
-_Guide to be expanded as real needs arise._
+*Guide to be expanded as real needs arise.*

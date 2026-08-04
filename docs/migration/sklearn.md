@@ -5,7 +5,7 @@ vectorization**, which is the gap filled natively by `DataNet.Text` (exact
 `CountVectorizer`/`TfidfVectorizer` semantics).
 
 | sklearn need | Recommended .NET |
-|---|---|
+| --- | --- |
 | Pipelines, training, deployment | **ML.NET** (`Microsoft.ML`) |
 | sklearn-like API (trees, ensembles, metrics) | **SharpLearning** |
 | `CountVectorizer` / `TfidfVectorizer` **to the character** | **`DataNet.Text`** |

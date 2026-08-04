@@ -4,7 +4,7 @@
 don't rewrite that. We combine two .NET building blocks as needed.
 
 | NumPy need | Recommended .NET |
-|---|---|
+| --- | --- |
 | Vectors/matrices, decompositions, linear solves | **Math.NET Numerics** (`MathNet.Numerics`), + native MKL/OpenBLAS provider for performance |
 | Element-wise vectorized ops (SIMD) | **`System.Numerics.Tensors`** (`TensorPrimitives`) |
 | "NumPy-like" API (migration comfort) | **NumSharp** — handy, but less mature; reserve for porting convenience |

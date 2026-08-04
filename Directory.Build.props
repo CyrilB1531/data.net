@@ -8,6 +8,9 @@
     <Deterministic>true</Deterministic>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
+    <!-- Warnings are errors everywhere: src, tests and bench alike. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
     <!-- Package identity / provenance (§10). -->
     <Version>0.1.0</Version>
     <Company>DataNet contributors</Company>

@@ -6,7 +6,7 @@ seaborn's **statistical abstractions** (tidy API, `histplot`/`kdeplot`, `regplot
 rebuilt. A thin layer of presets could be written if the need is confirmed.
 
 | seaborn need | .NET |
-|---|---|
+| --- | --- |
 | Histogram / density | ScottPlot (`Add.Histogram`) + KDE computed by hand |
 | Scatter + regression (`regplot`) | ScottPlot: scatter + fitted line (Math.NET `Fit.Line`) |
 | Correlation heatmap | ScottPlot (`Add.Heatmap`) over a computed matrix |
@@ -28,4 +28,4 @@ plot.SavePng("dist.png", 700, 500);
   is the real delta. A candidate for a small helper library on top of ScottPlot,
   *if real usage demands it* — not before.
 
-_Guide to be expanded as real needs arise._
+*Guide to be expanded as real needs arise.*

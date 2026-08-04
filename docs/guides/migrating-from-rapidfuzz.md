@@ -13,7 +13,7 @@ All return a score in `[0, 100]`. Like rapidfuzz, **no preprocessing** by defaul
 (case-sensitive).
 
 | rapidfuzz | DataNet.Fuzzy |
-|---|---|
+| --- | --- |
 | `fuzz.ratio(a, b)` | `Fuzz.Ratio(a, b)` |
 | `fuzz.partial_ratio(a, b)` | `Fuzz.PartialRatio(a, b)` |
 | `fuzz.token_sort_ratio(a, b)` | `Fuzz.TokenSortRatio(a, b)` |
