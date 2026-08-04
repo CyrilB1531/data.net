@@ -40,19 +40,14 @@ public static class SpanishSnowballStemmer
         return new Worker(s).Run();
     }
 
-    private sealed class Worker
+    private sealed class Worker : RomanceSnowballWorker
     {
-        private string _s;
-        private readonly int _rv;
-        private readonly int _r1;
-        private readonly int _r2;
+        private static readonly Func<char, bool> Vowels = c =>
+            c is 'a' or 'e' or 'i' or 'o' or 'u' or 'á' or 'é' or 'í' or 'ó' or 'ú' or 'ü';
 
-        public Worker(string s)
+
+        public Worker(string s) : base(s, Vowels)
         {
-            _s = s;
-            _r1 = Region(_s, 0);
-            _r2 = Region(_s, _r1);
-            _rv = ComputeRv(_s);
         }
 
         public string Run()
@@ -62,94 +57,23 @@ public static class SpanishSnowballStemmer
             // matters is whether the word ALTERED, not whether a suffix matched).
             Step0();
 
-            string before = _s;
+            string before = S;
             Step1();
-            if (_s == before)
+            if (S == before)
             {
-                before = _s;
+                before = S;
                 Step2a();
-                if (_s == before)
+                if (S == before)
                 {
                     Step2b();
                 }
             }
 
             Step3();
-            return RemoveAcuteAccents(_s);
+            return RemoveAcuteAccents(S);
         }
 
-        private static bool IsVowel(char c) =>
-            c is 'a' or 'e' or 'i' or 'o' or 'u' or 'á' or 'é' or 'í' or 'ó' or 'ú' or 'ü';
 
-        /// <summary>The region after the first consonant following a vowel, from <paramref name="from"/>.</summary>
-        private static int Region(string s, int from)
-        {
-            int i = from;
-            while (i < s.Length && !IsVowel(s[i]))
-            {
-                i++;
-            }
-            while (i < s.Length && IsVowel(s[i]))
-            {
-                i++;
-            }
-            return i < s.Length ? i + 1 : s.Length;
-        }
-
-        private static int ComputeRv(string s)
-        {
-            int n = s.Length;
-            if (n < 2)
-            {
-                return n;
-            }
-
-            // Second letter a consonant -> after the next following vowel.
-            if (!IsVowel(s[1]))
-            {
-                int i = 2;
-                while (i < n && !IsVowel(s[i]))
-                {
-                    i++;
-                }
-                return i < n ? i + 1 : n;
-            }
-
-            // First two letters both vowels -> after the next consonant.
-            if (IsVowel(s[0]))
-            {
-                int i = 2;
-                while (i < n && IsVowel(s[i]))
-                {
-                    i++;
-                }
-                return i < n ? i + 1 : n;
-            }
-
-            // Consonant-vowel -> after the third letter.
-            return Math.Min(3, n);
-        }
-
-        private bool InRv(int suffixLen) => _s.Length - suffixLen >= _rv;
-        private bool InR1(int suffixLen) => _s.Length - suffixLen >= _r1;
-        private bool InR2(int suffixLen) => _s.Length - suffixLen >= _r2;
-        private bool Ends(string suffix) => _s.EndsWith(suffix, StringComparison.Ordinal);
-        private void Delete(int len) => _s = _s.Substring(0, _s.Length - len);
-        private void Replace(int suffixLen, string repl) => _s = _s.Substring(0, _s.Length - suffixLen) + repl;
-
-        /// <summary>Returns the longest element of <paramref name="candidates"/> that ends the word, or null.</summary>
-        private string? LongestSuffix(string[] candidates)
-        {
-            string? best = null;
-            foreach (string c in candidates)
-            {
-                if (Ends(c) && (best is null || c.Length > best.Length))
-                {
-                    best = c;
-                }
-            }
-            return best;
-        }
 
         private static string RemoveAcuteAccents(string s)
         {
@@ -197,14 +121,14 @@ public static class SpanishSnowballStemmer
                 return;
             }
 
-            string stem = _s.Substring(0, _s.Length - pronoun.Length);
+            string stem = S.Substring(0, S.Length - pronoun.Length);
 
             // (a) accented gerund/infinitive: delete the pronoun, then drop the accent.
             foreach (string suf in AccentedGerundInfinitive)
             {
                 if (stem.EndsWith(suf, StringComparison.Ordinal) && InRv(suf.Length + pronoun.Length))
                 {
-                    _s = stem.Substring(0, stem.Length - suf.Length) + Deaccent(suf);
+                    S = stem.Substring(0, stem.Length - suf.Length) + Deaccent(suf);
                     return;
                 }
             }
@@ -214,7 +138,7 @@ public static class SpanishSnowballStemmer
             {
                 if (stem.EndsWith(suf, StringComparison.Ordinal) && InRv(suf.Length + pronoun.Length))
                 {
-                    _s = stem;
+                    S = stem;
                     return;
                 }
             }
@@ -222,7 +146,7 @@ public static class SpanishSnowballStemmer
             // (c) "yendo" in RV, itself preceded by u (that u need not be in RV).
             if (stem.EndsWith("uyendo", StringComparison.Ordinal) && InRv(5 + pronoun.Length))
             {
-                _s = stem;
+                S = stem;
             }
         }
 
@@ -391,8 +315,8 @@ public static class SpanishSnowballStemmer
                 return;
             }
             // Delete only when preceded by u — which itself need not be in RV.
-            int at = _s.Length - hit.Length;
-            if (at > 0 && _s[at - 1] == 'u')
+            int at = S.Length - hit.Length;
+            if (at > 0 && S[at - 1] == 'u')
             {
                 Delete(hit.Length);
             }
