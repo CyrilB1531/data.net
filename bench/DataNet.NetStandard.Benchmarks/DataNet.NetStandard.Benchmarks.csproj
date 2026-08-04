@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The same benchmark bodies as DataNet.Text.Benchmarks, linked against the
+    *netstandard2.0* build of the libraries instead of the net10.0 one.
+
+    netstandard2.0 is a contract, not a runtime: nothing executes on it. So this
+    project targets net10.0 — identical host, JIT and GC as the other suite — and
+    only swaps which compiled assemblies are referenced. Any difference in the
+    results is therefore attributable to the libraries' conditional code paths,
+    not to the runtime.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- BenchmarkDotNet requires an optimized, non-debug build to run. -->
+    <Optimize>true</Optimize>
+    <AssemblyName>DataNet.NetStandard.Benchmarks</AssemblyName>
+    <RootNamespace>DataNet.Text.Benchmarks</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
+  </ItemGroup>
+
+  <!-- SetTargetFramework pins each reference to the netstandard2.0 build. -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/DataNet.Text/DataNet.Text.csproj"
+                      SetTargetFramework="TargetFramework=netstandard2.0" />
+    <ProjectReference Include="../../src/DataNet.Fuzzy/DataNet.Fuzzy.csproj"
+                      SetTargetFramework="TargetFramework=netstandard2.0" />
+    <ProjectReference Include="../../src/DataNet.Embeddings/DataNet.Embeddings.csproj"
+                      SetTargetFramework="TargetFramework=netstandard2.0" />
+  </ItemGroup>
+
+  <!-- One source of truth for the benchmark bodies: link, never copy. -->
+  <ItemGroup>
+    <Compile Include="../DataNet.Text.Benchmarks/LevenshteinBenchmarks.cs" Link="LevenshteinBenchmarks.cs" />
+    <Compile Include="../DataNet.Text.Benchmarks/VectorizerBenchmarks.cs" Link="VectorizerBenchmarks.cs" />
+    <Compile Include="../DataNet.Text.Benchmarks/FuzzBenchmarks.cs" Link="FuzzBenchmarks.cs" />
+    <Compile Include="../DataNet.Text.Benchmarks/VectorMathBenchmarks.cs" Link="VectorMathBenchmarks.cs" />
+  </ItemGroup>
+
+</Project>

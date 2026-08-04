@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/bench/">
+    <Project Path="bench/DataNet.NetStandard.Benchmarks/DataNet.NetStandard.Benchmarks.csproj" />
     <Project Path="bench/DataNet.Text.Benchmarks/DataNet.Text.Benchmarks.csproj" />
   </Folder>
   <Folder Name="/src/">
