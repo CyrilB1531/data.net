@@ -5,9 +5,12 @@
     <TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks>
     <RootNamespace>DataNet.Text</RootNamespace>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <!-- Pulls in the shared persistence plumbing (and System.Text.Json on ns2.0). -->
+    <DataNetIncludesPersistence>true</DataNetIncludesPersistence>
 
-    <!-- NuGet package identity. No external runtime dependencies by design:
-         this is the native "text" gap of the DataNet toolkit. -->
+    <!-- NuGet package identity. System.Text.Json on netstandard2.0 is the single,
+         deliberate runtime dependency (in-box on net10) — everything else in this
+         package is dependency-free by design. -->
     <PackageId>DataNet.Text</PackageId>
     <Description>String distances, similarity metrics, tokenizers and text vectorizers for .NET — native, allocation-lean, no Python at runtime.</Description>
     <PackageTags>text;similarity;levenshtein;distance;fuzzy;tfidf;nlp;datanet</PackageTags>

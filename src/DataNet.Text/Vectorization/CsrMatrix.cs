@@ -24,12 +24,38 @@ public enum SparseNorm
 /// </remarks>
 public sealed class CsrMatrix
 {
-    /// <summary>Creates a CSR matrix from raw arrays (not copied).</summary>
+    /// <summary>
+    /// Creates a CSR matrix from raw arrays (not copied), checking that they
+    /// describe a structurally valid matrix.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The arrays are validated in full: <paramref name="rowPointers"/> must be
+    /// non-decreasing, start at 0 and end at <c>values.Length</c>, and every entry
+    /// of <paramref name="columnIndices"/> must fall inside
+    /// <paramref name="columnCount"/>. This costs one linear pass, and it is what
+    /// makes the type safe to build from a file: without it, a single out-of-range
+    /// column index turns <see cref="Multiply"/> or <see cref="ToDense"/> into an
+    /// out-of-bounds write.
+    /// </para>
+    /// <para>
+    /// The vectorizers build their arrays themselves and bypass this pass through
+    /// an internal path — they cannot produce an invalid one.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ArgumentException">The arrays do not describe a valid CSR matrix.</exception>
     public CsrMatrix(int rowCount, int columnCount, double[] values, int[] columnIndices, int[] rowPointers)
+        : this(rowCount, columnCount, values, columnIndices, rowPointers, validate: true)
+    {
+    }
+
+    private CsrMatrix(int rowCount, int columnCount, double[] values, int[] columnIndices, int[] rowPointers, bool validate)
     {
         Guard.NotNull(values);
         Guard.NotNull(columnIndices);
         Guard.NotNull(rowPointers);
+        Guard.NotLessThan(rowCount, 0);
+        Guard.NotLessThan(columnCount, 0);
         if (rowPointers.Length != rowCount + 1)
         {
             throw new ArgumentException("rowPointers length must be rowCount + 1.", nameof(rowPointers));
@@ -38,12 +64,55 @@ public sealed class CsrMatrix
         {
             throw new ArgumentException("values and columnIndices must have equal length.");
         }
+        if (validate)
+        {
+            ValidateStructure(columnCount, values.Length, columnIndices, rowPointers);
+        }
 
         RowCount = rowCount;
         ColumnCount = columnCount;
         Values = values;
         ColumnIndices = columnIndices;
         RowPointers = rowPointers;
+    }
+
+    /// <summary>
+    /// Creates a matrix from arrays this library has just built, skipping the
+    /// structural pass. Never call it with data that came from outside.
+    /// </summary>
+    internal static CsrMatrix CreateUnchecked(int rowCount, int columnCount, double[] values, int[] columnIndices, int[] rowPointers) =>
+        new(rowCount, columnCount, values, columnIndices, rowPointers, validate: false);
+
+    private static void ValidateStructure(int columnCount, int nonZeroCount, int[] columnIndices, int[] rowPointers)
+    {
+        if (rowPointers[0] != 0)
+        {
+            throw new ArgumentException($"rowPointers[0] must be 0 but is {rowPointers[0]}.", nameof(rowPointers));
+        }
+        for (int row = 1; row < rowPointers.Length; row++)
+        {
+            if (rowPointers[row] < rowPointers[row - 1])
+            {
+                throw new ArgumentException(
+                    $"rowPointers must be non-decreasing but rowPointers[{row}] = {rowPointers[row]} < rowPointers[{row - 1}] = {rowPointers[row - 1]}.",
+                    nameof(rowPointers));
+            }
+        }
+        if (rowPointers[rowPointers.Length - 1] != nonZeroCount)
+        {
+            throw new ArgumentException(
+                $"rowPointers must end at the number of stored values ({nonZeroCount}) but ends at {rowPointers[rowPointers.Length - 1]}.",
+                nameof(rowPointers));
+        }
+        for (int k = 0; k < columnIndices.Length; k++)
+        {
+            if ((uint)columnIndices[k] >= (uint)columnCount)
+            {
+                throw new ArgumentException(
+                    $"columnIndices[{k}] = {columnIndices[k]} is outside the column range [0, {columnCount}).",
+                    nameof(columnIndices));
+            }
+        }
     }
 
     /// <summary>Number of rows.</summary>

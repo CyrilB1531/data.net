@@ -46,7 +46,7 @@ public sealed record CountVectorizerOptions
 /// reproducing <c>sklearn.feature_extraction.text.CountVectorizer</c>.
 /// </summary>
 /// <remarks>Not thread-safe during <see cref="Fit"/>; read-only afterwards.</remarks>
-public sealed class CountVectorizer
+public sealed partial class CountVectorizer
 {
     private readonly CountVectorizerOptions _options;
     private readonly TextAnalyzer _analyzer;
@@ -174,7 +174,7 @@ public sealed class CountVectorizer
             rowPointers[row + 1] = values.Count;
         }
 
-        return new CsrMatrix(docs.Count, _featureNames.Length, values.ToArray(), columns.ToArray(), rowPointers);
+        return CsrMatrix.CreateUnchecked(docs.Count, _featureNames.Length, values.ToArray(), columns.ToArray(), rowPointers);
     }
 
     private CsrMatrix BuildMatrix(List<Dictionary<int, int>> perDoc, int[] remap, int columnCount)
@@ -200,7 +200,7 @@ public sealed class CountVectorizer
             rowPointers[row + 1] = values.Count;
         }
 
-        return new CsrMatrix(perDoc.Count, columnCount, values.ToArray(), columns.ToArray(), rowPointers);
+        return CsrMatrix.CreateUnchecked(perDoc.Count, columnCount, values.ToArray(), columns.ToArray(), rowPointers);
     }
 
     private void AppendRow(Dictionary<int, int> counts, List<double> values, List<int> columns)
