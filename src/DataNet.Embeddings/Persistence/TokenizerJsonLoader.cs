@@ -59,6 +59,7 @@ public static class TokenizerJsonLoader
     private const string SourceName = "tokenizer.json";
     private const string AddedTokensProperty = "added_tokens";
     private const string UntypedName = "(untyped)";
+    private const string MetaSymbol = "\u2581";
 
     /// <summary>Reads the WordPiece model declared by <paramref name="source"/>.</summary>
     /// <param name="source">The <c>tokenizer.json</c> bytes; never disposed by this method.</param>
@@ -477,35 +478,45 @@ public static class TokenizerJsonLoader
 
         if (kind == PipelineKind.Unigram)
         {
-            string replacement = OptionalString(pre, "replacement") ?? "▁";
-            if (!string.Equals(replacement, "▁", StringComparison.Ordinal))
-            {
-                throw Unsupported($"its Metaspace replacement is '{replacement}'", "the tokenizer always uses U+2581");
-            }
+            EnsureMetaspaceIsReproduced(pre);
+        }
+    }
 
-            // Both of these change segmentation, and both default to the value the
-            // tokenizer reproduces — so a file that sets them is a file that would
-            // tokenize differently here, silently, if they went unread.
-            string prependScheme = OptionalString(pre, "prepend_scheme") ?? "always";
-            if (!string.Equals(prependScheme, "always", StringComparison.Ordinal))
-            {
-                throw Unsupported(
-                    $"its Metaspace prepend_scheme is '{prependScheme}'",
-                    "the tokenizer always prepends the meta symbol to the input");
-            }
-            if (OptionalBoolean(pre, "add_prefix_space") is false)
-            {
-                // The pre-0.14 spelling of prepend_scheme, still found in the wild.
-                throw Unsupported(
-                    "its Metaspace has add_prefix_space off",
-                    "the tokenizer always prepends the meta symbol to the input");
-            }
-            if (OptionalBoolean(pre, "split") is false)
-            {
-                throw Unsupported(
-                    "its Metaspace has split off",
-                    "only Metaspace's default segmentation is reproduced");
-            }
+    /// <summary>
+    /// Refuses a Metaspace pre-tokenizer configured away from what the tokenizer does.
+    /// </summary>
+    /// <remarks>
+    /// Every setting here changes segmentation, and every one defaults to the value
+    /// <see cref="SentencePieceTokenizer"/> reproduces — so a file that sets one is a
+    /// file that would tokenize differently here, silently, if it went unread.
+    /// </remarks>
+    private static void EnsureMetaspaceIsReproduced(JsonElement pre)
+    {
+        string replacement = OptionalString(pre, "replacement") ?? MetaSymbol;
+        if (!string.Equals(replacement, MetaSymbol, StringComparison.Ordinal))
+        {
+            throw Unsupported($"its Metaspace replacement is '{replacement}'", "the tokenizer always uses U+2581");
+        }
+
+        string prependScheme = OptionalString(pre, "prepend_scheme") ?? "always";
+        if (!string.Equals(prependScheme, "always", StringComparison.Ordinal))
+        {
+            throw Unsupported(
+                $"its Metaspace prepend_scheme is '{prependScheme}'",
+                "the tokenizer always prepends the meta symbol to the input");
+        }
+        if (OptionalBoolean(pre, "add_prefix_space") is false)
+        {
+            // The pre-0.14 spelling of prepend_scheme, still found in the wild.
+            throw Unsupported(
+                "its Metaspace has add_prefix_space off",
+                "the tokenizer always prepends the meta symbol to the input");
+        }
+        if (OptionalBoolean(pre, "split") is false)
+        {
+            throw Unsupported(
+                "its Metaspace has split off",
+                "only Metaspace's default segmentation is reproduced");
         }
     }
 

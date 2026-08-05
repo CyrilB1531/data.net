@@ -168,6 +168,32 @@ public sealed class ArtifactHardeningTests
     }
 
     [Fact]
+    public void A_vocabulary_written_before_the_feature_count_still_loads()
+    {
+        // The reader accepts reordered properties, so the vocabulary can arrive before
+        // the count that would have sized its buffer. That is the only path on which
+        // the buffer starts empty and has to grow from nothing.
+        var original = new CountVectorizer().Fit(TinyCorpus);
+        using var saved = new MemoryStream();
+        original.Save(saved);
+        string json = Encoding.UTF8.GetString(saved.ToArray());
+
+        int countStart = json.IndexOf(",\"featureCount\":", StringComparison.Ordinal);
+        int countEnd = json.IndexOf(",\"vocabulary\":", StringComparison.Ordinal);
+        string countProperty = json.Substring(countStart, countEnd - countStart);
+        string reordered = string.Concat(
+            json.AsSpan(0, countStart),
+            json.AsSpan(countEnd, json.Length - countEnd - 1),
+            countProperty.AsSpan(),
+            "}".AsSpan());
+
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(reordered));
+        CountVectorizer reloaded = CountVectorizer.Load(stream);
+
+        Assert.Equal(original.GetFeatureNames(), reloaded.GetFeatureNames());
+    }
+
+    [Fact]
     public void An_idf_vector_of_the_wrong_length_is_rejected()
     {
         // One double's worth of bits, where the vocabulary declares more.

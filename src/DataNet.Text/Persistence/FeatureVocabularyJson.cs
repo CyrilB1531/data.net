@@ -100,7 +100,14 @@ internal static class FeatureVocabularyJson
             }
             if (count == names.Length)
             {
+                // SonarLint S2583: the zero-length case is reachable and covered by
+                // A_vocabulary_written_before_the_feature_count_still_loads. The reader
+                // accepts reordered properties, so 'vocabulary' can arrive before the
+                // 'featureCount' that would have sized this buffer, leaving it empty.
+                // The analyser cannot see that declaredCount may be -1 there.
+#pragma warning disable S2583
                 Array.Resize(ref names, names.Length == 0 ? 4 : names.Length * 2);
+#pragma warning restore S2583
             }
             names[count++] = name;
             previous = name;

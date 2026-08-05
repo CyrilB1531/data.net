@@ -17,5 +17,11 @@ nltk==3.10.1
 tokenizers==0.23.1
 numpy==2.5.1
 sentencepiece==0.2.2
+# sentencepiece_model_pb2 — the generated protobuf module the spiece.model and
+# tokenizer.json generators read — imports google.protobuf, which sentencepiece
+# does not declare as a dependency. Without it here the lock omits it and CI fails
+# with "No module named 'google'" while a developer machine that happens to have
+# protobuf installed passes.
+protobuf==7.35.1
 # onnx is only needed to (re)build the tiny synthetic test model, not for
 # generate_oracles.py: onnx==1.16.0

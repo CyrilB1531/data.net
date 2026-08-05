@@ -44,6 +44,9 @@ ORACLE_DIR = Path(__file__).resolve().parent.parent / "tests" / "oracles"
 QUICK_FOX = "the quick brown fox"
 METS = "new york mets"
 UNK_TOKEN = "[UNK]"
+CAT_SENTENCE = "the cat sat on the mat"
+HELLO_WORLD = "hello world"
+TINY_SP_MODEL = "tiny_sp.model"
 
 # Code-point ranges per category. Surrogates (0xD800..0xDFFF) are filtered out.
 RANGES = {
@@ -525,7 +528,7 @@ def generate_phonetics() -> dict:
 
 
 CORPUS_A = [
-    "the cat sat on the mat",
+    CAT_SENTENCE,
     "a cat and a dog",
     "the dog barked loudly",
     "cats and dogs are friends",
@@ -1054,7 +1057,7 @@ FUZZ_PAIRS = [
     (METS, METS),
     (METS, "the wonderful new york mets"),
     ("mariners vs angels", "los angeles angels of anaheim at seattle mariners"),
-    ("hello world", "world hello"),
+    (HELLO_WORLD, "world hello"),
     ("a", "ab"), ("", ""), ("abc", "abcd"),
     ("Hello", "hello"), ("New York!", "york new"),
     (QUICK_FOX, "the brown quick fox"),
@@ -1136,11 +1139,11 @@ def generate_process() -> dict:
 def generate_sentencepiece() -> dict:
     import sentencepiece as spm  # noqa: PLC0415
 
-    sp = spm.SentencePieceProcessor(model_file=str(ORACLE_DIR / "tiny_sp.model"))
+    sp = spm.SentencePieceProcessor(model_file=str(ORACLE_DIR / TINY_SP_MODEL))
     vocab = [{"piece": sp.id_to_piece(i), "score": sp.get_score(i), "id": i} for i in range(sp.get_piece_size())]
     texts = [
-        QUICK_FOX, "tokenization", "hello world",
-        "machine learning and data science", "the cat sat on the mat",
+        QUICK_FOX, "tokenization", HELLO_WORLD,
+        "machine learning and data science", CAT_SENTENCE,
         "natural language processing", "xyzabc", "a b c",
         "unigram models find the best segmentation", "programming",
     ]
@@ -1163,8 +1166,8 @@ def generate_sentencepiece() -> dict:
 
 
 LOADER_TEXTS = [
-    QUICK_FOX, "tokenization", "hello world",
-    "machine learning and data science", "the cat sat on the mat",
+    QUICK_FOX, "tokenization", HELLO_WORLD,
+    "machine learning and data science", CAT_SENTENCE,
     "natural language processing", "xyzabc", "a b c",
     "unigram models find the best segmentation", "programming",
 ]
@@ -1236,7 +1239,7 @@ def generate_tokenizer_json() -> dict:
         wordpiece_cases.append({"id": i, "model": "WordPiece", "text": text, "tokens": enc.tokens, "ids": enc.ids})
 
     proto = model_pb2.ModelProto()
-    proto.ParseFromString((ORACLE_DIR / "tiny_sp.model").read_bytes())
+    proto.ParseFromString((ORACLE_DIR / TINY_SP_MODEL).read_bytes())
     unigram_pieces = [(p.piece, p.score) for p in proto.pieces]
     unigram = Tokenizer(Unigram(unigram_pieces, unk_id=proto.trainer_spec.unk_id, byte_fallback=False))
     unigram.pre_tokenizer = Metaspace()
@@ -1277,13 +1280,13 @@ def generate_spiece_model() -> dict:
     from sentencepiece import sentencepiece_model_pb2 as model_pb2  # noqa: PLC0415
 
     proto = model_pb2.ModelProto()
-    proto.ParseFromString((ORACLE_DIR / "tiny_sp.model").read_bytes())
+    proto.ParseFromString((ORACLE_DIR / TINY_SP_MODEL).read_bytes())
     pieces = [
         {"piece": p.piece, "score": p.score, "type": int(p.type), "id": i}
         for i, p in enumerate(proto.pieces)
     ]
 
-    sp = spm.SentencePieceProcessor(model_file=str(ORACLE_DIR / "tiny_sp.model"))
+    sp = spm.SentencePieceProcessor(model_file=str(ORACLE_DIR / TINY_SP_MODEL))
     cases = [
         {"id": k, "text": t, "pieces": sp.encode(t, out_type=str), "ids": sp.encode(t, out_type=int)}
         for k, t in enumerate(LOADER_TEXTS)

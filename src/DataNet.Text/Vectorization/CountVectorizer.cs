@@ -67,8 +67,15 @@ public sealed record CountVectorizerOptions
             || StripAccents != other.StripAccents
             || Analyzer != other.Analyzer
             || NgramRange != other.NgramRange
+            // SonarLint S1244 warns against comparing floating point for exact
+            // equality, which is right for arithmetic and wrong here: this is value
+            // equality between two configurations, where "the same threshold" means
+            // the same bits. double.Equals also treats NaN as equal to NaN, which is
+            // what a record's equality needs and what == would get wrong.
+#pragma warning disable S1244
             || !MinDf.Equals(other.MinDf)
             || !MaxDf.Equals(other.MaxDf)
+#pragma warning restore S1244
             || Binary != other.Binary
             || !string.Equals(TokenPattern, other.TokenPattern, StringComparison.Ordinal))
         {
