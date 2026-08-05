@@ -8,8 +8,10 @@ Compare two strings in a few lines.
 dotnet add package DataNet.Text
 ```
 
-> The package has **no external dependencies**: it's pure .NET, with no Python at
-> runtime.
+> The package has **no external dependencies on `net10.0`**: it's pure .NET, with
+> no Python at runtime. On `netstandard2.0` it takes `System.Memory`,
+> `System.Numerics.Vectors` and `System.Text.Json` — all three in-box on the
+> modern target, so nothing new is actually being pulled in for consumers there.
 
 ## Compare two strings
 

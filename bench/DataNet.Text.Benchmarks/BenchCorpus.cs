@@ -42,14 +42,17 @@ public static class BenchCorpus
     public static string VocabsDirectory()
     {
         string dir = System.IO.Path.Combine(RepoRoot(), "bench", "corpus", "vocabs");
-        foreach (string file in RequiredFiles)
+        string[] missing = RequiredFiles
+            .Where(file => !File.Exists(System.IO.Path.Combine(dir, file)))
+            .ToArray();
+        if (missing.Length > 0)
         {
-            if (!File.Exists(System.IO.Path.Combine(dir, file)))
-            {
-                throw new InvalidOperationException(
-                    $"The benchmark corpus is missing '{file}' in '{dir}'. " +
-                    "Generate it first: python bench/corpus/generate_vocabs.py");
-            }
+            // Every missing name at once: a half-generated corpus is one run of the
+            // generator away from fixed, and naming only the first invites doing it
+            // five times.
+            throw new InvalidOperationException(
+                $"The benchmark corpus is missing {string.Join(", ", missing)} in '{dir}'. " +
+                "Generate it first: python bench/corpus/generate_vocabs.py");
         }
         return dir;
     }

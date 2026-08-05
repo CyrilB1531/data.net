@@ -29,13 +29,14 @@ graph was never wrong. What was wrong was that the *build* graph and the
 
 The first exercise of the split ships with this change: `DataNet.Text` and
 `DataNet.Fuzzy` both go to `0.3.0` — the first has gained stop-word lists, the
-second has changed how it declares its dependency — while `DataNet.Embeddings`
-stays at `0.2.0`, because nothing in it changed.
+second has changed how it declares its dependency. `DataNet.Embeddings` followed
+to `0.3.0` shortly after, on its own account, for the vocabulary loaders.
 
-That two of the three move together is the point rather than a dilution of it.
+That all three ended up on the same number is not a dilution of the point.
 Independent versioning is not a rule that numbers must differ; it is the removal
-of the rule that they must match. `DataNet.Embeddings` staying put is the part
-that was previously impossible.
+of the rule that they must match. What was previously impossible is a package
+holding still while its neighbours move — and each of these three moved because
+of something in it, which is the property the split buys.
 
 ### Why a per-project `Version.props` and not a versioning tool
 

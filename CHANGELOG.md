@@ -27,6 +27,109 @@ split and covered all three at once — see
   per language in [`docs/equivalence.md`](docs/equivalence.md) and the reasoning
   is in [`docs/decisions/0010`](docs/decisions/0010-stop-word-list-provenance.md).
   `StopWords.English` is unchanged, still scikit-learn's 318-word list.
+- **Fitted models survive the process.** `TfidfVectorizer`, `CountVectorizer` and
+  `HashingVectorizer` gain `Save`/`Load` over a stream or a path, plus native
+  async counterparts. Training on a corpus and scoring later — the normal split
+  in any real pipeline — no longer requires reimplementing serialization over
+  `GetFeatureNames()` and `Idf`. The round trip is bit-exact: idf weights are
+  written as raw IEEE-754 bits, so a reloaded model produces a
+  `CsrMatrix` identical element by element, not "within a tolerance".
+  `HashingVectorizer` has no vocabulary to learn but its **options** round-trip
+  too — a pipeline reloaded with a different `NumFeatures` produces different
+  columns for the same document, and nothing downstream would notice.
+- **`ArtifactLoadOptions`** bounds what a loaded file may declare — vocabulary
+  size, token length, JSON depth, total bytes, array length. A malformed or
+  hostile artifact raises `InvalidDataException` naming the limit and the value,
+  never `OutOfMemoryException`. Unlike `pickle.load`, the format reads data and
+  never code.
+
+#### Changed
+
+- **The idf vector is stored as base64, not as JSON numbers.** It was the most
+  expensive thing in the file — parsing it cost four times what materialising the
+  whole vocabulary cost, and it made the artifact a quarter larger. It is now one
+  base64 string of raw little-endian IEEE-754 bits. The vocabulary, the options
+  and the header stay plain readable JSON, because those are the parts anyone
+  actually reads; nobody inspects thirty thousand floats by eye. Exactness
+  *improves*: raw bits round-trip by construction, with no decimal formatter
+  involved. On a 30 000-feature model, saving went from 8.7 ms to 2.0 ms, loading
+  from 12.6 ms to 5.0 ms, and the file from 782 KB to 589 KB.
+- **Artifacts are written with the relaxed JSON encoder.** The default one
+  escapes every non-ASCII character as `\uXXXX` — six bytes where UTF-8 needs
+  two — which matters because this library ships Snowball stop-word lists for
+  five languages, 258 of whose entries are accented. On an accented vocabulary
+  that removed 9 201 escape sequences, shrank the artifact 18%, and made saving
+  2.09× and loading 1.84× faster. The escaping JSON requires is still applied;
+  what is dropped is the HTML-injection hardening an artifact never needed.
+- **Single doubles use the shortest round-trippable form** on `net8.0` and later,
+  keeping `"G17"` under `netstandard2.0` where .NET Framework does not guarantee
+  it. Both read back identically and each build stays byte-reproducible against
+  itself.
+- Measured against scikit-learn with `pickle`, `Save` is now 2.09× faster and
+  `Load` matches it on elapsed time. See [`bench/README.md`](bench/README.md) §4
+  for the numbers, including processor time — which is the honest column, and
+  where `Load` still costs 22% more than `pickle` because of background garbage
+  collection.
+- **`CsrMatrix`'s public constructor now validates its arrays.** `RowPointers`
+  must be non-decreasing, start at 0 and end at `Values.Length`, and every column
+  index must be in range. This was caller discipline while the arrays could only
+  come from the vectorizers; deserialization makes an out-of-range column index
+  an out-of-bounds read. The vectorizers build their own arrays and keep an
+  internal unchecked path, so the validation costs them nothing.
+- **`DataNet.Text` declares `System.Text.Json` on `netstandard2.0`.** It is
+  in-box from `net8.0` onwards, so the `net10.0` package is still dependency-free
+  and consumers on the modern target gain nothing new. This is the one place the
+  "no external dependencies" rule is knowingly bent, and it is bent rather than
+  hand-rolling a JSON reader for untrusted input. See
+  [`docs/decisions/0011`](docs/decisions/0011-persistence-format.md).
+
+### DataNet.Embeddings — 0.3.0
+
+#### Added
+
+- **Vocabulary loaders for the three formats a pretrained tokenizer ships in**:
+  `VocabTxtLoader` (`vocab.txt`), `TokenizerJsonLoader` (`tokenizer.json`, both
+  WordPiece and Unigram) and `SentencePieceModelLoader` (`spiece.model`). The
+  guides previously told readers to parse a 30 000-entry vocabulary — or a
+  protobuf — by hand. `SentencePieceModelLoader` carries a minimal hand-written
+  protobuf reader: four wire types against a frozen format, rather than a runtime
+  dependency in a package whose selling point is not having one.
+- **`WordPieceVocabulary` and `SentencePieceVocabulary`**, carrying the settings
+  that change tokenization and that a caller building the table by hand would
+  have to guess — the unknown token, the continuation prefix, the lowercasing
+  flag, and for SentencePiece the *type* of every piece.
+- **`SentencePieceTokenizer(SentencePieceVocabulary)`**, which decides what may
+  match text from each piece's declared type.
+- The loaders **refuse** a file whose pipeline they do not reproduce — an `NFKC`
+  or precompiled normalizer, a `BertPreTokenizer`, a `post_processor` that
+  inserts `[CLS]`/`[SEP]` — naming what they found. A vocabulary that loads
+  cleanly and produces embeddings for a model nobody trained is the worse outcome.
+  The refusal covers what the file was *trained* as, not only its pipeline
+  sections: a `spiece.model` built with `BPE`, `WORD` or `CHAR` rather than
+  unigram, `byte_fallback` in either format, and a `Metaspace` whose
+  `prepend_scheme` (or the older `add_prefix_space`) or `split` is away from the
+  default. Each of those changes tokenization while leaving the vocabulary
+  looking perfectly valid.
+  A `spiece.model` carrying no `normalizer_spec`, and any special-token id
+  (`unk_id`, `bos_id`, `eos_id`, `pad_id`) pointing outside the vocabulary, are
+  refused for the same reason — the tokenizer never indexes by the sentence
+  markers, but a caller naming them does, and would meet the bad id far from the
+  file that carried it.
+- **`added_tokens` are read rather than dropped.** `Tokenizer.add_tokens` assigns
+  ids after the model's own vocabulary, so those entries appear nowhere in
+  `model.vocab`; they are now folded into the loaded WordPiece vocabulary instead
+  of tokenizing to the unknown token. An entry that contradicts `model.vocab`, or
+  that asks for `lstrip`/`rstrip`/`single_word` matching, is refused.
+
+#### Deprecated
+
+- **`SentencePieceTokenizer(IReadOnlyList<SentencePiece>, int)`** — the id-based
+  constructor. It inferred which pieces were control markers from "ids 0, 1 and 2
+  starting with `<`", which is right for the models that happen to lay out that
+  way and silently wrong for the rest. It still ships unchanged and will be
+  removed in `2.0.0`; a test proves it agrees with the type-based constructor on
+  a model where the guess held. Migration is one line: build a
+  `SentencePieceVocabulary` with a loader and pass that instead.
 
 ### DataNet.Fuzzy — 0.3.0
 
@@ -37,8 +140,9 @@ split and covered all three at once — see
   two packable projects already produced exactly this `<dependency>`, and
   `Fuzz.Ratio` is still `Indel.NormalizedSimilarity × 100`. What changes is that
   the build graph now matches the release graph, so a package can now ship
-  without dragging the other two with it — as `DataNet.Embeddings` demonstrates
-  by staying at `0.2.0` through this release. The dependency floor is
+  without dragging the other two with it. All three happen to move to `0.3.0`
+  here, each for its own reasons — that they agree is a coincidence of timing,
+  not a constraint any longer. The dependency floor is
   pinned in `src/Directory.Packages.props`; the developer loop for editing both
   libraries at once is documented in
   [`CONTRIBUTING.md`](CONTRIBUTING.md#working-across-two-packages), and the whole
