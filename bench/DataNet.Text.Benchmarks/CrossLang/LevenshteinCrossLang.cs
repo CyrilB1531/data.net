@@ -24,7 +24,7 @@ public static class LevenshteinCrossLang
     {
         // Resolve paths relative to the current working directory (repo root when
         // launched via `dotnet run --project bench/...`), walking up as a fallback.
-        string root = FindRepoRoot();
+        string root = BenchCorpus.RepoRoot();
         string corpusPath = Path.Combine(root, "bench", "corpus", "pairs.json");
         string outPath = Path.Combine(root, "bench", "results", "csharp-levenshtein.json");
 
@@ -94,20 +94,6 @@ public static class LevenshteinCrossLang
         }
 
         return best;
-    }
-
-    private static string FindRepoRoot()
-    {
-        var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
-        while (dir is not null)
-        {
-            if (File.Exists(Path.Combine(dir.FullName, "DataNet.sln")))
-            {
-                return dir.FullName;
-            }
-            dir = dir.Parent;
-        }
-        return Directory.GetCurrentDirectory();
     }
 
     // --- corpus / output DTOs ---
