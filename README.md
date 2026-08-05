@@ -106,23 +106,41 @@ DataNet.slnx
 ├── bench/DataNet.Text.Benchmarks/  BenchmarkDotNet
 ├── tools/generate_oracles.py    reference generation
 ├── Directory.Build.props        (root); src|tests/Directory.Packages.props (central package management)
+├── src/*/Version.props          one version per publishable package (decision 0012)
 └── docs/                        guides, equivalence table, decision log
 ```
 
 ## Publishing
 
 Three NuGet packages are produced: `DataNet.Text`, `DataNet.Embeddings`,
-`DataNet.Fuzzy`. Package metadata (version, license, README, repository) is shared
-in `Directory.Build.props`.
+`DataNet.Fuzzy`. **Each versions and releases on its own**: shared metadata
+(license, README, repository) lives in `Directory.Build.props`, while the version
+is declared per project in `src/<Package>/Version.props`. `DataNet.Fuzzy` depends
+on `DataNet.Text` as a published package, not as a project reference — see
+[`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md).
 
 **GitHub Packages** (no nuget.org account needed — uses GitHub's automatic token).
-Tag a version and push; the [`release`](.github/workflows/release.yml) workflow
-packs and publishes:
+Bump the version, then tag it with the package name; the
+[`release`](.github/workflows/release.yml) workflow packs and publishes that
+package alone:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+# 1. edit src/DataNet.Fuzzy/Version.props, commit, merge to main
+# 2. tag the released version — <PackageId>/v<Version>
+git tag DataNet.Fuzzy/v0.3.0
+git push origin DataNet.Fuzzy/v0.3.0
 ```
+
+The tag does not set the version, it names which declared version to release: the
+workflow refuses the job if the tag and `Version.props` disagree. Repository-wide
+`v*` tags are retired — there is no single version left for one to designate.
+
+**Step 1 is not optional.** Because the tag only confirms the declared version,
+tagging without bumping first is a tag that agrees with `Version.props` and names
+a version the feed already has. The push is then rejected rather than absorbed —
+the workflows do not pass `--skip-duplicate`, which used to report that case as a
+successful release that shipped nothing. Keeping a declared version off the feed
+is also checked directly in CI by `tools/check_version_floor.py`.
 
 To consume them, add a source pointing at the owner's feed (with a GitHub token
 that has `read:packages`):
@@ -133,11 +151,15 @@ dotnet nuget add source "https://nuget.pkg.github.com/CyrilB1531/index.json" \
 dotnet add package DataNet.Text
 ```
 
-**nuget.org** (optional, needs a free account + API key). Once you have a key:
+**nuget.org** uses Trusted Publishing (OIDC, no stored key): run the
+[`Publish to nuget.org`](.github/workflows/release-nuget-org.yml) workflow from
+the Actions tab, choosing the package and confirming its version. By hand, with
+an API key, one package at a time:
 
 ```bash
 dotnet pack src/DataNet.Text -c Release -o artifacts
-dotnet nuget push "artifacts/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key <KEY>
+dotnet nuget push "artifacts/DataNet.Text.*.nupkg" \
+  --source https://api.nuget.org/v3/index.json --api-key <KEY>
 ```
 
 ## License

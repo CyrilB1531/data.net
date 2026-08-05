@@ -9,8 +9,16 @@ name: Publish to nuget.org (Trusted Publishing)
 on:
   workflow_dispatch:
     inputs:
+      package:
+        description: 'Package to publish'
+        required: true
+        type: choice
+        options:
+          - DataNet.Text
+          - DataNet.Embeddings
+          - DataNet.Fuzzy
       version:
-        description: 'Version to publish (e.g. 0.1.0)'
+        description: 'Version to publish (e.g. 0.3.0) — must match the declared one'
         required: true
 
 permissions:
@@ -28,19 +36,61 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # The inputs are user-supplied. Passed through the environment they stay
+      # data; interpolated into the script they would BE the script, in a job
+      # that can mint a nuget.org publishing key.
+      #
+      # The version is a confirmation, not a setting: src/<Package>/Version.props
+      # declares it, and a disagreement stops the job rather than silently
+      # publishing a number the repository never claimed. Nothing user-supplied
+      # reaches `dotnet pack`.
+      - name: The input matches the declared version
+        env:
+          PACKAGE: ${{ inputs.package }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          declared=$(dotnet msbuild "src/$PACKAGE" -getProperty:Version -p:TargetFramework=net10.0)
+          if [ "$declared" != "$VERSION" ]; then
+            echo "::error::Input says $VERSION, src/$PACKAGE declares $declared."
+            exit 1
+          fi
+          echo "$PACKAGE $declared"
+
+      # Matching the declared version proves the repository meant to ship this
+      # number; it does not prove the number is still available. nuget.org is
+      # immutable, so a version that already exists can never be replaced — and
+      # a push over it used to be absorbed by `--skip-duplicate` and reported as
+      # success, shipping nothing. Fail here, before the tests, where the fix is
+      # still just a bump.
+      - name: The version is not already on nuget.org
+        env:
+          PACKAGE: ${{ inputs.package }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          id=$(printf '%s' "$PACKAGE" | tr '[:upper:]' '[:lower:]')
+          status=$(curl -sS -o versions.json -w '%{http_code}' \
+            "https://api.nuget.org/v3-flatcontainer/$id/index.json")
+          case "$status" in
+            404) echo "$PACKAGE has never been published — $VERSION is free."; exit 0 ;;
+            200) ;;
+            *) echo "::error::nuget.org answered $status for $PACKAGE."; exit 1 ;;
+          esac
+          if jq -e --arg v "$VERSION" '.versions | index($v)' versions.json > /dev/null; then
+            echo "::error::$PACKAGE $VERSION is already on nuget.org. Bump src/$PACKAGE/Version.props."
+            exit 1
+          fi
+          echo "$PACKAGE $VERSION is not on nuget.org yet."
+
       - name: Test
         run: dotnet test --configuration Release
 
-      # The version is user-supplied. Passed through the environment it stays
-      # data; interpolated into the script it would BE the script, in a job that
-      # can mint a nuget.org publishing key.
       - name: Pack
         env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          for proj in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
-            dotnet pack "$proj" --configuration Release -o artifacts -p:Version="$VERSION"
-          done
+          PACKAGE: ${{ inputs.package }}
+        run: dotnet pack "src/$PACKAGE" --configuration Release -o artifacts
+
+      - name: The shipped dependency graph is the intended one
+        run: python3 tools/check_nuspec_dependencies.py artifacts
 
       # Exchanges the OIDC token for a temporary nuget.org API key (no stored key).
       - name: NuGet trusted login
@@ -55,5 +105,4 @@ jobs:
         run: |
           dotnet nuget push "artifacts/*.nupkg" \
             --source https://api.nuget.org/v3/index.json \
-            --api-key "$NUGET_API_KEY" \
-            --skip-duplicate
+            --api-key "$NUGET_API_KEY"

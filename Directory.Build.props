@@ -11,8 +11,11 @@
     <!-- Warnings are errors everywhere: src, tests and bench alike. -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
-    <!-- Package identity / provenance (§10). -->
-    <Version>0.2.0</Version>
+    <!-- Package identity / provenance (§10). Everything genuinely shared lives
+         here; <Version> deliberately does not, because the three packages
+         release on independent cadences. Each publishable project declares its
+         own in a sibling Version.props — see
+         docs/decisions/0012-per-package-versioning.md. -->
     <Company>Cyril BRUNET</Company>
     <Authors>Cyril BRUNET</Authors>
     <Copyright>Copyright 2026 Cyril BRUNET</Copyright>

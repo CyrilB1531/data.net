@@ -1,14 +1,19 @@
 name: Release
 
-# Publishes the NuGet packages to GitHub Packages when a version tag is pushed,
-# e.g.:  git tag v0.1.0 && git push origin v0.1.0
+# Publishes ONE NuGet package to GitHub Packages when a per-package tag is
+# pushed, e.g.:  git tag DataNet.Fuzzy/v0.3.0 && git push origin DataNet.Fuzzy/v0.3.0
+#
+# The three packages version independently, so a tag names which one it releases
+# (see docs/decisions/0012-per-package-versioning.md). The old repository-wide
+# `v*` tag is retired: it can no longer mean anything, since there is no single
+# version left for it to designate.
 #
 # GitHub Packages authenticates with the automatic GITHUB_TOKEN — no nuget.org
 # account and no manually-created API key are required.
 
 on:
   push:
-    tags: ['v*']
+    tags: ['DataNet.*/v*']
 
 permissions:
   contents: read
@@ -25,24 +30,57 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Derive version from tag
-        id: version
-        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      # The tag is <PackageId>/v<Version>. Both halves stay in the environment
+      # rather than being interpolated into a script: GitHub's own guidance
+      # treats a ref name as untrusted, and in a job that can push packages,
+      # interpolated data would BE the script.
+      - name: Parse the tag
+        id: tag
+        run: |
+          {
+            echo "package=${GITHUB_REF_NAME%/v*}"
+            echo "version=${GITHUB_REF_NAME##*/v}"
+          } >> "$GITHUB_OUTPUT"
+
+      # The version is declared in src/<Package>/Version.props and nowhere else.
+      # The tag does not set it — it only says which declared version to release,
+      # and this step refuses the job if the two disagree. That keeps the
+      # repository authoritative, and means nothing derived from the tag ever
+      # reaches `dotnet pack` at all.
+      - name: The tag matches the declared version
+        env:
+          PACKAGE: ${{ steps.tag.outputs.package }}
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          case "$PACKAGE" in
+            DataNet.Text|DataNet.Embeddings|DataNet.Fuzzy) ;;
+            *) echo "::error::Unknown package '$PACKAGE'."; exit 1 ;;
+          esac
+          declared=$(dotnet msbuild "src/$PACKAGE" -getProperty:Version -p:TargetFramework=net10.0)
+          if [ "$declared" != "$VERSION" ]; then
+            echo "::error::Tag says $VERSION, src/$PACKAGE declares $declared. Bump Version.props and retag."
+            exit 1
+          fi
+          echo "$PACKAGE $declared"
 
       - name: Test
         run: dotnet test --configuration Release
 
-      # Derived from the tag name, which GitHub's own guidance treats as
-      # untrusted. Same reasoning as release-nuget-org.yml: keep it as data.
+      # No -p:Version: the csproj is the source of truth, and the step above has
+      # already proved the tag agrees with it.
       - name: Pack
         env:
-          VERSION: ${{ steps.version.outputs.value }}
-        run: |
-          for proj in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
-            dotnet pack "$proj" --configuration Release -o artifacts \
-              -p:Version="$VERSION"
-          done
+          PACKAGE: ${{ steps.tag.outputs.package }}
+        run: dotnet pack "src/$PACKAGE" --configuration Release -o artifacts
 
+      - name: The shipped dependency graph is the intended one
+        run: python3 tools/check_nuspec_dependencies.py artifacts
+
+      # No --skip-duplicate. Re-releasing a version the feed already has is not
+      # a no-op worth tolerating: with the tag no longer setting the version, the
+      # way to reach this line twice is to tag a release without bumping
+      # Version.props first, and skipping the duplicate reported that as success
+      # while the change stayed unpublished. A rejected push says so instead.
       - name: Push to GitHub Packages
         env:
           OWNER: ${{ github.repository_owner }}
@@ -50,8 +88,7 @@ jobs:
         run: |
           dotnet nuget push "artifacts/*.nupkg" \
             --source "https://nuget.pkg.github.com/$OWNER/index.json" \
-            --api-key "$GITHUB_TOKEN" \
-            --skip-duplicate
+            --api-key "$GITHUB_TOKEN"
 
       - name: Upload packages as build artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
