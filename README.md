@@ -59,6 +59,15 @@ Levenshtein.Distance("kitten", "sitting");             // 3
 Levenshtein.NormalizedSimilarity("kitten", "sitting"); // 0.5714…
 ```
 
+A runnable version of the above, consuming the packages exactly as you would:
+
+```bash
+for p in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
+  dotnet pack "$p" -c Release -o ./artifacts
+done
+dotnet run --project samples/DataNet.Sample -c Release
+```
+
 Full guide: [`docs/guides/quickstart.md`](docs/guides/quickstart.md). See also the
 [vectorization](docs/guides/vectorization.md), [embeddings](docs/guides/embeddings.md)
 and [fuzzy-matching](docs/guides/migrating-from-rapidfuzz.md) guides.

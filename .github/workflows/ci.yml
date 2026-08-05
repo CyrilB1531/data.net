@@ -67,6 +67,29 @@ jobs:
           name: nuget
           path: ./artifacts/*.nupkg
 
+  sample:
+    name: Sample consumes the packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # The sample restores from ./artifacts, so the packages must exist before
+      # it: this gate tests what is about to ship, not what already shipped.
+      - name: Pack
+        run: |
+          for proj in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
+            dotnet pack "$proj" --configuration Release -o ./artifacts
+          done
+
+      # Building here means resolving the packages as a consumer would, so a
+      # missing dependency group or an unreachable public type fails the build.
+      # Running it means the code actually works once resolved.
+      - name: Run the sample
+        run: dotnet run --project samples/DataNet.Sample --configuration Release
+
   oracles-fresh:
     name: Oracles are reproducible
     runs-on: ubuntu-latest
