@@ -141,7 +141,7 @@ internal static class JsonArtifact
         var buffer = new byte[CopyBufferSize];
         using var accumulated = new MemoryStream();
         int read;
-        while ((read = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
+        while ((read = await ReadChunkAsync(stream, buffer, cancellationToken).ConfigureAwait(false)) > 0)
         {
             limits.CheckTotalBytes(accumulated.Length + read);
 
@@ -156,6 +156,19 @@ internal static class JsonArtifact
         }
         return accumulated.ToArray();
     }
+
+    /// <summary>Reads one chunk, using the allocation-free overload where it exists.</summary>
+    /// <remarks>
+    /// <c>Stream.ReadAsync(Memory&lt;byte&gt;, CancellationToken)</c> arrived with
+    /// netstandard2.1, so the older target keeps the array overload. Wrapping the
+    /// difference here keeps the read loop itself free of conditional compilation.
+    /// </remarks>
+    private static ValueTask<int> ReadChunkAsync(Stream stream, byte[] buffer, CancellationToken cancellationToken) =>
+#if NETSTANDARD2_0
+        new(stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken));
+#else
+        stream.ReadAsync(buffer.AsMemory(), cancellationToken);
+#endif
 
     /// <summary>Opens <paramref name="path"/> for writing an artifact; the caller owns the returned stream.</summary>
     public static FileStream OpenWrite(string path)

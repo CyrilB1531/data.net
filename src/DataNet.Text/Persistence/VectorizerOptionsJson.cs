@@ -181,7 +181,7 @@ internal static class VectorizerOptionsJson
         writer.WriteEndArray();
     }
 
-    private static IReadOnlyCollection<string>? ReadStopWords(ref Utf8JsonReader reader, string artifact, in ArtifactLimits limits)
+    private static List<string>? ReadStopWords(ref Utf8JsonReader reader, string artifact, in ArtifactLimits limits)
     {
         if (!reader.Read())
         {
