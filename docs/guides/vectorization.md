@@ -44,6 +44,25 @@ var cv = new CountVectorizer(new CountVectorizerOptions
 });
 ```
 
+### Stop words
+
+Six lists ship: `StopWords.English`, `.French`, `.German`, `.Italian`,
+`.Portuguese`, `.Spanish` — and any `IReadOnlyCollection<string>` works just as
+well.
+
+English is scikit-learn's 318-word list, for `stop_words="english"` parity. The
+other five come from Snowball, **not** from `nltk.corpus.stopwords`: that corpus
+has no stated licence, so it cannot be redistributed here
+([decision 0010](../decisions/0010-stop-word-list-provenance.md)). The lists are
+close — Italian is identical word for word, the others differ by a handful — but
+if you need exactly what nltk removes, load the corpus yourself and pass it in.
+
+Removal is an ordinal match against the analyzer's output, so a list only removes
+what preprocessing leaves behind: with `StripAccents = true`, `même` becomes
+`meme` and no longer matches. Single-letter entries (`c`, `d`, `l`, `à` in the
+French list) never match under the default token pattern either, which drops
+one-character tokens. scikit-learn behaves the same way in both cases.
+
 ## TF-IDF — `TfidfVectorizer`
 
 The formula is scikit-learn's, **to the character** (a classic pitfall):

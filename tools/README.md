@@ -1,4 +1,10 @@
-# Development tools — oracle generation
+# Development tools — oracle generation and vendored data
+
+Two scripts. `generate_oracles.py` produces the reference values the test suite
+replays; `fetch_stopwords.py` produces source that is *shipped*, which is why it
+verifies what it downloaded before writing anything.
+
+## `generate_oracles.py`
 
 `generate_oracles.py` produces the frozen reference corpora under
 `tests/oracles/`, from the canonical Python libraries. **These libraries are
@@ -17,6 +23,23 @@ python tools/generate_oracles.py
 The script is **deterministic** (fixed seed, no timestamps): regenerating on
 another machine produces an identical file — diffs stay readable and reviewable.
 Committing the regenerated JSON is part of the change.
+
+## `fetch_stopwords.py`
+
+Regenerates `src/DataNet.Text/Vectorization/StopWords.Snowball.cs` from the
+Snowball stop-word lists (BSD-3-Clause). No third-party package needed — the
+standard library is enough:
+
+```bash
+python tools/fetch_stopwords.py            # regenerate
+python tools/fetch_stopwords.py --check    # verify the checked-in file is current
+```
+
+Each file is checked against a pinned SHA-256 before use. A mismatch means
+Snowball edited the list upstream: read the diff, update the pin, adjust the
+counts in `StopWordsTests`, and record it — do not regenerate quietly. The nltk
+stop-word corpus is **not** a permitted source here, whatever its convenience:
+see [`../docs/decisions/0010-stop-word-list-provenance.md`](../docs/decisions/0010-stop-word-list-provenance.md).
 
 ## Rules
 
