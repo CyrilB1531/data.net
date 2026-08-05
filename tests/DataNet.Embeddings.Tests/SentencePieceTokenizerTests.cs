@@ -1,4 +1,5 @@
 using System.Text.Json;
+using DataNet.Embeddings.Persistence;
 using DataNet.Embeddings.Tokenization;
 using Xunit;
 
@@ -6,6 +7,10 @@ namespace DataNet.Embeddings.Tests;
 
 public sealed class SentencePieceTokenizerTests
 {
+    // The id-based constructor is obsolete but still shipped, and "still shipped"
+    // is only true if it still behaves. These tests exercise it deliberately.
+#pragma warning disable CS0618
+
     private static SentencePieceTokenizer BuildFromOracle(JsonDocument doc)
     {
         JsonElement meta = doc.RootElement.GetProperty("metadata");
@@ -42,5 +47,93 @@ public sealed class SentencePieceTokenizerTests
         }
 
         Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    /// <summary>
+    /// The obsolete constructor guesses which pieces are controls from their ids;
+    /// the new one is told. On a model that puts its markers at 0, 1 and 2 — the
+    /// case the guess was written for — the two must agree exactly. That is what
+    /// makes the deprecation safe rather than a silent behaviour change.
+    /// </summary>
+    [Fact]
+    public void The_obsolete_constructor_agrees_with_the_type_based_one()
+    {
+        using JsonDocument doc = OracleLoader.Load("sentencepiece.json");
+        SentencePieceTokenizer byId = BuildFromOracle(doc);
+        var byType = new SentencePieceTokenizer(
+            SentencePieceModelLoader.Load(Path.Combine(AppContext.BaseDirectory, "oracles", "tiny_sp.model")));
+
+        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
+        {
+            string text = c.GetProperty("text").GetString()!;
+            Assert.Equal(byId.Encode(text).Tokens, byType.Encode(text).Tokens);
+            Assert.Equal(byId.Encode(text).Ids, byType.Encode(text).Ids);
+        }
+    }
+
+#pragma warning restore CS0618
+
+    /// <summary>
+    /// The failure the id-based guess cannot see: a model whose control markers
+    /// sit anywhere other than 0, 1 and 2.
+    /// </summary>
+    [Fact]
+    public void Controls_outside_the_first_three_ids_are_still_excluded()
+    {
+        // "<s>" at id 3, deliberately scored high enough that a tokenizer which
+        // failed to exclude it would emit it for the letter run "s".
+        SentencePiece[] pieces =
+        [
+            new("a", -1.0, 0),
+            new("▁", -2.0, 1),
+            new("s", -5.0, 2),
+            new("<s>", -0.1, 3),
+            new("<unk>", 0.0, 4),
+        ];
+        SentencePieceType[] types =
+        [
+            SentencePieceType.Normal,
+            SentencePieceType.Normal,
+            SentencePieceType.Normal,
+            SentencePieceType.Control,
+            SentencePieceType.Unknown,
+        ];
+        var tokenizer = new SentencePieceTokenizer(new SentencePieceVocabulary(pieces, types, UnkId: 4, BosId: 3, EosId: -1, PadId: -1));
+
+        TokenizationResult result = tokenizer.Encode("as");
+
+        Assert.DoesNotContain("<s>", result.Tokens);
+    }
+
+    [Fact]
+    public void A_vocabulary_whose_pieces_and_types_disagree_is_rejected()
+    {
+        var vocabulary = new SentencePieceVocabulary(
+            [new SentencePiece("a", -1.0, 0)],
+            [SentencePieceType.Normal, SentencePieceType.Normal],
+            UnkId: 0,
+            BosId: -1,
+            EosId: -1,
+            PadId: -1);
+
+        ArgumentException error = Assert.Throws<ArgumentException>(() => new SentencePieceTokenizer(vocabulary));
+
+        Assert.Contains("1 pieces but 2 types", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_vocabulary_whose_unknown_id_is_out_of_range_is_rejected()
+    {
+        var vocabulary = new SentencePieceVocabulary(
+            [new SentencePiece("a", -1.0, 0)],
+            [SentencePieceType.Normal],
+            UnkId: 7,
+            BosId: -1,
+            EosId: -1,
+            PadId: -1);
+
+        ArgumentException error = Assert.Throws<ArgumentException>(() => new SentencePieceTokenizer(vocabulary));
+
+        Assert.Contains("outside the vocabulary range", error.Message, StringComparison.Ordinal);
     }
 }

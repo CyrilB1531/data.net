@@ -45,6 +45,8 @@
   <ItemGroup>
     <None Include="../oracles/**/*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
     <None Include="../oracles/**/*.onnx" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
+    <!-- The SentencePiece loader is replayed against the real model file, not a copy of its contents. -->
+    <None Include="../oracles/**/*.model" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
   </ItemGroup>
 
 </Project>

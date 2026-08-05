@@ -1162,6 +1162,158 @@ def generate_sentencepiece() -> dict:
     }
 
 
+LOADER_TEXTS = [
+    QUICK_FOX, "tokenization", "hello world",
+    "machine learning and data science", "the cat sat on the mat",
+    "natural language processing", "xyzabc", "a b c",
+    "unigram models find the best segmentation", "programming",
+]
+
+
+def _wordpiece_tokenizer(vocab: dict[str, int], lowercase: bool):
+    """A HuggingFace WordPiece tokenizer with the pipeline DataNet reproduces."""
+    from tokenizers import Tokenizer  # noqa: PLC0415
+    from tokenizers.models import WordPiece  # noqa: PLC0415
+    from tokenizers.normalizers import Lowercase  # noqa: PLC0415
+    from tokenizers.pre_tokenizers import Whitespace  # noqa: PLC0415
+
+    tokenizer = Tokenizer(WordPiece(vocab, unk_token=UNK_TOKEN, max_input_chars_per_word=100))
+    tokenizer.pre_tokenizer = Whitespace()
+    if lowercase:
+        tokenizer.normalizer = Lowercase()
+    return tokenizer
+
+
+def generate_vocab_txt() -> dict:
+    """Freeze a vocab.txt and what transformers' loader makes of it.
+
+    The file content is embedded so the C# side replays the exact bytes rather
+    than a second fixture that could drift away from this one.
+    """
+    tokens = list(WORDPIECE_VOCAB)
+    # transformers reads the file in text mode and does token.rstrip("\n"); the
+    # trailing newline of the last line therefore adds no entry.
+    content = "".join(f"{token}\n" for token in tokens)
+    vocab = {token: index for index, token in enumerate(tokens)}
+
+    tokenizer = _wordpiece_tokenizer(vocab, lowercase=False)
+    cases = []
+    for i, text in enumerate(WORDPIECE_TEXTS):
+        enc = tokenizer.encode(text)
+        cases.append({"id": i, "text": text, "tokens": enc.tokens, "ids": enc.ids})
+
+    return {
+        "metadata": {
+            "algorithm": "VocabTxtLoader",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "reference_calls": [
+                "transformers.BertTokenizer vocab.txt loading: rstrip('\\n') then vocab[token] = index",
+                "tokenizers.Tokenizer(WordPiece(vocab, unk_token)).encode",
+            ],
+            "vocab_txt": content,
+            "vocab": vocab,
+            "unk_token": UNK_TOKEN,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+def generate_tokenizer_json() -> dict:
+    """Freeze two tokenizer.json documents — WordPiece and Unigram — and their encodings."""
+    import json as _json  # noqa: PLC0415
+    from tokenizers import Tokenizer  # noqa: PLC0415
+    from tokenizers.models import Unigram  # noqa: PLC0415
+    from tokenizers.pre_tokenizers import Metaspace  # noqa: PLC0415
+    from sentencepiece import sentencepiece_model_pb2 as model_pb2  # noqa: PLC0415
+
+    wordpiece_vocab = {token: index for index, token in enumerate(WORDPIECE_VOCAB)}
+    wordpiece = _wordpiece_tokenizer(wordpiece_vocab, lowercase=True)
+    wordpiece_cases = []
+    for i, text in enumerate(WORDPIECE_TEXTS):
+        enc = wordpiece.encode(text)
+        wordpiece_cases.append({"id": i, "model": "WordPiece", "text": text, "tokens": enc.tokens, "ids": enc.ids})
+
+    proto = model_pb2.ModelProto()
+    proto.ParseFromString((ORACLE_DIR / "tiny_sp.model").read_bytes())
+    unigram_pieces = [(p.piece, p.score) for p in proto.pieces]
+    unigram = Tokenizer(Unigram(unigram_pieces, unk_id=proto.trainer_spec.unk_id, byte_fallback=False))
+    unigram.pre_tokenizer = Metaspace()
+    unigram.add_special_tokens(["<unk>", "<s>", "</s>"])
+    unigram_cases = []
+    for i, text in enumerate(LOADER_TEXTS):
+        enc = unigram.encode(text)
+        unigram_cases.append({"id": i, "model": "Unigram", "text": text, "tokens": enc.tokens, "ids": enc.ids})
+
+    return {
+        "metadata": {
+            "algorithm": "TokenizerJsonLoader",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "reference_calls": [
+                "tokenizers.Tokenizer.from_file('tokenizer.json') then .encode",
+            ],
+            "wordpiece_tokenizer_json": _json.loads(wordpiece.to_str()),
+            "wordpiece_vocab": wordpiece_vocab,
+            "wordpiece_unk_token": UNK_TOKEN,
+            "wordpiece_lowercase": True,
+            "unigram_tokenizer_json": _json.loads(unigram.to_str()),
+            "unigram_unk_id": proto.trainer_spec.unk_id,
+            "count": len(wordpiece_cases) + len(unigram_cases),
+        },
+        "cases": wordpiece_cases + unigram_cases,
+    }
+
+
+def generate_spiece_model() -> dict:
+    """Freeze what sentencepiece's own parser reads out of tests/oracles/tiny_sp.model.
+
+    Piece *types* come from the protobuf rather than from the IsControl/IsUnknown
+    helpers: the proto is the format DataNet's loader claims to read, so it is the
+    right reference for it.
+    """
+    import sentencepiece as spm  # noqa: PLC0415
+    from sentencepiece import sentencepiece_model_pb2 as model_pb2  # noqa: PLC0415
+
+    proto = model_pb2.ModelProto()
+    proto.ParseFromString((ORACLE_DIR / "tiny_sp.model").read_bytes())
+    pieces = [
+        {"piece": p.piece, "score": p.score, "type": int(p.type), "id": i}
+        for i, p in enumerate(proto.pieces)
+    ]
+
+    sp = spm.SentencePieceProcessor(model_file=str(ORACLE_DIR / "tiny_sp.model"))
+    cases = [
+        {"id": k, "text": t, "pieces": sp.encode(t, out_type=str), "ids": sp.encode(t, out_type=int)}
+        for k, t in enumerate(LOADER_TEXTS)
+    ]
+
+    return {
+        "metadata": {
+            "algorithm": "SentencePieceModelLoader",
+            "library": "sentencepiece",
+            "library_version": version("sentencepiece"),
+            "model": "tiny_sp.model (self-trained unigram, identity normalizer)",
+            "reference_calls": [
+                "sentencepiece_model_pb2.ModelProto().ParseFromString(open('spiece.model','rb').read())",
+                "sentencepiece.SentencePieceProcessor(model_file=…).encode",
+            ],
+            "normalizer_name": proto.normalizer_spec.name,
+            "add_dummy_prefix": proto.normalizer_spec.add_dummy_prefix,
+            "remove_extra_whitespaces": proto.normalizer_spec.remove_extra_whitespaces,
+            "escape_whitespaces": proto.normalizer_spec.escape_whitespaces,
+            "unk_id": proto.trainer_spec.unk_id,
+            "bos_id": proto.trainer_spec.bos_id,
+            "eos_id": proto.trainer_spec.eos_id,
+            "pad_id": proto.trainer_spec.pad_id,
+            "pieces": pieces,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -1191,6 +1343,9 @@ def main() -> None:
         "pooling.json": generate_pooling,
         "knn.json": generate_knn,
         "sentencepiece.json": generate_sentencepiece,
+        "vocab_txt.json": generate_vocab_txt,
+        "tokenizer_json.json": generate_tokenizer_json,
+        "spiece_model.json": generate_spiece_model,
         "fuzz.json": generate_fuzz,
         "process.json": generate_process,
     }

@@ -61,6 +61,14 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | `TfidfTransformer()` | scikit-learn | `new TfidfTransformer()` | `use_idf`, `smooth_idf`, `sublinear_tf`, `norm` (L1/L2/none). |
 | `HashingVectorizer()` | scikit-learn | `new HashingVectorizer()` | Hashing trick, no vocabulary. MurmurHash3-32 (seed 0) reproduced; alternate sign + L2 normalization by default. |
 
+## DataNet.Text — model persistence
+
+| Python | Library | C# | Differences |
+| --- | --- | --- | --- |
+| `joblib.dump(vec, path)` / `pickle.dump(vec, f)` | joblib / pickle | `vec.Save(path)` / `vec.Save(stream)` | Versioned JSON, not a pickle: data only, never code. Applies to `CountVectorizer`, `TfidfVectorizer` and `HashingVectorizer`. UTF-8 without BOM; the idf vector is base64-encoded raw IEEE-754 bits, the rest is readable JSON. |
+| `joblib.load(path)` / `pickle.load(f)` | joblib / pickle | `TfidfVectorizer.Load(path, options?)` | Static, not a constructor. Bounded by `ArtifactLoadOptions` — `pickle.load` has no equivalent, since it trusts the file by design ([decision 0011](decisions/0011-persistence-format.md)). |
+| — (no equivalent) | — | `ArtifactLoadOptions` | Deliberate addition, not a port: caps vocabulary size, token length, JSON depth, total bytes and array length. Over a limit ⇒ `InvalidDataException` naming limit and value. |
+
 ## DataNet.Text — stemming
 
 | Python | Library | C# | Differences |
@@ -82,6 +90,17 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | mean pooling + `F.normalize` | sentence-transformers | `Pooler.MeanPoolAndNormalize(...)` | Masked mean (padding excluded) + L2 normalization. |
 | `util.semantic_search` / `corpus @ query` | sentence-transformers / numpy | `new EmbeddingIndex(dim).Search(q, k)` | Exhaustive SIMD-vectorized cosine. Top-k, index-ascending tie-break. |
 | `onnxruntime.InferenceSession(...).run(...)` + pooling | onnxruntime | `new OnnxTextEmbedder(path).Embed(ids, mask)` | Loads an ONNX model (weights not redistributed), runs it, mean-pool + L2. Feeds `token_type_ids` only if the model declares it. |
+
+## DataNet.Embeddings — vocabulary loaders
+
+| Python | Library | C# | Differences |
+| --- | --- | --- | --- |
+| `BertTokenizer(vocab_file=…)` vocabulary loading | transformers | `VocabTxtLoader.Load(path, …)` | One token per line, id = line number. Reproduces two quirks of the Python loop: a blank line is a token whose string is empty, and a repeated token keeps the **last** id. A UTF-8 BOM is stripped rather than absorbed into the first token. |
+| `Tokenizer.from_file("tokenizer.json")` (WordPiece) | tokenizers (HF) | `TokenizerJsonLoader.LoadWordPiece(path)` | Reads `model.vocab`, `unk_token`, `continuing_subword_prefix`, and derives `lowercase` from the normalizer. **Refuses** a pipeline it does not reproduce — `NFKC`/`Precompiled` normalizers, a non-`Whitespace` pre-tokenizer, any `post_processor`, `truncation` or `padding` — rather than ignoring it. |
+| `Tokenizer.from_file("tokenizer.json")` (Unigram) | tokenizers (HF) | `TokenizerJsonLoader.LoadUnigram(path)` | Reads the `[piece, score]` pairs and `unk_id`. `tokenizer.json` records no piece types, so they are derived: the `special` entries of `added_tokens` become `Control`, the piece at `unk_id` becomes `Unknown`. Pre-tokenizer must be `Metaspace` with `▁`. |
+| `sentencepiece_model_pb2.ModelProto().ParseFromString(…)` | sentencepiece | `SentencePieceModelLoader.Load(path)` | Hand-written minimal protobuf reader (varint, length-delimited, fixed32). Pieces, scores, **types**, and `unk`/`bos`/`eos`/`pad` ids from `trainer_spec`. Scores are 32-bit floats widened to `double`, exactly as the Python binding does. **Refuses** any normalizer other than `identity`, since only that one is reproduced. |
+| `sp.id_to_piece(i)` / `sp.get_score(i)` | sentencepiece | `vocab.Pieces[i].Piece` / `.Score` | Identical; scores compared at `1e-9` in the oracle. |
+| `sp.IsControl(i)` / `sp.IsUnknown(i)` | sentencepiece | `vocab.Types[i]`, `vocab.IsMatchable(i)` | The type comes from the file. The previous constructor inferred it from ids 0/1/2, which is wrong for any model laying out differently — that constructor is now `[Obsolete]`. |
 
 ## DataNet.Fuzzy — applied fuzzy matching
 

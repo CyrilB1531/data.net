@@ -12,7 +12,9 @@ namespace DataNet.Internal.Persistence;
 /// A persisted artifact outlives the library version that wrote it, so the kind
 /// and the revision are checked before anything else is trusted. Versions are
 /// numbered <em>per artifact</em>: adding a field to the TF-IDF artifact does not
-/// invalidate a saved WordPiece vocabulary.
+/// invalidate a saved <c>HashingVectorizer</c>. Only artifacts DataNet writes carry
+/// a header — a pretrained vocabulary is read from a foreign format and never
+/// written back, so the loaders have no header to check.
 /// </para>
 /// <para>
 /// Written first and read in any position: the writer emits a fixed order for
