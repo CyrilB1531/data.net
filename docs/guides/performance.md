@@ -31,7 +31,7 @@ column is reliable). Re-run with a full job before quoting.
 | `Distance` (UTF-16) | 8 | ~35 ns | **0 B** |
 | `Distance` (code point) | 8 | ~208 ns | **0 B** |
 | `Distance` (UTF-16) | 64 | ~7.0 µs | **0 B** |
-| `Distance` (UTF-16) | 512 | ~0.73 ms | **0 B** |
+| `Distance` (UTF-16) | 512 | ~21 µs | **0 B** |
 
 **Zero allocation** at every size is the structural result. On very short inputs
 the code-point mode costs ~5× the UTF-16 mode (the decode pass dominates when the
@@ -44,26 +44,29 @@ Cross-language bench with **identical methodology on both sides** (same committe
 ASCII corpus, ns/pair throughput, auto-scaling, best-of-5). See
 [`bench/README.md`](../../bench/README.md).
 
-Indicative measurement (rapidfuzz 3.14.5 / Python 3.12; DataNet.Text / .NET 10;
-noisy dev machine — non-authoritative), **after** adding the single-word Myers
-fast path (pattern 16–64, Latin-1):
+Indicative measurement (rapidfuzz 3.14.5 / Python 3.12; DataNet.Text / .NET 10 on
+an Intel i7-4770S; dev machine — non-authoritative), **after** adding the blocked
+(multi-word) Myers fast path:
 
 | Length | Python (rapidfuzz) | C# (DataNet.Text) | Ratio | C# path |
 | ---: | ---: | ---: | --- | --- |
-| 8 | 175 ns/pair | **35 ns/pair** | **5.0× C# faster** | DP |
-| 32 | **309 ns/pair** | ~350 ns/pair | ≈ parity | Myers |
-| 128 | **2.5 µs/pair** | 34 µs/pair | ~14× Python | DP (pattern > 64) |
-| 512 | **20 µs/pair** | 630 µs/pair | ~31× Python | DP (pattern > 64) |
+| 8 | 183 ns/pair | **36 ns/pair** | **5.1× C# faster** | DP |
+| 32 | **324 ns/pair** | 453 ns/pair | 1.4× Python | Myers (single word) |
+| 128 | 2 693 ns/pair | **1 777 ns/pair** | **1.5× C# faster** | Myers (blocked) |
+| 512 | 21 688 ns/pair | **20 555 ns/pair** | **1.06× C# faster** | Myers (blocked) |
 
-- **Short strings (≤ ~40)** — the typical name/identifier matching case: C# is at
-  or ahead of Python. Single-word Myers moved the length-32 bucket from 4.6×
-  *slower* to parity; below 16 characters the DP stays fastest.
-- **Long strings (pattern > 64)** — rapidfuzz keeps the edge: its C core uses
-  **multi-word** Myers (`O(nm/w)`) where we fall back to the DP (`O(nm)`). Not a
-  language problem, an algorithm one.
-- **Done / to do.** Single-word Myers is shipped (fast path of `Distance`,
-  validated by the BMP oracle cases). Multi-word Myers for long strings remains a
-  backlog item — see
+- **Short strings (≤ ~40)** — the typical name/identifier matching case: C# is
+  ahead, largely because rapidfuzz pays per-call interop overhead there.
+- **Long strings** — previously 13–31× *behind* rapidfuzz, because patterns over
+  64 characters fell back to the DP. Blocked Myers closed that: the 512 bucket
+  went from 684 µs to 21 µs, a 33× improvement, and now edges ahead. It was never
+  a language problem, only an algorithmic one.
+- **The length-32 bucket is the remaining gap**, at 1.4× behind. It already takes
+  the single-word path, so this is not the same cause; it wants its own
+  measurement rather than a guess.
+- **Scope.** The bit-parallel path requires a Latin-1 pattern. Outside that — CJK,
+  emoji — `Distance` still uses the DP, so the figures above do not describe those
+  inputs. Extending the equality table beyond Latin-1 is unresolved; see
   [`../decisions/0004-levenshtein-myers-backlog.md`](../decisions/0004-levenshtein-myers-backlog.md).
 
 ## Vectorizers and fuzzy matching

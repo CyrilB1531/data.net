@@ -120,6 +120,13 @@ def build_pairs(rng: random.Random):
         ("bmp", RANGES["bmp"], 200, (3, 16), (0, 7)),
         ("supplementary", RANGES["supplementary"], 150, (2, 10), (0, 6)),
         ("long", RANGES["bmp"], 60, (120, 400), (5, 40)),
+        # Appended last so every existing case keeps its id and value: the RNG is
+        # consumed in order. These exist because the "long" family above draws from
+        # BMP ranges, so its patterns contain CJK and never reach the Latin-1
+        # bit-parallel path — the blocked Myers code had no coverage at all until
+        # long ASCII/Latin pairs were added.
+        ("long_ascii", RANGES["ascii"], 60, (80, 400), (5, 40)),
+        ("long_latin", RANGES["latin"], 60, (80, 400), (5, 40)),
     ]
     for name, ranges, count, (lo_len, hi_len), (lo_edit, hi_edit) in plans:
         for _ in range(count):
