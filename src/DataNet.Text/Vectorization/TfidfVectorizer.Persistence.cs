@@ -19,7 +19,7 @@ public sealed partial class TfidfVectorizer
     /// <c>joblib.dump</c> on a fitted
     /// <c>sklearn.feature_extraction.text.TfidfVectorizer</c>. Reloading and
     /// transforming reproduces the original matrix element for element: idf
-    /// weights are written in the invariant <c>"G17"</c> form, which round-trips a
+    /// weights are written as raw IEEE-754 bits, which round-trip a
     /// <see cref="double"/> exactly.
     /// </para>
     /// <para>The idf vector is always written, even when <c>UseIdf</c> is off, so the artifact stays lossless.</para>
@@ -34,6 +34,10 @@ public sealed partial class TfidfVectorizer
     /// <exception cref="InvalidOperationException">The vectorizer has not been fitted.</exception>
     public void Save(string path)
     {
+        // Before opening: OpenWrite truncates, and the fitted check would otherwise
+        // fire only once the body starts being written — destroying a good artifact
+        // and leaving a half-written header where it was.
+        EnsureSavable();
         using FileStream file = JsonArtifact.OpenWrite(path);
         Save(file);
     }
@@ -86,9 +90,23 @@ public sealed partial class TfidfVectorizer
         return FromPayload(payload, limits);
     }
 
+    /// <summary>Throws unless there is a fitted model to write.</summary>
+    /// <remarks>
+    /// Called before any destination is opened, so a refused save cannot have
+    /// truncated a file first.
+    /// </remarks>
+    private void EnsureSavable()
+    {
+        if (!_counts.IsFitted || _tfidf.FittedIdf is null)
+        {
+            throw new InvalidOperationException("The vectorizer has not been fitted. Call Fit or FitTransform first.");
+        }
+    }
+
     private void WriteArtifactBody(Utf8JsonWriter writer)
     {
-        if (!_counts.IsFitted || _tfidf.FittedIdf is not { } idf)
+        EnsureSavable();
+        if (_tfidf.FittedIdf is not { } idf)
         {
             throw new InvalidOperationException("The vectorizer has not been fitted. Call Fit or FitTransform first.");
         }
@@ -146,7 +164,7 @@ public sealed partial class TfidfVectorizer
                     vocabulary = FeatureVocabularyJson.ReadVocabulary(ref reader, ArtifactName, limits, featureCount);
                     break;
                 case FeatureVocabularyJson.IdfProperty:
-                    idf = FeatureVocabularyJson.ReadIdf(ref reader, ArtifactName, limits, featureCount);
+                    idf = FeatureVocabularyJson.ReadIdf(ref reader, ArtifactName, limits);
                     break;
                 default:
                     throw JsonArtifact.UnknownProperty(ArtifactName, name);

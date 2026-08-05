@@ -67,6 +67,15 @@ public sealed class TfidfTransformer
         {
             throw new InvalidOperationException("The transformer has not been fitted. Call Fit or FitTransform first.");
         }
+        if (_idf is not null && counts.ColumnCount != _idf.Length)
+        {
+            // CsrMatrix guarantees its column indices are inside its own ColumnCount,
+            // but nothing tied that count to the idf vector — so a wider matrix reached
+            // the indexing below and came back as a bare IndexOutOfRangeException.
+            throw new ArgumentException(
+                $"The matrix has {counts.ColumnCount} columns but this transformer was fitted on {_idf.Length} features.",
+                nameof(counts));
+        }
 
         var values = new double[counts.NonZeroCount];
         for (int k = 0; k < counts.NonZeroCount; k++)

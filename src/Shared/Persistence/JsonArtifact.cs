@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 
 namespace DataNet.Internal.Persistence;
@@ -25,9 +26,32 @@ internal static class JsonArtifact
     public static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
     /// <summary>Writer options for artifacts: compact, and validated as it is written.</summary>
+    /// <remarks>
+    /// <para>
+    /// The relaxed encoder is the deliberate choice here. The default one escapes
+    /// every non-ASCII character as <c>\uXXXX</c> — six bytes where UTF-8 needs two —
+    /// and a vectorizer's vocabulary is exactly where non-ASCII lives: this library
+    /// ships Snowball stop-word lists for French, German, Italian, Portuguese and
+    /// Spanish, 258 of whose entries are accented. It also escapes characters JSON
+    /// never required, so a token pattern came out as <c>\b\w\w+\b</c>.
+    /// </para>
+    /// <para>
+    /// "Unsafe" names an HTML-injection concern: the default encoder exists so JSON
+    /// can be dropped into a <c>&lt;script&gt;</c> block unescaped. An artifact is
+    /// read back by this library's own parser and never embedded in a page, so that
+    /// protection buys nothing here and costs size on every accented token. The
+    /// escaping JSON itself requires — quotes, backslashes, control characters — is
+    /// still applied.
+    /// </para>
+    /// </remarks>
     public static JsonWriterOptions WriterOptions => new()
     {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         Indented = false,
+        // Measured: turning validation off saved nothing on a 30k-feature artifact
+        // (7.35 -> 7.95 ms, inside run-to-run noise), so the structural check the
+        // writer performs is kept. It costs nothing and catches a malformed
+        // artifact at the point a writer bug produces it.
         SkipValidation = false,
     };
 
@@ -40,10 +64,32 @@ internal static class JsonArtifact
     };
 
     /// <summary>
-    /// Writes <paramref name="value"/> as a JSON number using the invariant
-    /// <c>"G17"</c> form, which round-trips a <see cref="double"/> exactly on every
-    /// supported framework.
+    /// Writes <paramref name="value"/> as a JSON number that reads back as the same
+    /// <see cref="double"/>, bit for bit.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The two targets get there differently, because "exact" is cheap on one and
+    /// not guaranteed on the other.
+    /// </para>
+    /// <para>
+    /// From <c>net8.0</c>, <see cref="Utf8JsonWriter.WriteNumberValue(double)"/>
+    /// emits the <em>shortest</em> representation that still round-trips — exact
+    /// since .NET Core 3.0 — straight into the UTF-8 buffer. That is about a
+    /// quarter fewer characters than <c>"G17"</c> and allocates no intermediate
+    /// string, which shows up twice over: a smaller artifact to write, and fewer
+    /// bytes for the reader to scan back.
+    /// </para>
+    /// <para>
+    /// A <c>netstandard2.0</c> build may run on .NET Framework, where that
+    /// shortest-round-trippable behaviour is not guaranteed. There the value keeps
+    /// the invariant <c>"G17"</c> form, which is exact on every framework at the
+    /// cost of longer numbers. The two builds therefore write different bytes for
+    /// the same model — both read back identically, and each build is
+    /// byte-reproducible against itself, which is what the artifact contract
+    /// actually promises.
+    /// </para>
+    /// </remarks>
     public static void WriteExactDouble(Utf8JsonWriter writer, double value)
     {
         if (double.IsNaN(value) || double.IsInfinity(value))
@@ -51,7 +97,11 @@ internal static class JsonArtifact
             throw new InvalidDataException(
                 $"Cannot persist the non-finite value {value.ToString(CultureInfo.InvariantCulture)}: JSON has no representation for it.");
         }
+#if NETSTANDARD2_0
         writer.WriteRawValue(value.ToString("G17", CultureInfo.InvariantCulture), skipInputValidation: true);
+#else
+        writer.WriteNumberValue(value);
+#endif
     }
 
     /// <summary>Writes a named property whose value is an exactly round-tripping double.</summary>
@@ -94,7 +144,15 @@ internal static class JsonArtifact
         while ((read = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
         {
             limits.CheckTotalBytes(accumulated.Length + read);
+
+            // SonarLint S6966: the async call in this loop is the ReadAsync above, on
+            // the caller's stream, which may be a file or a socket. The destination is
+            // a MemoryStream: its WriteAsync performs no I/O, copies into the same
+            // buffer and returns an already-completed task, so awaiting it would add a
+            // state machine and allocations without ever yielding.
+#pragma warning disable S6966
             accumulated.Write(buffer, 0, read);
+#pragma warning restore S6966
         }
         return accumulated.ToArray();
     }

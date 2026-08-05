@@ -85,6 +85,52 @@ public sealed class VectorizerPersistenceTests
     }
 
     [Fact]
+    public void Tfidf_round_trip_preserves_the_document_frequency_bounds()
+    {
+        // MinDf and MaxDf prune the vocabulary during Fit and have no effect on
+        // Transform, so the behavioural assertions above cannot see them: a Load that
+        // dropped both would leave every other test green. Re-fitting the reloaded
+        // vectorizer is what makes them observable — on a corpus chosen so the bound
+        // actually prunes, since the ratios above happen to keep every term.
+        string[] corpus = ["alpha beta", "alpha gamma", "alpha delta", "beta epsilon"];
+        var options = new TfidfVectorizerOptions { Count = new CountVectorizerOptions { MinDf = 0.5 } };
+        TfidfVectorizer reloaded = RoundTrip(new TfidfVectorizer(options).Fit(TrainingCorpus));
+
+        IReadOnlyList<string> refitted = reloaded.Fit(corpus).GetFeatureNames();
+
+        Assert.Equal(new TfidfVectorizer(options).Fit(corpus).GetFeatureNames(), refitted);
+        // A vectorizer that lost MinDf keeps the terms appearing in a single document.
+        Assert.NotEqual(
+            new TfidfVectorizer(new TfidfVectorizerOptions()).Fit(corpus).GetFeatureNames(),
+            refitted);
+    }
+
+    [Fact]
+    public void Tfidf_round_trip_survives_a_non_ascii_vocabulary()
+    {
+        // The artifact is written with the relaxed JSON encoder, which emits non-ASCII
+        // as UTF-8 rather than \uXXXX. Every other corpus in this file is a-z, so this
+        // is the only test that would notice if that encoding were wrong — and this
+        // library ships Snowball stop-word lists for five languages that are full of
+        // exactly these characters.
+        string[] corpus =
+        [
+            "ação français über señor niño",
+            "coração élève größe corazón città",
+            "irmã déjà être où però ähnlich",
+        ];
+        var original = new TfidfVectorizer().Fit(corpus);
+
+        TfidfVectorizer reloaded = RoundTrip(original);
+
+        Assert.Equal(original.GetFeatureNames(), reloaded.GetFeatureNames());
+        Assert.Contains("ação", reloaded.GetFeatureNames());
+        Assert.Contains("größe", reloaded.GetFeatureNames());
+        AssertIdenticalDoubles(original.Idf, reloaded.Idf);
+        AssertIdentical(original.Transform(corpus), reloaded.Transform(corpus));
+    }
+
+    [Fact]
     public void Tfidf_round_trip_survives_a_char_wb_analyzer()
     {
         var options = new TfidfVectorizerOptions

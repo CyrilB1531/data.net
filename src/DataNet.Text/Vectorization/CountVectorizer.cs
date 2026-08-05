@@ -39,6 +39,73 @@ public sealed record CountVectorizerOptions
 
     /// <summary>Regex selecting word tokens. Default matches runs of two or more word characters.</summary>
     public string TokenPattern { get; init; } = @"\b\w\w+\b";
+
+    /// <summary>Compares every option, treating <see cref="StopWords"/> as a set.</summary>
+    /// <param name="other">The options to compare against.</param>
+    /// <remarks>
+    /// <para>
+    /// The generated equality compares <see cref="StopWords"/> by reference, so two
+    /// configurations built from the same list literal would be unequal — and
+    /// comparing two configurations is a far more natural thing to do than
+    /// comparing two fitted models. <see cref="TfidfVectorizerOptions"/> embeds this
+    /// record, so it inherits the fix.
+    /// </para>
+    /// <para>
+    /// Set semantics, not sequence: stop words are looked up, never enumerated in
+    /// order, so two lists holding the same words configure the same vectorizer
+    /// whatever their order or repetition.
+    /// </para>
+    /// </remarks>
+    public bool Equals(CountVectorizerOptions? other)
+    {
+        if (ReferenceEquals(this, other))
+        {
+            return true;
+        }
+        if (other is null
+            || Lowercase != other.Lowercase
+            || StripAccents != other.StripAccents
+            || Analyzer != other.Analyzer
+            || NgramRange != other.NgramRange
+            || !MinDf.Equals(other.MinDf)
+            || !MaxDf.Equals(other.MaxDf)
+            || Binary != other.Binary
+            || !string.Equals(TokenPattern, other.TokenPattern, StringComparison.Ordinal))
+        {
+            return false;
+        }
+        if (StopWords is null || other.StopWords is null)
+        {
+            return StopWords is null && other.StopWords is null;
+        }
+        var mine = new HashSet<string>(StopWords, StringComparer.Ordinal);
+        return mine.SetEquals(other.StopWords);
+    }
+
+    /// <summary>Hashes the scalars, which is O(1).</summary>
+    /// <remarks>
+    /// <see cref="StopWords"/> contributes only whether it is present. Its
+    /// <em>count</em> cannot be used: <see cref="Equals(CountVectorizerOptions)"/>
+    /// compares as a set, so <c>["the", "the"]</c> equals <c>["the"]</c> while the
+    /// counts differ — and equal objects are required to hash alike. Hashing the
+    /// words themselves would mean hashing all of them, order-independently, which
+    /// is the O(n) this exists to avoid. Unequal options are allowed to collide.
+    /// </remarks>
+    public override int GetHashCode()
+    {
+        unchecked
+        {
+            int hash = (17 * 31) + (Lowercase ? 1 : 0);
+            hash = (hash * 31) + (StripAccents ? 1 : 0);
+            hash = (hash * 31) + (int)Analyzer;
+            hash = (hash * 31) + NgramRange.GetHashCode();
+            hash = (hash * 31) + MinDf.GetHashCode();
+            hash = (hash * 31) + MaxDf.GetHashCode();
+            hash = (hash * 31) + (Binary ? 1 : 0);
+            hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(TokenPattern);
+            return (hash * 31) + (StopWords is null ? -1 : 0);
+        }
+    }
 }
 
 /// <summary>

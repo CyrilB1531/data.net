@@ -31,6 +31,10 @@ public sealed partial class CountVectorizer
     /// <exception cref="InvalidOperationException">The vectorizer has not been fitted.</exception>
     public void Save(string path)
     {
+        // Before opening: OpenWrite truncates, and the fitted check would otherwise
+        // fire only once the body starts being written — destroying a good artifact
+        // and leaving a half-written header where it was.
+        EnsureFitted();
         using FileStream file = JsonArtifact.OpenWrite(path);
         Save(file);
     }

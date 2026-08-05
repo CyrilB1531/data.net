@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Text;
 using DataNet.Text.Persistence;
 using DataNet.Text.Vectorization;
@@ -64,7 +65,7 @@ public sealed class ArtifactHardeningTests
     public void A_missing_version_is_rejected()
     {
         InvalidDataException error = LoadCount(Baseline().Replace(",\"version\":1", string.Empty, StringComparison.Ordinal));
-        Assert.Contains("version", error.Message, StringComparison.Ordinal);
+        Assert.Contains("missing the required property 'version'", error.Message, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -169,17 +170,115 @@ public sealed class ArtifactHardeningTests
     [Fact]
     public void An_idf_vector_of_the_wrong_length_is_rejected()
     {
+        // One double's worth of bits, where the vocabulary declares more.
+        string oneValue = Convert.ToBase64String(BitConverter.GetBytes(1.0));
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => LoadTfidfWithIdf(oneValue));
+
+        Assert.Contains("'idf' holds 1 entries", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_idf_that_is_not_valid_base64_is_rejected()
+    {
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => LoadTfidfWithIdf("not base64 at all!!"));
+
+        Assert.Contains("not valid base64", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Saving_an_unfitted_vectorizer_to_a_path_leaves_the_existing_file_intact()
+    {
+        // OpenWrite truncates, and the fitted check only fires once the body starts
+        // being written — so a failed Save would destroy a good artifact and leave a
+        // half-written header in its place. The MemoryStream overload cannot see this.
+        string path = Path.Combine(Path.GetTempPath(), $"datanet-save-{Guid.NewGuid():N}.json");
+        try
+        {
+            new TfidfVectorizer().Fit(TinyCorpus).Save(path);
+            byte[] before = File.ReadAllBytes(path);
+
+            Assert.Throws<InvalidOperationException>(() => new TfidfVectorizer().Save(path));
+
+            Assert.Equal(before, File.ReadAllBytes(path));
+            // And the surviving file must still be loadable, not merely the same size.
+            using FileStream reopened = File.OpenRead(path);
+            Assert.NotNull(TfidfVectorizer.Load(reopened));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public void An_idf_holding_a_non_finite_value_is_rejected(double poison)
+    {
+        // Raw bits carry NaN and infinity perfectly well, so moving idf out of JSON
+        // numbers moved it out of reach of the non-finite check on the write path.
+        // Left unchecked, every Transform afterwards yields NaN scores — silently, and
+        // a long way from the file that caused it.
         var original = new TfidfVectorizer().Fit(TinyCorpus);
         using var saved = new MemoryStream();
         original.Save(saved);
         string json = Encoding.UTF8.GetString(saved.ToArray());
-        int idfStart = json.IndexOf("\"idf\":[", StringComparison.Ordinal);
-        json = json.Substring(0, idfStart) + "\"idf\":[1.0]}";
 
-        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        int start = json.IndexOf("\"idf\":\"", StringComparison.Ordinal) + "\"idf\":\"".Length;
+        int end = json.IndexOf('"', start);
+        byte[] raw = Convert.FromBase64String(json.Substring(start, end - start));
+        BinaryPrimitives.WriteInt64LittleEndian(raw.AsSpan(0), BitConverter.DoubleToInt64Bits(poison));
+        string poisoned = string.Concat(
+            json.AsSpan(0, start), Convert.ToBase64String(raw), json.AsSpan(end));
+
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(poisoned));
         InvalidDataException error = Assert.Throws<InvalidDataException>(() => TfidfVectorizer.Load(stream));
 
-        Assert.Contains("'idf' holds 1 entries", error.Message, StringComparison.Ordinal);
+        Assert.Contains("not finite", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_idf_whose_length_is_not_a_whole_number_of_doubles_is_rejected()
+    {
+        // 12 bytes: one double and a half.
+        string ragged = Convert.ToBase64String(new byte[12]);
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => LoadTfidfWithIdf(ragged));
+
+        Assert.Contains("whole number of 64-bit values", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_idf_over_the_array_limit_is_rejected()
+    {
+        string tooMany = Convert.ToBase64String(new byte[64]);   // 8 doubles
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => LoadTfidfWithIdf(tooMany, new ArtifactLoadOptions { MaxArrayLength = 4 }));
+
+        Assert.Contains("MaxArrayLength", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Saves a fitted vectorizer, swaps its <c>idf</c> for <paramref name="base64"/>,
+    /// and loads the result.
+    /// </summary>
+    private static TfidfVectorizer LoadTfidfWithIdf(string base64, ArtifactLoadOptions? options = null)
+    {
+        var original = new TfidfVectorizer().Fit(TinyCorpus);
+        using var saved = new MemoryStream();
+        original.Save(saved);
+        string json = Encoding.UTF8.GetString(saved.ToArray());
+        int idfStart = json.IndexOf("\"idf\":", StringComparison.Ordinal);
+        json = string.Concat(json.AsSpan(0, idfStart), $"\"idf\":\"{base64}\"}}");
+
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        return TfidfVectorizer.Load(stream, options);
     }
 
     [Fact]
