@@ -73,6 +73,17 @@ removed or renamed, so upgrading from `0.1.0` is a version bump.
   lock file that pins all 29 packages — the transitive graph included, since the
   oracle corpora are those libraries' output.
 
+### Documentation
+
+- Package metadata now attributes the project to Cyril BRUNET (`Authors`,
+  `Company`, `Copyright`), and `NOTICE` and `LICENSE` no longer carry the
+  project's former name.
+- `THIRD-PARTY-NOTICES.md` records the shipped dependencies. It previously said
+  "None yet", which stopped being true once `DataNet.Embeddings` took ONNX
+  Runtime and the `netstandard2.0` target added `System.Memory` and
+  `System.Numerics.Vectors`. The development-only table was likewise missing
+  `nltk`, `tokenizers`, `sentencepiece` and `numpy`.
+
 ### Notes
 
 - Deliberate analyzer suppressions live in the source as `#pragma warning disable`
