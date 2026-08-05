@@ -1,8 +1,9 @@
-# Development tools — oracle generation and vendored data
+# Development tools — oracle generation, vendored data, packaging checks
 
-Two scripts. `generate_oracles.py` produces the reference values the test suite
+Three scripts. `generate_oracles.py` produces the reference values the test suite
 replays; `fetch_stopwords.py` produces source that is *shipped*, which is why it
-verifies what it downloaded before writing anything.
+verifies what it downloaded before writing anything;
+`check_nuspec_dependencies.py` verifies what the packages *declare*.
 
 ## `generate_oracles.py`
 
@@ -40,6 +41,22 @@ Snowball edited the list upstream: read the diff, update the pin, adjust the
 counts in `StopWordsTests`, and record it — do not regenerate quietly. The nltk
 stop-word corpus is **not** a permitted source here, whatever its convenience:
 see [`../docs/decisions/0010-stop-word-list-provenance.md`](../docs/decisions/0010-stop-word-list-provenance.md).
+
+## `check_nuspec_dependencies.py`
+
+Asserts that the `<dependencies>` of every packed `.nupkg` match an expected
+table, exactly — an unexpected dependency fails as loudly as a missing one:
+
+```bash
+python tools/check_nuspec_dependencies.py artifacts
+```
+
+A package's dependency graph is a *build output*, derived from whatever restore
+resolved, so nobody writes it down and nothing notices when it drifts. This
+script is where it is written down. It matters more since the three packages
+version independently: `DataNet.Fuzzy` reaches `DataNet.Text` through a
+`PackageReference`, and that edge is now the one thing holding the two together.
+See [`../docs/decisions/0012-per-package-versioning.md`](../docs/decisions/0012-per-package-versioning.md).
 
 ## Rules
 

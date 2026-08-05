@@ -23,6 +23,12 @@ The version is bound to `$(Version)` from the repository's root
 `Directory.Build.props`, which applies to the sample too, so it tracks whatever
 `dotnet pack` just produced instead of pinning a number that goes stale.
 
+> **Amended by [0012](0012-per-package-versioning.md).** The three packages now
+> version independently, so there is no repository-wide `$(Version)` left to bind
+> to: the sample imports each project's `Version.props` and uses one property per
+> package. The guarantee is unchanged — it still tracks what `dotnet pack` just
+> produced — it just reads three sources instead of one.
+
 ## Why not nuget.org
 
 Restoring from nuget.org would test the **last published** version. That is more

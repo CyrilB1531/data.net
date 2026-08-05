@@ -48,11 +48,32 @@ jobs:
           --collect:"XPlat Code Coverage"
           --logger "trx;LogFileName=test-results.trx"
 
+      # No -p:Version: each project declares its own in a sibling Version.props,
+      # and that declaration is authoritative everywhere — here and at release.
       - name: Pack
         run: |
           for proj in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
             dotnet pack "$proj" --configuration Release --no-build --output ./artifacts
           done
+
+      # The libraries reference each other by package, never by project. The
+      # opt-in developer loop (DataNetUseProjectRefs) puts a ProjectReference
+      # back, so a text grep cannot tell the shipped path from the local one —
+      # it would match the conditional ItemGroup either way. Evaluated MSBuild
+      # can, and this job never sets the property.
+      - name: src/ ships PackageReference only
+        run: |
+          for proj in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
+            refs=$(dotnet msbuild "$proj" -getItem:ProjectReference -p:TargetFramework=net10.0 \
+              | python3 -c 'import sys, json; print(" ".join(i["Identity"] for i in json.load(sys.stdin)["Items"]["ProjectReference"]))')
+            if [ -n "$refs" ]; then
+              echo "::error::$proj references $refs by project; src/ must reference published packages."
+              exit 1
+            fi
+          done
+
+      - name: The shipped dependency graph is the intended one
+        run: python3 tools/check_nuspec_dependencies.py ./artifacts --require-all
 
       - name: Upload test results
         if: always()

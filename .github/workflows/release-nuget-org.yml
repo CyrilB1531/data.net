@@ -9,8 +9,16 @@ name: Publish to nuget.org (Trusted Publishing)
 on:
   workflow_dispatch:
     inputs:
+      package:
+        description: 'Package to publish'
+        required: true
+        type: choice
+        options:
+          - DataNet.Text
+          - DataNet.Embeddings
+          - DataNet.Fuzzy
       version:
-        description: 'Version to publish (e.g. 0.1.0)'
+        description: 'Version to publish (e.g. 0.2.1) — must match the declared one'
         required: true
 
 permissions:
@@ -28,19 +36,36 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # The inputs are user-supplied. Passed through the environment they stay
+      # data; interpolated into the script they would BE the script, in a job
+      # that can mint a nuget.org publishing key.
+      #
+      # The version is a confirmation, not a setting: src/<Package>/Version.props
+      # declares it, and a disagreement stops the job rather than silently
+      # publishing a number the repository never claimed. Nothing user-supplied
+      # reaches `dotnet pack`.
+      - name: The input matches the declared version
+        env:
+          PACKAGE: ${{ inputs.package }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          declared=$(dotnet msbuild "src/$PACKAGE" -getProperty:Version -p:TargetFramework=net10.0)
+          if [ "$declared" != "$VERSION" ]; then
+            echo "::error::Input says $VERSION, src/$PACKAGE declares $declared."
+            exit 1
+          fi
+          echo "$PACKAGE $declared"
+
       - name: Test
         run: dotnet test --configuration Release
 
-      # The version is user-supplied. Passed through the environment it stays
-      # data; interpolated into the script it would BE the script, in a job that
-      # can mint a nuget.org publishing key.
       - name: Pack
         env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          for proj in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
-            dotnet pack "$proj" --configuration Release -o artifacts -p:Version="$VERSION"
-          done
+          PACKAGE: ${{ inputs.package }}
+        run: dotnet pack "src/$PACKAGE" --configuration Release -o artifacts
+
+      - name: The shipped dependency graph is the intended one
+        run: python3 tools/check_nuspec_dependencies.py artifacts
 
       # Exchanges the OIDC token for a temporary nuget.org API key (no stored key).
       - name: NuGet trusted login

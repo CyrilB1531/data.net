@@ -73,6 +73,51 @@ dotnet format DataNet.slnx --verify-no-changes
 npx markdownlint-cli2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
 ```
 
+## Working across two packages
+
+The three libraries version and release independently, and `DataNet.Fuzzy`
+reaches `DataNet.Text` through a `PackageReference` on the published package
+rather than a project reference — the reasoning is in
+[`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md).
+
+A plain clone builds with no extra step: the version `DataNet.Fuzzy` depends on
+is a floor pinned in `src/Directory.Packages.props`, and it always names a
+release that is already on nuget.org.
+
+**When a branch edits `DataNet.Text` and `DataNet.Fuzzy` together**, that floor
+points at a `DataNet.Text` older than the one in your working tree, so
+`DataNet.Fuzzy` would compile against the published assembly and not see your
+change. Flip the reference back for the duration:
+
+```bash
+export DataNetUseProjectRefs=true
+dotnet build DataNet.slnx -c Release   # prints a reminder that this is on
+```
+
+MSBuild reads environment variables as properties, so one export covers `build`,
+`test` and the IDE. Nothing to pass per command, and nothing to pack and restore
+between edits.
+
+Two things to keep straight:
+
+- **It is a local loop, not a merge strategy.** CI never sets the property and
+  asserts the default path, so a branch whose `DataNet.Fuzzy` needs new
+  `DataNet.Text` API cannot go green. Release `DataNet.Text` first, raise the
+  floor in `src/Directory.Packages.props`, then land the `DataNet.Fuzzy` side.
+  Two packages that release independently cannot also be merged as one.
+- **Unset it before measuring anything.** With the property on you are building a
+  graph that will never ship; benchmark numbers and packaging checks taken there
+  describe nothing real.
+
+### Releasing
+
+Versions are declared per package in `src/<Package>/Version.props` and nowhere
+else. To release one: bump that file, land it on `main`, then tag
+`<PackageId>/v<Version>` (for example `DataNet.Fuzzy/v0.2.1`). The workflow
+compares the tag against the declared version and refuses to publish if they
+disagree — the tag chooses *which* release to cut, it does not set the number.
+Add the entry under a per-package heading in `CHANGELOG.md`.
+
 ## Oracle validation
 
 New algorithms are validated by replaying reference outputs captured from the

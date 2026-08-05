@@ -5,13 +5,17 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-One version covers all three packages (`DataNet.Text`, `DataNet.Embeddings`,
-`DataNet.Fuzzy`); they are released together from a single `Version` in
-`Directory.Build.props`.
+The three packages (`DataNet.Text`, `DataNet.Embeddings`, `DataNet.Fuzzy`) version
+and release **independently**, each from its own `src/<Package>/Version.props`, so
+entries are grouped per package. Releases up to and including `0.2.0` predate the
+split and covered all three at once — see
+[`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md).
 
 ## [Unreleased]
 
-### Added
+### DataNet.Text
+
+#### Added
 
 - **Stop-word lists for French, German, Italian, Portuguese and Spanish** —
   `StopWords.French` and friends, one per language that already has a Snowball
@@ -23,6 +27,23 @@ One version covers all three packages (`DataNet.Text`, `DataNet.Embeddings`,
   per language in [`docs/equivalence.md`](docs/equivalence.md) and the reasoning
   is in [`docs/decisions/0010`](docs/decisions/0010-stop-word-list-provenance.md).
   `StopWords.English` is unchanged, still scikit-learn's 318-word list.
+
+### DataNet.Fuzzy — 0.2.1
+
+#### Changed
+
+- **Depends on `DataNet.Text` as a published NuGet package** rather than as a
+  project reference. Nothing changes for consumers: a project reference between
+  two packable projects already produced exactly this `<dependency>`, and
+  `Fuzz.Ratio` is still `Indel.NormalizedSimilarity × 100`. What changes is that
+  the build graph now matches the release graph, so this package can ship a patch
+  without republishing the other two — as this release does, leaving
+  `DataNet.Text` and `DataNet.Embeddings` at `0.2.0`. The dependency floor is
+  pinned in `src/Directory.Packages.props`; the developer loop for editing both
+  libraries at once is documented in
+  [`CONTRIBUTING.md`](CONTRIBUTING.md#working-across-two-packages), and the whole
+  decision in
+  [`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md).
 
 ## [0.2.0] — 2026-08-05
 

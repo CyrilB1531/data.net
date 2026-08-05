@@ -1,0 +1,15 @@
+<Project>
+
+  <!--
+    DataNet.Fuzzy owns its version here, independently of the other packages
+    (see docs/decisions/0012-per-package-versioning.md).
+
+    0.2.1 while DataNet.Text and DataNet.Embeddings stay at 0.2.0: this package's
+    dependency declaration changed and theirs did not. That divergence is the
+    point of the split, and this is the first exercise of it.
+  -->
+  <PropertyGroup>
+    <DataNetFuzzyVersion>0.2.1</DataNetFuzzyVersion>
+  </PropertyGroup>
+
+</Project>

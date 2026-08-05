@@ -30,9 +30,22 @@
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
 
-  <!-- SetTargetFramework is what pins the reference to the netstandard2.0 build. -->
+  <!--
+    SetTargetFramework is what pins the reference to the netstandard2.0 build.
+
+    DataNet.Text is listed explicitly, and that is not redundant. DataNet.Fuzzy
+    now reaches it through a PackageReference, and SetTargetFramework does not
+    travel across one: NuGet resolves package assets against *this* project's
+    target framework (net10.0), so the transitive DataNet.Text would come from
+    lib/net10.0 and the mirror would stop mirroring — silently, since the
+    original guard only ever inspected the DataNet.Fuzzy assembly. A direct
+    ProjectReference takes precedence over the package of the same id, which
+    restores the netstandard2.0 build; the extended guard proves it.
+  -->
   <ItemGroup>
     <ProjectReference Include="../../src/DataNet.Fuzzy/DataNet.Fuzzy.csproj"
+                      SetTargetFramework="TargetFramework=netstandard2.0" />
+    <ProjectReference Include="../../src/DataNet.Text/DataNet.Text.csproj"
                       SetTargetFramework="TargetFramework=netstandard2.0" />
   </ItemGroup>
 
