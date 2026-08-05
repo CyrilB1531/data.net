@@ -57,7 +57,15 @@ internal static class ArtifactIo
         return reader;
     }
 
-    /// <summary>Checks that nothing but whitespace follows the artifact's closing brace.</summary>
+    /// <summary>Checks that the artifact's object closed cleanly and that nothing follows it.</summary>
+    /// <remarks>
+    /// The final <c>Read</c> is what forces the point: the reader sees the whole
+    /// payload as a final block, so a trailing token makes it raise a
+    /// <see cref="JsonException"/> that <see cref="Malformed"/> restates. Without
+    /// that call, an artifact with junk appended would load as if it were clean.
+    /// The explicit throw after it is a belt-and-braces guard for a reader that
+    /// might one day report the condition instead of raising.
+    /// </remarks>
     public static void EnsureEndOfDocument(ref Utf8JsonReader reader, string artifact)
     {
         if (reader.TokenType != JsonTokenType.EndObject)
@@ -69,6 +77,17 @@ internal static class ArtifactIo
             throw new InvalidDataException($"Trailing content after the end of a '{ArtifactHeader.SchemaFor(artifact)}' artifact.");
         }
     }
+
+    /// <summary>
+    /// Restates a JSON syntax error as the <see cref="InvalidDataException"/> the
+    /// public API documents, keeping the parser's message as the inner exception.
+    /// </summary>
+    /// <remarks>
+    /// Callers should not have to catch two exception types depending on whether a
+    /// bad file broke the grammar or broke the schema.
+    /// </remarks>
+    public static InvalidDataException Malformed(string artifact, JsonException inner) =>
+        new($"A '{ArtifactHeader.SchemaFor(artifact)}' artifact is not well-formed JSON: {inner.Message}", inner);
 
     private static void WriteDocument(Utf8JsonWriter writer, string artifact, int version, Action<Utf8JsonWriter> writeBody)
     {

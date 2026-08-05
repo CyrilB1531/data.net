@@ -103,6 +103,18 @@ public sealed partial class TfidfVectorizer
 
     private static TfidfVectorizer FromPayload(byte[] payload, in ArtifactLimits limits)
     {
+        try
+        {
+            return Parse(payload, limits);
+        }
+        catch (JsonException e)
+        {
+            throw ArtifactIo.Malformed(ArtifactName, e);
+        }
+    }
+
+    private static TfidfVectorizer Parse(byte[] payload, in ArtifactLimits limits)
+    {
         Utf8JsonReader reader = ArtifactIo.CreateReader(payload, ArtifactName, limits);
         var header = new ArtifactHeader(ArtifactName, ArtifactVersion);
 

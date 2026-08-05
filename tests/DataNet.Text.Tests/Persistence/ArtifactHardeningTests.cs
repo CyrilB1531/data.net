@@ -1,0 +1,278 @@
+using System.Text;
+using DataNet.Text.Persistence;
+using DataNet.Text.Vectorization;
+using Xunit;
+
+namespace DataNet.Text.Tests.Persistence;
+
+/// <summary>
+/// A persisted model is a file, and a file can come from anywhere. Every case
+/// here is an input that must fail with <see cref="InvalidDataException"/> and a
+/// message a caller can act on — never an unhandled parser error, an
+/// out-of-memory, or worse, a silent misread.
+/// </summary>
+public sealed class ArtifactHardeningTests
+{
+    private static readonly string[] TinyCorpus = ["alpha beta", "beta gamma", "gamma delta"];
+
+    [Fact]
+    public void Input_that_is_not_json_is_rejected()
+    {
+        InvalidDataException error = LoadCount("this is not json");
+        Assert.Contains("not well-formed JSON", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Input_that_is_not_an_object_is_rejected()
+    {
+        InvalidDataException error = LoadCount("[1, 2, 3]");
+        Assert.Contains("must be a JSON object", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_truncated_artifact_is_rejected()
+    {
+        string json = Baseline();
+        InvalidDataException error = LoadCount(json.Substring(0, json.Length / 2));
+        Assert.Contains("not well-formed JSON", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Content_after_the_artifact_is_rejected()
+    {
+        InvalidDataException error = LoadCount(Baseline() + "{}");
+        Assert.Contains("not well-formed JSON", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_missing_schema_is_rejected()
+    {
+        InvalidDataException error = LoadCount(
+            Baseline().Replace("\"$schema\":\"datanet/count-vectorizer\",", string.Empty, StringComparison.Ordinal));
+
+        Assert.Contains("missing the required property '$schema'", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_renamed_schema_property_is_rejected_as_unknown()
+    {
+        InvalidDataException error = LoadCount(Baseline().Replace("\"$schema\"", "\"schema\"", StringComparison.Ordinal));
+        Assert.Contains("Unknown property 'schema'", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_missing_version_is_rejected()
+    {
+        InvalidDataException error = LoadCount(Baseline().Replace(",\"version\":1", string.Empty, StringComparison.Ordinal));
+        Assert.Contains("version", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(2)]
+    [InlineData(9999)]
+    public void An_unsupported_version_is_rejected(int version)
+    {
+        InvalidDataException error = LoadCount(
+            Baseline().Replace("\"version\":1", $"\"version\":{version}", StringComparison.Ordinal));
+
+        Assert.Contains($"version {version}", error.Message, StringComparison.Ordinal);
+        Assert.Contains("reads versions 1 to 1", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_version_of_the_wrong_json_type_is_rejected()
+    {
+        InvalidDataException error = LoadCount(
+            Baseline().Replace("\"version\":1", "\"version\":\"1\"", StringComparison.Ordinal));
+
+        Assert.Contains("version", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_unknown_top_level_property_is_rejected()
+    {
+        InvalidDataException error = LoadCount(
+            Baseline().Replace("\"featureCount\"", "\"weights\":[1],\"featureCount\"", StringComparison.Ordinal));
+
+        Assert.Contains("Unknown property 'weights'", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_unknown_option_is_rejected()
+    {
+        InvalidDataException error = LoadCount(
+            Baseline().Replace("\"lowercase\"", "\"lowercaseAll\":true,\"lowercase\"", StringComparison.Ordinal));
+
+        Assert.Contains("options.lowercaseAll", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_feature_count_that_disagrees_with_the_vocabulary_is_rejected()
+    {
+        InvalidDataException error = LoadCount(
+            Baseline().Replace("\"featureCount\":4", "\"featureCount\":3", StringComparison.Ordinal));
+
+        Assert.Contains("featureCount is 3", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_negative_feature_count_is_rejected()
+    {
+        InvalidDataException error = LoadCount(
+            Baseline().Replace("\"featureCount\":4", "\"featureCount\":-1", StringComparison.Ordinal));
+
+        Assert.Contains("negative", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_unsorted_vocabulary_is_rejected()
+    {
+        InvalidDataException error = LoadCount(
+            Baseline().Replace("[\"alpha\",\"beta\"", "[\"beta\",\"alpha\"", StringComparison.Ordinal));
+
+        Assert.Contains("must be sorted in ordinal order", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_duplicated_vocabulary_entry_is_rejected()
+    {
+        InvalidDataException error = LoadCount(
+            Baseline().Replace("[\"alpha\",\"beta\"", "[\"alpha\",\"alpha\"", StringComparison.Ordinal));
+
+        Assert.Contains("duplicate entry 'alpha'", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_unknown_analyzer_is_rejected()
+    {
+        InvalidDataException error = LoadCount(
+            Baseline().Replace("\"analyzer\":\"word\"", "\"analyzer\":\"sentence\"", StringComparison.Ordinal));
+
+        Assert.Contains("Unknown analyzer 'sentence'", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_unknown_norm_is_rejected()
+    {
+        var original = new TfidfVectorizer().Fit(TinyCorpus);
+        using var saved = new MemoryStream();
+        original.Save(saved);
+        string json = Encoding.UTF8.GetString(saved.ToArray()).Replace("\"norm\":\"l2\"", "\"norm\":\"l3\"", StringComparison.Ordinal);
+
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        InvalidDataException error = Assert.Throws<InvalidDataException>(() => TfidfVectorizer.Load(stream));
+
+        Assert.Contains("Unknown norm 'l3'", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_idf_vector_of_the_wrong_length_is_rejected()
+    {
+        var original = new TfidfVectorizer().Fit(TinyCorpus);
+        using var saved = new MemoryStream();
+        original.Save(saved);
+        string json = Encoding.UTF8.GetString(saved.ToArray());
+        int idfStart = json.IndexOf("\"idf\":[", StringComparison.Ordinal);
+        json = json.Substring(0, idfStart) + "\"idf\":[1.0]}";
+
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        InvalidDataException error = Assert.Throws<InvalidDataException>(() => TfidfVectorizer.Load(stream));
+
+        Assert.Contains("'idf' holds 1 entries", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_hashing_artifact_with_no_features_is_rejected()
+    {
+        var original = new HashingVectorizer(new HashingVectorizerOptions { NumFeatures = 16 });
+        using var saved = new MemoryStream();
+        original.Save(saved);
+        string json = Encoding.UTF8.GetString(saved.ToArray()).Replace("\"numFeatures\":16", "\"numFeatures\":0", StringComparison.Ordinal);
+
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        InvalidDataException error = Assert.Throws<InvalidDataException>(() => HashingVectorizer.Load(stream));
+
+        Assert.Contains("numFeatures must be at least 1", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_artifact_over_the_byte_limit_is_rejected_before_it_is_parsed()
+    {
+        InvalidDataException error = LoadCount(Baseline(), new ArtifactLoadOptions { MaxTotalBytes = 16 });
+
+        Assert.Contains("artifact size in bytes", error.Message, StringComparison.Ordinal);
+        Assert.Contains("MaxTotalBytes", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_artifact_over_the_vocabulary_limit_is_rejected()
+    {
+        InvalidDataException error = LoadCount(Baseline(), new ArtifactLoadOptions { MaxVocabularySize = 2 });
+
+        Assert.Contains("vocabulary size", error.Message, StringComparison.Ordinal);
+        Assert.Contains("MaxVocabularySize", error.Message, StringComparison.Ordinal);
+        Assert.Contains("limit 2", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_token_over_the_length_limit_is_rejected()
+    {
+        InvalidDataException error = LoadCount(Baseline(), new ArtifactLoadOptions { MaxTokenLength = 3 });
+
+        Assert.Contains("token length", error.Message, StringComparison.Ordinal);
+        Assert.Contains("MaxTokenLength", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_stop_word_list_over_the_array_limit_is_rejected()
+    {
+        var original = new CountVectorizer(new CountVectorizerOptions { StopWords = ["one", "two", "three"] }).Fit(TinyCorpus);
+        using var saved = new MemoryStream();
+        original.Save(saved);
+
+        using var stream = new MemoryStream(saved.ToArray());
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => CountVectorizer.Load(stream, new ArtifactLoadOptions { MaxArrayLength = 2 }));
+
+        Assert.Contains("options.stopWords", error.Message, StringComparison.Ordinal);
+        Assert.Contains("MaxArrayLength", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_artifact_deeper_than_the_depth_limit_is_rejected()
+    {
+        // The artifact itself is shallow; the limit is what makes it too deep, so
+        // this exercises the plumbing rather than a contrived nesting bomb.
+        InvalidDataException error = LoadCount(Baseline(), new ArtifactLoadOptions { MaxJsonDepth = 1 });
+
+        Assert.Contains("not well-formed JSON", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_limits_default_to_the_documented_values()
+    {
+        var options = new ArtifactLoadOptions();
+
+        Assert.Equal(1_000_000, options.MaxVocabularySize);
+        Assert.Equal(1024, options.MaxTokenLength);
+        Assert.Equal(32, options.MaxJsonDepth);
+        Assert.Equal(256L * 1024 * 1024, options.MaxTotalBytes);
+        Assert.Equal(1_000_000, options.MaxArrayLength);
+    }
+
+    /// <summary>A valid, freshly written artifact: <c>alpha</c>, <c>beta</c>, <c>delta</c>, <c>gamma</c>.</summary>
+    private static string Baseline()
+    {
+        var vectorizer = new CountVectorizer().Fit(TinyCorpus);
+        using var stream = new MemoryStream();
+        vectorizer.Save(stream);
+        return Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private static InvalidDataException LoadCount(string json, ArtifactLoadOptions? options = null)
+    {
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        return Assert.Throws<InvalidDataException>(() => CountVectorizer.Load(stream, options));
+    }
+}
