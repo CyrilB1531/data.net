@@ -34,6 +34,11 @@ removed or renamed, so upgrading from `0.1.0` is a version bump.
 - Mirror test projects that replay the entire suite against the `netstandard2.0`
   assemblies, so the build shipped to .NET Framework, Mono and Unity consumers is
   executed rather than only compiled. 339 tests across both builds.
+- A sample under [`samples/`](samples/DataNet.Sample) that consumes the packages
+  by `PackageReference` from a locally packed feed, and runs in CI. Nothing
+  previously exercised the packaging, so a defect in it would have reached
+  consumers before CI. See
+  [`docs/decisions/0009`](docs/decisions/0009-sample-consumes-a-local-feed.md).
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) and this changelog.
 - SonarQube Cloud analysis, a `lint` CI job (markdownlint and `dotnet format`),
   and Dependabot for GitHub Actions.

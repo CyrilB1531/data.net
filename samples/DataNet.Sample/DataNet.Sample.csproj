@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Consumes DataNet as a NuGet package, not as a ProjectReference — that
+    distinction is the whole value of this project. Nothing else in the
+    repository exercises the packages, so packaging defects would otherwise reach
+    consumers before they reach CI.
+
+    Deliberately NOT in DataNet.slnx: inside the solution, ProjectReference
+    resolution would quietly satisfy these references and the sample would prove
+    nothing.
+
+    net10.0 only for now, which resolves lib/net10.0. Adding a net8.0 target would
+    additionally resolve lib/netstandard2.0 and exercise that dependency group
+    (System.Memory, System.Numerics.Vectors) the way a real consumer would; the
+    netstandard2.0 *assemblies* are covered by the mirror test projects, but the
+    netstandard2.0 *package assets* are not yet consumed by anything.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      $(Version) comes from the repository's Directory.Build.props, which applies
+      here too. Binding to it keeps the sample in lockstep with what `dotnet pack`
+      produces, instead of pinning a version that goes stale at the next release.
+    -->
+    <PackageReference Include="DataNet.Text" Version="$(Version)" />
+    <PackageReference Include="DataNet.Fuzzy" Version="$(Version)" />
+    <PackageReference Include="DataNet.Embeddings" Version="$(Version)" />
+  </ItemGroup>
+
+</Project>
