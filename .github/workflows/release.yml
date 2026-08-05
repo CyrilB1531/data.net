@@ -1,7 +1,7 @@
 name: Release
 
 # Publishes ONE NuGet package to GitHub Packages when a per-package tag is
-# pushed, e.g.:  git tag DataNet.Fuzzy/v0.2.1 && git push origin DataNet.Fuzzy/v0.2.1
+# pushed, e.g.:  git tag DataNet.Fuzzy/v0.3.0 && git push origin DataNet.Fuzzy/v0.3.0
 #
 # The three packages version independently, so a tag names which one it releases
 # (see docs/decisions/0012-per-package-versioning.md). The old repository-wide
@@ -76,6 +76,11 @@ jobs:
       - name: The shipped dependency graph is the intended one
         run: python3 tools/check_nuspec_dependencies.py artifacts
 
+      # No --skip-duplicate. Re-releasing a version the feed already has is not
+      # a no-op worth tolerating: with the tag no longer setting the version, the
+      # way to reach this line twice is to tag a release without bumping
+      # Version.props first, and skipping the duplicate reported that as success
+      # while the change stayed unpublished. A rejected push says so instead.
       - name: Push to GitHub Packages
         env:
           OWNER: ${{ github.repository_owner }}
@@ -83,8 +88,7 @@ jobs:
         run: |
           dotnet nuget push "artifacts/*.nupkg" \
             --source "https://nuget.pkg.github.com/$OWNER/index.json" \
-            --api-key "$GITHUB_TOKEN" \
-            --skip-duplicate
+            --api-key "$GITHUB_TOKEN"
 
       - name: Upload packages as build artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

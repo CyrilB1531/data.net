@@ -13,7 +13,7 @@ split and covered all three at once — see
 
 ## [Unreleased]
 
-### DataNet.Text
+### DataNet.Text — 0.3.0
 
 #### Added
 
@@ -28,7 +28,7 @@ split and covered all three at once — see
   is in [`docs/decisions/0010`](docs/decisions/0010-stop-word-list-provenance.md).
   `StopWords.English` is unchanged, still scikit-learn's 318-word list.
 
-### DataNet.Fuzzy — 0.2.1
+### DataNet.Fuzzy — 0.3.0
 
 #### Changed
 
@@ -36,9 +36,9 @@ split and covered all three at once — see
   project reference. Nothing changes for consumers: a project reference between
   two packable projects already produced exactly this `<dependency>`, and
   `Fuzz.Ratio` is still `Indel.NormalizedSimilarity × 100`. What changes is that
-  the build graph now matches the release graph, so this package can ship a patch
-  without republishing the other two — as this release does, leaving
-  `DataNet.Text` and `DataNet.Embeddings` at `0.2.0`. The dependency floor is
+  the build graph now matches the release graph, so a package can now ship
+  without dragging the other two with it — as `DataNet.Embeddings` demonstrates
+  by staying at `0.2.0` through this release. The dependency floor is
   pinned in `src/Directory.Packages.props`; the developer loop for editing both
   libraries at once is documented in
   [`CONTRIBUTING.md`](CONTRIBUTING.md#working-across-two-packages), and the whole

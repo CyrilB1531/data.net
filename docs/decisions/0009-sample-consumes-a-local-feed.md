@@ -26,8 +26,20 @@ The version is bound to `$(Version)` from the repository's root
 > **Amended by [0012](0012-per-package-versioning.md).** The three packages now
 > version independently, so there is no repository-wide `$(Version)` left to bind
 > to: the sample imports each project's `Version.props` and uses one property per
-> package. The guarantee is unchanged — it still tracks what `dotnet pack` just
-> produced — it just reads three sources instead of one.
+> package. It still tracks what `dotnet pack` just produced — but preserving that
+> took more than rebinding the property, and the rest of this document should be
+> read with the next paragraph in mind.
+>
+> Listing the local feed first does not make it the feed that answers. Restore
+> consults the global packages folder before any source, so a DataNet package
+> declared at a version that is *also* on nuget.org resolves to the published
+> assembly — the exact inversion "Why not nuget.org" below exists to prevent, now
+> arriving silently and without editing this file. Under per-package versioning
+> that is the normal case, not an accident: a package that did not change keeps
+> its published version indefinitely. Three things hold the line now — a
+> `packageSourceMapping` confining `DataNet.*` to the local feed, a separate
+> `NUGET_PACKAGES` for the sample's restore in CI, and `check_version_floor.py`
+> keeping a declared version off the feed in the first place.
 
 ## Why not nuget.org
 

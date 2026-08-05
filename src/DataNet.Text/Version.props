@@ -9,9 +9,20 @@
     (its own identity), src/Directory.Packages.props (the floor DataNet.Fuzzy
     depends on) and samples/DataNet.Sample.csproj (the version just packed).
     One source of truth, no tooling.
+
+    Never leave this equal to a version that is already on the feed. A package's
+    identity is id+version, so a declared version that collides with a published
+    one makes two different assemblies answer to the same number: restore serves
+    whichever it already has cached, and a duplicate push is absorbed by the feed
+    while the job reports success. 0.3.0 rather than 0.2.1 because the
+    multilingual stop-word lists have already landed since 0.2.0 and more is
+    coming before this ships.
+
+    tools/check_version_floor.py keeps this in step with the dependency floor in
+    src/Directory.Packages.props.
   -->
   <PropertyGroup>
-    <DataNetTextVersion>0.2.0</DataNetTextVersion>
+    <DataNetTextVersion>0.3.0</DataNetTextVersion>
   </PropertyGroup>
 
 </Project>

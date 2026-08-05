@@ -127,13 +127,20 @@ package alone:
 ```bash
 # 1. edit src/DataNet.Fuzzy/Version.props, commit, merge to main
 # 2. tag the released version — <PackageId>/v<Version>
-git tag DataNet.Fuzzy/v0.2.1
-git push origin DataNet.Fuzzy/v0.2.1
+git tag DataNet.Fuzzy/v0.3.0
+git push origin DataNet.Fuzzy/v0.3.0
 ```
 
 The tag does not set the version, it names which declared version to release: the
 workflow refuses the job if the tag and `Version.props` disagree. Repository-wide
 `v*` tags are retired — there is no single version left for one to designate.
+
+**Step 1 is not optional.** Because the tag only confirms the declared version,
+tagging without bumping first is a tag that agrees with `Version.props` and names
+a version the feed already has. The push is then rejected rather than absorbed —
+the workflows do not pass `--skip-duplicate`, which used to report that case as a
+successful release that shipped nothing. Keeping a declared version off the feed
+is also checked directly in CI by `tools/check_version_floor.py`.
 
 To consume them, add a source pointing at the owner's feed (with a GitHub token
 that has `read:packages`):

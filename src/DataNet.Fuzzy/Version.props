@@ -4,12 +4,17 @@
     DataNet.Fuzzy owns its version here, independently of the other packages
     (see docs/decisions/0012-per-package-versioning.md).
 
-    0.2.1 while DataNet.Text and DataNet.Embeddings stay at 0.2.0: this package's
-    dependency declaration changed and theirs did not. That divergence is the
-    point of the split, and this is the first exercise of it.
+    0.3.0 alongside DataNet.Text, while DataNet.Embeddings stays at 0.2.0 because
+    nothing in it changed. That is the divergence the split exists for: the number
+    a package carries describes that package, and one that did not change is not
+    dragged along by its neighbours.
+
+    Independent versions do not have to mean different versions — releasing two
+    of the three together is a normal outcome, not a failure of the split. What
+    changed is that it is now a choice.
   -->
   <PropertyGroup>
-    <DataNetFuzzyVersion>0.2.1</DataNetFuzzyVersion>
+    <DataNetFuzzyVersion>0.3.0</DataNetFuzzyVersion>
   </PropertyGroup>
 
 </Project>

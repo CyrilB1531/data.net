@@ -18,7 +18,7 @@ on:
           - DataNet.Embeddings
           - DataNet.Fuzzy
       version:
-        description: 'Version to publish (e.g. 0.2.1) — must match the declared one'
+        description: 'Version to publish (e.g. 0.3.0) — must match the declared one'
         required: true
 
 permissions:
@@ -56,6 +56,31 @@ jobs:
           fi
           echo "$PACKAGE $declared"
 
+      # Matching the declared version proves the repository meant to ship this
+      # number; it does not prove the number is still available. nuget.org is
+      # immutable, so a version that already exists can never be replaced — and
+      # a push over it used to be absorbed by `--skip-duplicate` and reported as
+      # success, shipping nothing. Fail here, before the tests, where the fix is
+      # still just a bump.
+      - name: The version is not already on nuget.org
+        env:
+          PACKAGE: ${{ inputs.package }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          id=$(printf '%s' "$PACKAGE" | tr '[:upper:]' '[:lower:]')
+          status=$(curl -sS -o versions.json -w '%{http_code}' \
+            "https://api.nuget.org/v3-flatcontainer/$id/index.json")
+          case "$status" in
+            404) echo "$PACKAGE has never been published — $VERSION is free."; exit 0 ;;
+            200) ;;
+            *) echo "::error::nuget.org answered $status for $PACKAGE."; exit 1 ;;
+          esac
+          if jq -e --arg v "$VERSION" '.versions | index($v)' versions.json > /dev/null; then
+            echo "::error::$PACKAGE $VERSION is already on nuget.org. Bump src/$PACKAGE/Version.props."
+            exit 1
+          fi
+          echo "$PACKAGE $VERSION is not on nuget.org yet."
+
       - name: Test
         run: dotnet test --configuration Release
 
@@ -80,5 +105,4 @@ jobs:
         run: |
           dotnet nuget push "artifacts/*.nupkg" \
             --source https://api.nuget.org/v3/index.json \
-            --api-key "$NUGET_API_KEY" \
-            --skip-duplicate
+            --api-key "$NUGET_API_KEY"

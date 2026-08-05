@@ -27,9 +27,15 @@ graph was never wrong. What was wrong was that the *build* graph and the
 `Version.props`, and `DataNet.Fuzzy` reaches `DataNet.Text` through a
 `PackageReference` on the published package.
 
-The first exercise of the split ships with this change: `DataNet.Fuzzy` goes to
-`0.2.1` — its dependency declaration changed — while `DataNet.Text` and
-`DataNet.Embeddings` stay at `0.2.0`.
+The first exercise of the split ships with this change: `DataNet.Text` and
+`DataNet.Fuzzy` both go to `0.3.0` — the first has gained stop-word lists, the
+second has changed how it declares its dependency — while `DataNet.Embeddings`
+stays at `0.2.0`, because nothing in it changed.
+
+That two of the three move together is the point rather than a dilution of it.
+Independent versioning is not a rule that numbers must differ; it is the removal
+of the rule that they must match. `DataNet.Embeddings` staying put is the part
+that was previously impossible.
 
 ### Why a per-project `Version.props` and not a versioning tool
 
@@ -100,11 +106,22 @@ Three things keep it from becoming the accidental default:
   `dotnet msbuild src/DataNet.Fuzzy -getItem:ProjectReference` must come back
   empty.
 
-Note what the `.nuspec` check does *not* prove. Both paths produce the same
-`<dependency>` element, so inspecting the package cannot tell you which one was
-taken. It guards a different failure — an unexpected or vanished dependency —
-and `tools/check_nuspec_dependencies.py` holds the expected graph exactly, for
-all three packages.
+The `.nuspec` check is a second, independent net under the same failure. Both
+paths do produce a `<dependency>` element on `DataNet.Text`, so the *id* cannot
+tell them apart — but the version can, and they differ: a `PackageReference`
+emits the floor from `src/Directory.Packages.props`, while a `ProjectReference`
+emits `DataNet.Text`'s own current version, which the floor is deliberately
+decoupled from. `tools/check_nuspec_dependencies.py` therefore asserts ranges as
+well as ids, and a package built with the escape hatch left on fails it —
+verified by packing with `DataNetUseProjectRefs=true`, which emits
+`DataNet.Text 0.3.0` where the floor says `0.2.0`.
+
+Note its one blind spot, so nobody mistakes it for the primary guard: the two
+paths are distinguishable only while the floor and `DataNet.Text`'s own version
+differ. They are equal on the release commit that raises the floor to a
+just-published version, and on that commit this check would pass either way. The
+MSBuild-evaluated check above has no such window, which is why it, and not this
+one, is the guard that matters.
 
 ### `SetTargetFramework` does not cross a `PackageReference`
 
@@ -136,7 +153,7 @@ now, so it is written down here rather than left to be rediscovered.
 
 ### Tags and release order
 
-Tags become `<PackageId>/v<Version>` — `DataNet.Fuzzy/v0.2.1`. `release.yml`
+Tags become `<PackageId>/v<Version>` — `DataNet.Fuzzy/v0.3.0`. `release.yml`
 triggers on `DataNet.*/v*`, parses both halves out of `GITHUB_REF_NAME`, and packs
 and pushes that package alone.
 
@@ -168,9 +185,21 @@ release `DataNet.Fuzzy`.
 - **`CHANGELOG.md` stays one file**, with per-package version headings. The
   repository remains a monorepo; only the release cadence decouples, and a single
   chronological file still reads better than three.
-- **The sample needs one version property per package.** ADR 0009's guarantee —
-  that it tracks what `dotnet pack` just produced rather than a number that goes
-  stale — survives unchanged; it just reads three sources instead of one.
+- **The sample needs one version property per package**, and its feed had to be
+  pinned by identity to keep working. Reading three `Version.props` instead of one
+  `$(Version)` was the easy half. The half that was nearly missed: packing
+  `DataNet.Fuzzy` now restores `DataNet.Text` from nuget.org, and the global
+  packages folder is consulted ahead of every source — so once a package is
+  declared at a version that is also published, the sample resolves the *released*
+  assembly and ADR 0009's guarantee inverts silently, validating what already
+  shipped while appearing to validate what is about to. Per-package versioning
+  makes this the normal case rather than a fluke, because a package that did not
+  change keeps its published version indefinitely instead of being swept along by
+  a repository-wide bump. Two things restore the guarantee: `packageSourceMapping`
+  in `samples/NuGet.config` confines `DataNet.*` to the local feed, and the CI job
+  gives the pack and the sample their own `NUGET_PACKAGES` directories, because no
+  mapping can override the global folder. Keeping a declared version off the feed
+  is the third, and `tools/check_version_floor.py` is where that is enforced.
 - **`dotnet pack` output must be checked, not assumed.** A package's dependency
   graph is a build output nobody writes down. `tools/check_nuspec_dependencies.py`
   is where it is now written down, and it runs in CI and in both release jobs.

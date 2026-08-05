@@ -71,7 +71,15 @@ dotnet build DataNet.slnx -c Release
 dotnet test DataNet.slnx -c Release
 dotnet format DataNet.slnx --verify-no-changes
 npx markdownlint-cli2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
+python3 tools/check_version_floor.py
 ```
+
+The last one is offline and instant; it catches the version numbers that must
+agree drifting apart, which MSBuild is perfectly happy to let happen. CI runs it
+with `--check-feed`, which additionally proves the dependency floor is published
+— see [`tools/README.md`](tools/README.md). If you touched packaging, packing and
+running `python3 tools/check_nuspec_dependencies.py ./artifacts --require-all`
+closes the loop.
 
 ## Working across two packages
 
@@ -113,7 +121,7 @@ Two things to keep straight:
 
 Versions are declared per package in `src/<Package>/Version.props` and nowhere
 else. To release one: bump that file, land it on `main`, then tag
-`<PackageId>/v<Version>` (for example `DataNet.Fuzzy/v0.2.1`). The workflow
+`<PackageId>/v<Version>` (for example `DataNet.Fuzzy/v0.3.0`). The workflow
 compares the tag against the declared version and refuses to publish if they
 disagree — the tag chooses *which* release to cut, it does not set the number.
 Add the entry under a per-package heading in `CHANGELOG.md`.

@@ -1,9 +1,11 @@
 # Development tools — oracle generation, vendored data, packaging checks
 
-Three scripts. `generate_oracles.py` produces the reference values the test suite
+Four scripts. `generate_oracles.py` produces the reference values the test suite
 replays; `fetch_stopwords.py` produces source that is *shipped*, which is why it
 verifies what it downloaded before writing anything;
-`check_nuspec_dependencies.py` verifies what the packages *declare*.
+`check_nuspec_dependencies.py` verifies what the packages *declare*; and
+`check_version_floor.py` verifies that the version numbers the source tree keeps
+in three places still agree.
 
 ## `generate_oracles.py`
 
@@ -57,6 +59,33 @@ script is where it is written down. It matters more since the three packages
 version independently: `DataNet.Fuzzy` reaches `DataNet.Text` through a
 `PackageReference`, and that edge is now the one thing holding the two together.
 See [`../docs/decisions/0012-per-package-versioning.md`](../docs/decisions/0012-per-package-versioning.md).
+
+Dependency **ids and version ranges** are both asserted. The range matters as
+much as the id here: a `PackageReference` emits the floor from
+`src/Directory.Packages.props`, while the `DataNetUseProjectRefs` developer loop
+emits `DataNet.Text`'s own current version. Same id, different number — which is
+what lets this check catch a package accidentally built with the escape hatch
+left on.
+
+## `check_version_floor.py`
+
+Checks the three places a `DataNet.Text` version number lives, each for a
+different reason, none of which MSBuild relates to the others:
+
+```bash
+python tools/check_version_floor.py               # offline: the two rules below
+python tools/check_version_floor.py --check-feed  # also: the floor is published
+```
+
+- `src/DataNet.Text/Version.props` — what `DataNet.Text` *is*.
+- `src/Directory.Packages.props` — the *floor* `DataNet.Fuzzy` requires of it.
+- `check_nuspec_dependencies.py` — the floor that check asserts actually shipped.
+
+The floor must not exceed the declared version, and must already be on nuget.org
+— that is what makes `git clone && dotnet build` work with no pack step. A floor
+naming an unpublished version still builds for whoever raised it, whose cache is
+warm, and fails for everyone else; `--check-feed` is what turns that into a CI
+failure rather than a contributor's bug report.
 
 ## Rules
 
