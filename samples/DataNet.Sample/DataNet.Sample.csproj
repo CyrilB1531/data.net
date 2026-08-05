@@ -25,15 +25,22 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
+  <!--
+    One version property per package now that the three release independently.
+    Importing each project's Version.props keeps the original guarantee intact:
+    the sample tracks whatever `dotnet pack` just produced instead of pinning
+    numbers that go stale at the next release — it just needs three sources
+    instead of one repository-wide $(Version). See
+    docs/decisions/0012-per-package-versioning.md.
+  -->
+  <Import Project="../../src/DataNet.Text/Version.props" />
+  <Import Project="../../src/DataNet.Embeddings/Version.props" />
+  <Import Project="../../src/DataNet.Fuzzy/Version.props" />
+
   <ItemGroup>
-    <!--
-      $(Version) comes from the repository's Directory.Build.props, which applies
-      here too. Binding to it keeps the sample in lockstep with what `dotnet pack`
-      produces, instead of pinning a version that goes stale at the next release.
-    -->
-    <PackageReference Include="DataNet.Text" Version="$(Version)" />
-    <PackageReference Include="DataNet.Fuzzy" Version="$(Version)" />
-    <PackageReference Include="DataNet.Embeddings" Version="$(Version)" />
+    <PackageReference Include="DataNet.Text" Version="$(DataNetTextVersion)" />
+    <PackageReference Include="DataNet.Fuzzy" Version="$(DataNetFuzzyVersion)" />
+    <PackageReference Include="DataNet.Embeddings" Version="$(DataNetEmbeddingsVersion)" />
   </ItemGroup>
 
 </Project>

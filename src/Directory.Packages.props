@@ -5,7 +5,20 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
 
+  <!--
+    DataNet.Fuzzy depends on DataNet.Text as a published package. This number is
+    a deliberately chosen *floor* — the minimum DataNet.Text a consumer of
+    DataNet.Fuzzy is required to take — and is therefore written in full rather
+    than tracking $(DataNetTextVersion).
+
+    Keeping it decoupled is what makes `git clone && dotnet build` work with no
+    pack step: the floor always names a version that is already on nuget.org.
+    Raise it only when DataNet.Fuzzy actually needs newer DataNet.Text API, and
+    publish DataNet.Text first when you do. See
+    docs/decisions/0012-per-package-versioning.md.
+  -->
   <ItemGroup>
+    <PackageVersion Include="DataNet.Text" Version="0.2.0" />
     <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
     <PackageVersion Include="PolySharp" Version="1.15.0" />
     <!-- 4.6.3 is the floor System.Text.Json 10.0.x asks for on netstandard2.0;

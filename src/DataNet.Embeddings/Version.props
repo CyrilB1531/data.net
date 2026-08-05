@@ -1,0 +1,9 @@
+<Project>
+
+  <!-- DataNet.Embeddings owns its version here, independently of the other
+       packages (see docs/decisions/0012-per-package-versioning.md). -->
+  <PropertyGroup>
+    <DataNetEmbeddingsVersion>0.2.0</DataNetEmbeddingsVersion>
+  </PropertyGroup>
+
+</Project>

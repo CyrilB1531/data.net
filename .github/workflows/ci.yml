@@ -48,11 +48,40 @@ jobs:
           --collect:"XPlat Code Coverage"
           --logger "trx;LogFileName=test-results.trx"
 
+      # No -p:Version: each project declares its own in a sibling Version.props,
+      # and that declaration is authoritative everywhere — here and at release.
       - name: Pack
         run: |
           for proj in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
             dotnet pack "$proj" --configuration Release --no-build --output ./artifacts
           done
+
+      # The libraries reference each other by package, never by project. The
+      # opt-in developer loop (DataNetUseProjectRefs) puts a ProjectReference
+      # back, so a text grep cannot tell the shipped path from the local one —
+      # it would match the conditional ItemGroup either way. Evaluated MSBuild
+      # can, and this job never sets the property.
+      - name: src/ ships PackageReference only
+        run: |
+          for proj in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
+            refs=$(dotnet msbuild "$proj" -getItem:ProjectReference -p:TargetFramework=net10.0 \
+              | python3 -c 'import sys, json; print(" ".join(i["Identity"] for i in json.load(sys.stdin)["Items"]["ProjectReference"]))')
+            if [ -n "$refs" ]; then
+              echo "::error::$proj references $refs by project; src/ must reference published packages."
+              exit 1
+            fi
+          done
+
+      # Three files hold a DataNet.Text version number for three different
+      # reasons, and MSBuild is happy when they disagree. --check-feed also
+      # proves the floor is resolvable, which is what lets a clean clone build
+      # with no pack step — a broken floor otherwise surfaces only on a machine
+      # whose NuGet cache is cold, never on the one that raised it.
+      - name: The DataNet.Text floor is coherent
+        run: python3 tools/check_version_floor.py --check-feed
+
+      - name: The shipped dependency graph is the intended one
+        run: python3 tools/check_nuspec_dependencies.py ./artifacts --require-all
 
       - name: Upload test results
         if: always()
@@ -78,7 +107,18 @@ jobs:
 
       # The sample restores from ./artifacts, so the packages must exist before
       # it: this gate tests what is about to ship, not what already shipped.
+      #
+      # Packing DataNet.Fuzzy restores DataNet.Text from nuget.org, because src/
+      # reaches it by PackageReference and has no local feed. That extraction
+      # must not be visible to the sample: the global packages folder is
+      # consulted ahead of every source, so a published package sitting in it
+      # wins over the one just built whenever the two share a version, and the
+      # gate silently validates the wrong assembly. Separate folders make the
+      # two restores independent; samples/NuGet.config maps DataNet.* to the
+      # local feed so the sample's restore can only succeed from ./artifacts.
       - name: Pack
+        env:
+          NUGET_PACKAGES: ${{ runner.temp }}/pack-packages
         run: |
           for proj in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
             dotnet pack "$proj" --configuration Release -o ./artifacts
@@ -88,6 +128,8 @@ jobs:
       # missing dependency group or an unreachable public type fails the build.
       # Running it means the code actually works once resolved.
       - name: Run the sample
+        env:
+          NUGET_PACKAGES: ${{ runner.temp }}/sample-packages
         run: dotnet run --project samples/DataNet.Sample --configuration Release
 
   stopwords-pinned:
