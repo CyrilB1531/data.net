@@ -38,11 +38,16 @@ to .NET Framework 4.6.1+, Mono, Xamarin and Unity for a bounded, one-off cost.
   `#if` covers every call site instead of one per site), `string.Join(char, …)`,
   `Array.Fill`, `MathF`, `CollectionsMarshal`, `.Order()`, `KeyValuePair`
   deconstruction, array range operators, and the `string` char overloads.
-- **The netstandard2.0 build is compile-verified, not behavior-verified.** The
-  test suite targets `net10.0`, so it exercises the net10 assemblies; the oracle
-  corpora currently say nothing about the netstandard2.0 build's runtime behavior.
-  Since the two differ by conditional compilation, that is a real gap, tracked
-  separately. Do not read "158 tests pass" as covering both targets.
+- **Both builds are behavior-verified.** Three mirror test projects replay the
+  entire suite against the netstandard2.0 assemblies, on the net10 runtime, so the
+  assemblies shipped to .NET Framework, Mono and Unity consumers are executed and
+  not merely compiled. The test sources are linked rather than copied, so the two
+  runs can never drift apart.
+
+  Each mirror asserts the `TargetFrameworkAttribute` of the assembly under test
+  before anything else. Without that, a reference quietly resolving back to
+  net10.0 would leave every test passing while proving nothing — verified by
+  removing the isolation and watching the guard fail.
 - CI installs the **10.0.x** SDK, which builds both targets.
 - If an LTS-8 consumer appears, add `net8.0` to `TargetFrameworks` rather than
   downgrading anything.

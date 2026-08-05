@@ -9,7 +9,10 @@
     <Project Path="src/DataNet.Text/DataNet.Text.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/DataNet.Embeddings.NetStandard.Tests/DataNet.Embeddings.NetStandard.Tests.csproj" />
     <Project Path="tests/DataNet.Embeddings.Tests/DataNet.Embeddings.Tests.csproj" />
+    <Project Path="tests/DataNet.Fuzzy.NetStandard.Tests/DataNet.Fuzzy.NetStandard.Tests.csproj" />
+    <Project Path="tests/DataNet.Text.NetStandard.Tests/DataNet.Text.NetStandard.Tests.csproj" />
     <Project Path="tests/DataNet.Fuzzy.Tests/DataNet.Fuzzy.Tests.csproj" />
     <Project Path="tests/DataNet.Text.Tests/DataNet.Text.Tests.csproj" />
   </Folder>
