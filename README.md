@@ -74,7 +74,8 @@ dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter '*Leve
 The project follows **GitHub flow**: `main` is always releasable, and every change
 arrives through a short-lived branch and a pull request. Branch conventions, the
 definition of done, the oracle-validation procedure and the analyzer-suppression
-policy are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+policy are in [`CONTRIBUTING.md`](CONTRIBUTING.md); release history is in
+[`CHANGELOG.md`](CHANGELOG.md).
 
 ### Oracle validation
 

@@ -12,10 +12,10 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
     <!-- Package identity / provenance (§10). -->
-    <Version>0.1.0</Version>
-    <Company>DataNet contributors</Company>
-    <Authors>DataNet contributors</Authors>
-    <Copyright>Copyright 2026 DataNet contributors</Copyright>
+    <Version>0.2.0</Version>
+    <Company>Cyril BRUNET</Company>
+    <Authors>Cyril BRUNET</Authors>
+    <Copyright>Copyright 2026 Cyril BRUNET</Copyright>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/CyrilB1531/data.net</PackageProjectUrl>
     <RepositoryUrl>https://github.com/CyrilB1531/data.net</RepositoryUrl>
