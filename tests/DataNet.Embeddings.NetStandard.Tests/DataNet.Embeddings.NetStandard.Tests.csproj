@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Replays the entire DataNet.Embeddings.Tests suite against the *netstandard2.0* build of
+    the library, instead of the net10.0 one the original project references.
+
+    netstandard2.0 is a contract, not a runtime, so the tests cannot run *on* it.
+    They run on net10.0 — identical host — and only the assembly under test
+    changes. Without this, the assemblies shipped to .NET Framework, Mono and
+    Unity consumers are compile-verified but never executed.
+
+    The test sources are linked, never copied: one suite, two builds.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <AssemblyName>DataNet.Embeddings.NetStandard.Tests</AssemblyName>
+    <RootNamespace>DataNet.Embeddings.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <!-- SetTargetFramework is what pins the reference to the netstandard2.0 build. -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/DataNet.Embeddings/DataNet.Embeddings.csproj"
+                      SetTargetFramework="TargetFramework=netstandard2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../DataNet.Embeddings.Tests/**/*.cs"
+             Exclude="../DataNet.Embeddings.Tests/bin/**;../DataNet.Embeddings.Tests/obj/**"
+             Link="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../oracles/**/*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
+    <None Include="../oracles/**/*.onnx" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
+  </ItemGroup>
+
+</Project>

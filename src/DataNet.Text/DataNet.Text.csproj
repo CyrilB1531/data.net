@@ -15,6 +15,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="DataNet.Text.Tests" />
+    <!-- Same suite, replayed against the netstandard2.0 build. -->
+    <InternalsVisibleTo Include="DataNet.Text.NetStandard.Tests" />
   </ItemGroup>
 
 </Project>

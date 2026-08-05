@@ -31,6 +31,9 @@ removed or renamed, so upgrading from `0.1.0` is a version bump.
   64-character cap on the bit-parallel path.
 - A benchmark suite comparing the `net10.0` and `netstandard2.0` builds of the
   same library — see [`bench/README.md`](bench/README.md).
+- Mirror test projects that replay the entire suite against the `netstandard2.0`
+  assemblies, so the build shipped to .NET Framework, Mono and Unity consumers is
+  executed rather than only compiled. 339 tests across both builds.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) and this changelog.
 - SonarQube Cloud analysis, a `lint` CI job (markdownlint and `dotnet format`),
   and Dependabot for GitHub Actions.
@@ -89,8 +92,8 @@ removed or renamed, so upgrading from `0.1.0` is a version bump.
 - Deliberate analyzer suppressions live in the source as `#pragma warning disable`
   with their justification. SonarLint reads neither `.editorconfig` nor a workspace
   `.vscode/settings.json`, so those do not work.
-- The `netstandard2.0` build is compile-verified, not behavior-verified: the test
-  suite targets `net10.0`. Tracked separately.
+- The `netstandard2.0` build is behavior-verified: the whole suite is replayed
+  against those assemblies, not only against the `net10.0` ones.
 
 ## [0.1.0] — 2026-08-01
 
