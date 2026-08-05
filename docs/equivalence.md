@@ -55,6 +55,7 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | `CountVectorizer(min_df=…, max_df=…)` | scikit-learn | `MinDf`, `MaxDf` | `<1` = proportion, `≥1` = absolute count (sklearn `_limit_features` semantics). |
 | `CountVectorizer(strip_accents="unicode")` | scikit-learn | `StripAccents = true` | NFKD decomposition + removal of combining marks. |
 | `CountVectorizer(stop_words="english")` | scikit-learn | `StopWords = StopWords.English` | sklearn's 318-word list (identical). Any custom collection accepted. |
+| `nltk.corpus.stopwords.words("french")` | nltk | `StopWords.French` | **Not identical.** The shipped lists are Snowball's, not nltk's, for licensing reasons ([decision 0010](decisions/0010-stop-word-list-provenance.md)). Same for `German`, `Portuguese`, `Spanish`; `Italian` matches nltk word for word. |
 | `scipy.sparse` (CSR) | scipy | `CsrMatrix` | Home-grown CSR: `ToDense`, L1/L2 norms, `NormalizeRows`, matrix-vector product. |
 | `TfidfVectorizer()` | scikit-learn | `new TfidfVectorizer()` | `smooth_idf` + L2 normalization on by default. `idf = ln((1+n)/(1+df)) + 1`. Parity across 7 configs. |
 | `TfidfTransformer()` | scikit-learn | `new TfidfTransformer()` | `use_idf`, `smooth_idf`, `sublinear_tf`, `norm` (L1/L2/none). |
@@ -107,3 +108,12 @@ implemented, never retrofitted at the end (§6.1 of the brief).
   allocation.
 - **Culture.** No operation is culture-sensitive by default. Overloads accepting a
   `CultureInfo` are added where case/accents matter (tokenization).
+- **Stop words.** `StopWords.English` is scikit-learn's list; the other five are
+  Snowball's, because the nltk corpus carries no usable licence
+  ([`decisions/0010`](decisions/0010-stop-word-list-provenance.md)). This is the
+  one place where the library knowingly does not match nltk, so the gap is
+  measured rather than described: French 154 words vs nltk's 157 (13 / 16 words
+  apart), German 231 vs 232 (4 / 5), Portuguese 203 vs 207 (0 / 4), Spanish 308
+  vs 313 (2 / 7), Italian identical. Matching is ordinal against the analyzer's
+  output, so `StripAccents = true` also stops accented entries from matching —
+  as it does in scikit-learn.

@@ -11,6 +11,19 @@ One version covers all three packages (`DataNet.Text`, `DataNet.Embeddings`,
 
 ## [Unreleased]
 
+### Added
+
+- **Stop-word lists for French, German, Italian, Portuguese and Spanish** —
+  `StopWords.French` and friends, one per language that already has a Snowball
+  stemmer. They are Snowball's lists (BSD-3-Clause), vendored by
+  `tools/fetch_stopwords.py` against a pinned SHA-256, and attributed in `NOTICE`.
+  The nltk corpus is deliberately not used: `nltk_data` classifies it as having
+  no stated licence, so it cannot be redistributed. That makes these lists the
+  one place where the library knowingly diverges from nltk — the gap is measured
+  per language in [`docs/equivalence.md`](docs/equivalence.md) and the reasoning
+  is in [`docs/decisions/0010`](docs/decisions/0010-stop-word-list-provenance.md).
+  `StopWords.English` is unchanged, still scikit-learn's 318-word list.
+
 ## [0.2.0] — 2026-08-05
 
 Reach, correctness and honesty about performance. Nothing in the public API was

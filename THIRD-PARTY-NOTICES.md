@@ -25,6 +25,48 @@ ONNX Runtime is deliberately isolated to `DataNet.Embeddings`, so consumers of
 the distance, vectorization and fuzzy-matching packages take no native
 dependency.
 
+## Redistributed resources (shipped inside the assemblies)
+
+| Component | License | Shipped by | Source |
+| --- | --- | --- | --- |
+| Snowball stop-word lists (fr, de, it, pt, es) | BSD-3-Clause | `DataNet.Text` | `https://snowballstem.org/algorithms/<language>/stop.txt` |
+
+These are data, not code: the five lists are compiled into
+`DataNet.Text.Vectorization.StopWords` by `tools/fetch_stopwords.py`, which pins a
+SHA-256 per file. Unlike the libraries below, they *are* redistributed, so the
+licence travels with them. The English list is scikit-learn's (BSD-3-Clause), not
+Snowball's; the nltk stop-word corpus is deliberately not used — see
+[`docs/decisions/0010-stop-word-list-provenance.md`](docs/decisions/0010-stop-word-list-provenance.md).
+
+```
+Copyright (c) 2001, Dr Martin Porter,
+Copyright (c) 2002, Richard Boulton.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice, this
+   list of conditions and the following disclaimer in the documentation and/or
+   other materials provided with the distribution.
+3. Neither the name of the copyright holder nor the names of its contributors may
+   be used to endorse or promote products derived from this software without
+   specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
 ## Build-time dependencies (not shipped)
 
 | Component | License | Usage |
@@ -57,6 +99,12 @@ generate test data creates no license claim over the output.
 | tokenizers | Apache-2.0 | Reference values for WordPiece |
 | sentencepiece | Apache-2.0 | Reference values for the unigram tokenizer |
 | numpy | BSD-3-Clause | Reference values for pooling and kNN |
+
+> The Apache-2.0 above covers the `nltk` *code* we execute. It does not extend to
+> the `nltk_data` corpora, which are licensed individually — the `stopwords`
+> corpus among them has no stated licence, which is why the shipped lists come
+> from Snowball instead. See
+> [`docs/decisions/0010-stop-word-list-provenance.md`](docs/decisions/0010-stop-word-list-provenance.md).
 
 > `python-Levenshtein` (GPL) is deliberately **not** used, as a matter of both
 > transcription hygiene and generated-data hygiene. See

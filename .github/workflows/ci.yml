@@ -90,6 +90,24 @@ jobs:
       - name: Run the sample
         run: dotnet run --project samples/DataNet.Sample --configuration Release
 
+  stopwords-pinned:
+    name: Stop-word lists match their pinned source
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      # The five Snowball lists are redistributed inside the assembly, so their
+      # provenance is a shipping guarantee, not a test fixture. The script checks
+      # each download against a pinned SHA-256 and regenerates the C#: a failure
+      # here means upstream edited a list, and that is a decision to record — see
+      # docs/decisions/0010-stop-word-list-provenance.md. No dependency to install.
+      - name: Verify the vendored stop-word lists
+        run: python tools/fetch_stopwords.py --check
+
   oracles-fresh:
     name: Oracles are reproducible
     runs-on: ubuntu-latest

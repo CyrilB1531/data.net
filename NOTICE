@@ -7,4 +7,13 @@ behavior is modeled on the observable input/output of the permissively licensed
 Python libraries rapidfuzz (MIT), jellyfish (MIT), textdistance (MIT), and
 scikit-learn (BSD-3-Clause); no source from those projects is transcribed.
 
+This product redistributes the stop-word lists of the Snowball project
+(https://snowballstem.org) for French, German, Italian, Portuguese and Spanish:
+
+  Copyright (c) 2001, Dr Martin Porter
+  Copyright (c) 2002, Richard Boulton
+  All rights reserved.
+
+  Covered by the 3-clause BSD License, reproduced in THIRD-PARTY-NOTICES.md.
+
 See THIRD-PARTY-NOTICES.md for the full list of third-party attributions.

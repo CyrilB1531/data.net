@@ -63,6 +63,11 @@ jobs:
       # observes the compilation, so the build must happen between the two and
       # must not be skipped or served from cache — an incremental no-op build
       # produces an empty analysis that still reports success.
+      #
+      # tools/ is excluded from *coverage* only, not from analysis: those scripts
+      # are Python development utilities that generate data for the suite, so no
+      # C# test will ever execute a line of them. Left in, they enter the quality
+      # gate as new uncovered code and fail it on the day one of them is edited.
       - name: Build, test and analyze
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -73,7 +78,8 @@ jobs:
             /d:sonar.token="$SONAR_TOKEN" \
             /d:sonar.host.url="https://sonarcloud.io" \
             /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
-            /d:sonar.python.version="3.12"
+            /d:sonar.python.version="3.12" \
+            /d:sonar.coverage.exclusions="tools/**"
 
           dotnet build DataNet.slnx --configuration Release
 
