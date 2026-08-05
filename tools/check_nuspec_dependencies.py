@@ -87,15 +87,60 @@ def read_graph(nupkg: pathlib.Path) -> tuple[str, str, dict[str, set[str]]]:
     return package_id, version, graph
 
 
+def parse_arguments(arguments: list[str]) -> tuple[pathlib.Path, bool] | None:
+    """Return (artifacts directory, require-all), or None on a usage error."""
+    require_all = False
+    positional: list[str] = []
+    for argument in arguments:
+        if argument == "--require-all":
+            require_all = True
+        elif argument.startswith("--"):
+            return None
+        else:
+            positional.append(argument)
+
+    if len(positional) != 1:
+        return None
+    return pathlib.Path(positional[0]), require_all
+
+
+def check_package(nupkg: pathlib.Path) -> tuple[str, str, list[str]]:
+    """Return the package id, its version, and every way its graph differs."""
+    package_id, version, actual = read_graph(nupkg)
+
+    expected = EXPECTED.get(package_id)
+    if expected is None:
+        return package_id, version, [f"{package_id}: not in the expected table"]
+
+    if actual.keys() != expected.keys():
+        return (
+            package_id,
+            version,
+            [
+                f"{package_id} {version}: dependency groups are "
+                f"{sorted(actual)}, expected {sorted(expected)}"
+            ],
+        )
+
+    return (
+        package_id,
+        version,
+        [
+            f"{package_id} {version} [{framework}]: dependencies are "
+            f"{sorted(actual[framework])}, expected {sorted(ids)}"
+            for framework, ids in expected.items()
+            if actual[framework] != ids
+        ],
+    )
+
+
 def main(argv: list[str]) -> int:
-    arguments = argv[1:]
-    require_all = "--require-all" in arguments
-    positional = [a for a in arguments if not a.startswith("--")]
-    if len(positional) != 1 or len(positional) != len(arguments) - int(require_all):
+    parsed = parse_arguments(argv[1:])
+    if parsed is None:
         print(__doc__, file=sys.stderr)
         return 2
+    artifacts, require_all = parsed
 
-    artifacts = pathlib.Path(positional[0])
     packages = sorted(artifacts.glob("*.nupkg"))
     if not packages:
         print(f"error: no .nupkg found in {artifacts}", file=sys.stderr)
@@ -105,31 +150,17 @@ def main(argv: list[str]) -> int:
     seen: set[str] = set()
 
     for nupkg in packages:
-        package_id, version, actual = read_graph(nupkg)
-        expected = EXPECTED.get(package_id)
-        if expected is None:
-            failures.append(f"{package_id}: not in the expected graph table")
-            continue
-
+        package_id, version, package_failures = check_package(nupkg)
         seen.add(package_id)
-        if actual.keys() != expected.keys():
-            failures.append(
-                f"{package_id} {version}: dependency groups are "
-                f"{sorted(actual)}, expected {sorted(expected)}"
-            )
-            continue
-
-        for framework, ids in expected.items():
-            if actual[framework] != ids:
-                failures.append(
-                    f"{package_id} {version} [{framework}]: dependencies are "
-                    f"{sorted(actual[framework])}, expected {sorted(ids)}"
-                )
-        print(f"ok  {package_id} {version}")
+        failures.extend(package_failures)
+        if not package_failures:
+            print(f"ok  {package_id} {version}")
 
     if require_all:
-        for missing in sorted(EXPECTED.keys() - seen):
-            failures.append(f"{missing}: expected a package, none was packed")
+        failures.extend(
+            f"{missing}: expected a package, none was packed"
+            for missing in sorted(EXPECTED.keys() - seen)
+        )
 
     for failure in failures:
         print(f"::error::{failure}")
