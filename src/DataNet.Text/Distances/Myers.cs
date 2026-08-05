@@ -2,6 +2,13 @@ using System.Buffers;
 
 namespace DataNet.Text.Distances;
 
+
+// SonarLint S3776: cognitive complexity. TryBlocked is a transcription of
+// Hyyro's blocked formulation — the nested loop and its carry threading ARE the
+// algorithm, and splitting them would break the one-to-one reading against the
+// paper that makes a bit-manipulation kernel auditable at all. It is also the
+// hot path: helper calls here cost measurably.
+#pragma warning disable S3776
 /// <summary>
 /// Myers' bit-parallel edit-distance algorithm (single machine word).
 /// </summary>
