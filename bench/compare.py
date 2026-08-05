@@ -13,16 +13,16 @@ from pathlib import Path
 RESULTS = Path(__file__).resolve().parent / "results"
 
 
-def load(name: str) -> dict:
-    path = RESULTS / name
+def load(side: str, bench: str) -> dict:
+    path = RESULTS / f"{side}-{bench}.json"
     if not path.exists():
-        raise SystemExit(f"missing {path} — run the {name.split('-')[0]} harness first")
+        raise SystemExit(f"missing {path} — run the {side} harness first")
     return json.loads(path.read_text(encoding="utf-8"))
 
 
 def main() -> None:
-    py = load("python-levenshtein.json")
-    cs = load("csharp-levenshtein.json")
+    py = load("python", "levenshtein")
+    cs = load("csharp", "levenshtein")
 
     cs_by_len = {r["length"]: r["ns_per_pair"] for r in cs["results"]}
 
@@ -47,5 +47,34 @@ def main() -> None:
           "the bit-parallel Myers algorithm, so it scales better on long strings.")
 
 
+def persistence() -> None:
+    py = load("python", "persistence")
+    cs = load("csharp", "persistence")
+    cs_by_op = {r["operation"]: r for r in cs["results"]}
+
+    print()
+    print(f"Python: {py['metadata']['libraries']} (py {py['metadata']['python']})")
+    print(f"C#:     DataNet on .NET {cs['metadata']['runtime']}")
+    print()
+    print(f"{'operation':<28} {'C# ms':>8} {'Py ms':>8} {'wall':>7} | {'C# cpu':>8} {'Py cpu':>8} {'cpu':>7}")
+    for row in py["results"]:
+        op = row["operation"]
+        if op not in cs_by_op:
+            continue
+        c_w, p_w = cs_by_op[op]["ms_per_op"], row["ms_per_op"]
+        c_c, p_c = cs_by_op[op].get("cpu_ms_per_op"), row.get("cpu_ms_per_op")
+        wall = f"{p_w / c_w:.2f}x" if c_w else "n/a"
+        cpu = f"{p_c / c_c:.2f}x" if c_c and p_c else "n/a"
+        print(f"{op:<28} {c_w:>8.3f} {p_w:>8.3f} {wall:>7} | "
+              f"{(c_c or 0):>8.3f} {(p_c or 0):>8.3f} {cpu:>7}")
+    print()
+    print("ratio > 1 means DataNet is faster. cpu is the honest one: elapsed time")
+    print("hides work .NET does on background GC threads; CPython is single-threaded.")
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "persistence":
+        persistence()
+    else:
+        main()

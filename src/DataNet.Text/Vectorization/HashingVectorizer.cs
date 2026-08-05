@@ -27,7 +27,7 @@ public sealed record HashingVectorizerOptions
 /// <c>sklearn.feature_extraction.text.HashingVectorizer</c>.
 /// </summary>
 /// <remarks>Stateless and thread-safe: <see cref="Transform"/> depends only on the input.</remarks>
-public sealed class HashingVectorizer
+public sealed partial class HashingVectorizer
 {
     private readonly HashingVectorizerOptions _options;
     private readonly TextAnalyzer _analyzer;
@@ -81,7 +81,7 @@ public sealed class HashingVectorizer
             rowPointers[row + 1] = values.Count;
         }
 
-        var matrix = new CsrMatrix(docs.Count, nf, values.ToArray(), columns.ToArray(), rowPointers);
+        CsrMatrix matrix = CsrMatrix.CreateUnchecked(docs.Count, nf, values.ToArray(), columns.ToArray(), rowPointers);
         if (_options.Norm is { } norm)
         {
             matrix.NormalizeRows(norm);

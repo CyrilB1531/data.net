@@ -21,8 +21,14 @@
     <PackageVersion Include="DataNet.Text" Version="0.2.0" />
     <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
     <PackageVersion Include="PolySharp" Version="1.15.0" />
-    <PackageVersion Include="System.Memory" Version="4.6.0" />
-    <PackageVersion Include="System.Numerics.Vectors" Version="4.6.0" />
+    <!-- 4.6.3 is the floor System.Text.Json 10.0.x asks for on netstandard2.0;
+         pinning lower makes the restore a downgrade, which is an error here. -->
+    <PackageVersion Include="System.Memory" Version="4.6.3" />
+    <PackageVersion Include="System.Numerics.Vectors" Version="4.6.1" />
+    <!-- In-box on net10; referenced only for the netstandard2.0 target. The one
+         deliberate runtime dependency of the persistence layer — see
+         docs/decisions/0011-persistence-format.md. -->
+    <PackageVersion Include="System.Text.Json" Version="10.0.10" />
   </ItemGroup>
 
 </Project>

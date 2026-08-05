@@ -34,11 +34,19 @@ TEXT = "DataNet.Text"
 FUZZY = "DataNet.Fuzzy"
 EMBEDDINGS = "DataNet.Embeddings"
 ONNX = "Microsoft.ML.OnnxRuntime"
+STJ = "System.Text.Json"
 
 # Span, Memory and Vector<T> are in-box on net10.0 and come from packages on
 # netstandard2.0, so every package carries this pair in that group and only
-# in that group.
-POLYFILLS = {"System.Memory": "4.6.0", "System.Numerics.Vectors": "4.6.0"}
+# in that group. The floors are the ones System.Text.Json 10.0.x asks for:
+# pinning lower makes the restore a downgrade, which is an error here.
+POLYFILLS = {"System.Memory": "4.6.3", "System.Numerics.Vectors": "4.6.1"}
+
+# The persistence layer's one deliberate runtime dependency, in-box from net8
+# onwards and therefore a package on netstandard2.0 only. It is carried by the
+# two packages that ship artifacts; DataNet.Fuzzy has no I/O and does not.
+# See docs/decisions/0011-persistence-format.md.
+PERSISTENCE = {STJ: "10.0.10"}
 
 # The floor DataNet.Fuzzy declares on DataNet.Text, which must stay equal to the
 # PackageVersion in src/Directory.Packages.props. Asserting it here is what makes
@@ -50,10 +58,13 @@ TEXT_FLOOR = "0.2.0"
 
 # package id -> target framework -> {dependency id: declared version range}.
 #
-# DataNet.Text has nothing of its own by design: it is the dependency-free core
-# of the toolkit. DataNet.Fuzzy depends on it because Fuzz.Ratio is built on
-# Indel — a genuine transitive dependency, and the only inter-package edge that
-# exists.
+# DataNet.Text carries nothing on net10.0: it is the dependency-free core of the
+# toolkit, and that claim is exact on the modern target. On netstandard2.0 it
+# also declares System.Text.Json, which is in-box everywhere else — the single
+# deliberate exception, taken so that persisting a fitted model does not mean
+# hand-rolling a JSON writer. DataNet.Fuzzy depends on DataNet.Text because
+# Fuzz.Ratio is built on Indel — a genuine transitive dependency, and the only
+# inter-package edge that exists.
 #
 # The ranges are asserted as well as the ids: the one edge this whole packaging
 # arrangement rests on is DataNet.Fuzzy -> DataNet.Text, and an edge whose floor
@@ -62,7 +73,7 @@ TEXT_FLOOR = "0.2.0"
 EXPECTED: dict[str, dict[str, dict[str, str]]] = {
     TEXT: {
         NET: {},
-        NETSTANDARD: POLYFILLS,
+        NETSTANDARD: {**POLYFILLS, **PERSISTENCE},
     },
     FUZZY: {
         NET: {TEXT: TEXT_FLOOR},
@@ -70,7 +81,7 @@ EXPECTED: dict[str, dict[str, dict[str, str]]] = {
     },
     EMBEDDINGS: {
         NET: {ONNX: "1.20.1"},
-        NETSTANDARD: {ONNX: "1.20.1", **POLYFILLS},
+        NETSTANDARD: {ONNX: "1.20.1", **POLYFILLS, **PERSISTENCE},
     },
 }
 

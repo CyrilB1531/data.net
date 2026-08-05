@@ -79,7 +79,7 @@ jobs:
             /d:sonar.host.url="https://sonarcloud.io" \
             /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
             /d:sonar.python.version="3.12" \
-            /d:sonar.coverage.exclusions="tools/**"
+            /d:sonar.coverage.exclusions="tools/**,bench/**"
 
           dotnet build DataNet.slnx --configuration Release
 

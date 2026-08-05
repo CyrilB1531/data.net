@@ -7,6 +7,8 @@
     <Version>$(DataNetEmbeddingsVersion)</Version>
     <TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks>
     <RootNamespace>DataNet.Embeddings</RootNamespace>
+    <!-- Pulls in the shared persistence plumbing (and System.Text.Json on ns2.0). -->
+    <DataNetIncludesPersistence>true</DataNetIncludesPersistence>
 
     <PackageId>DataNet.Embeddings</PackageId>
     <Description>Sub-word tokenizers, pooling and semantic (kNN) search for .NET. ONNX Runtime is isolated to this package so DataNet.Text stays dependency-free.</Description>

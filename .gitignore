@@ -11,6 +11,9 @@ BenchmarkDotNet.Artifacts/
 # Cross-language bench results are machine-specific (not authoritative)
 bench/results/
 
+# Benchmark vocabulary corpus is generated (bench/corpus/generate_vocabs.py)
+bench/corpus/vocabs/
+
 # Test / coverage
 [Tt]est[Rr]esults/
 *.trx

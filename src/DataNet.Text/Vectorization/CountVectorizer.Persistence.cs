@@ -1,0 +1,185 @@
+using System.Text.Json;
+using DataNet.Internal.Persistence;
+using DataNet.Text.Persistence;
+
+namespace DataNet.Text.Vectorization;
+
+public sealed partial class CountVectorizer
+{
+    private const string ArtifactName = "count-vectorizer";
+    private const int ArtifactVersion = 1;
+
+    /// <summary>
+    /// Writes the fitted vectorizer — its options and its sorted vocabulary — to
+    /// <paramref name="destination"/> as UTF-8 JSON.
+    /// </summary>
+    /// <remarks>
+    /// The DataNet equivalent of <c>pickle.dump(vectorizer, f)</c> or
+    /// <c>joblib.dump</c> on a fitted
+    /// <c>sklearn.feature_extraction.text.CountVectorizer</c> — but a declared,
+    /// versioned JSON document rather than an executable pickle, so it can be
+    /// diffed, reviewed and read back from an untrusted source (see
+    /// <see cref="ArtifactLoadOptions"/>).
+    /// </remarks>
+    /// <param name="destination">The stream to write to. It is flushed but never disposed — the caller owns it.</param>
+    /// <exception cref="InvalidOperationException">The vectorizer has not been fitted.</exception>
+    public void Save(Stream destination) =>
+        ArtifactIo.Save(destination, ArtifactName, ArtifactVersion, WriteArtifactBody);
+
+    /// <summary>Writes the fitted vectorizer to <paramref name="path"/>, replacing any existing file.</summary>
+    /// <remarks>Equivalent to <c>joblib.dump(vectorizer, path)</c>; the file is UTF-8 without a byte-order mark.</remarks>
+    /// <exception cref="InvalidOperationException">The vectorizer has not been fitted.</exception>
+    public void Save(string path)
+    {
+        // Before opening: OpenWrite truncates, and the fitted check would otherwise
+        // fire only once the body starts being written — destroying a good artifact
+        // and leaving a half-written header where it was.
+        EnsureFitted();
+        using FileStream file = JsonArtifact.OpenWrite(path);
+        Save(file);
+    }
+
+    /// <summary>Asynchronous counterpart of <see cref="Save(Stream)"/>.</summary>
+    /// <param name="destination">The stream to write to; never disposed by this method.</param>
+    /// <param name="cancellationToken">Cancels the write.</param>
+    public Task SaveAsync(Stream destination, CancellationToken cancellationToken = default) =>
+        ArtifactIo.SaveAsync(destination, ArtifactName, ArtifactVersion, WriteArtifactBody, cancellationToken);
+
+    /// <summary>
+    /// Reads a vectorizer previously written by <see cref="Save(Stream)"/>, ready
+    /// to <see cref="Transform"/> without being fitted again.
+    /// </summary>
+    /// <remarks>
+    /// The DataNet equivalent of <c>pickle.load(f)</c> / <c>joblib.load</c> for a
+    /// fitted <c>sklearn.feature_extraction.text.CountVectorizer</c> — with the
+    /// difference that this reads data, never code, and enforces the bounds in
+    /// <paramref name="options"/>.
+    /// </remarks>
+    /// <param name="source">The stream to read from; never disposed by this method.</param>
+    /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
+    /// <exception cref="InvalidDataException">The artifact is malformed, of the wrong kind, of an unsupported version, or exceeds a limit.</exception>
+    public static CountVectorizer Load(Stream source, ArtifactLoadOptions? options = null)
+    {
+        ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
+        return FromPayload(JsonArtifact.ReadAllBytes(source, limits), limits);
+    }
+
+    /// <summary>Reads a vectorizer from <paramref name="path"/>.</summary>
+    /// <param name="path">The artifact file, as written by <see cref="Save(string)"/>.</param>
+    /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
+    /// <exception cref="InvalidDataException">The artifact is malformed, of the wrong kind, of an unsupported version, or exceeds a limit.</exception>
+    public static CountVectorizer Load(string path, ArtifactLoadOptions? options = null)
+    {
+        using FileStream file = JsonArtifact.OpenRead(path);
+        return Load(file, options);
+    }
+
+    /// <summary>Asynchronous counterpart of <see cref="Load(Stream, ArtifactLoadOptions?)"/>.</summary>
+    /// <param name="source">The stream to read from; never disposed by this method.</param>
+    /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    public static async Task<CountVectorizer> LoadAsync(
+        Stream source,
+        ArtifactLoadOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
+        byte[] payload = await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false);
+        return FromPayload(payload, limits);
+    }
+
+    /// <summary>The options this vectorizer was built with — needed by <see cref="TfidfVectorizer"/>'s artifact.</summary>
+    internal CountVectorizerOptions Options => _options;
+
+    /// <summary>The fitted feature names, or an empty array if never fitted.</summary>
+    internal string[] FittedFeatureNames => _featureNames;
+
+    /// <summary>Whether <see cref="Fit"/> has run.</summary>
+    internal bool IsFitted => _vocabulary is not null;
+
+    /// <summary>Rebuilds the fitted state from an artifact's already-validated vocabulary.</summary>
+    internal void RestoreVocabulary(string[] sortedFeatureNames)
+    {
+        var vocabulary = new Dictionary<string, int>(sortedFeatureNames.Length, StringComparer.Ordinal);
+        for (int i = 0; i < sortedFeatureNames.Length; i++)
+        {
+            vocabulary[sortedFeatureNames[i]] = i;
+        }
+        _featureNames = sortedFeatureNames;
+        _vocabulary = vocabulary;
+    }
+
+    /// <summary>Writes the fitted body of a <c>datanet/count-vectorizer</c> artifact.</summary>
+    internal void WriteArtifactBody(Utf8JsonWriter writer)
+    {
+        EnsureFitted();
+        VectorizerOptionsJson.Write(writer, "options", _options);
+        writer.WriteNumber(FeatureVocabularyJson.FeatureCountProperty, _featureNames.Length);
+        FeatureVocabularyJson.WriteVocabulary(writer, _featureNames);
+    }
+
+    private static CountVectorizer FromPayload(byte[] payload, in ArtifactLimits limits)
+    {
+        try
+        {
+            return Parse(payload, limits);
+        }
+        catch (JsonException e)
+        {
+            throw ArtifactIo.Malformed(ArtifactName, e);
+        }
+    }
+
+    private static CountVectorizer Parse(byte[] payload, in ArtifactLimits limits)
+    {
+        Utf8JsonReader reader = ArtifactIo.CreateReader(payload, ArtifactName, limits);
+        var header = new ArtifactHeader(ArtifactName, ArtifactVersion);
+
+        CountVectorizerOptions? options = null;
+        string[]? vocabulary = null;
+        int featureCount = -1;
+
+        while (reader.Read() && reader.TokenType == JsonTokenType.PropertyName)
+        {
+            string name = reader.GetString()!;
+            if (header.TryConsume(ref reader, name))
+            {
+                continue;
+            }
+            switch (name)
+            {
+                case "options":
+                    options = VectorizerOptionsJson.ReadCount(ref reader, ArtifactName, limits);
+                    break;
+                case FeatureVocabularyJson.FeatureCountProperty:
+                    featureCount = FeatureVocabularyJson.ReadFeatureCount(ref reader, ArtifactName, limits);
+                    break;
+                case FeatureVocabularyJson.VocabularyProperty:
+                    vocabulary = FeatureVocabularyJson.ReadVocabulary(ref reader, ArtifactName, limits, featureCount);
+                    break;
+                default:
+                    throw JsonArtifact.UnknownProperty(ArtifactName, name);
+            }
+        }
+
+        ArtifactIo.EnsureEndOfDocument(ref reader, ArtifactName);
+        header.EnsureComplete();
+        if (options is null)
+        {
+            throw JsonArtifact.MissingProperty(ArtifactName, "options");
+        }
+        if (vocabulary is null)
+        {
+            throw JsonArtifact.MissingProperty(ArtifactName, FeatureVocabularyJson.VocabularyProperty);
+        }
+        if (featureCount < 0)
+        {
+            throw JsonArtifact.MissingProperty(ArtifactName, FeatureVocabularyJson.FeatureCountProperty);
+        }
+        FeatureVocabularyJson.EnsureDeclaredCount(ArtifactName, featureCount, vocabulary.Length, FeatureVocabularyJson.VocabularyProperty);
+
+        var vectorizer = new CountVectorizer(options);
+        vectorizer.RestoreVocabulary(vocabulary);
+        return vectorizer;
+    }
+}

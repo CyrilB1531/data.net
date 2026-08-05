@@ -67,6 +67,15 @@ public sealed class TfidfTransformer
         {
             throw new InvalidOperationException("The transformer has not been fitted. Call Fit or FitTransform first.");
         }
+        if (_idf is not null && counts.ColumnCount != _idf.Length)
+        {
+            // CsrMatrix guarantees its column indices are inside its own ColumnCount,
+            // but nothing tied that count to the idf vector — so a wider matrix reached
+            // the indexing below and came back as a bare IndexOutOfRangeException.
+            throw new ArgumentException(
+                $"The matrix has {counts.ColumnCount} columns but this transformer was fitted on {_idf.Length} features.",
+                nameof(counts));
+        }
 
         var values = new double[counts.NonZeroCount];
         for (int k = 0; k < counts.NonZeroCount; k++)
@@ -83,8 +92,9 @@ public sealed class TfidfTransformer
             values[k] = tf;
         }
 
-        // Copy structure; values are the freshly weighted ones.
-        var result = new CsrMatrix(
+        // Copy structure; values are the freshly weighted ones. The structure came
+        // from an already-built matrix, so it needs no second validation pass.
+        CsrMatrix result = CsrMatrix.CreateUnchecked(
             counts.RowCount,
             counts.ColumnCount,
             values,
@@ -100,4 +110,13 @@ public sealed class TfidfTransformer
 
     /// <summary>Fits and transforms in one call.</summary>
     public CsrMatrix FitTransform(CsrMatrix counts) => Fit(counts).Transform(counts);
+
+    /// <summary>The weighting options, for <see cref="TfidfVectorizer"/>'s artifact.</summary>
+    internal TfidfOptions Options => _options;
+
+    /// <summary>The learned idf vector, or <c>null</c> if never fitted — unlike <see cref="Idf"/>, this does not throw.</summary>
+    internal double[]? FittedIdf => _idf;
+
+    /// <summary>Restores the idf vector from an artifact whose length has already been checked.</summary>
+    internal void RestoreIdf(double[] idf) => _idf = idf;
 }

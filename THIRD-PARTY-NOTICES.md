@@ -16,10 +16,19 @@ by design (§3).
 | Microsoft.ML.OnnxRuntime | MIT | `DataNet.Embeddings` | both |
 | System.Memory | MIT | all three packages | `netstandard2.0` only |
 | System.Numerics.Vectors | MIT | all three packages | `netstandard2.0` only |
+| System.Text.Json | MIT | `DataNet.Text`, `DataNet.Embeddings` | `netstandard2.0` only |
 
 `System.Memory` and `System.Numerics.Vectors` supply `Span`, `Memory`,
 `ArrayPool` and `Vector<T>`, which are in-box on `net10.0`. They appear only in
 the `netstandard2.0` dependency group of each package.
+
+`System.Text.Json` is likewise in-box from `net8.0` onwards, and appears only in
+the `netstandard2.0` group. It backs the persistence layer — saving a fitted
+vectorizer, reading a `tokenizer.json` — and is the one place the "no external
+dependencies" rule is knowingly bent rather than a polyfill for something the
+modern framework already provides. `DataNet.Fuzzy` ships no I/O and does not
+take it. The reasoning is in
+[`docs/decisions/0011-persistence-format.md`](docs/decisions/0011-persistence-format.md).
 
 ONNX Runtime is deliberately isolated to `DataNet.Embeddings`, so consumers of
 the distance, vectorization and fuzzy-matching packages take no native
@@ -38,7 +47,7 @@ licence travels with them. The English list is scikit-learn's (BSD-3-Clause), no
 Snowball's; the nltk stop-word corpus is deliberately not used — see
 [`docs/decisions/0010-stop-word-list-provenance.md`](docs/decisions/0010-stop-word-list-provenance.md).
 
-```
+```text
 Copyright (c) 2001, Dr Martin Porter,
 Copyright (c) 2002, Richard Boulton.
 All rights reserved.
@@ -105,7 +114,6 @@ generate test data creates no license claim over the output.
 > corpus among them has no stated licence, which is why the shipped lists come
 > from Snowball instead. See
 > [`docs/decisions/0010-stop-word-list-provenance.md`](docs/decisions/0010-stop-word-list-provenance.md).
-
 > `python-Levenshtein` (GPL) is deliberately **not** used, as a matter of both
 > transcription hygiene and generated-data hygiene. See
 > [`docs/decisions/0003-provenance-and-licensing.md`](docs/decisions/0003-provenance-and-licensing.md).

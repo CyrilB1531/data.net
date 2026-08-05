@@ -42,6 +42,8 @@
     <Compile Include="../DataNet.Text.Benchmarks/VectorizerBenchmarks.cs" Link="VectorizerBenchmarks.cs" />
     <Compile Include="../DataNet.Text.Benchmarks/FuzzBenchmarks.cs" Link="FuzzBenchmarks.cs" />
     <Compile Include="../DataNet.Text.Benchmarks/VectorMathBenchmarks.cs" Link="VectorMathBenchmarks.cs" />
+    <Compile Include="../DataNet.Text.Benchmarks/BenchCorpus.cs" Link="BenchCorpus.cs" />
+    <Compile Include="../DataNet.Text.Benchmarks/PersistenceBenchmarks.cs" Link="PersistenceBenchmarks.cs" />
   </ItemGroup>
 
 </Project>

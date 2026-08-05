@@ -15,7 +15,7 @@ public sealed record TfidfVectorizerOptions
 /// <c>sklearn.feature_extraction.text.TfidfVectorizer</c> (a <see cref="CountVectorizer"/>
 /// followed by a <see cref="TfidfTransformer"/>).
 /// </summary>
-public sealed class TfidfVectorizer
+public sealed partial class TfidfVectorizer
 {
     private readonly CountVectorizer _counts;
     private readonly TfidfTransformer _tfidf;

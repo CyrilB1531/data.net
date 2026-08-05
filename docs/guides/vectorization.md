@@ -97,5 +97,57 @@ for (int j = 0; j < m.ColumnCount; j++) cos += d[0, j] * d[1, j];
 Console.WriteLine(cos); // ~0.51
 ```
 
+## Saving a fitted model
+
+Fitting learns a vocabulary and, for TF-IDF, an idf vector. Both die with the
+process unless you write them down — so training on a corpus and scoring later,
+the normal split in any real pipeline, needs persistence.
+
+```csharp
+var tfidf = new TfidfVectorizer().Fit(trainingDocuments);
+tfidf.Save("model.json");
+
+// …later, in another process
+TfidfVectorizer reloaded = TfidfVectorizer.Load("model.json");
+CsrMatrix scored = reloaded.Transform(newDocuments);   // no refit
+```
+
+The equivalent of `joblib.dump` / `joblib.load`, with two differences that
+matter. The artifact is **versioned JSON, not a pickle** — it is data, never
+code, so it can be diffed, reviewed and read from a source you do not control.
+And the round trip is **bit-exact**: `scored` is identical to what the original
+vectorizer would have produced, element by element, not within a tolerance.
+
+One part is not meant to be read: the **idf vector is a base64 string** of raw
+IEEE-754 bits, because it is thirty thousand floats nobody inspects by eye and
+writing it as JSON numbers was measurably the most expensive thing in the file.
+The vocabulary, the options and the header stay plain text, which is where
+diffing and review actually happen — [`docs/decisions/0011`](../decisions/0011-persistence-format.md)
+has the measurements.
+
+`Save`/`Load` also accept a `Stream`, and both have async counterparts. A stream
+you pass in is never disposed for you; the `path` overloads own the file handle
+they open.
+
+`CountVectorizer` and `HashingVectorizer` persist the same way. Hashing is
+stateless, but its **options** still round-trip — a pipeline reloaded with a
+different `NumFeatures` or `AlternateSign` produces different columns for the
+same document, and nothing downstream would notice.
+
+### Reading a file you did not write
+
+Every count in an artifact sizes a buffer, so loading is bounded:
+
+```csharp
+var strict = new ArtifactLoadOptions { MaxVocabularySize = 50_000, MaxTotalBytes = 8L * 1024 * 1024 };
+TfidfVectorizer model = TfidfVectorizer.Load("model.json", strict);
+```
+
+Anything the file gets wrong — a truncated document, an unknown property, an
+unsupported version, a vocabulary that is not sorted, a limit exceeded — raises
+`InvalidDataException` with a message naming the problem. The reasoning behind
+the format is in
+[decision 0011](../decisions/0011-persistence-format.md).
+
 See the [equivalence table](../equivalence.md) for the exact correspondence with
 each scikit-learn call.

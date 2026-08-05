@@ -30,9 +30,59 @@ public sealed class SentencePieceTokenizer
     private readonly int _unkId;
     private readonly double _unkScore;
 
+    /// <summary>
+    /// Creates a tokenizer from a loaded vocabulary, using each piece's declared
+    /// type to decide what may match text.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Matches <c>sentencepiece.SentencePieceProcessor(model_file=…)</c> followed
+    /// by <c>encode</c>. Control and unknown pieces are excluded from matching
+    /// because <see cref="SentencePieceVocabulary.Types"/> says they are control
+    /// and unknown pieces — not because of where they happen to sit in the id
+    /// space. A model that places <c>&lt;s&gt;</c> anywhere other than id 1
+    /// tokenizes correctly here.
+    /// </para>
+    /// </remarks>
+    /// <param name="vocabulary">A vocabulary from <see cref="Persistence.SentencePieceModelLoader"/> or <see cref="Persistence.TokenizerJsonLoader"/>.</param>
+    /// <exception cref="ArgumentException">The vocabulary's pieces and types disagree in length, or its unknown id is out of range.</exception>
+    public SentencePieceTokenizer(SentencePieceVocabulary vocabulary)
+    {
+        Guard.NotNull(vocabulary);
+        if (vocabulary.Pieces.Count != vocabulary.Types.Count)
+        {
+            throw new ArgumentException(
+                $"The vocabulary has {vocabulary.Pieces.Count} pieces but {vocabulary.Types.Count} types.",
+                nameof(vocabulary));
+        }
+        if (vocabulary.UnkId < 0 || vocabulary.UnkId >= vocabulary.Pieces.Count)
+        {
+            throw new ArgumentException(
+                $"The unknown id {vocabulary.UnkId} is outside the vocabulary range [0, {vocabulary.Pieces.Count}).",
+                nameof(vocabulary));
+        }
+
+        _pieces = new Dictionary<string, SentencePiece>(vocabulary.Count, StringComparer.Ordinal);
+        double minScore = 0;
+        for (int id = 0; id < vocabulary.Count; id++)
+        {
+            if (!vocabulary.IsMatchable(id))
+            {
+                continue;
+            }
+            SentencePiece p = vocabulary.Pieces[id];
+            _pieces[p.Piece] = p;
+            _maxPieceLength = Math.Max(_maxPieceLength, p.Piece.Length);
+            minScore = Math.Min(minScore, p.Score);
+        }
+        _unkId = vocabulary.UnkId;
+        _unkScore = minScore - 10.0; // heavy penalty; only used for uncovered characters
+    }
+
     /// <summary>Creates a tokenizer from a unigram vocabulary (index = id).</summary>
     /// <param name="vocab">Pieces with scores; ids 0..n-1 in order. Control pieces (unk/bos/eos) may be included.</param>
     /// <param name="unkId">The unknown-piece id (default 0).</param>
+    [Obsolete("Use SentencePieceTokenizer(SentencePieceVocabulary) instead — id-based control filtering will be removed in v2.0.0")]
     public SentencePieceTokenizer(IReadOnlyList<SentencePiece> vocab, int unkId = 0)
     {
         Guard.NotNull(vocab);

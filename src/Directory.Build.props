@@ -18,6 +18,19 @@
     <Compile Include="$(MSBuildThisFileDirectory)Shared/StringCompat.cs" Link="Internal/StringCompat.cs" />
   </ItemGroup>
 
+  <!-- Persistence plumbing, compiled only into the libraries that ship artifacts
+       (DataNet.Text, DataNet.Embeddings). It needs System.Text.Json, which those
+       two opt into individually — DataNet.Fuzzy stays dependency-free.
+       See docs/decisions/0011-persistence-format.md. -->
+  <ItemGroup Condition="'$(DataNetIncludesPersistence)' == 'true'">
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/Persistence/ArtifactHeader.cs" Link="Internal/Persistence/ArtifactHeader.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/Persistence/ArtifactLimits.cs" Link="Internal/Persistence/ArtifactLimits.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/Persistence/JsonArtifact.cs" Link="Internal/Persistence/JsonArtifact.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(DataNetIncludesPersistence)' == 'true' AND '$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Text.Json" />
+  </ItemGroup>
+
   <!-- Span, Memory, ArrayPool and Vector<T> are in-box on net10 but need these
        packages on netstandard2.0. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
