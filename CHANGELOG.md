@@ -121,6 +121,62 @@ split and covered all three at once — see
   of tokenizing to the unknown token. An entry that contradicts `model.vocab`, or
   that asks for `lstrip`/`rstrip`/`single_word` matching, is refused.
 
+- **A batch encoding pipeline: `BatchEncoder`, `EncodingOptions`,
+  `SpecialTokenTemplate`, `EncodedBatch`, `ISubwordTokenizer`.** The guide used
+  to say the tokenization must match the model's *exactly, otherwise the
+  embeddings are wrong*, and then hand the reader
+  `/* with [CLS]/[SEP] if the model expects them */`. Getting it wrong does not
+  throw; it produces an embedding that is silently, subtly wrong. The library now
+  owns it. `SpecialTokenTemplate` carries the wrapping as data — `Bert`,
+  `Roberta`, `T5`, `None`, or one you write — and names its tokens rather than
+  numbering them, so the id comes from the model's own vocabulary and a
+  vocabulary missing `[CLS]` fails at construction instead of embedding a
+  plausible wrong id. Truncation is a `MaxLength` counted the way HuggingFace
+  counts it, with the special tokens inside the budget, plus a
+  `TruncationStrategy.None` that refuses rather than dropping the tail of a
+  document. The attention mask is built here, with padding zeroed.
+- **`OnnxTextEmbedder.EmbedBatch`** — text in, one normalized vector per text
+  out, in the input order. The equivalent of
+  `SentenceTransformer.encode(texts, batch_size=…, normalize_embeddings=True)`.
+  Each sub-batch is padded to its own longest row rather than to `MaxLength`, and
+  `SortByLength` groups similar lengths together so the long sequences stop
+  dictating the width of every row they share a call with; the permutation is
+  inverted before returning, so bucketing is a performance switch and never an
+  observable one. On this repository's corpus and machine it halves the wall
+  clock against the loop of one-sequence calls (ratio 0.50 at 8, 32 and 128
+  texts) — the figures, the caveats and what they do *not* prove are in
+  [`docs/guides/performance.md`](docs/guides/performance.md).
+- **`CancellationToken` on every batch entry point.** There was none anywhere in
+  `src/`, and a batch inference call over a corpus is the clearest place one
+  belongs.
+- **`Pooler.MeanPoolBatch` and `MeanPoolAndNormalizeBatch`**, pooling a
+  `[batch, seq, dim]` tensor with each row against its own slice of the mask. The
+  accumulation is vectorized with `Vector<float>` on `net10.0` and scalar on
+  `netstandard2.0`, and the two results are **bit-identical** — asserted with
+  `float` equality rather than a tolerance, since one frozen corpus has to serve
+  both builds.
+
+#### Changed
+
+- **`OnnxTextEmbedder.Embed` takes `ReadOnlySpan<long>`** where it took
+  `IReadOnlyList<long>`. This is a source break. An array still binds, so most
+  call sites are untouched; a caller passing a `List<long>` needs
+  `CollectionsMarshal.AsSpan(list)` or `.ToArray()`. It removes two defensive
+  copies per call, which on the unit-call path was most of the allocation.
+- **The default output is chosen deterministically.** It was
+  `OutputMetadata.Keys.First()`; dictionary key order is not part of ONNX
+  Runtime's contract, so on a multi-output model "the model's first output" was a
+  coin toss. It is now the only output when there is one, else the first declared
+  of `last_hidden_state`, `token_embeddings`, `sentence_embedding` and `output`,
+  else the ordinally first name.
+- **An output of unexpected rank throws.** Only rank 2 was recognised; rank 1 or
+  4 produced an out-of-range access or a silently wrong result. An input or
+  output name the model does not declare is now an `ArgumentException` naming
+  what it *does* declare, rather than an opaque failure inside the runtime.
+- The zero `token_type_ids` buffer is thread-static and never written to instead
+  of being allocated per call, and the model output is read through the tensor's
+  own buffer instead of `ToArray()`.
+
 #### Deprecated
 
 - **`SentencePieceTokenizer(IReadOnlyList<SentencePiece>, int)`** — the id-based

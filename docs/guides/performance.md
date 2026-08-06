@@ -95,3 +95,53 @@ Short-job measurement, `[MemoryDiagnoser]` (dev machine — indicative).
 > `PartialRatio` is markedly slower: the current sliding-window scan is `O(n·m²)`
 > (a full Indel per window). It is correct and zero-alloc, but a bit-parallel or
 > block-based optimization is a clear backlog item for long inputs.
+
+## Batched embedding — what the number is, and what it is not
+
+```bash
+dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter '*BatchEmbedding*'
+```
+
+**Read this before quoting the ratio.** The model is `tiny_embedder.onnx`: one
+Gather node over a 64 × 4 table, because weights are never committed
+(`CONTRIBUTING.md`) and a real encoder is a hundred megabytes. Its arithmetic is
+free. So what is measured is the per-sequence cost that batching removes — graph
+dispatch, thread-pool wake-up, tensor wrapping — and none of the matrix
+multiplication a real encoder adds to *both* sides. This is an upper bound on the
+speed-up, not the speed-up.
+
+Full job, `[MemoryDiagnoser]`, Intel Core i7-4770S (Haswell, 4 physical cores),
+Ubuntu 24.04, .NET 10.0.10, X64 RyuJIT AVX2. Corpus of 1 to 61 words per text,
+sub-batch 8. `UnitLoop` is the baseline — one `Embed` call per text, which is
+what the guide's three lines amounted to before `EmbedBatch` existed.
+
+| Texts | `UnitLoop` | `EmbedBatch` | ratio | `EmbedBatchBucketed` | ratio | allocated vs baseline |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 17.8 µs | 14.2 µs | 0.80 | 14.8 µs | 0.83 | 1.11 |
+| 8 | 220 µs | 114 µs | 0.52 | 117 µs | 0.53 | 0.94 |
+| 32 | 795 µs | 388 µs | 0.49 | 372 µs | 0.47 | 0.93 / 0.91 |
+| 128 | 3 135 µs | 1 582 µs | 0.50 | 1 516 µs | 0.48 | 0.93 / 0.90 |
+
+**Batching halves the wall clock** from 8 texts upward and stays there: the
+per-call overhead is amortized over the whole sub-batch. At a single text there
+is nothing to amortize, and the batch path is marginally cheaper only because the
+caller no longer builds a mask by hand.
+
+**Bucketing is a different story, and the honest answer is smaller.** It engages
+only when the corpus spans more than one sub-batch, so the rows at 1 and 8 above
+run the *identical* code in both columns — they are the control, and what they
+differ by, 2–4 %, is this harness's noise floor. The 4 % wall-clock gain at 32
+and 128 does not clear it. What does clear it is the allocation column, which is
+counted rather than sampled: 1 766 KB → 1 699 KB at 128 texts. That is padding
+genuinely not written. On a model doing real work that padding would be matrix
+multiplication not performed, and the time would follow; this model cannot show
+it, so the claim stops here.
+
+**The two builds.** The same benchmark against the `netstandard2.0` assemblies —
+scalar pooling, since `Vector<T>` has no span constructor there — runs 3–5 %
+behind: 405 µs against 388 at 32 texts, 1 635 against 1 582 at 128. That is what
+the broad-reach target costs on this path, measured rather than assumed.
+
+```bash
+dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter '*BatchEmbedding*'
+```
