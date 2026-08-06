@@ -58,11 +58,12 @@ public static class Accuracy
         Guard.NotNull(cm);
 
         int k = cm.Size;
+        int stride = cm.Stride;
         ReadOnlySpan<double> cells = cm.Cells;
         double diagonal = 0.0;
         for (int i = 0; i < k; i++)
         {
-            diagonal += cells[(i * k) + i];
+            diagonal += cells[(i * stride) + i];
         }
 
         return normalize ? diagonal / cm.TotalWeight : diagonal;
