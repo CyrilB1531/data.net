@@ -84,6 +84,15 @@ jobs:
       # are copied to output as `None Include=...`, so which bucket the MSBuild
       # integration puts them in is not worth a CI round-trip to discover.
       # Neither bucket has anything here to analyse.
+      #
+      # projectBaseDir is pinned because those two exclusions are *relative*: they
+      # are matched against whatever directory the scanner decided was the base,
+      # and Scanner for .NET warns that its auto-detection of that directory
+      # already changed once between major versions. Left implicit, an upgrade
+      # that moved the base would make the patterns match nothing and the
+      # exclusions would fail open — silently, because the only symptom is a WARN,
+      # and a WARN never fails a job. $GITHUB_WORKSPACE is the value auto-detection
+      # resolves to today, so pinning it changes no file key and re-keys no issue.
       - name: Build, test and analyze
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -95,6 +104,7 @@ jobs:
             /d:sonar.host.url="https://sonarcloud.io" \
             /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
             /d:sonar.python.version="3.12" \
+            /d:sonar.projectBaseDir="$GITHUB_WORKSPACE" \
             /d:sonar.coverage.exclusions="tools/**,bench/**" \
             /d:sonar.exclusions="tests/oracles/**" \
             /d:sonar.test.exclusions="tests/oracles/**"
