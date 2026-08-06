@@ -43,7 +43,14 @@ public sealed class RocAucBinaryTests
         int[] yTrue = [];
         double[] scores = [];
 
-        Assert.Throws<ArgumentException>(() => RocAuc.Score(yTrue, scores));
+        // Without the dedicated n == 0 guard, an empty input still throws:
+        // the loop and sort become no-ops and the single-class check at the
+        // end also sees zero true positives and zero false positives. So the
+        // assertion has to pin the message the empty-input guard actually
+        // produces, not merely that *some* ArgumentException was thrown —
+        // otherwise this test cannot tell the two guards apart.
+        ArgumentException ex = Assert.Throws<ArgumentException>(() => RocAuc.Score(yTrue, scores));
+        Assert.Contains("there is nothing to score", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
