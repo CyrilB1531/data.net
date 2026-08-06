@@ -79,6 +79,14 @@ internal static class Lot3Embeddings
         SentencePieceVocabulary fromModel = SentencePieceModelLoader.Load(new MemoryStream(SpieceModel()), bounds);
         Console.WriteLine($"  spiece.model     : {fromModel.Count} pieces, unk={fromModel.UnkId}");
 
+        // A stock T5, ALBERT, camemBERT or XLM-R arrives with a character map in its
+        // normalizer_spec, and Normalizer is what applies it before segmentation.
+        // The model built below has none — a charsmap is compiled by sentencepiece,
+        // and this sample commits no artifacts — so what it shows is the shape:
+        // null means the text reaches the tokenizer as it was written.
+        PrecompiledNormalizer? normalizer = fromModel.Normalizer;
+        Console.WriteLine($"  normalizer       : {(normalizer is null ? "identity, no charsmap" : $"{normalizer.CharsMapLength} bytes")}");
+
         // Pooling. Two tokens of three dimensions, the second one padding — the
         // attention mask is what keeps the padding out of the mean.
         float[] tokenEmbeddings = [1f, 0f, 0f, 9f, 9f, 9f];

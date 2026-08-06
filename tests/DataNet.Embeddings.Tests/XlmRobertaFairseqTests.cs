@@ -21,13 +21,13 @@ namespace DataNet.Embeddings.Tests;
 /// million ids away from it.
 /// </para>
 /// <para>
-/// The fixture is the XLM-R <em>vocabulary</em>, not the stock XLM-R
-/// <em>pipeline</em>: <c>tools/fetch_xlmr_vocab.py</c> sets the normalizer to
-/// <c>identity</c>, because the file ships with <c>nmt_nfkc</c> and
-/// <see cref="SentencePieceModelLoader"/> refuses what it does not reproduce.
-/// The reference values come from <c>sentencepiece</c> reading the same fixture,
-/// so both sides normalize identically and the comparison stays honest — see
-/// <c>docs/decisions/0013-sentencepiece-parity-scope.md</c>.
+/// Since #75 the fixture also carries XLM-R's own <c>nmt_nfkc</c> character map,
+/// which <c>tools/fetch_xlmr_vocab.py</c> used to overwrite with <c>identity</c>
+/// because the loader refused anything else. It is therefore the stock XLM-R
+/// pipeline with the vocabulary relabelled, and the last six oracle inputs — full
+/// width forms, ligatures, decomposed accents, exotic spaces, control characters
+/// — are segmented through a normalization pass rather than past an inert one.
+/// See <c>docs/decisions/0014-precompiled-normalizer.md</c>.
 /// </para>
 /// </remarks>
 public sealed class XlmRobertaFairseqTests

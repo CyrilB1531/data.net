@@ -230,6 +230,43 @@ public sealed class SentencePieceModelLoaderTests
         Assert.Contains("MaxTokenLength", error.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The refusal that replaces "anything but identity": a file that names a rule
+    /// and hands over nothing to apply it with.
+    /// </summary>
+    /// <remarks>
+    /// Reproducing it would mean implementing <c>nmt_nfkc</c> from the string
+    /// <c>"nmt_nfkc"</c> — deciding what a file does by what it calls itself, which
+    /// is the design this loader rejects. The compiled map is the only source.
+    /// </remarks>
+    [Fact]
+    public void A_named_normalizer_with_no_charsmap_is_rejected()
+    {
+        using var stream = new MemoryStream(SyntheticModel(modelType: 1, normalizerName: "nmt_nfkc"));
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(() => SentencePieceModelLoader.Load(stream));
+
+        Assert.Contains("names the 'nmt_nfkc' normalizer", error.Message, StringComparison.Ordinal);
+        Assert.Contains("no precompiled charsmap", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// And the mirror image: a charsmap the interpreter cannot read stops the load,
+    /// whatever the file calls its normalizer. A map that half-parsed would
+    /// normalize half the text.
+    /// </summary>
+    [Fact]
+    public void A_malformed_charsmap_is_rejected_whatever_the_name_says()
+    {
+        // A trie size of 0xFC bytes, with 4 bytes behind it.
+        byte[] truncated = [0xFC, 0, 0, 0, 1, 2, 3, 4];
+        using var stream = new MemoryStream(SyntheticModel(modelType: 1, normalizerName: "identity", charsMap: truncated));
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(() => SentencePieceModelLoader.Load(stream));
+
+        Assert.Contains("precompiled charsmap", error.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void A_model_with_no_normalizer_spec_is_rejected()
     {
@@ -274,7 +311,9 @@ public sealed class SentencePieceModelLoaderTests
         bool? byteFallback = null,
         string? extraPiece = null,
         int? bosId = null,
-        bool normalizerSpec = true)
+        bool normalizerSpec = true,
+        string normalizerName = "identity",
+        byte[]? charsMap = null)
     {
         var body = new List<byte>();
         foreach (string piece in new[] { "<unk>", "▁a", extraPiece ?? "▁b" })
@@ -303,7 +342,11 @@ public sealed class SentencePieceModelLoaderTests
         if (normalizerSpec)
         {
             var normalizer = new List<byte>();
-            AppendLengthDelimited(normalizer, fieldNumber: 1, Encoding.UTF8.GetBytes("identity"));
+            AppendLengthDelimited(normalizer, fieldNumber: 1, Encoding.UTF8.GetBytes(normalizerName));
+            if (charsMap is not null)
+            {
+                AppendLengthDelimited(normalizer, fieldNumber: 2, charsMap);
+            }
             AppendLengthDelimited(body, fieldNumber: 3, normalizer.ToArray());
         }
         return body.ToArray();

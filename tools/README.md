@@ -1,9 +1,9 @@
 # Development tools — oracle generation, vendored data, packaging checks
 
-Five scripts. `generate_oracles.py` produces the reference values the test suite
+Six scripts. `generate_oracles.py` produces the reference values the test suite
 replays; `fetch_stopwords.py` produces source that is *shipped*, which is why it
-verifies what it downloaded before writing anything; `fetch_xlmr_vocab.py`
-produces one of the fixtures `generate_oracles.py` reads;
+verifies what it downloaded before writing anything; `fetch_xlmr_vocab.py` and
+`build_normalizer_fixtures.py` produce fixtures `generate_oracles.py` reads;
 `check_nuspec_dependencies.py` verifies what the packages *declare*; and
 `check_version_floor.py` verifies that the version numbers the source tree keeps
 in three places still agree.
@@ -57,17 +57,34 @@ python tools/fetch_xlmr_vocab.py --check    # verify the checked-in fixture
 It downloads `xlm-roberta-base`'s SentencePiece vocabulary (MIT — vocabulary
 only, never weights), checks it against a pinned SHA-256, and **re-emits** it:
 same 250 000 pieces, scores and types, at the ids HuggingFace gives them
-(`<s>`=0, `<pad>`=1, `</s>`=2, `<unk>`=3, `<mask>`=250001), with the normalizer
-set to `identity`. Both transformations are necessary, and neither is cosmetic —
-the stock file is laid out `<unk>`=0/`<s>`=1/`</s>`=2, which is the one layout
-the old id-based control filter got right, and it is trained with `nmt_nfkc`,
-which `SentencePieceModelLoader` refuses. See
-[`../docs/decisions/0013-sentencepiece-parity-scope.md`](../docs/decisions/0013-sentencepiece-parity-scope.md).
+(`<s>`=0, `<pad>`=1, `</s>`=2, `<unk>`=3, `<mask>`=250001). The relabelling is
+the point — the stock file is laid out `<unk>`=0/`<s>`=1/`</s>`=2, which is the
+one layout the old id-based control filter got right. The `normalizer_spec` is
+copied across untouched, `nmt_nfkc` and its character map included; it was
+overwritten with `identity` until #75 made the map readable. See
+[`../docs/decisions/0014-precompiled-normalizer.md`](../docs/decisions/0014-precompiled-normalizer.md).
 
 Like `tiny_sp.model`, the result is an *input* to `generate_oracles.py`, not one
 of its outputs: it is committed, and the `Oracles are reproducible` job replays
 it without touching the network. Rebuilding it is a deliberate act, and a
 changed pin means the ids in `xlmr_fairseq.json` move with it.
+
+## `build_normalizer_fixtures.py`
+
+Trains the two small models the normalizer oracle needs beyond the XLM-R one:
+
+```bash
+python tools/build_normalizer_fixtures.py            # rebuild
+python tools/build_normalizer_fixtures.py --check    # verify the checked-in fixtures
+```
+
+`nmt_nfkc_cf.model` carries the case-folding map; `custom_norm.model` carries a
+map compiled from three hand-written rules and calls its normalizer nothing more
+than `user_defined`. The second is the one that keeps the claim honest: what
+`PrecompiledNormalizer` interprets is *a* character map, not the one map every
+stock model happens to share. Both are committed inputs to
+`generate_oracles.py`, like `tiny_sp.model` — CI never retrains them, and
+training is not guaranteed reproducible across `sentencepiece` versions.
 
 ## `check_nuspec_dependencies.py`
 

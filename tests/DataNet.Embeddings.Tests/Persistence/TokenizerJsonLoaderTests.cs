@@ -257,22 +257,63 @@ public sealed class TokenizerJsonLoaderTests
     // the accepting side of these settings, so only a synthetic document catches them.
 
     [Theory]
-    [InlineData("{\"type\":\"Precompiled\",\"precompiled_charsmap\":\"AAAA\"}", "Precompiled")]
     [InlineData("{\"type\":\"NFKC\"}", "NFKC")]
     [InlineData("{\"type\":\"Lowercase\"}", "Lowercase")]
     [InlineData("{\"type\":\"Sequence\",\"normalizers\":[{\"type\":\"NFKC\"}]}", "Sequence")]
-    public void A_unigram_model_with_any_normalizer_is_rejected(string normalizer, string expectedName)
+    public void A_unigram_model_with_a_normalizer_that_is_not_precompiled_is_rejected(string normalizer, string expectedName)
     {
-        // The one that matters is Precompiled: every stock T5, ALBERT and XLM-R
-        // tokenizer.json carries the nmt_nfkc character map under that type.
-        // SentencePieceTokenizer reproduces the identity normalizer only, so accepting
-        // the file would return a vocabulary that tokenizes differently from
-        // Tokenizer.from_file — silently, which is the whole failure this loader exists
-        // to prevent.
+        // NFKC is the interesting refusal now: it asks for the runtime's Unicode
+        // tables where the model asked for a map frozen at the version that compiled
+        // it. The two already disagree on 181 code points and drift apart with every
+        // Unicode release — see docs/decisions/0014.
         InvalidDataException error = Assert.Throws<InvalidDataException>(
             () => LoadUnigramFrom(SyntheticUnigram(normalizer: normalizer)));
 
         Assert.Contains(expectedName, error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The refusal #75 turned into a load: <c>Precompiled</c> is how
+    /// <c>tokenizers</c> writes the map a <c>spiece.model</c> carries as raw bytes,
+    /// so the two formats now describe the same model the same way.
+    /// </summary>
+    /// <remarks>
+    /// The map is the one from <c>custom_norm.model</c>, taken from the oracle in
+    /// the encoding <c>tokenizer.json</c> itself uses rather than pasted in as a
+    /// constant. Its three rules are hand-written — <c>ß</c> to <c>ss</c>,
+    /// <c>①</c> to <c>1</c>, <c>¤</c> to nothing — and no built-in specification
+    /// performs them, so a normalizer that produced this output by any other route
+    /// would be a surprise.
+    /// </remarks>
+    [Fact]
+    public void A_unigram_model_with_a_precompiled_normalizer_loads_and_applies_it()
+    {
+        using JsonDocument oracle = OracleLoader.Load("normalizer.json");
+        string charsMap = oracle.RootElement
+            .GetProperty("metadata").GetProperty("models").EnumerateArray()
+            .First(m => m.GetProperty("model").GetString() == "custom_norm.model")
+            .GetProperty("charsmap_base64").GetString()!;
+
+        SentencePieceVocabulary vocabulary = LoadUnigramFrom(SyntheticUnigram(
+            normalizer: $"{{\"type\":\"Precompiled\",\"precompiled_charsmap\":\"{charsMap}\"}}"));
+
+        Assert.NotNull(vocabulary.Normalizer);
+        Assert.Equal("ss 1 ", vocabulary.Normalizer!.Normalize("ß ① ¤"));
+    }
+
+    [Theory]
+    [InlineData("{\"type\":\"Precompiled\",\"precompiled_charsmap\":\"AAAAAA==\"}", "empty trie")]  // four zero bytes: a header declaring no trie
+    [InlineData("{\"type\":\"Precompiled\",\"precompiled_charsmap\":\"AAAA\"}", "too short")]        // three bytes: not even a header
+    [InlineData("{\"type\":\"Precompiled\",\"precompiled_charsmap\":\"\"}", "no precompiled_charsmap")]
+    [InlineData("{\"type\":\"Precompiled\",\"precompiled_charsmap\":\"not base64!\"}", "not valid base64")]
+    public void A_precompiled_normalizer_that_carries_no_usable_map_is_rejected(string normalizer, string expected)
+    {
+        // Accepting the type but not the map would normalize nothing while claiming
+        // to normalize — the silent-wrong-embeddings failure, one level in.
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => LoadUnigramFrom(SyntheticUnigram(normalizer: normalizer)));
+
+        Assert.Contains(expected, error.Message, StringComparison.Ordinal);
     }
 
     [Fact]

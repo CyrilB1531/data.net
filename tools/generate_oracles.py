@@ -24,6 +24,7 @@ Usage:
 
 from __future__ import annotations
 
+import base64
 import json
 import random
 from importlib.metadata import version
@@ -1335,6 +1336,16 @@ XLMR_TEXTS = [
     "<pad><pad> padding",
     "<mask>",
     "un texte avec <s>, </s>, <pad>, <unk> et <mask> dedans",
+    # Since #75 the fixture carries XLM-R's own nmt_nfkc charsmap, so these are
+    # no longer inert: each one is rewritten before it is segmented. Written with
+    # escapes where the character is invisible or easy to normalise by accident in
+    # an editor.
+    "\uff2c\uff25 \uff32\uff25\uff2e\uff21\uff32\uff24 \uff52\uff41\uff50\uff49\uff44\uff45",  # full-width LE RENARD rapide
+    "\ufb01nancier, \ufb02amme et \u0153uvre",  # fi and fl ligatures
+    "cafe\u0301 de\u0301ja\u0300 vu",  # decomposed accents, which nmt_nfkc recomposes
+    "\u2168 siecles, \u2460\u2461\u2462 etapes",  # roman numeral IX, circled digits
+    "espace\u00a0insecable et espace\u3000ideographique",
+    "un\u0001texte\u0002avec\u0007des controles",
 ]
 
 # The five strings a vocabulary in this layout must never segment onto.
@@ -1408,6 +1419,119 @@ def generate_xlmr_fairseq() -> dict:
     }
 
 
+# What normalization changes and `identity` hides, per the acceptance criteria of
+# #75: width forms, composition, ligatures, whitespace of every flavour, control
+# characters, case — plus the three rules only `custom_norm.model` performs.
+NORMALIZER_TEXTS = [
+    "",
+    "already normal text",
+    "\uff2c\uff25 \uff32\uff25\uff2e\uff21\uff32\uff24",       # full-width letters
+    "\uff11\uff12\uff13",                                       # full-width digits
+    "\uff71\uff92\uff98\uff76",                                # half-width katakana
+    "cafe\u0301",                                                # decomposed
+    "caf\u00e9",                                                 # composed
+    "\ufb01nancier \ufb02amme \ufb03n",                           # ligatures
+    "\u2168 \u2460\u2461 \u3231",                                # roman numeral, circled, squared
+    "a\u00a0b",                                                  # non-breaking space
+    "a\u3000b",                                                  # ideographic space
+    "a\tb",                                                      # tab
+    "a\nb",                                                      # newline
+    "a\u200bb",                                                  # zero-width space
+    "\ufeffbom",                                                 # byte-order mark
+    "a\u0001b\u0007c",                                           # control characters
+    "  spaced   out  ",
+    "MiXeD CaSe TeXt",                                          # only the _cf rules fold this
+    "\u00df \u2460 \u00a4",                                       # the custom rules: sharp s, circled one, currency sign
+    "\u2581 already escaped",                                    # the meta symbol itself
+    "\u0130stanbul",                                             # dotted capital I
+    "\u1e9b\u0323",                                              # long s with dot, plus dot below
+]
+
+# Each fixture carries a different charsmap, which is the point: the same
+# interpreter must handle all of them. tiny_sp.model is in the list as the
+# control case — no charsmap at all.
+NORMALIZER_FIXTURES = [
+    ("xlmr_fairseq.model", "xlm-roberta-base, nmt_nfkc (the spm_train default)"),
+    ("nmt_nfkc_cf.model", "self-trained, nmt_nfkc_cf (case folding)"),
+    ("custom_norm.model", "self-trained, three hand-written rules from a normalization_rule_tsv"),
+    (TINY_SP_MODEL, "self-trained, identity: no charsmap at all"),
+]
+
+
+def generate_normalizer() -> dict:
+    """Freeze what each fixture's precompiled_charsmap does to text.
+
+    Two references per case, because they answer different questions:
+
+    * ``normalized`` is the charsmap alone. It is produced from a copy of the
+      model with add_dummy_prefix, remove_extra_whitespaces and
+      escape_whitespaces turned off, so nothing but the map speaks — that is
+      exactly the boundary of ``PrecompiledNormalizer.Normalize``.
+    * ``pieces``/``ids`` are the whole pipeline on the stock flags, which is what
+      ``SentencePieceTokenizer.Encode`` reproduces.
+
+    A test that only replayed the second could pass with the normalization and
+    the whitespace handling wrong in compensating ways.
+    """
+    import sentencepiece as spm  # noqa: PLC0415
+    from sentencepiece import sentencepiece_model_pb2 as model_pb2  # noqa: PLC0415
+
+    models = []
+    cases = []
+    for filename, description in NORMALIZER_FIXTURES:
+        path = ORACLE_DIR / filename
+        proto = model_pb2.ModelProto()
+        proto.ParseFromString(path.read_bytes())
+
+        bare = model_pb2.ModelProto()
+        bare.CopyFrom(proto)
+        bare.normalizer_spec.add_dummy_prefix = False
+        bare.normalizer_spec.remove_extra_whitespaces = False
+        bare.normalizer_spec.escape_whitespaces = False
+
+        stock = spm.SentencePieceProcessor(model_file=str(path))
+        charsmap_only = spm.SentencePieceProcessor(model_proto=bare.SerializeToString())
+
+        entry = {
+            "model": filename,
+            "description": description,
+            "normalizer_name": proto.normalizer_spec.name,
+            "charsmap_bytes": len(proto.normalizer_spec.precompiled_charsmap),
+            "vocab_size": len(proto.pieces),
+        }
+        if filename == "custom_norm.model":
+            # The same blob as tokenizers writes into a tokenizer.json, in the same
+            # encoding, so the JSON loader can be tested against a real map without
+            # a hand-pasted constant. Only for this fixture: base64 of the nmt_nfkc
+            # map would add 300 KB to the corpus to say nothing new.
+            entry["charsmap_base64"] = base64.b64encode(proto.normalizer_spec.precompiled_charsmap).decode("ascii")
+        models.append(entry)
+        for text in NORMALIZER_TEXTS:
+            cases.append({
+                "id": len(cases),
+                "model": filename,
+                "text": text,
+                "normalized": charsmap_only.normalize(text),
+                "pieces": stock.encode(text, out_type=str),
+                "ids": stock.encode(text, out_type=int),
+            })
+
+    return {
+        "metadata": {
+            "algorithm": "PrecompiledNormalizer",
+            "library": "sentencepiece",
+            "library_version": version("sentencepiece"),
+            "reference_calls": [
+                "sentencepiece.SentencePieceProcessor(model_file=…).normalize  (charsmap only)",
+                "sentencepiece.SentencePieceProcessor(model_file=…).encode     (whole pipeline)",
+            ],
+            "models": models,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -1441,6 +1565,7 @@ def main() -> None:
         "tokenizer_json.json": generate_tokenizer_json,
         "spiece_model.json": generate_spiece_model,
         "xlmr_fairseq.json": generate_xlmr_fairseq,
+        "normalizer.json": generate_normalizer,
         "fuzz.json": generate_fuzz,
         "process.json": generate_process,
     }

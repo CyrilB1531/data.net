@@ -12,12 +12,21 @@ public readonly record struct SentencePiece(string Piece, double Score, int Id);
 /// </summary>
 /// <remarks>
 /// <para>
-/// Reproduces the encoding of a trained SentencePiece unigram model (as used by
-/// ALBERT, T5, camemBERT, XLM-R…). Preprocessing follows the model's
-/// <c>identity</c> normalizer with <c>add_dummy_prefix</c>: whitespace is
-/// collapsed, spaces become the meta symbol <c>▁</c> (U+2581), and a leading
-/// <c>▁</c> is prepended. Getting the tokenization exactly right matters — a
-/// mismatch makes the downstream model's embeddings wrong.
+/// Reproduces the encoding of a trained SentencePiece unigram model. The stock
+/// ALBERT, T5, camemBERT and XLM-R models load and tokenize identically to
+/// <c>sentencepiece</c>: their <c>nmt_nfkc</c> character map is applied by
+/// <see cref="PrecompiledNormalizer"/>, and the corpus behind that claim replays
+/// XLM-R's own 250 002-piece vocabulary. What is still refused, and named when it
+/// is, is a model trained with <c>byte_fallback</c> or with an algorithm other
+/// than unigram.
+/// </para>
+/// <para>
+/// Preprocessing then follows the model's flags: the character map first, then
+/// <c>remove_extra_whitespaces</c> collapsing runs of U+0020 — that character and
+/// no other — then <c>add_dummy_prefix</c> and <c>escape_whitespaces</c>, which
+/// turn the remaining spaces into the meta symbol <c>▁</c> (U+2581) and prepend
+/// one. Getting this exactly right matters: a mismatch makes the downstream
+/// model's embeddings wrong while everything still looks like it works.
 /// </para>
 /// <para>Thread-safe after construction.</para>
 /// </remarks>
@@ -25,7 +34,13 @@ public sealed class SentencePieceTokenizer
 {
     private const char Meta = '▁'; // ▁
 
+    // escape_whitespaces maps this character, and only this one, to the meta
+    // symbol. Anything else a reader would call whitespace is either rewritten to
+    // it by the model's normalizer or left alone as ordinary text.
+    private static readonly char[] Spaces = [' '];
+
     private readonly Dictionary<string, SentencePiece> _pieces;
+    private readonly PrecompiledNormalizer? _normalizer;
     private readonly int _maxPieceLength;
     private readonly int _unkId;
     private readonly double _unkScore;
@@ -75,6 +90,7 @@ public sealed class SentencePieceTokenizer
             _maxPieceLength = Math.Max(_maxPieceLength, p.Piece.Length);
             minScore = Math.Min(minScore, p.Score);
         }
+        _normalizer = vocabulary.Normalizer;
         _unkId = vocabulary.UnkId;
         _unkScore = minScore - 10.0; // heavy penalty; only used for uncovered characters
     }
@@ -164,14 +180,31 @@ public sealed class SentencePieceTokenizer
             }
         }
 
-        // Backtrack.
+        // Backtrack. Walking right to left is also what makes the run of unknown
+        // characters below easy to fuse: the piece already emitted is the one to
+        // the right of the one being emitted now.
         var ids = new List<int>();
         var tokens = new List<string>();
+        int runEnd = -1;
         for (int j = n; j > 0;)
         {
             int i = startAt[j];
-            ids.Add(idAt[j]);
-            tokens.Add(s.Substring(i, j - i));
+            if (idAt[j] == _unkId && runEnd >= 0)
+            {
+                // sentencepiece emits one unknown piece per *run* of uncovered
+                // characters, not one per character: "ＬＥ" comes back as a single
+                // token. Rewriting the run from its start rather than prepending to
+                // it keeps this to one substring per step. The unknown piece is
+                // never matchable, so an id equal to _unkId can only have come from
+                // the branch above.
+                tokens[tokens.Count - 1] = s.Substring(i, runEnd - i);
+            }
+            else
+            {
+                ids.Add(idAt[j]);
+                tokens.Add(s.Substring(i, j - i));
+                runEnd = idAt[j] == _unkId ? j : -1;
+            }
             j = i;
         }
         ids.Reverse();
@@ -179,10 +212,18 @@ public sealed class SentencePieceTokenizer
         return new TokenizationResult(tokens, ids);
     }
 
-    private static string Preprocess(string text)
+    private string Preprocess(string text)
     {
-        // remove_extra_whitespaces: collapse runs of whitespace, trim.
-        string[] parts = text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        // The model's own normalization first: it is what turns a tab, a
+        // non-breaking space or an ideographic space into an ordinary space, among
+        // everything else it rewrites.
+        string normalized = _normalizer is null ? text : _normalizer.Normalize(text);
+
+        // remove_extra_whitespaces: collapse runs of U+0020, trim. U+0020 and
+        // nothing else — sentencepiece splits on the space character, not on
+        // "whitespace", so a tab that no normalizer rewrote stays an ordinary
+        // character the vocabulary either covers or does not.
+        string[] parts = normalized.Split(Spaces, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 0)
         {
             return string.Empty;
