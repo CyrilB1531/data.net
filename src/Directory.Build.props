@@ -26,6 +26,8 @@
     <Compile Include="$(MSBuildThisFileDirectory)Shared/Persistence/ArtifactHeader.cs" Link="Internal/Persistence/ArtifactHeader.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared/Persistence/ArtifactLimits.cs" Link="Internal/Persistence/ArtifactLimits.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared/Persistence/JsonArtifact.cs" Link="Internal/Persistence/JsonArtifact.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/Persistence/ArtifactIo.cs" Link="Internal/Persistence/ArtifactIo.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/Persistence/Base64Numbers.cs" Link="Internal/Persistence/Base64Numbers.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(DataNetIncludesPersistence)' == 'true' AND '$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="System.Text.Json" />

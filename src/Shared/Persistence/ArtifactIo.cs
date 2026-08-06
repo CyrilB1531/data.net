@@ -1,7 +1,6 @@
 using System.Text.Json;
-using DataNet.Internal.Persistence;
 
-namespace DataNet.Text.Persistence;
+namespace DataNet.Internal.Persistence;
 
 /// <summary>
 /// The save/load skeleton every DataNet.Text artifact shares: open the object,
