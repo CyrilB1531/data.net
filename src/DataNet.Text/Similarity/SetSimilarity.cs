@@ -152,7 +152,15 @@ public static class Tversky
     {
         (int inter, int sizeA, int sizeB) = QgramCounts.Compute(a, b, qval, element);
         double denom = inter + alpha * (sizeA - inter) + beta * (sizeB - inter);
+
+        // SonarLint S1244: the guard is against dividing by zero, not against a
+        // denominator that is merely small. Exact zero is the degenerate case the
+        // reference defines as 1.0 — two empty inputs — and alpha and beta are the
+        // caller's, so a negative denominator is a legitimate quotient rather than
+        // something to fold into the same branch.
+#pragma warning disable S1244
         return denom == 0.0 ? 1.0 : inter / denom;
+#pragma warning restore S1244
     }
 }
 

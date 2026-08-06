@@ -1,0 +1,16 @@
+<Project>
+
+  <!-- Chain to the repository-root Directory.Build.props (MSBuild otherwise stops
+       at the nearest one). -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Test code is held to the same rules as the code it tests: a test is read
+       more often than it is written, and SonarCloud already reports on it. The
+       version comes from the root Directory.Build.props, the package from
+       tests/Directory.Packages.props. See
+       docs/decisions/0015-sonar-rules-in-the-build.md. -->
+  <ItemGroup>
+    <PackageReference Include="SonarAnalyzer.CSharp" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

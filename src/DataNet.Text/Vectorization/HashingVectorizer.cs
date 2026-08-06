@@ -72,7 +72,15 @@ public sealed partial class HashingVectorizer
             foreach (int col in accumulator.Keys.OrderBy(c => c))
             {
                 double value = accumulator[col];
+
+                // SonarLint S1244: this decides what the sparse matrix stores, and
+                // "stored" means "not exactly zero". Every accumulated value is a sum
+                // of ±1, so exact cancellation is the ordinary outcome when
+                // AlternateSign sends two terms to the same column — and it is
+                // representable. A tolerance would drop real entries.
+#pragma warning disable S1244
                 if (value != 0.0)
+#pragma warning restore S1244
                 {
                     columns.Add(col);
                     values.Add(value);
