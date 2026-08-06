@@ -62,9 +62,13 @@ OUTPUT = pathlib.Path(__file__).resolve().parent.parent / "tests/oracles/xlmr_fa
 
 # transformers.XLMRobertaTokenizer: the four specials it places itself, then
 # every spm piece shifted by the offset, then <mask> after the last one.
-FAIRSEQ_SPECIALS = ["<s>", "<pad>", "</s>", "<unk>"]
-FAIRSEQ_OFFSET = 1
+BOS = "<s>"
+PAD = "<pad>"
+EOS = "</s>"
+UNK = "<unk>"
 MASK = "<mask>"
+FAIRSEQ_SPECIALS = [BOS, PAD, EOS, UNK]
+FAIRSEQ_OFFSET = 1
 
 # The spm pieces the fairseq specials replace: <unk>, <s>, </s> at 0, 1, 2.
 REPLACED_SPM_PIECES = 3
@@ -74,7 +78,11 @@ UNKNOWN = model_pb2.ModelProto.SentencePiece.UNKNOWN
 
 
 def download(url: str) -> bytes:
-    with urllib.request.urlopen(url) as response:  # noqa: S310 — https, constant URL
+    # S310: the only call site passes the https:// constant declared above, so the
+    # scheme cannot be steered to file:// or ftp://. The rationale goes in a comment
+    # of its own — a `# noqa` line carries codes and nothing else, and prose after
+    # them stops the suppression parsing at all.
+    with urllib.request.urlopen(url) as response:  # noqa: S310
         return response.read()
 
 
@@ -107,7 +115,7 @@ def relabel(stock: bytes) -> bytes:
         entry.piece, entry.score, entry.type = piece, score, piece_type
 
     for special in FAIRSEQ_SPECIALS:
-        add(special, 0.0, UNKNOWN if special == "<unk>" else CONTROL)
+        add(special, 0.0, UNKNOWN if special == UNK else CONTROL)
     for piece in source.pieces[REPLACED_SPM_PIECES:]:
         add(piece.piece, piece.score, piece.type)
     add(MASK, 0.0, CONTROL)
@@ -116,10 +124,10 @@ def relabel(stock: bytes) -> bytes:
     if out.pieces[expected_mask_id].piece != MASK:
         raise SystemExit(f"<mask> landed at {len(out.pieces) - 1}, not at {expected_mask_id}.")
 
-    out.trainer_spec.unk_id = FAIRSEQ_SPECIALS.index("<unk>")
-    out.trainer_spec.bos_id = FAIRSEQ_SPECIALS.index("<s>")
-    out.trainer_spec.eos_id = FAIRSEQ_SPECIALS.index("</s>")
-    out.trainer_spec.pad_id = FAIRSEQ_SPECIALS.index("<pad>")
+    out.trainer_spec.unk_id = FAIRSEQ_SPECIALS.index(UNK)
+    out.trainer_spec.bos_id = FAIRSEQ_SPECIALS.index(BOS)
+    out.trainer_spec.eos_id = FAIRSEQ_SPECIALS.index(EOS)
+    out.trainer_spec.pad_id = FAIRSEQ_SPECIALS.index(PAD)
     out.trainer_spec.vocab_size = len(out.pieces)
 
     return out.SerializeToString()
