@@ -39,6 +39,8 @@ outside the Basic Multilingual Plane (emoji, rare ideographs), request **code
 point** comparison:
 
 ```csharp
+using DataNet.Text;   // TextElement lives here, not in .Distances
+
 // "a😀" -> "a": the emoji is ONE code point, but TWO UTF-16 units.
 Levenshtein.Distance("a\U0001F600", "a");                        // 2 (UTF-16 units)
 Levenshtein.Distance("a\U0001F600", "a", TextElement.CodePoint); // 1 (like Python)
