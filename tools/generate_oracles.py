@@ -24,6 +24,7 @@ Usage:
 
 from __future__ import annotations
 
+import base64
 import json
 import random
 from importlib.metadata import version
@@ -1491,13 +1492,20 @@ def generate_normalizer() -> dict:
         stock = spm.SentencePieceProcessor(model_file=str(path))
         charsmap_only = spm.SentencePieceProcessor(model_proto=bare.SerializeToString())
 
-        models.append({
+        entry = {
             "model": filename,
             "description": description,
             "normalizer_name": proto.normalizer_spec.name,
             "charsmap_bytes": len(proto.normalizer_spec.precompiled_charsmap),
             "vocab_size": len(proto.pieces),
-        })
+        }
+        if filename == "custom_norm.model":
+            # The same blob as tokenizers writes into a tokenizer.json, in the same
+            # encoding, so the JSON loader can be tested against a real map without
+            # a hand-pasted constant. Only for this fixture: base64 of the nmt_nfkc
+            # map would add 300 KB to the corpus to say nothing new.
+            entry["charsmap_base64"] = base64.b64encode(proto.normalizer_spec.precompiled_charsmap).decode("ascii")
+        models.append(entry)
         for text in NORMALIZER_TEXTS:
             cases.append({
                 "id": len(cases),

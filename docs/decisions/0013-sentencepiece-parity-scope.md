@@ -1,6 +1,12 @@
 # 0013 — What `SentencePieceTokenizer` promises, and where it knowingly differs
 
-**Status:** accepted · **Date:** 2026-08-06
+**Status:** accepted, superseded in part by [`0014`](0014-precompiled-normalizer.md) · **Date:** 2026-08-06
+
+> Section 1 below no longer holds: `0014` implemented the precompiled
+> normalizer, the fixture keeps its stock `nmt_nfkc` map, and the oracle
+> covers the stock XLM-R pipeline rather than its vocabulary alone. That is
+> the revision this decision asked for in its last consequence. Section 2,
+> the unknown-piece penalty floor, stands.
 
 ## Context
 

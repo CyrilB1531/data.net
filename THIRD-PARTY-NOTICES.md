@@ -82,8 +82,10 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 | --- | --- | --- | --- |
 | `xlm-roberta-base` SentencePiece vocabulary | MIT | `tests/oracles/xlmr_fairseq.model` | `https://huggingface.co/xlm-roberta-base/resolve/main/sentencepiece.bpe.model` |
 
-The **vocabulary only** — the 250 000 pieces, their scores and their types. No
-model weights are redistributed, per
+The **vocabulary only** — the 250 000 pieces, their scores, their types and the
+`nmt_nfkc` character map the file's `normalizer_spec` carries (a table compiled
+by `sentencepiece`, Apache-2.0, from Unicode data). No model weights are
+redistributed, per
 [`docs/decisions/0003-provenance-and-licensing.md`](docs/decisions/0003-provenance-and-licensing.md).
 The file is compiled into no package: it lives under `tests/`, is copied to the
 test output, and exists so the tokenizer's parity claim is checked against a real

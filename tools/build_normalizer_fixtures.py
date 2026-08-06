@@ -25,11 +25,13 @@ them:
     python tools/build_normalizer_fixtures.py            # rebuild
     python tools/build_normalizer_fixtures.py --check    # verify the checked-in fixtures
 
-Training is deterministic for a given `sentencepiece` version but not guaranteed
-across versions, which is why the models are committed rather than produced on
-demand. `--check` compares against a fresh training run and will report a
-difference if the pinned version moves; that is a decision to make, not a file to
-overwrite quietly — the ids in `normalizer.json` move with it.
+`--check` compares against a fresh training run. For that to mean anything, the
+three fields recording *where* the training ran are cleared first — see
+`strip_local_paths`. What remains is stable run to run on a pinned
+`sentencepiece`, and is not guaranteed across versions, which is why the models
+are committed rather than produced on demand. A difference reported here is a
+decision to make, not a file to overwrite quietly: the ids in `normalizer.json`
+move with it.
 """
 
 from __future__ import annotations
@@ -40,6 +42,7 @@ import sys
 import tempfile
 
 import sentencepiece as spm
+from sentencepiece import sentencepiece_model_pb2 as model_pb2
 
 ORACLE_DIR = pathlib.Path(__file__).resolve().parent.parent / "tests" / "oracles"
 
@@ -105,7 +108,25 @@ def train(settings: dict) -> bytes:
             remove_extra_whitespaces=True,
             **options,
         )
-        return (work / "model.model").read_bytes()
+        return strip_local_paths((work / "model.model").read_bytes())
+
+
+def strip_local_paths(model: bytes) -> bytes:
+    """Erase the three fields that record where the training ran.
+
+    Without this the fixtures are not byte-reproducible, for a reason that has
+    nothing to do with training: sentencepiece copies `input`, `model_prefix` and
+    `normalization_rule_tsv` into the proto verbatim, and every run gets a fresh
+    temporary directory. Everything that matters — the charsmap, the pieces,
+    their scores — is identical run to run; only the paths move. Clearing them
+    also keeps a local directory name out of a committed file.
+    """
+    proto = model_pb2.ModelProto()
+    proto.ParseFromString(model)
+    proto.trainer_spec.ClearField("input")
+    proto.trainer_spec.ClearField("model_prefix")
+    proto.normalizer_spec.ClearField("normalization_rule_tsv")
+    return proto.SerializeToString()
 
 
 def main() -> int:

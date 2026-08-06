@@ -243,7 +243,10 @@ public static class TokenizerJsonLoader
             unkId,
             FindSpecialId(pieces, types, "<s>"),
             FindSpecialId(pieces, types, "</s>"),
-            FindSpecialId(pieces, types, "<pad>"));
+            FindSpecialId(pieces, types, "<pad>"))
+        {
+            Normalizer = ReadUnigramNormalizer(root),
+        };
     }
 
     private static SentencePiece ReadUnigramPiece(JsonElement pair, int id, in ArtifactLimits limits)
@@ -444,10 +447,6 @@ public static class TokenizerJsonLoader
         RejectNonNull(root, "truncation", "DataNet tokenizers do not truncate");
         RejectNonNull(root, "padding", "DataNet tokenizers do not pad");
         RejectNonNull(root, "post_processor", "DataNet tokenizers do not insert special tokens such as [CLS] and [SEP]");
-        if (kind == PipelineKind.Unigram)
-        {
-            EnsureNoNormalizer(root);
-        }
         EnsurePreTokenizerIsReproduced(root, kind);
     }
 
@@ -521,34 +520,58 @@ public static class TokenizerJsonLoader
     }
 
     /// <summary>
-    /// Refuses any normalizer at all on the Unigram path.
+    /// Reads the Unigram normalizer: a <c>Precompiled</c> character map, or nothing.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <see cref="SentencePieceTokenizer"/> reproduces the <c>identity</c> normalizer
-    /// and nothing else, so the Unigram rule is stricter than the WordPiece one:
-    /// absent or <c>null</c> is the only acceptable value, and every named type is
-    /// refused.
+    /// <c>Precompiled</c> is how <c>tokenizers</c> writes the very map a
+    /// <c>spiece.model</c> carries in <c>normalizer_spec.precompiled_charsmap</c> —
+    /// base64 instead of raw bytes, same blob. Since #75 that is read rather than
+    /// refused, by the same <see cref="PrecompiledNormalizer"/>, which is what keeps
+    /// the two formats from disagreeing about the same model.
     /// </para>
     /// <para>
-    /// This is not a theoretical case. A stock T5, ALBERT or XLM-R
-    /// <c>tokenizer.json</c> carries the <c>nmt_nfkc</c> character map as
-    /// <c>{"type": "Precompiled"}</c>, so it is the <em>common</em> shape for
-    /// Unigram files. Accepting one would hand back a vocabulary that tokenizes
-    /// differently from <c>Tokenizer.from_file</c> — silently, which is the outcome
-    /// this whole loader exists to prevent.
+    /// Every other named type is still refused. <c>NFKC</c> asks for the runtime's
+    /// Unicode tables where the model asked for a frozen map;
+    /// <c>Lowercase</c> and <c>BertNormalizer</c> belong to the WordPiece pipeline
+    /// and mean something different there. Absent or <c>null</c> is identity.
     /// </para>
     /// </remarks>
-    private static void EnsureNoNormalizer(JsonElement root)
+    private static PrecompiledNormalizer? ReadUnigramNormalizer(JsonElement root)
     {
         if (!root.TryGetProperty("normalizer", out JsonElement normalizer)
             || normalizer.ValueKind == JsonValueKind.Null)
         {
-            return;
+            return null;
         }
-        throw Unsupported(
-            $"its normalizer is '{OptionalString(normalizer, "type") ?? UntypedName}'",
-            "SentencePieceTokenizer reproduces the identity normalizer only, so any other would preprocess text differently here than in Python");
+
+        string type = OptionalString(normalizer, "type") ?? UntypedName;
+        if (!string.Equals(type, "Precompiled", StringComparison.Ordinal))
+        {
+            throw Unsupported(
+                $"its normalizer is '{type}'",
+                "SentencePieceTokenizer applies the model's own precompiled character map, and reproduces no other normalization");
+        }
+
+        string? encoded = OptionalString(normalizer, "precompiled_charsmap");
+        if (string.IsNullOrEmpty(encoded))
+        {
+            throw Unsupported(
+                "its normalizer is 'Precompiled' with no precompiled_charsmap",
+                "the rules are applied from the compiled map, never from the name, so there is nothing here to apply");
+        }
+
+        byte[] charsMap;
+        try
+        {
+            charsMap = Convert.FromBase64String(encoded!);
+        }
+        catch (FormatException e)
+        {
+            throw new InvalidDataException(
+                $"The {SourceName} carries a precompiled_charsmap that is not valid base64.", e);
+        }
+        return PrecompiledNormalizer.FromCharsMap(charsMap);
     }
 
     private static bool ReadLowercase(JsonElement root)

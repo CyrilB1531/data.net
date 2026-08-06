@@ -25,7 +25,9 @@ TokenizationResult t = wp.Encode("playing");   // pieces: play ##ing
 ```
 
 **SentencePiece** (ALBERT, T5, camemBERT, XLM-R) — unigram Viterbi segmentation,
-from the trained `spiece.model`:
+from the trained `spiece.model`. The model's own `precompiled_charsmap` is
+applied before segmentation, so a stock file — all four families ship `nmt_nfkc`
+— tokenizes here as it does in Python:
 
 ```csharp
 SentencePieceVocabulary vocab = SentencePieceModelLoader.Load("spiece.model");
@@ -90,9 +92,12 @@ different one is **rejected**, with a message naming what was found:
   table that unigram Viterbi decoding would consume and segment the wrong way;
 - **`byte_fallback`**, in either format: Python resolves an uncovered character
   into `<0x..>` byte pieces where these tokenizers emit the unknown piece;
-- a normalizer that is not `identity` (for `spiece.model`) or not
-  `Lowercase`/a plain `BertNormalizer` (for `tokenizer.json`) — `nmt_nfkc`,
-  `NFKC` and any precompiled character map are refused;
+- a normalizer named in a `spiece.model` with no `precompiled_charsmap` to
+  apply, or a character map that will not parse — the rules come from the
+  compiled map, never from `normalizer_spec.name`;
+- for `tokenizer.json`, a normalizer other than `Precompiled` on the Unigram
+  path, or `Lowercase`/a plain `BertNormalizer` on the WordPiece one — `NFKC`
+  asks for the runtime's Unicode tables where the model asked for a frozen map;
 - a pre-tokenizer other than `Whitespace` (WordPiece) or `Metaspace` (Unigram),
   and a `Metaspace` whose `replacement`, `prepend_scheme` (or the older
   `add_prefix_space`) or `split` is away from the default;

@@ -12,12 +12,21 @@ public readonly record struct SentencePiece(string Piece, double Score, int Id);
 /// </summary>
 /// <remarks>
 /// <para>
-/// Reproduces the encoding of a trained SentencePiece unigram model (as used by
-/// ALBERT, T5, camemBERT, XLM-R…). Preprocessing follows the model's
-/// <c>identity</c> normalizer with <c>add_dummy_prefix</c>: whitespace is
-/// collapsed, spaces become the meta symbol <c>▁</c> (U+2581), and a leading
-/// <c>▁</c> is prepended. Getting the tokenization exactly right matters — a
-/// mismatch makes the downstream model's embeddings wrong.
+/// Reproduces the encoding of a trained SentencePiece unigram model. The stock
+/// ALBERT, T5, camemBERT and XLM-R models load and tokenize identically to
+/// <c>sentencepiece</c>: their <c>nmt_nfkc</c> character map is applied by
+/// <see cref="PrecompiledNormalizer"/>, and the corpus behind that claim replays
+/// XLM-R's own 250 002-piece vocabulary. What is still refused, and named when it
+/// is, is a model trained with <c>byte_fallback</c> or with an algorithm other
+/// than unigram.
+/// </para>
+/// <para>
+/// Preprocessing then follows the model's flags: the character map first, then
+/// <c>remove_extra_whitespaces</c> collapsing runs of U+0020 — that character and
+/// no other — then <c>add_dummy_prefix</c> and <c>escape_whitespaces</c>, which
+/// turn the remaining spaces into the meta symbol <c>▁</c> (U+2581) and prepend
+/// one. Getting this exactly right matters: a mismatch makes the downstream
+/// model's embeddings wrong while everything still looks like it works.
 /// </para>
 /// <para>Thread-safe after construction.</para>
 /// </remarks>
