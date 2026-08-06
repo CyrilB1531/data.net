@@ -41,6 +41,7 @@ project map (use / build / decide).
 | 2 | Tokenization & sparse vectorization | ✅ **complete** — CSR, tokenizers (word/char/char_wb), CountVectorizer, TfidfVectorizer, HashingVectorizer, Porter, Snowball EN/FR/DE/ES/IT/PT, stop words in six languages |
 | 3 | Embeddings & semantic search | ✅ **complete** — WordPiece, SentencePiece, pooling, SIMD kNN, ONNX inference |
 | 4 | Applied fuzzy matching | ✅ **complete** — `fuzz.*` (ratio/partial/token_sort/token_set/WRatio), `process.extract`/`extractOne`, blocking deduplication |
+| 5 | Classification metrics | ✅ **complete** — confusion matrix, accuracy, precision/recall/F1/F-beta in all four averaging modes, `classification_report` character for character, ROC-AUC binary and multiclass (`ovr`/`ovo`) |
 
 Every building block is oracle-validated against rapidfuzz / jellyfish /
 textdistance / difflib / scikit-learn / nltk / HuggingFace tokenizers /
@@ -62,7 +63,7 @@ Levenshtein.NormalizedSimilarity("kitten", "sitting"); // 0.5714…
 A runnable version of the above, consuming the packages exactly as you would:
 
 ```bash
-for p in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
+for p in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
   dotnet pack "$p" -c Release -o ./artifacts
 done
 dotnet run --project samples/DataNet.Sample -c Release
@@ -98,9 +99,10 @@ replays them with a `1e-9` tolerance. Python is a development-only dependency. S
 
 ```text
 DataNet.slnx
-├── src/DataNet.Text/            distances, metrics, tokenizers, vectorizers, stemmers (no dependencies)
+├── src/DataNet.Text/            distances, similarity, tokenizers, vectorizers, stemmers (no dependencies)
 ├── src/DataNet.Embeddings/      sub-word tokenizers, pooling, SIMD kNN, ONNX inference (ONNX Runtime isolated here)
 ├── src/DataNet.Fuzzy/           fuzz.*, process.extract, deduplication
+├── src/DataNet.Metrics/         confusion matrix, precision/recall/F1, report, ROC-AUC
 ├── tests/                       xUnit: oracles + properties (one project per module)
 ├── tests/oracles/               frozen JSON corpora (generated from Python) + a synthetic ONNX model
 ├── bench/DataNet.Text.Benchmarks/  BenchmarkDotNet
@@ -112,8 +114,8 @@ DataNet.slnx
 
 ## Publishing
 
-Three NuGet packages are produced: `DataNet.Text`, `DataNet.Embeddings`,
-`DataNet.Fuzzy`. **Each versions and releases on its own**: shared metadata
+Four NuGet packages are produced: `DataNet.Text`, `DataNet.Embeddings`,
+`DataNet.Fuzzy`, `DataNet.Metrics`. **Each versions and releases on its own**: shared metadata
 (license, README, repository) lives in `Directory.Build.props`, while the version
 is declared per project in `src/<Package>/Version.props`. `DataNet.Fuzzy` depends
 on `DataNet.Text` as a published package, not as a project reference — see

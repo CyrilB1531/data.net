@@ -57,7 +57,7 @@ A local feed inverts that: the gate runs on what is *about* to ship.
   this; running it by hand requires the same:
 
   ```bash
-  for p in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
+  for p in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
     dotnet pack "$p" -c Release -o ./artifacts
   done
   dotnet run --project samples/DataNet.Sample -c Release
