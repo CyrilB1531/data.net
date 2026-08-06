@@ -63,22 +63,16 @@ internal static class ReportText
         return text.ToString();
     }
 
-    // SonarLint S1244: this equality is intentional, not arithmetic — it detects a
-    // specific scikit-learn 1.9.0 quirk verified by reading multilabel_confusion_matrix's
-    // source and running it directly. When not a single sample is correctly
-    // predicted, that function's "pathological case" branch seeds its running
-    // totals with xp.zeros(...) — a float64 array — instead of the int64
-    // np.bincount would otherwise produce; NumPy then upcasts the whole stacked
-    // confusion matrix to float64, so classification_report prints "50.0" rather
-    // than "50" even though sample_weight was never passed. Weighted accuracy is
-    // exactly zero if and only if no sample's weight contributed a true positive,
-    // which — for the strictly positive weights this corpus and this library use —
-    // coincides with "no sample was predicted correctly" precisely enough to stand
-    // in for it here.
-#pragma warning disable S1244
+    // Support prints as a NumPy float, decimal point and all, whenever the
+    // report was weighted — or, unweighted or not, whenever not one sample in
+    // the whole dataset was predicted correctly. See
+    // ConfusionMatrix.NoSampleCorrect for the scikit-learn mechanism this
+    // mirrors: it is not an approximation of "accuracy is zero" — a sample
+    // outside the requested labels can be the one correct prediction that
+    // makes this false while accuracy over just the requested labels is still
+    // zero, and the two conditions genuinely disagree in that case.
     private static bool LooksLikeAFloatSupport(ClassificationReport report) =>
-        report.IsWeighted || report.Accuracy == 0.0;
-#pragma warning restore S1244
+        report.IsWeighted || report.NoSampleCorrect;
 
     // SonarLint S107 warns above 7 parameters; this one row-renderer stands in for
     // what would otherwise be four near-identical call sites (class, micro,

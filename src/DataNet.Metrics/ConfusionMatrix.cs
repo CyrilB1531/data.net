@@ -36,15 +36,22 @@ public sealed class ConfusionMatrix
     private readonly int _stride;
     private readonly double[] _trueSum;
 
+    // SonarLint S107 warns above 7 parameters; this constructor just names the
+    // nine pieces of state the matrix is immutably built from, once, from
+    // Compute — a parameter object here would only add a type with no other
+    // reason to exist.
+#pragma warning disable S107
     private ConfusionMatrix(
-        double[] cells, int[] labels, int stride, double[] trueSum,
+        double[] cells, int[] labels, int stride, double[] trueSum, bool noSampleCorrect,
         double totalWeight, bool weighted, bool dropped, bool explicitLabels)
+#pragma warning restore S107
     {
         _cells = cells;
         _labels = labels;
         _labelView = Array.AsReadOnly(labels);
         _stride = stride;
         _trueSum = trueSum;
+        NoSampleCorrect = noSampleCorrect;
         TotalWeight = totalWeight;
         IsWeighted = weighted;
         DroppedSamples = dropped;
@@ -91,6 +98,23 @@ public sealed class ConfusionMatrix
     /// on a different last bit. <see cref="Prf.Support"/> is the only reader.
     /// </summary>
     internal ReadOnlySpan<double> TrueSum => _trueSum;
+
+    /// <summary>
+    /// True when not one sample in the whole dataset was predicted correctly —
+    /// <c>y_true[i] == y_pred[i]</c> for no <c>i</c> at all, checked over every
+    /// observed label, not only the requested ones. This is the exact condition
+    /// under which scikit-learn's <c>multilabel_confusion_matrix</c> takes its
+    /// "pathological case" branch and seeds <c>tp_sum</c>/<c>pred_sum</c>/
+    /// <c>true_sum</c> with <c>np.zeros(...)</c> — a NumPy float64 array — in
+    /// place of the int64 array <c>np.bincount</c> would otherwise have produced;
+    /// NumPy then upcasts the whole assembled matrix to float64, so every support
+    /// value downstream prints with a decimal point even when nothing was
+    /// weighted. It is not the same thing as accuracy over the requested labels
+    /// being zero: a sample outside the requested label set can still be the one
+    /// correct prediction that keeps this false while <see cref="Prf"/>'s
+    /// accuracy over just the requested labels is nonetheless zero.
+    /// </summary>
+    internal bool NoSampleCorrect { get; }
 
     internal bool IsWeighted { get; }
 
@@ -140,6 +164,7 @@ public sealed class ConfusionMatrix
         bool weighted = !sampleWeight.IsEmpty;
         double total = 0.0;
         bool anyTrueLabelRequested = false;
+        bool anySampleCorrect = false;
 
         // index.IndexOf never misses here: the extended set is the requested
         // labels plus every label actually observed in yTrue/yPred, so every
@@ -160,6 +185,14 @@ public sealed class ConfusionMatrix
                 trueSum[row] += weight;
             }
 
+            // Same label maps to the same ordinal, so row == col here is exactly
+            // yTrue[i] == yPred[i] — checked over every observed label, matching
+            // scikit-learn's tp_bins before it is ever narrowed to the request.
+            if (row == col)
+            {
+                anySampleCorrect = true;
+            }
+
             cells[(row * m) + col] += weight;
             if (row < k && col < k)
             {
@@ -178,6 +211,6 @@ public sealed class ConfusionMatrix
         bool dropped = m > k;
 
         return new ConfusionMatrix(
-            cells, reportedLabels, m, trueSum, total, weighted, dropped, index.Explicit);
+            cells, reportedLabels, m, trueSum, !anySampleCorrect, total, weighted, dropped, index.Explicit);
     }
 }

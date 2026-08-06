@@ -61,9 +61,11 @@ internal static class Prf
     /// <summary>
     /// Column sums: how much weight was predicted into each requested class,
     /// again counted against every observed label — scikit-learn's
-    /// <c>pred_sum</c>. See <see cref="Support"/> for why the sum runs over
-    /// <see cref="ConfusionMatrix.Stride"/> rows rather than just the requested
-    /// <see cref="ConfusionMatrix.Size"/>.
+    /// <c>pred_sum</c>. Runs over <see cref="ConfusionMatrix.Stride"/> rows
+    /// rather than just the requested <see cref="ConfusionMatrix.Size"/> for the
+    /// same reason <see cref="ConfusionMatrix.Stride"/>'s own remarks give: a
+    /// predicted label outside the request still belongs in a requested true
+    /// label's column sum, the same as scikit-learn counts it.
     /// </summary>
     public static double[] PredictedSum(ConfusionMatrix cm)
     {

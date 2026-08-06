@@ -14,6 +14,11 @@ namespace DataNet.Metrics;
 /// </remarks>
 public sealed class ClassificationReport
 {
+    // SonarLint S107 warns above 7 parameters; this constructor just names the
+    // eight pieces of state the report is immutably built from, once, from
+    // Compute — a parameter object here would only add a type with no other
+    // reason to exist.
+#pragma warning disable S107
     private ClassificationReport(
         ReadOnlyCollection<ClassRow> classes,
         double accuracy,
@@ -21,7 +26,9 @@ public sealed class ClassificationReport
         AverageRow weighted,
         AverageRow? micro,
         double totalSupport,
-        bool isWeighted)
+        bool isWeighted,
+        bool noSampleCorrect)
+#pragma warning restore S107
     {
         Classes = classes;
         Accuracy = accuracy;
@@ -30,6 +37,7 @@ public sealed class ClassificationReport
         MicroAverage = micro;
         TotalSupport = totalSupport;
         IsWeighted = isWeighted;
+        NoSampleCorrect = noSampleCorrect;
     }
 
     /// <summary>One line per class, in the matrix's label order.</summary>
@@ -55,6 +63,14 @@ public sealed class ClassificationReport
     public double TotalSupport { get; }
 
     internal bool IsWeighted { get; }
+
+    /// <summary>
+    /// Mirrors <see cref="ConfusionMatrix.NoSampleCorrect"/>: true when not one
+    /// sample anywhere in the data — requested class or not — was predicted
+    /// correctly. See there for why this, not <see cref="Accuracy"/> being zero,
+    /// is the condition scikit-learn's own text rendering keys off.
+    /// </summary>
+    internal bool NoSampleCorrect { get; }
 
     /// <summary>
     /// Builds the report from an existing matrix —
@@ -123,7 +139,8 @@ public sealed class ClassificationReport
         double accuracy = DataNet.Metrics.Accuracy.Score(cm);
 
         return new ClassificationReport(
-            Array.AsReadOnly(rows), accuracy, macro, weighted, micro, totalSupport, cm.IsWeighted);
+            Array.AsReadOnly(rows), accuracy, macro, weighted, micro, totalSupport,
+            cm.IsWeighted, cm.NoSampleCorrect);
     }
 
     /// <summary>Builds the report straight from the labels, counting the matrix on the way.</summary>
