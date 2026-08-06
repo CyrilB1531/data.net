@@ -738,7 +738,7 @@ def _binary_average_applies(observed: list[int], pos_label: int) -> bool:
     return pos_label in observed or len(observed) < 2
 
 
-def _metric_case(fx: dict, weighted: bool) -> dict:  # NOSONAR S3776
+def _metric_case(fx: dict, weighted: bool) -> dict:
     y_true, y_pred = fx["y_true"], fx["y_pred"]
     labels, pos_label = fx["labels"], fx["pos_label"]
     sw = fx["sample_weight"] if weighted else None
@@ -946,7 +946,8 @@ echo "exit=$?"
 ```
 
 Expected: `exit=0`, and two new lines in the output:
-`classification_metrics.json: 26 cases -> …` and `roc_auc.json: 10 cases -> …`.
+`classification_metrics.json: 24 cases -> …` (twelve fixtures, each weighted and
+unweighted) and `roc_auc.json: 10 cases -> …` (five fixtures, likewise).
 Do **not** pipe this through `tail` or `grep`: the shell would report the
 filter's status and a failed generation would look successful.
 
@@ -1546,7 +1547,7 @@ public sealed class ConfusionMatrix
 dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~ConfusionMatrixTests"
 ```
 
-Expected: PASS, **33 tests** — 26 corpus rows plus the 7 hand-written ones. If
+Expected: PASS, **31 tests** — 24 corpus rows plus the 7 hand-written ones. If
 the count is lower, `MemberData` is not enumerating the corpus and the replay is
 not happening.
 
@@ -1698,7 +1699,7 @@ dotnet test DataNet.slnx -c Release
 ```
 
 Expected: clean build, and both new suites pass on **both** the net10 and the
-netstandard2.0 mirror — the mirror runs the same 60 tests.
+netstandard2.0 mirror, which links the same sources and so runs the same suite.
 
 - [ ] **Step 11: Commit**
 
@@ -2366,7 +2367,7 @@ public static class FBeta
 dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~Prf"
 ```
 
-Expected: PASS, 34 tests (26 corpus rows + 8 validation facts). A corpus row that
+Expected: PASS, 32 tests (24 corpus rows + 8 validation facts). A corpus row that
 fails names its fixture and the exact key — read the key before changing code:
 `macro|1` failing while `macro|0` passes means the zero-division path is wrong,
 not the averaging.
@@ -2483,12 +2484,14 @@ public sealed class ClassificationReportTests
         JsonElement weighted = c.GetProperty("averaged").GetProperty("weighted|0");
         Assert.Equal(weighted.GetProperty("recall").GetDouble(), report.WeightedAverage.Recall, MetricsCorpus.Tolerance);
 
-        // The micro row exists exactly when an explicit label set left something out,
-        // which is also when sklearn's text drops the accuracy row. `what` names the
-        // fixture so a failure says which one disagreed.
-        bool subset = c.GetProperty("labels").ValueKind != JsonValueKind.Null;
-        Assert.True(subset == (report.MicroAverage is not null) || !subset,
-            $"{what}: a micro row appeared without an explicit label set");
+        // Without an explicit label set nothing can have been dropped, so the micro
+        // row must never appear. The subset case has its own fact below, because it
+        // also depends on whether the subset happened to cover the data.
+        if (c.GetProperty("labels").ValueKind == JsonValueKind.Null)
+        {
+            Assert.True(report.MicroAverage is null,
+                $"{what}: a micro row appeared without an explicit label set");
+        }
     }
 
     [Fact]
@@ -2694,8 +2697,12 @@ public sealed class ClassificationReport
                 totalSupport);
         }
 
+        // Fully qualified on purpose: this class has an `Accuracy` property, and an
+        // unqualified `Accuracy.Score(cm)` binds to it rather than to the type.
+        double accuracy = DataNet.Metrics.Accuracy.Score(cm);
+
         return new ClassificationReport(
-            Array.AsReadOnly(rows), Accuracy.Score(cm), macro, weighted, micro, totalSupport, cm.IsWeighted);
+            Array.AsReadOnly(rows), accuracy, macro, weighted, micro, totalSupport, cm.IsWeighted);
     }
 
     /// <summary>Builds the report straight from the labels, counting the matrix on the way.</summary>
@@ -3017,7 +3024,8 @@ dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~
 The failure message prints both tables one under the other. Fix by column: a
 shifted name column is `width`, a shifted number column is a missing leading
 space, `4` where `4.0` was wanted is the weighted-support branch, and a last-digit
-difference is the rounding mode. Expected when done: PASS, 28 tests.
+difference is the rounding mode. Expected when done: PASS, 26 tests (24 corpus
+rows + 2 facts).
 
 - [ ] **Step 6: Commit**
 
