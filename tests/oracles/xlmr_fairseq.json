@@ -1,0 +1,487 @@
+{
+ "metadata": {
+  "algorithm": "SentencePieceTokenizer",
+  "library": "sentencepiece",
+  "library_version": "0.2.2",
+  "model": "xlmr_fairseq.model (xlm-roberta-base vocabulary, fairseq layout, identity normalizer — see tools/fetch_xlmr_vocab.py)",
+  "reference_calls": [
+   "sentencepiece.SentencePieceProcessor(model_file='xlmr_fairseq.model').encode"
+  ],
+  "normalizer_name": "identity",
+  "vocab_size": 250002,
+  "unk_id": 3,
+  "bos_id": 0,
+  "eos_id": 2,
+  "pad_id": 1,
+  "markers": [
+   {
+    "piece": "<s>",
+    "id": 0,
+    "type": 3
+   },
+   {
+    "piece": "<pad>",
+    "id": 1,
+    "type": 3
+   },
+   {
+    "piece": "</s>",
+    "id": 2,
+    "type": 3
+   },
+   {
+    "piece": "<unk>",
+    "id": 3,
+    "type": 2
+   },
+   {
+    "piece": "<mask>",
+    "id": 250001,
+    "type": 3
+   }
+  ],
+  "sampled_pieces": [
+   {
+    "id": 0,
+    "piece": "<s>",
+    "score": 0.0,
+    "type": 3
+   },
+   {
+    "id": 1,
+    "piece": "<pad>",
+    "score": 0.0,
+    "type": 3
+   },
+   {
+    "id": 2,
+    "piece": "</s>",
+    "score": 0.0,
+    "type": 3
+   },
+   {
+    "id": 3,
+    "piece": "<unk>",
+    "score": 0.0,
+    "type": 2
+   },
+   {
+    "id": 4,
+    "piece": ",",
+    "score": -3.4635426998138428,
+    "type": 1
+   },
+   {
+    "id": 5,
+    "piece": ".",
+    "score": -3.625642776489258,
+    "type": 1
+   },
+   {
+    "id": 1000,
+    "piece": "▁trong",
+    "score": -9.462051391601562,
+    "type": 1
+   },
+   {
+    "id": 100000,
+    "piece": "агляд",
+    "score": -13.398125648498535,
+    "type": 1
+   },
+   {
+    "id": 250000,
+    "piece": "稣",
+    "score": -20.3647518157959,
+    "type": 1
+   },
+   {
+    "id": 250001,
+    "piece": "<mask>",
+    "score": 0.0,
+    "type": 3
+   }
+  ],
+  "count": 11
+ },
+ "cases": [
+  {
+   "id": 0,
+   "text": "le renard brun rapide saute par-dessus le chien paresseux",
+   "pieces": [
+    "▁le",
+    "▁ren",
+    "ard",
+    "▁brun",
+    "▁rapide",
+    "▁sau",
+    "te",
+    "▁par",
+    "-",
+    "dessus",
+    "▁le",
+    "▁chien",
+    "▁pares",
+    "s",
+    "eux"
+   ],
+   "ids": [
+    95,
+    10670,
+    5861,
+    51537,
+    34948,
+    858,
+    67,
+    366,
+    9,
+    121409,
+    95,
+    120074,
+    83130,
+    7,
+    10999
+   ]
+  },
+  {
+   "id": 1,
+   "text": "el zorro marron rapido salta sobre el perro perezoso",
+   "pieces": [
+    "▁el",
+    "▁zor",
+    "ro",
+    "▁mar",
+    "ron",
+    "▁rapid",
+    "o",
+    "▁sal",
+    "ta",
+    "▁sobre",
+    "▁el",
+    "▁per",
+    "ro",
+    "▁per",
+    "ez",
+    "oso"
+   ],
+   "ids": [
+    88,
+    12754,
+    516,
+    1108,
+    1900,
+    25545,
+    31,
+    1552,
+    102,
+    1028,
+    88,
+    117,
+    516,
+    117,
+    1255,
+    6781
+   ]
+  },
+  {
+   "id": 2,
+   "text": "der schnelle braune Fuchs springt uber den faulen Hund",
+   "pieces": [
+    "▁der",
+    "▁schnell",
+    "e",
+    "▁bra",
+    "une",
+    "▁Fu",
+    "ch",
+    "s",
+    "▁spring",
+    "t",
+    "▁u",
+    "ber",
+    "▁den",
+    "▁fa",
+    "ul",
+    "en",
+    "▁Hund"
+   ],
+   "ids": [
+    122,
+    17230,
+    13,
+    1620,
+    1811,
+    7680,
+    206,
+    7,
+    31576,
+    18,
+    75,
+    1297,
+    168,
+    1071,
+    202,
+    33,
+    49083
+   ]
+  },
+  {
+   "id": 3,
+   "text": "быстрая коричневая лиса прыгает через ленивую собаку",
+   "pieces": [
+    "▁бы",
+    "стра",
+    "я",
+    "▁кор",
+    "ичне",
+    "вая",
+    "▁ли",
+    "са",
+    "▁пры",
+    "га",
+    "ет",
+    "▁через",
+    "▁",
+    "лени",
+    "вую",
+    "▁собак",
+    "у"
+   ],
+   "ids": [
+    2294,
+    7133,
+    245,
+    8865,
+    49699,
+    19626,
+    1656,
+    2257,
+    2531,
+    680,
+    1730,
+    5785,
+    6,
+    52651,
+    76929,
+    59095,
+    105
+   ]
+  },
+  {
+   "id": 4,
+   "text": "速い茶色のキツネが怠け者の犬を飛び越える",
+   "pieces": [
+    "▁",
+    "速",
+    "い",
+    "茶",
+    "色",
+    "の",
+    "キ",
+    "ツ",
+    "ネ",
+    "が",
+    "怠",
+    "け",
+    "者の",
+    "犬",
+    "を",
+    "飛び",
+    "越",
+    "える"
+   ],
+   "ids": [
+    6,
+    15689,
+    2111,
+    11238,
+    4379,
+    154,
+    14323,
+    22134,
+    23279,
+    281,
+    213516,
+    13871,
+    43322,
+    37084,
+    251,
+    173055,
+    8119,
+    28666
+   ]
+  },
+  {
+   "id": 5,
+   "text": "a <unk> b",
+   "pieces": [
+    "▁a",
+    "▁<",
+    "unk",
+    ">",
+    "▁b"
+   ],
+   "ids": [
+    10,
+    4426,
+    3678,
+    2740,
+    876
+   ]
+  },
+  {
+   "id": 6,
+   "text": "le chat <mask> sur le tapis",
+   "pieces": [
+    "▁le",
+    "▁chat",
+    "▁<",
+    "mas",
+    "k",
+    ">",
+    "▁sur",
+    "▁le",
+    "▁tapi",
+    "s"
+   ],
+   "ids": [
+    95,
+    3245,
+    4426,
+    1510,
+    92,
+    2740,
+    613,
+    95,
+    4591,
+    7
+   ]
+  },
+  {
+   "id": 7,
+   "text": "<s> hello </s>",
+   "pieces": [
+    "▁<",
+    "s",
+    ">",
+    "▁hell",
+    "o",
+    "▁",
+    "</",
+    "s",
+    ">"
+   ],
+   "ids": [
+    4426,
+    7,
+    2740,
+    33600,
+    31,
+    6,
+    42946,
+    7,
+    2740
+   ]
+  },
+  {
+   "id": 8,
+   "text": "<pad><pad> padding",
+   "pieces": [
+    "▁<",
+    "pad",
+    "><",
+    "pad",
+    ">",
+    "▁pa",
+    "dding"
+   ],
+   "ids": [
+    4426,
+    4299,
+    74047,
+    4299,
+    2740,
+    249,
+    59725
+   ]
+  },
+  {
+   "id": 9,
+   "text": "<mask>",
+   "pieces": [
+    "▁<",
+    "mas",
+    "k",
+    ">"
+   ],
+   "ids": [
+    4426,
+    1510,
+    92,
+    2740
+   ]
+  },
+  {
+   "id": 10,
+   "text": "un texte avec <s>, </s>, <pad>, <unk> et <mask> dedans",
+   "pieces": [
+    "▁un",
+    "▁texte",
+    "▁avec",
+    "▁<",
+    "s",
+    ">",
+    ",",
+    "▁",
+    "</",
+    "s",
+    ">",
+    ",",
+    "▁<",
+    "pad",
+    ">",
+    ",",
+    "▁<",
+    "unk",
+    ">",
+    "▁et",
+    "▁<",
+    "mas",
+    "k",
+    ">",
+    "▁de",
+    "dan",
+    "s"
+   ],
+   "ids": [
+    51,
+    42907,
+    1609,
+    4426,
+    7,
+    2740,
+    4,
+    6,
+    42946,
+    7,
+    2740,
+    4,
+    4426,
+    4299,
+    2740,
+    4,
+    4426,
+    3678,
+    2740,
+    82,
+    4426,
+    1510,
+    92,
+    2740,
+    8,
+    549,
+    7
+   ]
+  }
+ ]
+}

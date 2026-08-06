@@ -47,6 +47,7 @@ UNK_TOKEN = "[UNK]"
 CAT_SENTENCE = "the cat sat on the mat"
 HELLO_WORLD = "hello world"
 TINY_SP_MODEL = "tiny_sp.model"
+XLMR_FAIRSEQ_MODEL = "xlmr_fairseq.model"
 
 # Code-point ranges per category. Surrogates (0xD800..0xDFFF) are filtered out.
 RANGES = {
@@ -1317,6 +1318,96 @@ def generate_spiece_model() -> dict:
     }
 
 
+# Text that names the markers themselves, which is the whole point: a piece only
+# ever matches where its literal characters occur, so an input without "<" in it
+# cannot tell a tokenizer that excludes the control pieces from one that does
+# not. The rest is ordinary multilingual text — the vocabulary is XLM-R's, and a
+# fixture that only ever saw Latin script would leave most of it unexercised.
+XLMR_TEXTS = [
+    "le renard brun rapide saute par-dessus le chien paresseux",
+    "el zorro marron rapido salta sobre el perro perezoso",
+    "der schnelle braune Fuchs springt uber den faulen Hund",
+    "быстрая коричневая лиса прыгает через ленивую собаку",
+    "速い茶色のキツネが怠け者の犬を飛び越える",
+    "a <unk> b",
+    "le chat <mask> sur le tapis",
+    "<s> hello </s>",
+    "<pad><pad> padding",
+    "<mask>",
+    "un texte avec <s>, </s>, <pad>, <unk> et <mask> dedans",
+]
+
+# The five strings a vocabulary in this layout must never segment onto.
+XLMR_MARKERS = ["<s>", "<pad>", "</s>", "<unk>", "<mask>"]
+
+
+def generate_xlmr_fairseq() -> dict:
+    """Freeze sentencepiece's encoding of the XLM-R vocabulary in fairseq layout.
+
+    The fixture is built by tools/fetch_xlmr_vocab.py: XLM-R's own 250 000
+    pieces and scores, at the ids HuggingFace gives them, with <s>=0, <pad>=1,
+    </s>=2, <unk>=3 and <mask>=250001 typed CONTROL/UNKNOWN, and the normalizer
+    set to identity — the pipeline DataNet reproduces. See that script for why
+    the stock sentencepiece.bpe.model cannot be replayed directly.
+
+    This is the corpus the id-based control filter could not have passed: every
+    marker sits outside 0-2 except <s>, and <mask> sits 250 000 ids away from
+    where the guess looked.
+    """
+    import sentencepiece as spm  # noqa: PLC0415
+    from sentencepiece import sentencepiece_model_pb2 as model_pb2  # noqa: PLC0415
+
+    path = ORACLE_DIR / XLMR_FAIRSEQ_MODEL
+    proto = model_pb2.ModelProto()
+    proto.ParseFromString(path.read_bytes())
+    sp = spm.SentencePieceProcessor(model_file=str(path))
+
+    markers = [
+        {
+            "piece": piece,
+            "id": next(i for i, p in enumerate(proto.pieces) if p.piece == piece),
+            "type": int(next(p.type for p in proto.pieces if p.piece == piece)),
+        }
+        for piece in XLMR_MARKERS
+    ]
+    # Spot-checked pieces rather than all 250 002: the vocabulary itself is the
+    # committed .model, and repeating it as JSON would double a 5 MB fixture to
+    # prove nothing the file does not already say.
+    sampled = [
+        {"id": i, "piece": sp.id_to_piece(i), "score": sp.get_score(i), "type": int(proto.pieces[i].type)}
+        for i in (0, 1, 2, 3, 4, 5, 1000, 100_000, 250_000, 250_001)
+    ]
+    cases = [
+        {"id": k, "text": t, "pieces": sp.encode(t, out_type=str), "ids": sp.encode(t, out_type=int)}
+        for k, t in enumerate(XLMR_TEXTS)
+    ]
+
+    return {
+        "metadata": {
+            "algorithm": "SentencePieceTokenizer",
+            "library": "sentencepiece",
+            "library_version": version("sentencepiece"),
+            "model": (
+                "xlmr_fairseq.model (xlm-roberta-base vocabulary, fairseq layout, "
+                "identity normalizer — see tools/fetch_xlmr_vocab.py)"
+            ),
+            "reference_calls": [
+                "sentencepiece.SentencePieceProcessor(model_file='xlmr_fairseq.model').encode",
+            ],
+            "normalizer_name": proto.normalizer_spec.name,
+            "vocab_size": len(proto.pieces),
+            "unk_id": proto.trainer_spec.unk_id,
+            "bos_id": proto.trainer_spec.bos_id,
+            "eos_id": proto.trainer_spec.eos_id,
+            "pad_id": proto.trainer_spec.pad_id,
+            "markers": markers,
+            "sampled_pieces": sampled,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -1349,6 +1440,7 @@ def main() -> None:
         "vocab_txt.json": generate_vocab_txt,
         "tokenizer_json.json": generate_tokenizer_json,
         "spiece_model.json": generate_spiece_model,
+        "xlmr_fairseq.json": generate_xlmr_fairseq,
         "fuzz.json": generate_fuzz,
         "process.json": generate_process,
     }
