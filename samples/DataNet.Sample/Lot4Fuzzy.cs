@@ -2,6 +2,13 @@ using DataNet.Fuzzy;
 
 namespace DataNet.Sample;
 
+// SonarLint S1192: "apple pie" and its misspelling are the data of the
+// demonstration, not a magic value. Each call shows the exact pair being scored,
+// and hoisting them into constants would make a reader open two definitions to
+// find out what is being compared to what — for a file whose only job is to be
+// read.
+#pragma warning disable S1192
+
 /// <summary>
 /// Lot 4 — DataNet.Fuzzy, the rapidfuzz-compatible surface.
 /// </summary>
