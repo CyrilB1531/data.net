@@ -49,7 +49,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import pathlib
-import sys
 import urllib.request
 
 from sentencepiece import sentencepiece_model_pb2 as model_pb2
@@ -137,7 +136,7 @@ def build() -> bytes:
     return relabel(stock)
 
 
-def main() -> None:
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="verify the checked-in fixture, write nothing")
     args = parser.parse_args()
@@ -153,11 +152,12 @@ def main() -> None:
                 f"({len(current)} bytes on disk, {len(fixture)} rebuilt)."
             )
         print(f"{OUTPUT.name} is current ({len(current)} bytes).")
-        return
+        return 0
 
     OUTPUT.write_bytes(fixture)
     print(f"Wrote {OUTPUT} ({len(fixture)} bytes).")
+    return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())
