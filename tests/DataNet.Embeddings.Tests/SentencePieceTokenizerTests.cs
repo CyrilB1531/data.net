@@ -74,14 +74,27 @@ public sealed class SentencePieceTokenizerTests
 #pragma warning restore CS0618
 
     /// <summary>
-    /// The failure the id-based guess cannot see: a model whose control markers
-    /// sit anywhere other than 0, 1 and 2.
+    /// A control marker sitting outside ids 0-2 — the failure the id-based guess
+    /// cannot see — must still never be emitted.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The input has to <em>contain</em> the marker's own string, which is the
+    /// part that is easy to get wrong. A piece only ever matches where its literal
+    /// characters occur, so encoding text that has no <c>&lt;</c> in it asserts
+    /// nothing: the marker could not have been emitted either way, and the test
+    /// passes just as happily with the exclusion removed. Feeding it
+    /// <c>a&lt;s&gt;s</c> is what makes the assertion able to fail.
+    /// </para>
+    /// <para>
+    /// The score is deliberately the best in the vocabulary, so a tokenizer that
+    /// failed to exclude the marker would not merely be able to emit it — Viterbi
+    /// would prefer it.
+    /// </para>
+    /// </remarks>
     [Fact]
     public void Controls_outside_the_first_three_ids_are_still_excluded()
     {
-        // "<s>" at id 3, deliberately scored high enough that a tokenizer which
-        // failed to exclude it would emit it for the letter run "s".
         SentencePiece[] pieces =
         [
             new("a", -1.0, 0),
@@ -100,9 +113,37 @@ public sealed class SentencePieceTokenizerTests
         ];
         var tokenizer = new SentencePieceTokenizer(new SentencePieceVocabulary(pieces, types, UnkId: 4, BosId: 3, EosId: -1, PadId: -1));
 
-        TokenizationResult result = tokenizer.Encode("as");
+        TokenizationResult result = tokenizer.Encode("a<s>s");
 
         Assert.DoesNotContain("<s>", result.Tokens);
+        Assert.DoesNotContain(3, result.Ids);
+    }
+
+    /// <summary>
+    /// The same guarantee for the unknown piece: <c>&lt;unk&gt;</c> is what the
+    /// tokenizer emits <em>for</em> uncovered text, so matching it as text would
+    /// let a document name its own unknown token.
+    /// </summary>
+    [Fact]
+    public void The_unknown_piece_is_never_matched_as_text()
+    {
+        SentencePiece[] pieces =
+        [
+            new("a", -1.0, 0),
+            new("▁", -2.0, 1),
+            new("<unk>", -0.1, 2),
+        ];
+        SentencePieceType[] types =
+        [
+            SentencePieceType.Normal,
+            SentencePieceType.Normal,
+            SentencePieceType.Unknown,
+        ];
+        var tokenizer = new SentencePieceTokenizer(new SentencePieceVocabulary(pieces, types, UnkId: 2, BosId: -1, EosId: -1, PadId: -1));
+
+        TokenizationResult result = tokenizer.Encode("a<unk>a");
+
+        Assert.DoesNotContain("<unk>", result.Tokens);
     }
 
     [Fact]
