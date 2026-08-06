@@ -21,11 +21,17 @@ public readonly record struct SentencePiece(string Piece, double Score, int Id);
 /// </para>
 /// <para>Thread-safe after construction.</para>
 /// </remarks>
-public sealed class SentencePieceTokenizer
+public sealed class SentencePieceTokenizer : ISubwordTokenizer
 {
     private const char Meta = '▁'; // ▁
 
     private readonly Dictionary<string, SentencePiece> _pieces;
+
+    // Control and unknown pieces are kept out of _pieces so they can never match
+    // text, but a special-token template names them by string and needs their ids.
+    // Only the non-matchable entries are duplicated here, so this costs a handful
+    // of slots rather than a second copy of a 250 000-piece vocabulary.
+    private readonly Dictionary<string, int> _nonMatchableIds;
     private readonly int _maxPieceLength;
     private readonly int _unkId;
     private readonly double _unkScore;
@@ -63,11 +69,13 @@ public sealed class SentencePieceTokenizer
         }
 
         _pieces = new Dictionary<string, SentencePiece>(vocabulary.Count, StringComparer.Ordinal);
+        _nonMatchableIds = new Dictionary<string, int>(StringComparer.Ordinal);
         double minScore = 0;
         for (int id = 0; id < vocabulary.Count; id++)
         {
             if (!vocabulary.IsMatchable(id))
             {
+                _nonMatchableIds[vocabulary.Pieces[id].Piece] = id;
                 continue;
             }
             SentencePiece p = vocabulary.Pieces[id];
@@ -87,12 +95,14 @@ public sealed class SentencePieceTokenizer
     {
         Guard.NotNull(vocab);
         _pieces = new Dictionary<string, SentencePiece>(vocab.Count, StringComparer.Ordinal);
+        _nonMatchableIds = new Dictionary<string, int>(StringComparer.Ordinal);
         double minScore = 0;
         foreach (SentencePiece p in vocab)
         {
             // Skip the control pieces so they never match real text.
             if (p.Id is 0 or 1 or 2 && p.Piece.StartsWith('<'))
             {
+                _nonMatchableIds[p.Piece] = p.Id;
                 continue;
             }
             _pieces[p.Piece] = p;
@@ -177,6 +187,25 @@ public sealed class SentencePieceTokenizer
         ids.Reverse();
         tokens.Reverse();
         return new TokenizationResult(tokens, ids);
+    }
+
+    /// <summary>Looks up a literal vocabulary piece, control markers included.</summary>
+    /// <remarks>
+    /// Matches <c>sentencepiece.SentencePieceProcessor.piece_to_id(piece)</c>. The
+    /// control pieces a template names — <c>&lt;s&gt;</c>, <c>&lt;/s&gt;</c>,
+    /// <c>&lt;pad&gt;</c> — resolve here even though they can never match text.
+    /// </remarks>
+    /// <param name="token">The piece string.</param>
+    /// <param name="id">Receives the id when the piece is present.</param>
+    public bool TryGetId(string token, out int id)
+    {
+        Guard.NotNull(token);
+        if (_pieces.TryGetValue(token, out SentencePiece piece))
+        {
+            id = piece.Id;
+            return true;
+        }
+        return _nonMatchableIds.TryGetValue(token, out id);
     }
 
     private static string Preprocess(string text)

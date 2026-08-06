@@ -68,7 +68,7 @@ public sealed record TokenizationResult(IReadOnlyList<string> Tokens, IReadOnlyL
 /// </para>
 /// <para>Thread-safe after construction.</para>
 /// </remarks>
-public sealed class WordPieceTokenizer
+public sealed class WordPieceTokenizer : ISubwordTokenizer
 {
     // Bounded so a pathological input fails instead of hanging the caller.
     private static readonly Regex PreTokenPattern =
@@ -148,6 +148,20 @@ public sealed class WordPieceTokenizer
 
     /// <summary>Tokenizes <paramref name="text"/> and returns only the token ids.</summary>
     public IReadOnlyList<int> EncodeToIds(string text) => Encode(text).Ids;
+
+    /// <summary>Looks up a literal vocabulary entry, special tokens included.</summary>
+    /// <remarks>
+    /// Matches <c>tokenizers.Tokenizer.token_to_id(token)</c>. The lookup is exact
+    /// and case-sensitive — <c>[CLS]</c> is a vocabulary entry, not text, so the
+    /// lowercasing flag deliberately does not apply.
+    /// </remarks>
+    /// <param name="token">The token string.</param>
+    /// <param name="id">Receives the id when the token is present.</param>
+    public bool TryGetId(string token, out int id)
+    {
+        Guard.NotNull(token);
+        return _vocab.TryGetValue(token, out id);
+    }
 
     /// <summary>Null-checks a vocabulary before its members are read in a constructor initializer.</summary>
     private static WordPieceVocabulary Checked(WordPieceVocabulary vocabulary)
