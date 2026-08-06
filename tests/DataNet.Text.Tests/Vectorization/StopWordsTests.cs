@@ -101,6 +101,57 @@ public sealed class StopWordsTests
     }
 
     [Fact]
+    public void French_produces_the_vocabulary_it_always_has()
+    {
+        // Pinned before the lookup was rewritten (#80): the words removed are a
+        // property of the list, and no change to how the set is built or read may
+        // alter them.
+        var cv = new CountVectorizer(new CountVectorizerOptions { StopWords = StopWords.French });
+
+        cv.Fit([
+            "Le chat de la maison dort sur le canapé",
+            "Les chiens et les chats sont dans le jardin",
+            "Il a mangé une pomme que nous avions achetée hier",
+            "Nous serons à la maison quand vous aurez fini",
+        ]);
+
+        Assert.Equal(
+            [
+                "achetée", "avions", "canapé", "chat", "chats", "chiens", "dort",
+                "fini", "hier", "jardin", "maison", "mangé", "pomme", "quand",
+            ],
+            cv.GetFeatureNames());
+    }
+
+    [Fact]
+    public void A_word_a_stop_word_merely_starts_is_kept()
+    {
+        // The net10 path tests a span of the document rather than a copy of the
+        // token, so a wrong length would silently match a prefix: "the" against
+        // "theatre", "for" against "forest".
+        var cv = new CountVectorizer(new CountVectorizerOptions { StopWords = StopWords.English });
+
+        cv.Fit(["the theatre", "for forest", "no nonetheless"]);
+
+        Assert.Equal(["forest", "nonetheless", "theatre"], cv.GetFeatureNames());
+    }
+
+    [Fact]
+    public void A_caller_list_mutated_afterwards_does_not_reach_the_vectorizer()
+    {
+        // The vectorizer copies a caller's set for exactly this reason: it is
+        // theirs to keep mutating, and a fitted model that quietly followed along
+        // would remove words its options never declared.
+        var mine = new HashSet<string>(StringComparer.Ordinal) { "the" };
+        var cv = new CountVectorizer(new CountVectorizerOptions { StopWords = mine });
+
+        mine.Add("quick");
+        cv.Fit(["the quick brown fox"]);
+
+        Assert.Equal(["brown", "fox", "quick"], cv.GetFeatureNames());
+    }
+
+    [Fact]
     public void Accented_stop_words_survive_accent_stripping()
     {
         // Matching is ordinal against the analyzer's output, so "même" no longer

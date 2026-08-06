@@ -57,6 +57,13 @@ has no stated licence, so it cannot be redistributed here
 close — Italian is identical word for word, the others differ by a handful — but
 if you need exactly what nltk removes, load the corpus yourself and pass it in.
 
+Each list is built the first time it is read and never again, one language at a
+time: a program that only ever asks for French does not pay for the other five.
+On `net10.0` a vectorizer handed one of the shipped lists reuses it as it is,
+rather than copying it — a collection of your own is still copied, so that a
+`HashSet<string>` you keep adding to cannot change what a vectorizer already
+built removes.
+
 Removal is an ordinal match against the analyzer's output, so a list only removes
 what preprocessing leaves behind: with `StripAccents = true`, `même` becomes
 `meme` and no longer matches. Single-letter entries (`c`, `d`, `l`, `à` in the

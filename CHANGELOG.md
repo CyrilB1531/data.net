@@ -76,6 +76,20 @@ split and covered all three at once — see
   come from the vectorizers; deserialization makes an out-of-range column index
   an out-of-bounds read. The vectorizers build their own arrays and keep an
   internal unchecked path, so the validation costs them nothing.
+- **Stop-word removal no longer allocates the tokens it discards.** On `net10.0`
+  the shipped lists are frozen sets and the analyzer asks about each token as a
+  span of the document, so a word that is about to be dropped is never
+  materialised — and stop words are by definition the tokens that occur most. Two
+  costs around it go with it: the six lists now initialise one at a time, so
+  reading `StopWords.English` hashes its 318 words instead of all 1 493 across
+  the six; and a vectorizer handed one of the shipped lists reuses it instead of
+  re-hashing it. On a 1 000-document corpus at the ~40% stop-word density of
+  English prose, `CountVectorizer.FitTransform` allocates 30.99 MB where it
+  allocated 32.35 MB — the 1.36 MB saved is the corpus's 40 241 stop-word tokens,
+  at the ~35 bytes a five-character string costs — and runs in 32.7 ms instead
+  of 34.4 ms on an i7-4770S. `netstandard2.0` has neither a frozen set nor a span
+  lookup and keeps the path it always had. Nothing about which words are removed
+  changes, and the lists stay `IReadOnlyCollection<string>`.
 - **`DataNet.Text` declares `System.Text.Json` on `netstandard2.0`.** It is
   in-box from `net8.0` onwards, so the `net10.0` package is still dependency-free
   and consumers on the modern target gain nothing new. This is the one place the

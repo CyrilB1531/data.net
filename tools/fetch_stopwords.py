@@ -59,6 +59,11 @@ namespace DataNet.Text.Vectorization;
 
 public static partial class StopWords
 {
+    // Each list is its own nested type, so the CLR runs its initialiser when that
+    // language is first read and not before: six lists share this class, and a
+    // caller who wants Italian has no reason to hash the other five. StopWords.cs
+    // gives English the same shape by hand.
+
 """
 
 
@@ -90,13 +95,18 @@ def emit(lang: str, words: list[str]) -> str:
     name, code = PROPERTY[lang]
     lines = [
         f"    /// <summary>The Snowball {name} stop-word list ({len(words)} words, <c>{code}</c>).</summary>",
-        f"    public static IReadOnlyCollection<string> {name} {{ get; }} = new HashSet<string>(StringComparer.Ordinal)",
+        f"    public static IReadOnlyCollection<string> {name} => {name}List.Value;",
+        "",
+        f"    private static class {name}List",
         "    {",
+        "        internal static readonly IReadOnlyCollection<string> Value = StopWordSet.Freeze(",
+        "        [",
     ]
     for start in range(0, len(words), 10):
         chunk = ", ".join(f'"{w}"' for w in words[start:start + 10])
-        lines.append(f"        {chunk},")
-    lines.append("    };")
+        lines.append(f"            {chunk},")
+    lines.append("        ]);")
+    lines.append("    }")
     return "\n".join(lines)
 
 
