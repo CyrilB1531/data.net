@@ -95,22 +95,7 @@ public sealed class ConfusionMatrix
         ReadOnlySpan<int> labels = default,
         ReadOnlySpan<double> sampleWeight = default)
     {
-        if (yTrue.Length != yPred.Length)
-        {
-            throw new ArgumentException(
-                $"yTrue has {yTrue.Length} entries and yPred has {yPred.Length}; they must agree.",
-                nameof(yPred));
-        }
-        if (yTrue.Length == 0)
-        {
-            throw new ArgumentException("yTrue and yPred are empty; there is nothing to score.", nameof(yTrue));
-        }
-        if (!sampleWeight.IsEmpty && sampleWeight.Length != yTrue.Length)
-        {
-            throw new ArgumentException(
-                $"sampleWeight has {sampleWeight.Length} entries but there are {yTrue.Length} samples.",
-                nameof(sampleWeight));
-        }
+        Inputs.Validate(yTrue, yPred, sampleWeight);
 
         LabelIndex index = LabelIndex.Create(yTrue, yPred, labels);
         int k = index.Count;
