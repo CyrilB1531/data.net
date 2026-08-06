@@ -65,6 +65,12 @@ A change is not finished until all of these hold:
 3. **Lint is clean**: `dotnet format --verify-no-changes` and markdownlint.
 4. **Public API carries XML documentation**, naming the Python function whose
    behavior it matches.
+5. **The C# in the guides still compiles.** Every ```` ```csharp ```` fence in
+   `README.md` and `docs/guides/` is extracted from the Markdown and built
+   against the packed packages — there is no second copy, so a snippet cannot
+   drift from the API. A fence that genuinely cannot compile opts out with
+   `<!-- docs-compile: skip - reason -->` on the line above it, and the reason
+   has to be one a reviewer can disagree with.
 
 ```bash
 dotnet build DataNet.slnx -c Release
@@ -72,10 +78,11 @@ dotnet test DataNet.slnx -c Release
 dotnet format DataNet.slnx --verify-no-changes
 npx markdownlint-cli2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
 python3 tools/check_version_floor.py
+python3 tools/extract_doc_snippets.py && dotnet build samples/DataNet.DocSnippets -c Release
 ```
 
-The last one is offline and instant; it catches the version numbers that must
-agree drifting apart, which MSBuild is perfectly happy to let happen. CI runs it
+`check_version_floor.py` is offline and instant; it catches the version numbers
+that must agree drifting apart, which MSBuild is perfectly happy to let happen. CI runs it
 with `--check-feed`, which additionally proves the dependency floor is published
 — see [`tools/README.md`](tools/README.md). If you touched packaging, packing and
 running `python3 tools/check_nuspec_dependencies.py ./artifacts --require-all`

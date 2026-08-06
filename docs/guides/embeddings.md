@@ -119,6 +119,7 @@ guide warns about — and it would be silent.
 Weights are **not** shipped: export an encoder (e.g. a sentence-transformers
 model) to ONNX and pass its path.
 
+<!-- docs-compile: skip - the two /* … */ placeholders are not C#; #60 replaces them with the batch API that owns the special tokens and the mask -->
 ```csharp
 using DataNet.Embeddings.Onnx;
 

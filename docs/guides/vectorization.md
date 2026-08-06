@@ -139,6 +139,8 @@ same document, and nothing downstream would notice.
 Every count in an artifact sizes a buffer, so loading is bounded:
 
 ```csharp
+using DataNet.Text.Persistence;
+
 var strict = new ArtifactLoadOptions { MaxVocabularySize = 50_000, MaxTotalBytes = 8L * 1024 * 1024 };
 TfidfVectorizer model = TfidfVectorizer.Load("model.json", strict);
 ```
