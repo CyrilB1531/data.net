@@ -124,6 +124,14 @@ public sealed class SentencePieceTokenizerTests
     /// tokenizer emits <em>for</em> uncovered text, so matching it as text would
     /// let a document name its own unknown token.
     /// </summary>
+    /// <remarks>
+    /// The vocabulary covers every character of the input on purpose. Left
+    /// uncovered, the run <c>&lt;unk&gt;</c> comes back as a single unknown token
+    /// whose surface is the string <c>&lt;unk&gt;</c> — the same tokens and the
+    /// same ids a tokenizer that wrongly matched the piece would produce, so the
+    /// assertion could not tell the two apart. Covered, the two answers differ:
+    /// five cheap pieces, or one matched marker scoring better than all of them.
+    /// </remarks>
     [Fact]
     public void The_unknown_piece_is_never_matched_as_text()
     {
@@ -132,18 +140,21 @@ public sealed class SentencePieceTokenizerTests
             new("a", -1.0, 0),
             new("▁", -2.0, 1),
             new("<unk>", -0.1, 2),
+            .. "<unk>".Select((c, i) => new SentencePiece(c.ToString(), -4.0, 3 + i)),
         ];
         SentencePieceType[] types =
         [
             SentencePieceType.Normal,
             SentencePieceType.Normal,
             SentencePieceType.Unknown,
+            .. Enumerable.Repeat(SentencePieceType.Normal, 5),
         ];
         var tokenizer = new SentencePieceTokenizer(new SentencePieceVocabulary(pieces, types, UnkId: 2, BosId: -1, EosId: -1, PadId: -1));
 
         TokenizationResult result = tokenizer.Encode("a<unk>a");
 
         Assert.DoesNotContain("<unk>", result.Tokens);
+        Assert.DoesNotContain(2, result.Ids);
     }
 
     /// <summary>

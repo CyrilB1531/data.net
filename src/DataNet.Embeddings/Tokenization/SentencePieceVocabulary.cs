@@ -61,7 +61,19 @@ public sealed record SentencePieceVocabulary(
     /// <summary>Number of pieces in the vocabulary.</summary>
     public int Count => Pieces.Count;
 
-    /// <summary>Compares the special-token ids, then every piece and every type.</summary>
+    /// <summary>
+    /// The normalization the model carries in its <c>precompiled_charsmap</c>, or
+    /// <c>null</c> for the <c>identity</c> normalizer.
+    /// </summary>
+    /// <remarks>
+    /// Not a constructor parameter: a vocabulary built by hand has no charsmap,
+    /// and <c>null</c> — meaning "the text reaches the tokenizer as it was written"
+    /// — is the only sound default. <see cref="Persistence.SentencePieceModelLoader"/>
+    /// sets it from the file.
+    /// </remarks>
+    public PrecompiledNormalizer? Normalizer { get; init; }
+
+    /// <summary>Compares the special-token ids and the normalizer, then every piece and every type.</summary>
     /// <param name="other">The vocabulary to compare against.</param>
     /// <remarks>
     /// The generated equality would compare <see cref="Pieces"/> and
@@ -78,7 +90,8 @@ public sealed record SentencePieceVocabulary(
             || UnkId != other.UnkId || BosId != other.BosId
             || EosId != other.EosId || PadId != other.PadId
             || Pieces.Count != other.Pieces.Count
-            || Types.Count != other.Types.Count)
+            || Types.Count != other.Types.Count
+            || !Equals(Normalizer, other.Normalizer))
         {
             return false;
         }

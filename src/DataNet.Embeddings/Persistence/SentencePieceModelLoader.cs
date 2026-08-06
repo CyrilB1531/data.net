@@ -105,6 +105,7 @@ public static class SentencePieceModelLoader
         int padId = -1;
 
         bool sawNormalizerSpec = false;
+        PrecompiledNormalizer? normalizer = null;
 
         var reader = new ProtobufReader(payload);
         while (reader.TryReadTag(out int field, out int wireType))
@@ -127,7 +128,7 @@ public static class SentencePieceModelLoader
                     break;
                 case FieldNormalizerSpec:
                     sawNormalizerSpec = true;
-                    EnsureNormalizerIsReproduced(reader.ReadLengthDelimited());
+                    normalizer = ReadNormalizerSpec(reader.ReadLengthDelimited());
                     break;
                 default:
                     reader.SkipField(wireType);
@@ -152,7 +153,7 @@ public static class SentencePieceModelLoader
         CheckSpecialId(bosId, pieces.Count, "bos_id", optional: true);
         CheckSpecialId(eosId, pieces.Count, "eos_id", optional: true);
         CheckSpecialId(padId, pieces.Count, "pad_id", optional: true);
-        return new SentencePieceVocabulary(pieces, types, unkId, bosId, eosId, padId);
+        return new SentencePieceVocabulary(pieces, types, unkId, bosId, eosId, padId) { Normalizer = normalizer };
     }
 
     /// <summary>
@@ -300,10 +301,30 @@ public static class SentencePieceModelLoader
         _ => $"type-{value}",
     };
 
-    private static void EnsureNormalizerIsReproduced(ReadOnlySpan<byte> message)
+    /// <summary>
+    /// Reads the normalizer, returning what will rewrite the text — or <c>null</c>
+    /// for <c>identity</c>, which rewrites nothing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The <em>charsmap decides</em>, not the name. Every rule <c>spm_train</c>
+    /// offers — <c>nmt_nfkc</c>, <c>nfkc</c>, their <c>_cf</c> variants, a custom
+    /// <c>--normalization_rule_tsv</c> — compiles to that one blob, and
+    /// <c>normalizer_spec.name</c> is a record of which one produced it. Reading
+    /// the blob covers them all; reading the name would cover the ones we happened
+    /// to enumerate, and would trust a file to describe itself honestly.
+    /// </para>
+    /// <para>
+    /// So the only refusal left is the case where the file claims a rule and hands
+    /// over nothing to apply: a name other than <c>identity</c> with an empty
+    /// charsmap. Reproducing that would mean reimplementing the rule from its name
+    /// — the very thing this design rejects.
+    /// </para>
+    /// </remarks>
+    private static PrecompiledNormalizer? ReadNormalizerSpec(ReadOnlySpan<byte> message)
     {
         string name = "identity";
-        bool hasCharsMap = false;
+        byte[]? charsMap = null;
         bool addDummyPrefix = true;
         bool removeExtraWhitespaces = true;
         bool escapeWhitespaces = true;
@@ -317,7 +338,8 @@ public static class SentencePieceModelLoader
                     name = DecodeUtf8(reader.ReadLengthDelimited());
                     break;
                 case NormalizerFieldCharsMap when wireType == ProtobufReader.WireLengthDelimited:
-                    hasCharsMap = reader.ReadLengthDelimited().Length > 0;
+                    ReadOnlySpan<byte> raw = reader.ReadLengthDelimited();
+                    charsMap = raw.Length > 0 ? raw.ToArray() : null;
                     break;
                 case NormalizerFieldAddDummyPrefix when wireType == ProtobufReader.WireVarint:
                     addDummyPrefix = reader.ReadVarint() != 0;
@@ -334,11 +356,11 @@ public static class SentencePieceModelLoader
             }
         }
 
-        if (!string.Equals(name, "identity", StringComparison.Ordinal) || hasCharsMap)
+        if (charsMap is null && !string.Equals(name, "identity", StringComparison.Ordinal))
         {
             throw Unsupported(
-                $"it was trained with the '{name}' normalizer",
-                "only the identity normalizer is reproduced, so any other would tokenize differently here than in Python");
+                $"it names the '{name}' normalizer but carries no precompiled charsmap",
+                "the rules are applied from the compiled map, never from the name, so there is nothing here to apply");
         }
         if (!addDummyPrefix)
         {
@@ -352,6 +374,7 @@ public static class SentencePieceModelLoader
         {
             throw Unsupported("escape_whitespaces is off", "the tokenizer always maps spaces to U+2581");
         }
+        return charsMap is null ? null : PrecompiledNormalizer.FromCharsMap(charsMap);
     }
 
     private static InvalidDataException Unsupported(string found, string why) =>
