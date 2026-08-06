@@ -4209,7 +4209,6 @@ EOF
 
 ---
 
-
 ### Task 12: The documentation the issue actually asks for
 
 **Files:**
