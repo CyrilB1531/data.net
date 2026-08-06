@@ -132,6 +132,40 @@ jobs:
           NUGET_PACKAGES: ${{ runner.temp }}/sample-packages
         run: dotnet run --project samples/DataNet.Sample --configuration Release
 
+  docs-snippets:
+    name: Guide snippets compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+
+      # markdownlint validates the Markdown and does not know C# exists, so
+      # until now a renamed method could not fail anything the guides are in.
+      # The snippets are compiled from the Markdown itself — there is no second
+      # copy to keep in sync, so they cannot drift.
+      #
+      # Against the packed packages, not the projects: a snippet that only
+      # compiles through a ProjectReference is not one a reader can run. Same
+      # NUGET_PACKAGES separation as the sample job, and for the same reason —
+      # see docs/decisions/0009-sample-consumes-a-local-feed.md.
+      - name: Pack
+        env:
+          NUGET_PACKAGES: ${{ runner.temp }}/pack-packages
+        run: |
+          for proj in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
+            dotnet pack "$proj" --configuration Release -o ./artifacts
+          done
+
+      - name: Extract the snippets from the guides
+        run: python3 tools/extract_doc_snippets.py
+
+      - name: Build them
+        env:
+          NUGET_PACKAGES: ${{ runner.temp }}/snippet-packages
+        run: dotnet build samples/DataNet.DocSnippets --configuration Release
+
   stopwords-pinned:
     name: Stop-word lists match their pinned source
     runs-on: ubuntu-latest
