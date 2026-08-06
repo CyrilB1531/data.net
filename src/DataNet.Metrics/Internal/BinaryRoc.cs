@@ -135,7 +135,20 @@ internal static class BinaryRoc
         if (truePositives == 0.0 || falsePositives == 0.0)
         {
 #pragma warning restore S1244
-            throw new ArgumentException("Only one class is present in yTrue; ROC AUC is undefined for it.");
+            // SonarLint S3928 wants this paramName to be nameof()'d against a
+            // parameter of the enclosing method, which is right in general and
+            // wrong here specifically: yTrue isn't a parameter of this
+            // extracted helper, so nameof(yTrue) isn't available, but the
+            // literal is not a made-up name either — it is the actual
+            // parameter of the public RocAuc.Score/RocAuc.MultiClass call this
+            // exception reports back to, exactly as it was before Score was
+            // split into Validate/BuildPoints/Accumulate/this method. Dropping
+            // ParamName instead would change ArgumentException.Message itself
+            // (it appends "(Parameter 'yTrue')" whenever ParamName is set),
+            // which is the regression this comment exists to prevent.
+#pragma warning disable S3928
+            throw new ArgumentException("Only one class is present in yTrue; ROC AUC is undefined for it.", "yTrue");
+#pragma warning restore S3928
         }
     }
 }

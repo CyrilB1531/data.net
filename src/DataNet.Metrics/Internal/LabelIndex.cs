@@ -194,13 +194,16 @@ internal sealed class LabelIndex
             Mark(yPred, seen, min);
 
             // SonarLint S3267 wants this rewritten with Where/Count(), which
-            // this codebase avoids on paths like this one: LabelIndex backs
-            // IndexOf, called twice per sample (once for yTrue, once for
-            // yPred) by every precision/recall/F-score call, and a later
-            // task benchmarks these metrics against scikit-learn with a
-            // merge gate of beating it on processor time. Where allocates an
-            // iterator and adds a delegate call per element; a plain
-            // counting loop does neither.
+            // this codebase avoids on paths like this one: this loop runs
+            // once per LabelIndex construction, but over `seen`, an array
+            // sized to the observed label range — up to MaxDirectTableSize
+            // entries — so it is not a fixed-size cost, and LabelIndex.Create
+            // itself runs once per ConfusionMatrix.Compute call, on the same
+            // path a later task benchmarks these metrics against scikit-learn
+            // on, with a merge gate of beating it on processor time.
+            // Where/Count() would allocate an iterator and add a delegate
+            // call per element of that array; a plain counting loop does
+            // neither.
 #pragma warning disable S3267
             int count = 0;
             foreach (bool present in seen) { if (present) { count++; } }

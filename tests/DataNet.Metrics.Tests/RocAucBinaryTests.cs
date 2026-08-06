@@ -25,7 +25,14 @@ public sealed class RocAucBinaryTests
         int[] yTrue = [1, 1, 1];
         double[] scores = [0.1, 0.4, 0.9];
 
-        Assert.Throws<ArgumentException>(() => RocAuc.Score(yTrue, scores));
+        // Assert.Throws<ArgumentException> alone would pass even if the
+        // guard's ParamName (and therefore its Message, which appends
+        // "(Parameter 'x')" whenever ParamName is set) silently changed —
+        // exactly what happened when BinaryRoc.Score was split and the
+        // single-class check's throw lost its second argument. Pin both.
+        ArgumentException ex = Assert.Throws<ArgumentException>(() => RocAuc.Score(yTrue, scores));
+        Assert.Equal("yTrue", ex.ParamName);
+        Assert.Contains("Only one class is present", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
