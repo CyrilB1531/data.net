@@ -146,6 +146,63 @@ public sealed class SentencePieceTokenizerTests
         Assert.DoesNotContain("<unk>", result.Tokens);
     }
 
+    /// <summary>
+    /// The fairseq layout, in one vocabulary: <c>&lt;s&gt;</c>=0,
+    /// <c>&lt;pad&gt;</c>=1, <c>&lt;/s&gt;</c>=2, <c>&lt;unk&gt;</c>=3 and
+    /// <c>&lt;mask&gt;</c> last — the numbering HuggingFace gives XLM-R, and the
+    /// one the id-based guess reads as "only <c>&lt;s&gt;</c>, <c>&lt;pad&gt;</c>
+    /// and <c>&lt;/s&gt;</c> are controls".
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Every marker is scored 0 — the best in the vocabulary — and every
+    /// character of the input is covered by a normal piece, so nothing here can
+    /// come out as the unknown piece for want of an alternative: an id from this
+    /// set in the output means the marker was matched as text.
+    /// </para>
+    /// <para>
+    /// This is the fast, fixture-free mirror of
+    /// <see cref="XlmRobertaFairseqTests"/>, which asserts the same property over
+    /// XLM-R's real 250 002-piece vocabulary, <c>&lt;mask&gt;</c> at 250001
+    /// included.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void A_fairseq_layout_matches_none_of_its_five_markers()
+    {
+        SentencePiece[] pieces =
+        [
+            new("<s>", 0.0, 0),
+            new("<pad>", 0.0, 1),
+            new("</s>", 0.0, 2),
+            new("<unk>", 0.0, 3),
+            new("▁", -3.0, 4),
+            new("a", -2.0, 5),
+            new("b", -2.0, 6),
+            .. "<>/spdunkm".Select((c, i) => new SentencePiece(c.ToString(), -4.0, 7 + i)),
+            new("<mask>", 0.0, 17),
+        ];
+        SentencePieceType[] types =
+        [
+            SentencePieceType.Control,
+            SentencePieceType.Control,
+            SentencePieceType.Control,
+            SentencePieceType.Unknown,
+            .. Enumerable.Repeat(SentencePieceType.Normal, 13),
+            SentencePieceType.Control,
+        ];
+        var tokenizer = new SentencePieceTokenizer(
+            new SentencePieceVocabulary(pieces, types, UnkId: 3, BosId: 0, EosId: 2, PadId: 1));
+
+        TokenizationResult result = tokenizer.Encode("a<s>b<pad>a</s>b<unk>a<mask>b");
+
+        foreach (int id in (int[])[0, 1, 2, 3, 17])
+        {
+            Assert.DoesNotContain(pieces[id].Piece, result.Tokens);
+            Assert.DoesNotContain(id, result.Ids);
+        }
+    }
+
     [Fact]
     public void A_vocabulary_whose_pieces_and_types_disagree_is_rejected()
     {
