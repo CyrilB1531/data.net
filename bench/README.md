@@ -178,21 +178,26 @@ rather than reporting numbers.
 ### net10 vs netstandard2.0
 
 ```bash
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks        -- --filter '*Persistence*'
+dotnet run -c Release --project bench/DataNet.Text.Benchmarks        -- --filter '*Persistence*' --inProcess
 dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter '*Persistence*'
 ```
 
-Intel i7-4770S, .NET 10.0.110. Loaders parse from memory here, so the figures are
-parsing cost rather than disk latency.
+`--inProcess` puts the net10 side on the toolchain the netstandard2.0 project
+pins, for the reasons section 2 sets out; this tier published a mismatched pair
+until issue #88.
 
-| Operation | net10 | netstandard2.0 | net10 alloc | ns2.0 alloc |
-| --- | --- | --- | --- | --- |
-| `VocabTxt` | 4.201 ms | 4.238 ms | 4.25 MB | 4.25 MB |
-| `TokenizerJsonWordPiece` | 11.780 ms | 12.189 ms | 7.24 MB | 7.25 MB |
-| `TokenizerJsonUnigram` | 16.130 ms | 17.001 ms | 9.64 MB | 9.64 MB |
-| `SpieceModel` | 4.369 ms | **10.505 ms** | 4.61 MB | **6.56 MB** |
-| `TfidfSave` | 1.781 ms | 1.915 ms | 2.09 MB | 2.09 MB |
-| `TfidfLoad` | 5.033 ms | 5.349 ms | 4.34 MB | 4.34 MB |
+Intel i7-4770S, .NET 10.0.10. Loaders parse from memory here, so the figures are
+parsing cost rather than disk latency. **Two runs per side, both shown**,
+interleaved net10 → netstandard2.0 → net10 → netstandard2.0.
+
+| Operation | net10 | netstandard2.0 | ratio | net10 alloc | ns2.0 alloc |
+| --- | --- | --- | --- | --- | --- |
+| `VocabTxt` | 4.251 / 4.308 ms | 4.206 / 4.347 ms | 0.99 / 1.01 | 4.25 MB | 4.25 MB |
+| `TokenizerJsonWordPiece` | 12.024 / 12.222 ms | 11.955 / 11.862 ms | 0.99 / 0.97 | 7.25 MB | 7.25 MB |
+| `TokenizerJsonUnigram` | 16.206 / 16.035 ms | 16.632 / 15.630 ms | 1.03 / 0.97 | 9.64 MB | 9.64 MB |
+| `SpieceModel` | 4.235 / 4.222 ms | **10.602 / 10.032 ms** | **2.50 / 2.38** | 4.61 MB | **6.56 MB** |
+| `TfidfSave` | 1.834 / 1.939 ms | 1.789 / 1.782 ms | 0.98 / 0.92 | 2.09 MB | 2.09 MB |
+| `TfidfLoad` | 5.047 / 4.920 ms | 5.085 / 5.130 ms | 1.01 / 1.04 | 4.34 MB | 4.34 MB |
 
 One caveat on the `TfidfSave` allocation figure: the benchmark pre-sizes its
 destination `MemoryStream` to the artifact's exact final length, which a caller
@@ -201,12 +206,38 @@ garbage a realistic save would pay, so the number is friendlier than the typical
 case. It is deliberate — the question on this axis is what the two *targets* cost
 each other, not what a caller pays — but it is not a general "cost of Save".
 
-Five rows sit inside their own Error/StdDev — noise, which is what equivalent IL
-should produce. `SpieceModel` is the exception and it is real: netstandard2.0
-allocates twice per piece where net10 allocates nothing, once for the `byte[4]`
-scratch buffer in `ProtobufReader.ReadFloat` and once for the array copy in
-`DecodeUtf8` that `netstandard2.0` needs because it has no span overload. Across
-29 861 pieces that is the whole 1.95 MB difference, and it costs 2.4× the time.
+Five rows are noise, which is what equivalent IL should produce, and two runs per
+side say so more convincingly than one: those five scatter between 0.92× and
+1.04× and **change sign between rounds** — `TokenizerJsonUnigram` reads 1.03×
+then 0.97×, `TfidfSave` 0.98× then 0.92×. A single run per side cannot
+distinguish that from a small consistent penalty, which is what this table used
+to report.
+
+`SpieceModel` is the exception and it is real: netstandard2.0 allocates twice per
+piece where net10 allocates nothing, once for the `byte[4]` scratch buffer in
+`ProtobufReader.ReadFloat` and once for the array copy in `DecodeUtf8` that
+`netstandard2.0` needs because it has no span overload. Across 29 861 pieces that
+is the whole 1.95 MB difference, and it costs 2.38×–2.50× the time. The
+allocation column is counted rather than sampled and does not move between runs
+at all.
+
+**What the toolchain mismatch was worth here.** Running the net10 side
+out-of-process in the same window — the shape of the command pair this section
+used to publish — makes the same binary read up to 8% faster (`TfidfLoad`
+4.625 ms against 4.920 / 5.047 in-process; `VocabTxt` 4.092 against 4.251 /
+4.308). Pair that column against the in-process netstandard2.0 one and
+`TfidfLoad` reports 1.10×–1.11× and `VocabTxt` 1.03×–1.06×, where the matched
+pairing gives 1.01×–1.04× and 0.99×–1.01×. The mismatch is the same size as the
+differences the five rows were being read for, which is why nothing could be
+concluded from them either way. It is far too small to touch `SpieceModel`.
+
+**Conditions.** The one-minute load average was 4.7–8.1 on 8 logical cores across
+the five runs; the editor's language servers and the session driving them are
+part of that and cannot be excluded from inside it. Both columns pay it equally
+and the runs alternate, so the table is internally comparable — but it is not
+comparable to figures taken on this machine in a quieter state, and the earlier
+ones are withdrawn for their mismatched pairing rather than because these
+disagree with them.
 
 ### vs Python
 
@@ -312,11 +343,11 @@ generated project re-resolves the `ProjectReference` and silently restores the
 net10.0 build), while the first command would use the default out-of-process
 toolchain. Any figure compared across those two harnesses mixes the target
 framework with the harness that measured it. This tier was published that way
-before, and the flag is what removes the confound. Section 2 above and the
+before, and the flag is what removes the confound. Sections 2 and 4 above and the
 batched-embedding comparison in `docs/guides/performance.md` carried the same
-defect and were re-measured with the flag in place (issue #87). Section 4 still
-carries it — tracked as issue #88 — and its figures should be read with that in
-mind until it is re-measured too.
+defect and were re-measured with the flag in place (issues #87 and #88). Every
+net10-versus-netstandard2.0 figure in this repository now comes from a pair of
+commands that share a toolchain, and from two runs per side rather than one.
 
 Same isolation assertion as those sections: the netstandard2.0 run proves it
 loaded the netstandard2.0 build before any number from it is trusted.
