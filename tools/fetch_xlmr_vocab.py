@@ -49,6 +49,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import pathlib
+import sys
 import urllib.request
 
 from sentencepiece import sentencepiece_model_pb2 as model_pb2
@@ -151,19 +152,26 @@ def main() -> int:
 
     fixture = build()
     if args.check:
+        # A verdict, not an abort: --check reports through the exit status the way
+        # fetch_stopwords.py does, so a caller can branch on it. What raises here
+        # is the pin mismatch in build(), which is a different kind of event —
+        # the upstream file moved, and no answer about the fixture is available.
         if not OUTPUT.exists():
-            raise SystemExit(f"{OUTPUT} does not exist. Run this script without --check.")
+            print(f"{OUTPUT} does not exist; rerun without --check", file=sys.stderr)
+            return 1
         current = OUTPUT.read_bytes()
         if current != fixture:
-            raise SystemExit(
+            print(
                 f"{OUTPUT} is not what this script produces "
-                f"({len(current)} bytes on disk, {len(fixture)} rebuilt)."
+                f"({len(current)} bytes on disk, {len(fixture)} rebuilt)",
+                file=sys.stderr,
             )
-        print(f"{OUTPUT.name} is current ({len(current)} bytes).")
+            return 1
+        print(f"{OUTPUT} is up to date ({len(current)} bytes)", file=sys.stderr)
         return 0
 
     OUTPUT.write_bytes(fixture)
-    print(f"Wrote {OUTPUT} ({len(fixture)} bytes).")
+    print(f"wrote {OUTPUT} ({len(fixture)} bytes)", file=sys.stderr)
     return 0
 
 
