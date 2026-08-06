@@ -105,8 +105,9 @@ public static class BpePatterns
 
 public static class BpeFilesLoader
 {
-    public static BpeVocabulary Read(Stream vocabJson, Stream merges, ArtifactLoadOptions? options = null);
-    public static BpeVocabulary ReadFiles(string vocabJsonPath, string mergesPath, ArtifactLoadOptions? options = null);
+    public static BpeVocabulary Load(Stream vocabJson, Stream merges, ArtifactLoadOptions? options = null, bool byteLevel = true);
+    public static BpeVocabulary Load(string vocabJsonPath, string mergesPath, ArtifactLoadOptions? options = null, bool byteLevel = true);
+    public static Task<BpeVocabulary> LoadAsync(Stream vocabJson, Stream merges, ArtifactLoadOptions? options = null, bool byteLevel = true, CancellationToken cancellationToken = default);
 }
 ```
 
@@ -216,9 +217,11 @@ oracle.
 
 ## Loading
 
-### `TokenizerJsonLoader.ReadBpe`
+### `TokenizerJsonLoader.LoadBpe`
 
-Alongside `ReadWordPiece` and `ReadUnigram`. Reads `model.type == "BPE"`, the
+Alongside `LoadWordPiece` and `LoadUnigram`, with the same three overloads each
+of those has — `Stream`, `string path`, and an `Async` counterpart. Reads
+`model.type == "BPE"`, the
 vocabulary, and the merge table in both encodings found in the wild — `"a b"`
 lines and `["a", "b"]` pairs. Three flags decide behaviour:
 
