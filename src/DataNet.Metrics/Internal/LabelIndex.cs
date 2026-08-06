@@ -44,6 +44,21 @@ internal sealed class LabelIndex
         RequestedCount = requestedCount;
         Explicit = isExplicit;
 
+        (int min, int max) = MinMax(labels);
+        long range = (long)max - min + 1;
+
+        if (range <= MaxDirectTableSize)
+        {
+            _min = min;
+            _direct = BuildDirectTable(labels, min, (int)range);
+            return;
+        }
+
+        (_sorted, _ordinals) = BuildSortedIndex(labels);
+    }
+
+    private static (int Min, int Max) MinMax(int[] labels)
+    {
         int min = labels[0];
         int max = labels[0];
         foreach (int value in labels)
@@ -51,38 +66,41 @@ internal sealed class LabelIndex
             if (value < min) { min = value; }
             if (value > max) { max = value; }
         }
+        return (min, max);
+    }
 
-        long range = (long)max - min + 1;
-        if (range <= MaxDirectTableSize)
+    private static int[] BuildDirectTable(int[] labels, int min, int range)
+    {
+        int[] direct = new int[range];
+        for (int i = 0; i < direct.Length; i++) { direct[i] = -1; }
+        for (int i = 0; i < labels.Length; i++)
         {
-            _min = min;
-            _direct = new int[(int)range];
-            for (int i = 0; i < _direct.Length; i++) { _direct[i] = -1; }
-            for (int i = 0; i < labels.Length; i++)
-            {
-                int slot = labels[i] - min;
-                if (_direct[slot] >= 0)
-                {
-                    throw new ArgumentException(
-                        $"Label {labels[i]} appears more than once.", nameof(labels));
-                }
-                _direct[slot] = i;
-            }
-            return;
-        }
-
-        _sorted = (int[])labels.Clone();
-        _ordinals = new int[labels.Length];
-        for (int i = 0; i < _ordinals.Length; i++) { _ordinals[i] = i; }
-        Array.Sort(_sorted, _ordinals);
-        for (int i = 1; i < _sorted.Length; i++)
-        {
-            if (_sorted[i] == _sorted[i - 1])
+            int slot = labels[i] - min;
+            if (direct[slot] >= 0)
             {
                 throw new ArgumentException(
-                    $"Label {_sorted[i]} appears more than once.", nameof(labels));
+                    $"Label {labels[i]} appears more than once.", nameof(labels));
+            }
+            direct[slot] = i;
+        }
+        return direct;
+    }
+
+    private static (int[] Sorted, int[] Ordinals) BuildSortedIndex(int[] labels)
+    {
+        int[] sorted = (int[])labels.Clone();
+        int[] ordinals = new int[labels.Length];
+        for (int i = 0; i < ordinals.Length; i++) { ordinals[i] = i; }
+        Array.Sort(sorted, ordinals);
+        for (int i = 1; i < sorted.Length; i++)
+        {
+            if (sorted[i] == sorted[i - 1])
+            {
+                throw new ArgumentException(
+                    $"Label {sorted[i]} appears more than once.", nameof(labels));
             }
         }
+        return (sorted, ordinals);
     }
 
     /// <summary>
@@ -175,8 +193,18 @@ internal sealed class LabelIndex
             Mark(yTrue, seen, min);
             Mark(yPred, seen, min);
 
+            // SonarLint S3267 wants this rewritten with Where/Count(), which
+            // this codebase avoids on paths like this one: LabelIndex backs
+            // IndexOf, called twice per sample (once for yTrue, once for
+            // yPred) by every precision/recall/F-score call, and a later
+            // task benchmarks these metrics against scikit-learn with a
+            // merge gate of beating it on processor time. Where allocates an
+            // iterator and adds a delegate call per element; a plain
+            // counting loop does neither.
+#pragma warning disable S3267
             int count = 0;
             foreach (bool present in seen) { if (present) { count++; } }
+#pragma warning restore S3267
 
             int[] union = new int[count];
             int next = 0;

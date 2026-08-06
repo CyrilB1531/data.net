@@ -28,17 +28,6 @@ public static class FBeta
         return Prf.Aggregate(cm, PrfMetric.FScore, beta, average, posLabel, zeroDivision);
     }
 
-    /// <summary>F-beta for every class, in label order (<c>fbeta_score(average=None)</c>).</summary>
-    /// <param name="cm">The matrix to read.</param>
-    /// <param name="beta">The weight of recall relative to precision.</param>
-    /// <param name="zeroDivision">What to return when the metric is undefined.</param>
-    public static double[] PerClass(ConfusionMatrix cm, double beta, ZeroDivision zeroDivision = ZeroDivision.Zero)
-    {
-        Guard.NotNull(cm);
-        Prf.ValidateBeta(beta);
-        return Prf.PerClass(cm, PrfMetric.FScore, beta, zeroDivision);
-    }
-
     /// <summary>F-beta straight from the labels, counting the matrix on the way.</summary>
     /// <param name="yTrue">The true labels.</param>
     /// <param name="yPred">The predicted labels, same length as <paramref name="yTrue"/>.</param>
@@ -48,6 +37,20 @@ public static class FBeta
     /// <param name="zeroDivision">What to return when the metric is undefined.</param>
     /// <param name="labels">The label set and its order.</param>
     /// <param name="sampleWeight">A weight per sample.</param>
+    // SonarLint S107 counts eight parameters here and wants fewer, which is
+    // wrong for this method: this signature is a specification, not a design
+    // choice. sklearn.metrics.fbeta_score takes y_true, y_pred, beta,
+    // average, pos_label, zero_division, labels and sample_weight — eight,
+    // every one load-bearing for parity, and the corpus already exercises
+    // all of them. Precision/Recall/F1's equivalent overloads sit at seven
+    // for exactly one reason: they have no beta. Collapsing these into an
+    // options object would break the parallel a reader relies on across the
+    // four metric types (Precision.cs, Recall.cs, F1.cs, FBeta.cs, compared
+    // side by side) and would stop reading like the Python call it exists to
+    // mirror; dropping or merging a parameter would drop a scikit-learn
+    // capability. Scoped to this one overload — the ConfusionMatrix overload
+    // below is at five and needs nothing.
+#pragma warning disable S107
     public static double Score(
         ReadOnlySpan<int> yTrue,
         ReadOnlySpan<int> yPred,
@@ -58,6 +61,18 @@ public static class FBeta
         ReadOnlySpan<int> labels = default,
         ReadOnlySpan<double> sampleWeight = default) =>
         Score(ConfusionMatrix.Compute(yTrue, yPred, labels, sampleWeight), beta, average, posLabel, zeroDivision);
+#pragma warning restore S107
+
+    /// <summary>F-beta for every class, in label order (<c>fbeta_score(average=None)</c>).</summary>
+    /// <param name="cm">The matrix to read.</param>
+    /// <param name="beta">The weight of recall relative to precision.</param>
+    /// <param name="zeroDivision">What to return when the metric is undefined.</param>
+    public static double[] PerClass(ConfusionMatrix cm, double beta, ZeroDivision zeroDivision = ZeroDivision.Zero)
+    {
+        Guard.NotNull(cm);
+        Prf.ValidateBeta(beta);
+        return Prf.PerClass(cm, PrfMetric.FScore, beta, zeroDivision);
+    }
 
     /// <summary>Per-class F-beta straight from the labels.</summary>
     /// <param name="yTrue">The true labels.</param>

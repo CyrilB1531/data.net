@@ -26,16 +26,6 @@ public static class Recall
         return Prf.Aggregate(cm, PrfMetric.Recall, 1.0, average, posLabel, zeroDivision);
     }
 
-    /// <summary>Recall for every class, in label order (<c>recall_score(average=None)</c>).</summary>
-    /// <param name="cm">The matrix to read.</param>
-    /// <param name="zeroDivision">What to return when a class has no samples.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="cm"/> is null.</exception>
-    public static double[] PerClass(ConfusionMatrix cm, ZeroDivision zeroDivision = ZeroDivision.Zero)
-    {
-        Guard.NotNull(cm);
-        return Prf.PerClass(cm, PrfMetric.Recall, 1.0, zeroDivision);
-    }
-
     /// <summary>Recall straight from the labels, counting the matrix on the way.</summary>
     /// <param name="yTrue">The true labels.</param>
     /// <param name="yPred">The predicted labels, same length as <paramref name="yTrue"/>.</param>
@@ -53,6 +43,16 @@ public static class Recall
         ReadOnlySpan<int> labels = default,
         ReadOnlySpan<double> sampleWeight = default) =>
         Score(ConfusionMatrix.Compute(yTrue, yPred, labels, sampleWeight), average, posLabel, zeroDivision);
+
+    /// <summary>Recall for every class, in label order (<c>recall_score(average=None)</c>).</summary>
+    /// <param name="cm">The matrix to read.</param>
+    /// <param name="zeroDivision">What to return when a class has no samples.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="cm"/> is null.</exception>
+    public static double[] PerClass(ConfusionMatrix cm, ZeroDivision zeroDivision = ZeroDivision.Zero)
+    {
+        Guard.NotNull(cm);
+        return Prf.PerClass(cm, PrfMetric.Recall, 1.0, zeroDivision);
+    }
 
     /// <summary>Per-class recall straight from the labels.</summary>
     /// <param name="yTrue">The true labels.</param>

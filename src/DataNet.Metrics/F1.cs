@@ -26,16 +26,6 @@ public static class F1
         return Prf.Aggregate(cm, PrfMetric.FScore, 1.0, average, posLabel, zeroDivision);
     }
 
-    /// <summary>F1 for every class, in label order (<c>f1_score(average=None)</c>).</summary>
-    /// <param name="cm">The matrix to read.</param>
-    /// <param name="zeroDivision">What to return when precision and recall are both undefined.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="cm"/> is null.</exception>
-    public static double[] PerClass(ConfusionMatrix cm, ZeroDivision zeroDivision = ZeroDivision.Zero)
-    {
-        Guard.NotNull(cm);
-        return Prf.PerClass(cm, PrfMetric.FScore, 1.0, zeroDivision);
-    }
-
     /// <summary>F1 straight from the labels, counting the matrix on the way.</summary>
     /// <param name="yTrue">The true labels.</param>
     /// <param name="yPred">The predicted labels, same length as <paramref name="yTrue"/>.</param>
@@ -53,6 +43,16 @@ public static class F1
         ReadOnlySpan<int> labels = default,
         ReadOnlySpan<double> sampleWeight = default) =>
         Score(ConfusionMatrix.Compute(yTrue, yPred, labels, sampleWeight), average, posLabel, zeroDivision);
+
+    /// <summary>F1 for every class, in label order (<c>f1_score(average=None)</c>).</summary>
+    /// <param name="cm">The matrix to read.</param>
+    /// <param name="zeroDivision">What to return when precision and recall are both undefined.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="cm"/> is null.</exception>
+    public static double[] PerClass(ConfusionMatrix cm, ZeroDivision zeroDivision = ZeroDivision.Zero)
+    {
+        Guard.NotNull(cm);
+        return Prf.PerClass(cm, PrfMetric.FScore, 1.0, zeroDivision);
+    }
 
     /// <summary>Per-class F1 straight from the labels.</summary>
     /// <param name="yTrue">The true labels.</param>

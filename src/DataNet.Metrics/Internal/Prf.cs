@@ -21,8 +21,16 @@ internal static class Prf
     /// </summary>
     public static double Divide(double numerator, double denominator, ZeroDivision zeroDivision, string metric)
     {
+        // SonarLint S1244 warns against comparing floating point for exact
+        // equality, which is right for arithmetic and wrong here: this is
+        // scikit-learn's own _prf_divide test, deciding between a real
+        // division and the zero-division policy. A tolerance would silently
+        // reroute a legitimate small-but-nonzero denominator into the
+        // undefined branch and change the result.
+#pragma warning disable S1244
         if (denominator != 0.0)
         {
+#pragma warning restore S1244
             return numerator / denominator;
         }
 
@@ -154,7 +162,16 @@ internal static class Prf
                     weightSum += support[i];
                 }
                 // scikit-learn returns 0.0 rather than dividing by zero here.
+                // SonarLint S1244 warns against comparing floating point for
+                // exact equality, which is right for arithmetic and wrong
+                // here: this asks whether any requested class carries
+                // support at all, not whether two computed quantities are
+                // close. A tolerance would treat a genuinely small total
+                // support as "no support" and silently swap in the
+                // zero-division answer for a well-defined weighted mean.
+#pragma warning disable S1244
                 return weightSum == 0.0 ? 0.0 : weighted / weightSum;
+#pragma warning restore S1244
 
             case Averaging.Binary:
                 return perClass[BinaryOrdinal(cm, posLabel)];
@@ -198,8 +215,16 @@ internal static class Prf
     // but predicted or support is not.
     private static double FScore(double tp, double predicted, double support, double beta, ZeroDivision zeroDivision)
     {
+        // SonarLint S1244 warns against comparing floating point for exact
+        // equality, which does not apply here: this is not a numerical
+        // guard at all. beta == 0 selects a documented, discrete behaviour —
+        // scikit-learn defines fbeta_score(beta=0) as precision — the same
+        // way a switch selects a case. There is no "close to zero" beta that
+        // should also take this branch.
+#pragma warning disable S1244
         if (beta == 0.0)
         {
+#pragma warning restore S1244
             return Divide(tp, predicted, zeroDivision, "Precision");
         }
 
