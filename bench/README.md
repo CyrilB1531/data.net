@@ -250,6 +250,17 @@ short job's confidence interval is wide, sometimes most of the mean itself at
 the smallest size (`AccuracyScore` at n=1 000 carries a ±77% margin in the raw
 BenchmarkDotNet output).
 
+**The two commands above do not produce the same row count.** The first runs
+30 benchmarks — `--job short` is the only job configured for that project. The
+second runs **60**: `DataNet.NetStandard.Benchmarks/Program.cs` already
+configures its own job (`Job.Default.WithToolchain(InProcessEmitToolchain.Instance)`,
+needed for the in-process isolation this tier depends on), and BenchmarkDotNet's
+CLI `--job short` *adds* a second job to that list rather than replacing it. Of
+the 60 rows the second command produces, only the 30 labelled `ShortRun` are
+comparable to the first command's output — those are what the table below uses.
+A reader who copies both commands and reads all 60 rows from the second will be
+looking at two different jobs' worth of numbers without a column that says so.
+
 Same isolation discipline as the VectorMath/BatchEmbedding comparisons above:
 the in-process toolchain, and an assertion that the netstandard2.0 run actually
 loaded the netstandard2.0 build before trusting any number from it.
