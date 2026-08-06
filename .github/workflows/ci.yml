@@ -154,7 +154,7 @@ jobs:
         env:
           NUGET_PACKAGES: ${{ runner.temp }}/pack-packages
         run: |
-          for proj in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
+          for proj in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
             dotnet pack "$proj" --configuration Release -o ./artifacts
           done
 
