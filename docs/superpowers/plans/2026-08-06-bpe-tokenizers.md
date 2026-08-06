@@ -69,7 +69,7 @@
 | `.github/workflows/ci.yml` | `tools/fetch_gpt2_bpe.py --check` |
 | `bench/corpus/generate_vocabs.py`, `bench/DataNet.Text.Benchmarks/BenchCorpus.cs` | A 30k BPE tokenizer for the benchmark |
 | `samples/DataNet.Sample/Lot3Embeddings.cs` | Exercise the five new public types |
-| `docs/equivalence.md`, `docs/guides/embeddings.md`, `README.md`, `CHANGELOG.md`, `NOTICE`, `THIRD-PARTY-NOTICES.md` | Documentation and attribution |
+| `docs/equivalence.md`, `docs/guides/embeddings.md`, `README.md`, `CHANGELOG.md`, `THIRD-PARTY-NOTICES.md` | Documentation and attribution |
 
 ---
 
@@ -79,7 +79,7 @@
 - Create: `tools/fetch_gpt2_bpe.py`
 - Create (generated, committed): `tests/oracles/gpt2_vocab.json`, `tests/oracles/gpt2_merges.txt`
 - Modify: `tests/DataNet.Embeddings.Tests/DataNet.Embeddings.Tests.csproj`, `tests/DataNet.Embeddings.NetStandard.Tests/DataNet.Embeddings.NetStandard.Tests.csproj`
-- Modify: `.github/workflows/ci.yml`, `NOTICE`, `THIRD-PARTY-NOTICES.md`
+- Modify: `.github/workflows/ci.yml`, `THIRD-PARTY-NOTICES.md`
 
 **Interfaces:**
 - Consumes: nothing.
@@ -206,7 +206,9 @@ In `.github/workflows/ci.yml`, find the step running `python tools/fetch_stopwor
 
 - [ ] **Step 8: Record the attribution**
 
-Add a GPT-2 entry to `NOTICE` and to `THIRD-PARTY-NOTICES.md`, matching the shape of the existing XLM-R and Snowball entries: what is vendored, from where, under which licence, and that the weights are not redistributed.
+`THIRD-PARTY-NOTICES.md` only — **not** `NOTICE`. The two files split by what ships: `NOTICE` carries what is compiled into an assembly, and `THIRD-PARTY-NOTICES.md` has a "Redistributed test fixtures (not shipped)" section where the XLM-R vocabulary already lives. A test fixture in `tests/oracles/` belongs there, and adding it to `NOTICE` would break the one distinction that file exists to make.
+
+Add a GPT-2 row to that table and the prose block that follows it, in the shape of the XLM-R pair: what is vendored, from where, under which licence, that `tools/fetch_gpt2_bpe.py` pins and verifies it, and that the weights are never redistributed.
 
 - [ ] **Step 9: Commit**
 
