@@ -143,8 +143,8 @@ public sealed class ClassificationReport
         Compute(ConfusionMatrix.Compute(yTrue, yPred, labels, sampleWeight), targetNames, zeroDivision);
 
     /// <summary>
-    /// Renders the table the way <c>classification_report</c> prints it, to the
-    /// character.
+    /// Renders the table the way <c>sklearn.metrics.classification_report</c>
+    /// prints it, to the character.
     /// </summary>
     /// <param name="digits">Decimal places for the three score columns, as scikit-learn's <c>digits</c>.</param>
     /// <remarks>
@@ -160,6 +160,9 @@ public sealed class ClassificationReport
         return ReportText.Render(this, digits);
     }
 
-    /// <summary>The two-digit table, as <see cref="ToText"/> renders it.</summary>
+    /// <summary>
+    /// The two-digit table <c>sklearn.metrics.classification_report</c> would
+    /// print, as <see cref="ToText"/> renders it.
+    /// </summary>
     public override string ToString() => ToText();
 }
