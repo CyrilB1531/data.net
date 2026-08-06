@@ -21,6 +21,22 @@ internal static class BinaryRoc
     public static double Score(
         ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int posLabel, ReadOnlySpan<double> sampleWeight)
     {
+        int n = Validate(yTrue, yScore, sampleWeight);
+
+        // Negated scores, so an ascending sort walks the curve from the highest
+        // score down — and Array.Sort compares doubles natively rather than
+        // through a delegate.
+        double[] keys = new double[n];
+        Point[] points = new Point[n];
+        BuildPoints(yTrue, yScore, posLabel, sampleWeight, keys, points);
+
+        Array.Sort(keys, points);
+
+        return Accumulate(keys, points);
+    }
+
+    private static int Validate(ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, ReadOnlySpan<double> sampleWeight)
+    {
         int n = yTrue.Length;
         if (yScore.Length != n)
         {
@@ -38,14 +54,16 @@ internal static class BinaryRoc
                 nameof(sampleWeight));
         }
 
-        // Negated scores, so an ascending sort walks the curve from the highest
-        // score down — and Array.Sort compares doubles natively rather than
-        // through a delegate.
-        double[] keys = new double[n];
-        Point[] points = new Point[n];
+        return n;
+    }
+
+    private static void BuildPoints(
+        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int posLabel, ReadOnlySpan<double> sampleWeight,
+        double[] keys, Point[] points)
+    {
         bool weighted = !sampleWeight.IsEmpty;
 
-        for (int i = 0; i < n; i++)
+        for (int i = 0; i < yTrue.Length; i++)
         {
             double score = yScore[i];
             if (double.IsNaN(score))
@@ -58,9 +76,11 @@ internal static class BinaryRoc
             points[i].Weight = weight;
             points[i].PositiveWeight = yTrue[i] == posLabel ? weight : 0.0;
         }
+    }
 
-        Array.Sort(keys, points);
-
+    private static double Accumulate(double[] keys, Point[] points)
+    {
+        int n = keys.Length;
         double truePositives = 0.0;
         double falsePositives = 0.0;
         double previousTrue = 0.0;
@@ -72,18 +92,7 @@ internal static class BinaryRoc
             truePositives += points[i].PositiveWeight;
             falsePositives += points[i].Weight - points[i].PositiveWeight;
 
-            // SonarLint S1244 warns against comparing floating point for exact
-            // equality, which is right for arithmetic and wrong here: ties in a
-            // score column are bit-identical doubles, and grouping them is the
-            // whole point. scikit-learn's _binary_clf_curve locates its own
-            // thresholds the same way, with np.diff(y_score) != 0. A tolerance
-            // would merge scores that are genuinely distinct and change the
-            // curve — the approximate version is the wrong answer here, not a
-            // safer one.
-#pragma warning disable S1244
-            bool lastOfGroup = i == n - 1 || keys[i] != keys[i + 1];
-#pragma warning restore S1244
-            if (!lastOfGroup)
+            if (!IsLastOfGroup(keys, i))
             {
                 continue;
             }
@@ -93,6 +102,28 @@ internal static class BinaryRoc
             previousFalse = falsePositives;
         }
 
+        RequireBothClassesPresent(truePositives, falsePositives);
+
+        return area / (truePositives * falsePositives);
+    }
+
+    private static bool IsLastOfGroup(double[] keys, int i)
+    {
+        // SonarLint S1244 warns against comparing floating point for exact
+        // equality, which is right for arithmetic and wrong here: ties in a
+        // score column are bit-identical doubles, and grouping them is the
+        // whole point. scikit-learn's _binary_clf_curve locates its own
+        // thresholds the same way, with np.diff(y_score) != 0. A tolerance
+        // would merge scores that are genuinely distinct and change the
+        // curve — the approximate version is the wrong answer here, not a
+        // safer one.
+#pragma warning disable S1244
+        return i == keys.Length - 1 || keys[i] != keys[i + 1];
+#pragma warning restore S1244
+    }
+
+    private static void RequireBothClassesPresent(double truePositives, double falsePositives)
+    {
         // SonarLint S1244 warns against comparing floating point for exact
         // equality, which is right for arithmetic and wrong here: this asks
         // whether anything accumulated at all, not whether two computed
@@ -104,10 +135,7 @@ internal static class BinaryRoc
         if (truePositives == 0.0 || falsePositives == 0.0)
         {
 #pragma warning restore S1244
-            throw new ArgumentException(
-                "Only one class is present in yTrue; ROC AUC is undefined for it.", nameof(yTrue));
+            throw new ArgumentException("Only one class is present in yTrue; ROC AUC is undefined for it.");
         }
-
-        return area / (truePositives * falsePositives);
     }
 }
