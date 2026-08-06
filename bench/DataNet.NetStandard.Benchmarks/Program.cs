@@ -5,6 +5,7 @@ using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
 using BenchmarkDotNet.Toolchains.InProcess.Emit;
 using DataNet.Embeddings.Search;
+using DataNet.Metrics;
 using DataNet.Text.Distances;
 
 // Runs the shared benchmark bodies against the netstandard2.0 build.
@@ -21,13 +22,20 @@ using DataNet.Text.Distances;
 // unless you already know what to expect, so it is checked rather than eyeballed.
 
 if (!AssertLoaded(typeof(Levenshtein), ".NETStandard,Version=v2.0") ||
-    !AssertLoaded(typeof(VectorMath), ".NETStandard,Version=v2.0"))
+    !AssertLoaded(typeof(VectorMath), ".NETStandard,Version=v2.0") ||
+    !AssertLoaded(typeof(ConfusionMatrix), ".NETStandard,Version=v2.0"))
 {
     return 1;
 }
 
+// Also disables OptimizationValidator for the non-optimized Microsoft.ML.OnnxRuntime
+// assembly this project links transitively (BatchEmbeddingBenchmarks.cs) — see the
+// longer explanation in DataNet.Text.Benchmarks/Program.cs. The validator checks
+// every assembly the process loads, so it fails for every benchmark class here,
+// not only the one that references ONNX.
 var config = DefaultConfig.Instance
-    .AddJob(Job.Default.WithToolchain(InProcessEmitToolchain.Instance));
+    .AddJob(Job.Default.WithToolchain(InProcessEmitToolchain.Instance))
+    .WithOptions(ConfigOptions.DisableOptimizationsValidator);
 
 BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, config);
 return 0;

@@ -14,6 +14,9 @@ bench/results/
 # Benchmark vocabulary corpus is generated (bench/corpus/generate_vocabs.py)
 bench/corpus/vocabs/
 
+# Benchmark metrics corpus is generated (bench/corpus/generate_metrics.py)
+bench/corpus/metrics/
+
 # Test / coverage
 [Tt]est[Rr]esults/
 *.trx
