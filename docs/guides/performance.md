@@ -150,8 +150,8 @@ dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter
 
 ```bash
 python bench/corpus/generate_metrics.py           # writes bench/corpus/metrics/, git-ignored
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- compare-metrics
 . .venv-oracles/bin/activate && python bench/python/bench_metrics.py
+dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- compare-metrics
 python bench/compare.py metrics
 ```
 
@@ -162,45 +162,48 @@ on both sides. **This is the merge gate for the branch, on processor time**: eve
 row must be ≥ 1×, and it is.
 
 DataNet.Metrics on .NET 10.0.10 against scikit-learn 1.9.0 / NumPy 2.5.1 on
-Python 3.12.3, Intel i7-4770S. Both sides measured back to back on an otherwise
-idle machine (load average 1.9–2.3 at the one-minute mark — this workstation's
-floor, a permanent ~30–40 % background from the desktop client, an editor and a
-browser).
+Python 3.12.3, Intel i7-4770S. Both sides measured back to back, Python first,
+on a machine left to settle (one-minute load 1.52 at the Python start — below
+this workstation's 1.9–2.3 floor, itself a permanent ~30–40 % background from
+the desktop client, an editor and a browser). The C# side started 49 seconds
+later, in the Python run's own wake, so its figures are the ones taken on the
+busier machine and every ratio below is conservative rather than flattering;
+`bench/README.md` records the full conditions.
 
 | Operation | DataNet ms | Python ms | wall | DataNet cpu ms | Python cpu ms | **cpu** |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `confusion_matrix_n1000_k2` | 0.009 | 1.001 | 117.41x | 0.009 | 1.000 | **117.41x** |
-| `accuracy_n1000_k2` | 0.001 | 0.520 | 585.69x | 0.001 | 0.520 | **585.70x** |
-| `precision_recall_f1_macro_n1000_k2` | 0.008 | 1.739 | 213.89x | 0.008 | 1.734 | **213.74x** |
-| `classification_report_n1000_k2` | 0.011 | 6.492 | 593.20x | 0.011 | 6.490 | **594.87x** |
-| `roc_auc_binary_n1000_k2` | 0.028 | 1.961 | 70.24x | 0.028 | 1.961 | **70.24x** |
-| `confusion_matrix_n1000_k10` | 0.009 | 1.037 | 119.39x | 0.009 | 1.035 | **119.18x** |
-| `accuracy_n1000_k10` | 0.001 | 0.538 | 622.80x | 0.001 | 0.538 | **622.82x** |
-| `precision_recall_f1_macro_n1000_k10` | 0.009 | 1.840 | 194.98x | 0.009 | 1.837 | **194.68x** |
-| `classification_report_n1000_k10` | 0.016 | 7.132 | 445.01x | 0.016 | 7.132 | **445.75x** |
-| `roc_auc_ovr_macro_n1000_k10` | 0.546 | 10.673 | 19.55x | 0.546 | 10.673 | **19.56x** |
-| `confusion_matrix_n100000_k2` | 0.949 | 16.330 | 17.20x | 0.949 | 16.329 | **17.21x** |
-| `accuracy_n100000_k2` | 0.189 | 5.530 | 29.29x | 0.189 | 5.529 | **29.29x** |
-| `precision_recall_f1_macro_n100000_k2` | 0.836 | 17.742 | 21.23x | 0.836 | 17.742 | **21.23x** |
-| `classification_report_n100000_k2` | 0.840 | 36.103 | 43.00x | 0.839 | 36.100 | **43.00x** |
-| `roc_auc_binary_n100000_k2` | 7.856 | 33.973 | 4.32x | 7.956 | 33.967 | **4.27x** |
-| `confusion_matrix_n100000_k10` | 1.064 | 16.208 | 15.23x | 1.064 | 16.200 | **15.22x** |
-| `accuracy_n100000_k10` | 0.291 | 5.634 | 19.35x | 0.291 | 5.632 | **19.35x** |
-| `precision_recall_f1_macro_n100000_k10` | 0.972 | 18.754 | 19.30x | 0.972 | 18.754 | **19.30x** |
-| `classification_report_n100000_k10` | 0.951 | 40.807 | 42.90x | 0.951 | 40.804 | **42.90x** |
-| `roc_auc_ovr_macro_n100000_k10` | 86.067 | 249.623 | 2.90x | 88.869 | 249.134 | **2.80x** |
-| `confusion_matrix_n1000000_k2` | 8.486 | 154.095 | 18.16x | 8.485 | 153.985 | **18.15x** |
-| `accuracy_n1000000_k2` | 2.006 | 50.824 | 25.34x | 2.006 | 50.808 | **25.33x** |
-| `precision_recall_f1_macro_n1000000_k2` | 8.538 | 161.865 | 18.96x | 8.540 | 161.709 | **18.94x** |
-| `classification_report_n1000000_k2` | 8.485 | 307.363 | 36.22x | 8.469 | 307.345 | **36.29x** |
-| `roc_auc_binary_n1000000_k2` | 94.338 | 377.152 | 4.00x | 94.841 | 377.043 | **3.98x** |
-| `confusion_matrix_n1000000_k10` | 9.621 | 152.707 | 15.87x | 9.620 | 152.700 | **15.87x** |
-| `accuracy_n1000000_k10` | 3.069 | 50.999 | 16.62x | 3.068 | 50.903 | **16.59x** |
-| `precision_recall_f1_macro_n1000000_k10` | 9.870 | 170.950 | 17.32x | 9.854 | 170.931 | **17.35x** |
-| `classification_report_n1000000_k10` | 9.636 | 342.540 | 35.55x | 9.633 | 342.267 | **35.53x** |
+| `confusion_matrix_n1000_k2` | 0.009 | 1.028 | 117.98x | 0.009 | 1.028 | **117.97x** |
+| `accuracy_n1000_k2` | 0.001 | 0.546 | 618.32x | 0.001 | 0.546 | **618.33x** |
+| `precision_recall_f1_macro_n1000_k2` | 0.008 | 1.793 | 226.58x | 0.008 | 1.793 | **226.58x** |
+| `classification_report_n1000_k2` | 0.011 | 6.692 | 623.31x | 0.011 | 6.691 | **623.25x** |
+| `roc_auc_binary_n1000_k2` | 0.029 | 2.008 | 70.12x | 0.029 | 2.008 | **70.12x** |
+| `confusion_matrix_n1000_k10` | 0.009 | 1.051 | 120.64x | 0.009 | 1.051 | **120.64x** |
+| `accuracy_n1000_k10` | 0.001 | 0.541 | 622.03x | 0.001 | 0.541 | **622.08x** |
+| `precision_recall_f1_macro_n1000_k10` | 0.010 | 1.855 | 192.49x | 0.010 | 1.855 | **192.48x** |
+| `classification_report_n1000_k10` | 0.017 | 7.011 | 422.54x | 0.017 | 7.010 | **422.53x** |
+| `roc_auc_ovr_macro_n1000_k10` | 0.550 | 10.526 | 19.13x | 0.550 | 10.525 | **19.13x** |
+| `confusion_matrix_n100000_k2` | 0.964 | 15.791 | 16.39x | 0.964 | 15.791 | **16.39x** |
+| `accuracy_n100000_k2` | 0.190 | 5.519 | 29.01x | 0.190 | 5.518 | **29.01x** |
+| `precision_recall_f1_macro_n100000_k2` | 0.844 | 17.786 | 21.07x | 0.844 | 17.785 | **21.07x** |
+| `classification_report_n100000_k2` | 0.848 | 36.233 | 42.75x | 0.847 | 36.231 | **42.75x** |
+| `roc_auc_binary_n100000_k2` | 7.977 | 35.024 | 4.39x | 8.092 | 35.023 | **4.33x** |
+| `confusion_matrix_n100000_k10` | 1.059 | 16.109 | 15.20x | 1.059 | 16.108 | **15.21x** |
+| `accuracy_n100000_k10` | 0.296 | 5.519 | 18.66x | 0.296 | 5.519 | **18.66x** |
+| `precision_recall_f1_macro_n100000_k10` | 0.979 | 18.524 | 18.92x | 0.979 | 18.523 | **18.92x** |
+| `classification_report_n100000_k10` | 0.979 | 40.139 | 41.00x | 0.979 | 40.137 | **41.00x** |
+| `roc_auc_ovr_macro_n100000_k10` | 88.385 | 250.400 | 2.83x | 91.396 | 250.402 | **2.74x** |
+| `confusion_matrix_n1000000_k2` | 8.750 | 156.920 | 17.93x | 8.749 | 156.823 | **17.92x** |
+| `accuracy_n1000000_k2` | 2.045 | 51.599 | 25.23x | 2.045 | 51.596 | **25.23x** |
+| `precision_recall_f1_macro_n1000000_k2` | 8.701 | 164.332 | 18.89x | 8.701 | 164.330 | **18.89x** |
+| `classification_report_n1000000_k2` | 8.719 | 314.805 | 36.11x | 8.718 | 314.782 | **36.11x** |
+| `roc_auc_binary_n1000000_k2` | 95.219 | 364.420 | 3.83x | 95.684 | 364.384 | **3.81x** |
+| `confusion_matrix_n1000000_k10` | 9.916 | 156.707 | 15.80x | 9.915 | 156.699 | **15.80x** |
+| `accuracy_n1000000_k10` | 3.122 | 51.877 | 16.61x | 3.122 | 51.874 | **16.61x** |
+| `precision_recall_f1_macro_n1000000_k10` | 10.001 | 173.128 | 17.31x | 10.000 | 173.121 | **17.31x** |
+| `classification_report_n1000000_k10` | 9.865 | 352.364 | 35.72x | 9.864 | 352.349 | **35.72x** |
 
 **Gate result: 29/29 operations at or above 1× on processor time.** The
-narrowest margin is **2.80×**, on `roc_auc_ovr_macro` at n=100 000, k=10 — the
+narrowest margin is **2.74×**, on `roc_auc_ovr_macro` at n=100 000, k=10 — the
 row the design brief flagged as the one most likely to need a radix-sort
 rewrite of `BinaryRoc`. It did not: even the heaviest sort-bound row clears the
 gate by a comfortable margin, so no algorithmic change was needed on this
@@ -210,10 +213,10 @@ branch.
 dominated by CPython's per-call interpreter overhead, not by the computation —
 a confusion matrix over 1 000 samples is sub-microsecond work on either side.
 The rows that carry the argument are the ones at n=100 000 and n=1 000 000,
-where the ratios settle to a more modest but still decisive 2.8×–43×.
+where the ratios settle to a more modest but still decisive 2.7×–43×.
 
 Unlike the persistence comparison, wall and processor time agree here to
-within about 1% on every row (up to 3.5% on the single heaviest-cpu row): these
+within about 1% on every row (up to 3.4% on the single heaviest-cpu row): these
 metrics allocate little enough per call that .NET's background collector is
 never a factor, so there is no gap between the two columns to explain away.
 

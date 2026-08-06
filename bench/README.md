@@ -235,73 +235,94 @@ which would measure the parser rather than the metric.
 ### Intra-C#, and net10 vs netstandard2.0
 
 ```bash
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks        -- --filter '*MetricsBenchmarks*' --job short
-dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter '*MetricsBenchmarks*' --job short
+dotnet run -c Release --project bench/DataNet.Text.Benchmarks        -- --filter '*MetricsBenchmarks*' --inProcess
+dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter '*MetricsBenchmarks*'
 ```
 
-**`--job short` (3 iterations, 3 warmup), not the default job used elsewhere in
-this file.** The full parameter matrix — 3 sizes × 2 class counts × 5 methods =
-30 benchmarks — at default statistical precision runs to the better part of an
-hour across both targets; short jobs answer the questions these two tiers
-actually ask (the shape of per-metric cost across sizes, and what the
-netstandard2.0 build costs against net10) without that cost. Do not compare
-these figures against the higher-precision tables elsewhere in this file — a
-short job's confidence interval is wide, sometimes most of the mean itself at
-the smallest size (`AccuracyScore` at n=1 000 carries a ±77% margin in the raw
-BenchmarkDotNet output).
+Default job on both sides. The full matrix — 3 sizes × 2 class counts ×
+5 methods = 30 benchmarks — takes about ten minutes per run.
 
-**The two commands above do not produce the same row count.** The first runs
-30 benchmarks — `--job short` is the only job configured for that project. The
-second runs **60**: `DataNet.NetStandard.Benchmarks/Program.cs` already
-configures its own job (`Job.Default.WithToolchain(InProcessEmitToolchain.Instance)`,
-needed for the in-process isolation this tier depends on), and BenchmarkDotNet's
-CLI `--job short` *adds* a second job to that list rather than replacing it. Of
-the 60 rows the second command produces, only the 30 labelled `ShortRun` are
-comparable to the first command's output — those are what the table below uses.
-A reader who copies both commands and reads all 60 rows from the second will be
-looking at two different jobs' worth of numbers without a column that says so.
+**`--inProcess` on the first command is not decoration.** Without it the two
+commands do not measure the same way: `DataNet.NetStandard.Benchmarks` pins
+`InProcessEmitToolchain` (its `Program.cs` needs it, or BenchmarkDotNet's
+generated project re-resolves the `ProjectReference` and silently restores the
+net10.0 build), while the first command would use the default out-of-process
+toolchain. Any figure compared across those two harnesses mixes the target
+framework with the harness that measured it. This tier was published that way
+before, and the flag is what removes the confound; sections 2 and 3 above still
+carry it, tracked as its own issue.
 
-Same isolation discipline as the VectorMath/BatchEmbedding comparisons above:
-the in-process toolchain, and an assertion that the netstandard2.0 run actually
-loaded the netstandard2.0 build before trusting any number from it.
+Same isolation assertion as those sections: the netstandard2.0 run proves it
+loaded the netstandard2.0 build before any number from it is trusted.
 
 ```text
 // DataNet.Metrics: .NETStandard,Version=v2.0
 ```
 
-Intel i7-4770S, .NET 10.0.10. `Matrix` — the base op every other benchmark's
-average is close to, `MatrixWeighted`/`AccuracyScore`/`F1Macro`/`Report`
-excepted at the smallest size where noise dominates — at all six shapes:
+**Every figure below is two runs, not one, and the two are shown.** The runs
+were interleaved (net10, netstandard2.0, net10, netstandard2.0) so that any
+drift in machine load spreads across both targets instead of landing on
+whichever one occupies the second half of the window. Intel i7-4770S,
+.NET 10.0.10. `Matrix`, at all six shapes:
 
-| Samples | Classes | net10 (short) | netstandard2.0 (short) | ratio |
+| Samples | Classes | net10 (run 1 / run 2) | netstandard2.0 (run 1 / run 2) | ratio |
 | ---: | ---: | ---: | ---: | ---: |
-| 1 000 | 2 | 7.460 µs | 7.334 µs | 0.98× |
-| 1 000 | 10 | 7.392 µs | 7.578 µs | 1.03× |
-| 100 000 | 2 | 841.4 µs | 841.5 µs | 1.00× |
-| 100 000 | 10 | 922.4 µs | 957.7 µs | 1.04× |
-| 1 000 000 | 2 | 8.710 ms | 8.832 ms | 1.01× |
-| 1 000 000 | 10 | 9.566 ms | 9.566 ms | 1.00× |
+| 1 000 | 2 | 7.167 / 7.792 µs | 7.090 / 7.003 µs | 0.90–0.99× |
+| 1 000 | 10 | 7.010 / 8.620 µs | 6.951 / 7.017 µs | 0.81–0.99× |
+| 100 000 | 2 | 805.1 / 800.9 µs | 795.4 / 799.2 µs | 0.99–1.00× |
+| 100 000 | 10 | 916.5 / 899.5 µs | 892.1 / 894.4 µs | 0.97–0.99× |
+| 1 000 000 | 2 | 8.396 / 8.181 ms | 8.158 / 8.357 ms | 0.97–1.02× |
+| 1 000 000 | 10 | 9.421 / 9.139 ms | 9.118 / 9.145 ms | 0.97–1.00× |
 
-`MatrixWeighted`, `AccuracyScore`, `F1Macro` and `Report` land within the same
-few percent of parity at n=100 000 and n=1 000 000 (0.95×–1.06× across all 24
-remaining rows), with one exception: `AccuracyScore` at n=1 000, k=10 reads
-2.59× — net10 878 ns against netstandard2.0 2 276 ns — which is exactly the
-short-job noise floor at work, not a real regression: both figures sit inside
-a confidence interval wider than the mean itself at that size, and every
-larger-n row for the same method agrees to within 2%.
+**At n=100 000 and n=1 000 000 the two targets are at parity**, and now with
+something behind the claim: all 40 measurements there — 5 methods × 4 shapes ×
+2 pairings — land between 0.97× and 1.05×, while each target's own spread
+between its two runs stays inside 1.05× (net10) and 1.02× (netstandard2.0).
+The difference between the targets is the same size as the noise, which is the
+honest way to say parity.
 
-This is **not** the `VectorMath.Dot` story from section 2. `DataNet.Metrics`
-has no `Vector<T>` SIMD path or other target-conditional code — every
-benchmark here is a scalar loop over `int[]`/`double[]` — so net10 and
-netstandard2.0 compile to equivalent IL and land at parity, not the 4.6×–5.6×
-gap that section documents. The near-1.00× ratios above are the expected
-result, not a surprise.
+**At n=1 000 the ratio column is not measuring the target framework.** The
+net10 side moves by up to **2.64×** between two runs of the same binary over
+the same corpus — `AccuracyScore` at k=10 reads 836 ns in one run and 2 212 ns
+in the next — while netstandard2.0 stays inside 1.02× across every method. The
+inflation is cleanly inverse to the work per operation: `AccuracyScore` (~0.84 µs
+per op) moves 2.64×, `Matrix`, `MatrixWeighted` and `F1Macro` (~7–8 µs) move
+1.1×–1.3×, and `Report` (~10–16 µs) moves by 1–2%. That is the shape of a fixed
+per-invocation overhead appearing in one process and not another, not of a
+difference in the metric code — the same computation is happening either way.
+
+The consequence is worth stating plainly, because this section got it wrong
+before: **BenchmarkDotNet's ± margin describes dispersion *within* one process
+and says nothing about reproducibility *across* processes.** An earlier version
+published `AccuracyScore` at n=1 000, k=10 reading 2.59× and explained it as
+the short job's noise floor — implying a longer job would settle it. A longer
+job did not: the 2.59× vanished, and k=2 came back at 0.64× with a ±0.3%
+margin on the net10 side, which is to say a tight interval around a figure
+that a re-run then contradicted outright (1 331 ns, then 833 ns). A
+`MatrixWeighted` gap of 1.06×–1.18×, apparently systematic across all six
+shapes, evaporated the same way once the toolchain confound was lifted and the
+runs repeated. Anything at n=1 000 in this tier needs repeated processes
+before it means anything.
+
+One small-n row *is* stable on both sides, and it says something real:
+`Report` runs **1.06×–1.11× slower on netstandard2.0 at n=1 000**, consistently
+across both pairings and both class counts, fading to 1.00×–1.05× at the larger
+sizes. A fixed per-call cost the netstandard2.0 build pays and net10 does not,
+drowned once O(samples) work dominates.
+
+This is still **not** the `VectorMath.Dot` story from section 2, where the gap
+is 4.6×–5.6×. `DataNet.Metrics` has no `Vector<T>` SIMD path, and every
+benchmark here is a scalar loop over `int[]`/`double[]`. The one piece of
+target-conditional code in its dependencies is `DataNet.Internal.Guard`, which
+picks `ArgumentNullException.ThrowIfNull` on net10 and a hand-written check on
+netstandard2.0 — a null test outside every loop, which cannot produce a
+per-sample difference and does not.
 
 ### vs Python
 
 ```bash
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- compare-metrics
 . .venv-oracles/bin/activate && python bench/python/bench_metrics.py
+dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- compare-metrics
 python bench/compare.py metrics
 ```
 
@@ -310,66 +331,77 @@ DataNet on .NET 10.0.10 against scikit-learn 1.9.0 / NumPy 2.5.1 on Python
 
 | Operation | DataNet ms | Python ms | wall | DataNet cpu ms | Python cpu ms | **cpu** |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `confusion_matrix_n1000_k2` | 0.009 | 1.001 | 117.41x | 0.009 | 1.000 | **117.41x** |
-| `accuracy_n1000_k2` | 0.001 | 0.520 | 585.69x | 0.001 | 0.520 | **585.70x** |
-| `precision_recall_f1_macro_n1000_k2` | 0.008 | 1.739 | 213.89x | 0.008 | 1.734 | **213.74x** |
-| `classification_report_n1000_k2` | 0.011 | 6.492 | 593.20x | 0.011 | 6.490 | **594.87x** |
-| `roc_auc_binary_n1000_k2` | 0.028 | 1.961 | 70.24x | 0.028 | 1.961 | **70.24x** |
-| `confusion_matrix_n1000_k10` | 0.009 | 1.037 | 119.39x | 0.009 | 1.035 | **119.18x** |
-| `accuracy_n1000_k10` | 0.001 | 0.538 | 622.80x | 0.001 | 0.538 | **622.82x** |
-| `precision_recall_f1_macro_n1000_k10` | 0.009 | 1.840 | 194.98x | 0.009 | 1.837 | **194.68x** |
-| `classification_report_n1000_k10` | 0.016 | 7.132 | 445.01x | 0.016 | 7.132 | **445.75x** |
-| `roc_auc_ovr_macro_n1000_k10` | 0.546 | 10.673 | 19.55x | 0.546 | 10.673 | **19.56x** |
-| `confusion_matrix_n100000_k2` | 0.949 | 16.330 | 17.20x | 0.949 | 16.329 | **17.21x** |
-| `accuracy_n100000_k2` | 0.189 | 5.530 | 29.29x | 0.189 | 5.529 | **29.29x** |
-| `precision_recall_f1_macro_n100000_k2` | 0.836 | 17.742 | 21.23x | 0.836 | 17.742 | **21.23x** |
-| `classification_report_n100000_k2` | 0.840 | 36.103 | 43.00x | 0.839 | 36.100 | **43.00x** |
-| `roc_auc_binary_n100000_k2` | 7.856 | 33.973 | 4.32x | 7.956 | 33.967 | **4.27x** |
-| `confusion_matrix_n100000_k10` | 1.064 | 16.208 | 15.23x | 1.064 | 16.200 | **15.22x** |
-| `accuracy_n100000_k10` | 0.291 | 5.634 | 19.35x | 0.291 | 5.632 | **19.35x** |
-| `precision_recall_f1_macro_n100000_k10` | 0.972 | 18.754 | 19.30x | 0.972 | 18.754 | **19.30x** |
-| `classification_report_n100000_k10` | 0.951 | 40.807 | 42.90x | 0.951 | 40.804 | **42.90x** |
-| `roc_auc_ovr_macro_n100000_k10` | 86.067 | 249.623 | 2.90x | 88.869 | 249.134 | **2.80x** |
-| `confusion_matrix_n1000000_k2` | 8.486 | 154.095 | 18.16x | 8.485 | 153.985 | **18.15x** |
-| `accuracy_n1000000_k2` | 2.006 | 50.824 | 25.34x | 2.006 | 50.808 | **25.33x** |
-| `precision_recall_f1_macro_n1000000_k2` | 8.538 | 161.865 | 18.96x | 8.540 | 161.709 | **18.94x** |
-| `classification_report_n1000000_k2` | 8.485 | 307.363 | 36.22x | 8.469 | 307.345 | **36.29x** |
-| `roc_auc_binary_n1000000_k2` | 94.338 | 377.152 | 4.00x | 94.841 | 377.043 | **3.98x** |
-| `confusion_matrix_n1000000_k10` | 9.621 | 152.707 | 15.87x | 9.620 | 152.700 | **15.87x** |
-| `accuracy_n1000000_k10` | 3.069 | 50.999 | 16.62x | 3.068 | 50.903 | **16.59x** |
-| `precision_recall_f1_macro_n1000000_k10` | 9.870 | 170.950 | 17.32x | 9.854 | 170.931 | **17.35x** |
-| `classification_report_n1000000_k10` | 9.636 | 342.540 | 35.55x | 9.633 | 342.267 | **35.53x** |
+| `confusion_matrix_n1000_k2` | 0.009 | 1.028 | 117.98x | 0.009 | 1.028 | **117.97x** |
+| `accuracy_n1000_k2` | 0.001 | 0.546 | 618.32x | 0.001 | 0.546 | **618.33x** |
+| `precision_recall_f1_macro_n1000_k2` | 0.008 | 1.793 | 226.58x | 0.008 | 1.793 | **226.58x** |
+| `classification_report_n1000_k2` | 0.011 | 6.692 | 623.31x | 0.011 | 6.691 | **623.25x** |
+| `roc_auc_binary_n1000_k2` | 0.029 | 2.008 | 70.12x | 0.029 | 2.008 | **70.12x** |
+| `confusion_matrix_n1000_k10` | 0.009 | 1.051 | 120.64x | 0.009 | 1.051 | **120.64x** |
+| `accuracy_n1000_k10` | 0.001 | 0.541 | 622.03x | 0.001 | 0.541 | **622.08x** |
+| `precision_recall_f1_macro_n1000_k10` | 0.010 | 1.855 | 192.49x | 0.010 | 1.855 | **192.48x** |
+| `classification_report_n1000_k10` | 0.017 | 7.011 | 422.54x | 0.017 | 7.010 | **422.53x** |
+| `roc_auc_ovr_macro_n1000_k10` | 0.550 | 10.526 | 19.13x | 0.550 | 10.525 | **19.13x** |
+| `confusion_matrix_n100000_k2` | 0.964 | 15.791 | 16.39x | 0.964 | 15.791 | **16.39x** |
+| `accuracy_n100000_k2` | 0.190 | 5.519 | 29.01x | 0.190 | 5.518 | **29.01x** |
+| `precision_recall_f1_macro_n100000_k2` | 0.844 | 17.786 | 21.07x | 0.844 | 17.785 | **21.07x** |
+| `classification_report_n100000_k2` | 0.848 | 36.233 | 42.75x | 0.847 | 36.231 | **42.75x** |
+| `roc_auc_binary_n100000_k2` | 7.977 | 35.024 | 4.39x | 8.092 | 35.023 | **4.33x** |
+| `confusion_matrix_n100000_k10` | 1.059 | 16.109 | 15.20x | 1.059 | 16.108 | **15.21x** |
+| `accuracy_n100000_k10` | 0.296 | 5.519 | 18.66x | 0.296 | 5.519 | **18.66x** |
+| `precision_recall_f1_macro_n100000_k10` | 0.979 | 18.524 | 18.92x | 0.979 | 18.523 | **18.92x** |
+| `classification_report_n100000_k10` | 0.979 | 40.139 | 41.00x | 0.979 | 40.137 | **41.00x** |
+| `roc_auc_ovr_macro_n100000_k10` | 88.385 | 250.400 | 2.83x | 91.396 | 250.402 | **2.74x** |
+| `confusion_matrix_n1000000_k2` | 8.750 | 156.920 | 17.93x | 8.749 | 156.823 | **17.92x** |
+| `accuracy_n1000000_k2` | 2.045 | 51.599 | 25.23x | 2.045 | 51.596 | **25.23x** |
+| `precision_recall_f1_macro_n1000000_k2` | 8.701 | 164.332 | 18.89x | 8.701 | 164.330 | **18.89x** |
+| `classification_report_n1000000_k2` | 8.719 | 314.805 | 36.11x | 8.718 | 314.782 | **36.11x** |
+| `roc_auc_binary_n1000000_k2` | 95.219 | 364.420 | 3.83x | 95.684 | 364.384 | **3.81x** |
+| `confusion_matrix_n1000000_k10` | 9.916 | 156.707 | 15.80x | 9.915 | 156.699 | **15.80x** |
+| `accuracy_n1000000_k10` | 3.122 | 51.877 | 16.61x | 3.122 | 51.874 | **16.61x** |
+| `precision_recall_f1_macro_n1000000_k10` | 10.001 | 173.128 | 17.31x | 10.000 | 173.121 | **17.31x** |
+| `classification_report_n1000000_k10` | 9.865 | 352.364 | 35.72x | 9.864 | 352.349 | **35.72x** |
 
 **Merge gate: 29/29 operations at or above 1× on processor time.** The
-narrowest margin is 2.80× (`roc_auc_ovr_macro` at n=100 000, k=10). The design
+narrowest margin is 2.74× (`roc_auc_ovr_macro` at n=100 000, k=10). The design
 brief named `roc_auc_binary` at a million samples — where the cost is a sort —
 as the likely candidate for falling below 1×, with a radix pass over the
-`double` bit patterns as the fallback if it did. It came in at 3.98×; no row
+`double` bit patterns as the fallback if it did. It came in at 3.81×; no row
 needed that change on this branch.
 
 ### Measurement conditions
 
-Both files were produced back to back, in the order shown, after discarding
-one earlier pairing: a first C# run completed at 17:01 while the one-minute
-load average was still 1.8–2.3 but the five- and fifteen-minute figures
-(4.7–8.8) showed the machine still shedding the tail of a preceding full test
-suite. That run is not in the table above. The pair that is:
+Both files were produced back to back, Python first, on a machine left to
+settle first — an earlier pairing was discarded outright for having started
+while the five- and fifteen-minute averages were still shedding the tail of a
+preceding test suite. The pair in the table above:
 
-| Side | Written | Load (1 / 5 / 15 min) |
-| --- | --- | --- |
-| Python (`python-metrics.json`) | 17:05:10 | 1.92 / 3.51 / 7.58 |
-| C# (`csharp-metrics.json`) | 17:09:29 | 2.29 / 3.43 / 7.42 (start) |
+| Side | Started | Written | Load at start (1 / 5 / 15 min) |
+| --- | --- | --- | --- |
+| Python (`python-metrics.json`) | 19:09:25 | 19:12:30 | 1.52 / 3.71 / 3.94 |
+| C# (`csharp-metrics.json`) | 19:13:19 | 19:16:41 | 4.20 / 4.10 / 4.05 |
 
 The machine carries a permanent 30–40% background load from the desktop
 client, an editor and a browser; a one-minute average of 1.9–2.3 is this
-workstation's floor, not a transient to wait out further.
+workstation's floor, and the Python side started below it.
+
+**The C# side started at 4.20, and that is its predecessor's own wake** — 49
+seconds after the Python run finished saturating a core. The second side of any
+back-to-back pair pays this; the alternative, waiting for the tail to decay,
+buys a quieter machine at the cost of the two sides no longer being back to
+back. The bias it introduces runs *against* DataNet — the C# figures are the
+ones measured on the busier machine — so every ratio in the table above, and
+the merge gate that reads them, is conservative rather than flattering.
+
+Memory was never the constraint these runs looked like they might have: the
+working set at n=1 000 000 is about 16 MB, and the machine had 22 GB free with
+3 GB in swap. CPU contention is the only thing worth waiting out here.
 
 ### Why processor time barely differs from wall time here
 
 Unlike the persistence comparison in section 4 — where DataNet burns 1.12–1.21
 processor-seconds per elapsed second, so the wall and cpu columns diverge and
 `tfidf_load` even flips winner between them — the two columns above agree to
-within about 1% on every row (up to 3.5% on the single heaviest row,
+within about 1% on every row (up to 3.4% on the single heaviest row,
 `roc_auc_ovr_macro` at n=100 000). These operations allocate little enough
 (a few kilobytes at most; see `MetricsBenchmarks`'s `[MemoryDiagnoser]` output)
 that .NET's background collector never gets involved, so there is no gap
@@ -384,7 +416,7 @@ interpreter overhead, which the auto-scaling loop cannot amortise away because
 each `skm.*` call re-enters the interpreter regardless of how little work is
 inside it. The rows that carry the argument about the underlying computation
 are the ones at n=100 000 and n=1 000 000, where the ratios settle to a still
-decisive but far more modest 2.8×–43×.
+decisive but far more modest 2.7×–43×.
 
 None of the six operations passes `sample_weight` on either side — the corpus
 carries that column, but the brief's own six calls do not use it, so this
