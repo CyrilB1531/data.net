@@ -4214,7 +4214,7 @@ EOF
 
 **Files:**
 
-- Create: `docs/decisions/0015-metrics-package-placement.md`
+- Create: `docs/decisions/0016-metrics-package-placement.md`
 - Modify: `docs/equivalence.md` (new section at the end)
 - Modify: `docs/migration/sklearn.md:34-35` (the "Metrics" bullet)
 - Modify: `docs/migration/README.md:19` (the scikit-learn row) and the
@@ -4222,7 +4222,7 @@ EOF
 - Modify: `README.md` (package table), `CHANGELOG.md` (a `DataNet.Metrics 0.1.0`
   heading)
 
-- [ ] **Step 1: Write decision 0015**
+- [ ] **Step 1: Write decision 0016**
 
 Follow the shape of `docs/decisions/0011-persistence-format.md`. It must answer:
 why a separate package rather than `DataNet.Text` (metrics are not textual;
@@ -4361,7 +4361,7 @@ otherwise idle machine.
 
 ## Decisions worth reviewing
 
-- `docs/decisions/0015-metrics-package-placement.md` — why a fourth package.
+- `docs/decisions/0016-metrics-package-placement.md` — why a fourth package.
 - `Averaging.None` became `PerClass`: a `Score` returning `double` cannot also
   return an array.
 - `RocAuc.Score` and `RocAuc.MultiClass` are separate names because the
