@@ -184,6 +184,9 @@ jobs:
       - name: Verify the vendored stop-word lists
         run: python tools/fetch_stopwords.py --check
 
+      - name: Verify the vendored GPT-2 vocabulary
+        run: python tools/fetch_gpt2_bpe.py --check
+
   oracles-fresh:
     name: Oracles are reproducible
     runs-on: ubuntu-latest
