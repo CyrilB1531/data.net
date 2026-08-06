@@ -76,6 +76,46 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVE
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
+## Redistributed test fixtures (not shipped)
+
+| Component | License | Used by | Source |
+| --- | --- | --- | --- |
+| `xlm-roberta-base` SentencePiece vocabulary | MIT | `tests/oracles/xlmr_fairseq.model` | `https://huggingface.co/xlm-roberta-base/resolve/main/sentencepiece.bpe.model` |
+
+The **vocabulary only** — the 250 000 pieces, their scores and their types. No
+model weights are redistributed, per
+[`docs/decisions/0003-provenance-and-licensing.md`](docs/decisions/0003-provenance-and-licensing.md).
+The file is compiled into no package: it lives under `tests/`, is copied to the
+test output, and exists so the tokenizer's parity claim is checked against a real
+multilingual vocabulary in the layout HuggingFace uses. It is re-emitted from the
+upstream download by `tools/fetch_xlmr_vocab.py`, which pins the upstream
+SHA-256; the reasoning is in
+[`docs/decisions/0013-sentencepiece-parity-scope.md`](docs/decisions/0013-sentencepiece-parity-scope.md).
+
+`xlm-roberta-base` is published under the MIT license by its authors (Facebook AI
+Research), as declared on its model card:
+
+```text
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
 ## Build-time dependencies (not shipped)
 
 | Component | License | Usage |

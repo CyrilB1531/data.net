@@ -1,8 +1,9 @@
 # Development tools — oracle generation, vendored data, packaging checks
 
-Four scripts. `generate_oracles.py` produces the reference values the test suite
+Five scripts. `generate_oracles.py` produces the reference values the test suite
 replays; `fetch_stopwords.py` produces source that is *shipped*, which is why it
-verifies what it downloaded before writing anything;
+verifies what it downloaded before writing anything; `fetch_xlmr_vocab.py`
+produces one of the fixtures `generate_oracles.py` reads;
 `check_nuspec_dependencies.py` verifies what the packages *declare*; and
 `check_version_floor.py` verifies that the version numbers the source tree keeps
 in three places still agree.
@@ -43,6 +44,30 @@ Snowball edited the list upstream: read the diff, update the pin, adjust the
 counts in `StopWordsTests`, and record it — do not regenerate quietly. The nltk
 stop-word corpus is **not** a permitted source here, whatever its convenience:
 see [`../docs/decisions/0010-stop-word-list-provenance.md`](../docs/decisions/0010-stop-word-list-provenance.md).
+
+## `fetch_xlmr_vocab.py`
+
+Rebuilds `tests/oracles/xlmr_fairseq.model`, the fixture behind the XLM-R oracle:
+
+```bash
+python tools/fetch_xlmr_vocab.py            # rebuild
+python tools/fetch_xlmr_vocab.py --check    # verify the checked-in fixture
+```
+
+It downloads `xlm-roberta-base`'s SentencePiece vocabulary (MIT — vocabulary
+only, never weights), checks it against a pinned SHA-256, and **re-emits** it:
+same 250 000 pieces, scores and types, at the ids HuggingFace gives them
+(`<s>`=0, `<pad>`=1, `</s>`=2, `<unk>`=3, `<mask>`=250001), with the normalizer
+set to `identity`. Both transformations are necessary, and neither is cosmetic —
+the stock file is laid out `<unk>`=0/`<s>`=1/`</s>`=2, which is the one layout
+the old id-based control filter got right, and it is trained with `nmt_nfkc`,
+which `SentencePieceModelLoader` refuses. See
+[`../docs/decisions/0013-sentencepiece-parity-scope.md`](../docs/decisions/0013-sentencepiece-parity-scope.md).
+
+Like `tiny_sp.model`, the result is an *input* to `generate_oracles.py`, not one
+of its outputs: it is committed, and the `Oracles are reproducible` job replays
+it without touching the network. Rebuilding it is a deliberate act, and a
+changed pin means the ids in `xlmr_fairseq.json` move with it.
 
 ## `check_nuspec_dependencies.py`
 
