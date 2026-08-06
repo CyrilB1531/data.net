@@ -19,4 +19,15 @@
     <ProjectReference Include="../../src/DataNet.Embeddings/DataNet.Embeddings.csproj" />
   </ItemGroup>
 
+  <!--
+    The batch benchmark runs a model, and the only model this repository has is
+    the synthetic one the test suite uses: weights are never committed
+    (CONTRIBUTING.md). Linked from tests/oracles rather than copied, so there is
+    one fixture and tools/build_tiny_models.py remains the single thing that
+    produces it.
+  -->
+  <ItemGroup>
+    <None Include="../../tests/oracles/tiny_embedder.onnx" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
+  </ItemGroup>
+
 </Project>

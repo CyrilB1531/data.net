@@ -1,3 +1,5 @@
+using DataNet.Embeddings.Tokenization;
+
 namespace DataNet.DocSnippets;
 
 // The symbols the guides introduce in prose rather than in a fence: a page that
@@ -32,4 +34,24 @@ internal sealed partial class Embeddings
 
     /// <summary>The embedding a search is run for.</summary>
     public readonly float[] queryVector = new float[384];
+
+    /// <summary>The tokenizer an embedder is built with; the guide builds one several fences earlier.</summary>
+    public readonly WordPieceTokenizer wp = new(
+        new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["[UNK]"] = 0,
+            ["[CLS]"] = 1,
+            ["[SEP]"] = 2,
+            ["[PAD]"] = 3,
+        },
+        "[UNK]");
+
+    /// <summary>The corpus a batch call embeds.</summary>
+    public readonly string[] texts = ["the cat sat", "the dog ran"];
+
+    /// <summary>Token ids the single-sequence entry point is handed.</summary>
+    public readonly long[] ids = [1, 4, 2];
+
+    /// <summary>The mask that goes with them.</summary>
+    public readonly long[] mask = [1, 1, 1];
 }

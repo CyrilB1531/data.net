@@ -14,6 +14,11 @@ namespace DataNet.Sample;
 /// </summary>
 internal static class Lot3Embeddings
 {
+    private const string Unknown = "[UNK]";
+
+    /// <summary>Two words the four-entry vocabulary below covers: token + ##ize, text.</summary>
+    private const string SampleText = "tokenize text";
+
     public static void Run()
     {
         Console.WriteLine("lot 3 — embeddings (tokenizers, pooling, search)");
@@ -30,22 +35,22 @@ internal static class Lot3Embeddings
         // WordPiece from a plain dictionary, the shortest path from nothing to tokens.
         var vocab = new Dictionary<string, int>(StringComparer.Ordinal)
         {
-            ["[UNK]"] = 0,
+            [Unknown] = 0,
             ["token"] = 1,
             ["##ize"] = 2,
             ["text"] = 3,
         };
-        var inline = new WordPieceTokenizer(vocab, unkToken: "[UNK]", continuationPrefix: "##", maxCharsPerWord: 100, lowercase: true);
-        TokenizationResult encoded = inline.Encode("tokenize text");
+        var inline = new WordPieceTokenizer(vocab, unkToken: Unknown, continuationPrefix: "##", maxCharsPerWord: 100, lowercase: true);
+        TokenizationResult encoded = inline.Encode(SampleText);
         Console.WriteLine($"  WordPiece inline : [{string.Join(", ", encoded.Tokens)}] -> [{string.Join(", ", encoded.Ids)}]");
-        Console.WriteLine($"  EncodeToIds      : [{string.Join(", ", inline.EncodeToIds("tokenize text"))}]");
+        Console.WriteLine($"  EncodeToIds      : [{string.Join(", ", inline.EncodeToIds(SampleText))}]");
 
         // The same vocabulary as a consumer would actually get it: a vocab.txt.
         WordPieceVocabulary fromTxt = VocabTxtLoader.Load(
-            Utf8("[UNK]\ntoken\n##ize\ntext"), bounds, unkToken: "[UNK]", continuationPrefix: "##", lowercase: true);
+            Utf8("[UNK]\ntoken\n##ize\ntext"), bounds, unkToken: Unknown, continuationPrefix: "##", lowercase: true);
         Console.WriteLine($"  vocab.txt        : {fromTxt.Count} tokens, unk='{fromTxt.UnkToken}', "
             + $"prefix='{fromTxt.ContinuationPrefix}', lowercase={fromTxt.Lowercase}, dict={fromTxt.Vocab.Count}");
-        Console.WriteLine($"  from vocabulary  : [{string.Join(", ", new WordPieceTokenizer(fromTxt, maxCharsPerWord: 100).Encode("tokenize text").Tokens)}]");
+        Console.WriteLine($"  from vocabulary  : [{string.Join(", ", new WordPieceTokenizer(fromTxt, maxCharsPerWord: 100).Encode(SampleText).Tokens)}]");
 
         // …and as HuggingFace ships it: a tokenizer.json.
         WordPieceVocabulary fromJson = TokenizerJsonLoader.LoadWordPiece(Utf8(WordPieceJson), bounds);
@@ -87,6 +92,59 @@ internal static class Lot3Embeddings
         PrecompiledNormalizer? normalizer = fromModel.Normalizer;
         Console.WriteLine($"  normalizer       : {(normalizer is null ? "identity, no charsmap" : $"{normalizer.CharsMapLength} bytes")}");
 
+        // Batch encoding: the special tokens, the truncation and the padding the
+        // caller used to have to reproduce from memory. Everything the model is
+        // fed comes out of the template and the vocabulary — nothing is a
+        // hardcoded id, which is why [CLS] can sit at 4 here.
+        var batchVocab = new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            [Unknown] = 0,
+            ["token"] = 1,
+            ["##ize"] = 2,
+            ["text"] = 3,
+            ["[CLS]"] = 4,
+            ["[SEP]"] = 5,
+            ["[PAD]"] = 6,
+        };
+        // CA1859 (use the concrete type for performance): declaring this as the
+        // interface is the point. `BatchEncoder` takes an `ISubwordTokenizer`, and
+        // PackagingGate demands a *member* reference to every exported type —
+        // calling TryGetId on the concrete class emits one to WordPieceTokenizer
+        // instead, and the gate fails with "ISubwordTokenizer has no member
+        // referenced". Checked, not assumed. A sample is also the wrong place to
+        // trade a demonstrated abstraction for an interface dispatch.
+#pragma warning disable CA1859
+        ISubwordTokenizer subword = new WordPieceTokenizer(batchVocab, unkToken: Unknown, lowercase: true);
+#pragma warning restore CA1859
+        Console.WriteLine($"  token_to_id      : [CLS]={(subword.TryGetId("[CLS]", out int clsId) ? clsId : -1)}, "
+            + $"[MASK] present={subword.TryGetId("[MASK]", out _)}");
+
+        var options = new EncodingOptions
+        {
+            Template = SpecialTokenTemplate.Bert,
+            MaxLength = 8,
+            Truncation = TruncationStrategy.LongestFirst,
+            BatchSize = 32,
+            SortByLength = true,
+        };
+        var batchEncoder = new BatchEncoder(subword, options);
+        Console.WriteLine($"  template         : {options.Template.SpecialTokenCount} special tokens, "
+            + $"pad='{options.Template.PadToken}', truncation={options.Truncation}, batch={options.BatchSize}");
+        Console.WriteLine($"  Encode           : [{string.Join(", ", batchEncoder.Encode(SampleText))}]");
+
+        // Two texts of different lengths: the batch is padded to the longer of
+        // the two, never to MaxLength, and the mask marks what is padding.
+        EncodedBatch batch = batchEncoder.EncodeBatch(["text", SampleText]);
+        Console.WriteLine($"  EncodeBatch      : {batch.Count} sequences padded to {batch.SequenceLength}, "
+            + $"lengths=[{string.Join(", ", batch.Lengths)}]");
+        for (int row = 0; row < batch.Count; row++)
+        {
+            ReadOnlySpan<long> ids = batch.InputIds.Slice(row * batch.SequenceLength, batch.SequenceLength);
+            ReadOnlySpan<long> mask = batch.AttentionMask.Slice(row * batch.SequenceLength, batch.SequenceLength);
+            Console.WriteLine($"    ids=[{string.Join(", ", ids.ToArray())}] mask=[{string.Join(", ", mask.ToArray())}] "
+                + $"unpadded=[{string.Join(", ", batch.Sequence(row).ToArray())}]");
+        }
+
         // Pooling. Two tokens of three dimensions, the second one padding — the
         // attention mask is what keeps the padding out of the mean.
         float[] tokenEmbeddings = [1f, 0f, 0f, 9f, 9f, 9f];
@@ -97,6 +155,16 @@ internal static class Lot3Embeddings
         Console.WriteLine($"  MeanPool         : [{string.Join(", ", pooled.Select(v => v.ToString("F3")))}]");
         Console.WriteLine($"  MeanPool+L2      : [{string.Join(", ", normalized.Select(v => v.ToString("F3")))}]");
         Console.WriteLine($"  VectorMath       : dot={VectorMath.Dot(pooled, normalized):F3}, l2={VectorMath.L2Norm(pooled):F3}");
+
+        // The batched form, over the [batch, seq, dim] tensor an encoder returns:
+        // each row pooled against its own slice of the mask, so a shorter
+        // sequence's padding cannot reach its vector.
+        float[] batchedEmbeddings = [1f, 0f, 0f, 9f, 9f, 9f, 0f, 1f, 0f, 0f, 0f, 1f];
+        long[] batchedMask = [1, 0, 1, 1];
+        float[][] batchPooled = Pooler.MeanPoolAndNormalizeBatch(
+            batchedEmbeddings, batchSize: 2, seqLen: 2, dim: 3, batchedMask);
+        Console.WriteLine($"  MeanPoolBatch    : {batchPooled.Length} vectors, "
+            + string.Join(" | ", batchPooled.Select(v => $"[{string.Join(", ", v.Select(c => c.ToString("F3")))}]")));
 
         // Nearest-neighbour search over those vectors.
         var index = new EmbeddingIndex(dimension: 3, normalize: true);
