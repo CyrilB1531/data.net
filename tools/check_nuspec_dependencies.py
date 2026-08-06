@@ -33,6 +33,7 @@ NETSTANDARD = ".NETStandard2.0"
 TEXT = "DataNet.Text"
 FUZZY = "DataNet.Fuzzy"
 EMBEDDINGS = "DataNet.Embeddings"
+METRICS = "DataNet.Metrics"
 ONNX = "Microsoft.ML.OnnxRuntime"
 STJ = "System.Text.Json"
 
@@ -82,6 +83,13 @@ EXPECTED: dict[str, dict[str, dict[str, str]]] = {
     EMBEDDINGS: {
         NET: {ONNX: "1.20.1"},
         NETSTANDARD: {ONNX: "1.20.1", **POLYFILLS, **PERSISTENCE},
+    },
+    METRICS: {
+        # Nothing on net10.0 and nothing but the polyfills on netstandard2.0:
+        # metrics are pure computation over spans, with no I/O to serialise and
+        # therefore no System.Text.Json.
+        NET: {},
+        NETSTANDARD: {**POLYFILLS},
     },
 }
 
