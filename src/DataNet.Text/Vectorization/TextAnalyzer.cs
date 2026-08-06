@@ -34,7 +34,7 @@ internal sealed class TextAnalyzer
     private readonly int _minN;
     private readonly int _maxN;
     private readonly Regex _tokenPattern;
-    private readonly HashSet<string>? _stopWords;
+    private readonly StopWordSet? _stopWords;
 
     public TextAnalyzer(
         bool lowercase,
@@ -57,7 +57,7 @@ internal sealed class TextAnalyzer
         // The pattern comes from the caller, so an unbounded match would let a
         // crafted pattern/document pair hang the thread. Bound it.
         _tokenPattern = new Regex(tokenPattern, RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexDefaults.MatchTimeout);
-        _stopWords = stopWords is null ? null : new HashSet<string>(stopWords, StringComparer.Ordinal);
+        _stopWords = stopWords is null ? null : StopWordSet.Adopt(stopWords);
     }
 
     /// <summary>Produces the terms of <paramref name="document"/> (with repetition).</summary>
@@ -105,11 +105,23 @@ internal sealed class TextAnalyzer
         var tokens = new List<string>();
         foreach (Match m in _tokenPattern.Matches(s))
         {
+#if NET9_0_OR_GREATER
+            // Judge the token where it already is, as a span over the document: a
+            // stop word is discarded without ever being allocated, and those are
+            // the tokens the filter exists for — the most frequent ones.
+            if (_stopWords is null || !_stopWords.Contains(s.AsSpan(m.Index, m.Length)))
+            {
+                tokens.Add(m.Value);
+            }
+#else
+            // netstandard2.0 has no span lookup, so the token is materialised first,
+            // exactly as before.
             string tok = m.Value;
             if (_stopWords is null || !_stopWords.Contains(tok))
             {
                 tokens.Add(tok);
             }
+#endif
         }
         return tokens;
     }
