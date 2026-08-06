@@ -92,7 +92,7 @@ bench/DataNet.Text.Benchmarks/CrossLang/MetricsCrossLang.cs
 bench/python/bench_metrics.py
 bench/corpus/generate_metrics.py
 
-samples/DataNet.Metrics.Sample/              packaging gate + full tour
+samples/DataNet.Sample/Lot5Metrics.cs        the metrics lot + reachability gate
 ```
 
 ---
@@ -4084,102 +4084,124 @@ EOF
 
 ---
 
-### Task 11: The sample, which is also the packaging gate
+### Task 11: The metrics lot in the sample, and the reachability gate
+
+**Rewritten after rebasing onto `origin/main`.** The original task created a
+separate `samples/DataNet.Metrics.Sample`, on the reasoning that `DataNet.Sample`
+was deliberately thin — "one thing per lot" — and should not be widened. That
+reasoning is void: main has split the sample into `Lot1Distances.cs` …
+`Lot4Fuzzy.cs` and added `PackagingGate.cs`, which reflects over the **packaged**
+assemblies and fails the build when any exported public type is not exercised
+from the sample. Covering the surface is now compulsory rather than optional, and
+the house pattern is a lot file. A second sample project would sit outside that
+gate and leave `DataNet.Metrics` the only package whose surface nothing checks.
 
 **Files:**
 
-- Create: `samples/DataNet.Metrics.Sample/DataNet.Metrics.Sample.csproj`
-- Create: `samples/DataNet.Metrics.Sample/Program.cs`
-- Modify: `.github/workflows/ci.yml` (a second `dotnet run` in the sample job)
+- Create: `samples/DataNet.Sample/Lot5Metrics.cs`
+- Modify: `samples/DataNet.Sample/Program.cs` (call the new lot)
+- Modify: `samples/DataNet.Sample/PackagingGate.cs` (add the assembly)
+- Modify: `samples/DataNet.Sample/DataNet.Sample.csproj` (import the version, add
+  the `PackageReference`)
 
 **Interfaces:**
 
-- Consumes: `DataNet.Metrics` **as a NuGet package**, never a project reference.
-- Produces: a process that exits 0 and prints a tour of the API.
+- Consumes: every public type of `DataNet.Metrics`, **as a NuGet package**, never
+  a project reference.
+- Produces: a sample run that exits 0, and a gate that accounts for every
+  exported type.
 
-- [ ] **Step 1: Write the project**
+- [ ] **Step 1: Read what the gate demands before writing anything**
 
-`samples/DataNet.Metrics.Sample/DataNet.Metrics.Sample.csproj`:
-
-```xml
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <!--
-    Consumes DataNet.Metrics as a NuGet package, not as a ProjectReference —
-    that distinction is the whole value of this project. It restores from
-    ../artifacts through samples/NuGet.config, so a packaging defect fails here
-    rather than at a consumer.
-
-    Deliberately NOT in DataNet.slnx: inside the solution, ProjectReference
-    resolution would quietly satisfy this reference and the sample would prove
-    nothing.
-  -->
-
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <IsPackable>false</IsPackable>
-  </PropertyGroup>
-
-  <Import Project="../../src/DataNet.Metrics/Version.props" />
-
-  <ItemGroup>
-    <PackageReference Include="DataNet.Metrics" Version="$(DataNetMetricsVersion)" />
-  </ItemGroup>
-
-</Project>
+```bash
+sed -n '1,200p' samples/DataNet.Sample/PackagingGate.cs
+sed -n '1,80p' samples/DataNet.Sample/Lot2Vectorization.cs
+cat samples/DataNet.Sample/Program.cs
+cat samples/DataNet.Sample/DataNet.Sample.csproj
 ```
 
-- [ ] **Step 2: Write the tour**
+Two details of the gate decide whether your lot passes:
 
-`samples/DataNet.Metrics.Sample/Program.cs` must exercise, in this order, with a
-printed heading for each: the resolved target framework
-(`typeof(ConfusionMatrix).Assembly.GetCustomAttribute<TargetFrameworkAttribute>()`,
-which must report `.NETCoreApp,Version=v10.0`); a confusion matrix; accuracy;
-precision, recall and F1 in all four averaging modes side by side on the same
-data, so the reader sees the three averages differ; `PerClass`; FBeta at β=0.5
-and 2; the absent-class case under each of the four `ZeroDivision` values, with
-the `Throw` one caught and reported; a weighted run; the report's `ToText()`; and
-ROC-AUC binary, `ovr` and `ovo`.
+- the criterion is a **`MemberReference`**, not a `TypeReference` — `typeof(T)`
+  alone does not count as exercising a type; you must call something on it;
+- **enums are the documented exception**, because an enum member is a
+  compile-time constant and emits no member reference. Naming one is all a
+  consumer can do, and all the gate asks.
 
-- [ ] **Step 3: Prove it restores from the local feed**
+- [ ] **Step 2: Wire the package into the sample**
+
+Mirror how the other three packages are referenced: import
+`../../src/DataNet.Metrics/Version.props` and add
+`<PackageReference Include="DataNet.Metrics" Version="$(DataNetMetricsVersion)" />`.
+The sample restores from `../artifacts` through `samples/NuGet.config`, which
+already maps `DataNet.*` to the local feed, so nothing else is needed.
+
+- [ ] **Step 3: Write `Lot5Metrics.cs`**
+
+Follow the shape of the existing lot files (a `static class` with a method
+`Program.cs` calls, printing a heading then its lines). It must exercise, in this
+order: a confusion matrix and its `ToArray()`; accuracy, normalized and not;
+precision, recall and F1 in **all four** averaging modes on the same data, so a
+reader sees macro, micro and weighted disagree; `PerClass` on each of the three;
+`FBeta` at β = 0.5 and 2; the absent-class case under all four `ZeroDivision`
+values, with `Throw` caught and its message printed; a weighted run; the
+report's structured rows **and** its `ToText()`; and ROC-AUC binary, `ovr` and
+`ovo`.
+
+That list is not decoration — it is what makes the gate pass. Every public type
+must receive a real call: `ConfusionMatrix`, `Accuracy`, `Precision`, `Recall`,
+`F1`, `FBeta`, `ClassificationReport`, `ClassRow`, `AverageRow`, `RocAuc`,
+`UndefinedMetricException` (name it in a `catch`), and the three enums
+`Averaging`, `ZeroDivision`, `MultiClassStrategy` (naming a member suffices).
+
+- [ ] **Step 4: Add the assembly to the gate**
+
+In `PackagingGate.Verify()`, add the `DataNet.Metrics` assembly to the `packaged`
+array, reached through a type the sample genuinely uses (for example
+`typeof(ConfusionMatrix).Assembly`). Add nothing to `Excluded` — every metrics
+type is exercisable, and an exclusion needs a reason a reviewer can disagree
+with.
+
+- [ ] **Step 5: Prove it, against the packages rather than the projects**
 
 ```bash
 rm -rf ./artifacts
 for proj in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
   dotnet pack "$proj" -c Release -o ./artifacts
 done
-NUGET_PACKAGES="$(mktemp -d)" dotnet run --project samples/DataNet.Metrics.Sample -c Release
+NUGET_PACKAGES="$(mktemp -d)" dotnet run --project samples/DataNet.Sample -c Release
 echo "exit=$?"
 ```
 
-Expected: `exit=0`, and the framework line reads `.NETCoreApp,Version=v10.0`. The
-scratch `NUGET_PACKAGES` matters: the global folder is consulted ahead of every
-source, so without it a stale twin could satisfy the restore.
+Expected: `exit=0`, the metrics lot printed, and the gate reporting every
+exported type accounted for. The scratch `NUGET_PACKAGES` matters: the global
+folder is consulted ahead of every source, so without it a stale twin could
+satisfy the restore.
 
-- [ ] **Step 4: Add it to CI and commit**
+Then make the gate prove it can still fail: comment out one call in
+`Lot5Metrics.cs` — say the `FBeta` one — re-run, and watch it name that type as
+unreachable. Put the call back. A gate nobody has watched fail is
+indistinguishable from one that cannot.
 
-In `.github/workflows/ci.yml`, next to the existing sample run:
+- [ ] **Step 6: Commit**
 
-```yaml
-        run: dotnet run --project samples/DataNet.Metrics.Sample --configuration Release
-```
+`ci.yml` needs no change: the sample job already runs `samples/DataNet.Sample`,
+and the pack loops already include `src/DataNet.Metrics`.
 
 ```bash
-git add samples/DataNet.Metrics.Sample .github/workflows/ci.yml
+git add samples/DataNet.Sample
 git commit -F - <<'EOF'
-Give the metrics their own sample rather than widening the other one
+Bring the metrics under the gate that counts public types
 
-DataNet.Sample says of itself that it exercises one thing per lot: a thin
-packaging gate for the text toolkit. Pouring a full metrics tour into it would
-turn it into something else.
+main turned the sample into a reachability check: it reflects over the packaged
+assemblies and fails when an exported type is not exercised. A separate metrics
+sample would have sat outside that check and left the new package the only one
+whose surface nothing verifies — so the metrics get a lot file like every other
+package, and the gate gets a fourth assembly.
 
-A second sample does both jobs at once — it shows the whole surface, including
-the three averages disagreeing on the same data and every zero-division mode,
-and because it restores DataNet.Metrics from ./artifacts it is the packaging
-gate for the new package too.
+The lot shows the three averages disagreeing on the same data and every
+zero-division mode, which is the thing the migration guide is about to claim.
+The gate was watched failing on a removed call before being left passing.
 
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 EOF
@@ -4187,11 +4209,12 @@ EOF
 
 ---
 
+
 ### Task 12: The documentation the issue actually asks for
 
 **Files:**
 
-- Create: `docs/decisions/0013-metrics-package-placement.md`
+- Create: `docs/decisions/0014-metrics-package-placement.md`
 - Modify: `docs/equivalence.md` (new section at the end)
 - Modify: `docs/migration/sklearn.md:34-35` (the "Metrics" bullet)
 - Modify: `docs/migration/README.md:19` (the scikit-learn row) and the
@@ -4199,7 +4222,7 @@ EOF
 - Modify: `README.md` (package table), `CHANGELOG.md` (a `DataNet.Metrics 0.1.0`
   heading)
 
-- [ ] **Step 1: Write decision 0013**
+- [ ] **Step 1: Write decision 0014**
 
 Follow the shape of `docs/decisions/0011-persistence-format.md`. It must answer:
 why a separate package rather than `DataNet.Text` (metrics are not textual;
@@ -4338,7 +4361,7 @@ otherwise idle machine.
 
 ## Decisions worth reviewing
 
-- `docs/decisions/0013-metrics-package-placement.md` — why a fourth package.
+- `docs/decisions/0014-metrics-package-placement.md` — why a fourth package.
 - `Averaging.None` became `PerClass`: a `Score` returning `double` cannot also
   return an array.
 - `RocAuc.Score` and `RocAuc.MultiClass` are separate names because the
