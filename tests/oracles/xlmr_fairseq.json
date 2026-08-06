@@ -7,7 +7,7 @@
   "reference_calls": [
    "sentencepiece.SentencePieceProcessor(model_file='xlmr_fairseq.model').encode"
   ],
-  "normalizer_name": "identity",
+  "normalizer_name": "nmt_nfkc",
   "vocab_size": 250002,
   "unk_id": 3,
   "bos_id": 0,
@@ -102,7 +102,7 @@
     "type": 3
    }
   ],
-  "count": 11
+  "count": 17
  },
  "cases": [
   {
@@ -480,6 +480,126 @@
     2740,
     8,
     549,
+    7
+   ]
+  },
+  {
+   "id": 11,
+   "text": "ＬＥ ＲＥＮＡＲＤ ｒａｐｉｄｅ",
+   "pieces": [
+    "▁LE",
+    "▁",
+    "REN",
+    "ARD",
+    "▁rapide"
+   ],
+   "ids": [
+    17428,
+    6,
+    31076,
+    49444,
+    34948
+   ]
+  },
+  {
+   "id": 12,
+   "text": "ﬁnancier, ﬂamme et œuvre",
+   "pieces": [
+    "▁financier",
+    ",",
+    "▁flam",
+    "me",
+    "▁et",
+    "▁œuvre"
+   ],
+   "ids": [
+    44530,
+    4,
+    42009,
+    282,
+    82,
+    84065
+   ]
+  },
+  {
+   "id": 13,
+   "text": "café déjà vu",
+   "pieces": [
+    "▁café",
+    "▁déjà",
+    "▁vu"
+   ],
+   "ids": [
+    26216,
+    15154,
+    13946
+   ]
+  },
+  {
+   "id": 14,
+   "text": "Ⅸ siecles, ①②③ etapes",
+   "pieces": [
+    "▁IX",
+    "▁sie",
+    "cles",
+    ",",
+    "▁123",
+    "▁etape",
+    "s"
+   ],
+   "ids": [
+    38771,
+    1329,
+    66695,
+    4,
+    37638,
+    116288,
+    7
+   ]
+  },
+  {
+   "id": 15,
+   "text": "espace insecable et espace　ideographique",
+   "pieces": [
+    "▁espace",
+    "▁in",
+    "sec",
+    "able",
+    "▁et",
+    "▁espace",
+    "▁ideo",
+    "graphique"
+   ],
+   "ids": [
+    77910,
+    23,
+    39797,
+    2886,
+    82,
+    77910,
+    47674,
+    126937
+   ]
+  },
+  {
+   "id": 16,
+   "text": "un\u0001texte\u0002avec\u0007des controles",
+   "pieces": [
+    "▁un",
+    "text",
+    "e",
+    "avec",
+    "des",
+    "▁controle",
+    "s"
+   ],
+   "ids": [
+    51,
+    22829,
+    13,
+    88149,
+    988,
+    36801,
     7
    ]
   }

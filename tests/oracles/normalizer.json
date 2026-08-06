@@ -1,0 +1,1866 @@
+{
+ "metadata": {
+  "algorithm": "PrecompiledNormalizer",
+  "library": "sentencepiece",
+  "library_version": "0.2.2",
+  "reference_calls": [
+   "sentencepiece.SentencePieceProcessor(model_file=…).normalize  (charsmap only)",
+   "sentencepiece.SentencePieceProcessor(model_file=…).encode     (whole pipeline)"
+  ],
+  "models": [
+   {
+    "model": "xlmr_fairseq.model",
+    "description": "xlm-roberta-base, nmt_nfkc (the spm_train default)",
+    "normalizer_name": "nmt_nfkc",
+    "charsmap_bytes": 237539,
+    "vocab_size": 250002
+   },
+   {
+    "model": "nmt_nfkc_cf.model",
+    "description": "self-trained, nmt_nfkc_cf (case folding)",
+    "normalizer_name": "nmt_nfkc_cf",
+    "charsmap_bytes": 247164,
+    "vocab_size": 120
+   },
+   {
+    "model": "custom_norm.model",
+    "description": "self-trained, three hand-written rules from a normalization_rule_tsv",
+    "normalizer_name": "user_defined",
+    "charsmap_bytes": 1034,
+    "vocab_size": 120
+   },
+   {
+    "model": "tiny_sp.model",
+    "description": "self-trained, identity: no charsmap at all",
+    "normalizer_name": "identity",
+    "charsmap_bytes": 0,
+    "vocab_size": 80
+   }
+  ],
+  "count": 88
+ },
+ "cases": [
+  {
+   "id": 0,
+   "model": "xlmr_fairseq.model",
+   "text": "",
+   "normalized": "",
+   "pieces": [],
+   "ids": []
+  },
+  {
+   "id": 1,
+   "model": "xlmr_fairseq.model",
+   "text": "already normal text",
+   "normalized": "already normal text",
+   "pieces": [
+    "▁already",
+    "▁normal",
+    "▁text"
+   ],
+   "ids": [
+    21771,
+    3638,
+    7986
+   ]
+  },
+  {
+   "id": 2,
+   "model": "xlmr_fairseq.model",
+   "text": "ＬＥ ＲＥＮＡＲＤ",
+   "normalized": "LE RENARD",
+   "pieces": [
+    "▁LE",
+    "▁",
+    "REN",
+    "ARD"
+   ],
+   "ids": [
+    17428,
+    6,
+    31076,
+    49444
+   ]
+  },
+  {
+   "id": 3,
+   "model": "xlmr_fairseq.model",
+   "text": "１２３",
+   "normalized": "123",
+   "pieces": [
+    "▁123"
+   ],
+   "ids": [
+    37638
+   ]
+  },
+  {
+   "id": 4,
+   "model": "xlmr_fairseq.model",
+   "text": "ｱﾒﾘｶ",
+   "normalized": "アメリカ",
+   "pieces": [
+    "▁",
+    "アメリカ"
+   ],
+   "ids": [
+    6,
+    53619
+   ]
+  },
+  {
+   "id": 5,
+   "model": "xlmr_fairseq.model",
+   "text": "café",
+   "normalized": "café",
+   "pieces": [
+    "▁café"
+   ],
+   "ids": [
+    26216
+   ]
+  },
+  {
+   "id": 6,
+   "model": "xlmr_fairseq.model",
+   "text": "café",
+   "normalized": "café",
+   "pieces": [
+    "▁café"
+   ],
+   "ids": [
+    26216
+   ]
+  },
+  {
+   "id": 7,
+   "model": "xlmr_fairseq.model",
+   "text": "ﬁnancier ﬂamme ﬃn",
+   "normalized": "financier flamme ffin",
+   "pieces": [
+    "▁financier",
+    "▁flam",
+    "me",
+    "▁",
+    "ffin"
+   ],
+   "ids": [
+    44530,
+    42009,
+    282,
+    6,
+    58871
+   ]
+  },
+  {
+   "id": 8,
+   "model": "xlmr_fairseq.model",
+   "text": "Ⅸ ①② ㈱",
+   "normalized": "IX 12 (株)",
+   "pieces": [
+    "▁IX",
+    "▁12",
+    "▁(",
+    "株",
+    ")"
+   ],
+   "ids": [
+    38771,
+    427,
+    15,
+    77698,
+    16
+   ]
+  },
+  {
+   "id": 9,
+   "model": "xlmr_fairseq.model",
+   "text": "a b",
+   "normalized": "a b",
+   "pieces": [
+    "▁a",
+    "▁b"
+   ],
+   "ids": [
+    10,
+    876
+   ]
+  },
+  {
+   "id": 10,
+   "model": "xlmr_fairseq.model",
+   "text": "a　b",
+   "normalized": "a b",
+   "pieces": [
+    "▁a",
+    "▁b"
+   ],
+   "ids": [
+    10,
+    876
+   ]
+  },
+  {
+   "id": 11,
+   "model": "xlmr_fairseq.model",
+   "text": "a\tb",
+   "normalized": "a b",
+   "pieces": [
+    "▁a",
+    "▁b"
+   ],
+   "ids": [
+    10,
+    876
+   ]
+  },
+  {
+   "id": 12,
+   "model": "xlmr_fairseq.model",
+   "text": "a\nb",
+   "normalized": "a b",
+   "pieces": [
+    "▁a",
+    "▁b"
+   ],
+   "ids": [
+    10,
+    876
+   ]
+  },
+  {
+   "id": 13,
+   "model": "xlmr_fairseq.model",
+   "text": "a​b",
+   "normalized": "a b",
+   "pieces": [
+    "▁a",
+    "▁b"
+   ],
+   "ids": [
+    10,
+    876
+   ]
+  },
+  {
+   "id": 14,
+   "model": "xlmr_fairseq.model",
+   "text": "﻿bom",
+   "normalized": " bom",
+   "pieces": [
+    "▁bom"
+   ],
+   "ids": [
+    8634
+   ]
+  },
+  {
+   "id": 15,
+   "model": "xlmr_fairseq.model",
+   "text": "a\u0001b\u0007c",
+   "normalized": "abc",
+   "pieces": [
+    "▁ab",
+    "c"
+   ],
+   "ids": [
+    1563,
+    238
+   ]
+  },
+  {
+   "id": 16,
+   "model": "xlmr_fairseq.model",
+   "text": "  spaced   out  ",
+   "normalized": "  spaced   out  ",
+   "pieces": [
+    "▁space",
+    "d",
+    "▁out"
+   ],
+   "ids": [
+    32628,
+    71,
+    1810
+   ]
+  },
+  {
+   "id": 17,
+   "model": "xlmr_fairseq.model",
+   "text": "MiXeD CaSe TeXt",
+   "normalized": "MiXeD CaSe TeXt",
+   "pieces": [
+    "▁Mi",
+    "X",
+    "e",
+    "D",
+    "▁Ca",
+    "Se",
+    "▁Te",
+    "X",
+    "t"
+   ],
+   "ids": [
+    1208,
+    1542,
+    13,
+    397,
+    2041,
+    4233,
+    1413,
+    1542,
+    18
+   ]
+  },
+  {
+   "id": 18,
+   "model": "xlmr_fairseq.model",
+   "text": "ß ① ¤",
+   "normalized": "ß 1 ¤",
+   "pieces": [
+    "▁",
+    "ß",
+    "▁1",
+    "▁",
+    "¤"
+   ],
+   "ids": [
+    6,
+    20036,
+    106,
+    6,
+    28677
+   ]
+  },
+  {
+   "id": 19,
+   "model": "xlmr_fairseq.model",
+   "text": "▁ already escaped",
+   "normalized": "  already escaped",
+   "pieces": [
+    "▁already",
+    "▁escape",
+    "d"
+   ],
+   "ids": [
+    21771,
+    144281,
+    71
+   ]
+  },
+  {
+   "id": 20,
+   "model": "xlmr_fairseq.model",
+   "text": "İstanbul",
+   "normalized": "İstanbul",
+   "pieces": [
+    "▁İstanbul"
+   ],
+   "ids": [
+    10621
+   ]
+  },
+  {
+   "id": 21,
+   "model": "xlmr_fairseq.model",
+   "text": "ẛ̣",
+   "normalized": "ṩ",
+   "pieces": [
+    "▁",
+    "ṡ",
+    "̣"
+   ],
+   "ids": [
+    6,
+    248537,
+    7035
+   ]
+  },
+  {
+   "id": 22,
+   "model": "nmt_nfkc_cf.model",
+   "text": "",
+   "normalized": "",
+   "pieces": [],
+   "ids": []
+  },
+  {
+   "id": 23,
+   "model": "nmt_nfkc_cf.model",
+   "text": "already normal text",
+   "normalized": "already normal text",
+   "pieces": [
+    "▁",
+    "al",
+    "re",
+    "a",
+    "d",
+    "y",
+    "▁",
+    "n",
+    "or",
+    "ma",
+    "l",
+    "▁text"
+   ],
+   "ids": [
+    3,
+    72,
+    74,
+    119,
+    13,
+    100,
+    3,
+    8,
+    109,
+    65,
+    30,
+    51
+   ]
+  },
+  {
+   "id": 24,
+   "model": "nmt_nfkc_cf.model",
+   "text": "ＬＥ ＲＥＮＡＲＤ",
+   "normalized": "le renard",
+   "pieces": [
+    "▁le",
+    "▁",
+    "r",
+    "en",
+    "ar",
+    "d"
+   ],
+   "ids": [
+    27,
+    3,
+    12,
+    10,
+    108,
+    13
+   ]
+  },
+  {
+   "id": 25,
+   "model": "nmt_nfkc_cf.model",
+   "text": "１２３",
+   "normalized": "123",
+   "pieces": [
+    "▁",
+    "123"
+   ],
+   "ids": [
+    3,
+    0
+   ]
+  },
+  {
+   "id": 26,
+   "model": "nmt_nfkc_cf.model",
+   "text": "ｱﾒﾘｶ",
+   "normalized": "アメリカ",
+   "pieces": [
+    "▁",
+    "アメリカ"
+   ],
+   "ids": [
+    3,
+    0
+   ]
+  },
+  {
+   "id": 27,
+   "model": "nmt_nfkc_cf.model",
+   "text": "café",
+   "normalized": "café",
+   "pieces": [
+    "▁",
+    "c",
+    "a",
+    "f",
+    "é"
+   ],
+   "ids": [
+    3,
+    34,
+    119,
+    117,
+    0
+   ]
+  },
+  {
+   "id": 28,
+   "model": "nmt_nfkc_cf.model",
+   "text": "café",
+   "normalized": "café",
+   "pieces": [
+    "▁",
+    "c",
+    "a",
+    "f",
+    "é"
+   ],
+   "ids": [
+    3,
+    34,
+    119,
+    117,
+    0
+   ]
+  },
+  {
+   "id": 29,
+   "model": "nmt_nfkc_cf.model",
+   "text": "ﬁnancier ﬂamme ﬃn",
+   "normalized": "financier flamme ffin",
+   "pieces": [
+    "▁f",
+    "in",
+    "a",
+    "n",
+    "c",
+    "i",
+    "er",
+    "▁f",
+    "l",
+    "a",
+    "m",
+    "m",
+    "e",
+    "▁f",
+    "f",
+    "in"
+   ],
+   "ids": [
+    16,
+    28,
+    119,
+    8,
+    34,
+    25,
+    70,
+    16,
+    30,
+    119,
+    29,
+    29,
+    7,
+    16,
+    117,
+    28
+   ]
+  },
+  {
+   "id": 30,
+   "model": "nmt_nfkc_cf.model",
+   "text": "Ⅸ ①② ㈱",
+   "normalized": "ix 12 (株)",
+   "pieces": [
+    "▁i",
+    "x",
+    "▁",
+    "12",
+    "▁",
+    "(株)"
+   ],
+   "ids": [
+    114,
+    63,
+    3,
+    0,
+    3,
+    0
+   ]
+  },
+  {
+   "id": 31,
+   "model": "nmt_nfkc_cf.model",
+   "text": "a b",
+   "normalized": "a b",
+   "pieces": [
+    "▁",
+    "a",
+    "▁",
+    "b"
+   ],
+   "ids": [
+    3,
+    119,
+    3,
+    118
+   ]
+  },
+  {
+   "id": 32,
+   "model": "nmt_nfkc_cf.model",
+   "text": "a　b",
+   "normalized": "a b",
+   "pieces": [
+    "▁",
+    "a",
+    "▁",
+    "b"
+   ],
+   "ids": [
+    3,
+    119,
+    3,
+    118
+   ]
+  },
+  {
+   "id": 33,
+   "model": "nmt_nfkc_cf.model",
+   "text": "a\tb",
+   "normalized": "a b",
+   "pieces": [
+    "▁",
+    "a",
+    "▁",
+    "b"
+   ],
+   "ids": [
+    3,
+    119,
+    3,
+    118
+   ]
+  },
+  {
+   "id": 34,
+   "model": "nmt_nfkc_cf.model",
+   "text": "a\nb",
+   "normalized": "a b",
+   "pieces": [
+    "▁",
+    "a",
+    "▁",
+    "b"
+   ],
+   "ids": [
+    3,
+    119,
+    3,
+    118
+   ]
+  },
+  {
+   "id": 35,
+   "model": "nmt_nfkc_cf.model",
+   "text": "a​b",
+   "normalized": "a b",
+   "pieces": [
+    "▁",
+    "a",
+    "▁",
+    "b"
+   ],
+   "ids": [
+    3,
+    119,
+    3,
+    118
+   ]
+  },
+  {
+   "id": 36,
+   "model": "nmt_nfkc_cf.model",
+   "text": "﻿bom",
+   "normalized": " bom",
+   "pieces": [
+    "▁",
+    "b",
+    "o",
+    "m"
+   ],
+   "ids": [
+    3,
+    118,
+    6,
+    29
+   ]
+  },
+  {
+   "id": 37,
+   "model": "nmt_nfkc_cf.model",
+   "text": "a\u0001b\u0007c",
+   "normalized": "abc",
+   "pieces": [
+    "▁",
+    "a",
+    "b",
+    "c"
+   ],
+   "ids": [
+    3,
+    119,
+    118,
+    34
+   ]
+  },
+  {
+   "id": 38,
+   "model": "nmt_nfkc_cf.model",
+   "text": "  spaced   out  ",
+   "normalized": "  spaced   out  ",
+   "pieces": [
+    "▁s",
+    "p",
+    "a",
+    "ce",
+    "d",
+    "▁",
+    "o",
+    "u",
+    "t"
+   ],
+   "ids": [
+    11,
+    33,
+    119,
+    55,
+    13,
+    3,
+    6,
+    5,
+    15
+   ]
+  },
+  {
+   "id": 39,
+   "model": "nmt_nfkc_cf.model",
+   "text": "MiXeD CaSe TeXt",
+   "normalized": "mixed case text",
+   "pieces": [
+    "▁",
+    "m",
+    "i",
+    "x",
+    "e",
+    "d",
+    "▁",
+    "c",
+    "a",
+    "s",
+    "e",
+    "▁text"
+   ],
+   "ids": [
+    3,
+    29,
+    25,
+    63,
+    7,
+    13,
+    3,
+    34,
+    119,
+    4,
+    7,
+    51
+   ]
+  },
+  {
+   "id": 40,
+   "model": "nmt_nfkc_cf.model",
+   "text": "ß ① ¤",
+   "normalized": "ß 1 ¤",
+   "pieces": [
+    "▁",
+    "ß",
+    "▁",
+    "1",
+    "▁",
+    "¤"
+   ],
+   "ids": [
+    3,
+    0,
+    3,
+    0,
+    3,
+    0
+   ]
+  },
+  {
+   "id": 41,
+   "model": "nmt_nfkc_cf.model",
+   "text": "▁ already escaped",
+   "normalized": "  already escaped",
+   "pieces": [
+    "▁",
+    "al",
+    "re",
+    "a",
+    "d",
+    "y",
+    "▁",
+    "es",
+    "c",
+    "a",
+    "pe",
+    "d"
+   ],
+   "ids": [
+    3,
+    72,
+    74,
+    119,
+    13,
+    100,
+    3,
+    77,
+    34,
+    119,
+    110,
+    13
+   ]
+  },
+  {
+   "id": 42,
+   "model": "nmt_nfkc_cf.model",
+   "text": "İstanbul",
+   "normalized": "İstanbul",
+   "pieces": [
+    "▁",
+    "İ",
+    "s",
+    "ta",
+    "n",
+    "b",
+    "u",
+    "l"
+   ],
+   "ids": [
+    3,
+    0,
+    4,
+    112,
+    8,
+    118,
+    5,
+    30
+   ]
+  },
+  {
+   "id": 43,
+   "model": "nmt_nfkc_cf.model",
+   "text": "ẛ̣",
+   "normalized": "ṩ",
+   "pieces": [
+    "▁",
+    "ṩ"
+   ],
+   "ids": [
+    3,
+    0
+   ]
+  },
+  {
+   "id": 44,
+   "model": "custom_norm.model",
+   "text": "",
+   "normalized": "",
+   "pieces": [],
+   "ids": []
+  },
+  {
+   "id": 45,
+   "model": "custom_norm.model",
+   "text": "already normal text",
+   "normalized": "already normal text",
+   "pieces": [
+    "▁",
+    "al",
+    "re",
+    "a",
+    "d",
+    "y",
+    "▁",
+    "n",
+    "or",
+    "ma",
+    "l",
+    "▁text"
+   ],
+   "ids": [
+    3,
+    72,
+    73,
+    119,
+    13,
+    101,
+    3,
+    8,
+    110,
+    65,
+    30,
+    51
+   ]
+  },
+  {
+   "id": 46,
+   "model": "custom_norm.model",
+   "text": "ＬＥ ＲＥＮＡＲＤ",
+   "normalized": "ＬＥ ＲＥＮＡＲＤ",
+   "pieces": [
+    "▁",
+    "ＬＥ",
+    "▁",
+    "ＲＥＮＡＲＤ"
+   ],
+   "ids": [
+    3,
+    0,
+    3,
+    0
+   ]
+  },
+  {
+   "id": 47,
+   "model": "custom_norm.model",
+   "text": "１２３",
+   "normalized": "１２３",
+   "pieces": [
+    "▁",
+    "１２３"
+   ],
+   "ids": [
+    3,
+    0
+   ]
+  },
+  {
+   "id": 48,
+   "model": "custom_norm.model",
+   "text": "ｱﾒﾘｶ",
+   "normalized": "ｱﾒﾘｶ",
+   "pieces": [
+    "▁",
+    "ｱﾒﾘｶ"
+   ],
+   "ids": [
+    3,
+    0
+   ]
+  },
+  {
+   "id": 49,
+   "model": "custom_norm.model",
+   "text": "café",
+   "normalized": "café",
+   "pieces": [
+    "▁",
+    "c",
+    "a",
+    "f",
+    "e",
+    "́"
+   ],
+   "ids": [
+    3,
+    34,
+    119,
+    116,
+    6,
+    0
+   ]
+  },
+  {
+   "id": 50,
+   "model": "custom_norm.model",
+   "text": "café",
+   "normalized": "café",
+   "pieces": [
+    "▁",
+    "c",
+    "a",
+    "f",
+    "é"
+   ],
+   "ids": [
+    3,
+    34,
+    119,
+    116,
+    0
+   ]
+  },
+  {
+   "id": 51,
+   "model": "custom_norm.model",
+   "text": "ﬁnancier ﬂamme ﬃn",
+   "normalized": "ﬁnancier ﬂamme ﬃn",
+   "pieces": [
+    "▁",
+    "ﬁ",
+    "n",
+    "a",
+    "n",
+    "c",
+    "i",
+    "er",
+    "▁",
+    "ﬂ",
+    "a",
+    "m",
+    "m",
+    "e",
+    "▁",
+    "ﬃ",
+    "n"
+   ],
+   "ids": [
+    3,
+    0,
+    8,
+    119,
+    8,
+    34,
+    24,
+    70,
+    3,
+    0,
+    119,
+    28,
+    28,
+    6,
+    3,
+    0,
+    8
+   ]
+  },
+  {
+   "id": 52,
+   "model": "custom_norm.model",
+   "text": "Ⅸ ①② ㈱",
+   "normalized": "Ⅸ 1② ㈱",
+   "pieces": [
+    "▁",
+    "Ⅸ",
+    "▁",
+    "1②",
+    "▁",
+    "㈱"
+   ],
+   "ids": [
+    3,
+    0,
+    3,
+    0,
+    3,
+    0
+   ]
+  },
+  {
+   "id": 53,
+   "model": "custom_norm.model",
+   "text": "a b",
+   "normalized": "a b",
+   "pieces": [
+    "▁",
+    "a",
+    " ",
+    "b"
+   ],
+   "ids": [
+    3,
+    119,
+    0,
+    118
+   ]
+  },
+  {
+   "id": 54,
+   "model": "custom_norm.model",
+   "text": "a　b",
+   "normalized": "a　b",
+   "pieces": [
+    "▁",
+    "a",
+    "　",
+    "b"
+   ],
+   "ids": [
+    3,
+    119,
+    0,
+    118
+   ]
+  },
+  {
+   "id": 55,
+   "model": "custom_norm.model",
+   "text": "a\tb",
+   "normalized": "a\tb",
+   "pieces": [
+    "▁",
+    "a",
+    "\t",
+    "b"
+   ],
+   "ids": [
+    3,
+    119,
+    0,
+    118
+   ]
+  },
+  {
+   "id": 56,
+   "model": "custom_norm.model",
+   "text": "a\nb",
+   "normalized": "a\nb",
+   "pieces": [
+    "▁",
+    "a",
+    "\n",
+    "b"
+   ],
+   "ids": [
+    3,
+    119,
+    0,
+    118
+   ]
+  },
+  {
+   "id": 57,
+   "model": "custom_norm.model",
+   "text": "a​b",
+   "normalized": "a​b",
+   "pieces": [
+    "▁",
+    "a",
+    "​",
+    "b"
+   ],
+   "ids": [
+    3,
+    119,
+    0,
+    118
+   ]
+  },
+  {
+   "id": 58,
+   "model": "custom_norm.model",
+   "text": "﻿bom",
+   "normalized": "﻿bom",
+   "pieces": [
+    "▁",
+    "﻿",
+    "b",
+    "o",
+    "m"
+   ],
+   "ids": [
+    3,
+    0,
+    118,
+    7,
+    28
+   ]
+  },
+  {
+   "id": 59,
+   "model": "custom_norm.model",
+   "text": "a\u0001b\u0007c",
+   "normalized": "a\u0001b\u0007c",
+   "pieces": [
+    "▁",
+    "a",
+    "\u0001",
+    "b",
+    "\u0007",
+    "c"
+   ],
+   "ids": [
+    3,
+    119,
+    0,
+    118,
+    0,
+    34
+   ]
+  },
+  {
+   "id": 60,
+   "model": "custom_norm.model",
+   "text": "  spaced   out  ",
+   "normalized": "  spaced   out  ",
+   "pieces": [
+    "▁s",
+    "p",
+    "a",
+    "ce",
+    "d",
+    "▁",
+    "o",
+    "u",
+    "t"
+   ],
+   "ids": [
+    11,
+    33,
+    119,
+    55,
+    13,
+    3,
+    7,
+    5,
+    15
+   ]
+  },
+  {
+   "id": 61,
+   "model": "custom_norm.model",
+   "text": "MiXeD CaSe TeXt",
+   "normalized": "MiXeD CaSe TeXt",
+   "pieces": [
+    "▁",
+    "M",
+    "i",
+    "X",
+    "e",
+    "D",
+    "▁",
+    "C",
+    "a",
+    "S",
+    "e",
+    "▁",
+    "T",
+    "e",
+    "X",
+    "t"
+   ],
+   "ids": [
+    3,
+    0,
+    24,
+    0,
+    6,
+    0,
+    3,
+    0,
+    119,
+    0,
+    6,
+    3,
+    0,
+    6,
+    0,
+    15
+   ]
+  },
+  {
+   "id": 62,
+   "model": "custom_norm.model",
+   "text": "ß ① ¤",
+   "normalized": "ss 1 ",
+   "pieces": [
+    "▁s",
+    "s",
+    "▁",
+    "1"
+   ],
+   "ids": [
+    11,
+    4,
+    3,
+    0
+   ]
+  },
+  {
+   "id": 63,
+   "model": "custom_norm.model",
+   "text": "▁ already escaped",
+   "normalized": "▁ already escaped",
+   "pieces": [
+    "▁",
+    "▁",
+    "▁",
+    "al",
+    "re",
+    "a",
+    "d",
+    "y",
+    "▁",
+    "es",
+    "c",
+    "a",
+    "pe",
+    "d"
+   ],
+   "ids": [
+    3,
+    3,
+    3,
+    72,
+    73,
+    119,
+    13,
+    101,
+    3,
+    77,
+    34,
+    119,
+    111,
+    13
+   ]
+  },
+  {
+   "id": 64,
+   "model": "custom_norm.model",
+   "text": "İstanbul",
+   "normalized": "İstanbul",
+   "pieces": [
+    "▁",
+    "İ",
+    "s",
+    "ta",
+    "n",
+    "b",
+    "u",
+    "l"
+   ],
+   "ids": [
+    3,
+    0,
+    4,
+    113,
+    8,
+    118,
+    5,
+    30
+   ]
+  },
+  {
+   "id": 65,
+   "model": "custom_norm.model",
+   "text": "ẛ̣",
+   "normalized": "ẛ̣",
+   "pieces": [
+    "▁",
+    "ẛ̣"
+   ],
+   "ids": [
+    3,
+    0
+   ]
+  },
+  {
+   "id": 66,
+   "model": "tiny_sp.model",
+   "text": "",
+   "normalized": "",
+   "pieces": [],
+   "ids": []
+  },
+  {
+   "id": 67,
+   "model": "tiny_sp.model",
+   "text": "already normal text",
+   "normalized": "already normal text",
+   "pieces": [
+    "▁",
+    "a",
+    "l",
+    "r",
+    "e",
+    "a",
+    "d",
+    "y",
+    "▁",
+    "n",
+    "or",
+    "ma",
+    "l",
+    "▁t",
+    "e",
+    "x",
+    "t"
+   ],
+   "ids": [
+    3,
+    13,
+    22,
+    60,
+    12,
+    13,
+    9,
+    17,
+    3,
+    20,
+    41,
+    70,
+    22,
+    42,
+    12,
+    68,
+    19
+   ]
+  },
+  {
+   "id": 68,
+   "model": "tiny_sp.model",
+   "text": "ＬＥ ＲＥＮＡＲＤ",
+   "normalized": "ＬＥ ＲＥＮＡＲＤ",
+   "pieces": [
+    "▁",
+    "ＬＥ",
+    "▁",
+    "ＲＥＮＡＲＤ"
+   ],
+   "ids": [
+    3,
+    0,
+    3,
+    0
+   ]
+  },
+  {
+   "id": 69,
+   "model": "tiny_sp.model",
+   "text": "１２３",
+   "normalized": "１２３",
+   "pieces": [
+    "▁",
+    "１２３"
+   ],
+   "ids": [
+    3,
+    0
+   ]
+  },
+  {
+   "id": 70,
+   "model": "tiny_sp.model",
+   "text": "ｱﾒﾘｶ",
+   "normalized": "ｱﾒﾘｶ",
+   "pieces": [
+    "▁",
+    "ｱﾒﾘｶ"
+   ],
+   "ids": [
+    3,
+    0
+   ]
+  },
+  {
+   "id": 71,
+   "model": "tiny_sp.model",
+   "text": "café",
+   "normalized": "café",
+   "pieces": [
+    "▁c",
+    "a",
+    "f",
+    "e",
+    "́"
+   ],
+   "ids": [
+    53,
+    13,
+    78,
+    12,
+    0
+   ]
+  },
+  {
+   "id": 72,
+   "model": "tiny_sp.model",
+   "text": "café",
+   "normalized": "café",
+   "pieces": [
+    "▁c",
+    "a",
+    "f",
+    "é"
+   ],
+   "ids": [
+    53,
+    13,
+    78,
+    0
+   ]
+  },
+  {
+   "id": 73,
+   "model": "tiny_sp.model",
+   "text": "ﬁnancier ﬂamme ﬃn",
+   "normalized": "ﬁnancier ﬂamme ﬃn",
+   "pieces": [
+    "▁",
+    "ﬁ",
+    "n",
+    "a",
+    "n",
+    "c",
+    "i",
+    "er",
+    "▁",
+    "ﬂ",
+    "a",
+    "m",
+    "m",
+    "e",
+    "▁",
+    "ﬃ",
+    "n"
+   ],
+   "ids": [
+    3,
+    0,
+    20,
+    13,
+    20,
+    15,
+    4,
+    69,
+    3,
+    0,
+    13,
+    14,
+    14,
+    12,
+    3,
+    0,
+    20
+   ]
+  },
+  {
+   "id": 74,
+   "model": "tiny_sp.model",
+   "text": "Ⅸ ①② ㈱",
+   "normalized": "Ⅸ ①② ㈱",
+   "pieces": [
+    "▁",
+    "Ⅸ",
+    "▁",
+    "①②",
+    "▁",
+    "㈱"
+   ],
+   "ids": [
+    3,
+    0,
+    3,
+    0,
+    3,
+    0
+   ]
+  },
+  {
+   "id": 75,
+   "model": "tiny_sp.model",
+   "text": "a b",
+   "normalized": "a b",
+   "pieces": [
+    "▁",
+    "a",
+    " ",
+    "b"
+   ],
+   "ids": [
+    3,
+    13,
+    0,
+    61
+   ]
+  },
+  {
+   "id": 76,
+   "model": "tiny_sp.model",
+   "text": "a　b",
+   "normalized": "a　b",
+   "pieces": [
+    "▁",
+    "a",
+    "　",
+    "b"
+   ],
+   "ids": [
+    3,
+    13,
+    0,
+    61
+   ]
+  },
+  {
+   "id": 77,
+   "model": "tiny_sp.model",
+   "text": "a\tb",
+   "normalized": "a\tb",
+   "pieces": [
+    "▁",
+    "a",
+    "\t",
+    "b"
+   ],
+   "ids": [
+    3,
+    13,
+    0,
+    61
+   ]
+  },
+  {
+   "id": 78,
+   "model": "tiny_sp.model",
+   "text": "a\nb",
+   "normalized": "a\nb",
+   "pieces": [
+    "▁",
+    "a",
+    "\n",
+    "b"
+   ],
+   "ids": [
+    3,
+    13,
+    0,
+    61
+   ]
+  },
+  {
+   "id": 79,
+   "model": "tiny_sp.model",
+   "text": "a​b",
+   "normalized": "a​b",
+   "pieces": [
+    "▁",
+    "a",
+    "​",
+    "b"
+   ],
+   "ids": [
+    3,
+    13,
+    0,
+    61
+   ]
+  },
+  {
+   "id": 80,
+   "model": "tiny_sp.model",
+   "text": "﻿bom",
+   "normalized": "﻿bom",
+   "pieces": [
+    "▁",
+    "﻿",
+    "b",
+    "o",
+    "m"
+   ],
+   "ids": [
+    3,
+    0,
+    61,
+    7,
+    14
+   ]
+  },
+  {
+   "id": 81,
+   "model": "tiny_sp.model",
+   "text": "a\u0001b\u0007c",
+   "normalized": "a\u0001b\u0007c",
+   "pieces": [
+    "▁",
+    "a",
+    "\u0001",
+    "b",
+    "\u0007",
+    "c"
+   ],
+   "ids": [
+    3,
+    13,
+    0,
+    61,
+    0,
+    15
+   ]
+  },
+  {
+   "id": 82,
+   "model": "tiny_sp.model",
+   "text": "  spaced   out  ",
+   "normalized": "  spaced   out  ",
+   "pieces": [
+    "▁s",
+    "p",
+    "a",
+    "ce",
+    "d",
+    "▁o",
+    "u",
+    "t"
+   ],
+   "ids": [
+    10,
+    16,
+    13,
+    48,
+    9,
+    76,
+    8,
+    19
+   ]
+  },
+  {
+   "id": 83,
+   "model": "tiny_sp.model",
+   "text": "MiXeD CaSe TeXt",
+   "normalized": "MiXeD CaSe TeXt",
+   "pieces": [
+    "▁",
+    "M",
+    "i",
+    "X",
+    "e",
+    "D",
+    "▁",
+    "C",
+    "a",
+    "S",
+    "e",
+    "▁",
+    "T",
+    "e",
+    "X",
+    "t"
+   ],
+   "ids": [
+    3,
+    0,
+    4,
+    0,
+    12,
+    0,
+    3,
+    0,
+    13,
+    0,
+    12,
+    3,
+    0,
+    12,
+    0,
+    19
+   ]
+  },
+  {
+   "id": 84,
+   "model": "tiny_sp.model",
+   "text": "ß ① ¤",
+   "normalized": "ß ① ¤",
+   "pieces": [
+    "▁",
+    "ß",
+    "▁",
+    "①",
+    "▁",
+    "¤"
+   ],
+   "ids": [
+    3,
+    0,
+    3,
+    0,
+    3,
+    0
+   ]
+  },
+  {
+   "id": 85,
+   "model": "tiny_sp.model",
+   "text": "▁ already escaped",
+   "normalized": "▁ already escaped",
+   "pieces": [
+    "▁",
+    "▁",
+    "▁",
+    "a",
+    "l",
+    "r",
+    "e",
+    "a",
+    "d",
+    "y",
+    "▁",
+    "e",
+    "s",
+    "c",
+    "a",
+    "p",
+    "e",
+    "d"
+   ],
+   "ids": [
+    3,
+    3,
+    3,
+    13,
+    22,
+    60,
+    12,
+    13,
+    9,
+    17,
+    3,
+    12,
+    11,
+    15,
+    13,
+    16,
+    12,
+    9
+   ]
+  },
+  {
+   "id": 86,
+   "model": "tiny_sp.model",
+   "text": "İstanbul",
+   "normalized": "İstanbul",
+   "pieces": [
+    "▁",
+    "İ",
+    "s",
+    "t",
+    "a",
+    "n",
+    "b",
+    "u",
+    "l"
+   ],
+   "ids": [
+    3,
+    0,
+    11,
+    19,
+    13,
+    20,
+    61,
+    8,
+    22
+   ]
+  },
+  {
+   "id": 87,
+   "model": "tiny_sp.model",
+   "text": "ẛ̣",
+   "normalized": "ẛ̣",
+   "pieces": [
+    "▁",
+    "ẛ̣"
+   ],
+   "ids": [
+    3,
+    0
+   ]
+  }
+ ]
+}
