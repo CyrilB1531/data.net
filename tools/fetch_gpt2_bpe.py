@@ -9,7 +9,7 @@ would not prove that DataNet reads the `merges.txt` layout a real model ships.
 Only the vocabulary and the merge table are redistributed here — never the
 weights, per docs/decisions/0003-provenance-and-licensing.md. `gpt2` is
 MIT-licensed (https://huggingface.co/openai-community/gpt2); the attribution is
-recorded in NOTICE.
+recorded in THIRD-PARTY-NOTICES.md.
 
     python tools/fetch_gpt2_bpe.py           # vendor
     python tools/fetch_gpt2_bpe.py --check   # verify the checked-in fixtures
