@@ -1408,6 +1408,216 @@ def generate_xlmr_fairseq() -> dict:
     }
 
 
+# --- Batch encoding and batched embedding (issue #60) ----------------------------
+#
+# The chain `tokenize -> insert specials -> truncate -> pad -> infer -> pool` is
+# frozen in two halves, because the two admit very different standards of proof.
+#
+# The tokenization half is integers taken from HuggingFace `tokenizers` with the
+# post-processor and padding enabled, i.e. from the library the C# reproduces. The
+# replay compares them for *equality*: an id is right or it is not, and a
+# tolerance would only hide an off-by-one in the template.
+#
+# The embedding half is computed below in float64 from the same table that
+# `tools/build_tiny_models.py` bakes into `tiny_embedder.onnx`, whose only node is
+# a Gather. The reference is therefore the arithmetic the model performs, worked
+# out independently, and not a second copy of the C# code — which is the only
+# version of it worth freezing.
+#
+# The C# side does not replay that half to 1e-9. ONNX Runtime hands back float32
+# and the pooled vector is normalized in float32, so agreement with an exact
+# reference is bounded by the float32 epsilon, near 1e-7 relative, and by nothing
+# this repository can improve. Demanding 1e-9 would mean reproducing the C#
+# rounding sequence in numpy, at which point the corpus is a mirror and catches
+# nothing. What *is* asserted exactly lives in the C# suite, where it belongs:
+# the ids and the mask above, the equality of a batched vector with the
+# single-sequence vector for the same text, and the equality of the vectorized
+# net10.0 result with the scalar netstandard2.0 one.
+
+# Appended after the WordPiece vocabulary rather than placed at the front, where
+# BERT keeps them. Nothing may assume `[CLS]` is id 101, or id 0, or even that the
+# special tokens are contiguous with each other: the template names a token and
+# the vocabulary is what answers with an id.
+BATCH_VOCAB = [*WORDPIECE_VOCAB, "[CLS]", "[SEP]", "[PAD]"]
+
+# Mirrors tools/build_tiny_models.py. Duplication rather than an import, because
+# that script runs in a virtualenv carrying `onnx` and this one in a virtualenv
+# carrying scikit-learn, and neither has the other's dependency. The table is
+# frozen into the corpus and a C# test gathers a row through the ONNX model and
+# compares it, so the two copies cannot drift apart in silence.
+EMBEDDING_ROWS = 64
+EMBEDDING_DIM = 4
+
+BATCH_MAX_LENGTH = 8
+
+# Chosen so the four documented edges fall out of the same batch under
+# BATCH_MAX_LENGTH: nothing, one token, exactly the limit, one over it. The
+# generator asserts each of those below rather than trusting this comment, so a
+# vocabulary change that quietly stops exercising an edge fails here instead of
+# passing a test that has become vacuous.
+BATCH_EDGE_TEXTS = [
+    "",
+    "the",
+    "quick brown fox jumps.",
+    "tokenization is embedding embeddings",
+]
+
+BATCH_MIXED_TEXTS = [
+    "hello world!",
+    "the",
+    "the dog runs and the cat plays",
+    "unaffable",
+    "the cats playing",
+    "tokenization is embedding embeddings",
+    "",
+    "lovely love loved lover",
+]
+
+BATCH_UNKNOWN_TEXTS = [
+    "unknownxyz",
+    "the unknownxyz cat",
+    "zzz qqq",
+]
+
+
+def _batch_embedding_table():
+    """The synthetic embedding matrix `tiny_embedder.onnx` gathers from.
+
+    Every entry is a multiple of 1/64 with magnitude below 1/2, so a sum of a few
+    dozen rows is exact in float32 and the only inexactness in the whole pipeline
+    is the final division and the normalization.
+    """
+    import numpy as np  # noqa: PLC0415
+
+    table = np.zeros((EMBEDDING_ROWS, EMBEDDING_DIM), dtype=np.float64)
+    for i in range(EMBEDDING_ROWS):
+        for d in range(EMBEDDING_DIM):
+            table[i, d] = (((7 * i + 13 * d) % 64) - 32) / 64.0
+    return table
+
+
+def _batch_tokenizer(vocab: dict[str, int], max_length: int | None):
+    """A HuggingFace tokenizer configured the way `BatchEncoder` configures itself."""
+    from tokenizers.processors import TemplateProcessing  # noqa: PLC0415
+
+    tokenizer = _wordpiece_tokenizer(vocab, lowercase=False)
+    tokenizer.post_processor = TemplateProcessing(
+        single="[CLS] $A [SEP]",
+        special_tokens=[("[CLS]", vocab["[CLS]"]), ("[SEP]", vocab["[SEP]"])],
+    )
+    # padding="longest": to the longest row of this batch, never to max_length.
+    tokenizer.enable_padding(pad_id=vocab["[PAD]"], pad_token="[PAD]")
+    if max_length is None:
+        tokenizer.no_truncation()
+    else:
+        tokenizer.enable_truncation(max_length=max_length)
+    return tokenizer
+
+
+def _batch_reference(ids, mask, table):
+    """Mean-pool the gathered rows behind the mask, then L2-normalize.
+
+    The sentence-transformers recipe, in float64: `sum(E[ids] * mask) /
+    clamp(sum(mask), min=1e-9)`, scaled to unit length.
+    """
+    import numpy as np  # noqa: PLC0415
+
+    gathered = table[np.array(ids, dtype=np.int64)]
+    weights = np.array(mask, dtype=np.float64)[:, :, None]
+    active = np.maximum(np.array(mask, dtype=np.float64).sum(axis=1), 1e-9)[:, None]
+    pooled = (gathered * weights).sum(axis=1) / active
+    norm = np.sqrt((pooled * pooled).sum(axis=1))[:, None]
+    normalized = np.divide(pooled, norm, out=pooled.copy(), where=norm > 0)
+    return pooled.tolist(), normalized.tolist()
+
+
+def _batch_case(cid: int, name: str, texts: list[str], vocab: dict[str, int],
+                max_length: int | None, table) -> dict:
+    encodings = _batch_tokenizer(vocab, max_length).encode_batch(texts)
+    ids = [enc.ids for enc in encodings]
+    mask = [enc.attention_mask for enc in encodings]
+    pooled, normalized = _batch_reference(ids, mask, table)
+    return {
+        "id": cid,
+        "name": name,
+        "texts": texts,
+        "max_length": max_length,
+        "sequence_length": len(ids[0]),
+        "input_ids": ids,
+        "attention_mask": mask,
+        "pooled": pooled,
+        "pooled_normalized": normalized,
+    }
+
+
+def _assert_batch_edges(case: dict) -> None:
+    """Fail generation if the edge fixture has stopped exercising its four edges.
+
+    A vocabulary or template change can leave these texts encoding to lengths
+    that no longer straddle the limit. The test replaying them would still pass,
+    having quietly become a test of nothing.
+    """
+    lengths = [sum(row) for row in case["attention_mask"]]
+    limit = case["max_length"]
+    template_tokens = 2  # [CLS] and [SEP]
+    if lengths[0] != template_tokens:
+        raise AssertionError(f"the empty text should encode to the template alone, got {lengths[0]}")
+    if lengths[1] != template_tokens + 1:
+        raise AssertionError(f"'the' should encode to one token plus the template, got {lengths[1]}")
+    if lengths[2] != limit:
+        raise AssertionError(f"the exactly-at-the-limit text encodes to {lengths[2]}, not {limit}")
+    if lengths[3] != limit:
+        raise AssertionError(f"the over-the-limit text should truncate to {limit}, got {lengths[3]}")
+    untruncated = _batch_tokenizer(
+        {tok: i for i, tok in enumerate(BATCH_VOCAB)}, None).encode(case["texts"][3])
+    if len(untruncated.ids) != limit + 1:
+        raise AssertionError(
+            f"the over-the-limit text encodes to {len(untruncated.ids)} tokens; "
+            f"it must be exactly one over {limit} for the fixture to test the boundary")
+
+
+def generate_batch_encoding() -> dict:
+    vocab = {tok: i for i, tok in enumerate(BATCH_VOCAB)}
+    table = _batch_embedding_table()
+
+    cases = [
+        _batch_case(0, "mixed_lengths", BATCH_MIXED_TEXTS, vocab, None, table),
+        _batch_case(1, "edges", BATCH_EDGE_TEXTS, vocab, BATCH_MAX_LENGTH, table),
+        _batch_case(2, "unknown_tokens", BATCH_UNKNOWN_TEXTS, vocab, None, table),
+        _batch_case(3, "single_text", [CAT_SENTENCE], vocab, None, table),
+        # Every row the same length, so the batch is already rectangular and no
+        # padding is written at all — the control the padded cases are read against.
+        _batch_case(4, "no_padding_needed", ["the cat", "the dog", "the fox"], vocab, None, table),
+        _batch_case(5, "truncated", BATCH_MIXED_TEXTS, vocab, BATCH_MAX_LENGTH, table),
+    ]
+    _assert_batch_edges(cases[1])
+
+    if max(max(row) for case in cases for row in case["input_ids"]) >= EMBEDDING_ROWS:
+        raise AssertionError(
+            f"an id falls outside the {EMBEDDING_ROWS}-row table tiny_embedder.onnx gathers from")
+
+    return {
+        "metadata": {
+            "algorithm": "BatchEncoding",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "reference_calls": [
+                "tokenizers.Tokenizer.encode_batch, TemplateProcessing(single='[CLS] $A [SEP]'), "
+                "enable_padding(longest), enable_truncation(max_length)",
+                "mean pool with attention mask + L2 normalize (sentence-transformers recipe)",
+            ],
+            "vocab": vocab,
+            "unk_token": UNK_TOKEN,
+            "template": {"prefix": ["[CLS]"], "suffix": ["[SEP]"], "pad": "[PAD]"},
+            "embedding_rows": EMBEDDING_ROWS,
+            "embedding_dim": EMBEDDING_DIM,
+            "embedding_table": table.tolist(),
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -1434,6 +1644,7 @@ def main() -> None:
         "snowball_it.json": generate_snowball_it,
         "snowball_de.json": generate_snowball_de,
         "wordpiece.json": generate_wordpiece,
+        "batch_encoding.json": generate_batch_encoding,
         "pooling.json": generate_pooling,
         "knn.json": generate_knn,
         "sentencepiece.json": generate_sentencepiece,
