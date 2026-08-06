@@ -106,7 +106,13 @@ public sealed class SentencePieceTokenizer : ISubwordTokenizer
     /// <summary>Creates a tokenizer from a unigram vocabulary (index = id).</summary>
     /// <param name="vocab">Pieces with scores; ids 0..n-1 in order. Control pieces (unk/bos/eos) may be included.</param>
     /// <param name="unkId">The unknown-piece id (default 0).</param>
+    // SonarLint S1133: the removal is already scheduled, and the message below names
+    // the release. Dropping a public constructor is a breaking change and so waits
+    // for a major; until then the overload has to stay for the callers it was
+    // deprecated for, and this rule fires on every [Obsolete] there is.
+#pragma warning disable S1133
     [Obsolete("Use SentencePieceTokenizer(SentencePieceVocabulary) instead — id-based control filtering will be removed in v2.0.0")]
+#pragma warning restore S1133
     public SentencePieceTokenizer(IReadOnlyList<SentencePiece> vocab, int unkId = 0)
     {
         Guard.NotNull(vocab);

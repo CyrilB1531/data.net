@@ -1,0 +1,15 @@
+<Project>
+
+  <!-- Chain to the repository-root Directory.Build.props (MSBuild otherwise stops
+       at the nearest one). -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Benchmarks run the same rules as everything else. There is no Central
+       Package Management under bench/, so the version is named here — it still
+       comes from the single pin in the root Directory.Build.props. See
+       docs/decisions/0015-sonar-rules-in-the-build.md. -->
+  <ItemGroup>
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="$(DataNetSonarAnalyzerVersion)" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

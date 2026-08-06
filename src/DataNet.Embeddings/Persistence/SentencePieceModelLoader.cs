@@ -197,8 +197,8 @@ public static class SentencePieceModelLoader
                 ReadOnlySpan<byte> raw = reader.ReadLengthDelimited();
                 // UTF-8 spends at most three bytes per UTF-16 code unit, so a run
                 // this long cannot decode to a string within the limit. Checking it
-                // here refuses the hostile case before the decode allocates it;
-                // the exact check below is what the limit actually means.
+                // here refuses the hostile case before the decode allocates it.
+                // The exact check below is what the limit actually means.
                 limits.CheckTokenLength((raw.Length + 2) / 3);
                 piece = DecodeUtf8(raw);
                 limits.CheckTokenLength(piece.Length);

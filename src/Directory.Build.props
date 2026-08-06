@@ -10,6 +10,14 @@
     <PackageReference Include="PolySharp" PrivateAssets="all" />
   </ItemGroup>
 
+  <!-- The rules that gate the pull request, running in the build that writes the
+       code. PrivateAssets=all keeps the analyzer out of every published .nuspec,
+       and tools/check_nuspec_dependencies.py asserts it stays out. See
+       docs/decisions/0015-sonar-rules-in-the-build.md. -->
+  <ItemGroup>
+    <PackageReference Include="SonarAnalyzer.CSharp" PrivateAssets="all" />
+  </ItemGroup>
+
   <!-- Shared internal helpers compiled into every library. -->
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)Shared/GlobalUsings.cs" Link="Internal/GlobalUsings.cs" />

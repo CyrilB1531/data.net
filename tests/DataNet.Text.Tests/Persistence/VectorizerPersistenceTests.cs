@@ -213,12 +213,19 @@ public sealed class VectorizerPersistenceTests
     {
         var original = new TfidfVectorizer(new TfidfVectorizerOptions { Count = NonDefaultCountOptions }).Fit(TrainingCorpus);
 
-        using var sync = new MemoryStream();
-        original.Save(sync);
-        using var async = new MemoryStream();
-        await original.SaveAsync(async);
+        using var syncBytes = new MemoryStream();
 
-        Assert.Equal(sync.ToArray(), async.ToArray());
+        // SonarLint S6966: the synchronous Save is half of what this test compares.
+        // Awaiting SaveAsync in its place would leave the sync writer unexercised
+        // and assert that SaveAsync agrees with itself.
+#pragma warning disable S6966
+        original.Save(syncBytes);
+#pragma warning restore S6966
+
+        using var asyncBytes = new MemoryStream();
+        await original.SaveAsync(asyncBytes);
+
+        Assert.Equal(syncBytes.ToArray(), asyncBytes.ToArray());
     }
 
     [Fact]
