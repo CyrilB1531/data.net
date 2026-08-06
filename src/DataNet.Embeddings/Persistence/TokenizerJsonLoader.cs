@@ -553,8 +553,11 @@ public static class TokenizerJsonLoader
                 "SentencePieceTokenizer applies the model's own precompiled character map, and reproduces no other normalization");
         }
 
+        // `is null or { Length: 0 }` rather than string.IsNullOrEmpty: the netstandard2.0
+        // reference assembly does not annotate that method, so the compiler still
+        // believes the value may be null afterwards and the fix would be a `!`.
         string? encoded = OptionalString(normalizer, "precompiled_charsmap");
-        if (string.IsNullOrEmpty(encoded))
+        if (encoded is null or { Length: 0 })
         {
             throw Unsupported(
                 "its normalizer is 'Precompiled' with no precompiled_charsmap",
@@ -564,7 +567,7 @@ public static class TokenizerJsonLoader
         byte[] charsMap;
         try
         {
-            charsMap = Convert.FromBase64String(encoded!);
+            charsMap = Convert.FromBase64String(encoded);
         }
         catch (FormatException e)
         {

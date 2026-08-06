@@ -185,21 +185,25 @@ public sealed class SentencePieceTokenizer
         // the right of the one being emitted now.
         var ids = new List<int>();
         var tokens = new List<string>();
+        int runEnd = -1;
         for (int j = n; j > 0;)
         {
             int i = startAt[j];
-            if (idAt[j] == _unkId && ids.Count > 0 && ids[ids.Count - 1] == _unkId)
+            if (idAt[j] == _unkId && runEnd >= 0)
             {
                 // sentencepiece emits one unknown piece per *run* of uncovered
                 // characters, not one per character: "ＬＥ" comes back as a single
-                // token. The unknown piece is never matchable, so an id equal to
-                // _unkId can only have come from the branch above.
-                tokens[tokens.Count - 1] = s.Substring(i, j - i) + tokens[tokens.Count - 1];
+                // token. Rewriting the run from its start rather than prepending to
+                // it keeps this to one substring per step. The unknown piece is
+                // never matchable, so an id equal to _unkId can only have come from
+                // the branch above.
+                tokens[tokens.Count - 1] = s.Substring(i, runEnd - i);
             }
             else
             {
                 ids.Add(idAt[j]);
                 tokens.Add(s.Substring(i, j - i));
+                runEnd = idAt[j] == _unkId ? j : -1;
             }
             j = i;
         }

@@ -83,15 +83,16 @@ public sealed class PrecompiledNormalizer : IEquatable<PrecompiledNormalizer>
                 $"The precompiled charsmap declares a {trieBytes}-byte trie but carries only {charsMap.Length - sizeof(uint)} bytes after the header.");
         }
 
+        if (trieBytes == 0)
+        {
+            throw new InvalidDataException("The precompiled charsmap carries an empty trie.");
+        }
+
         var trie = new uint[trieBytes / sizeof(uint)];
         for (int i = 0; i < trie.Length; i++)
         {
             int at = sizeof(uint) + (i * sizeof(uint));
             trie[i] = (uint)charsMap[at] | ((uint)charsMap[at + 1] << 8) | ((uint)charsMap[at + 2] << 16) | ((uint)charsMap[at + 3] << 24);
-        }
-        if (trie.Length == 0)
-        {
-            throw new InvalidDataException("The precompiled charsmap carries an empty trie.");
         }
 
         return new PrecompiledNormalizer(charsMap, trie, (int)replacementsAt);
@@ -183,7 +184,7 @@ public sealed class PrecompiledNormalizer : IEquatable<PrecompiledNormalizer>
     private void AppendReplacement(List<byte> output, int replacementAt)
     {
         int from = _replacementsAt + replacementAt;
-        if (replacementAt < 0 || from >= _charsMap.Length)
+        if (from >= _charsMap.Length)
         {
             throw Malformed();
         }
