@@ -212,6 +212,12 @@ public sealed class BatchEncoder
         return budget;
     }
 
+    // CA1845 (use span-based string.Concat): that overload does not exist on
+    // netstandard2.0 — the span argument binds to Concat(object, object) and the
+    // build fails. The Substring form is what makes this file compile there, the
+    // same reason PortugueseSnowballStemmer suppresses it.
+#pragma warning disable CA1845
     private static string Preview(string text) =>
         text.Length <= 48 ? text : text.Substring(0, 45) + "...";
+#pragma warning restore CA1845
 }

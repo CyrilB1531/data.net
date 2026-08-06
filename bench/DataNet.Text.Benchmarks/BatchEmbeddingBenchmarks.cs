@@ -157,8 +157,15 @@ public class BatchEmbeddingBenchmarks
     /// does not describe. Only this validator is disabled — the job, the
     /// diagnosers and every other check stay at their defaults.
     /// </remarks>
+    // SonarLint S1144: the constructor is never called from this file. It is called
+    // by BenchmarkDotNet, which instantiates the type named in [Config(typeof(…))]
+    // by reflection — a call graph no analyzer can follow. Deleting the constructor
+    // as dead code is exactly what the rule would have you do, and the benchmark
+    // then refuses to run.
+#pragma warning disable S1144
     private sealed class NonOptimizedOnnxRuntime : ManualConfig
     {
         public NonOptimizedOnnxRuntime() => Options |= ConfigOptions.DisableOptimizationsValidator;
     }
+#pragma warning restore S1144
 }

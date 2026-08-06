@@ -48,6 +48,7 @@ UNK_TOKEN = "[UNK]"
 CAT_SENTENCE = "the cat sat on the mat"
 HELLO_WORLD = "hello world"
 TINY_SP_MODEL = "tiny_sp.model"
+EMBEDDING_SENTENCE = "tokenization is embedding embeddings"
 XLMR_FAIRSEQ_MODEL = "xlmr_fairseq.model"
 
 # Code-point ranges per category. Surrogates (0xD800..0xDFFF) are filtered out.
@@ -960,7 +961,7 @@ WORDPIECE_TEXTS = [
     "unaffable",
     "unknownxyz",
     "quick brown fox jumps.",
-    "tokenization is embedding embeddings",
+    EMBEDDING_SENTENCE,
     "hello world!",
     "the dog runs and the cat plays",
     "bigger biggest",
@@ -1449,7 +1450,10 @@ def generate_xlmr_fairseq() -> dict:
 # BERT keeps them. Nothing may assume `[CLS]` is id 101, or id 0, or even that the
 # special tokens are contiguous with each other: the template names a token and
 # the vocabulary is what answers with an id.
-BATCH_VOCAB = [*WORDPIECE_VOCAB, "[CLS]", "[SEP]", "[PAD]"]
+CLS_TOKEN = "[CLS]"
+SEP_TOKEN = "[SEP]"
+PAD_TOKEN = "[PAD]"
+BATCH_VOCAB = [*WORDPIECE_VOCAB, CLS_TOKEN, SEP_TOKEN, PAD_TOKEN]
 
 # Mirrors tools/build_tiny_models.py. Duplication rather than an import, because
 # that script runs in a virtualenv carrying `onnx` and this one in a virtualenv
@@ -1470,7 +1474,7 @@ BATCH_EDGE_TEXTS = [
     "",
     "the",
     "quick brown fox jumps.",
-    "tokenization is embedding embeddings",
+    EMBEDDING_SENTENCE,
 ]
 
 BATCH_MIXED_TEXTS = [
@@ -1479,7 +1483,7 @@ BATCH_MIXED_TEXTS = [
     "the dog runs and the cat plays",
     "unaffable",
     "the cats playing",
-    "tokenization is embedding embeddings",
+    EMBEDDING_SENTENCE,
     "",
     "lovely love loved lover",
 ]
@@ -1513,11 +1517,11 @@ def _batch_tokenizer(vocab: dict[str, int], max_length: int | None):
 
     tokenizer = _wordpiece_tokenizer(vocab, lowercase=False)
     tokenizer.post_processor = TemplateProcessing(
-        single="[CLS] $A [SEP]",
-        special_tokens=[("[CLS]", vocab["[CLS]"]), ("[SEP]", vocab["[SEP]"])],
+        single=f"{CLS_TOKEN} $A {SEP_TOKEN}",
+        special_tokens=[(CLS_TOKEN, vocab[CLS_TOKEN]), (SEP_TOKEN, vocab[SEP_TOKEN])],
     )
     # padding="longest": to the longest row of this batch, never to max_length.
-    tokenizer.enable_padding(pad_id=vocab["[PAD]"], pad_token="[PAD]")
+    tokenizer.enable_padding(pad_id=vocab[PAD_TOKEN], pad_token=PAD_TOKEN)
     if max_length is None:
         tokenizer.no_truncation()
     else:
@@ -1619,7 +1623,7 @@ def generate_batch_encoding() -> dict:
             ],
             "vocab": vocab,
             "unk_token": UNK_TOKEN,
-            "template": {"prefix": ["[CLS]"], "suffix": ["[SEP]"], "pad": "[PAD]"},
+            "template": {"prefix": [CLS_TOKEN], "suffix": [SEP_TOKEN], "pad": PAD_TOKEN},
             "embedding_rows": EMBEDDING_ROWS,
             "embedding_dim": EMBEDDING_DIM,
             "embedding_table": table.tolist(),

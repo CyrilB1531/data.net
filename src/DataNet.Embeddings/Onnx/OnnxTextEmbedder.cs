@@ -361,14 +361,8 @@ public sealed class OnnxTextEmbedder : IDisposable
         {
             return outputs.Keys.First();
         }
-        foreach (string preferred in PreferredOutputNames)
-        {
-            if (outputs.ContainsKey(preferred))
-            {
-                return preferred;
-            }
-        }
-        return outputs.Keys.OrderBy(name => name, StringComparer.Ordinal).First();
+        return PreferredOutputNames.FirstOrDefault(outputs.ContainsKey)
+            ?? outputs.Keys.OrderBy(name => name, StringComparer.Ordinal).First();
     }
 
     /// <summary>A per-thread buffer of zeros, fed as <c>token_type_ids</c>.</summary>
