@@ -51,6 +51,9 @@ internal static class PackagingGate
             + "(CONTRIBUTING.md); ADR 0009 already records that the sample stops at the tokenizer",
     };
 
+    /// <summary>What one pass over the exported surface found.</summary>
+    private readonly record struct Surface(HashSet<string> Exported, int Covered, List<string> Uncovered);
+
     /// <summary>Runs the check.</summary>
     /// <returns><c>true</c> when every exported public type is accounted for.</returns>
     public static bool Verify()
@@ -65,46 +68,59 @@ internal static class PackagingGate
         var packagedNames = packaged.Select(a => a.GetName().Name!).ToHashSet(StringComparer.Ordinal);
         References(packagedNames, out HashSet<string> typeRefs, out HashSet<string> memberRefParents);
 
-        var uncovered = new List<string>();
+        Surface surface = Inspect(packaged, typeRefs, memberRefParents);
+        string[] stale = [.. Excluded.Keys.Where(k => !surface.Exported.Contains(k)).Order(StringComparer.Ordinal)];
+
+        Report(surface, stale);
+        return surface.Uncovered.Count == 0 && stale.Length == 0;
+    }
+
+    /// <summary>Matches every exported type against what this assembly references.</summary>
+    private static Surface Inspect(
+        Assembly[] packaged,
+        HashSet<string> typeRefs,
+        HashSet<string> memberRefParents)
+    {
         var exported = new HashSet<string>(StringComparer.Ordinal);
+        var uncovered = new List<string>();
         int covered = 0;
 
-        foreach (Assembly assembly in packaged)
+        foreach (Type type in packaged.SelectMany(a => a.GetExportedTypes()))
         {
-            foreach (Type type in assembly.GetExportedTypes())
+            string name = type.FullName!;
+            exported.Add(name);
+            if (Excluded.ContainsKey(name))
             {
-                string name = type.FullName!;
-                exported.Add(name);
-                if (Excluded.ContainsKey(name))
-                {
-                    continue;
-                }
+                continue;
+            }
 
-                // An enum member is a compile-time constant, so referencing one
-                // leaves a type reference and no member reference. Everything
-                // else must show a member.
-                bool reached = type.IsEnum ? typeRefs.Contains(name) : memberRefParents.Contains(name);
-                if (reached)
-                {
-                    covered++;
-                }
-                else
-                {
-                    uncovered.Add(type.IsEnum
-                        ? $"{name} (enum) is never named"
-                        : $"{name} has no member referenced");
-                }
+            // An enum member is a compile-time constant, so referencing one
+            // leaves a type reference and no member reference. Everything else
+            // must show a member.
+            if (type.IsEnum ? typeRefs.Contains(name) : memberRefParents.Contains(name))
+            {
+                covered++;
+            }
+            else
+            {
+                uncovered.Add(type.IsEnum
+                    ? $"{name} (enum) is never named"
+                    : $"{name} has no member referenced");
             }
         }
 
-        string[] stale = [.. Excluded.Keys.Where(k => !exported.Contains(k)).Order(StringComparer.Ordinal)];
+        return new Surface(exported, covered, uncovered);
+    }
 
+    /// <summary>Prints the tally, then one <c>::error::</c> line per problem.</summary>
+    private static void Report(Surface surface, string[] stale)
+    {
         Console.WriteLine("packaging gate");
-        Console.WriteLine($"  exported public types : {exported.Count}");
-        Console.WriteLine($"  referenced by sample  : {covered}");
+        Console.WriteLine($"  exported public types : {surface.Exported.Count}");
+        Console.WriteLine($"  referenced by sample  : {surface.Covered}");
         Console.WriteLine($"  documented exclusions : {Excluded.Count}");
 
-        foreach (string name in uncovered.Order(StringComparer.Ordinal))
+        foreach (string name in surface.Uncovered.Order(StringComparer.Ordinal))
         {
             Console.Error.WriteLine(
                 $"::error::{name}. The sample is the only thing that proves this type is reachable "
@@ -118,13 +134,11 @@ internal static class PackagingGate
                 + "packages. Remove the entry.");
         }
 
-        if (uncovered.Count == 0 && stale.Length == 0)
+        if (surface.Uncovered.Count == 0 && stale.Length == 0)
         {
             Console.WriteLine("  every public type is reachable.");
             Console.WriteLine();
-            return true;
         }
-        return false;
     }
 
     /// <summary>
