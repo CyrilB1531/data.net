@@ -38,6 +38,25 @@ public sealed class RocAucBinaryTests
     }
 
     [Fact]
+    public void Rejects_empty_input()
+    {
+        int[] yTrue = [];
+        double[] scores = [];
+
+        Assert.Throws<ArgumentException>(() => RocAuc.Score(yTrue, scores));
+    }
+
+    [Fact]
+    public void Rejects_a_mismatched_sample_weight_length()
+    {
+        int[] yTrue = [0, 1, 1];
+        double[] scores = [0.1, 0.4, 0.9];
+        double[] sampleWeight = [1.0, 2.0];
+
+        Assert.Throws<ArgumentException>(() => RocAuc.Score(yTrue, scores, sampleWeight: sampleWeight));
+    }
+
+    [Fact]
     public void Rejects_a_nan_score()
     {
         int[] yTrue = [0, 1];
