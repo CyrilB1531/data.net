@@ -1,4 +1,3 @@
-using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
 using DataNet.Text.Benchmarks.CrossLang;
 
@@ -31,22 +30,7 @@ if (args.Length > 0 && args[0] == "compare-metrics")
     return;
 }
 
-// Microsoft.ML.OnnxRuntime (pulled in transitively for BatchEmbeddingBenchmarks)
-// ships a managed assembly that is not marked as optimized. BenchmarkDotNet's
-// OptimizationValidator checks every assembly the *whole process* loads, not
-// only the one the filtered benchmark class lives in, so as soon as this
-// project references it, every benchmark class in this assembly — Levenshtein,
-// StopWord, Metrics, all of them — fails validation, not only the batch one.
-// BatchEmbeddingBenchmarks already disables this validator on itself
-// (NonOptimizedOnnxRuntime) for the reason given there: it is a managed shim
-// over native code, consumed exactly as a user consumes it from nuget.org.
-// That reasoning is not specific to one benchmark class, so the disable is
-// applied once here instead of copied onto every other class that would
-// otherwise fail for a dependency it never touches.
-var config = ManualConfig.Create(DefaultConfig.Instance);
-config.Options |= ConfigOptions.DisableOptimizationsValidator;
-
-BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, config);
+BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
 
 /// <summary>Benchmark entry point marker.</summary>
 public partial class Program

@@ -81,8 +81,8 @@ EXPECTED: dict[str, dict[str, dict[str, str]]] = {
         NETSTANDARD: {TEXT: TEXT_FLOOR, **POLYFILLS},
     },
     EMBEDDINGS: {
-        NET: {ONNX: "1.20.1"},
-        NETSTANDARD: {ONNX: "1.20.1", **POLYFILLS, **PERSISTENCE},
+        NET: {ONNX: "1.28.0"},
+        NETSTANDARD: {ONNX: "1.28.0", **POLYFILLS, **PERSISTENCE},
     },
     METRICS: {
         # Nothing on net10.0 and nothing but the polyfills on netstandard2.0:

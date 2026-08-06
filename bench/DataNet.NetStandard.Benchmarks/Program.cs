@@ -28,14 +28,8 @@ if (!AssertLoaded(typeof(Levenshtein), ".NETStandard,Version=v2.0") ||
     return 1;
 }
 
-// Also disables OptimizationValidator for the non-optimized Microsoft.ML.OnnxRuntime
-// assembly this project links transitively (BatchEmbeddingBenchmarks.cs) — see the
-// longer explanation in DataNet.Text.Benchmarks/Program.cs. The validator checks
-// every assembly the process loads, so it fails for every benchmark class here,
-// not only the one that references ONNX.
 var config = DefaultConfig.Instance
-    .AddJob(Job.Default.WithToolchain(InProcessEmitToolchain.Instance))
-    .WithOptions(ConfigOptions.DisableOptimizationsValidator);
+    .AddJob(Job.Default.WithToolchain(InProcessEmitToolchain.Instance));
 
 BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, config);
 return 0;
