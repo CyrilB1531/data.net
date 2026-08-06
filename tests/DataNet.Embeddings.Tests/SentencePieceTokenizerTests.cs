@@ -74,14 +74,27 @@ public sealed class SentencePieceTokenizerTests
 #pragma warning restore CS0618
 
     /// <summary>
-    /// The failure the id-based guess cannot see: a model whose control markers
-    /// sit anywhere other than 0, 1 and 2.
+    /// A control marker sitting outside ids 0-2 — the failure the id-based guess
+    /// cannot see — must still never be emitted.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The input has to <em>contain</em> the marker's own string, which is the
+    /// part that is easy to get wrong. A piece only ever matches where its literal
+    /// characters occur, so encoding text that has no <c>&lt;</c> in it asserts
+    /// nothing: the marker could not have been emitted either way, and the test
+    /// passes just as happily with the exclusion removed. Feeding it
+    /// <c>a&lt;s&gt;s</c> is what makes the assertion able to fail.
+    /// </para>
+    /// <para>
+    /// The score is deliberately the best in the vocabulary, so a tokenizer that
+    /// failed to exclude the marker would not merely be able to emit it — Viterbi
+    /// would prefer it.
+    /// </para>
+    /// </remarks>
     [Fact]
     public void Controls_outside_the_first_three_ids_are_still_excluded()
     {
-        // "<s>" at id 3, deliberately scored high enough that a tokenizer which
-        // failed to exclude it would emit it for the letter run "s".
         SentencePiece[] pieces =
         [
             new("a", -1.0, 0),
@@ -100,9 +113,94 @@ public sealed class SentencePieceTokenizerTests
         ];
         var tokenizer = new SentencePieceTokenizer(new SentencePieceVocabulary(pieces, types, UnkId: 4, BosId: 3, EosId: -1, PadId: -1));
 
-        TokenizationResult result = tokenizer.Encode("as");
+        TokenizationResult result = tokenizer.Encode("a<s>s");
 
         Assert.DoesNotContain("<s>", result.Tokens);
+        Assert.DoesNotContain(3, result.Ids);
+    }
+
+    /// <summary>
+    /// The same guarantee for the unknown piece: <c>&lt;unk&gt;</c> is what the
+    /// tokenizer emits <em>for</em> uncovered text, so matching it as text would
+    /// let a document name its own unknown token.
+    /// </summary>
+    [Fact]
+    public void The_unknown_piece_is_never_matched_as_text()
+    {
+        SentencePiece[] pieces =
+        [
+            new("a", -1.0, 0),
+            new("▁", -2.0, 1),
+            new("<unk>", -0.1, 2),
+        ];
+        SentencePieceType[] types =
+        [
+            SentencePieceType.Normal,
+            SentencePieceType.Normal,
+            SentencePieceType.Unknown,
+        ];
+        var tokenizer = new SentencePieceTokenizer(new SentencePieceVocabulary(pieces, types, UnkId: 2, BosId: -1, EosId: -1, PadId: -1));
+
+        TokenizationResult result = tokenizer.Encode("a<unk>a");
+
+        Assert.DoesNotContain("<unk>", result.Tokens);
+    }
+
+    /// <summary>
+    /// The fairseq layout, in one vocabulary: <c>&lt;s&gt;</c>=0,
+    /// <c>&lt;pad&gt;</c>=1, <c>&lt;/s&gt;</c>=2, <c>&lt;unk&gt;</c>=3 and
+    /// <c>&lt;mask&gt;</c> last — the numbering HuggingFace gives XLM-R, and the
+    /// one the id-based guess reads as "only <c>&lt;s&gt;</c>, <c>&lt;pad&gt;</c>
+    /// and <c>&lt;/s&gt;</c> are controls".
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Every marker is scored 0 — the best in the vocabulary — and every
+    /// character of the input is covered by a normal piece, so nothing here can
+    /// come out as the unknown piece for want of an alternative: an id from this
+    /// set in the output means the marker was matched as text.
+    /// </para>
+    /// <para>
+    /// This is the fast, fixture-free mirror of
+    /// <see cref="XlmRobertaFairseqTests"/>, which asserts the same property over
+    /// XLM-R's real 250 002-piece vocabulary, <c>&lt;mask&gt;</c> at 250001
+    /// included.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void A_fairseq_layout_matches_none_of_its_five_markers()
+    {
+        SentencePiece[] pieces =
+        [
+            new("<s>", 0.0, 0),
+            new("<pad>", 0.0, 1),
+            new("</s>", 0.0, 2),
+            new("<unk>", 0.0, 3),
+            new("▁", -3.0, 4),
+            new("a", -2.0, 5),
+            new("b", -2.0, 6),
+            .. "<>/spdunkm".Select((c, i) => new SentencePiece(c.ToString(), -4.0, 7 + i)),
+            new("<mask>", 0.0, 17),
+        ];
+        SentencePieceType[] types =
+        [
+            SentencePieceType.Control,
+            SentencePieceType.Control,
+            SentencePieceType.Control,
+            SentencePieceType.Unknown,
+            .. Enumerable.Repeat(SentencePieceType.Normal, 13),
+            SentencePieceType.Control,
+        ];
+        var tokenizer = new SentencePieceTokenizer(
+            new SentencePieceVocabulary(pieces, types, UnkId: 3, BosId: 0, EosId: 2, PadId: 1));
+
+        TokenizationResult result = tokenizer.Encode("a<s>b<pad>a</s>b<unk>a<mask>b");
+
+        foreach (int id in (int[])[0, 1, 2, 3, 17])
+        {
+            Assert.DoesNotContain(pieces[id].Piece, result.Tokens);
+            Assert.DoesNotContain(id, result.Ids);
+        }
     }
 
     [Fact]

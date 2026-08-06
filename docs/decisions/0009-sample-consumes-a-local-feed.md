@@ -68,6 +68,17 @@ A local feed inverts that: the gate runs on what is *about* to ship.
   sample would prove nothing while appearing to work.
 - **It runs in CI**, because a sample that is never built rots into documentation
   that lies.
+- **It covers every exported public type, and a gate keeps it that way.** The
+  "unreachable public type" guarantee above is worth exactly the set of types the
+  sample references, and when this was measured it referenced 14 of 58 — so for
+  the other 44 the job was green by construction. `PackagingGate` reads the exported
+  surface of the three assemblies *as NuGet resolved them for the sample* and
+  fails the run when one of them has no member referenced. Adding a public type
+  without adding a call is now a red build rather than a silent hole; #65 and #66
+  added seven such types before anyone noticed. The criterion is a member
+  reference in the compiled metadata, so `typeof(T)` alone does not satisfy it,
+  and enums — whose members are compile-time constants — are the one documented
+  exception, satisfied by being named.
 - **It covers `lib/net10.0` only.** The `netstandard2.0` package assets are not
   consumed by anything: the netstandard2.0 *assemblies* are covered by the mirror
   test projects, but the *package* dependency group for that target is not.
