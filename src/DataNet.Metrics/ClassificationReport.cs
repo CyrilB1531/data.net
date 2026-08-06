@@ -141,4 +141,25 @@ public sealed class ClassificationReport
         ReadOnlySpan<int> labels = default,
         ReadOnlySpan<double> sampleWeight = default) =>
         Compute(ConfusionMatrix.Compute(yTrue, yPred, labels, sampleWeight), targetNames, zeroDivision);
+
+    /// <summary>
+    /// Renders the table the way <c>classification_report</c> prints it, to the
+    /// character.
+    /// </summary>
+    /// <param name="digits">Decimal places for the three score columns, as scikit-learn's <c>digits</c>.</param>
+    /// <remarks>
+    /// Parity is asserted for <see cref="ZeroDivision.Zero"/> and
+    /// <see cref="ZeroDivision.One"/>. A report built with
+    /// <see cref="ZeroDivision.NaN"/> renders .NET's <c>NaN</c> where Python
+    /// writes <c>nan</c>; the numbers still match, the text does not.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="digits"/> is negative.</exception>
+    public string ToText(int digits = 2)
+    {
+        Guard.NotLessThan(digits, 0);
+        return ReportText.Render(this, digits);
+    }
+
+    /// <summary>The two-digit table, as <see cref="ToText"/> renders it.</summary>
+    public override string ToString() => ToText();
 }

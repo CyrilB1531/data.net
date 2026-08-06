@@ -40,33 +40,23 @@ internal static class Prf
     };
 
     /// <summary>
-    /// Row sums of the matrix: the support of each requested class, counted
-    /// against every observed label, not only the other requested ones —
-    /// scikit-learn's <c>true_sum</c>. Only when an explicit label subset left
-    /// some observed label out (<see cref="ConfusionMatrix.DroppedSamples"/>)
-    /// does this differ from summing across just the requested labels: that
-    /// left-out label's cells still land in <see cref="ConfusionMatrix.Cells"/>,
-    /// at columns/rows beyond <see cref="ConfusionMatrix.Size"/>, and belong in
-    /// this sum the same as a requested one would.
+    /// The support of each requested class, counted against every observed
+    /// label, not only the other requested ones — scikit-learn's <c>true_sum</c>.
+    /// Only when an explicit label subset left some observed label out
+    /// (<see cref="ConfusionMatrix.DroppedSamples"/>) does this differ from
+    /// summing across just the requested labels: that left-out label's samples
+    /// still count here the same as a requested one's would.
     /// </summary>
-    public static double[] Support(ConfusionMatrix cm)
-    {
-        int k = cm.Size;
-        int stride = cm.Stride;
-        ReadOnlySpan<double> cells = cm.Cells;
-        double[] support = new double[k];
-        for (int row = 0; row < k; row++)
-        {
-            double sum = 0.0;
-            int offset = row * stride;
-            for (int col = 0; col < stride; col++)
-            {
-                sum += cells[offset + col];
-            }
-            support[row] = sum;
-        }
-        return support;
-    }
+    /// <remarks>
+    /// Returns <see cref="ConfusionMatrix.TrueSum"/> directly rather than
+    /// re-deriving it by summing <see cref="ConfusionMatrix.Cells"/>: the two are
+    /// mathematically the same total, but summing already-built cells adds in a
+    /// different grouping than scikit-learn's own <c>np.bincount</c> over the
+    /// samples, and floating-point addition is not associative — the two orders
+    /// can and do disagree in the last bit, which matters when a caller
+    /// (<c>ClassificationReport.ToText</c>) prints the value verbatim.
+    /// </remarks>
+    public static double[] Support(ConfusionMatrix cm) => cm.TrueSum.ToArray();
 
     /// <summary>
     /// Column sums: how much weight was predicted into each requested class,

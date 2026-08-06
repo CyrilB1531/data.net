@@ -34,14 +34,17 @@ public sealed class ConfusionMatrix
     private readonly int[] _labels;
     private readonly ReadOnlyCollection<int> _labelView;
     private readonly int _stride;
+    private readonly double[] _trueSum;
 
     private ConfusionMatrix(
-        double[] cells, int[] labels, int stride, double totalWeight, bool weighted, bool dropped, bool explicitLabels)
+        double[] cells, int[] labels, int stride, double[] trueSum,
+        double totalWeight, bool weighted, bool dropped, bool explicitLabels)
     {
         _cells = cells;
         _labels = labels;
         _labelView = Array.AsReadOnly(labels);
         _stride = stride;
+        _trueSum = trueSum;
         TotalWeight = totalWeight;
         IsWeighted = weighted;
         DroppedSamples = dropped;
@@ -77,6 +80,17 @@ public sealed class ConfusionMatrix
     internal int Stride => _stride;
 
     internal ReadOnlySpan<double> Cells => _cells;
+
+    /// <summary>
+    /// Weight per requested true label, accumulated sample by sample in the same
+    /// single pass as <see cref="Cells"/> rather than recovered afterwards by
+    /// summing a row of it. scikit-learn computes this same quantity — its
+    /// <c>true_sum</c> — the same way, via <c>np.bincount</c> over the samples in
+    /// their original order; summing the already-built matrix's cells instead
+    /// groups the same additions differently and, being floating-point, can land
+    /// on a different last bit. <see cref="Prf.Support"/> is the only reader.
+    /// </summary>
+    internal ReadOnlySpan<double> TrueSum => _trueSum;
 
     internal bool IsWeighted { get; }
 
@@ -122,6 +136,7 @@ public sealed class ConfusionMatrix
         int k = index.RequestedCount;
         int m = index.Count;
         double[] cells = new double[m * m];
+        double[] trueSum = new double[k];
         bool weighted = !sampleWeight.IsEmpty;
         double total = 0.0;
         bool anyTrueLabelRequested = false;
@@ -135,12 +150,16 @@ public sealed class ConfusionMatrix
         {
             int row = index.IndexOf(yTrue[i]);
             int col = index.IndexOf(yPred[i]);
+            double weight = weighted ? sampleWeight[i] : 1.0;
+
             if (row < k)
             {
                 anyTrueLabelRequested = true;
+                // Accumulated here, sample by sample, so it lands on the same
+                // floating-point total as scikit-learn's bincount — see TrueSum.
+                trueSum[row] += weight;
             }
 
-            double weight = weighted ? sampleWeight[i] : 1.0;
             cells[(row * m) + col] += weight;
             if (row < k && col < k)
             {
@@ -158,6 +177,7 @@ public sealed class ConfusionMatrix
         Array.Copy(index.Labels, reportedLabels, k);
         bool dropped = m > k;
 
-        return new ConfusionMatrix(cells, reportedLabels, m, total, weighted, dropped, index.Explicit);
+        return new ConfusionMatrix(
+            cells, reportedLabels, m, trueSum, total, weighted, dropped, index.Explicit);
     }
 }
