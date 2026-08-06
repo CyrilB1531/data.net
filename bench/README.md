@@ -22,26 +22,56 @@ above (`<Compile Include="../DataNet.Text.Benchmarks/…" />`, never a copy) and
 only swaps which assemblies it references.
 
 ```bash
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks        -- --filter '*VectorMath*'
+dotnet run -c Release --project bench/DataNet.Text.Benchmarks        -- --filter '*VectorMath*' --inProcess
 dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter '*VectorMath*'
 ```
 
 ### Measured
 
-`VectorMath.Dot`, Intel i7-4770S, .NET 10.0.110:
+Intel i7-4770S, .NET 10.0.10, default job. **Two runs per side, and both are
+shown**, interleaved net10 → netstandard2.0 → net10 → netstandard2.0 so that any
+drift in machine state lands on both columns rather than on whichever one
+occupies the second half of the window.
 
-| Dimension | net10 | netstandard2.0 | cost |
-| --- | --- | --- | --- |
-| 384 | 73.2 ns | 338.5 ns | 4.6× |
-| 768 | 130.9 ns | 679.8 ns | 5.2× |
-| 1024 | 163.6 ns | 912.1 ns | 5.6× |
+| Method | Dim | net10 | netstandard2.0 | cost |
+| --- | --- | --- | --- | --- |
+| `Dot` | 384 | 74.8 / 79.3 ns | 330.3 / 334.0 ns | 4.2×–4.4× |
+| `Dot` | 768 | 122.9 / 128.7 ns | 648.5 / 661.1 ns | 5.1×–5.3× |
+| `Dot` | 1024 | 173.9 / 177.1 ns | 896.7 / 883.8 ns | 5.0×–5.2× |
+| `L2Norm` | 384 | 69.6 / 69.6 ns | 322.9 / 319.1 ns | 4.6× |
+| `L2Norm` | 768 | 95.5 / 109.9 ns | 650.1 / 651.3 ns | 5.9×–6.8× |
+| `L2Norm` | 1024 | 138.8 / 138.3 ns | 887.4 / 875.5 ns | 6.3× |
 
 That is the `Vector<T>` SIMD path against the scalar fallback, which is the one
 place the two builds deliberately differ — the span-based `Vector<T>` constructor
 is net-only. Everything else compiles to equivalent IL, so a difference elsewhere
-means something changed and is worth investigating.
+means something changed and is worth investigating. `L2Norm` gains more than
+`Dot` because it reads one array instead of two, so the vector path is not
+sharing load bandwidth with a second stream; on netstandard2.0 the two methods
+cost the same, which is what two equivalent scalar loops should do.
 
-### Two things keep this honest
+**Read the pairs, not the means.** Every figure above was reported by
+BenchmarkDotNet with an interval of about ±1 ns, and the two runs of the same
+binary still differ by up to 6% (`Dot` at 384) and once by 15% (`L2Norm` at
+768, 95.5 ns then 109.9). The interval describes dispersion inside one process
+and says nothing about reproducibility across processes. The ratios are far more
+stable than either column, which is the argument for quoting them and not the
+absolute numbers.
+
+The machine was not idle: the one-minute load average was 4.8–5.5 on 8 logical
+cores at the start of all four runs, against the 1.9–2.3 floor this workstation
+reaches when only its desktop client, editor and browser are up. That inflates
+both columns and is the reason the pairs disagree as much as they do; it does
+not favour either side, since the runs alternate.
+
+That load is not an accident of scheduling, and the earlier figures cannot be
+reproduced by re-running these commands: the editor's language servers and the
+assistant session that drives the run are themselves part of it. So the table
+above is internally comparable — one window, alternating sides, both columns
+paying the same tax — and **not** comparable to figures taken on this machine in
+a quieter state. Compare ratios across such sets, never absolutes.
+
+### Three things keep this honest
 
 `SetTargetFramework` on the `ProjectReference` is **not sufficient on its own**.
 BenchmarkDotNet's default toolchain generates and builds its own project per run,
@@ -60,6 +90,39 @@ asserts what it actually loaded before running anything:
 A mismatch exits non-zero rather than producing numbers. Sanity-check any result
 against physics too: a scalar dot product over 1024 floats is latency-bound near
 1000 ns, so a result close to the SIMD figure means the isolation broke again.
+
+**And `--inProcess` on the net10 command is the third thing, not decoration.**
+The netstandard2.0 project pins `InProcessEmitToolchain` because it has to; the
+net10 command would otherwise use the default out-of-process toolchain, and a
+ratio taken across those two harnesses mixes the target framework with the
+harness that measured it. This section published such ratios until issue #87 —
+4.6×, 5.2× and 5.6× — and the flag is what removes the confound.
+
+**What the confound is worth here, measured rather than asserted.** The net10
+side was run a third time in the same window, minutes after the four runs above
+and on the same loaded machine, with the flag left off:
+
+| Dim | net10, in-process | net10, out-of-process | matched pairing | mixed pairing |
+| --- | --- | --- | --- | --- |
+| 384 | 74.8 / 79.3 ns | 69.9 ns | 4.2×–4.4× | 4.7×–4.8× |
+| 768 | 122.9 / 128.7 ns | 123.0 ns | 5.1×–5.3× | 5.3×–5.4× |
+| 1024 | 173.9 / 177.1 ns | 159.6 ns | 5.0×–5.2× | 5.5×–5.6× |
+
+The out-of-process harness reports the *same binary* as up to 10% faster on
+`Dot` and 24% faster on `L2Norm` (56.1 ns against 69.6 at 384). Pairing that
+column against the in-process netstandard2.0 one — the shape of the old pair of
+commands — inflates the gap by up to 0.5× at 384 and 1024, while at 768 the two
+pairings agree, which is why the defect was not visible from the numbers alone.
+
+That is the whole of what this control establishes, and it is deliberately not
+compared against the figures this section used to publish. Those came off this
+same machine, but in a quieter state than a run driven from an editor session
+can recreate — the session is part of the load it would have to remove. Two sets
+of absolute figures taken under loads that differ by a factor of two support no
+inference between them, in either direction. The old ones are withdrawn on the
+ground that their two columns came from two harnesses, which is visible in the
+commands rather than in the numbers, and not because a later run disagreed with
+them.
 
 ## 3. Cross-language comparison vs Python
 
@@ -249,8 +312,11 @@ generated project re-resolves the `ProjectReference` and silently restores the
 net10.0 build), while the first command would use the default out-of-process
 toolchain. Any figure compared across those two harnesses mixes the target
 framework with the harness that measured it. This tier was published that way
-before, and the flag is what removes the confound; sections 2 and 3 above still
-carry it, tracked as its own issue.
+before, and the flag is what removes the confound. Section 2 above and the
+batched-embedding comparison in `docs/guides/performance.md` carried the same
+defect and were re-measured with the flag in place (issue #87). Section 4 still
+carries it — tracked as issue #88 — and its figures should be read with that in
+mind until it is re-measured too.
 
 Same isolation assertion as those sections: the netstandard2.0 run proves it
 loaded the netstandard2.0 build before any number from it is trusted.
@@ -311,7 +377,7 @@ sizes. A fixed per-call cost the netstandard2.0 build pays and net10 does not,
 drowned once O(samples) work dominates.
 
 This is still **not** the `VectorMath.Dot` story from section 2, where the gap
-is 4.6×–5.6×. `DataNet.Metrics` has no `Vector<T>` SIMD path, and every
+is 4.2×–5.3×. `DataNet.Metrics` has no `Vector<T>` SIMD path, and every
 benchmark here is a scalar loop over `int[]`/`double[]`. The one piece of
 target-conditional code in its dependencies is `DataNet.Internal.Guard`, which
 picks `ArgumentNullException.ThrowIfNull` on net10 and a hand-written check on

@@ -99,7 +99,7 @@ Short-job measurement, `[MemoryDiagnoser]` (dev machine — indicative).
 ## Batched embedding — what the number is, and what it is not
 
 ```bash
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter '*BatchEmbedding*'
+dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter '*BatchEmbedding*' --inProcess
 ```
 
 **Read this before quoting the ratio.** The model is `tiny_embedder.onnx`: one
@@ -110,41 +110,97 @@ dispatch, thread-pool wake-up, tensor wrapping — and none of the matrix
 multiplication a real encoder adds to *both* sides. This is an upper bound on the
 speed-up, not the speed-up.
 
-Full job, `[MemoryDiagnoser]`, Intel Core i7-4770S (Haswell, 4 physical cores),
-Ubuntu 24.04, .NET 10.0.10, X64 RyuJIT AVX2. Corpus of 1 to 61 words per text,
-sub-batch 8. `UnitLoop` is the baseline — one `Embed` call per text, which is
-what the guide's three lines amounted to before `EmbedBatch` existed.
+Full job, `[MemoryDiagnoser]`, `InProcessEmitToolchain`, Intel Core i7-4770S
+(Haswell, 4 physical cores), Ubuntu 24.04, .NET 10.0.10, X64 RyuJIT AVX2. Corpus
+of 1 to 61 words per text, sub-batch 8. `UnitLoop` is the baseline — one `Embed`
+call per text, which is what the guide's three lines amounted to before
+`EmbedBatch` existed. **Two runs, both shown**, because BenchmarkDotNet's `±`
+describes dispersion inside one process and not reproducibility across processes.
 
 | Texts | `UnitLoop` | `EmbedBatch` | ratio | `EmbedBatchBucketed` | ratio | allocated vs baseline |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 17.8 µs | 14.2 µs | 0.80 | 14.8 µs | 0.83 | 1.11 |
-| 8 | 220 µs | 114 µs | 0.52 | 117 µs | 0.53 | 0.94 |
-| 32 | 795 µs | 388 µs | 0.49 | 372 µs | 0.47 | 0.93 / 0.91 |
-| 128 | 3 135 µs | 1 582 µs | 0.50 | 1 516 µs | 0.48 | 0.93 / 0.90 |
+| 1 | 9.9 / 11.0 µs | 10.6 / 10.8 µs | 1.06 / 0.99 | 10.0 / 11.1 µs | 1.00 / 1.01 | 1.12 |
+| 8 | 168 / 180 µs | 105 / 107 µs | 0.62 / 0.60 | 101 / 106 µs | 0.60 / 0.59 | 0.95 |
+| 32 | 628 / 672 µs | 360 / 381 µs | 0.57 / 0.57 | 346 / 349 µs | 0.55 / 0.52 | 0.94 / 0.91 |
+| 128 | 2 439 / 2 602 µs | 1 482 / 1 460 µs | 0.61 / 0.56 | 1 370 / 1 356 µs | 0.56 / 0.52 | 0.94 / 0.91 |
 
-**Batching halves the wall clock** from 8 texts upward and stays there: the
-per-call overhead is amortized over the whole sub-batch. At a single text there
-is nothing to amortize, and the batch path is marginally cheaper only because the
-caller no longer builds a mask by hand.
+**Batching removes about 40 % of the wall clock** from 8 texts upward and stays
+there — 0.56–0.62 across every pairing — as the per-call overhead is amortized
+over the whole sub-batch. At a single text there is nothing to amortize and the
+two paths are a wash: 1.06 in one run, 0.99 in the next, which is a way of
+saying this benchmark cannot tell them apart there rather than that either wins.
 
 **Bucketing is a different story, and the honest answer is smaller.** It engages
 only when the corpus spans more than one sub-batch, so the rows at 1 and 8 above
 run the *identical* code in both columns — they are the control, and what they
-differ by, 2–4 %, is this harness's noise floor. The 4 % wall-clock gain at 32
-and 128 does not clear it. What does clear it is the allocation column, which is
-counted rather than sampled: 1 766 KB → 1 699 KB at 128 texts. That is padding
-genuinely not written. On a model doing real work that padding would be matrix
-multiplication not performed, and the time would follow; this model cannot show
-it, so the claim stops here.
+differ by is this harness's noise floor: 1–3 % on seven of the eight control
+measurements taken here, with one outlier at 5.7 %. At 128 texts bucketing is
+ahead by 5.8–7.5 % in all four pairings, and ahead at 32 in all four as well.
+The sign is consistent where the magnitude alone would not be decisive. What is
+decisive is the allocation column, which is counted rather than sampled:
+1 764 KB → 1 697 KB at 128 texts, in every run. That is padding genuinely not
+written. On a model doing real work that padding would be matrix multiplication
+not performed, and the time would follow; this model cannot show it, so the
+claim stops here.
 
-**The two builds.** The same benchmark against the `netstandard2.0` assemblies —
-scalar pooling, since `Vector<T>` has no span constructor there — runs 3–5 %
-behind: 405 µs against 388 at 32 texts, 1 635 against 1 582 at 128. That is what
-the broad-reach target costs on this path, measured rather than assumed.
+**The two builds.** The same benchmark against the `netstandard2.0` assemblies
+does **not** measure a penalty. On `EmbedBatch` the netstandard2.0 side comes in
+1.4–5.7 % *ahead* of net10 in all four pairings (355 / 365 µs against 360 / 381
+at 32 texts; 1 418 / 1 419 against 1 482 / 1 460 at 128), which is inside this
+harness's noise but consistent in direction. This guide previously reported the
+opposite — "3–5 % behind" — from a pair of commands that did not share a
+BenchmarkDotNet toolchain; that comparison is withdrawn rather than reversed
+(issue #87).
+
+Withdrawn, not disproved. The figures above cannot be set against the old ones,
+for a reason that has nothing to do with either harness: the old table predates
+the bump of `Microsoft.ML.OnnxRuntime` to 1.28.0, and this benchmark is almost
+entirely that library's dispatch cost. Add to that a machine carrying twice the
+load, and no difference between the two sets is attributable to anything. What
+the old pair of commands can be faulted for is visible without measuring — its
+two columns came from two toolchains.
+
+Within *this* window the harness is not the explanation either. Running the
+net10 side out-of-process here, the same mismatched shape, moves this tier by
+2 % at most (`EmbedBatch` 356 µs at 32 texts and 1 441 at 128, against 360 / 381
+and 1 482 / 1 460 in-process) and still shows no netstandard2.0 penalty. So
+unlike `VectorMath`, where the mismatch moves the ratio by up to 0.5×, on this
+path the toolchain barely registers.
+
+**No penalty is the structurally correct answer here**, and the earlier figure
+should have been read as suspicious for that reason. `Pooling` guards its
+`Vector<T>` branch with `accumulator.Length >= Vector<float>.Count`;
+`tiny_embedder.onnx` has a hidden size of 4 (`EMBEDDING_DIM` in
+`tools/build_tiny_models.py`) and `Vector<float>.Count` is 8 under AVX2, so on
+net10 the guard is false and the code falls into the same scalar tail loop
+netstandard2.0 runs unconditionally. The two builds execute identical pooling on
+this benchmark. It cannot measure the difference between them, and now reports
+that instead of a number. Where the vector path does engage, it is worth 4×–7×
+(`VectorMath` over 384–1024 dimensions, section 2 of
+[`bench/README.md`](../../bench/README.md)). The one
+difference this benchmark does resolve is counted, not timed: the unit-loop path
+allocates 0.6 % more on netstandard2.0 (1 887 KB against 1 875 at 128 texts),
+identically in both runs, while the two batch paths allocate byte for byte the
+same on both targets.
 
 ```bash
 dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter '*BatchEmbedding*'
 ```
+
+`--inProcess` on the first command, and not on the second, is the point: the
+netstandard2.0 project pins `InProcessEmitToolchain` in its `Program.cs` — it
+has to, or BenchmarkDotNet's generated project re-resolves the
+`ProjectReference` and silently restores the net10.0 build — so the flag is what
+puts the net10 side on the same toolchain. Without it the two commands measure
+the same code two different ways.
+
+**Conditions.** The four runs behind the table were taken back to back in one
+window, alternating net10 and netstandard2.0, with the one-minute load average
+between 5.1 and 5.9 on 8 logical cores — the editor's language servers and the
+session driving the runs are part of that load and cannot be excluded from
+inside it. Both columns pay it equally, so the table is internally comparable;
+it is not comparable to figures taken on this machine in a quieter state, and
+the ratios travel between such sets while the absolute microseconds do not.
 
 ## Classification metrics (issue #61) — vs scikit-learn
 
