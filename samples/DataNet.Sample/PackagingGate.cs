@@ -115,12 +115,6 @@ internal static class PackagingGate
     /// <summary>Prints the tally, then one <c>::error::</c> line per problem.</summary>
     private static void Report(Surface surface, string[] stale)
     {
-        // MUTATION (#77, reverted in the next commit): four copies of one literal,
-        // which S1192 raises at three. If this file is analysed, it shows up.
-        Console.WriteLine("mutation probe for issue 77");
-        Console.WriteLine("mutation probe for issue 77");
-        Console.WriteLine("mutation probe for issue 77");
-        Console.WriteLine("mutation probe for issue 77");
         Console.WriteLine("packaging gate");
         Console.WriteLine($"  exported public types : {surface.Exported.Count}");
         Console.WriteLine($"  referenced by sample  : {surface.Covered}");

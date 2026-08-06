@@ -48,9 +48,7 @@ internal static class Lot1Distances
         // Phonetic encoders.
         Console.WriteLine($"  Soundex(Robert)                     = {Soundex.Encode("Robert")}");
         Console.WriteLine($"  Metaphone(Thompson)                 = {Metaphone.Encode("Thompson")}");
-        // MUTATION (#77, reverted in the next commit): Nysiis is now referenced by
-        // nothing, so the packaging gate must fail.
-        // Console.WriteLine($"  Nysiis(Knight)                      = {Nysiis.Encode("Knight")}");
+        Console.WriteLine($"  Nysiis(Knight)                      = {Nysiis.Encode("Knight")}");
 
         // Stemmers: the Porter original, then the six Snowball languages.
         Console.WriteLine($"  Porter(running)                     = {PorterStemmer.Stem("running")}");
