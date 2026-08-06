@@ -122,7 +122,13 @@ public sealed class EmbeddingIndex
             sum += (double)v * v;
         }
         double norm = Math.Sqrt(sum);
+
+        // SonarLint S1244: a zero vector has no direction, and exact zero is the only
+        // norm that makes the division below undefined. Comparing within a tolerance
+        // would leave short vectors unnormalized instead.
+#pragma warning disable S1244
         if (norm == 0)
+#pragma warning restore S1244
         {
             return;
         }

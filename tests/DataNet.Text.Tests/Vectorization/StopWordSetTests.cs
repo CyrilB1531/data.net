@@ -30,8 +30,8 @@ public sealed class StopWordSetTests
         }
         else
         {
-            // Every vectorizer built with StopWords.English shares this one set;
-            // none of them hashes its 318 words again.
+            // Every vectorizer built with StopWords.English shares this one set,
+            // and none of them hashes its 318 words again.
             Assert.Same(StopWords.English, adopted.Words);
         }
     }

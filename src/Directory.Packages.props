@@ -21,6 +21,9 @@
     <PackageVersion Include="DataNet.Text" Version="0.2.0" />
     <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
     <PackageVersion Include="PolySharp" Version="1.15.0" />
+    <!-- Analyzer only, pinned in the root Directory.Build.props so src/, tests/
+         and bench/ cannot drift apart. -->
+    <PackageVersion Include="SonarAnalyzer.CSharp" Version="$(DataNetSonarAnalyzerVersion)" />
     <!-- 4.6.3 is the floor System.Text.Json 10.0.x asks for on netstandard2.0;
          pinning lower makes the restore a downgrade, which is an error here. -->
     <PackageVersion Include="System.Memory" Version="4.6.3" />

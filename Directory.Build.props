@@ -11,6 +11,15 @@
     <!-- Warnings are errors everywhere: src, tests and bench alike. -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
+    <!-- The Sonar rules that gate the pull request also gate the build, so a
+         finding is a compile error on the machine that wrote the code rather
+         than a round trip through SonarCloud. Pinned once here and read from
+         three places, because the areas reference packages differently: src/ and
+         tests/ take it through Central Package Management, bench/ has none and
+         names the version on the PackageReference itself. See
+         docs/decisions/0015-sonar-rules-in-the-build.md. -->
+    <DataNetSonarAnalyzerVersion>10.20.0.135146</DataNetSonarAnalyzerVersion>
+
     <!-- Package identity / provenance (§10). Everything genuinely shared lives
          here; <Version> deliberately does not, because the three packages
          release on independent cadences. Each publishable project declares its

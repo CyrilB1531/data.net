@@ -190,7 +190,31 @@ Where behavior deliberately diverges from the Python reference, record it in
 [`0005`](docs/decisions/0005-hamming-jellyfish-divergence.md) for the shape of
 one.
 
-## Analyzer suppressions
+## Analyzers
+
+### Where the rules run
+
+`SonarAnalyzer.CSharp` is referenced by every project under `src/`, `tests/` and
+`bench/`, so **the rules that gate the pull request also gate `dotnet build`**.
+Warnings are errors here, which means a Sonar finding is a compile error on your
+machine rather than a comment on your pull request:
+
+```bash
+dotnet build DataNet.slnx -c Release
+```
+
+It is an analyzer-only reference (`PrivateAssets="all"`), so it reaches no
+published package — `tools/check_nuspec_dependencies.py` asserts that. The
+version is pinned once, as `$(DataNetSonarAnalyzerVersion)` in the root
+`Directory.Build.props`; raising it will usually surface new rules and therefore
+a cleanup, so treat it as its own change. See
+[`0015`](docs/decisions/0015-sonar-rules-in-the-build.md).
+
+Two things still only SonarCloud sees, so a green local build is not a green
+quality gate: **duplication and coverage**, and the **`samples/`**, which are
+outside `DataNet.slnx` and consume the packages from a local feed.
+
+### Suppressions
 
 Deliberate suppressions live in the source, as a `#pragma warning disable` with a
 comment giving the reason:
@@ -213,8 +237,10 @@ not one.
 **When suppressed code moves, the suppression does not follow it.** Extracting a
 method into a new file leaves the `#pragma` behind in the file the code left, and
 the rule reappears against the new one. This has already happened twice while
-extracting the shared Snowball framework — `CA1845`, then `S3267`. Nothing
-enforces it, so check the analyser after any extraction, not just the build.
+extracting the shared Snowball framework — `CA1845`, then `S3267`. Both times the
+build stayed green, because nothing in it ran the analyzer; that is no longer
+true for `src/`, `tests/` and `bench/`, where the rule now reappears as a build
+error at the moment of the extraction.
 
 ## Licensing and provenance
 
