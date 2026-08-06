@@ -12,7 +12,11 @@ public sealed class PrfOracleTests
     {
         JsonElement c = MetricsCorpus.Cases[index];
         string what = MetricsCorpus.Describe(c);
-        ConfusionMatrix cm = Build(c);
+        int[] yTrue = MetricsCorpus.Ints(c, "y_true");
+        int[] yPred = MetricsCorpus.Ints(c, "y_pred");
+        int[] labels = MetricsCorpus.OptionalInts(c, "labels");
+        double[] sampleWeight = MetricsCorpus.OptionalDoubles(c, "sample_weight");
+        ConfusionMatrix cm = ConfusionMatrix.Compute(yTrue, yPred, labels, sampleWeight);
         int posLabel = c.GetProperty("pos_label").GetInt32();
 
         foreach (JsonProperty entry in c.GetProperty("averaged").EnumerateObject())
@@ -22,8 +26,19 @@ public sealed class PrfOracleTests
 
             Assert.Equal(entry.Value.GetProperty("precision").GetDouble(),
                 Precision.Score(cm, average, posLabel, zero), MetricsCorpus.Tolerance);
-            Assert.Equal(entry.Value.GetProperty("recall").GetDouble(),
-                Recall.Score(cm, average, posLabel, zero), MetricsCorpus.Tolerance);
+
+            double recall = Recall.Score(cm, average, posLabel, zero);
+            Assert.Equal(entry.Value.GetProperty("recall").GetDouble(), recall, MetricsCorpus.Tolerance);
+            // The span overload has no arithmetic of its own: it only has to
+            // build the same ConfusionMatrix and forward to the overload
+            // above, already checked against the oracle. Agreement here is
+            // what would catch a dropped labels/sampleWeight or a swapped
+            // argument, which no amount of testing the matrix overload alone
+            // would ever see.
+            Assert.Equal(recall,
+                Recall.Score(yTrue, yPred, average, posLabel, zero, labels, sampleWeight),
+                MetricsCorpus.Tolerance);
+
             Assert.True(
                 Math.Abs(entry.Value.GetProperty("f1").GetDouble()
                          - F1.Score(cm, average, posLabel, zero)) < MetricsCorpus.Tolerance,
@@ -34,8 +49,30 @@ public sealed class PrfOracleTests
         {
             ZeroDivision zero = ParseZeroDivision(entry.Name);
             AssertSequence(entry.Value, "precision", Precision.PerClass(cm, zero), what);
+
             AssertSequence(entry.Value, "recall", Recall.PerClass(cm, zero), what);
+            // Straight against the oracle, not merely against the line above:
+            // this is the span overload, built from a fresh ConfusionMatrix,
+            // so it also exercises that Recall.PerClass forwards
+            // PrfMetric.Recall (not, say, Precision) all the way through.
+            AssertSequence(entry.Value, "recall",
+                Recall.PerClass(yTrue, yPred, zero, labels, sampleWeight), what);
+
             AssertSequence(entry.Value, "f1", F1.PerClass(cm, zero), what);
+            AssertSequence(entry.Value, "f1",
+                F1.PerClass(yTrue, yPred, zero, labels, sampleWeight), what);
+
+            // FBeta.PerClass has no dedicated oracle field, but it is defined
+            // to equal F1 at beta=1 and precision at beta=0 (Prf.FScore's own
+            // beta==0 special case) — two points anchored to real oracle
+            // arrays, not hand-computed, and far enough apart that a
+            // hardcoded beta (e.g. PerClass silently always scoring beta=1)
+            // would fail the second one.
+            AssertSequence(entry.Value, "f1", FBeta.PerClass(cm, 1.0, zero), what);
+            AssertSequence(entry.Value, "precision", FBeta.PerClass(cm, 0.0, zero), what);
+            AssertSequence(entry.Value, "precision",
+                FBeta.PerClass(yTrue, yPred, 0.0, zero, labels, sampleWeight), what);
+
             AssertSequence(entry.Value, "support", Support(c, cm), what);
         }
 
@@ -50,12 +87,6 @@ public sealed class PrfOracleTests
                 FBeta.Score(cm, beta, average, posLabel, zero), MetricsCorpus.Tolerance);
         }
     }
-
-    private static ConfusionMatrix Build(JsonElement c) => ConfusionMatrix.Compute(
-        MetricsCorpus.Ints(c, "y_true"),
-        MetricsCorpus.Ints(c, "y_pred"),
-        MetricsCorpus.OptionalInts(c, "labels"),
-        MetricsCorpus.OptionalDoubles(c, "sample_weight"));
 
     // Support is scikit-learn's true_sum: the total weight of each requested
     // label across the whole sample, regardless of what was predicted for it.

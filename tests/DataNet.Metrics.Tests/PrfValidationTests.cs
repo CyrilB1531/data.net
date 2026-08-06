@@ -60,6 +60,13 @@ public sealed class PrfValidationTests
     }
 
     [Fact]
+    public void FBeta_PerClass_rejects_a_negative_beta()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => FBeta.PerClass(YTrue, YPred, -1.0));
+    }
+
+    [Fact]
     public void Micro_averaged_f1_equals_accuracy_when_no_label_is_excluded()
     {
         double micro = F1.Score(YTrue, YPred, Averaging.Micro);

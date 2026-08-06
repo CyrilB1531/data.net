@@ -106,11 +106,18 @@ internal static class Prf
         return tp;
     }
 
-    public static double[] PerClass(ConfusionMatrix cm, PrfMetric metric, double beta, ZeroDivision zeroDivision)
+    public static double[] PerClass(ConfusionMatrix cm, PrfMetric metric, double beta, ZeroDivision zeroDivision) =>
+        PerClass(cm, metric, beta, zeroDivision, out _);
+
+    // Same computation, plus the support it already has to build along the
+    // way, out for Aggregate's Weighted branch to reuse instead of paying for
+    // a second O(k*stride) pass over the matrix.
+    private static double[] PerClass(
+        ConfusionMatrix cm, PrfMetric metric, double beta, ZeroDivision zeroDivision, out double[] support)
     {
         double[] tp = TruePositives(cm);
         double[] predicted = PredictedSum(cm);
-        double[] support = Support(cm);
+        support = Support(cm);
         double[] result = new double[cm.Size];
 
         for (int i = 0; i < result.Length; i++)
@@ -134,7 +141,7 @@ internal static class Prf
             return Micro(cm, metric, beta, zeroDivision);
         }
 
-        double[] perClass = PerClass(cm, metric, beta, zeroDivision);
+        double[] perClass = PerClass(cm, metric, beta, zeroDivision, out double[] support);
 
         switch (average)
         {
@@ -147,7 +154,6 @@ internal static class Prf
                 return total / perClass.Length;
 
             case Averaging.Weighted:
-                double[] support = Support(cm);
                 double weightSum = 0.0;
                 double weighted = 0.0;
                 for (int i = 0; i < perClass.Length; i++)
