@@ -64,10 +64,32 @@ jobs:
       # must not be skipped or served from cache — an incremental no-op build
       # produces an empty analysis that still reports success.
       #
+      # *Every* compilation in the window is observed, not just the first, which
+      # is what lets the samples be analysed without joining DataNet.slnx. They
+      # must stay out of it: inside the solution they would resolve DataNet by
+      # ProjectReference, and the packaging gate and the snippet check would both
+      # become assertions about a graph that never ships (ADR 0009). Analysis
+      # follows the build list, so before this they were read by nothing —
+      # PackagingGate.cs landed with 0 issues reported, not because it is clean
+      # but because no analyser had opened it.
+      #
       # tools/ is excluded from *coverage* only, not from analysis: those scripts
       # are Python development utilities that generate data for the suite, so no
       # C# test will ever execute a line of them. Left in, they enter the quality
       # gate as new uncovered code and fail it on the day one of them is edited.
+      # samples/ joins them for the same reason and a stronger one: the samples
+      # have no tests and never will, because they *are* the test — the sample is
+      # what proves the packages resolve, and the snippets are what proves the
+      # guides compile. Analysed, never covered.
+      #
+      # samples/DataNet.DocSnippets/Generated/ is excluded from *analysis*: it is
+      # extracted verbatim from the Markdown by tools/extract_doc_snippets.py, so
+      # a finding there is a finding about prose the guides deliberately keep
+      # short, and the file to fix it in would be a guide — where the rule usually
+      # does not apply. The path is spelled out rather than written **/Generated/**
+      # so that a generated directory added anywhere else has to opt out on
+      # purpose instead of inheriting silence. The hand-written SnippetContext.cs
+      # stays in.
       #
       # tests/oracles/ is excluded from *analysis*, which is the stronger form.
       # Two of the fixtures are binary — tiny_sp.model is a protobuf, first
@@ -93,7 +115,7 @@ jobs:
       # exclusions would fail open — silently, because the only symptom is a WARN,
       # and a WARN never fails a job. $GITHUB_WORKSPACE is the value auto-detection
       # resolves to today, so pinning it changes no file key and re-keys no issue.
-      - name: Build, test and analyze
+      - name: Begin analysis
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
@@ -105,16 +127,51 @@ jobs:
             /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
             /d:sonar.python.version="3.12" \
             /d:sonar.projectBaseDir="$GITHUB_WORKSPACE" \
-            /d:sonar.coverage.exclusions="tools/**,bench/**" \
-            /d:sonar.exclusions="tests/oracles/**" \
+            /d:sonar.coverage.exclusions="tools/**,bench/**,samples/**" \
+            /d:sonar.exclusions="tests/oracles/**,samples/DataNet.DocSnippets/Generated/**" \
             /d:sonar.test.exclusions="tests/oracles/**"
 
-          dotnet build DataNet.slnx --configuration Release
+      - name: Build the solution
+        run: dotnet build DataNet.slnx --configuration Release
 
-          # Coverage must be written before `end` collects it. OpenCover, not the
-          # default Cobertura: the .NET path of SonarQube Cloud reads OpenCover,
-          # and a format or path mismatch fails silently as 0% coverage.
+      # --no-build: the projects were just compiled above, and that compilation is
+      # the one the scanner observed. Packing without it would recompile src/ a
+      # second time inside the same window, for nothing.
+      - name: Pack
+        run: |
+          for proj in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
+            dotnet pack "$proj" --configuration Release --no-build --output ./artifacts
+          done
+
+      - name: Extract the guide snippets
+        run: python3 tools/extract_doc_snippets.py
+
+      # The samples restore DataNet from ./artifacts, and the builds above have
+      # already pulled published DataNet packages into the default global folder
+      # (src/ reaches DataNet.Text by PackageReference). The global folder is
+      # consulted ahead of every source, so a published package sitting in it
+      # wins whenever the two share a version — these two builds would then
+      # analyse a consumer of what already shipped. Their own NUGET_PACKAGES is
+      # what keeps them identical to the gates in ci.yml, which is the point:
+      # analysing a build that diverges from the one being gated is worse than
+      # not analysing at all. See docs/decisions/0009-sample-consumes-a-local-feed.md.
+      - name: Build the samples
+        env:
+          NUGET_PACKAGES: ${{ runner.temp }}/sample-packages
+        run: |
+          dotnet build samples/DataNet.Sample --configuration Release
+          dotnet build samples/DataNet.DocSnippets --configuration Release
+
+      # Coverage must be written before `end` collects it. OpenCover, not the
+      # default Cobertura: the .NET path of SonarQube Cloud reads OpenCover, and
+      # a format or path mismatch fails silently as 0% coverage.
+      - name: Test with coverage
+        run: |
           dotnet test DataNet.slnx --configuration Release --no-build \
             --collect:"XPlat Code Coverage;Format=opencover"
 
+      - name: End analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
           "${{ runner.temp }}/scanner/dotnet-sonarscanner" end /d:sonar.token="$SONAR_TOKEN"
