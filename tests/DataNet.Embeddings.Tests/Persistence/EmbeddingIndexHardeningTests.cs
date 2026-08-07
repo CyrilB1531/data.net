@@ -303,7 +303,7 @@ public sealed class EmbeddingIndexHardeningTests
     {
         int start = json.IndexOf("\"vectors\":\"", StringComparison.Ordinal) + "\"vectors\":\"".Length;
         int end = json.IndexOf('"', start);
-        return json.Substring(0, start) + payload + json.Substring(end);
+        return string.Concat(json.AsSpan(0, start), payload.AsSpan(), json.AsSpan(end));
     }
 
     /// <summary>The JSON value following <paramref name="property"/>, to the closing brace.</summary>

@@ -221,8 +221,7 @@ public sealed partial class EmbeddingIndex
     {
         JsonArtifact.ReadStartArray(ref reader, ArtifactName, IdsProperty);
 
-        string?[] ids = new string?[
-            declaredCount is int declared && declared > 0 ? Math.Min(declared, MaxPreallocatedIds) : 0];
+        string?[] ids = new string?[InitialIdCapacity(declaredCount)];
         int read = 0;
         while (reader.Read() && reader.TokenType is JsonTokenType.String or JsonTokenType.Null)
         {
@@ -238,7 +237,7 @@ public sealed partial class EmbeddingIndex
             limits.CheckArrayLength(read + 1L, IdsProperty);
             if (read == ids.Length)
             {
-                Array.Resize(ref ids, ids.Length == 0 ? 4 : ids.Length * 2);
+                Array.Resize(ref ids, ids.Length * 2);
             }
             ids[read++] = id;
         }
@@ -253,6 +252,19 @@ public sealed partial class EmbeddingIndex
         }
         return ids;
     }
+
+    /// <summary>
+    /// How large the id buffer starts. A declared count sizes it, capped, because
+    /// the common file declares <c>count</c> before <c>ids</c> and one allocation
+    /// beats a dozen doublings. Never zero: the growth step below doubles, and
+    /// doubling zero stays zero.
+    /// </summary>
+    private static int InitialIdCapacity(int? declaredCount) =>
+        declaredCount is int declared && declared > 0
+            ? Math.Min(declared, MaxPreallocatedIds)
+            : MinimumIdCapacity;
+
+    private const int MinimumIdCapacity = 4;
 
     private const int MaxPreallocatedIds = 65_536;
 
