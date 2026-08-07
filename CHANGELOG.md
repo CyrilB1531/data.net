@@ -169,7 +169,8 @@ and including `0.2.0` predate the split and covered all three at once — see
   `netstandard2.0`, and the two results are **bit-identical** — asserted with
   `float` equality rather than a tolerance, since one frozen corpus has to serve
   both builds.
-- **`EmbeddingIndex.Save` / `EmbeddingIndex.Load`**, so a corpus is embedded
+- **`EmbeddingIndex.Save` / `EmbeddingIndex.Load`**, with `SaveAsync` /
+  `LoadAsync` counterparts for the same round trip, so a corpus is embedded
   once. Building an index runs an encoder over every document — seconds for a
   demo, hours for anything real — and that work used to die with the process.
   The artifact is the versioned JSON of
