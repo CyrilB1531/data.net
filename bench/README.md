@@ -541,3 +541,159 @@ scikit-learn's `_binary_clf_curve` sort-and-accumulate exactly, and
 `MultiClassRoc`'s one-vs-rest reduction is scikit-learn's own), same data,
 parsed once outside the timed loop on both sides so neither pays JSON-parsing
 cost inside the measurement.
+
+## 6. Persisting an embedding index (issue #62)
+
+`EmbeddingIndex.Save` and `Load` on 10 000 vectors of 384 dimensions — 15 MB of
+floats, the shape a sentence-transformer corpus actually has. The array is
+generated from a fixed xorshift32 seed on both sides rather than committed: what
+a float block costs to write depends on how many floats it holds, not on what
+they are, and both sides reproduce the same shape from the same arithmetic
+without a fixture. In Python this is a 10 000 × 384 loop of plain-int arithmetic
+(`numpy.uint32`'s shifts raise on the overflow the algorithm depends on); it took
+2.35 s measured once outside the timed loop, which is fine to pay a single time
+at process start and did not need caching.
+
+Measuring this shape is what found a bug: loading it used to need an explicit
+`ArtifactLoadOptions { MaxArrayLength = 4_000_000 }`, because the reader applied
+that 1 000 000-element default — sized for vocabularies, not vector blocks — to
+the decoded float count, refusing 10 000 × 384 = 3 840 000 floats and, with it,
+any index past 2 604 vectors of this dimension. The figures below were taken
+before that was fixed, with the limit raised the same way a real caller would
+have had to. Fixing it changed no measured work — a bound check is O(1) — so the
+numbers stand: the vector block is now bounded by `MaxTotalBytes` instead, which
+caps the whole payload in bytes before parsing begins rather than the decoded
+element count after, and `EmbeddingIndexLoad` and `embedding_index_load` below
+call `Load` with the library's own defaults.
+
+### net10 vs netstandard2.0
+
+```bash
+dotnet run -c Release --project bench/DataNet.Text.Benchmarks        -- --filter '*EmbeddingIndex*' --inProcess
+dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter '*EmbeddingIndex*'
+```
+
+Intel i7-4770S, .NET 10.0.10. **Two runs per side, both shown**, interleaved
+net10 → netstandard2.0 → net10 → netstandard2.0, for the same reason section 4
+gives: one run per side cannot tell a small consistent penalty from noise.
+
+| Operation | net10 | netstandard2.0 | ratio | net10 alloc | ns2.0 alloc |
+| --- | --- | --- | --- | --- | --- |
+| `EmbeddingIndexSave` | 16.15 / 16.17 ms | 16.35 / 16.14 ms | 1.01 / 1.00 | 54.29 MB | 54.29 MB |
+| `EmbeddingIndexLoad` | 36.50 / 36.60 ms | 36.19 / 36.84 ms | 0.99 / 1.01 | 90 MB | 90 MB |
+
+Both rows land inside 0.99×–1.01×, which is what noise looks like on this
+harness — there is no `SpieceModel`-shaped story here. `Base64Numbers.WriteSingles`
+and `ReadSingles` use `MemoryMarshal.Cast`/`AsBytes` on both targets, on purpose:
+`BitConverter.SingleToInt32Bits` does not exist on netstandard2.0, so the code
+never forks into a per-target path the way `ProtobufReader` does. Allocation is
+identical down to the byte and does not move between runs, which section 4
+already established is what the counted (not sampled) column does.
+
+**Conditions.** The one-minute load average ran 4.95–5.68 across these four runs,
+in the same session as the cross-language pair below — see that section's
+measurement-conditions note; there was no quieter window available to wait for,
+so all six runs in this section share one load regime and are comparable to each
+other but not to the lower floor sections 4 and 5 recorded on a different day.
+
+### vs numpy — what the format choice costs
+
+`numpy.save` writes a short header followed by the raw little-endian block. That
+is precisely what a dedicated binary format for this artifact would have
+produced, so this comparison measures the decision recorded in
+[0011](../docs/decisions/0011-persistence-format.md) rather than illustrating it.
+`faiss` was deliberately not added to make this point a second way: on a flat
+index it also writes the same raw block `.npy` does, so pulling it in as a
+dependency would cost a pinned package to measure the same floor twice.
+
+```bash
+python bench/python/bench_persistence.py
+dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- compare-persistence
+python bench/compare.py persistence
+```
+
+DataNet on .NET 10.0.10 against numpy 2.5.1 on Python 3.12.3. Ratios above 1 mean
+DataNet is faster.
+
+| Operation | DataNet | numpy | wall | DataNet cpu | numpy cpu | **cpu** |
+| --- | --- | --- | --- | --- | --- | --- |
+| `embedding_index_save` | 16.921 ms | 16.724 ms | 0.99× | 18.524 ms | 16.723 ms | **0.90×** |
+| `embedding_index_load` | 32.627 ms | 2.811 ms | 0.09× | 33.747 ms | 2.811 ms | **0.08×** |
+
+| | DataNet artifact | `.npy` |
+| --- | --- | --- |
+| bytes on disk | 20 589 007 | 15 360 128 |
+
+Neither harness command above prints a byte count — `Harness.Measure` only
+records `ms_per_op` and `cpu_ms_per_op`. The DataNet figure is `stream.Length`
+after building the same index through `BuildIndex()` and calling `Save`; the
+`.npy` figure is `len(buffer.getvalue())` after `np.save` on the same
+`build_vectors()` array — the same two calls each `embedding_index_save` row
+above times, with the byte count kept instead of discarded.
+
+That is a 1.34× size ratio. Base64 alone accounts for 1.333× of it (the vector
+block is 15 360 000 bytes of floats, 20 480 000 as base64 text); the remaining
+0.5% is the `dimension`/`normalize`/`count` fields and the 10 000 quoted `doc-N`
+ids, none of which `.npy`'s header carries.
+
+### Reading the numbers
+
+The size ratio is what the design predicted: about 4/3, plus a fraction of a
+percent for the fields a raw block does not need. `EmbeddingIndexSave` is close
+to that too — 0.99× wall and 0.90× cpu, roughly an 11% cpu penalty for one extra
+copy-and-encode pass over a payload whose cost is otherwise dominated by writing
+15–20 MB somewhere, base64 or not.
+
+`EmbeddingIndexLoad` is not close to that, and this is where the decision costs
+more than its own framing suggests. It is not 1.34× slower than `numpy.load`; it
+is 11.6× slower on wall time and 12.0× on cpu — an order of magnitude past what a
+reader who assumes size and time move together would extrapolate from the 33%
+the design already priced. The allocation column in the section above says the
+same thing more plainly: `EmbeddingIndexSave` allocates 54.29 MB to move 15 MB of
+floats, `EmbeddingIndexLoad` allocates 90 MB to move the same 15 MB back — six
+times the payload, where `numpy.load` allocates one array sized to it. Reading
+the loader (`src/Shared/Persistence/JsonArtifact.cs`,
+`src/Shared/Persistence/Base64Numbers.cs`) shows why: `JsonArtifact.ReadAllBytes`
+copies the stream into a growable `MemoryStream` in 80 KB chunks — reallocating
+as it doubles — and then calls `.ToArray()` for one more full copy; decoding then
+materialises the base64 block as `raw` bytes and copies it a second time into the
+final `float[]` (`Base64Numbers.ReadUnboundedRaw` and `ReadSingles`); and `EnsureFinite`
+scans every one of the 3 840 000 restored floats before the index is handed back.
+That is on the order of five passes over a 15–20 MB block where `numpy.load`
+performs close to one. `Save` avoids most of this because `Utf8JsonWriter` writes
+its base64 text straight to the output stream — one encode pass, no growable
+accumulation buffer — which is exactly why the two operations diverge as sharply
+as they do.
+
+None of this was anticipated by size alone, and the honest reading is not that
+the design was wrong to choose JSON: ADR 0011 weighed one format against two and
+a fixed 33% against a decode that reads the whole payload into memory first, and
+said so plainly. What the 33% figure did not say, because nothing in that
+decision measured it, is that the buffered decode this section was written to
+verify costs an order of magnitude in time on `Load` — not the size-sized cost a
+reader would reasonably guess at from the ADR's own number. Where the size cost
+lands almost exactly on prediction, the time cost of loading a large vector block
+does not, and the gap is real rather than noise: both cross-language figures are
+the best of five repeated measurements each, not a single sample, and the four
+BenchmarkDotNet figures above (two runs each, two targets) spread no more than
+1.8% from their own minimum on either operation — nowhere near the order of
+magnitude the cross-language table shows.
+
+**Measurement conditions.** Both sides were run back to back, Python first, in
+the same session as the BenchmarkDotNet runs above — this machine carries a
+permanent background load from an editor, a browser and the assistant session
+driving the benchmark itself, and there was no quieter window to wait for
+without breaking the back-to-back pairing the comparison depends on:
+
+| Side | Started | Written | Load at start (1 / 5 / 15 min) |
+| --- | --- | --- | --- |
+| Python (`python-persistence.json`) | 12:08:41 | 12:09:40 | 4.45 / 5.08 / 5.85 |
+| C# (`csharp-persistence.json`) | 12:10:57 | 12:11:59 | 4.65 / 4.92 / 5.68 |
+
+The two starts are close on all three windows — within 0.2 on the one-minute
+average, lower on five and fifteen minutes for the side measured second — so,
+unlike section 5's pair, there is no direction here for the load itself to have
+biased the ratio: neither side woke the other into a spike the way section 5's
+C# side inherited from Python's. The 77-second gap between Python's write and
+C#'s start is this session's own overhead (issuing the next command, `dotnet`
+restoring before it starts producing output), not additional benchmarked work.

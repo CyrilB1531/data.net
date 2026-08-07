@@ -32,6 +32,9 @@ internal sealed partial class Embeddings
     /// <summary>The embedded corpus an index is filled from.</summary>
     public readonly float[][] corpusVectors = [new float[384]];
 
+    /// <summary>The embedded corpus an index is filled from, with the ids it is queried by.</summary>
+    public readonly (float[] Vector, string Id)[] corpusWithIds = [(new float[384], "doc-1")];
+
     /// <summary>The embedding a search is run for.</summary>
     public readonly float[] queryVector = new float[384];
 

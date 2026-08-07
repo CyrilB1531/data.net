@@ -67,4 +67,71 @@ public sealed class EmbeddingIndexTests
         Assert.Equal(0, hits[0].Index);
         Assert.Equal(1f, hits[0].Score, 5);
     }
+
+    [Fact]
+    public void An_index_without_ids_reports_none()
+    {
+        var index = new EmbeddingIndex(dimension: 2);
+        index.Add([1f, 0f]);
+
+        Assert.False(index.HasIds);
+        Assert.Null(index.GetId(0));
+    }
+
+    [Fact]
+    public void An_id_is_recalled_by_position()
+    {
+        var index = new EmbeddingIndex(dimension: 2);
+        index.Add([1f, 0f], "doc-1");
+        index.Add([0f, 1f], "documento-café");
+
+        Assert.True(index.HasIds);
+        Assert.Equal("doc-1", index.GetId(0));
+        Assert.Equal("documento-café", index.GetId(1));
+    }
+
+    [Fact]
+    public void A_null_id_is_the_same_as_no_id_at_all()
+    {
+        var index = new EmbeddingIndex(dimension: 2);
+        index.Add([1f, 0f], null);
+
+        Assert.False(index.HasIds);
+        Assert.Null(index.GetId(0));
+    }
+
+    [Fact]
+    public void Ids_and_anonymous_vectors_mix_in_one_index()
+    {
+        var index = new EmbeddingIndex(dimension: 2);
+        index.Add([1f, 0f]);
+        index.Add([0f, 1f], "named");
+        index.Add([1f, 1f]);
+
+        Assert.True(index.HasIds);
+        Assert.Null(index.GetId(0));
+        Assert.Equal("named", index.GetId(1));
+        Assert.Null(index.GetId(2));
+    }
+
+    [Fact]
+    public void An_empty_id_is_kept_as_an_id()
+    {
+        var index = new EmbeddingIndex(dimension: 2);
+        index.Add([1f, 0f], string.Empty);
+
+        Assert.True(index.HasIds);
+        Assert.Equal(string.Empty, index.GetId(0));
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(1)]
+    public void GetId_outside_the_index_is_rejected(int position)
+    {
+        var index = new EmbeddingIndex(dimension: 2);
+        index.Add([1f, 0f], "only");
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => index.GetId(position));
+    }
 }
