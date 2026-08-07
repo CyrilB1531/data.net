@@ -133,11 +133,11 @@ public sealed partial class EmbeddingIndex
         CancellationToken cancellationToken = default)
     {
         ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
-        byte[] payload = await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false);
+        ReadOnlyMemory<byte> payload = await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false);
         return FromPayload(payload, limits);
     }
 
-    private static EmbeddingIndex FromPayload(byte[] payload, in ArtifactLimits limits)
+    private static EmbeddingIndex FromPayload(ReadOnlyMemory<byte> payload, in ArtifactLimits limits)
     {
         try
         {
@@ -149,9 +149,9 @@ public sealed partial class EmbeddingIndex
         }
     }
 
-    private static EmbeddingIndex Parse(byte[] payload, in ArtifactLimits limits)
+    private static EmbeddingIndex Parse(ReadOnlyMemory<byte> payload, in ArtifactLimits limits)
     {
-        Utf8JsonReader reader = ArtifactIo.CreateReader(payload, ArtifactName, limits);
+        Utf8JsonReader reader = ArtifactIo.CreateReader(payload.Span, ArtifactName, limits);
         var header = new ArtifactHeader(ArtifactName, ArtifactVersion);
 
         int? dimension = null;

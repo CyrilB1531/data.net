@@ -112,11 +112,26 @@ internal static class JsonArtifact
     }
 
     /// <summary>Reads <paramref name="stream"/> to its end, failing past <c>MaxTotalBytes</c>.</summary>
-    /// <remarks>The stream is never disposed — ownership stays with the caller.</remarks>
-    public static byte[] ReadAllBytes(Stream stream, in ArtifactLimits limits)
+    /// <remarks>
+    /// <para>The stream is never disposed — ownership stays with the caller.</para>
+    /// <para>
+    /// The result is a window onto a buffer this method owns, and on the growable
+    /// path that buffer is longer than the payload. Read it as the
+    /// <see cref="ReadOnlyMemory{T}"/> it comes back as: reaching for the array
+    /// behind it, or for <c>.ToArray()</c>, both reintroduces the copy this return
+    /// type exists to remove and exposes an over-length tail of zeroes as if it
+    /// were part of the artifact.
+    /// </para>
+    /// </remarks>
+    public static ReadOnlyMemory<byte> ReadAllBytes(Stream stream, in ArtifactLimits limits)
     {
         Guard.NotNull(stream);
         CheckDeclaredLength(stream, limits);
+
+        if (TryReadDeclaredLength(stream, out byte[] exact, out int filled))
+        {
+            return new ReadOnlyMemory<byte>(exact, 0, filled);
+        }
 
         var buffer = new byte[CopyBufferSize];
         using var accumulated = new MemoryStream();
@@ -126,11 +141,11 @@ internal static class JsonArtifact
             limits.CheckTotalBytes(accumulated.Length + read);
             accumulated.Write(buffer, 0, read);
         }
-        return accumulated.ToArray();
+        return new ReadOnlyMemory<byte>(accumulated.GetBuffer(), 0, (int)accumulated.Length);
     }
 
     /// <summary>Asynchronous counterpart of <see cref="ReadAllBytes"/>.</summary>
-    public static async Task<byte[]> ReadAllBytesAsync(
+    public static async Task<ReadOnlyMemory<byte>> ReadAllBytesAsync(
         Stream stream,
         ArtifactLimits limits,
         CancellationToken cancellationToken)
@@ -138,10 +153,16 @@ internal static class JsonArtifact
         Guard.NotNull(stream);
         CheckDeclaredLength(stream, limits);
 
+        ReadOnlyMemory<byte>? exact = await TryReadDeclaredLengthAsync(stream, cancellationToken).ConfigureAwait(false);
+        if (exact is ReadOnlyMemory<byte> payload)
+        {
+            return payload;
+        }
+
         var buffer = new byte[CopyBufferSize];
         using var accumulated = new MemoryStream();
         int read;
-        while ((read = await ReadChunkAsync(stream, buffer, cancellationToken).ConfigureAwait(false)) > 0)
+        while ((read = await ReadChunkAsync(stream, buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
         {
             limits.CheckTotalBytes(accumulated.Length + read);
 
@@ -154,20 +175,109 @@ internal static class JsonArtifact
             accumulated.Write(buffer, 0, read);
 #pragma warning restore S6966
         }
-        return accumulated.ToArray();
+        return new ReadOnlyMemory<byte>(accumulated.GetBuffer(), 0, (int)accumulated.Length);
+    }
+
+    /// <summary>
+    /// Fills one exactly-sized buffer from a stream that knows its own length —
+    /// every <c>Load</c> that starts from a path, and every test that starts from a
+    /// <see cref="MemoryStream"/>.
+    /// </summary>
+    /// <remarks>
+    /// Returns <c>false</c> when there is no length to size a buffer from, when
+    /// that length is past what a single array can hold, or when the stream turns
+    /// out to hold more than it declared. In that last case the position is put
+    /// back first, so the caller's growable path reads the whole thing rather than
+    /// the prefix this one would have truncated it to.
+    /// </remarks>
+    private static bool TryReadDeclaredLength(Stream stream, out byte[] buffer, out int filled)
+    {
+        buffer = [];
+        filled = 0;
+        if (!stream.CanSeek)
+        {
+            return false;
+        }
+
+        long origin = stream.Position;
+        long declared = stream.Length - origin;
+        if (declared < 0 || declared > MaxSingleBuffer)
+        {
+            return false;
+        }
+
+        buffer = new byte[declared];
+        int read;
+        while (filled < buffer.Length && (read = stream.Read(buffer, filled, buffer.Length - filled)) > 0)
+        {
+            filled += read;
+        }
+
+        if (filled == buffer.Length && stream.ReadByte() >= 0)
+        {
+            stream.Position = origin;
+            buffer = [];
+            filled = 0;
+            return false;
+        }
+        return true;
+    }
+
+    /// <summary>Asynchronous counterpart of <see cref="TryReadDeclaredLength"/>; <c>null</c> where that one returns <c>false</c>.</summary>
+    private static async Task<ReadOnlyMemory<byte>?> TryReadDeclaredLengthAsync(
+        Stream stream,
+        CancellationToken cancellationToken)
+    {
+        if (!stream.CanSeek)
+        {
+            return null;
+        }
+
+        long origin = stream.Position;
+        long declared = stream.Length - origin;
+        if (declared < 0 || declared > MaxSingleBuffer)
+        {
+            return null;
+        }
+
+        var buffer = new byte[declared];
+        int filled = 0;
+        int read;
+        while (filled < buffer.Length
+            && (read = await ReadChunkAsync(stream, buffer, filled, buffer.Length - filled, cancellationToken).ConfigureAwait(false)) > 0)
+        {
+            filled += read;
+        }
+
+        if (filled == buffer.Length)
+        {
+            var probe = new byte[1];
+            if (await ReadChunkAsync(stream, probe, 0, 1, cancellationToken).ConfigureAwait(false) > 0)
+            {
+                stream.Position = origin;
+                return null;
+            }
+        }
+        return new ReadOnlyMemory<byte>(buffer, 0, filled);
     }
 
     /// <summary>Reads one chunk, using the allocation-free overload where it exists.</summary>
     /// <remarks>
     /// <c>Stream.ReadAsync(Memory&lt;byte&gt;, CancellationToken)</c> arrived with
     /// netstandard2.1, so the older target keeps the array overload. Wrapping the
-    /// difference here keeps the read loop itself free of conditional compilation.
+    /// difference here keeps the read loops themselves free of conditional
+    /// compilation.
     /// </remarks>
-    private static ValueTask<int> ReadChunkAsync(Stream stream, byte[] buffer, CancellationToken cancellationToken) =>
+    private static ValueTask<int> ReadChunkAsync(
+        Stream stream,
+        byte[] buffer,
+        int offset,
+        int count,
+        CancellationToken cancellationToken) =>
 #if NETSTANDARD2_0
-        new(stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken));
+        new(stream.ReadAsync(buffer, offset, count, cancellationToken));
 #else
-        stream.ReadAsync(buffer.AsMemory(), cancellationToken);
+        stream.ReadAsync(buffer.AsMemory(offset, count), cancellationToken);
 #endif
 
     /// <summary>Opens <paramref name="path"/> for writing an artifact; the caller owns the returned stream.</summary>
@@ -278,6 +388,14 @@ internal static class JsonArtifact
         new($"A '{artifact}' artifact is internally inconsistent: {detail}");
 
     private const int CopyBufferSize = 81920;
+
+    /// <summary>
+    /// The largest buffer the exact path will allocate — the CLR's own array
+    /// ceiling, which <c>netstandard2.0</c> has no <c>Array.MaxLength</c> to name.
+    /// A caller who raises <c>MaxTotalBytes</c> past it gets the growable path and
+    /// whatever it did before, rather than a new exception from this method.
+    /// </summary>
+    private const long MaxSingleBuffer = 0x7FFFFFC7;
 
     private static void CheckDeclaredLength(Stream stream, in ArtifactLimits limits)
     {
