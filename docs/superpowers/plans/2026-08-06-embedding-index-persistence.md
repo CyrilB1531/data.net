@@ -1956,7 +1956,7 @@ If the Python generator is too slow to sit in the harness, precompute it once an
 
 Add a section after §4, following its conventions — the exact machine and runtime versions, both the wall and cpu columns, and a paragraph reading the numbers. The skeleton, with the figures from Steps 2 and 5 filled in:
 
-```markdown
+````markdown
 ## 5. Persisting an embedding index (issue #62)
 
 `EmbeddingIndex.Save` and `Load` on 10 000 vectors of 384 dimensions — 15 MB of
@@ -1999,7 +1999,7 @@ encode and decode is the difference in time, and the load path allocates the
 payload buffer and the decoded array where numpy allocates one block. Say plainly
 whether the cost is what the design predicted — and if it is not, say that
 instead.]
-```
+````
 
 - [ ] **Step 7: Commit**
 
