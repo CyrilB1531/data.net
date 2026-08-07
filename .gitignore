@@ -38,3 +38,6 @@ tools/__pycache__/
 
 # Guide snippets are extracted from the Markdown on every run (tools/extract_doc_snippets.py)
 samples/DataNet.DocSnippets/Generated/
+
+# Plans and specs are working documents, not deliverables
+docs/superpowers/
