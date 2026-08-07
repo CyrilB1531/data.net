@@ -72,6 +72,24 @@ def persistence() -> None:
     print("hides work .NET does on background GC threads; CPython is single-threaded.")
 
 
+def _metric_row(op: str, cs_row: dict, py_row: dict) -> tuple[str, float | None]:
+    """One printable comparison line, and the CPU ratio the merge gate reads.
+
+    Returned rather than printed so that metrics() below stays a loop over rows
+    instead of a loop that also computes ratios, formats them and judges them.
+    The ratio is None when either side did not report processor time, which is
+    not the same as a ratio of zero and must not reach the gate as one.
+    """
+    c_w, p_w = cs_row["ms_per_op"], py_row["ms_per_op"]
+    c_c, p_c = cs_row.get("cpu_ms_per_op"), py_row.get("cpu_ms_per_op")
+    wall = f"{p_w / c_w:.2f}x" if c_w else "n/a"
+    cpu_ratio = (p_c / c_c) if c_c and p_c else None
+    cpu = f"{cpu_ratio:.2f}x" if cpu_ratio is not None else "n/a"
+    line = (f"{op:<32} {c_w:>10.3f} {p_w:>10.3f} {wall:>7} | "
+            f"{(c_c or 0):>10.3f} {(p_c or 0):>10.3f} {cpu:>7}")
+    return line, cpu_ratio
+
+
 def metrics() -> None:
     py = load("python", "metrics")
     cs = load("csharp", "metrics")
@@ -87,13 +105,8 @@ def metrics() -> None:
         op = row["operation"]
         if op not in cs_by_op:
             continue
-        c_w, p_w = cs_by_op[op]["ms_per_op"], row["ms_per_op"]
-        c_c, p_c = cs_by_op[op].get("cpu_ms_per_op"), row.get("cpu_ms_per_op")
-        wall = f"{p_w / c_w:.2f}x" if c_w else "n/a"
-        cpu_ratio = (p_c / c_c) if c_c and p_c else None
-        cpu = f"{cpu_ratio:.2f}x" if cpu_ratio is not None else "n/a"
-        print(f"{op:<32} {c_w:>10.3f} {p_w:>10.3f} {wall:>7} | "
-              f"{(c_c or 0):>10.3f} {(p_c or 0):>10.3f} {cpu:>7}")
+        line, cpu_ratio = _metric_row(op, cs_by_op[op], row)
+        print(line)
         if cpu_ratio is not None and cpu_ratio < 1.0:
             below_gate.append((op, cpu_ratio))
     print()

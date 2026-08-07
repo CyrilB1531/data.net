@@ -19,9 +19,6 @@ from __future__ import annotations
 
 import random
 from collections.abc import Sequence
-from typing import TypeVar
-
-T = TypeVar("T")
 
 
 class SeededRandom:
@@ -39,7 +36,7 @@ class SeededRandom:
     def randrange(self, stop: int) -> int:
         return self._rng.randrange(stop)  # NOSONAR S2245
 
-    def choice(self, seq: Sequence[T]) -> T:
+    def choice[T](self, seq: Sequence[T]) -> T:
         return self._rng.choice(seq)  # NOSONAR S2245
 
     def uniform(self, a: float, b: float) -> float:

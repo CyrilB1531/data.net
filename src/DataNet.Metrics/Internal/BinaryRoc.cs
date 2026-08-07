@@ -146,9 +146,12 @@ internal static class BinaryRoc
             // ParamName instead would change ArgumentException.Message itself
             // (it appends "(Parameter 'yTrue')" whenever ParamName is set),
             // which is the regression this comment exists to prevent.
-#pragma warning disable S3928
+// CA2208 reads the same literal the comment above defends and reaches the same
+// verdict from the helper's own signature, where yTrue is genuinely not a
+// parameter. It is disabled here for the reason spelled out above, not waived.
+#pragma warning disable S3928, CA2208
             throw new ArgumentException("Only one class is present in yTrue; ROC AUC is undefined for it.", "yTrue");
-#pragma warning restore S3928
+#pragma warning restore S3928, CA2208
         }
     }
 }
