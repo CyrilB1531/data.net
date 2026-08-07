@@ -45,7 +45,11 @@ public sealed record ArtifactLoadOptions
     /// <summary>Maximum total number of bytes read from the source. Default 256 MiB.</summary>
     public long MaxTotalBytes { get; init; } = ArtifactLimits.DefaultMaxTotalBytes;
 
-    /// <summary>Maximum length of any single array in the source. Default 1 000 000.</summary>
+    /// <summary>
+    /// Maximum length of any single array in the source, except an
+    /// <c>EmbeddingIndex</c>'s vector block, which <see cref="MaxTotalBytes"/>
+    /// bounds instead. Default 1 000 000.
+    /// </summary>
     public int MaxArrayLength { get; init; } = ArtifactLimits.DefaultMaxArrayLength;
 
     internal ArtifactLimits ToLimits() =>

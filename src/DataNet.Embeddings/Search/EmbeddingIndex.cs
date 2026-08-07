@@ -15,13 +15,14 @@ public readonly record struct SearchResult(int Index, float Score);
 /// </para>
 /// <para>Adding is not thread-safe; concurrent <see cref="Search"/> calls are.</para>
 /// </remarks>
-public sealed class EmbeddingIndex
+public sealed partial class EmbeddingIndex
 {
     private readonly int _dim;
     private readonly bool _normalize;
     private float[] _data = Array.Empty<float>();
     private int _length;
     private int _count;
+    private string?[]? _ids;
 
     /// <summary>Creates an index for vectors of the given dimension.</summary>
     /// <param name="dimension">The embedding dimension.</param>
@@ -66,6 +67,69 @@ public sealed class EmbeddingIndex
         }
         _count++;
     }
+
+    /// <summary>Adds a vector together with an opaque id the caller can recall after a reload.</summary>
+    /// <param name="vector">The embedding, of length <see cref="Dimension"/>.</param>
+    /// <param name="id">
+    /// Anything identifying the document — a primary key, a URL, a path. Kept
+    /// verbatim and never interpreted. <c>null</c> is exactly equivalent to
+    /// <see cref="Add(ReadOnlySpan{float})"/>.
+    /// </param>
+    /// <remarks>
+    /// A separate overload rather than an optional parameter on
+    /// <see cref="Add(ReadOnlySpan{float})"/>: adding one would change that method's
+    /// signature and break every already-compiled caller.
+    /// </remarks>
+    public void Add(ReadOnlySpan<float> vector, string? id)
+    {
+        Add(vector);
+        if (id is null)
+        {
+            return;
+        }
+
+        // Allocated on the first id and no earlier: an index whose items are
+        // anonymous pays nothing for a feature it does not use.
+        _ids ??= new string?[_count];
+        if (_ids.Length < _count)
+        {
+            Array.Resize(ref _ids, Math.Max(_count, _ids.Length * 2));
+        }
+        _ids[_count - 1] = id;
+    }
+
+    /// <summary>Whether any vector in this index carries an id.</summary>
+    public bool HasIds => _ids is not null;
+
+    /// <summary>The id of the item at <paramref name="index"/>, or <c>null</c> if it has none.</summary>
+    /// <param name="index">A position in <c>[0, Count)</c> — a <see cref="SearchResult.Index"/>.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the index.</exception>
+    /// <remarks>
+    /// The id is looked up here rather than carried on <see cref="SearchResult"/>.
+    /// <see cref="Search"/> scores into a <c>SearchResult[Count]</c> and sorts it;
+    /// the struct is 8 bytes the collector never has to look inside, and putting a
+    /// reference in it would turn that hot array into one the GC must scan and the
+    /// sort must move references through.
+    /// </remarks>
+    public string? GetId(int index)
+    {
+        if ((uint)index >= (uint)_count)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(index),
+                index,
+                $"index must be in [0, {_count}).");
+        }
+        return IdAt(index);
+    }
+
+    /// <summary>The id at <paramref name="index"/>, unchecked, tolerating a short id buffer.</summary>
+    /// <remarks>
+    /// The buffer stops at the last item that was given an id, so positions past it
+    /// are absent rather than null-filled.
+    /// </remarks>
+    private string? IdAt(int index) =>
+        _ids is not null && index < _ids.Length ? _ids[index] : null;
 
     /// <summary>Returns the <paramref name="k"/> most similar items to <paramref name="query"/>, best first.</summary>
     public IReadOnlyList<SearchResult> Search(ReadOnlySpan<float> query, int k)

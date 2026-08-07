@@ -1,5 +1,6 @@
 using System.Text.Json;
 using DataNet.Embeddings.Persistence;
+using DataNet.Embeddings.Search;
 using DataNet.Text.Vectorization;
 
 namespace DataNet.Text.Benchmarks.CrossLang;
@@ -38,6 +39,14 @@ public static class PersistenceCrossLang
         string unigramJson = BenchCorpus.Path("tokenizer_30k_unigram.json");
         string spiece = BenchCorpus.Path("spiece_30k.model");
 
+        EmbeddingIndex index = PersistenceBenchmarks.BuildIndex();
+        byte[] indexArtifact;
+        using (var stream = new MemoryStream())
+        {
+            index.Save(stream);
+            indexArtifact = stream.ToArray();
+        }
+
         Console.WriteLine("C# persistence cross-lang bench");
         var results = new List<Harness.OperationResult>
         {
@@ -55,6 +64,17 @@ public static class PersistenceCrossLang
             {
                 using var stream = new MemoryStream(artifact);
                 return TfidfVectorizer.Load(stream);
+            }),
+            Harness.Measure("embedding_index_save", () =>
+            {
+                using var stream = new MemoryStream(indexArtifact.Length);
+                index.Save(stream);
+                return stream.Length;
+            }),
+            Harness.Measure("embedding_index_load", () =>
+            {
+                using var stream = new MemoryStream(indexArtifact);
+                return EmbeddingIndex.Load(stream);
             }),
         };
 

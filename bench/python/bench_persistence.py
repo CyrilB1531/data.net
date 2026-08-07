@@ -18,6 +18,7 @@ A margin in DataNet's favour therefore reflects, in part, work it does not do.
 
 from __future__ import annotations
 
+import io
 import json
 import pickle
 import platform
@@ -25,6 +26,7 @@ from importlib.metadata import version
 from pathlib import Path
 from time import perf_counter, process_time
 
+import numpy as np
 import sentencepiece as spm
 from sklearn.feature_extraction.text import TfidfVectorizer
 from tokenizers import Tokenizer
@@ -82,6 +84,31 @@ def measure(operation: str, action) -> dict:
     return {"operation": operation, "ms_per_op": best_wall, "cpu_ms_per_op": cpu_of_best}
 
 
+def build_vectors() -> "np.ndarray":
+    """A 10 000 x 384 block, from the same xorshift32 seed the C# side uses.
+
+    The two blocks are the same size and come from the same generator; they are not
+    bit-identical, and do not need to be -- DataNet normalizes on insertion, and what
+    is being timed is how many floats there are rather than which ones.
+
+    A .npy file is a short header followed by the raw little-endian block, so this
+    row is the binary floor DataNet's JSON + base64 artifact is measured against --
+    not a competitor doing the same job, a lower bound on the job itself.
+    """
+    count, dimension = 10_000, 384
+    out = np.empty((count, dimension), dtype=np.float32)
+    state = 12345
+    for item in range(count):
+        for i in range(dimension):
+            # Plain ints masked to 32 bits, which is what C#'s uint does anyway --
+            # numpy's uint32 raises on the overflow these shifts depend on.
+            state = (state ^ (state << 13)) & 0xFFFFFFFF
+            state ^= state >> 17
+            state = (state ^ (state << 5)) & 0xFFFFFFFF
+            out[item, i] = (state & 0xFFFFFF) / 0xFFFFFF - 0.5
+    return out
+
+
 def main() -> None:
     check_corpus()
 
@@ -94,6 +121,11 @@ def main() -> None:
     fitted = TfidfVectorizer().fit(documents)
     artifact = pickle.dumps(fitted)
 
+    vectors = build_vectors()
+    buffer = io.BytesIO()
+    np.save(buffer, vectors)
+    npy_bytes = buffer.getvalue()
+
     from tokenizers.models import WordPiece
 
     print("Python persistence bench")
@@ -104,6 +136,8 @@ def main() -> None:
         measure("spiece_model", lambda: spm.SentencePieceProcessor(model_file=spiece)),
         measure("tfidf_save", lambda: pickle.dumps(fitted)),
         measure("tfidf_load", lambda: pickle.loads(artifact)),
+        measure("embedding_index_save", lambda: np.save(io.BytesIO(), vectors)),
+        measure("embedding_index_load", lambda: np.load(io.BytesIO(npy_bytes))),
     ]
 
     payload = {
@@ -113,6 +147,7 @@ def main() -> None:
                 "tokenizers": version("tokenizers"),
                 "sentencepiece": version("sentencepiece"),
                 "scikit-learn": version("scikit-learn"),
+                "numpy": version("numpy"),
             },
             "python": platform.python_version(),
             "machine": platform.machine(),

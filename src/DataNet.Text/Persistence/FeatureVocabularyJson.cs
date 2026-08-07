@@ -1,4 +1,3 @@
-using System.Buffers.Binary;
 using System.Text.Json;
 using DataNet.Internal.Persistence;
 
@@ -49,7 +48,6 @@ internal static class FeatureVocabularyJson
     /// </remarks>
     public static void WriteIdf(Utf8JsonWriter writer, IReadOnlyList<double> idf)
     {
-        byte[] raw = new byte[idf.Count * sizeof(double)];
         for (int i = 0; i < idf.Count; i++)
         {
             double value = idf[i];
@@ -61,11 +59,8 @@ internal static class FeatureVocabularyJson
                 throw new InvalidDataException(
                     $"Cannot persist a non-finite idf weight at index {i}: the model is broken before it reaches the file.");
             }
-            BinaryPrimitives.WriteInt64LittleEndian(
-                raw.AsSpan(i * sizeof(double)),
-                BitConverter.DoubleToInt64Bits(value));
         }
-        writer.WriteBase64String(IdfProperty, raw);
+        Base64Numbers.WriteDoubles(writer, IdfProperty, idf);
     }
 
     /// <summary>Reads and bounds-checks the declared feature count.</summary>
@@ -128,46 +123,18 @@ internal static class FeatureVocabularyJson
     /// <summary>Reads the base64 idf vector written by <see cref="WriteIdf"/>.</summary>
     public static double[] ReadIdf(ref Utf8JsonReader reader, string artifact, in ArtifactLimits limits)
     {
-        if (!reader.Read() || reader.TokenType != JsonTokenType.String)
+        double[] values = Base64Numbers.ReadDoubles(ref reader, artifact, IdfProperty, limits);
+        for (int i = 0; i < values.Length; i++)
         {
-            throw JsonArtifact.UnexpectedToken(artifact, IdfProperty, reader.TokenType);
-        }
-        // Bound the encoded run before decoding it: TryGetBytesFromBase64 materialises
-        // the whole decoded buffer first, so checking only the decoded count would let
-        // MaxArrayLength be satisfied by an allocation it was supposed to prevent.
-        // Four base64 characters carry three bytes, and eight bytes carry one double.
-        long encodedLength = reader.HasValueSequence ? reader.ValueSequence.Length : reader.ValueSpan.Length;
-        limits.CheckArrayLength(encodedLength * 3 / (4 * sizeof(double)), IdfProperty);
-
-        if (!reader.TryGetBytesFromBase64(out byte[]? raw))
-        {
-            throw JsonArtifact.Inconsistent(artifact, $"'{IdfProperty}' is not valid base64.");
-        }
-        if (raw.Length % sizeof(double) != 0)
-        {
-            throw JsonArtifact.Inconsistent(
-                artifact,
-                $"'{IdfProperty}' does not hold a whole number of 64-bit values ({raw.Length} bytes).");
-        }
-
-        int count = raw.Length / sizeof(double);
-        limits.CheckArrayLength(count, IdfProperty);
-
-        var values = new double[count];
-        for (int i = 0; i < count; i++)
-        {
-            double value = BitConverter.Int64BitsToDouble(
-                BinaryPrimitives.ReadInt64LittleEndian(raw.AsSpan(i * sizeof(double))));
             // Raw bits carry NaN and infinity perfectly well, where JSON numbers could
             // not. Left through, they turn every later Transform into NaN scores —
             // silently, and a long way from the file that caused it.
-            if (double.IsNaN(value) || double.IsInfinity(value))
+            if (double.IsNaN(values[i]) || double.IsInfinity(values[i]))
             {
                 throw JsonArtifact.Inconsistent(
                     artifact,
                     $"'{IdfProperty}' holds a value that is not finite, at index {i}.");
             }
-            values[i] = value;
         }
         return values;
     }
