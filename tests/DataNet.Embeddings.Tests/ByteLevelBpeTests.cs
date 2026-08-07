@@ -88,4 +88,66 @@ public sealed class ByteLevelBpeTests
         // Encode_matches_tokenizers_over_the_gpt2_vocabulary.
         Assert.Equal(50000, vocabulary.Merges.Count);
     }
+
+    [Fact]
+    public void Decode_matches_tokenizers_in_both_modes()
+    {
+        using JsonDocument doc = OracleLoader.Load("bytelevel_bpe.json");
+        var tokenizer = new BpeTokenizer(Gpt2Vocabulary());
+
+        var failures = new List<string>();
+        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
+        {
+            int[] ids = c.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32()).ToArray();
+            string expected = c.GetProperty("decoded").GetString()!;
+            string expectedSkipping = c.GetProperty("decoded_skip_specials").GetString()!;
+
+            string actual = tokenizer.Decode(ids);
+            string actualSkipping = tokenizer.Decode(ids, skipSpecialTokens: true);
+            if (!string.Equals(expected, actual, StringComparison.Ordinal))
+            {
+                failures.Add($"decode {JsonSerializer.Serialize(c.GetProperty("text").GetString())}\n  exp: {JsonSerializer.Serialize(expected)}\n  got: {JsonSerializer.Serialize(actual)}");
+            }
+            if (!string.Equals(expectedSkipping, actualSkipping, StringComparison.Ordinal))
+            {
+                failures.Add($"decode(skip) {JsonSerializer.Serialize(c.GetProperty("text").GetString())}\n  exp: {JsonSerializer.Serialize(expectedSkipping)}\n  got: {JsonSerializer.Serialize(actualSkipping)}");
+            }
+        }
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    /// <summary>
+    /// The property byte-level BPE exists to guarantee. It is asserted separately
+    /// from the oracle comparison because it is the claim a user relies on, and
+    /// because a mapping-table error can satisfy neither while looking like only
+    /// one is broken.
+    /// </summary>
+    [Fact]
+    public void Decode_of_Encode_is_the_input()
+    {
+        using JsonDocument doc = OracleLoader.Load("bytelevel_bpe.json");
+        var tokenizer = new BpeTokenizer(Gpt2Vocabulary());
+
+        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
+        {
+            string text = c.GetProperty("text").GetString()!;
+            Assert.Equal(text, tokenizer.Decode(tokenizer.Encode(text).Ids));
+        }
+    }
+
+    [Fact]
+    public void The_span_overload_agrees_with_the_list_one()
+    {
+        var tokenizer = new BpeTokenizer(Gpt2Vocabulary());
+        int[] ids = [.. tokenizer.Encode("round trip 東京 👋").Ids];
+        Assert.Equal(tokenizer.Decode(ids), tokenizer.Decode(ids.AsSpan()));
+    }
+
+    [Fact]
+    public void Decode_rejects_an_id_outside_the_vocabulary()
+    {
+        var tokenizer = new BpeTokenizer(Gpt2Vocabulary());
+        Assert.Throws<ArgumentOutOfRangeException>(() => tokenizer.Decode(new[] { 999_999 }));
+    }
 }

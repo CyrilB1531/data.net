@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Text;
 using DataNet.Internal.Persistence;
 
 namespace DataNet.Embeddings.Tokenization;
@@ -42,6 +43,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private readonly BpePreTokenizer _split;
     private readonly BpeVocabulary _vocabulary;
     private readonly (string Token, int Id)[] _addedTokens; // any order -- NextAddedToken resolves leftmost, then longest, itself
+    private readonly HashSet<int> _addedIds;
     private readonly string? _endOfWord;
     private readonly int _unkId;
     private readonly bool _hasUnk;
@@ -86,6 +88,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         _addedTokens = [.. vocabulary.AddedTokens
             .Where(entry => entry.Key.Length > 0)
             .Select(entry => (entry.Key, entry.Value))];
+        _addedIds = [.. vocabulary.AddedTokens.Values];
 
         if (vocabulary.UnkToken is { } unk)
         {
@@ -370,5 +373,104 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             count--;
         }
         return count;
+    }
+
+    /// <summary>Reassembles the text <paramref name="ids"/> encode.</summary>
+    /// <remarks>
+    /// <para>
+    /// Matches <c>tokenizers.Tokenizer.decode(ids, skip_special_tokens=…)</c>.
+    /// For a byte-level model this is exact: every byte of the input was mapped
+    /// to a symbol, so every byte comes back.
+    /// </para>
+    /// <para>
+    /// The default is deliberately the opposite of HuggingFace's. Python skips
+    /// special tokens unless told otherwise; here the round trip is exact unless
+    /// asked otherwise, because a <c>Decode</c> that silently drops tokens makes
+    /// <c>Decode(Encode(x)) == x</c> false in exactly the case a caller would
+    /// write to check it.
+    /// </para>
+    /// <para>
+    /// For a byte-level model, <paramref name="ids"/> assembled by hand rather
+    /// than produced by <see cref="Encode"/> can concatenate byte symbols into a
+    /// sequence that is not valid UTF-8 -- e.g. a lone continuation byte with no
+    /// lead byte. <see cref="JsonArtifact.Utf8NoBom"/> throws rather than
+    /// substitutes on that, so this can raise <see cref="DecoderFallbackException"/>
+    /// in that case, the mirror of the surrogate case documented on <see cref="Encode"/>.
+    /// </para>
+    /// </remarks>
+    /// <param name="ids">Token ids, e.g. from <see cref="Encode"/>.</param>
+    /// <param name="skipSpecialTokens">Drop added tokens instead of rendering them.</param>
+    /// <exception cref="ArgumentOutOfRangeException">An id is outside the vocabulary.</exception>
+    /// <exception cref="DecoderFallbackException">
+    /// A byte-level model's <paramref name="ids"/> decode to bytes that are not
+    /// well-formed UTF-8.
+    /// </exception>
+    public string Decode(IReadOnlyList<int> ids, bool skipSpecialTokens = false)
+    {
+        Guard.NotNull(ids);
+        var buffer = new StringBuilder();
+        for (int i = 0; i < ids.Count; i++)
+        {
+            Append(buffer, ids[i], skipSpecialTokens);
+        }
+        return Finish(buffer);
+    }
+
+    /// <summary>Reassembles the text <paramref name="ids"/> encode.</summary>
+    /// <param name="ids">Token ids, e.g. from <see cref="Encode"/>.</param>
+    /// <param name="skipSpecialTokens">Drop added tokens instead of rendering them.</param>
+    /// <exception cref="ArgumentOutOfRangeException">An id is outside the vocabulary.</exception>
+    /// <exception cref="DecoderFallbackException">
+    /// A byte-level model's <paramref name="ids"/> decode to bytes that are not
+    /// well-formed UTF-8; see <see cref="Decode(IReadOnlyList{int}, bool)"/>.
+    /// </exception>
+    public string Decode(ReadOnlySpan<int> ids, bool skipSpecialTokens = false)
+    {
+        var buffer = new StringBuilder();
+        for (int i = 0; i < ids.Length; i++)
+        {
+            Append(buffer, ids[i], skipSpecialTokens);
+        }
+        return Finish(buffer);
+    }
+
+    private void Append(StringBuilder buffer, int id, bool skipSpecialTokens)
+    {
+        if (id < 0 || id >= _tokens.Length || _tokens[id] is not { } token)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(id), id, $"The id is outside the vocabulary [0, {_tokens.Length}).");
+        }
+        if (skipSpecialTokens && _addedIds.Contains(id))
+        {
+            return;
+        }
+        buffer.Append(token);
+    }
+
+    /// <summary>Turns the concatenated tokens back into text.</summary>
+    private string Finish(StringBuilder buffer)
+    {
+        if (!_byteLevel)
+        {
+            // The classic lineage marks a word's end rather than its leading space,
+            // so the marker is what a space was.
+            return _endOfWord is null
+                ? buffer.ToString()
+                : buffer.Replace(_endOfWord, " ").ToString().TrimEnd();
+        }
+
+        // Every character stands for one byte; anything else never came from Encode.
+        byte[] bytes = new byte[buffer.Length];
+        int n = 0;
+        for (int i = 0; i < buffer.Length; i++)
+        {
+            if (ByteLevelAlphabet.TryToByte(buffer[i], out byte value))
+            {
+                bytes[n] = value;
+                n++;
+            }
+        }
+        return JsonArtifact.Utf8NoBom.GetString(bytes, 0, n);
     }
 }

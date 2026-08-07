@@ -172,4 +172,12 @@ public sealed class BpeTokenizerTests
 
         Assert.Equal(new BpeTokenizer(TinyVocabulary()).Encode("the quick brown fox").Ids, result.Ids);
     }
+
+    [Fact]
+    public void Decode_turns_the_end_of_word_marker_back_into_a_space()
+    {
+        var tokenizer = new BpeTokenizer(TinyVocabulary());
+        TokenizationResult encoded = tokenizer.Encode("the quick brown fox");
+        Assert.Equal("the quick brown fox", tokenizer.Decode(encoded.Ids));
+    }
 }
