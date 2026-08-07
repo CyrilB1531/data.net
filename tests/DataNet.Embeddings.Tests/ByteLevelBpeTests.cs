@@ -67,6 +67,17 @@ public sealed class ByteLevelBpeTests
     {
         // 50 257 is GPT-2's size. A fixture that silently changed shape would
         // otherwise surface as a wall of token diffs rather than as itself.
-        Assert.Equal(50257, Gpt2Vocabulary().Count);
+        BpeVocabulary vocabulary = Gpt2Vocabulary();
+        Assert.Equal(50257, vocabulary.Count);
+
+        // gpt2_merges.txt has 50 001 lines: the "#version: 0.2" header plus
+        // 50 000 merge lines. 49 992, not 50 000, reach MergePair: this
+        // helper's "line[0] == '#'" comment check (matching the brief) also
+        // discards the eight real merge lines whose left-hand token is itself
+        // made of one or more '#' characters (e.g. "## ##"), since GPT-2's
+        // byte-level alphabet maps some input bytes onto '#'. A truncated or
+        // reordered merges.txt should surface as this count changing, not as
+        // a wall of token diffs from Encode_matches_tokenizers_over_the_gpt2_vocabulary.
+        Assert.Equal(49992, vocabulary.Merges.Count);
     }
 }

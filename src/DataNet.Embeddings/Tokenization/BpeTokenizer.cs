@@ -133,6 +133,15 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
     /// <summary>Tokenizes <paramref name="text"/> into sub-word tokens and their ids.</summary>
     /// <remarks>Matches <c>tokenizers.Tokenizer.encode(text)</c>, without the post-processor.</remarks>
+    /// <exception cref="System.Text.EncoderFallbackException">
+    /// A byte-level model (<see cref="BpeVocabulary.ByteLevel"/>) re-encodes
+    /// <paramref name="text"/> to UTF-8 using the same encoding artifacts are read and
+    /// written in, which throws rather than substitutes on an unpaired surrogate --
+    /// deliberately: byte-level BPE is lossless over any well-formed <see cref="string"/>,
+    /// valid UTF-8 or not, but a lone surrogate is not well-formed UTF-16 to begin with,
+    /// so there is no byte sequence for it to be lossless <em>about</em>. This cannot
+    /// happen on the classic (non-byte-level) path, which never encodes to UTF-8.
+    /// </exception>
     public TokenizationResult Encode(string text)
     {
         Guard.NotNull(text);
@@ -294,9 +303,19 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
     /// <summary>Fills <paramref name="symbols"/> with one id per UTF-8 byte of <paramref name="piece"/>.</summary>
     /// <remarks>
+    /// <para>
     /// One byte, one symbol: a four-byte emoji enters the merge loop as four
     /// symbols. That is where the round-trip guarantee comes from — every byte of
     /// the input is represented, so decoding can put them back.
+    /// </para>
+    /// <para>
+    /// Unlike <see cref="InitialSymbols"/>, this never appends <c>_endOfWord</c>:
+    /// <see cref="BpeVocabulary.EndOfWordSuffix"/> is documented as
+    /// <see langword="null"/> for byte-level models, and no model in scope pairs
+    /// the two, but the two properties are independent and a vocabulary could
+    /// still declare both. Were that to happen, the suffix would be silently
+    /// ignored on this path rather than applied.
+    /// </para>
     /// </remarks>
     /// <exception cref="ArgumentException">
     /// A byte-level model's vocabulary is expected to contain all 256 byte-level
@@ -304,6 +323,9 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// A missing entry means the vocabulary is not what <see cref="BpeVocabulary.ByteLevel"/>
     /// claims it is, which is a broken model, not ordinary uncovered input the way
     /// an unmapped code point is on the classic path.
+    /// </exception>
+    /// <exception cref="System.Text.EncoderFallbackException">
+    /// <paramref name="piece"/> contains an unpaired surrogate; see <see cref="Encode"/>.
     /// </exception>
     private int ByteLevelSymbols(string piece, Span<int> symbols)
     {

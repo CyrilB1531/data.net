@@ -8,7 +8,13 @@ namespace DataNet.Embeddings.Tokenization;
 /// Byte-level BPE never sees text: it sees the 256 possible byte values, each
 /// standing in as one printable character so that a merge table over characters
 /// can address arbitrary bytes. That substitution is what makes the tokenizer
-/// lossless over any input at all, valid UTF-8 or not.
+/// lossless over any UTF-8 byte sequence at all, valid text or not: no byte is
+/// ever unrepresentable. The caller side of that promise is narrower, because
+/// the input a tokenizer actually takes is a .NET <see cref="string"/> rather
+/// than raw bytes -- <see cref="BpeTokenizer.Encode(string)"/> re-encodes it to
+/// UTF-8 first, and a lone surrogate has no UTF-8 encoding to begin with, so
+/// that one input shape is out of scope for this guarantee rather than covered
+/// by it. See <see cref="BpeTokenizer.Encode(string)"/> for what happens then.
 /// </para>
 /// <para>
 /// The table is <em>built from the published construction</em> rather than
