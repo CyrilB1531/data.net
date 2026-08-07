@@ -130,6 +130,161 @@ public sealed class EmbeddingIndexPersistenceTests
         Assert.False(File.Exists(path));
     }
 
+    [Fact]
+    public void A_reloaded_index_scores_bit_for_bit_what_the_original_scored()
+    {
+        EmbeddingIndex original = Corpus(normalize: true);
+        float[] query = [0.3f, -0.7f, 0.2f, 0.9f];
+
+        EmbeddingIndex reloaded = RoundTrip(original);
+
+        IReadOnlyList<SearchResult> before = original.Search(query, k: 4);
+        IReadOnlyList<SearchResult> after = reloaded.Search(query, k: 4);
+        Assert.Equal(before.Count, after.Count);
+        for (int i = 0; i < before.Count; i++)
+        {
+            Assert.Equal(before[i].Index, after[i].Index);
+            Assert.Equal(
+                BitConverter.SingleToInt32Bits(before[i].Score),
+                BitConverter.SingleToInt32Bits(after[i].Score));
+        }
+    }
+
+    [Fact]
+    public void The_configuration_survives_the_round_trip()
+    {
+        EmbeddingIndex reloaded = RoundTrip(Corpus(normalize: true));
+
+        Assert.Equal(4, reloaded.Dimension);
+        Assert.Equal(3, reloaded.Count);
+    }
+
+    [Fact]
+    public void An_index_saved_unnormalized_comes_back_unnormalized()
+    {
+        // A vector of norm 5. If loading renormalized it — or if the flag were lost
+        // and the query were normalized — this score could not be 25.
+        var original = new EmbeddingIndex(dimension: 2, normalize: false);
+        original.Add([3f, 4f]);
+
+        EmbeddingIndex reloaded = RoundTrip(original);
+
+        Assert.Equal(
+            BitConverter.SingleToInt32Bits(25f),
+            BitConverter.SingleToInt32Bits(reloaded.Search([3f, 4f], k: 1)[0].Score));
+    }
+
+    [Fact]
+    public void The_same_vectors_saved_under_each_flag_load_differently()
+    {
+        // [2, 0] rather than [3, 4]: both its normalized form and its self-dot are
+        // exactly representable, so the assertion can be bitwise without depending
+        // on how the accumulation happened to round.
+        var normalized = new EmbeddingIndex(dimension: 2, normalize: true);
+        normalized.Add([2f, 0f]);
+        var raw = new EmbeddingIndex(dimension: 2, normalize: false);
+        raw.Add([2f, 0f]);
+
+        float normalizedScore = RoundTrip(normalized).Search([2f, 0f], k: 1)[0].Score;
+        float rawScore = RoundTrip(raw).Search([2f, 0f], k: 1)[0].Score;
+
+        Assert.Equal(BitConverter.SingleToInt32Bits(1f), BitConverter.SingleToInt32Bits(normalizedScore));
+        Assert.Equal(BitConverter.SingleToInt32Bits(4f), BitConverter.SingleToInt32Bits(rawScore));
+    }
+
+    [Fact]
+    public void An_empty_index_round_trips()
+    {
+        EmbeddingIndex reloaded = RoundTrip(new EmbeddingIndex(dimension: 7));
+
+        Assert.Equal(0, reloaded.Count);
+        Assert.Equal(7, reloaded.Dimension);
+        Assert.False(reloaded.HasIds);
+    }
+
+    [Fact]
+    public void Ids_round_trip_including_the_awkward_ones()
+    {
+        var original = new EmbeddingIndex(dimension: 2);
+        original.Add([1f, 0f], "documento-café");
+        original.Add([0f, 1f], string.Empty);
+        original.Add([1f, 1f]);
+        original.Add([0f, 0.5f], "日本語");
+
+        EmbeddingIndex reloaded = RoundTrip(original);
+
+        Assert.True(reloaded.HasIds);
+        Assert.Equal("documento-café", reloaded.GetId(0));
+        Assert.Equal(string.Empty, reloaded.GetId(1));
+        Assert.Null(reloaded.GetId(2));
+        Assert.Equal("日本語", reloaded.GetId(3));
+    }
+
+    [Fact]
+    public void An_index_without_ids_reloads_without_them()
+    {
+        Assert.False(RoundTrip(Sample()).HasIds);
+    }
+
+    [Fact]
+    public void More_vectors_can_be_added_to_a_reloaded_index()
+    {
+        EmbeddingIndex reloaded = RoundTrip(Sample());
+        reloaded.Add([0f, 0f, 1f], "added-later");
+
+        Assert.Equal(3, reloaded.Count);
+        Assert.Equal("added-later", reloaded.GetId(2));
+    }
+
+    [Fact]
+    public void Loading_leaves_the_callers_stream_open()
+    {
+        using var stream = new MemoryStream();
+        Sample().Save(stream);
+        stream.Position = 0;
+
+        EmbeddingIndex.Load(stream);
+
+        Assert.True(stream.CanRead);
+    }
+
+    [Fact]
+    public async Task Loading_asynchronously_produces_the_same_index()
+    {
+        using var stream = new MemoryStream();
+
+        // SonarLint S6966: this call only builds the fixture LoadAsync is tested
+        // against. Awaiting SaveAsync in its place would make the setup exercise
+        // SaveAsync too, so a failure here could no longer be pinned on LoadAsync.
+#pragma warning disable S6966
+        Sample().Save(stream);
+#pragma warning restore S6966
+        stream.Position = 0;
+
+        EmbeddingIndex reloaded = await EmbeddingIndex.LoadAsync(stream);
+
+        Assert.Equal(2, reloaded.Count);
+        Assert.Equal(3, reloaded.Dimension);
+    }
+
+    [Fact]
+    public void Loading_from_a_path_produces_the_same_index()
+    {
+        string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        try
+        {
+            Sample().Save(path);
+            EmbeddingIndex reloaded = EmbeddingIndex.Load(path);
+
+            Assert.Equal(2, reloaded.Count);
+            Assert.Equal(3, reloaded.Dimension);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     /// <summary>Two vectors of three dimensions, normalized on insertion.</summary>
     private static EmbeddingIndex Sample()
     {
@@ -137,6 +292,24 @@ public sealed class EmbeddingIndexPersistenceTests
         index.Add([1f, 0f, 0f]);
         index.Add([0.6f, 0.8f, 0f]);
         return index;
+    }
+
+    /// <summary>Three vectors of four dimensions, deliberately not unit-length.</summary>
+    private static EmbeddingIndex Corpus(bool normalize)
+    {
+        var index = new EmbeddingIndex(dimension: 4, normalize);
+        index.Add([0.1f, 0.2f, 0.3f, 0.4f]);
+        index.Add([-0.9f, 0.4f, 0.05f, 0.7f]);
+        index.Add([0.33f, 0.33f, 0.33f, 0.33f]);
+        return index;
+    }
+
+    private static EmbeddingIndex RoundTrip(EmbeddingIndex index)
+    {
+        using var stream = new MemoryStream();
+        index.Save(stream);
+        stream.Position = 0;
+        return EmbeddingIndex.Load(stream);
     }
 
     private static string SaveToString(EmbeddingIndex index)
