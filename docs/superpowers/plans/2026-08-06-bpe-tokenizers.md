@@ -54,7 +54,7 @@
 | `tests/DataNet.Embeddings.Tests/Persistence/BpeFilesLoaderTests.cs` | `vocab.json` + `merges.txt` loading |
 | `tools/fetch_gpt2_bpe.py` | Fetches and verifies the GPT-2 fixture |
 | `bench/DataNet.Text.Benchmarks/BpeBenchmarks.cs` | BenchmarkDotNet, `[MemoryDiagnoser]` |
-| `docs/decisions/0016-bpe-parity-scope.md` | The parity limits, in the shape of ADR 0013 |
+| `docs/decisions/0017-bpe-parity-scope.md` | The parity limits, in the shape of ADR 0013 |
 
 **Modified**
 
@@ -517,7 +517,7 @@ def generate_bpe_pretokenize() -> dict:
     """Prove the split, not the vocabulary.
 
     The Llama-3 and Qwen2 rows of the parity table are claimed at the split
-    level only (ADR 0016). Running their patterns over GPT-2's vocabulary is
+    level only (ADR 0017). Running their patterns over GPT-2's vocabulary is
     what proves the C# regex behaves as HuggingFace's does, without vendoring a
     second and third 150 000-entry vocabulary to prove a merge loop the GPT-2
     corpus already proves.
@@ -602,7 +602,7 @@ def generate_bpe_tokenizer_json() -> dict:
 
 - [ ] **Step 7: Register the four generators**
 
-In `main()`, add to the `generators` dict, after `"xlmr_fairseq.json"`:
+In `main()`, add to the **end** of the `generators` dict, after the last existing entry:
 
 ```python
         "bpe.json": generate_bpe,
@@ -610,6 +610,10 @@ In `main()`, add to the `generators` dict, after `"xlmr_fairseq.json"`:
         "bpe_pretokenize.json": generate_bpe_pretokenize,
         "bpe_tokenizer_json.json": generate_bpe_tokenizer_json,
 ```
+
+`tools/generate_oracles.py` is also being extended on `feat/61-classification-metrics`, which appends `classification_metrics.json` and `roc_auc.json` to this same dict. A merge conflict here is expected and is resolved by keeping both sides — the entries are independent. Do not try to avoid it by placing the entries elsewhere; a dict with four BPE corpora scattered through it is worse than one conflict the merger resolves in ten seconds.
+
+That branch also adds `tools/seeded_random.py`, a seeded RNG wrapper. It does not apply here: none of the four generators above draw a random number, they iterate `BPE_TEXTS`. If you find yourself reaching for `random`, stop — that is a sign the corpus is being generated rather than enumerated, which is not what these four do.
 
 - [ ] **Step 8: Generate, and check the exit code**
 
@@ -633,6 +637,10 @@ Expected: `alphabet 256 Ġ Ċ` — byte 0x20 maps to U+0120 and byte 0x0A to U+0
 
 Run the generator a second time, then: `git diff --stat -- tests/oracles`
 Expected: empty. The `Oracles are reproducible` CI job runs exactly this.
+
+Note for when this job goes red **in CI** rather than here: it is known to be flaky. On 2026-08-07 it failed and then passed on the identical commit, with no code change, and the cause is still unidentified — the step prints only `--stat`, so the evidence dies with the runner. Re-run before believing it; two reds in a row is a signal, one is not. A clean local `git status -- tests/oracles` after regenerating means the committed corpora are fine.
+
+Do not confuse this with Task 2's finding. The BPE *trainer* is non-deterministic, but `tiny_bpe.json` is committed and CI never retrains it — `generate_oracles.py` only reads it. So a red on `bpe.json` is either the known flake or a real bug in this task's generator; it cannot be the trainer.
 
 - [ ] **Step 11: Commit**
 
@@ -1160,7 +1168,7 @@ public sealed class BpePreTokenizeTests
 {
     /// <summary>
     /// The split is claimed for three model families but the vocabulary is
-    /// vendored for one (ADR 0016), so this is the test carrying the Llama-3 and
+    /// vendored for one (ADR 0017), so this is the test carrying the Llama-3 and
     /// Qwen2 rows of the parity table. It compares the split output itself,
     /// before any merging, which is exactly what those rows promise.
     /// </summary>
@@ -2630,7 +2638,7 @@ Append to `tests/DataNet.Embeddings.Tests/Persistence/TokenizerJsonLoaderTests.c
     }
 
     /// <summary>
-    /// byte_fallback is the Llama-2 / Mistral v0.1 pipeline (ADR 0016). Loading it
+    /// byte_fallback is the Llama-2 / Mistral v0.1 pipeline (ADR 0017). Loading it
     /// anyway would produce a tokenization that looks right and embeddings that
     /// are not, so it is refused by name.
     /// </summary>
@@ -2943,14 +2951,14 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ### Task 15: Documentation
 
 **Files:**
-- Create: `docs/decisions/0016-bpe-parity-scope.md`
+- Create: `docs/decisions/0017-bpe-parity-scope.md`
 - Modify: `docs/equivalence.md`, `docs/guides/embeddings.md`, `README.md`, `CHANGELOG.md`
 
 **Interfaces:**
 - Consumes: the measured figures from Task 13.
 - Produces: nothing.
 
-- [ ] **Step 1: Write ADR 0016**
+- [ ] **Step 1: Write ADR 0017**
 
 Read `docs/decisions/0013-sentencepiece-parity-scope.md` first and follow its structure exactly (Status / Context / Decision / Consequences). The three limits to record:
 
@@ -2983,7 +2991,7 @@ In `docs/guides/embeddings.md`, add **"Which tokenizer for which model family"**
 | Llama-3, Qwen2 | `BpeTokenizer` with `BpePatterns.Llama3` / `BpePatterns.Qwen2` | `TokenizerJsonLoader.LoadBpe` |
 | **Llama-2, Mistral v0.1** | **none** | — |
 
-Then a short paragraph on the last row: those models are SentencePiece BPE with `byte_fallback`, which is a third pipeline, and both loaders refuse it by name rather than producing a plausible-looking wrong answer. Point at ADR 0016.
+Then a short paragraph on the last row: those models are SentencePiece BPE with `byte_fallback`, which is a third pipeline, and both loaders refuse it by name rather than producing a plausible-looking wrong answer. Point at ADR 0017.
 
 Include a compiling code sample — `tools/extract_doc_snippets.py` compiles the snippets in this file in CI, so a sample that does not build fails the run.
 
@@ -3001,7 +3009,7 @@ Expected: the extracted snippets compile.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add docs/decisions/0016-bpe-parity-scope.md docs/equivalence.md docs/guides/embeddings.md README.md CHANGELOG.md
+git add docs/decisions/0017-bpe-parity-scope.md docs/equivalence.md docs/guides/embeddings.md README.md CHANGELOG.md
 git commit -m "Say which tokenizer a model family needs, and which have none
 
 The question a user arrives with is not \"how does BPE work\" but \"what do
@@ -3009,7 +3017,7 @@ I use for Llama\". The guide answers it in a table, including the row that
 says none of the three: Llama-2 and Mistral v0.1 are SentencePiece BPE
 with byte_fallback, a pipeline this package refuses by name.
 
-ADR 0016 records the three limits so they are stated once rather than
+ADR 0017 records the three limits so they are stated once rather than
 rediscovered, in the shape ADR 0013 used for SentencePiece.
 
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"

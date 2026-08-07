@@ -303,7 +303,7 @@ them up automatically through its source glob.
 - Rows in `docs/equivalence.md` naming the Python call each entry matches.
 - A "which tokenizer for which model family" section in
   `docs/guides/embeddings.md`, stating the Llama-2 / Mistral limit plainly.
-- `docs/decisions/0016-bpe-parity-scope.md`, in the shape of ADR 0013.
+- `docs/decisions/0017-bpe-parity-scope.md`, in the shape of ADR 0013.
 - The five public types exercised in `samples/DataNet.Sample/Lot3Embeddings.cs`
   with a member reference each, or the packaging gate breaks CI.
 - A `CHANGELOG.md` entry under `DataNet.Embeddings — 0.3.0`.
