@@ -26,15 +26,27 @@ from __future__ import annotations
 
 import base64
 import json
-import random
+import math
+import sys
+import warnings
 from importlib.metadata import version
 from pathlib import Path
+
+# CONTRIBUTING runs this with PYTHONSAFEPATH=1, which keeps the script's own
+# directory off sys.path, so the shared drawer has to be pointed at by hand.
+# Appended rather than prepended: nothing in tools/ may shadow an installed
+# package, which is the safeguard PYTHONSAFEPATH is there to provide.
+sys.path.append(str(Path(__file__).resolve().parent))
+
+from seeded_random import SeededRandom  # noqa: E402
 
 from difflib import SequenceMatcher
 
 import jellyfish
+import numpy as np
 import textdistance as td
 from rapidfuzz.distance import DamerauLevenshtein, Indel, Levenshtein, OSA
+from sklearn import metrics as skm
 from sklearn.feature_extraction.text import CountVectorizer as SkCountVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer as SkTfidfVectorizer
 
@@ -60,7 +72,7 @@ RANGES = {
 }
 
 
-def rand_string(rng: random.Random, length: int, ranges) -> str:
+def rand_string(rng: SeededRandom, length: int, ranges) -> str:
     out = []
     for _ in range(length):
         lo, hi = rng.choice(ranges)
@@ -71,7 +83,7 @@ def rand_string(rng: random.Random, length: int, ranges) -> str:
     return "".join(out)
 
 
-def mutate(rng: random.Random, s: str, edits: int, ranges) -> str:
+def mutate(rng: SeededRandom, s: str, edits: int, ranges) -> str:
     """Apply `edits` random insert/delete/substitute operations to `s`."""
     chars = list(s)
     for _ in range(edits):
@@ -89,7 +101,7 @@ def mutate(rng: random.Random, s: str, edits: int, ranges) -> str:
     return "".join(chars)
 
 
-def build_pairs(rng: random.Random):
+def build_pairs(rng: SeededRandom):
     """Yield (category, a, b) tuples covering the corpus design."""
     # Deterministic edge cases first.
     edge = [
@@ -146,7 +158,7 @@ def build_pairs(rng: random.Random):
 
 
 def generate_levenshtein() -> dict:
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     cases = []
     for idx, (category, a, b) in enumerate(build_pairs(rng)):
         cases.append(
@@ -181,7 +193,7 @@ def generate_levenshtein() -> dict:
 
 def _edit_distance_corpus(module, algorithm: str, library: str, calls: list[str]) -> dict:
     """Build an oracle for any rapidfuzz edit-distance module (Levenshtein/OSA/DL)."""
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     cases = []
     for idx, (category, a, b) in enumerate(build_pairs(rng)):
         cases.append(
@@ -241,7 +253,7 @@ def _hamming_reference(a: str, b: str) -> int:
 
 
 def generate_hamming() -> dict:
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     diverge = 0
     cases = []
     for idx, (category, a, b) in enumerate(build_pairs(rng)):
@@ -333,7 +345,7 @@ def _jaro_winkler_reference(a: str, b: str, p: float = 0.1) -> float:
 
 
 def _similarity_reference_corpus(reference, jelly, algorithm: str) -> dict:
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     diverge = 0
     cases = []
     for idx, (category, a, b) in enumerate(build_pairs(rng)):
@@ -366,7 +378,7 @@ def generate_jaro_winkler() -> dict:
 
 
 def generate_lcs() -> dict:
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     cases = []
     for idx, (category, a, b) in enumerate(build_pairs(rng)):
         subsequence = (len(a) + len(b) - Indel.distance(a, b)) // 2
@@ -392,7 +404,7 @@ def generate_lcs() -> dict:
 
 
 def generate_ratcliff() -> dict:
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     cases = []
     for idx, (category, a, b) in enumerate(build_pairs(rng)):
         similarity = SequenceMatcher(None, a, b, autojunk=False).ratio()
@@ -415,7 +427,7 @@ def generate_set_similarity() -> dict:
     # qval=1 (textdistance default) over non-empty pairs: textdistance raises on
     # empty operands (its own edge quirk); DataNet defines those separately and
     # covers them via unit tests. Multiset (bag) semantics.
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     cases = []
     for idx, (category, a, b) in enumerate(build_pairs(rng)):
         if a == "" or b == "":
@@ -456,7 +468,7 @@ CURATED_WORDS = [
 ]
 
 
-def phonetic_words(rng: random.Random):
+def phonetic_words(rng: SeededRandom):
     for w in CURATED_WORDS:
         yield w
     # Random pronounceable-ish alphabetic words, deterministic.
@@ -507,7 +519,7 @@ def generate_metaphone() -> dict:
 
 
 def generate_phonetics() -> dict:
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     cases = []
     for idx, word in enumerate(phonetic_words(rng)):
         cases.append({
@@ -997,12 +1009,11 @@ def generate_wordpiece() -> dict:
 
 
 def generate_pooling() -> dict:
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     cases = []
     for cid, (seq, dim) in enumerate([(4, 6), (5, 8), (3, 4), (6, 5)]):
         emb = [[rng.uniform(-1, 1) for _ in range(dim)] for _ in range(seq)]
-        # Seeded RNG: the corpus must regenerate byte-identically. Not security.
-        mask = [1 if rng.random() < 0.7 or t == 0 else 0 for t in range(seq)]  # NOSONAR
+        mask = [1 if rng.random() < 0.7 or t == 0 else 0 for t in range(seq)]
         active = sum(mask) or 1
         pooled = [sum(emb[t][d] for t in range(seq) if mask[t]) / active for d in range(dim)]
         norm = sum(v * v for v in pooled) ** 0.5
@@ -1025,7 +1036,7 @@ def generate_pooling() -> dict:
 def generate_knn() -> dict:
     import numpy as np  # noqa: PLC0415
 
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     n_items, dim, n_queries, k = 60, 16, 6, 5
     corpus = [[rng.uniform(-1, 1) for _ in range(dim)] for _ in range(n_items)]
     queries = [[rng.uniform(-1, 1) for _ in range(dim)] for _ in range(n_queries)]
@@ -1746,6 +1757,273 @@ def generate_normalizer() -> dict:
     }
 
 
+# --- Classification metrics (issue #61) --------------------------------------
+#
+# Fixtures target the cases where implementations actually diverge rather than
+# average behaviour: a class that is never predicted, a class absent from the
+# truth, a labels= subset (which drops samples and turns the report's accuracy
+# row into a micro-avg row), and non-contiguous label values that catch any
+# implementation assuming 0..k-1. Each fixture is emitted twice, unweighted and
+# weighted, because sample_weight changes the dtype of every count upstream.
+
+METRIC_SEED = SEED + 61
+ZERO_DIVISIONS = (0, 1)
+BETAS = (0.5, 2.0)
+REPORT_DIGITS = (2, 3)
+
+
+def _metric_fixtures() -> list[dict]:
+    rng = SeededRandom(METRIC_SEED)
+    fixtures: list[dict] = []
+
+    def noisy(truth: list[int], classes: list[int], flip: float) -> list[int]:
+        return [
+            t if rng.random() >= flip else rng.choice([c for c in classes if c != t])
+            for t in truth
+        ]
+
+    def add(name, y_true, y_pred, labels=None, target_names=None, pos_label=1):
+        fixtures.append({
+            "name": name,
+            "y_true": [int(v) for v in y_true],
+            "y_pred": [int(v) for v in y_pred],
+            "labels": labels,
+            "target_names": target_names,
+            "pos_label": pos_label,
+            "sample_weight": [round(rng.uniform(0.1, 3.0), 3) for _ in y_true],
+        })
+
+    balanced = [rng.randint(0, 1) for _ in range(200)]
+    add("binary_balanced", balanced, noisy(balanced, [0, 1], 0.2),
+        target_names=["negative", "positive"])
+
+    imbalanced = [0] * 190 + [1] * 10
+    add("binary_imbalanced", imbalanced, noisy(imbalanced, [0, 1], 0.3))
+
+    three = [rng.randint(0, 2) for _ in range(300)]
+    add("multiclass_3", three, noisy(three, [0, 1, 2], 0.35),
+        target_names=["alpha", "beta", "gamma"])
+
+    ten = [rng.randint(0, 9) for _ in range(500)]
+    add("multiclass_10", ten, noisy(ten, list(range(10)), 0.5))
+
+    # Class 2 is in y_true and never predicted: its precision divides by zero.
+    add("class_never_predicted", [0, 0, 1, 1, 2, 2, 1, 0], [0, 1, 1, 1, 0, 1, 1, 0])
+
+    # Class 3 is predicted and absent from y_true: its recall divides by zero.
+    add("class_absent_from_truth", [0, 0, 1, 1, 0, 1], [0, 3, 1, 3, 0, 1])
+
+    perfect = [rng.randint(0, 2) for _ in range(50)]
+    add("perfect", perfect, list(perfect))
+    add("all_wrong", perfect, [(v + 1) % 3 for v in perfect])
+
+    add("single_sample", [1], [1])
+    add("single_class", [1, 1, 1, 1], [1, 1, 1, 1])
+
+    subset = [rng.randint(0, 3) for _ in range(120)]
+    add("labels_subset", subset, noisy(subset, [0, 1, 2, 3], 0.4), labels=[0, 2])
+
+    sparse = [rng.choice([-1, 5, 42]) for _ in range(120)]
+    add("non_contiguous_labels", sparse, noisy(sparse, [-1, 5, 42], 0.4), pos_label=5)
+
+    return fixtures
+
+
+def _binary_average_applies(observed: list[int], pos_label: int) -> bool:
+    """Mirror scikit-learn's own admissibility rule for average="binary"."""
+    if len(observed) > 2:
+        return False
+    return pos_label in observed or len(observed) < 2
+
+
+def _metric_case(fx: dict, weighted: bool) -> dict:
+    y_true, y_pred = fx["y_true"], fx["y_pred"]
+    labels, pos_label = fx["labels"], fx["pos_label"]
+    sw = fx["sample_weight"] if weighted else None
+    observed = sorted(set(y_true) | set(y_pred))
+    effective = labels if labels is not None else observed
+    averages = ["micro", "macro", "weighted"]
+    if _binary_average_applies(observed, pos_label):
+        averages.append("binary")
+
+    cm = skm.confusion_matrix(y_true, y_pred, labels=labels, sample_weight=sw)
+    case = {
+        "fixture": fx["name"],
+        "weighted": weighted,
+        "y_true": y_true,
+        "y_pred": y_pred,
+        "sample_weight": sw,
+        "labels": labels,
+        "target_names": fx["target_names"],
+        "pos_label": pos_label,
+        "expected_labels": [int(v) for v in effective],
+        "confusion_matrix": [[float(v) for v in row] for row in cm.tolist()],
+        "accuracy": float(skm.accuracy_score(y_true, y_pred, sample_weight=sw)),
+        "accuracy_count": float(
+            skm.accuracy_score(y_true, y_pred, normalize=False, sample_weight=sw)),
+        "averaged": {},
+        "per_class": {},
+        "fbeta": {},
+        "reports": {},
+    }
+
+    for zd in ZERO_DIVISIONS:
+        for avg in averages:
+            p, r, f, _ = skm.precision_recall_fscore_support(
+                y_true, y_pred, labels=labels, average=avg, pos_label=pos_label,
+                sample_weight=sw, zero_division=zd)
+            case["averaged"][f"{avg}|{zd}"] = {
+                "precision": float(p), "recall": float(r), "f1": float(f)}
+            for beta in BETAS:
+                case["fbeta"][f"{beta}|{avg}|{zd}"] = float(skm.fbeta_score(
+                    y_true, y_pred, beta=beta, labels=labels, average=avg,
+                    pos_label=pos_label, sample_weight=sw, zero_division=zd))
+        p, r, f, s = skm.precision_recall_fscore_support(
+            y_true, y_pred, labels=labels, average=None, sample_weight=sw,
+            zero_division=zd)
+        case["per_class"][str(zd)] = {
+            "precision": [float(v) for v in p],
+            "recall": [float(v) for v in r],
+            "f1": [float(v) for v in f],
+            "support": [float(v) for v in s],
+        }
+
+    for digits in REPORT_DIGITS:
+        case["reports"][str(digits)] = skm.classification_report(
+            y_true, y_pred, labels=labels, target_names=fx["target_names"],
+            digits=digits, sample_weight=sw, zero_division=0)
+    return case
+
+
+def generate_classification_metrics() -> dict:
+    with warnings.catch_warnings():
+        # scikit-learn warns on every undefined metric; the corpus records the
+        # value it returns, which is the thing under test.
+        warnings.simplefilter("ignore")
+        cases = [
+            _metric_case(fx, weighted)
+            for fx in _metric_fixtures()
+            for weighted in (False, True)
+        ]
+    return {
+        "metadata": {
+            "algorithm": "ClassificationMetrics",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.accuracy_score",
+                "sklearn.metrics.confusion_matrix",
+                "sklearn.metrics.precision_recall_fscore_support",
+                "sklearn.metrics.fbeta_score",
+                "sklearn.metrics.classification_report",
+            ],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+# --- ROC-AUC (issue #61) ------------------------------------------------------
+
+
+def _softmax(row: list[float]) -> list[float]:
+    top = max(row)
+    exps = [math.exp(v - top) for v in row]
+    total = sum(exps)
+    return [v / total for v in exps]
+
+
+def _roc_fixtures() -> list[dict]:
+    rng = SeededRandom(METRIC_SEED + 1)
+    fixtures: list[dict] = []
+
+    def weights(n: int) -> list[float]:
+        return [round(rng.uniform(0.1, 3.0), 3) for _ in range(n)]
+
+    def informative(truth: list[int]) -> list[float]:
+        # Overlapping but separable: an AUC around 0.8 rather than 0.5 or 1.0.
+        return [round(rng.random() * 0.6 + 0.4 * t, 12) for t in truth]
+
+    balanced = [rng.randint(0, 1) for _ in range(300)]
+    fixtures.append({"name": "binary_balanced", "kind": "binary", "y_true": balanced,
+                     "scores": informative(balanced), "class_count": 2,
+                     "sample_weight": weights(len(balanced))})
+
+    imbalanced = [0] * 280 + [1] * 20
+    fixtures.append({"name": "binary_imbalanced", "kind": "binary", "y_true": imbalanced,
+                     "scores": informative(imbalanced), "class_count": 2,
+                     "sample_weight": weights(len(imbalanced))})
+
+    tied = [rng.randint(0, 1) for _ in range(200)]
+    fixtures.append({"name": "binary_heavy_ties", "kind": "binary", "y_true": tied,
+                     # One decimal: many samples share a score, which is where a
+                     # rank-based shortcut and a real ROC curve part company.
+                     "scores": [round(v, 1) for v in informative(tied)], "class_count": 2,
+                     "sample_weight": weights(len(tied))})
+
+    for k, size in ((3, 240), (5, 400)):
+        truth = [rng.randint(0, k - 1) for _ in range(size)]
+        rows = []
+        for t in truth:
+            logits = [rng.gauss(0.0, 1.0) for _ in range(k)]
+            logits[t] += 1.5
+            rows.append([round(v, 12) for v in _softmax(logits)])
+        fixtures.append({"name": f"multiclass_{k}", "kind": "multiclass", "y_true": truth,
+                         "scores": rows, "class_count": k,
+                         "sample_weight": weights(size)})
+
+    return fixtures
+
+
+def _roc_case(fx: dict, weighted: bool) -> dict:
+    sw = fx["sample_weight"] if weighted else None
+    y_true = fx["y_true"]
+    case = {
+        "fixture": fx["name"],
+        "kind": fx["kind"],
+        "weighted": weighted,
+        "y_true": y_true,
+        "scores": fx["scores"],
+        "class_count": fx["class_count"],
+        "sample_weight": sw,
+        "values": {},
+    }
+    if fx["kind"] == "binary":
+        case["values"]["binary"] = float(
+            skm.roc_auc_score(y_true, fx["scores"], sample_weight=sw))
+        return case
+
+    scores = np.array(fx["scores"], dtype=float)
+    classes = list(range(fx["class_count"]))
+    for strategy in ("ovr", "ovo"):
+        # scikit-learn refuses sample_weight for one-vs-one, and so do we.
+        if strategy == "ovo" and weighted:
+            continue
+        for average in ("macro", "weighted"):
+            case["values"][f"{strategy}|{average}"] = float(skm.roc_auc_score(
+                y_true, scores, multi_class=strategy, average=average,
+                labels=classes, sample_weight=sw))
+    return case
+
+
+def generate_roc_auc() -> dict:
+    cases = [
+        _roc_case(fx, weighted)
+        for fx in _roc_fixtures()
+        for weighted in (False, True)
+    ]
+    return {
+        "metadata": {
+            "algorithm": "RocAuc",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": ["sklearn.metrics.roc_auc_score"],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -1783,6 +2061,8 @@ def main() -> None:
         "normalizer.json": generate_normalizer,
         "fuzz.json": generate_fuzz,
         "process.json": generate_process,
+        "classification_metrics.json": generate_classification_metrics,
+        "roc_auc.json": generate_roc_auc,
     }
     for filename, gen in generators.items():
         payload = gen()

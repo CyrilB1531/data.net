@@ -104,7 +104,15 @@ public static class Pooler
             sum += (double)vector[i] * vector[i];
         }
         double norm = Math.Sqrt(sum);
+
+        // SonarLint S1244: exact zero is exactly what this asks. The rule is right
+        // that a computed double rarely lands on a value you expected, but the value
+        // at issue here is the one that makes the division below undefined, and it is
+        // exactly representable. A tolerance would instead leave short vectors
+        // unnormalized, which is a different function.
+#pragma warning disable S1244
         if (norm == 0)
+#pragma warning restore S1244
         {
             return;
         }

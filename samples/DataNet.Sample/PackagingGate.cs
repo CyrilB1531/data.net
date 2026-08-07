@@ -3,12 +3,13 @@ using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using DataNet.Embeddings.Tokenization;
 using DataNet.Fuzzy;
+using DataNet.Metrics;
 using DataNet.Text.Distances;
 
 namespace DataNet.Sample;
 
 /// <summary>
-/// Fails the build when a public type of the three packages is not reachable
+/// Fails the build when a public type of the four packages is not reachable
 /// from this sample.
 /// </summary>
 /// <remarks>
@@ -49,6 +50,12 @@ internal static class PackagingGate
         ["DataNet.Embeddings.Onnx.OnnxTextEmbedder"] =
             "constructing it loads an ONNX model, and model weights are never committed "
             + "(CONTRIBUTING.md); ADR 0009 already records that the sample stops at the tokenizer",
+        ["DataNet.Metrics.UndefinedMetricException"] =
+            "Lot5Metrics does catch it, under ZeroDivision.Throw — but its entire public surface "
+            + "is constructors, and a consumer catches rather than constructs. A catch clause emits "
+            + "a type reference and no member reference, and reading ex.Message re-parents to "
+            + "System.Exception, which declares it. Same shape as the enum carve-out above: the "
+            + "only use a consumer has leaves nothing for the member criterion to find",
     };
 
     /// <summary>What one pass over the exported surface found.</summary>
@@ -63,6 +70,7 @@ internal static class PackagingGate
             typeof(Levenshtein).Assembly,
             typeof(WordPieceTokenizer).Assembly,
             typeof(Fuzz).Assembly,
+            typeof(ConfusionMatrix).Assembly,
         ];
 
         var packagedNames = packaged.Select(a => a.GetName().Name!).ToHashSet(StringComparer.Ordinal);

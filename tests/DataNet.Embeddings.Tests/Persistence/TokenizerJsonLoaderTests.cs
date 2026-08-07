@@ -490,7 +490,7 @@ public sealed class TokenizerJsonLoaderTests
     [Fact]
     public void A_document_deeper_than_the_depth_limit_is_rejected()
     {
-        // Nested normalizer sequences are the recursive path through the loader;
+        // Nested normalizer sequences are the recursive path through the loader.
         // MaxJsonDepth is what keeps that recursion finite.
         string normalizer = "{\"type\":\"Lowercase\"}";
         for (int i = 0; i < 12; i++)

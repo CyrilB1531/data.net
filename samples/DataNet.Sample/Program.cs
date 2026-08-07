@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using DataNet.Embeddings.Tokenization;
 using DataNet.Fuzzy;
+using DataNet.Metrics;
 using DataNet.Sample;
 using DataNet.Text.Distances;
 
@@ -11,7 +12,7 @@ using DataNet.Text.Distances;
 // lies.
 //
 // It is also the packaging gate described in ADR 0009, and that is the stricter
-// job: PackagingGate below fails this program when any public type of the three
+// job: PackagingGate below fails this program when any public type of the four
 // packages has stopped being reachable from outside its assembly. Adding a public
 // type therefore means adding a call here — see the Lot*.cs files.
 
@@ -25,12 +26,14 @@ Console.WriteLine($"running on        : {RuntimeInformation.FrameworkDescription
 Console.WriteLine($"DataNet.Text      : {FrameworkOf(typeof(Levenshtein))}");
 Console.WriteLine($"DataNet.Fuzzy     : {FrameworkOf(typeof(Fuzz))}");
 Console.WriteLine($"DataNet.Embeddings: {FrameworkOf(typeof(WordPieceTokenizer))}");
+Console.WriteLine($"DataNet.Metrics   : {FrameworkOf(typeof(ConfusionMatrix))}");
 Console.WriteLine();
 
 Lot1Distances.Run();
 Lot2Vectorization.Run();
 Lot3Embeddings.Run();
 Lot4Fuzzy.Run();
+Lot5Metrics.Run();
 
 if (!PackagingGate.Verify())
 {

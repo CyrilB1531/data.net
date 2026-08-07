@@ -179,7 +179,14 @@ public sealed class CsrMatrix
         for (int row = 0; row < RowCount; row++)
         {
             double n = norm == SparseNorm.L1 ? RowL1Norm(row) : RowL2Norm(row);
+
+            // SonarLint S1244: "zero rows are left unchanged" is the documented
+            // contract and sklearn's behaviour, and a zero row is one whose norm is
+            // exactly zero. A tolerance would silently skip rows that do have a
+            // direction, which is a different normalization.
+#pragma warning disable S1244
             if (n == 0)
+#pragma warning restore S1244
             {
                 continue;
             }
