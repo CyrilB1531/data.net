@@ -19,7 +19,7 @@
   -->
   <ItemGroup>
     <PackageVersion Include="DataNet.Text" Version="0.2.0" />
-    <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
+    <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" />
     <PackageVersion Include="PolySharp" Version="1.15.0" />
     <!-- Analyzer only, pinned in the root Directory.Build.props so src/, tests/
          and bench/ cannot drift apart. -->

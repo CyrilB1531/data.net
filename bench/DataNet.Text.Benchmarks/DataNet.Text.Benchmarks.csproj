@@ -17,6 +17,7 @@
     <ProjectReference Include="../../src/DataNet.Text/DataNet.Text.csproj" />
     <ProjectReference Include="../../src/DataNet.Fuzzy/DataNet.Fuzzy.csproj" />
     <ProjectReference Include="../../src/DataNet.Embeddings/DataNet.Embeddings.csproj" />
+    <ProjectReference Include="../../src/DataNet.Metrics/DataNet.Metrics.csproj" />
   </ItemGroup>
 
   <!--

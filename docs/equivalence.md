@@ -122,6 +122,21 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | `process.extractOne(q, choices)` | rapidfuzz | `Process.ExtractOne(q, choices)` | Best candidate or `null`. |
 | blocking deduplication | — (application pattern) | `Deduplicator.FindClusters(...)` | Partition by blocking key + transitive closure (union-find). Avoids O(n²). |
 
+## DataNet.Metrics — classification metrics
+
+| Python | Library | C# | Differences |
+| --- | --- | --- | --- |
+| `accuracy_score(y_true, y_pred)` | scikit-learn | `Accuracy.Score(yTrue, yPred)` | Identical, `normalize` included. The overload taking a `ConfusionMatrix` scores only the samples that matrix kept. |
+| `confusion_matrix(y_true, y_pred, labels=…)` | scikit-learn | `ConfusionMatrix.Compute(…)` | Rows are true labels. Label order is the sorted union, or the caller's order left unsorted. Counts are `double` because `sampleWeight` is supported ([`decisions/0016`](decisions/0016-metrics-package-placement.md)). |
+| `precision_score(…, average=…)` | scikit-learn | `Precision.Score(…, Averaging…)` | All four modes. `average=None` is `Precision.PerClass`, a method rather than an enum member: it returns one value per class, not a scalar. |
+| `recall_score(…, average=…)` | scikit-learn | `Recall.Score(…, Averaging…)` | As above. |
+| `f1_score(…, average=…)` | scikit-learn | `F1.Score(…, Averaging…)` | As above. |
+| `fbeta_score(…, beta=…)` | scikit-learn | `FBeta.Score(…, beta, …)` | Finite `beta ≥ 0`; scikit-learn also accepts `inf`, which throws here. |
+| `classification_report(…)` | scikit-learn | `ClassificationReport.Compute(…)`, `.ToText(digits)` | Structured *and* character-exact text. `ZeroDivision.NaN` renders `NaN` where Python writes `nan`; the numbers still match. |
+| `zero_division=0/1/np.nan` | scikit-learn | `ZeroDivision.Zero/One/NaN` | Values identical. The `UndefinedMetricWarning` has no equivalent; `ZeroDivision.Throw` is the opt-in replacement. |
+| `roc_auc_score(y_true, y_score)` | scikit-learn | `RocAuc.Score(…)` | Binary. `posLabel` is explicit here (default 1) where scikit-learn infers it. |
+| `roc_auc_score(…, multi_class=…)` | scikit-learn | `RocAuc.MultiClass(…)` | `ovr` and `ovo`. Separate method: the overloads would be ambiguous. `sampleWeight` refused for `ovo`, as in scikit-learn. |
+
 ## Conventions
 
 - **Comparison unit.** Unless stated otherwise, string distances compare `char`
