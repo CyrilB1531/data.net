@@ -1,4 +1,6 @@
+using System.Buffers;
 using System.Buffers.Binary;
+using System.Buffers.Text;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 
@@ -37,19 +39,24 @@ internal static class Base64Numbers
     }
 
     /// <summary>Reads a base64 property written by <see cref="WriteDoubles"/>.</summary>
+    /// <remarks>
+    /// The encoded run is bounded <em>before</em> the decode as well as after it:
+    /// checking only the decoded count would let the limit be satisfied by the
+    /// allocation it exists to prevent. Four base64 characters carry three bytes.
+    /// </remarks>
     public static double[] ReadDoubles(
         ref Utf8JsonReader reader,
         string artifact,
         string propertyName,
         in ArtifactLimits limits)
     {
-        byte[] raw = ReadBoundedRaw(ref reader, artifact, propertyName, limits, sizeof(double));
-        var values = new double[raw.Length / sizeof(double)];
-        for (int i = 0; i < values.Length; i++)
-        {
-            values[i] = BitConverter.Int64BitsToDouble(
-                BinaryPrimitives.ReadInt64LittleEndian(raw.AsSpan(i * sizeof(double))));
-        }
+        long encodedLength = ReadToken(ref reader, artifact, propertyName);
+        limits.CheckArrayLength(encodedLength * 3 / (4 * sizeof(double)), propertyName);
+
+        double[] values = Decode<double>(ref reader, artifact, propertyName, sizeof(double));
+
+        limits.CheckArrayLength(values.LongLength, propertyName);
+        SwapIfBigEndian64(MemoryMarshal.AsBytes(values.AsSpan()));
         return values;
     }
 
@@ -65,7 +72,7 @@ internal static class Base64Numbers
     {
         byte[] raw = new byte[values.Length * sizeof(float)];
         MemoryMarshal.AsBytes(values).CopyTo(raw);
-        SwapIfBigEndian(raw);
+        SwapIfBigEndian32(raw);
         writer.WriteBase64String(propertyName, raw);
     }
 
@@ -85,9 +92,9 @@ internal static class Base64Numbers
     /// elements: <see cref="JsonArtifact.ReadAllBytes"/> (and its async
     /// counterpart) caps the entire artifact against
     /// <see cref="ArtifactLimits.MaxTotalBytes"/> before any parsing — this method
-    /// included — ever runs, so the decoded block is bounded by construction. No
-    /// count read here sizes a buffer beyond what that earlier gate already
-    /// allowed onto the heap.
+    /// included — ever runs, so the decoded block is bounded by construction. The
+    /// destination is sized from the token's own encoded length, which that gate
+    /// has already bounded, rather than from a count discovered after decoding.
     /// </para>
     /// </remarks>
     public static float[] ReadSingles(
@@ -95,25 +102,38 @@ internal static class Base64Numbers
         string artifact,
         string propertyName)
     {
-        byte[] raw = ReadUnboundedRaw(ref reader, artifact, propertyName, sizeof(float));
-        SwapIfBigEndian(raw);
-        var values = new float[raw.Length / sizeof(float)];
-        MemoryMarshal.Cast<byte, float>(raw).CopyTo(values);
+        ReadToken(ref reader, artifact, propertyName);
+        float[] values = Decode<float>(ref reader, artifact, propertyName, sizeof(float));
+        SwapIfBigEndian32(MemoryMarshal.AsBytes(values.AsSpan()));
         return values;
     }
 
     /// <summary>
-    /// Turns the buffer into little-endian, in place. A no-op on every platform
-    /// .NET currently runs on — present so the format is defined by the file
-    /// rather than by the architecture that happened to write it.
+    /// Turns a block of 32-bit values into little-endian, in place. A no-op on
+    /// every platform .NET currently runs on — present so the format is defined by
+    /// the file rather than by the architecture that happened to write it.
     /// </summary>
-    private static void SwapIfBigEndian(byte[] raw)
+    private static void SwapIfBigEndian32(Span<byte> raw)
     {
         if (BitConverter.IsLittleEndian)
         {
             return;
         }
-        Span<int> words = MemoryMarshal.Cast<byte, int>(raw.AsSpan());
+        Span<int> words = MemoryMarshal.Cast<byte, int>(raw);
+        for (int i = 0; i < words.Length; i++)
+        {
+            words[i] = BinaryPrimitives.ReverseEndianness(words[i]);
+        }
+    }
+
+    /// <summary>The 64-bit counterpart of <see cref="SwapIfBigEndian32"/>.</summary>
+    private static void SwapIfBigEndian64(Span<byte> raw)
+    {
+        if (BitConverter.IsLittleEndian)
+        {
+            return;
+        }
+        Span<long> words = MemoryMarshal.Cast<byte, long>(raw);
         for (int i = 0; i < words.Length; i++)
         {
             words[i] = BinaryPrimitives.ReverseEndianness(words[i]);
@@ -121,47 +141,80 @@ internal static class Base64Numbers
     }
 
     /// <summary>
-    /// Decodes the property's base64 payload, bounded on both sides of the decode
-    /// against <see cref="ArtifactLimits.MaxArrayLength"/>. Used by
-    /// <see cref="ReadDoubles"/> only: the idf vector is exactly the scale that
-    /// limit was written for. <see cref="ReadSingles"/> uses
-    /// <see cref="ReadUnboundedRaw"/> instead, on purpose — see its remarks.
+    /// Decodes the reader's current string token into one array of
+    /// <typeparamref name="T"/>, sized from the token's own encoded length so the
+    /// base64 lands in its final destination rather than in an intermediate
+    /// buffer that is then copied.
     /// </summary>
     /// <remarks>
-    /// The encoded run is bounded <em>before</em> decoding: <c>TryGetBytesFromBase64</c>
-    /// materialises the whole decoded buffer first, so checking only the decoded count
-    /// would let the limit be satisfied by the allocation it exists to prevent. Four
-    /// base64 characters carry three bytes.
+    /// <para>
+    /// The direct path takes the canonical token: unescaped, in one segment, a
+    /// multiple of four characters, decoding to a whole number of elements.
+    /// Anything else — an escape in a hand-edited file, a value split across
+    /// segments, a length base64 cannot have produced — falls through to
+    /// <see cref="DecodeBase64"/>, which is the path this type has always taken
+    /// and which raises the same exception, with the same message, for every
+    /// malformed token. Deciding by falling through rather than by inspecting is
+    /// deliberate: it keeps one description of what a bad token is.
+    /// </para>
+    /// <para>
+    /// A token that fails mid-decode has already had its destination allocated,
+    /// and the fallback allocates again. That costs a second buffer on a file that
+    /// is about to be rejected anyway, and the payload it is sized from is capped
+    /// by <see cref="ArtifactLimits.MaxTotalBytes"/> either way.
+    /// </para>
     /// </remarks>
-    private static byte[] ReadBoundedRaw(
-        ref Utf8JsonReader reader,
-        string artifact,
-        string propertyName,
-        in ArtifactLimits limits,
-        int elementSize)
+    private static T[] Decode<T>(ref Utf8JsonReader reader, string artifact, string propertyName, int elementSize)
+        where T : struct
     {
-        long encodedLength = ReadToken(ref reader, artifact, propertyName);
-        limits.CheckArrayLength(encodedLength * 3 / (4 * elementSize), propertyName);
+        if (!reader.HasValueSequence
+            && TryDecodedLength(reader.ValueSpan, out int decodedLength)
+            && decodedLength % elementSize == 0)
+        {
+            var values = new T[decodedLength / elementSize];
+            Span<byte> destination = MemoryMarshal.AsBytes(values.AsSpan());
+            if (Base64.DecodeFromUtf8(reader.ValueSpan, destination, out int consumed, out int written) == OperationStatus.Done
+                && consumed == reader.ValueSpan.Length
+                && written == destination.Length)
+            {
+                return values;
+            }
+        }
 
         byte[] raw = DecodeBase64(ref reader, artifact, propertyName, elementSize);
-
-        limits.CheckArrayLength(raw.Length / elementSize, propertyName);
-        return raw;
+        var fallback = new T[raw.Length / elementSize];
+        raw.AsSpan().CopyTo(MemoryMarshal.AsBytes(fallback.AsSpan()));
+        return fallback;
     }
 
     /// <summary>
-    /// Decodes the property's base64 payload with no bound on either side of the
-    /// decode. Used by <see cref="ReadSingles"/> only — see its remarks for why an
-    /// absent array-length bound is safe there and nowhere else in this type.
+    /// How many bytes a canonical base64 run decodes to, or <c>false</c> when the
+    /// run is not canonical. Never an error on its own: the caller falls through
+    /// to the general path, which is what produces this type's diagnostics.
     /// </summary>
-    private static byte[] ReadUnboundedRaw(
-        ref Utf8JsonReader reader,
-        string artifact,
-        string propertyName,
-        int elementSize)
+    private static bool TryDecodedLength(ReadOnlySpan<byte> encoded, out int decodedLength)
     {
-        ReadToken(ref reader, artifact, propertyName);
-        return DecodeBase64(ref reader, artifact, propertyName, elementSize);
+        decodedLength = 0;
+        if (encoded.Length % 4 != 0)
+        {
+            return false;
+        }
+        if (encoded.Length == 0)
+        {
+            return true;
+        }
+
+        int padding = 0;
+        if (encoded[encoded.Length - 1] == (byte)'=')
+        {
+            padding++;
+            if (encoded[encoded.Length - 2] == (byte)'=')
+            {
+                padding++;
+            }
+        }
+        decodedLength = (encoded.Length / 4 * 3) - padding;
+        return true;
     }
 
     /// <summary>Advances onto the property's string token and returns its encoded length.</summary>
@@ -177,8 +230,9 @@ internal static class Base64Numbers
     /// <summary>
     /// Decodes the reader's current string token as base64, checked for valid
     /// base64 and a whole number of <paramref name="elementSize"/>-byte elements.
-    /// Both format checks apply on every path — only the array-length bound
-    /// differs between <see cref="ReadBoundedRaw"/> and <see cref="ReadUnboundedRaw"/>.
+    /// Both format checks apply on every path; the array-length bound is applied
+    /// by <see cref="ReadDoubles"/> around this call, and deliberately not by
+    /// <see cref="ReadSingles"/> — see its remarks.
     /// </summary>
     private static byte[] DecodeBase64(ref Utf8JsonReader reader, string artifact, string propertyName, int elementSize)
     {

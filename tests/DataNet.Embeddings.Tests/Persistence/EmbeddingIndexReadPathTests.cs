@@ -61,6 +61,26 @@ public sealed class EmbeddingIndexReadPathTests
         AssertSameIndex(Reference(artifact), EmbeddingIndex.Load(trickle));
     }
 
+    [Fact]
+    public void An_escaped_base64_token_loads_the_same_vectors()
+    {
+        // One character of the base64 run written as its \u00XX escape. That is
+        // what makes the reader's ValueSpan differ from the decoded value, and it
+        // is the only reachable trigger for the fallback decode — a JSON string
+        // cannot hold a raw newline, and this reader never sees a split segment.
+        string json = Encoding.UTF8.GetString(Artifact());
+        int start = json.IndexOf("\"vectors\":\"", StringComparison.Ordinal) + "\"vectors\":\"".Length;
+        string escaped = string.Concat(
+            json.AsSpan(0, start),
+            $"\\u{(int)json[start]:x4}".AsSpan(),
+            json.AsSpan(start + 1));
+
+        Assert.NotEqual(json, escaped);
+        AssertSameIndex(
+            Reference(Encoding.UTF8.GetBytes(json)),
+            EmbeddingIndex.Load(new MemoryStream(Encoding.UTF8.GetBytes(escaped))));
+    }
+
     /// <summary>
     /// The index every case is compared against: the same bytes, read through an
     /// ordinary seekable stream. Kept out of the async tests as its own method
