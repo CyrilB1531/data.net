@@ -166,17 +166,27 @@ internal static class Lot3Embeddings
         Console.WriteLine($"  MeanPoolBatch    : {batchPooled.Length} vectors, "
             + string.Join(" | ", batchPooled.Select(v => $"[{string.Join(", ", v.Select(c => c.ToString("F3")))}]")));
 
-        // Nearest-neighbour search over those vectors.
+        // Nearest-neighbour search over those vectors, with the ids a reloaded
+        // index is queried by.
         var index = new EmbeddingIndex(dimension: 3, normalize: true);
-        index.Add([1f, 0f, 0f]);
-        index.Add([0f, 1f, 0f]);
-        index.Add([0.9f, 0.1f, 0f]);
+        index.Add([1f, 0f, 0f], "east");
+        index.Add([0f, 1f, 0f], "north");
+        index.Add([0.9f, 0.1f, 0f], "east-north-east");
         IReadOnlyList<SearchResult> hits = index.Search([1f, 0f, 0f], k: 2);
         Console.WriteLine($"  EmbeddingIndex   : {index.Count} vectors of {index.Dimension} dims");
         foreach (SearchResult hit in hits)
         {
-            Console.WriteLine($"    #{hit.Index} score={hit.Score:F4}");
+            Console.WriteLine($"    #{hit.Index} {index.GetId(hit.Index)} score={hit.Score:F4}");
         }
+
+        // Embed once, query for as long as the artifact lasts.
+        using var artifact = new MemoryStream();
+        index.Save(artifact);
+        artifact.Position = 0;
+        EmbeddingIndex reloaded = EmbeddingIndex.Load(artifact);
+        SearchResult best = reloaded.Search([1f, 0f, 0f], k: 1)[0];
+        Console.WriteLine($"  Reloaded index   : {reloaded.Count} vectors, "
+            + $"best '{reloaded.GetId(best.Index)}' score={best.Score:F4}");
         Console.WriteLine();
     }
 

@@ -199,6 +199,27 @@ IReadOnlyList<SearchResult> hits = index.Search(queryVector, k: 5);
 foreach (var h in hits) Console.WriteLine($"#{h.Index}  score={h.Score:F3}");
 ```
 
+Embedding a corpus is the expensive half, and it only has to happen once. Save
+the built index and reload it in the process that queries it:
+
+```csharp
+var index = new EmbeddingIndex(dimension: vector.Length);
+foreach ((float[] v, string id) in corpusWithIds) index.Add(v, id);
+index.Save("corpus.index.json");
+
+// …later, in another process
+EmbeddingIndex reloaded = EmbeddingIndex.Load("corpus.index.json");
+SearchResult best = reloaded.Search(queryVector, k: 1)[0];
+Console.WriteLine($"{reloaded.GetId(best.Index)}  score={best.Score:F3}");
+```
+
+The vectors are stored as raw IEEE-754 bits, so a reloaded index scores bit for
+bit what the original scored — and the normalization flag travels in the file
+rather than being supplied again on load, because an index reloaded under the
+other setting would rank a corpus wrongly without ever looking wrong. The reader
+bounds every count it reads against `ArtifactLoadOptions` before that count sizes
+a buffer.
+
 The search is an **exhaustive SIMD-vectorized** cosine (`System.Numerics.Vector`) —
 the right default up to a few hundred thousand vectors. An approximate index
 (HNSW) is only worth adding once a real need is demonstrated.

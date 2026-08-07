@@ -109,6 +109,15 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | `sp.id_to_piece(i)` / `sp.get_score(i)` | sentencepiece | `vocab.Pieces[i].Piece` / `.Score` | Identical; scores compared at `1e-9` in the oracle. |
 | `sp.IsControl(i)` / `sp.IsUnknown(i)` | sentencepiece | `vocab.Types[i]`, `vocab.IsMatchable(i)` | The type comes from the file. The previous constructor inferred it from ids 0/1/2, which is wrong for any model laying out differently — that constructor is now `[Obsolete]`. |
 
+## DataNet.Embeddings — index persistence
+
+| Python | Library | C# | Differences |
+| --- | --- | --- | --- |
+| `numpy.save(path, matrix)` | numpy | `index.Save(path)` / `index.Save(stream)` | Versioned JSON whose vector block is base64-encoded raw little-endian IEEE-754 bits, not a `.npy` memory dump. Carries the dimension, the normalization flag and an optional id per vector, none of which `.npy` has anywhere to put. |
+| `numpy.load(path)` | numpy | `EmbeddingIndex.Load(path, options?)` | Static, not a constructor. Returns a queryable index rather than an array, and bounds every count against `ArtifactLoadOptions` before it sizes a buffer. |
+| `faiss.write_index(idx, path)` / `faiss.read_index(path)` | faiss | `index.Save(path)` / `EmbeddingIndex.Load(path)` | Comparable in purpose, not in structure: DataNet's index is exhaustive (`IndexFlatIP`-shaped), so there is no graph or quantizer to serialize. An approximate index is a separate decision, not made. |
+| — (a parallel `list[str]` the caller keeps) | — | `index.Add(vector, id)` / `index.GetId(i)` | Deliberate addition: without ids in the file, a reloaded index is a wall of anonymous integers. |
+
 ## DataNet.Fuzzy — applied fuzzy matching
 
 | Python | Library | C# | Differences |
