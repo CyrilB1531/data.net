@@ -156,4 +156,13 @@ public sealed class ValueEqualityTests
         Assert.Equal(new MergePair("a", "b"), vocab.Merges[0]);
         Assert.Equal(3, vocab.Count);
     }
+
+    [Fact]
+    public void BpeVocabularies_differing_only_in_pre_tokenizer_pattern_are_not_equal_and_do_not_share_a_hash()
+    {
+        BpeVocabulary other = SampleBpe() with { PreTokenizerPattern = BpePatterns.Llama3 };
+
+        Assert.NotEqual(SampleBpe(), other);
+        Assert.NotEqual(SampleBpe().GetHashCode(), other.GetHashCode());
+    }
 }
