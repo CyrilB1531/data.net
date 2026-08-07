@@ -551,7 +551,7 @@ a float block costs to write depends on how many floats it holds, not on what
 they are, and both sides reproduce the same shape from the same arithmetic
 without a fixture. In Python this is a 10 000 × 384 loop of plain-int arithmetic
 (`numpy.uint32`'s shifts raise on the overflow the algorithm depends on); it took
-2.04 s measured once outside the timed loop, which is fine to pay a single time
+2.35 s measured once outside the timed loop, which is fine to pay a single time
 at process start and did not need caching.
 
 Loading this shape needs an explicit
@@ -621,6 +621,13 @@ DataNet is faster.
 | --- | --- | --- |
 | bytes on disk | 20 589 007 | 15 360 128 |
 
+Neither harness command above prints a byte count — `Harness.Measure` only
+records `ms_per_op` and `cpu_ms_per_op`. The DataNet figure is `stream.Length`
+after building the same index through `BuildIndex()` and calling `Save`; the
+`.npy` figure is `len(buffer.getvalue())` after `np.save` on the same
+`build_vectors()` array — the same two calls each `embedding_index_save` row
+above times, with the byte count kept instead of discarded.
+
 That is a 1.34× size ratio. Base64 alone accounts for 1.333× of it (the vector
 block is 15 360 000 bytes of floats, 20 480 000 as base64 text); the remaining
 0.5% is the `dimension`/`normalize`/`count` fields and the 10 000 quoted `doc-N`
@@ -630,9 +637,9 @@ ids, none of which `.npy`'s header carries.
 
 The size ratio is what the design predicted: about 4/3, plus a fraction of a
 percent for the fields a raw block does not need. `EmbeddingIndexSave` is close
-to that too — 0.99× wall and 0.90× cpu, a small, single-digit-percent penalty for
-one extra copy-and-encode pass over a payload whose cost is otherwise dominated
-by writing 15–20 MB somewhere, base64 or not.
+to that too — 0.99× wall and 0.90× cpu, roughly an 11% cpu penalty for one extra
+copy-and-encode pass over a payload whose cost is otherwise dominated by writing
+15–20 MB somewhere, base64 or not.
 
 `EmbeddingIndexLoad` is not close to that, and this is where the decision costs
 more than its own framing suggests. It is not 1.34× slower than `numpy.load`; it
@@ -664,9 +671,10 @@ verify costs an order of magnitude in time on `Load` — not the size-sized cost
 reader would reasonably guess at from the ADR's own number. Where the size cost
 lands almost exactly on prediction, the time cost of loading a large vector block
 does not, and the gap is real rather than noise: both cross-language figures are
-the best of five repeated measurements each, not a single sample, and the
-BenchmarkDotNet table above shows two independently interleaved runs agreeing
-to within 1% on both operations.
+the best of five repeated measurements each, not a single sample, and the four
+BenchmarkDotNet figures above (two runs each, two targets) spread no more than
+1.8% from their own minimum on either operation — nowhere near the order of
+magnitude the cross-language table shows.
 
 **Measurement conditions.** Both sides were run back to back, Python first, in
 the same session as the BenchmarkDotNet runs above — this machine carries a
@@ -683,6 +691,6 @@ The two starts are close on all three windows — within 0.2 on the one-minute
 average, lower on five and fifteen minutes for the side measured second — so,
 unlike section 5's pair, there is no direction here for the load itself to have
 biased the ratio: neither side woke the other into a spike the way section 5's
-C# side inherited from Python's. The 76-second gap between Python's write and
+C# side inherited from Python's. The 77-second gap between Python's write and
 C#'s start is this session's own overhead (issuing the next command, `dotnet`
 restoring before it starts producing output), not additional benchmarked work.
