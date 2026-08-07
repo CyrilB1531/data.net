@@ -1023,7 +1023,7 @@ public readonly record struct MergePair(string Left, string Right);
 /// <remarks>
 /// Read from a <c>tokenizer.json</c> by <see cref="Persistence.TokenizerJsonLoader"/>
 /// or from a <c>vocab.json</c>/<c>merges.txt</c> pair by
-/// <see cref="Persistence.BpeFilesLoader"/>. It restates what the file declared
+/// <c>BpeFilesLoader</c>. It restates what the file declared
 /// and decides nothing itself.
 /// </remarks>
 /// <param name="Vocab">Token to id.</param>
@@ -1117,7 +1117,10 @@ public sealed record BpeVocabulary(
             hash = (hash * 31) + (AddPrefixSpace ? 1 : 0);
             hash = (hash * 31) + (IgnoreMerges ? 1 : 0);
             hash = (hash * 31) + SkippedMerges;
-            return (hash * 31) + (EndOfWordSuffix is null ? 0 : StringComparer.Ordinal.GetHashCode(EndOfWordSuffix));
+            hash = (hash * 31) + (EndOfWordSuffix is null ? 0 : StringComparer.Ordinal.GetHashCode(EndOfWordSuffix));
+            hash = (hash * 31) + (ContinuingSubwordPrefix is null ? 0 : StringComparer.Ordinal.GetHashCode(ContinuingSubwordPrefix));
+            hash = (hash * 31) + (UnkToken is null ? 0 : StringComparer.Ordinal.GetHashCode(UnkToken));
+            return (hash * 31) + (PreTokenizerPattern is null ? 0 : StringComparer.Ordinal.GetHashCode(PreTokenizerPattern));
         }
     }
 
@@ -1481,7 +1484,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private readonly bool _hasUnk;
 
     /// <summary>Creates a tokenizer from a loaded BPE model.</summary>
-    /// <param name="vocabulary">A vocabulary from <see cref="Persistence.BpeFilesLoader"/> or <see cref="Persistence.TokenizerJsonLoader"/>.</param>
+    /// <param name="vocabulary">A vocabulary from <c>BpeFilesLoader</c> or <see cref="Persistence.TokenizerJsonLoader"/>.</param>
     /// <exception cref="ArgumentException">The declared unknown token is not in the vocabulary.</exception>
     public BpeTokenizer(BpeVocabulary vocabulary)
     {
