@@ -783,10 +783,10 @@ internal static class ByteLevelAlphabet
 {
     private static readonly char[] Forward = BuildForward();
 
-    // 188 of the 256 characters are Latin-1, and the rest run to U+0142, so a
-    // dense array over that range costs 323 slots and turns the inverse into an
+    // 188 of the 256 characters are Latin-1, and the rest run to U+0143, so a
+    // dense array over that range costs 324 slots and turns the inverse into an
     // array index instead of a dictionary probe in the decode loop.
-    private const char MaxMapped = 'ł';
+    private const char MaxMapped = 'Ń';
     private static readonly byte[] Inverse = BuildInverse();
     private static readonly bool[] Mapped = BuildMapped();
 
@@ -868,7 +868,7 @@ git commit -m "Build GPT-2's byte alphabet from its rule rather than copying it
 
 The 256-entry table is derived from the published construction and then
 checked against the one HuggingFace produced, so a transcription slip has
-nowhere to hide. The inverse is a dense array over U+0000..U+0142, which
+nowhere to hide. The inverse is a dense array over U+0000..U+0143, which
 makes decoding an array index rather than a dictionary probe.
 
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
