@@ -221,6 +221,27 @@ public sealed class EmbeddingIndexPersistenceTests
     }
 
     [Fact]
+    public void An_ids_section_of_nothing_but_nulls_still_reports_it_has_ids()
+    {
+        // Add never leaves _ids allocated holding only null entries — it only
+        // allocates the array once a non-null id arrives. A file is the only way to
+        // reach this shape, and it must still set HasIds: the section was declared,
+        // even though every entry in it is absent.
+        var index = new EmbeddingIndex(dimension: 2);
+        index.Add([1f, 0f]);
+        index.Add([0f, 1f]);
+        string json = SaveToString(index)
+            .Replace("\"count\":2,", "\"count\":2,\"ids\":[null,null],", StringComparison.Ordinal);
+
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        EmbeddingIndex reloaded = EmbeddingIndex.Load(stream);
+
+        Assert.True(reloaded.HasIds);
+        Assert.Null(reloaded.GetId(0));
+        Assert.Null(reloaded.GetId(1));
+    }
+
+    [Fact]
     public void An_index_without_ids_reloads_without_them()
     {
         Assert.False(RoundTrip(Sample()).HasIds);

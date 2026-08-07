@@ -226,12 +226,16 @@ public sealed partial class EmbeddingIndex
             {
                 limits.CheckTokenLength(id.Length);
             }
+
+            // Checked against the prospective count before the array grows to hold
+            // it: doubling first and checking after would let the resize itself
+            // reach roughly twice the limit before the exception fires.
+            limits.CheckArrayLength(read + 1L, IdsProperty);
             if (read == ids.Length)
             {
                 Array.Resize(ref ids, ids.Length == 0 ? 4 : ids.Length * 2);
             }
             ids[read++] = id;
-            limits.CheckArrayLength(read, IdsProperty);
         }
         if (reader.TokenType != JsonTokenType.EndArray)
         {
