@@ -1,9 +1,12 @@
 # Development tools — oracle generation, vendored data, packaging checks
 
-Six scripts. `generate_oracles.py` produces the reference values the test suite
+Scripts under `tools/`, each responsible for one input the test suite treats as
+given: `generate_oracles.py` produces the reference values the test suite
 replays; `fetch_stopwords.py` produces source that is *shipped*, which is why it
 verifies what it downloaded before writing anything; `fetch_xlmr_vocab.py` and
 `build_normalizer_fixtures.py` produce fixtures `generate_oracles.py` reads;
+`build_tiny_models.py` builds fixtures too small for that pipeline to bother
+with — two ONNX graphs and a trained BPE — and commits them directly;
 `check_nuspec_dependencies.py` verifies what the packages *declare*; and
 `check_version_floor.py` verifies that the version numbers the source tree keeps
 in three places still agree.

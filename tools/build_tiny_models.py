@@ -1,4 +1,5 @@
-"""Rebuild the synthetic ONNX encoders committed under ``tests/oracles/``.
+"""Rebuild the tiny fixtures committed under ``tests/oracles/``: two synthetic
+ONNX encoders and a trained character-level BPE.
 
 Model weights are never committed (``CONTRIBUTING.md``), so the ONNX path is
 exercised against models small enough to read: a couple of nodes and a table of
@@ -6,13 +7,14 @@ a few hundred bytes. This script is how they are produced, so "synthetic" is a
 verifiable claim rather than an assertion about two opaque binaries.
 
 It is deliberately **not** part of ``generate_oracles.py``: building an ONNX
-graph needs the ``onnx`` package, which the oracle lock file does not carry, and
-the models are frozen fixtures rather than reference values that must track a
-library version. Run it only when a fixture has to change:
+graph needs the ``onnx`` package, which the oracle lock file does not carry,
+and none of the three outputs here are reference values that must track a
+library version the way ``generate_oracles.py``'s are — all three are frozen
+fixtures, rebuilt only when one of them has to change:
 
-    python -m venv .venv-onnx
-    .venv-onnx/bin/pip install onnx==1.16.0
-    .venv-onnx/bin/python tools/build_tiny_models.py
+    python -m venv .venv-tiny-models
+    .venv-tiny-models/bin/pip install onnx==1.16.0 tokenizers==0.23.1
+    .venv-tiny-models/bin/python tools/build_tiny_models.py
 
 ``tiny_encoder.onnx``
     ``last_hidden_state[b, t, :] = input_ids[b, t] * W`` — every token maps to a
@@ -27,6 +29,12 @@ library version. Run it only when a fixture has to change:
     ``E[0]`` enters the mean and moves the vector. It also declares
     ``token_type_ids``, which ``tiny_encoder.onnx`` does not, so the branch that
     feeds it is covered.
+
+``tiny_bpe.json``
+    A trained character-level BPE — see ``build_tiny_bpe()`` for what it proves
+    and, importantly, for why the committed file rather than this script is the
+    reference: its trainer is not byte-reproducible across runs, so rerunning
+    this recipe is not the same operation as regenerating an oracle.
 """
 
 from __future__ import annotations
