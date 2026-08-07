@@ -620,7 +620,7 @@
    "class_count": 2,
    "sample_weight": null,
    "values": {
-    "binary": 0.9333748166585181
+    "binary": 0.933374816659
    }
   },
   {
@@ -1535,7 +1535,7 @@
     2.56
    ],
    "values": {
-    "binary": 0.9356791207743242
+    "binary": 0.935679120774
    }
   },
   {
@@ -2149,7 +2149,7 @@
    "class_count": 2,
    "sample_weight": null,
    "values": {
-    "binary": 0.9389285714285714
+    "binary": 0.938928571429
    }
   },
   {
@@ -3064,7 +3064,7 @@
     2.557
    ],
    "values": {
-    "binary": 0.9200971030480177
+    "binary": 0.920097103048
    }
   },
   {
@@ -3478,7 +3478,7 @@
    "class_count": 2,
    "sample_weight": null,
    "values": {
-    "binary": 0.9421942194219421
+    "binary": 0.942194219422
    }
   },
   {
@@ -4093,7 +4093,7 @@
     2.204
    ],
    "values": {
-    "binary": 0.9550382290761253
+    "binary": 0.955038229076
    }
   },
   {
@@ -5547,10 +5547,10 @@
    "class_count": 3,
    "sample_weight": null,
    "values": {
-    "ovr|macro": 0.9233397723017421,
-    "ovr|weighted": 0.9232477383889538,
-    "ovo|macro": 0.9233603498272661,
-    "ovo|weighted": 0.9233204484804047
+    "ovr|macro": 0.923339772302,
+    "ovr|weighted": 0.923247738389,
+    "ovo|macro": 0.923360349827,
+    "ovo|weighted": 0.92332044848
    }
   },
   {
@@ -7245,8 +7245,8 @@
     2.489
    ],
    "values": {
-    "ovr|macro": 0.9240142818589372,
-    "ovr|weighted": 0.9250500433764095
+    "ovr|macro": 0.924014281859,
+    "ovr|weighted": 0.925050043376
    }
   },
   {
@@ -10460,10 +10460,10 @@
    "class_count": 5,
    "sample_weight": null,
    "values": {
-    "ovr|macro": 0.9192402978951406,
-    "ovr|weighted": 0.919262490813565,
-    "ovo|macro": 0.9192236345345306,
-    "ovo|weighted": 0.9192407660840239
+    "ovr|macro": 0.919240297895,
+    "ovr|weighted": 0.919262490814,
+    "ovo|macro": 0.919223634535,
+    "ovo|weighted": 0.919240766084
    }
   },
   {
@@ -14078,8 +14078,8 @@
     0.798
    ],
    "values": {
-    "ovr|macro": 0.9281988580741356,
-    "ovr|weighted": 0.9282245165954258
+    "ovr|macro": 0.928198858074,
+    "ovr|weighted": 0.928224516595
    }
   }
  ]
