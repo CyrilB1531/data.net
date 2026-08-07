@@ -1245,7 +1245,9 @@ public sealed class BpePreTokenizeTests
 
 Add `using System.Text.RegularExpressions;` at the top for the last test.
 
-`The_patterns_shipped_are_the_patterns_proven` is the one that stops `BpePatterns` from drifting away from the corpus that proves it — the `"…"` placeholders left in Task 5 Step 4 fail here until they are filled in.
+**Correction, found during implementation.** The test above compares the split output directly against the corpus, and it cannot: `bpe_pretokenize.json` records HuggingFace's *whole* `pre_tokenizer`, which is `Split(pattern)` followed by `ByteLevel(use_regex=False)`, so its pieces are already in the byte alphabet (`"Ġworld"`, not `" world"`). `BpePreTokenizer` is only the `Split` stage — the byte alphabet belongs to `BpeTokenizer.ByteLevelSymbols` in Task 8, and a pre-tokenizer that mapped as well would make the tokenizer map twice. The **test** is what reassembles the pipeline: it maps each produced piece forward through `ByteLevelAlphabet.ToChar` over its UTF-8 bytes before comparing. Map forward, not backward — `ToChar` is total, while `TryToByte` can fail and would turn a split bug into a confusing test error.
+
+`The_patterns_shipped_are_the_patterns_proven` is the one that stops `BpePatterns` from drifting away from the corpus that proves it.
 
 - [ ] **Step 2: Run it to verify it fails**
 
@@ -2987,7 +2989,8 @@ Read `docs/decisions/0013-sentencepiece-parity-scope.md` first and follow its st
 1. Parity is claimed end-to-end for GPT-2 and for the classic character-level lineage, proven over GPT-2's real vocabulary.
 2. Llama-3 and Qwen2 are claimed **at the split level only** — the pattern is proven against HuggingFace, the vocabulary is the caller's. Say why: proving them end-to-end means vendoring 150 000-entry vocabularies to re-prove a merge loop GPT-2 already proves.
 3. `byte_fallback` is refused. Llama-2 and Mistral v0.1 are SentencePiece BPE with `Metaspace`, a third pipeline that neither `BpeTokenizer` nor `SentencePieceTokenizer` reproduces. Name them, so a reader stops looking.
-4. Llama-3's split pattern was read from two independent ungated mirrors — `NousResearch/Meta-Llama-3-8B` and `unsloth/llama-3-8b` — because `meta-llama/Meta-Llama-3-8B` is gated and returns HTTP 401. Their `pre_tokenizer` blocks are byte-identical, and that agreement is what stands in for reading the original. Record it: a reader auditing where a public constant came from must not have to reconstruct this.
+4. **Found in Task 6, and it belongs here:** the split diverges above the BMP. .NET reports `Surrogate` for both halves of an astral character, so `\p{L}` and `\p{N}` are false for U+1D400 (Lu) and U+1D7CE (Nd), where Rust's `regex` crate matches them — `"A𝐀B"` splits into three pieces here and one in HuggingFace. The corpus cannot show it: its only astral characters are emoji, category `So`, which neither engine matches as a letter or a digit. Record it as a known boundary rather than letting a user discover it on mathematical alphanumerics.
+5. Llama-3's split pattern was read from two independent ungated mirrors — `NousResearch/Meta-Llama-3-8B` and `unsloth/llama-3-8b` — because `meta-llama/Meta-Llama-3-8B` is gated and returns HTTP 401. Their `pre_tokenizer` blocks are byte-identical, and that agreement is what stands in for reading the original. Record it: a reader auditing where a public constant came from must not have to reconstruct this.
 
 Record the measured benchmark outcome in *Consequences*, including whether the priority-queue arm was needed.
 
