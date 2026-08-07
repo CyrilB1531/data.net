@@ -21,10 +21,20 @@ public sealed class ByteLevelBpeTests
             vocab[entry.Name] = entry.Value.GetInt32();
         }
 
-        var merges = new List<MergePair>();
-        foreach (string line in File.ReadAllLines(Path.Combine(dir, "gpt2_merges.txt")))
+        string[] lines = File.ReadAllLines(Path.Combine(dir, "gpt2_merges.txt"));
+
+        // Only the first line may be a header, and only when it is the
+        // "#version:" one. '#' cannot be used as a general comment marker here:
+        // GPT-2's byte-level alphabet leaves '#' as itself, so eight real merge
+        // lines start with it ("# #", "## ##", "#### ####", ...), and skipping
+        // them would silently drop eight of the model's 50 000 merges.
+        int first = lines.Length > 0 && lines[0].StartsWith("#version", StringComparison.Ordinal) ? 1 : 0;
+
+        var merges = new List<MergePair>(lines.Length - first);
+        for (int i = first; i < lines.Length; i++)
         {
-            if (line.Length == 0 || line[0] == '#')
+            string line = lines[i];
+            if (line.Length == 0)
             {
                 continue;
             }
@@ -71,13 +81,11 @@ public sealed class ByteLevelBpeTests
         Assert.Equal(50257, vocabulary.Count);
 
         // gpt2_merges.txt has 50 001 lines: the "#version: 0.2" header plus
-        // 50 000 merge lines. 49 992, not 50 000, reach MergePair: this
-        // helper's "line[0] == '#'" comment check (matching the brief) also
-        // discards the eight real merge lines whose left-hand token is itself
-        // made of one or more '#' characters (e.g. "## ##"), since GPT-2's
-        // byte-level alphabet maps some input bytes onto '#'. A truncated or
-        // reordered merges.txt should surface as this count changing, not as
-        // a wall of token diffs from Encode_matches_tokenizers_over_the_gpt2_vocabulary.
-        Assert.Equal(49992, vocabulary.Merges.Count);
+        // 50 000 merge lines, all of which must reach MergePair. The count
+        // reconciles the vocabulary's: 256 byte symbols + 50 000 merged
+        // symbols + <|endoftext|> = 50 257. A truncated merges.txt should
+        // surface as this count changing, not as a wall of token diffs from
+        // Encode_matches_tokenizers_over_the_gpt2_vocabulary.
+        Assert.Equal(50000, vocabulary.Merges.Count);
     }
 }
