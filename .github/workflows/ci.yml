@@ -209,5 +209,23 @@ jobs:
           if ! git diff --quiet -- tests/oracles; then
             echo "::error::Committed oracle corpora differ from a fresh generation. Run tools/generate_oracles.py and commit the result."
             git --no-pager diff --stat -- tests/oracles
+            # The stat names the corpus that moved; only the values say why it did.
+            # -U0 because these are one-value-per-line JSON and context lines carry
+            # nothing here, and capped so that a wholesale regeneration cannot bury
+            # the log — the artefact below is what covers that case.
+            echo "--- first 400 changed lines ---"
+            git --no-pager diff -U0 -- tests/oracles | head -n 400
             exit 1
           fi
+
+      # The runner is thrown away with everything that would let the failure be
+      # reproduced: drift has already turned out to depend on which CPU the job
+      # landed on (issue #95), which no amount of log reading settles. Keeping the
+      # freshly generated corpora makes the comparison possible off the runner.
+      - name: Keep the generated corpora when they drifted
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: oracles-as-regenerated
+          path: tests/oracles/
+          retention-days: 14

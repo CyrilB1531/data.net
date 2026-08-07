@@ -101,6 +101,27 @@ RANGES = {
 }
 
 
+# Twelve significant digits, not the full float64 repr, for anything a BLAS
+# kernel reduced. numpy and scikit-learn sum in whatever order the SIMD kernel
+# scipy-openblas selects for the host CPU chooses, so the last bits of such a
+# value describe the machine that ran the generator rather than the metric —
+# committing them turns the drift gate into a hardware check, which is what
+# issue #97 is about.
+#
+# Significant digits rather than decimal places because the spread is always at
+# the last bit and therefore scales with the value: it measured ~1e-13 on
+# accuracy_count (~413) and ~1e-16 on the knn scores (~0.4), which is the same
+# sixteenth digit in both. Twelve leaves four orders of margin above it, and
+# costs at most 5e-13 against the tolerances the tests compare with — 1e-9 for
+# the metrics corpus, 1e-4f for the knn one.
+STABLE_DIGITS = 12
+
+
+def stable(value) -> float:
+    """A float the corpus can commit: rounded away from the host's last bits."""
+    return float(f"{float(value):.{STABLE_DIGITS}g}")
+
+
 def rand_string(rng: SeededRandom, length: int, ranges) -> str:
     out = []
     for _ in range(length):
@@ -1078,7 +1099,7 @@ def generate_knn() -> dict:
         q = q / np.linalg.norm(q)
         sims = c @ q
         order = np.argsort(-sims, kind="stable")[:k]
-        results = [{"index": int(j), "score": float(sims[j])} for j in order]
+        results = [{"index": int(j), "score": stable(sims[j])} for j in order]
         cases.append({"id": i, "query": raw, "k": k, "results": results})
 
     return {
@@ -1886,9 +1907,9 @@ def _metric_case(fx: dict, weighted: bool) -> dict:
         "target_names": fx["target_names"],
         "pos_label": pos_label,
         "expected_labels": [int(v) for v in effective],
-        "confusion_matrix": [[float(v) for v in row] for row in cm.tolist()],
-        "accuracy": float(skm.accuracy_score(y_true, y_pred, sample_weight=sw)),
-        "accuracy_count": float(
+        "confusion_matrix": [[stable(v) for v in row] for row in cm.tolist()],
+        "accuracy": stable(skm.accuracy_score(y_true, y_pred, sample_weight=sw)),
+        "accuracy_count": stable(
             skm.accuracy_score(y_true, y_pred, normalize=False, sample_weight=sw)),
         "averaged": {},
         "per_class": {},
@@ -1902,19 +1923,19 @@ def _metric_case(fx: dict, weighted: bool) -> dict:
                 y_true, y_pred, labels=labels, average=avg, pos_label=pos_label,
                 sample_weight=sw, zero_division=zd)
             case["averaged"][f"{avg}|{zd}"] = {
-                "precision": float(p), "recall": float(r), "f1": float(f)}
+                "precision": stable(p), "recall": stable(r), "f1": stable(f)}
             for beta in BETAS:
-                case["fbeta"][f"{beta}|{avg}|{zd}"] = float(skm.fbeta_score(
+                case["fbeta"][f"{beta}|{avg}|{zd}"] = stable(skm.fbeta_score(
                     y_true, y_pred, beta=beta, labels=labels, average=avg,
                     pos_label=pos_label, sample_weight=sw, zero_division=zd))
         p, r, f, s = skm.precision_recall_fscore_support(
             y_true, y_pred, labels=labels, average=None, sample_weight=sw,
             zero_division=zd)
         case["per_class"][str(zd)] = {
-            "precision": [float(v) for v in p],
-            "recall": [float(v) for v in r],
-            "f1": [float(v) for v in f],
-            "support": [float(v) for v in s],
+            "precision": [stable(v) for v in p],
+            "recall": [stable(v) for v in r],
+            "f1": [stable(v) for v in f],
+            "support": [stable(v) for v in s],
         }
 
     for digits in REPORT_DIGITS:
@@ -2018,7 +2039,7 @@ def _roc_case(fx: dict, weighted: bool) -> dict:
         "values": {},
     }
     if fx["kind"] == "binary":
-        case["values"]["binary"] = float(
+        case["values"]["binary"] = stable(
             skm.roc_auc_score(y_true, fx["scores"], sample_weight=sw))
         return case
 
@@ -2029,7 +2050,7 @@ def _roc_case(fx: dict, weighted: bool) -> dict:
         if strategy == "ovo" and weighted:
             continue
         for average in ("macro", "weighted"):
-            case["values"][f"{strategy}|{average}"] = float(skm.roc_auc_score(
+            case["values"][f"{strategy}|{average}"] = stable(skm.roc_auc_score(
                 y_true, scores, multi_class=strategy, average=average,
                 labels=classes, sample_weight=sw))
     return case
