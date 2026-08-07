@@ -12,9 +12,16 @@ file on disk rather than from the bytes being reproducible across machines.
 from __future__ import annotations
 
 import json
-import random
+import sys
 import tempfile
 from pathlib import Path
+
+# These generators are standalone scripts run by hand, not a package. Adding the
+# repository root rather than tools/ is what lets the import below be spelled as
+# a path from the root, which is where every static analyser starts looking too.
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+
+from tools.seeded_random import SeededRandom  # noqa: E402
 
 import sentencepiece as spm
 from tokenizers import Tokenizer
@@ -31,7 +38,7 @@ SPECIALS = ["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"]
 OUT = Path(__file__).resolve().parent / "vocabs"
 
 
-def make_tokens(rng: random.Random) -> list[str]:
+def make_tokens(rng: SeededRandom) -> list[str]:
     """A BERT-shaped vocabulary: specials, whole words, then ## continuations."""
     alphabet = "abcdefghijklmnopqrstuvwxyz"
     tokens = list(SPECIALS)
@@ -60,7 +67,7 @@ def write_wordpiece_json(tokens: list[str]) -> None:
     tokenizer.save(str(OUT / "tokenizer_30k_wordpiece.json"))
 
 
-def write_unigram_json(tokens: list[str], rng: random.Random) -> None:
+def write_unigram_json(tokens: list[str], rng: SeededRandom) -> None:
     # Unigram entries are (piece, log-probability) and id 0 must be the unknown.
     pieces = [("<unk>", 0.0)]
     pieces += [(f"▁{t.lstrip('#')}", -rng.uniform(1.0, 14.0)) for t in tokens[1:]]
@@ -100,7 +107,7 @@ def write_spiece_model(documents: list[str]) -> None:
         (OUT / "spiece_30k.model").write_bytes((Path(tmp) / "spiece.model").read_bytes())
 
 
-def make_documents(rng: random.Random, tokens: list[str]) -> list[str]:
+def make_documents(rng: SeededRandom, tokens: list[str]) -> list[str]:
     """Documents for the TF-IDF volet, drawn from the same token pool so the
     fitted vocabulary lands within a couple of percent of VOCAB_SIZE."""
     words = sorted({t.lstrip("#") for t in tokens if not t.startswith("[")})
@@ -112,7 +119,7 @@ def make_documents(rng: random.Random, tokens: list[str]) -> list[str]:
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     tokens = make_tokens(rng)
     documents = make_documents(rng, tokens)
 

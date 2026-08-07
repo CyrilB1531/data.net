@@ -5,10 +5,10 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-The three packages (`DataNet.Text`, `DataNet.Embeddings`, `DataNet.Fuzzy`) version
-and release **independently**, each from its own `src/<Package>/Version.props`, so
-entries are grouped per package. Releases up to and including `0.2.0` predate the
-split and covered all three at once — see
+The four packages (`DataNet.Text`, `DataNet.Embeddings`, `DataNet.Fuzzy`,
+`DataNet.Metrics`) version and release **independently**, each from its own
+`src/<Package>/Version.props`, so entries are grouped per package. Releases up to
+and including `0.2.0` predate the split and covered all three at once — see
 [`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md).
 
 ## [Unreleased]
@@ -218,6 +218,51 @@ split and covered all three at once — see
   [`CONTRIBUTING.md`](CONTRIBUTING.md#working-across-two-packages), and the whole
   decision in
   [`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md).
+
+### DataNet.Metrics — 0.1.0
+
+First release of a fourth package.
+
+#### Added
+
+- **Classification metrics at scikit-learn parity** — `ConfusionMatrix`,
+  `Accuracy`, `Precision`, `Recall`, `F1`, `FBeta`, `ClassificationReport` and
+  `RocAuc`, validated against frozen corpora generated from scikit-learn rather
+  than against hand-written expectations. Every function has a row in
+  [`docs/equivalence.md`](docs/equivalence.md) naming its sklearn call and its
+  deliberate divergences.
+- **All four averaging modes**, as an enum instead of a string:
+  `Averaging.Binary`, `Micro`, `Macro` and `Weighted`. `average=None` becomes a
+  separate `PerClass` method on each metric — it returns one value per class, not
+  a scalar, and an enum member cannot change its method's return type.
+  `Averaging.Binary` throws on a target with more than two classes rather than
+  guess which class was meant. The three averages disagree by a factor of two on
+  imbalanced data, which
+  [`docs/migration/sklearn.md`](docs/migration/sklearn.md) now works through with
+  real numbers instead of telling the reader to "check the definitions".
+- **`ClassificationReport` in both shapes** — structured rows a program can read
+  (`Classes`, `MacroAverage`, `WeightedAverage`, `MicroAverage`, `Accuracy`) and
+  `ToText(digits)`, which reproduces what `classification_report` prints
+  character for character, padding included.
+- **ROC-AUC, binary and multiclass** — `RocAuc.Score` mirrors
+  `_binary_clf_curve`'s sort-and-accumulate, and `RocAuc.MultiClass` covers both
+  `ovr` and Hand & Till's `ovo`. `sampleWeight` is refused for `ovo`, as
+  scikit-learn refuses it.
+- **An explicit answer for 0/0.** scikit-learn returns 0 and emits an
+  `UndefinedMetricWarning`, which is easy to miss in a log and has no natural
+  .NET equivalent. `ZeroDivision.Zero` (sklearn's value), `One`, `NaN` or
+  `Throw` — the last raising `UndefinedMetricException` — make the choice the
+  caller's.
+- **`sampleWeight` throughout**, which is why matrix cells and support figures
+  are `double` rather than `int`. Adding it later would have been a breaking
+  change to every cell of the public surface; the reasoning, along with why this
+  is a separate package and why `ConfusionMatrix` is public, is in
+  [`docs/decisions/0016`](docs/decisions/0016-metrics-package-placement.md).
+- **Measured, not asserted.** Against scikit-learn on the same corpora, all 29
+  operations are at or above 1× on processor time — the merge gate for the work
+  — with the narrowest margin at 2.74×. net10 and netstandard2.0 are at parity
+  at every size that supports the claim. Both tiers, and what their error bars do
+  and do not cover, are in [`bench/README.md`](bench/README.md).
 
 ## [0.2.0] — 2026-08-05
 

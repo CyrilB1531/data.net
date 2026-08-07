@@ -26,21 +26,23 @@
   </PropertyGroup>
 
   <!--
-    One version property per package now that the three release independently.
+    One version property per package now that they release independently.
     Importing each project's Version.props keeps the original guarantee intact:
     the sample tracks whatever `dotnet pack` just produced instead of pinning
-    numbers that go stale at the next release — it just needs three sources
-    instead of one repository-wide $(Version). See
+    numbers that go stale at the next release — it just needs one source per
+    package instead of one repository-wide $(Version). See
     docs/decisions/0012-per-package-versioning.md.
   -->
   <Import Project="../../src/DataNet.Text/Version.props" />
   <Import Project="../../src/DataNet.Embeddings/Version.props" />
   <Import Project="../../src/DataNet.Fuzzy/Version.props" />
+  <Import Project="../../src/DataNet.Metrics/Version.props" />
 
   <ItemGroup>
     <PackageReference Include="DataNet.Text" Version="$(DataNetTextVersion)" />
     <PackageReference Include="DataNet.Fuzzy" Version="$(DataNetFuzzyVersion)" />
     <PackageReference Include="DataNet.Embeddings" Version="$(DataNetEmbeddingsVersion)" />
+    <PackageReference Include="DataNet.Metrics" Version="$(DataNetMetricsVersion)" />
   </ItemGroup>
 
 </Project>

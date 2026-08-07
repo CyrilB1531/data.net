@@ -10,6 +10,8 @@ using DataNet.Text.Benchmarks.CrossLang;
 //       dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- compare --codepoint
 //   * "compare-persistence" -> the same, for the #58 loaders and the TF-IDF
 //                       round trip (bench/python/bench_persistence.py)
+//   * "compare-metrics" -> the same, for the #61 classification metrics
+//                       (bench/python/bench_metrics.py)
 if (args.Length > 0 && args[0] == "compare")
 {
     LevenshteinCrossLang.Run(args);
@@ -19,6 +21,12 @@ if (args.Length > 0 && args[0] == "compare")
 if (args.Length > 0 && args[0] == "compare-persistence")
 {
     PersistenceCrossLang.Run();
+    return;
+}
+
+if (args.Length > 0 && args[0] == "compare-metrics")
+{
+    MetricsCrossLang.Run();
     return;
 }
 
