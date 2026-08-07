@@ -12,8 +12,15 @@ from __future__ import annotations
 
 import json
 import math
-import random
+import sys
 from pathlib import Path
+
+# These generators are standalone scripts run by hand, not a package. Adding the
+# repository root rather than tools/ is what lets the import below be spelled as
+# a path from the root, which is where every static analyser starts looking too.
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+
+from tools.seeded_random import SeededRandom  # noqa: E402
 
 SEED = 20260806
 OUT = Path(__file__).resolve().parent / "metrics"
@@ -34,7 +41,7 @@ def softmax(row: list[float]) -> list[float]:
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
 
     for n, k in SHAPES:
         y_true = [rng.randrange(k) for _ in range(n)]

@@ -27,10 +27,18 @@ from __future__ import annotations
 import base64
 import json
 import math
-import random
+import sys
 import warnings
 from importlib.metadata import version
 from pathlib import Path
+
+# CONTRIBUTING runs this with PYTHONSAFEPATH=1, which keeps the script's own
+# directory off sys.path, so the shared drawer has to be pointed at by hand.
+# Appended rather than prepended: nothing in tools/ may shadow an installed
+# package, which is the safeguard PYTHONSAFEPATH is there to provide.
+sys.path.append(str(Path(__file__).resolve().parent))
+
+from seeded_random import SeededRandom  # noqa: E402
 
 from difflib import SequenceMatcher
 
@@ -64,7 +72,7 @@ RANGES = {
 }
 
 
-def rand_string(rng: random.Random, length: int, ranges) -> str:
+def rand_string(rng: SeededRandom, length: int, ranges) -> str:
     out = []
     for _ in range(length):
         lo, hi = rng.choice(ranges)
@@ -75,7 +83,7 @@ def rand_string(rng: random.Random, length: int, ranges) -> str:
     return "".join(out)
 
 
-def mutate(rng: random.Random, s: str, edits: int, ranges) -> str:
+def mutate(rng: SeededRandom, s: str, edits: int, ranges) -> str:
     """Apply `edits` random insert/delete/substitute operations to `s`."""
     chars = list(s)
     for _ in range(edits):
@@ -93,7 +101,7 @@ def mutate(rng: random.Random, s: str, edits: int, ranges) -> str:
     return "".join(chars)
 
 
-def build_pairs(rng: random.Random):
+def build_pairs(rng: SeededRandom):
     """Yield (category, a, b) tuples covering the corpus design."""
     # Deterministic edge cases first.
     edge = [
@@ -150,7 +158,7 @@ def build_pairs(rng: random.Random):
 
 
 def generate_levenshtein() -> dict:
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     cases = []
     for idx, (category, a, b) in enumerate(build_pairs(rng)):
         cases.append(
@@ -185,7 +193,7 @@ def generate_levenshtein() -> dict:
 
 def _edit_distance_corpus(module, algorithm: str, library: str, calls: list[str]) -> dict:
     """Build an oracle for any rapidfuzz edit-distance module (Levenshtein/OSA/DL)."""
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     cases = []
     for idx, (category, a, b) in enumerate(build_pairs(rng)):
         cases.append(
@@ -245,7 +253,7 @@ def _hamming_reference(a: str, b: str) -> int:
 
 
 def generate_hamming() -> dict:
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     diverge = 0
     cases = []
     for idx, (category, a, b) in enumerate(build_pairs(rng)):
@@ -337,7 +345,7 @@ def _jaro_winkler_reference(a: str, b: str, p: float = 0.1) -> float:
 
 
 def _similarity_reference_corpus(reference, jelly, algorithm: str) -> dict:
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     diverge = 0
     cases = []
     for idx, (category, a, b) in enumerate(build_pairs(rng)):
@@ -370,7 +378,7 @@ def generate_jaro_winkler() -> dict:
 
 
 def generate_lcs() -> dict:
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     cases = []
     for idx, (category, a, b) in enumerate(build_pairs(rng)):
         subsequence = (len(a) + len(b) - Indel.distance(a, b)) // 2
@@ -396,7 +404,7 @@ def generate_lcs() -> dict:
 
 
 def generate_ratcliff() -> dict:
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     cases = []
     for idx, (category, a, b) in enumerate(build_pairs(rng)):
         similarity = SequenceMatcher(None, a, b, autojunk=False).ratio()
@@ -419,7 +427,7 @@ def generate_set_similarity() -> dict:
     # qval=1 (textdistance default) over non-empty pairs: textdistance raises on
     # empty operands (its own edge quirk); DataNet defines those separately and
     # covers them via unit tests. Multiset (bag) semantics.
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     cases = []
     for idx, (category, a, b) in enumerate(build_pairs(rng)):
         if a == "" or b == "":
@@ -460,7 +468,7 @@ CURATED_WORDS = [
 ]
 
 
-def phonetic_words(rng: random.Random):
+def phonetic_words(rng: SeededRandom):
     for w in CURATED_WORDS:
         yield w
     # Random pronounceable-ish alphabetic words, deterministic.
@@ -511,7 +519,7 @@ def generate_metaphone() -> dict:
 
 
 def generate_phonetics() -> dict:
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     cases = []
     for idx, word in enumerate(phonetic_words(rng)):
         cases.append({
@@ -1001,12 +1009,11 @@ def generate_wordpiece() -> dict:
 
 
 def generate_pooling() -> dict:
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     cases = []
     for cid, (seq, dim) in enumerate([(4, 6), (5, 8), (3, 4), (6, 5)]):
         emb = [[rng.uniform(-1, 1) for _ in range(dim)] for _ in range(seq)]
-        # Seeded RNG: the corpus must regenerate byte-identically. Not security.
-        mask = [1 if rng.random() < 0.7 or t == 0 else 0 for t in range(seq)]  # NOSONAR
+        mask = [1 if rng.random() < 0.7 or t == 0 else 0 for t in range(seq)]
         active = sum(mask) or 1
         pooled = [sum(emb[t][d] for t in range(seq) if mask[t]) / active for d in range(dim)]
         norm = sum(v * v for v in pooled) ** 0.5
@@ -1029,7 +1036,7 @@ def generate_pooling() -> dict:
 def generate_knn() -> dict:
     import numpy as np  # noqa: PLC0415
 
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     n_items, dim, n_queries, k = 60, 16, 6, 5
     corpus = [[rng.uniform(-1, 1) for _ in range(dim)] for _ in range(n_items)]
     queries = [[rng.uniform(-1, 1) for _ in range(dim)] for _ in range(n_queries)]
@@ -1766,7 +1773,7 @@ REPORT_DIGITS = (2, 3)
 
 
 def _metric_fixtures() -> list[dict]:
-    rng = random.Random(METRIC_SEED)
+    rng = SeededRandom(METRIC_SEED)
     fixtures: list[dict] = []
 
     def noisy(truth: list[int], classes: list[int], flip: float) -> list[int]:
@@ -1927,7 +1934,7 @@ def _softmax(row: list[float]) -> list[float]:
 
 
 def _roc_fixtures() -> list[dict]:
-    rng = random.Random(METRIC_SEED + 1)
+    rng = SeededRandom(METRIC_SEED + 1)
     fixtures: list[dict] = []
 
     def weights(n: int) -> list[float]:

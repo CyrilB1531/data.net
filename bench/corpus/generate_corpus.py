@@ -14,8 +14,15 @@ change and diffs stay reviewable.
 from __future__ import annotations
 
 import json
-import random
+import sys
 from pathlib import Path
+
+# These generators are standalone scripts run by hand, not a package. Adding the
+# repository root rather than tools/ is what lets the import below be spelled as
+# a path from the root, which is where every static analyser starts looking too.
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+
+from tools.seeded_random import SeededRandom  # noqa: E402
 
 SEED = 20260801
 LENGTHS = [8, 32, 128, 512]
@@ -25,11 +32,11 @@ ALPHABET = "abcdefghijklmnopqrstuvwxyz "
 OUT = Path(__file__).resolve().parent / "pairs.json"
 
 
-def rand_string(rng: random.Random, length: int) -> str:
+def rand_string(rng: SeededRandom, length: int) -> str:
     return "".join(rng.choice(ALPHABET) for _ in range(length))
 
 
-def mutate(rng: random.Random, s: str, edits: int) -> str:
+def mutate(rng: SeededRandom, s: str, edits: int) -> str:
     chars = list(s)
     for _ in range(edits):
         op = rng.choice(("ins", "del", "sub")) if chars else "ins"
@@ -44,7 +51,7 @@ def mutate(rng: random.Random, s: str, edits: int) -> str:
 
 
 def main() -> None:
-    rng = random.Random(SEED)
+    rng = SeededRandom(SEED)
     buckets = []
     for length in LENGTHS:
         edits = max(1, length // 10)  # ~10% typo rate: near-duplicate matching
