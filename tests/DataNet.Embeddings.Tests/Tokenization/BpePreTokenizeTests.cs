@@ -79,6 +79,22 @@ public sealed class BpePreTokenizeTests
         Assert.Equal(patterns.GetProperty("qwen2").GetString(), BpePatterns.Qwen2);
     }
 
+    /// <summary>
+    /// Proves the <see langword="null"/>-pattern default directly. It is otherwise
+    /// only exercised transitively through <c>BpeTokenizerTests</c> (its oracle,
+    /// <c>tiny_bpe.json</c>, is the only fixture in this branch declaring
+    /// HuggingFace's <c>Whitespace</c> pre-tokenizer type) — a failure there would
+    /// report from the wrong file.
+    /// </summary>
+    [Fact]
+    public void The_null_pattern_splits_on_word_boundaries_not_on_whitespace_alone()
+    {
+        var splitter = new BpePreTokenizer(null);
+        var pieces = new List<string>();
+        splitter.Split("world!", pieces);
+        Assert.Equal(["world", "!"], pieces);
+    }
+
     [Fact]
     public void A_pathological_pattern_times_out_rather_than_hanging()
     {

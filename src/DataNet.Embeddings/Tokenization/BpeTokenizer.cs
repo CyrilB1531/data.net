@@ -8,11 +8,12 @@ namespace DataNet.Embeddings.Tokenization;
 /// </summary>
 /// <remarks>
 /// <para>
-/// A pre-tokenized piece starts as one symbol per character — or, byte-level,
-/// one symbol per UTF-8 byte mapped through the byte-level alphabet — and the
-/// lowest-ranked applicable merge is applied repeatedly until none applies.
-/// Rank is the model: it is the order the pairs were learned in, and it is
-/// what a merge table is for.
+/// A pre-tokenized piece starts as one symbol per Unicode code point — a
+/// surrogate pair counts once, not twice — or, byte-level, one symbol per
+/// UTF-8 byte mapped through the byte-level alphabet. The lowest-ranked
+/// applicable merge is then applied repeatedly until none applies. Rank is
+/// the model: it is the order the pairs were learned in, and it is what a
+/// merge table is for.
 /// </para>
 /// <para>
 /// Before any of that, <see cref="Encode"/> looks for a literal occurrence of an
@@ -39,7 +40,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private readonly int[] _merged;             // rank -> the id the pair becomes
     private readonly BpePreTokenizer _split;
     private readonly BpeVocabulary _vocabulary;
-    private readonly (string Token, int Id)[] _addedTokens; // longest first: see NextAddedToken
+    private readonly (string Token, int Id)[] _addedTokens; // any order -- NextAddedToken resolves leftmost, then longest, itself
     private readonly string? _endOfWord;
     private readonly int _unkId;
     private readonly bool _hasUnk;
@@ -72,11 +73,16 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             _tokens[entry.Value] = entry.Key;
         }
 
-        // Longest first: where two added tokens both start at the same position,
-        // HuggingFace's AddedVocabulary prefers the longer match.
+        // An empty added token would never advance Encode's scan position --
+        // IndexOf("", pos) always returns pos -- hanging the loop. The loader this
+        // vocabulary is meant to come from bounds a token's *upper* length but never
+        // rejects an empty one (TokenizerJsonLoader.cs), so this is not a case that
+        // can be assumed away; it is filtered here instead. The order of the array
+        // itself does not matter: NextAddedToken picks the leftmost match, and the
+        // longest on a tie, regardless of how these are enumerated.
         _addedTokens = [.. vocabulary.AddedTokens
-            .Select(entry => (entry.Key, entry.Value))
-            .OrderByDescending(entry => entry.Key.Length)];
+            .Where(entry => entry.Key.Length > 0)
+            .Select(entry => (entry.Key, entry.Value))];
 
         if (vocabulary.UnkToken is { } unk)
         {
@@ -103,9 +109,14 @@ public sealed class BpeTokenizer : ISubwordTokenizer
                 _merged[rank] = -1;
                 continue;
             }
-            // The lowest rank wins: a pair that reappears later in the table is a
-            // duplicate that cannot apply before the first occurrence already did,
-            // so it must never overwrite the rank already recorded for it.
+            // If a pair is listed twice, the first (lowest) rank is kept rather than
+            // the last write winning. Neither tokenizer.json nor merges.txt defines
+            // what a duplicate pair should mean, so this is DataNet's own choice,
+            // made because rank is supposed to be the order a pair was learned in,
+            // and a pair cannot have been learned twice at two different ranks. It
+            // is a choice, not a verified fact about HuggingFace's own trainer or
+            // loader: tiny_bpe.json's 116 merges are 116 distinct pairs, so no
+            // corpus in this branch can tell this apart from "last write wins".
             long key = Key(left, right);
             if (!_ranks.ContainsKey(key))
             {
@@ -167,7 +178,14 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         int bestId = 0;
         foreach ((string token, int id) in _addedTokens)
         {
-            int at = text.IndexOf(token, from, StringComparison.Ordinal);
+            // Once a candidate is found, only a match starting at or before it can
+            // still win (leftmost beats longer), so later tokens only need a window
+            // reaching bestAt plus their own length -- just enough to still find a
+            // match that starts exactly at bestAt. Llama-3 alone declares 256 added
+            // tokens; without this bound, every one of them would rescan to the end
+            // of whatever text remains, on every match found.
+            int windowEnd = bestAt < 0 ? text.Length : Math.Min(text.Length, bestAt + token.Length);
+            int at = text.IndexOf(token, from, windowEnd - from, StringComparison.Ordinal);
             if (at < 0)
             {
                 continue;

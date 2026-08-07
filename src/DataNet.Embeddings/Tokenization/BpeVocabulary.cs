@@ -56,7 +56,12 @@ public sealed record BpeVocabulary(
     /// <summary>The unknown token, when the model declares one.</summary>
     public string? UnkToken { get; init; }
 
-    /// <summary>The pattern text is split on before merging; <see langword="null"/> to split on whitespace.</summary>
+    /// <summary>
+    /// The pattern text is split on before merging; <see langword="null"/> to split
+    /// on word boundaries, isolating punctuation from letters and digits —
+    /// HuggingFace's <c>Whitespace</c> pre-tokenizer type, not the coarser
+    /// <c>WhitespaceSplit</c> that only collapses whitespace runs.
+    /// </summary>
     public string? PreTokenizerPattern { get; init; }
 
     /// <summary>Number of entries in the vocabulary.</summary>

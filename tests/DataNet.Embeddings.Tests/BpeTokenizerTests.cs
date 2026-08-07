@@ -102,4 +102,74 @@ public sealed class BpeTokenizerTests
             new BpeTokenizer(vocab).Encode("the quick brown fox").Ids,
             tokenizer.Encode("the quick brown fox").Ids);
     }
+
+    /// <summary>
+    /// Regression test for the leftmost/longest added-token rule: the corpus
+    /// declares exactly one added token ("[UNK]"), so it cannot distinguish this
+    /// rule from any other. Two added tokens sharing a prefix and starting at the
+    /// same position must resolve to the longer one, matching HuggingFace's
+    /// AddedVocabulary (Aho-Corasick <c>LeftmostLongest</c>).
+    /// </summary>
+    [Fact]
+    public void Added_tokens_prefer_the_longest_match_at_the_same_position()
+    {
+        BpeVocabulary vocab = TinyVocabulary() with
+        {
+            AddedTokens = new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["<a>"] = 1000,
+                ["<a>b"] = 1001,
+            },
+        };
+        var tokenizer = new BpeTokenizer(vocab);
+
+        TokenizationResult result = tokenizer.Encode("<a>b");
+
+        Assert.Equal(["<a>b"], result.Tokens);
+        Assert.Equal([1001], result.Ids);
+    }
+
+    /// <summary>
+    /// Regression test for the other half of the rule: a shorter match that starts
+    /// earlier is chosen over a longer match that starts later, even though "longer
+    /// wins" is the tie-break at equal positions. Leftmost always wins first.
+    /// </summary>
+    [Fact]
+    public void Added_tokens_prefer_the_earliest_position_over_a_longer_later_match()
+    {
+        BpeVocabulary vocab = TinyVocabulary() with
+        {
+            AddedTokens = new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["<z>"] = 2000,
+                ["<a><a>"] = 2001,
+            },
+        };
+        var tokenizer = new BpeTokenizer(vocab);
+
+        TokenizationResult result = tokenizer.Encode("<z><a><a>");
+
+        Assert.Equal(["<z>", "<a><a>"], result.Tokens);
+        Assert.Equal([2000, 2001], result.Ids);
+    }
+
+    /// <summary>
+    /// A malformed vocabulary can declare an empty added token: the loader this
+    /// vocabulary is meant to come from bounds a token's upper length but never
+    /// rejects an empty one. Left unfiltered, <c>IndexOf("", pos)</c> always
+    /// returns <c>pos</c>, so the scan in <c>Encode</c> never advances.
+    /// </summary>
+    [Fact]
+    public void An_empty_added_token_is_ignored_rather_than_hanging_encode()
+    {
+        BpeVocabulary vocab = TinyVocabulary() with
+        {
+            AddedTokens = new Dictionary<string, int>(StringComparer.Ordinal) { [string.Empty] = 999 },
+        };
+        var tokenizer = new BpeTokenizer(vocab);
+
+        TokenizationResult result = tokenizer.Encode("the quick brown fox");
+
+        Assert.Equal(new BpeTokenizer(TinyVocabulary()).Encode("the quick brown fox").Ids, result.Ids);
+    }
 }
