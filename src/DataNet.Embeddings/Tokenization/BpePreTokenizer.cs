@@ -9,9 +9,11 @@ namespace DataNet.Embeddings.Tokenization;
 /// <remarks>
 /// <para>
 /// A byte-level model declares the pattern it was trained with; the classic
-/// lineage splits on whitespace instead. The split is not cosmetic — a merge
-/// can never cross a piece boundary, so it decides which tokens are reachable
-/// at all.
+/// lineage splits on word boundaries instead, isolating punctuation from
+/// letters and digits (HuggingFace's <c>Whitespace</c> pre-tokenizer type,
+/// <c>\w+|[^\w\s]+</c>). The split is not cosmetic — a merge can never cross a
+/// piece boundary, so it decides which tokens are reachable at all, and it is
+/// what puts an end-of-word suffix on <c>world</c> rather than on <c>world!</c>.
 /// </para>
 /// <para>
 /// The pattern reaches here from a model file, so it is caller-supplied in every
@@ -21,8 +23,14 @@ namespace DataNet.Embeddings.Tokenization;
 /// </remarks>
 internal sealed class BpePreTokenizer
 {
+    // HuggingFace's "Whitespace" pre-tokenizer type -- what the classic (non-byte-level)
+    // lineage declares -- splits on word boundaries, separating punctuation from
+    // letters/digits, rather than merely collapsing whitespace runs (that is a
+    // different type, "WhitespaceSplit", equivalent to \S+). A model whose last
+    // word character is followed by punctuation, e.g. "world!", needs the split so
+    // the end-of-word suffix lands on "world", not on "world!".
     private static readonly Regex Whitespace =
-        new(@"\S+", RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexDefaults.MatchTimeout);
+        new(@"\w+|[^\w\s]+", RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexDefaults.MatchTimeout);
 
     private readonly Regex _pattern;
 
