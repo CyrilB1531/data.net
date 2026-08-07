@@ -1,4 +1,5 @@
 using System.Buffers;
+using DataNet.Internal.Persistence;
 
 namespace DataNet.Embeddings.Tokenization;
 
@@ -44,6 +45,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private readonly string? _endOfWord;
     private readonly int _unkId;
     private readonly bool _hasUnk;
+    private readonly bool _byteLevel;
 
     /// <summary>Creates a tokenizer from a loaded BPE model.</summary>
     /// <param name="vocabulary">A vocabulary from <c>BpeFilesLoader</c> or <see cref="Persistence.TokenizerJsonLoader"/>.</param>
@@ -53,6 +55,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         Guard.NotNull(vocabulary);
         _vocabulary = vocabulary;
         _endOfWord = vocabulary.EndOfWordSuffix;
+        _byteLevel = vocabulary.ByteLevel;
 
         _vocab = new Dictionary<string, int>(vocabulary.Vocab.Count, StringComparer.Ordinal);
         int maxId = -1;
@@ -218,17 +221,19 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             return;
         }
 
-        // One symbol per character is the upper bound for the classic path; the
-        // byte-level path rents against its byte count in Task 8. The pool is
-        // rented before the span is built, rather than inside the conditional
-        // expression, so the rent is a statement of its own rather than an
-        // assignment buried in an expression.
-        bool small = piece.Length <= StackThreshold;
-        int[]? rented = small ? null : ArrayPool<int>.Shared.Rent(piece.Length);
-        Span<int> symbols = small ? stackalloc int[piece.Length] : rented!.AsSpan(0, piece.Length);
+        // One symbol per character is the upper bound for the classic path; a
+        // byte-level piece is sized by its UTF-8 byte count instead, because one
+        // character can become up to four symbols. The pool is rented before the
+        // span is built, rather than inside the conditional expression, so the
+        // rent is a statement of its own rather than an assignment buried in an
+        // expression.
+        int capacity = _byteLevel ? JsonArtifact.Utf8NoBom.GetByteCount(piece) : piece.Length;
+        bool small = capacity <= StackThreshold;
+        int[]? rented = small ? null : ArrayPool<int>.Shared.Rent(capacity);
+        Span<int> symbols = small ? stackalloc int[capacity] : rented!.AsSpan(0, capacity);
         try
         {
-            int count = InitialSymbols(piece, symbols);
+            int count = _byteLevel ? ByteLevelSymbols(piece, symbols) : InitialSymbols(piece, symbols);
             count = Merge(symbols, count);
             for (int i = 0; i < count; i++)
             {
@@ -285,6 +290,35 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             i += width;
         }
         return count;
+    }
+
+    /// <summary>Fills <paramref name="symbols"/> with one id per UTF-8 byte of <paramref name="piece"/>.</summary>
+    /// <remarks>
+    /// One byte, one symbol: a four-byte emoji enters the merge loop as four
+    /// symbols. That is where the round-trip guarantee comes from — every byte of
+    /// the input is represented, so decoding can put them back.
+    /// </remarks>
+    /// <exception cref="ArgumentException">
+    /// A byte-level model's vocabulary is expected to contain all 256 byte-level
+    /// alphabet characters as base tokens -- that is what makes it byte-level.
+    /// A missing entry means the vocabulary is not what <see cref="BpeVocabulary.ByteLevel"/>
+    /// claims it is, which is a broken model, not ordinary uncovered input the way
+    /// an unmapped code point is on the classic path.
+    /// </exception>
+    private int ByteLevelSymbols(string piece, Span<int> symbols)
+    {
+        byte[] bytes = JsonArtifact.Utf8NoBom.GetBytes(piece);
+        for (int i = 0; i < bytes.Length; i++)
+        {
+            string symbol = ByteLevelAlphabet.ToChar(bytes[i]).ToString();
+            if (!_vocab.TryGetValue(symbol, out int id))
+            {
+                throw new ArgumentException(
+                    $"The vocabulary has no entry for byte 0x{bytes[i]:X2} ('{symbol}'); it is not a byte-level model.");
+            }
+            symbols[i] = id;
+        }
+        return bytes.Length;
     }
 
     /// <summary>Applies the lowest-ranked applicable merge until none applies. Returns the new symbol count.</summary>
