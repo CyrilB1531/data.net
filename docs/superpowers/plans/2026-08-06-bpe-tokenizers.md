@@ -558,7 +558,19 @@ for name,url in [('llama3','https://huggingface.co/meta-llama/Meta-Llama-3-8B/re
 "
 ```
 
-Llama-3 is gated and will very likely fail with HTTP 401. If it does, do **not** guess: report it to the user and ask whether to drop the `llama3` row (leaving `gpt2` and `qwen2`) or to source the pattern another way. Qwen2 is Apache-2.0 and ungated, so it should succeed. Paste the exact `pattern.Regex` strings into `BPE_PATTERNS`.
+**This was executed, and here is what it produced.** Qwen2 succeeded. `meta-llama/Meta-Llama-3-8B` returned HTTP 401 — it is gated. Guessing the pattern was refused; it was read instead from two independent ungated mirrors whose `pre_tokenizer` blocks are byte-identical to each other:
+
+- `https://huggingface.co/NousResearch/Meta-Llama-3-8B/resolve/main/tokenizer.json`
+- `https://huggingface.co/unsloth/llama-3-8b/resolve/main/tokenizer.json`
+
+Both also report `model.ignore_merges = true` and a 128 000-entry vocabulary. The resulting entries:
+
+```python
+    "llama3": r"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+",
+    "qwen2":  r"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+",
+```
+
+They differ in exactly one place — `\p{N}{1,3}` against `\p{N}`. A transcription that differs anywhere else is a typo. Record both mirror URLs in a comment above `BPE_PATTERNS`: a literal whose provenance is not written down is what the licensing rule is about.
 
 - [ ] **Step 6: Add the loader corpus**
 
@@ -638,9 +650,12 @@ Expected: `alphabet 256 Ġ Ċ` — byte 0x20 maps to U+0120 and byte 0x0A to U+0
 Run the generator a second time, then: `git diff --stat -- tests/oracles`
 Expected: empty. The `Oracles are reproducible` CI job runs exactly this.
 
-Note for when this job goes red **in CI** rather than here: it is known to be flaky. On 2026-08-07 it failed and then passed on the identical commit, with no code change, and the cause is still unidentified — the step prints only `--stat`, so the evidence dies with the runner. Re-run before believing it; two reds in a row is a signal, one is not. A clean local `git status -- tests/oracles` after regenerating means the committed corpora are fine.
+Note for when this job goes red **in CI** rather than here. It was flaky through 2026-08-07 — red then green on an identical commit — and both halves of that have since been fixed on `main`: #95 made the step print the drift instead of only its shape, and #97 found the cause. Three corpora recorded floats at full `float64` repr, so the last bits described whichever SIMD reduction order the host CPU's BLAS chose; the generator now rounds to twelve significant digits.
 
-Do not confuse this with Task 2's finding. The BPE *trainer* is non-deterministic, but `tiny_bpe.json` is committed and CI never retrains it — `generate_oracles.py` only reads it. So a red on `bpe.json` is either the known flake or a real bug in this task's generator; it cannot be the trainer.
+None of that reaches these four corpora — they carry tokens, ids and strings, and not one float — so a red here is a real difference, not the old flake. Read the diff the job now prints.
+
+Do not confuse a red with Task 2's finding either. The BPE *trainer* is non-deterministic, but `tiny_bpe.json` is committed and CI never retrains it — `generate_oracles.py` only reads it. A red on `bpe.json` is a real bug in this task's generator; it cannot be the trainer.
+
 
 - [ ] **Step 11: Commit**
 
@@ -944,7 +959,9 @@ Expected: FAIL — `BpeVocabulary`, `MergePair` and `BpePatterns` do not exist.
 
 - [ ] **Step 4: Write `BpePatterns`**
 
-`src/DataNet.Embeddings/Tokenization/BpePatterns.cs`. **Before finishing this step**, open `tools/generate_oracles.py`, read the `BPE_PATTERNS` dict — that is now the single place these strings are written down — and paste the `llama3` and `qwen2` values in, replacing the `"…"` below. A C# verbatim string (`@"…"`) needs each `"` doubled; a regular string needs each `\` doubled. Task 6 has a test that fails until these match the corpus exactly, so leaving them as `"…"` is caught, but leaving them as `"…"` *and* skipping Task 6 is not.
+`src/DataNet.Embeddings/Tokenization/BpePatterns.cs`. The three literals below are already the ones Task 3 transcribed and froze in `tools/generate_oracles.py`; that dict remains the reference, so diff against it rather than retyping. Task 6 has a test asserting the shipped constants equal the ones the corpus was generated with, so any drift between the two is caught.
+
+Verbatim strings (`@"…"`) are used deliberately: these patterns are dense in backslashes, and a regular string would need every one doubled — which is how a pattern silently becomes a different pattern.
 
 ```csharp
 namespace DataNet.Embeddings.Tokenization;
@@ -973,10 +990,12 @@ public static class BpePatterns
         @"'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+";
 
     /// <summary>Llama-3's pattern, from its <c>tokenizer.json</c>.</summary>
-    public static string Llama3 { get; } = "…";   // paste from tools/generate_oracles.py
+    public static string Llama3 { get; } =
+        @"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+";
 
     /// <summary>Qwen2's pattern, from its <c>tokenizer.json</c>.</summary>
-    public static string Qwen2 { get; } = "…";    // paste from tools/generate_oracles.py
+    public static string Qwen2 { get; } =
+        @"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+";
 }
 ```
 
@@ -2965,6 +2984,7 @@ Read `docs/decisions/0013-sentencepiece-parity-scope.md` first and follow its st
 1. Parity is claimed end-to-end for GPT-2 and for the classic character-level lineage, proven over GPT-2's real vocabulary.
 2. Llama-3 and Qwen2 are claimed **at the split level only** — the pattern is proven against HuggingFace, the vocabulary is the caller's. Say why: proving them end-to-end means vendoring 150 000-entry vocabularies to re-prove a merge loop GPT-2 already proves.
 3. `byte_fallback` is refused. Llama-2 and Mistral v0.1 are SentencePiece BPE with `Metaspace`, a third pipeline that neither `BpeTokenizer` nor `SentencePieceTokenizer` reproduces. Name them, so a reader stops looking.
+4. Llama-3's split pattern was read from two independent ungated mirrors — `NousResearch/Meta-Llama-3-8B` and `unsloth/llama-3-8b` — because `meta-llama/Meta-Llama-3-8B` is gated and returns HTTP 401. Their `pre_tokenizer` blocks are byte-identical, and that agreement is what stands in for reading the original. Record it: a reader auditing where a public constant came from must not have to reconstruct this.
 
 Record the measured benchmark outcome in *Consequences*, including whether the priority-queue arm was needed.
 

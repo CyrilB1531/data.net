@@ -33,6 +33,16 @@ directly: the oracle generator builds a HuggingFace byte-level BPE over the GPT-
 vocabulary with the Llama-3 and then the Qwen2 `Split` pre-tokenizer, and the C#
 side replays both byte for byte.
 
+Llama-3's pattern needed sourcing before it could be shipped, because
+`meta-llama/Meta-Llama-3-8B` is a gated repository and returns HTTP 401 without
+credentials this project does not have. Writing the pattern from memory was
+refused outright — an unverifiable literal in the public API is what the
+provenance rule exists to prevent. It was read instead from two independent
+ungated mirrors, `NousResearch/Meta-Llama-3-8B` and `unsloth/llama-3-8b`, whose
+`pre_tokenizer` blocks are byte-identical to each other. Two sources agreeing is
+what stands in for reading the original, and both URLs are recorded beside the
+literal in `tools/generate_oracles.py`.
+
 The Llama-2 / Mistral row is the same kind of limit ADR 0013 recorded for
 SentencePiece, and it gets the same treatment: refused explicitly, named in the
 guide, and written down in an ADR rather than rediscovered.
