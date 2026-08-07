@@ -86,6 +86,20 @@ stock model happens to share. Both are committed inputs to
 `generate_oracles.py`, like `tiny_sp.model` — CI never retrains them, and
 training is not guaranteed reproducible across `sentencepiece` versions.
 
+## `build_tiny_models.py`
+
+Builds fixtures too small to fit the pipeline the other scripts share: two
+ONNX graphs (`tiny_encoder.onnx`, `tiny_embedder.onnx`) and a trained
+character-level BPE (`tiny_bpe.json`), all committed rather than rebuilt by
+CI. See the module docstring for what each one proves.
+
+`tiny_bpe.json`'s trainer is not byte-reproducible across runs: tokens and
+merges that tie in frequency land at different ids each time, because the
+Rust `HashMap` behind the frequency counts seeds its hash randomly per
+process. So, like `tiny_sp.model`, the committed file is authoritative and
+rebuilding it is a deliberate act — a diff there is expected, and must not be
+committed without regenerating `bpe.json` in the same commit.
+
 ## `check_nuspec_dependencies.py`
 
 Asserts that the `<dependencies>` of every packed `.nupkg` match an expected

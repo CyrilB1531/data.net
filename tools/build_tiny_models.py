@@ -104,6 +104,55 @@ def build_tiny_embedder() -> onnx.ModelProto:
                              opset_imports=[helper.make_opsetid("", OPSET)])
 
 
+# A character-level BPE, the subword-nmt lineage: no byte alphabet, an explicit
+# end-of-word marker, and a vocabulary small enough to read in a diff. It exists
+# to exercise the merge loop on its own, with none of the byte-level mapping the
+# GPT-2 fixture brings.
+BPE_CORPUS = [
+    "the quick brown fox jumps over the lazy dog",
+    "tokenization is embedding embeddings",
+    "the cat sat on the mat and the cat sat again",
+    "lovely love loved lover loving",
+    "bigger biggest big",
+    "natural language processing processes language naturally",
+    "machine learning and data science",
+    "programming programs a program",
+]
+
+
+def build_tiny_bpe() -> str:
+    """A trained character-level BPE, serialized as a tokenizer.json.
+
+    ``BpeTrainer`` is not byte-reproducible across process runs: tokens and
+    merges that tie in frequency break ties differently each time, because the
+    Rust ``HashMap`` behind the frequency counts seeds its hash randomly per
+    process. Vocabulary size and merge count come out the same every run; the
+    ids assigned to tied tokens and their order among tied merges do not. The
+    committed ``tests/oracles/tiny_bpe.json`` is therefore authoritative, not
+    this function — running it again produces a valid but different model, so
+    a diff there is expected and must never be committed without regenerating
+    ``bpe.json`` in the same commit.
+    """
+    from tokenizers import Tokenizer  # noqa: PLC0415
+    from tokenizers.models import BPE  # noqa: PLC0415
+    from tokenizers.pre_tokenizers import Whitespace  # noqa: PLC0415
+    from tokenizers.trainers import BpeTrainer  # noqa: PLC0415
+
+    tokenizer = Tokenizer(BPE(unk_token="[UNK]", end_of_word_suffix="</w>"))
+    tokenizer.pre_tokenizer = Whitespace()
+    tokenizer.train_from_iterator(
+        BPE_CORPUS,
+        BpeTrainer(
+            vocab_size=200,
+            min_frequency=1,
+            special_tokens=["[UNK]"],
+            end_of_word_suffix="</w>",
+            show_progress=False,
+        ),
+    )
+    return tokenizer.to_str(pretty=True)
+
+
 def main() -> None:
     for filename, build in (("tiny_encoder.onnx", build_tiny_encoder),
                             ("tiny_embedder.onnx", build_tiny_embedder)):
@@ -112,6 +161,10 @@ def main() -> None:
         path = ORACLE_DIR / filename
         path.write_bytes(model.SerializeToString())
         print(f"{filename}: {path.stat().st_size} bytes -> {path}")
+
+    path = ORACLE_DIR / "tiny_bpe.json"
+    path.write_text(build_tiny_bpe() + "\n", encoding="utf-8")
+    print(f"tiny_bpe.json: {path.stat().st_size} bytes -> {path}")
 
 
 if __name__ == "__main__":
