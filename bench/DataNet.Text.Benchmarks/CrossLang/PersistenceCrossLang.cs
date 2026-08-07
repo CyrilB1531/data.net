@@ -1,5 +1,6 @@
 using System.Text.Json;
 using DataNet.Embeddings.Persistence;
+using DataNet.Embeddings.Search;
 using DataNet.Text.Vectorization;
 
 namespace DataNet.Text.Benchmarks.CrossLang;
@@ -38,6 +39,14 @@ public static class PersistenceCrossLang
         string unigramJson = BenchCorpus.Path("tokenizer_30k_unigram.json");
         string spiece = BenchCorpus.Path("spiece_30k.model");
 
+        EmbeddingIndex index = PersistenceBenchmarks.BuildIndex();
+        byte[] indexArtifact;
+        using (var stream = new MemoryStream())
+        {
+            index.Save(stream);
+            indexArtifact = stream.ToArray();
+        }
+
         Console.WriteLine("C# persistence cross-lang bench");
         var results = new List<Harness.OperationResult>
         {
@@ -55,6 +64,21 @@ public static class PersistenceCrossLang
             {
                 using var stream = new MemoryStream(artifact);
                 return TfidfVectorizer.Load(stream);
+            }),
+            Harness.Measure("embedding_index_save", () =>
+            {
+                using var stream = new MemoryStream(indexArtifact.Length);
+                index.Save(stream);
+                return stream.Length;
+            }),
+            Harness.Measure("embedding_index_load", () =>
+            {
+                using var stream = new MemoryStream(indexArtifact);
+                // 3 840 000 floats exceeds the loader's default MaxArrayLength of
+                // 1 000 000 (see PersistenceBenchmarks.IndexLoadOptions) — a real
+                // caller with a corpus this size hits the same InvalidDataException
+                // and must raise the same limit.
+                return EmbeddingIndex.Load(stream, new ArtifactLoadOptions { MaxArrayLength = 4_000_000 });
             }),
         };
 
