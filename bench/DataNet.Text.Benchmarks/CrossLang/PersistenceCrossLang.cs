@@ -74,11 +74,7 @@ public static class PersistenceCrossLang
             Harness.Measure("embedding_index_load", () =>
             {
                 using var stream = new MemoryStream(indexArtifact);
-                // 3 840 000 floats exceeds the loader's default MaxArrayLength of
-                // 1 000 000 (see PersistenceBenchmarks.IndexLoadOptions) — a real
-                // caller with a corpus this size hits the same InvalidDataException
-                // and must raise the same limit.
-                return EmbeddingIndex.Load(stream, new ArtifactLoadOptions { MaxArrayLength = 4_000_000 });
+                return EmbeddingIndex.Load(stream);
             }),
         };
 

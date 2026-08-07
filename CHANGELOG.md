@@ -178,7 +178,11 @@ and including `0.2.0` predate the split and covered all three at once — see
   block as base64 raw IEEE-754 bits: a reloaded index scores bit for bit what
   the original scored. The normalization flag travels in the file rather than
   being supplied again on load, because an index reloaded under the other
-  setting ranks a corpus wrongly without ever looking wrong.
+  setting ranks a corpus wrongly without ever looking wrong. The vector block is
+  the one array `ArtifactLoadOptions.MaxArrayLength` does not bound —
+  `MaxTotalBytes` caps it in bytes before parsing instead. A limit sized for a
+  vocabulary is the wrong unit for a corpus of embeddings: the default 1 000 000
+  elements is a large vocabulary and only 2 604 vectors of 384 dimensions.
 - **`EmbeddingIndex.Add(vector, id)`, `GetId` and `HasIds`** — an opaque id per
   vector, kept off `SearchResult` so the array `Search` scores into stays eight
   bytes per hit and free of references for the collector to chase.

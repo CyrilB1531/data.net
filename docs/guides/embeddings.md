@@ -218,7 +218,10 @@ bit what the original scored — and the normalization flag travels in the file
 rather than being supplied again on load, because an index reloaded under the
 other setting would rank a corpus wrongly without ever looking wrong. The reader
 bounds every count it reads against `ArtifactLoadOptions` before that count sizes
-a buffer.
+a buffer — except the vector block, which `MaxTotalBytes` caps in bytes before
+parsing begins. An element-count limit sized for a vocabulary is three orders of
+magnitude away from what a corpus of embeddings needs, and the default one
+refused a 384-dimensional index past 2 604 vectors.
 
 The search is an **exhaustive SIMD-vectorized** cosine (`System.Numerics.Vector`) —
 the right default up to a few hundred thousand vectors. An approximate index

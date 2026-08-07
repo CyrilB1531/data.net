@@ -182,7 +182,7 @@ public sealed partial class EmbeddingIndex
                     ids = ReadIds(ref reader, limits, count);
                     break;
                 case VectorsProperty:
-                    vectors = Base64Numbers.ReadSingles(ref reader, ArtifactName, VectorsProperty, limits);
+                    vectors = Base64Numbers.ReadSingles(ref reader, ArtifactName, VectorsProperty);
                     break;
                 default:
                     throw JsonArtifact.UnknownProperty(ArtifactName, name);
@@ -201,6 +201,11 @@ public sealed partial class EmbeddingIndex
         {
             throw JsonArtifact.Inconsistent(ArtifactName, $"'{CountProperty}' is negative ({count}).");
         }
+
+        // A count is a count of vectors — the vocabulary-adjacent scale
+        // MaxArrayLength was written for. Unlike the vectors block below, this
+        // value sizes nothing by itself until it is multiplied by the dimension
+        // (see Restore), so it keeps the bound the block deliberately no longer has.
         limits.CheckArrayLength(count, CountProperty);
         return count;
     }

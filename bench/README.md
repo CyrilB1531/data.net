@@ -554,14 +554,17 @@ without a fixture. In Python this is a 10 000 × 384 loop of plain-int arithmeti
 2.35 s measured once outside the timed loop, which is fine to pay a single time
 at process start and did not need caching.
 
-Loading this shape needs an explicit
-`ArtifactLoadOptions { MaxArrayLength = 4_000_000 }`: the reader's default cap is
-1 000 000 elements — generous for the vocabularies and idf vectors section 4
-measures, too small for 10 000 × 384 = 3 840 000. Both `EmbeddingIndexLoad` and
-`embedding_index_load` below pass that option; a real caller with a corpus this
-size would have to raise the same limit the same way. That is a fact about the
-loader's hardening defaults, not about the format choice this section prices,
-and it is called out here rather than silently worked around.
+Measuring this shape is what found a bug: loading it used to need an explicit
+`ArtifactLoadOptions { MaxArrayLength = 4_000_000 }`, because the reader applied
+that 1 000 000-element default — sized for vocabularies, not vector blocks — to
+the decoded float count, refusing 10 000 × 384 = 3 840 000 floats and, with it,
+any index past 2 604 vectors of this dimension. The figures below were taken
+before that was fixed, with the limit raised the same way a real caller would
+have had to. Fixing it changed no measured work — a bound check is O(1) — so the
+numbers stand: the vector block is now bounded by `MaxTotalBytes` instead, which
+caps the whole payload in bytes before parsing begins rather than the decoded
+element count after, and `EmbeddingIndexLoad` and `embedding_index_load` below
+call `Load` with the library's own defaults.
 
 ### net10 vs netstandard2.0
 
@@ -654,7 +657,7 @@ the loader (`src/Shared/Persistence/JsonArtifact.cs`,
 copies the stream into a growable `MemoryStream` in 80 KB chunks — reallocating
 as it doubles — and then calls `.ToArray()` for one more full copy; decoding then
 materialises the base64 block as `raw` bytes and copies it a second time into the
-final `float[]` (`Base64Numbers.ReadRaw` and `ReadSingles`); and `EnsureFinite`
+final `float[]` (`Base64Numbers.ReadUnboundedRaw` and `ReadSingles`); and `EnsureFinite`
 scans every one of the 3 840 000 restored floats before the index is handed back.
 That is on the order of five passes over a 15–20 MB block where `numpy.load`
 performs close to one. `Save` avoids most of this because `Utf8JsonWriter` writes

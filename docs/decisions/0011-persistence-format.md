@@ -145,8 +145,12 @@ Three things improve rather than degrade by moving it:
 
 The security line holds: decoding is `Utf8JsonReader.GetBytesFromBase64`, the
 same library that parses the rest of the file, not a hand-written decoder. The
-decoded length is checked against `MaxArrayLength` and refused unless it is a
-whole number of 64-bit values.
+idf vector's decoded length is checked against `MaxArrayLength` and refused
+unless it is a whole number of 64-bit values. That element-count bound is
+specific to a vocabulary-scale array: `EmbeddingIndex`'s vector block reuses the
+same base64 helper but is bounded by `MaxTotalBytes` before parsing instead,
+because a million floats is a small index and a million tokens is a large
+vocabulary.
 
 ### Escaping
 

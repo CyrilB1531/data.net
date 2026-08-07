@@ -28,15 +28,6 @@ public class PersistenceBenchmarks
     private EmbeddingIndex _index = null!;
     private byte[] _indexArtifact = [];
 
-    /// <summary>
-    /// The 10 000 x 384 vector block is 3 840 000 floats, past the loader's default
-    /// <c>MaxArrayLength</c> of 1 000 000 (a hostile-input guard, not a size a real
-    /// vocabulary or idf vector reaches). A benchmark built to the shape a real
-    /// sentence-transformer corpus has must raise the same limit a caller with that
-    /// corpus would — this is not a benchmark-only workaround.
-    /// </summary>
-    private static readonly ArtifactLoadOptions IndexLoadOptions = new() { MaxArrayLength = 4_000_000 };
-
     [GlobalSetup]
     public void Setup()
     {
@@ -114,7 +105,7 @@ public class PersistenceBenchmarks
     public EmbeddingIndex EmbeddingIndexLoad()
     {
         using var stream = new MemoryStream(_indexArtifact);
-        return EmbeddingIndex.Load(stream, IndexLoadOptions);
+        return EmbeddingIndex.Load(stream);
     }
 
     /// <summary>

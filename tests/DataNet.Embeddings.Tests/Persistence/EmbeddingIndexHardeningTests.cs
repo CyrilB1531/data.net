@@ -184,16 +184,40 @@ public sealed class EmbeddingIndexHardeningTests
     }
 
     [Fact]
-    public void A_vector_block_over_the_array_limit_is_rejected_before_it_is_decoded()
+    public void An_index_at_a_realistic_scale_loads_with_the_default_options()
     {
+        // 3 000 x 384 = 1 152 000 values: past the old 1 000 000-element
+        // MaxArrayLength that ReadSingles no longer applies to the vector block,
+        // and about 6 MB of artifact — comfortably past the old limit, quick to
+        // save and load. This is the case that failed: the default options
+        // refusing an ordinary corpus at the scale the library itself advertises.
         using var stream = new MemoryStream();
-        Sample().Save(stream);
+        RealisticIndex().Save(stream);
+        stream.Position = 0;
+
+        EmbeddingIndex loaded = EmbeddingIndex.Load(stream);
+
+        Assert.Equal(3_000, loaded.Count);
+        Assert.Equal(384, loaded.Dimension);
+    }
+
+    [Fact]
+    public void The_vector_block_is_bounded_by_MaxTotalBytes_before_it_is_allocated()
+    {
+        // Cut the limit to half of a realistic (large) artifact rather than an
+        // arbitrary tiny number: the point of this test is that the vector block
+        // itself is caught by MaxTotalBytes, not merely that some byte cap exists
+        // somewhere — An_artifact_larger_than_the_byte_limit_is_rejected already
+        // covers that.
+        using var stream = new MemoryStream();
+        RealisticIndex().Save(stream);
+        long artifactSize = stream.Length;
         stream.Position = 0;
 
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => EmbeddingIndex.Load(stream, new ArtifactLoadOptions { MaxArrayLength = 2 }));
+            () => EmbeddingIndex.Load(stream, new ArtifactLoadOptions { MaxTotalBytes = artifactSize / 2 }));
 
-        Assert.Contains("MaxArrayLength", error.Message, StringComparison.Ordinal);
+        Assert.Contains("MaxTotalBytes", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -240,6 +264,24 @@ public sealed class EmbeddingIndexHardeningTests
     }
 
     private static string Baseline() => Save(Sample());
+
+    /// <summary>3 000 vectors of 384 dimensions — the shape a sentence-transformer corpus actually has.</summary>
+    private static EmbeddingIndex RealisticIndex()
+    {
+        const int count = 3_000;
+        const int dimension = 384;
+        var index = new EmbeddingIndex(dimension);
+        var vector = new float[dimension];
+        for (int item = 0; item < count; item++)
+        {
+            for (int i = 0; i < dimension; i++)
+            {
+                vector[i] = (item * dimension + i) % 97 / 97f;
+            }
+            index.Add(vector);
+        }
+        return index;
+    }
 
     private static string WithIds()
     {
