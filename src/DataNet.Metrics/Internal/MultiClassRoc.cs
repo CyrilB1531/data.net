@@ -162,19 +162,34 @@ internal static class MultiClassRoc
         private readonly int _classCount;
         private readonly bool _columnMajor;
 
-        public ScoreSource(ReadOnlySpan<int> yTrue, ReadOnlySpan<double> scores, int classCount, bool columnMajor)
+        public ScoreSource(
+            ReadOnlySpan<int> yTrue, ReadOnlySpan<double> scores, int sampleCount, int classCount, bool columnMajor)
         {
-            // Offset(column) trusts yTrue.Length as the sample count. A span
-            // sliced to a rented array's full length rather than the actual
-            // sample count would still be in bounds — just wrong — and
-            // multiplying by the wrong count is exactly the silent failure
-            // this type exists to rule out. scores.Length is the one
-            // independent fact available here to cross-check it against.
-            if (scores.Length != yTrue.Length * classCount)
+            // The sample count is a parameter rather than yTrue.Length because
+            // deriving it from a span cannot detect the failure it exists to
+            // detect. Checking only scores.Length == yTrue.Length * classCount
+            // lets two *unsliced* rented spans through whenever classCount is a
+            // power of two: ArrayPool buckets are powers of two, so
+            // Rent(n).Length * k == Rent(n * k).Length for k in {2, 4, 8, …} at
+            // almost every n — 4079 of the 4095 values of n in [2, 4096] for
+            // k in {2, 4, 8}. Both lengths would then agree with each other and
+            // disagree with reality, Offset(column) would multiply by the bucket
+            // size, and every column after the first would be read from the
+            // wrong place. Naming the count makes both spans answer to a fact
+            // neither of them supplies.
+            if (yTrue.Length != sampleCount)
             {
                 throw new ArgumentException(
-                    $"scores holds {scores.Length} entries; {yTrue.Length} samples over {classCount} classes needs "
-                    + $"{yTrue.Length * classCount}. A span sliced to a rented array's length rather than the sample "
+                    $"yTrue holds {yTrue.Length} entries but sampleCount is {sampleCount}. A span sliced to a rented "
+                    + "array's length rather than the sample count lands here, and would otherwise shift every "
+                    + "column at no visible cost.",
+                    nameof(yTrue));
+            }
+            if (scores.Length != sampleCount * classCount)
+            {
+                throw new ArgumentException(
+                    $"scores holds {scores.Length} entries; {sampleCount} samples over {classCount} classes needs "
+                    + $"{sampleCount * classCount}. A span sliced to a rented array's length rather than the sample "
                     + "count lands here, and would otherwise read the wrong column at no visible cost.",
                     nameof(scores));
             }
@@ -277,7 +292,7 @@ internal static class MultiClassRoc
 
         try
         {
-            ScoreSource source = new(yTrue, yScore, k, columnMajor: false);
+            ScoreSource source = new(yTrue, yScore, yTrue.Length, k, columnMajor: false);
             for (int c = 0; c < k; c++)
             {
                 scores[c] = ClassScore(source, c, classes[c], sampleWeight, scratch, out double positiveWeight);
@@ -299,9 +314,11 @@ internal static class MultiClassRoc
     /// <para>
     /// A <see cref="ReadOnlySpan{T}"/> cannot be captured by the body of a
     /// <c>Parallel.For</c>: the caller's span may point at the stack, and nothing
-    /// in the language lets it travel to another thread. Pinning it with
-    /// <c>fixed</c> would cost nothing and is refused — no project in <c>src/</c>
-    /// enables unsafe blocks, and a perf change does not reverse that.
+    /// in the language lets it travel to another thread. The unsafe way round is
+    /// not merely <c>fixed</c> — a pinned pointer would have to be captured as a
+    /// raw pointer and every worker would index it unchecked — and it is refused
+    /// on its own terms: no project in <c>src/</c> enables unsafe blocks, and a
+    /// perf change does not reverse that.
     /// </para>
     /// <para>
     /// So the parallel path copies, and pays for it once: <c>yTrue</c>, the
@@ -316,12 +333,15 @@ internal static class MultiClassRoc
     /// Every span built over these arrays must be sliced to the sample count and
     /// never to the rented length — <see cref="ArrayPool{T}.Rent"/> hands back
     /// something longer than asked for, and <see cref="ScoreSource.Offset"/>
-    /// multiplies by <c>YTrue.Length</c> in column-major mode. Getting that wrong
-    /// reads the wrong column; <see cref="ScoreSource"/>'s constructor is what
-    /// turns it into an exception rather than a wrong number.
+    /// multiplies by the sample count in column-major mode. Getting that wrong
+    /// reads the wrong column, so <see cref="ScoreSource"/>'s constructor is
+    /// handed the sample count as a number and checks both spans against it. Two
+    /// unsliced spans cannot satisfy that check by agreeing with each other,
+    /// which is exactly what they did while the check compared them only to one
+    /// another.
     /// </para>
     /// </remarks>
-    private static (int[] Labels, double[] ColumnMajor, double[] Weights) CopyForWorkers(
+    private static (int[] YTrue, double[] ColumnMajor, double[] Weights) CopyForWorkers(
         ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int classCount, ReadOnlySpan<double> sampleWeight)
     {
         int n = yTrue.Length;
@@ -349,9 +369,9 @@ internal static class MultiClassRoc
         return (labels, columnMajor, weights);
     }
 
-    private static void ReturnToPool((int[] Labels, double[] ColumnMajor, double[] Weights) copy)
+    private static void ReturnToPool((int[] YTrue, double[] ColumnMajor, double[] Weights) copy)
     {
-        ArrayPool<int>.Shared.Return(copy.Labels);
+        ArrayPool<int>.Shared.Return(copy.YTrue);
         ArrayPool<double>.Shared.Return(copy.ColumnMajor);
         if (copy.Weights.Length > 0)
         {
@@ -362,17 +382,65 @@ internal static class MultiClassRoc
     }
 
     /// <summary>
+    /// Runs indices <c>0 .. count - 1</c> over at most <paramref name="workers"/>
+    /// threads, one <see cref="BinaryRoc.Scratch"/> per worker, and rethrows the
+    /// failure of the lowest index once every index has been attempted.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The determinism lives here rather than in each driver: the slot array, the
+    /// refusal to stop early, and the lowest-index rethrow are the parts a second
+    /// parallel driver must not re-derive, and the one-vs-one pair loop is the
+    /// second one.
+    /// </para>
+    /// <para>
+    /// <paramref name="body"/> <em>returns</em> the exception it caught instead of
+    /// being wrapped in a <c>catch</c> here, which is deliberate: only the part of
+    /// a body that scores caller-supplied numbers should be guarded. A body
+    /// builds its own <see cref="ScoreSource"/> and its own slices first, outside
+    /// its <c>try</c>, so that a broken internal invariant escapes as the defect
+    /// it is instead of reaching the caller as an
+    /// <see cref="ArgumentException"/> naming a parameter no public method has.
+    /// </para>
+    /// <para>
+    /// One <see cref="BinaryRoc.Scratch"/> per worker, through
+    /// <c>localInit</c>/<c>localFinally</c> — not one per index, which would rent
+    /// four arrays per index for nothing, and not one shared between workers,
+    /// which would have two indices writing the same buffers. The
+    /// <see cref="ParallelLoopState"/> the overload requires is deliberately
+    /// ignored; see <see cref="RethrowFirst"/> for why nothing calls
+    /// <see cref="ParallelLoopState.Stop"/>.
+    /// </para>
+    /// </remarks>
+    private static void RunPerIndex(
+        int count, int workers, int scratchLength, Func<int, BinaryRoc.Scratch, ArgumentException?> body)
+    {
+        ArgumentException?[] failures = new ArgumentException?[count];
+        var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = Math.Min(workers, count) };
+
+        Parallel.For(
+            0,
+            count,
+            parallelOptions,
+            () => BinaryRoc.Scratch.Rent(scratchLength),
+            (index, _, scratch) =>
+            {
+                // Its own slot, so which worker lost the race cannot decide which
+                // exception the caller sees.
+                failures[index] = body(index, scratch);
+                return scratch;
+            },
+            scratch => scratch.Return());
+
+        RethrowFirst(failures);
+    }
+
+    /// <summary>
     /// One-vs-rest with the per-class loop spread over workers. Bit-identical to
     /// <see cref="OneVsRest"/>: class <c>c</c> writes <c>scores[c]</c> and
     /// <c>weights[c]</c> and nothing else, and the averaging below runs on this
     /// thread in array order, so no thread's timing can reach a sum.
     /// </summary>
-    /// <remarks>
-    /// One <see cref="BinaryRoc.Scratch"/> per worker, through
-    /// <c>localInit</c>/<c>localFinally</c> — not one per class, which would rent
-    /// four arrays per class for nothing, and not one shared between workers,
-    /// which would have two classes writing the same buffers.
-    /// </remarks>
     private static double OneVsRestParallel(
         ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int[] classes,
         Averaging average, ReadOnlySpan<double> sampleWeight, int workers)
@@ -382,57 +450,48 @@ internal static class MultiClassRoc
         bool weighted = !sampleWeight.IsEmpty;
         double[] scores = new double[k];
         double[] weights = new double[k];
-        Exception?[] failures = new Exception?[k];
         var copy = CopyForWorkers(yTrue, yScore, k, sampleWeight);
-        var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = Math.Min(workers, k) };
 
         try
         {
-            Parallel.For(
-                0,
-                k,
-                parallelOptions,
-                () => BinaryRoc.Scratch.Rent(n),
-                (c, _, scratch) =>
+            RunPerIndex(k, workers, n, (c, scratch) =>
+            {
+                // Spans cannot cross into this lambda, but they can be made
+                // inside it: these are views over the arrays the closure
+                // captured, which is the whole point of the copy. ScoreSource is
+                // a ref struct, so it is built here, per iteration, and lives
+                // nowhere that outlives one.
+                //
+                // Both of these are built *above* the try. A failure building
+                // them is a broken internal invariant — a mis-sliced span, not a
+                // number the caller supplied — and it must escape as a defect
+                // rather than be handed back as an ArgumentException about rented
+                // arrays, naming a parameter no public method has.
+                ScoreSource source = new(
+                    copy.YTrue.AsSpan(0, n), copy.ColumnMajor.AsSpan(0, n * k), n, k, columnMajor: true);
+
+                // default, not a zero-length slice: ClassScore reads IsEmpty to
+                // decide whether weighting applies at all.
+                ReadOnlySpan<double> classWeight = weighted ? copy.Weights.AsSpan(0, n) : default;
+
+                try
                 {
-                    try
-                    {
-                        // Spans cannot cross into this lambda, but they can be
-                        // made inside it: these are views over the arrays the
-                        // closure captured, which is the whole point of the copy.
-                        // ScoreSource is a ref struct, so it is built here, per
-                        // iteration, and lives nowhere that outlives one.
-                        ScoreSource source = new(
-                            copy.Labels.AsSpan(0, n), copy.ColumnMajor.AsSpan(0, n * k), k, columnMajor: true);
-
-                        // default, not a zero-length slice: ClassScore reads
-                        // IsEmpty to decide whether weighting applies at all.
-                        scores[c] = ClassScore(
-                            source,
-                            c,
-                            classes[c],
-                            weighted ? copy.Weights.AsSpan(0, n) : default,
-                            scratch,
-                            out double positiveWeight);
-                        weights[c] = positiveWeight;
-                    }
-                    catch (ArgumentException ex)
-                    {
-                        // Its own slot, so which worker lost the race cannot
-                        // decide which exception the caller sees.
-                        failures[c] = ex;
-                    }
-
-                    return scratch;
-                },
-                scratch => scratch.Return());
+                    // classes[c], not c: the column and the positive label are
+                    // the same number only when the labels happen to be 0..k-1.
+                    scores[c] = ClassScore(source, c, classes[c], classWeight, scratch, out double positiveWeight);
+                    weights[c] = positiveWeight;
+                    return null;
+                }
+                catch (ArgumentException ex)
+                {
+                    return ex;
+                }
+            });
         }
         finally
         {
             ReturnToPool(copy);
         }
-
-        RethrowFirst(failures);
 
         return average == Averaging.Macro ? Mean(scores) : WeightedMean(scores, weights);
     }
@@ -456,23 +515,26 @@ internal static class MultiClassRoc
     /// exception the sequential path would have produced.
     /// </summary>
     /// <remarks>
-    /// The loop above deliberately does not stop early.
+    /// <see cref="RunPerIndex"/> deliberately does not stop early.
     /// <see cref="ParallelLoopState.Stop"/> would cancel iterations that had not
-    /// started, so a later class's exception could be reported where the
-    /// sequential path reports an earlier class's. The error path therefore does
+    /// started, so a later index's exception could be reported where the
+    /// sequential path reports an earlier index's. The error path therefore does
     /// all the work — it has no budget to defend — and
     /// <see cref="ExceptionDispatchInfo"/> rethrows the original instance rather
     /// than wrapping it, so type, message and <c>ParamName</c> survive and no
     /// <see cref="AggregateException"/> crosses the public API.
     /// </remarks>
-    private static void RethrowFirst(Exception?[] failures)
+    private static void RethrowFirst(ArgumentException?[] failures)
     {
-        // Array.Find scans in index order, so this is the lowest failing class —
-        // the one the sequential loop would have met first.
-        Exception? first = Array.Find(failures, failure => failure is not null);
-        if (first is not null)
+        // An indexed loop, ascending: "lowest index wins" is then a property of
+        // this code rather than of a library method's documented scan order.
+        for (int i = 0; i < failures.Length; i++)
         {
-            ExceptionDispatchInfo.Capture(first).Throw();
+            ArgumentException? failure = failures[i];
+            if (failure is not null)
+            {
+                ExceptionDispatchInfo.Capture(failure).Throw();
+            }
         }
     }
 
@@ -487,7 +549,7 @@ internal static class MultiClassRoc
 
         try
         {
-            ScoreSource source = new(yTrue, yScore, k, columnMajor: false);
+            ScoreSource source = new(yTrue, yScore, yTrue.Length, k, columnMajor: false);
             for (int pair = 0; pair < pairs.Length; pair++)
             {
                 ScorePair(source, classes, pairs[pair], pair, pairScores, prevalence, scratch);
