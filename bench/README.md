@@ -192,12 +192,41 @@ interleaved net10 → netstandard2.0 → net10 → netstandard2.0.
 
 | Operation | net10 | netstandard2.0 | ratio | net10 alloc | ns2.0 alloc |
 | --- | --- | --- | --- | --- | --- |
-| `VocabTxt` | 4.251 / 4.308 ms | 4.206 / 4.347 ms | 0.99 / 1.01 | 4.25 MB | 4.25 MB |
-| `TokenizerJsonWordPiece` | 12.024 / 12.222 ms | 11.955 / 11.862 ms | 0.99 / 0.97 | 7.25 MB | 7.25 MB |
-| `TokenizerJsonUnigram` | 16.206 / 16.035 ms | 16.632 / 15.630 ms | 1.03 / 0.97 | 9.64 MB | 9.64 MB |
-| `SpieceModel` | 4.235 / 4.222 ms | **10.602 / 10.032 ms** | **2.50 / 2.38** | 4.61 MB | **6.56 MB** |
-| `TfidfSave` | 1.834 / 1.939 ms | 1.789 / 1.782 ms | 0.98 / 0.92 | 2.09 MB | 2.09 MB |
-| `TfidfLoad` | 5.047 / 4.920 ms | 5.085 / 5.130 ms | 1.01 / 1.04 | 4.34 MB | 4.34 MB |
+| `VocabTxt` | 6.202 / 5.818 ms | 6.054 / 5.805 ms | 0.98 / 1.00 | 3.62 MB | 3.62 MB |
+| `TokenizerJsonWordPiece` | 13.565 / 13.316 ms | 12.920 / 12.886 ms | 0.95 / 0.97 | 4.74 MB | 4.74 MB |
+| `TokenizerJsonUnigram` | 15.036 / 15.172 ms | 15.066 / 15.256 ms | 1.00 / 1.01 | 4.64 MB | 4.64 MB |
+| `SpieceModel` | 5.711 / 5.686 ms | **10.489 / 10.419 ms** | **1.84 / 1.83** | 3.36 MB | **5.31 MB** |
+| `TfidfSave` | 1.872 / 1.848 ms | 1.888 / 1.906 ms | 1.01 / 1.03 | 2.09 MB | 2.09 MB |
+| `TfidfLoad` | 5.538 / 5.345 ms | 5.480 / 5.514 ms | 0.99 / 1.03 | 2.86 MB | 2.86 MB |
+
+**This edition is not comparable to the one it replaces.** The corpus is
+generated rather than committed, so re-measuring after issue #100 meant
+generating it again, and the untouched rows moved with it — `SpieceModel` reads
+5.7 ms here against the 4.2 ms published before, on identical code. Every figure
+in this section, and in the two below it, comes from one session against one
+corpus; what issue #100 was worth is measured against `main` on that same corpus
+and reported in the paragraph after next, not by subtracting these numbers from
+the previous edition's.
+
+**What the read path change did to these rows.** Measured against `main`
+(`cec02e1`) on this corpus, in the same session, net10:
+
+| Operation | before | after | allocated before → after |
+| --- | --- | --- | --- |
+| `VocabTxt` | 5.898 / 5.683 ms | 6.202 / 5.818 ms | 4.25 → 3.62 MB |
+| `TokenizerJsonWordPiece` | 14.378 / 14.156 ms | 13.565 / 13.316 ms | 7.24 → 4.74 MB |
+| `TokenizerJsonUnigram` | 15.884 / 16.017 ms | 15.036 / 15.172 ms | 9.64 → 4.64 MB |
+| `SpieceModel` | 5.932 / 6.009 ms | 5.711 / 5.686 ms | 4.61 → 3.36 MB |
+| `TfidfSave` | 1.860 / 1.863 ms | 1.872 / 1.848 ms | 2.09 → 2.09 MB |
+| `TfidfLoad` | 6.410 / 6.476 ms | 5.538 / 5.345 ms | 4.34 → 2.86 MB |
+
+`TfidfSave` is the control and it does not move, on either axis: nothing on the
+write path changed. Every loader allocates less, by 15% to 52%, which is the
+counted column and does not move between runs — that is the intermediate buffers
+disappearing. Time follows allocation everywhere except `VocabTxt`, which reads
+3% *slower* both times on both targets: a 224 KB file is small enough that one
+sized allocation buys back less than the extra work of getting to it, and 3% is
+close enough to this harness's spread that it is reported rather than explained.
 
 One caveat on the `TfidfSave` allocation figure: the benchmark pre-sizes its
 destination `MemoryStream` to the artifact's exact final length, which a caller
@@ -206,38 +235,49 @@ garbage a realistic save would pay, so the number is friendlier than the typical
 case. It is deliberate — the question on this axis is what the two *targets* cost
 each other, not what a caller pays — but it is not a general "cost of Save".
 
-Five rows are noise, which is what equivalent IL should produce, and two runs per
-side say so more convincingly than one: those five scatter between 0.92× and
-1.04× and **change sign between rounds** — `TokenizerJsonUnigram` reads 1.03×
-then 0.97×, `TfidfSave` 0.98× then 0.92×. A single run per side cannot
-distinguish that from a small consistent penalty, which is what this table used
-to report.
+Four rows are noise, which is what equivalent IL should produce, and two runs per
+side say so more convincingly than one: those four scatter between 0.98× and
+1.03× and **change sign between rounds** — `VocabTxt` reads 0.98× then 1.00×,
+`TfidfLoad` 0.99× then 1.03×. A single run per side cannot distinguish that from
+a small consistent penalty, which is what this table used to report.
+
+`TokenizerJsonWordPiece` is the one row that leans without changing sign: 0.95×
+and 0.97×, the netstandard2.0 build faster both times by 3–5%. It leaned the same
+way before issue #100 (0.95× and 0.98× on `main`, same corpus, same session), so
+it is not something this work introduced, and 3–5% on a row whose two targets run
+identical IL is small enough to be left as an open observation rather than
+explained away.
 
 `SpieceModel` is the exception and it is real: netstandard2.0 allocates twice per
 piece where net10 allocates nothing, once for the `byte[4]` scratch buffer in
 `ProtobufReader.ReadFloat` and once for the array copy in `DecodeUtf8` that
 `netstandard2.0` needs because it has no span overload. Across 29 861 pieces that
-is the whole 1.95 MB difference, and it costs 2.38×–2.50× the time. The
-allocation column is counted rather than sampled and does not move between runs
-at all.
+is the whole 1.95 MB difference — unchanged by issue #100, which took the same
+1.25 MB off both targets and left the gap between them exactly where it was — and
+it costs 1.83×–1.84× the time. The allocation column is counted rather than
+sampled and does not move between runs at all.
 
-**What the toolchain mismatch was worth here.** Running the net10 side
-out-of-process in the same window — the shape of the command pair this section
-used to publish — makes the same binary read up to 8% faster (`TfidfLoad`
-4.625 ms against 4.920 / 5.047 in-process; `VocabTxt` 4.092 against 4.251 /
-4.308). Pair that column against the in-process netstandard2.0 one and
-`TfidfLoad` reports 1.10×–1.11× and `VocabTxt` 1.03×–1.06×, where the matched
-pairing gives 1.01×–1.04× and 0.99×–1.01×. The mismatch is the same size as the
-differences the five rows were being read for, which is why nothing could be
-concluded from them either way. It is far too small to touch `SpieceModel`.
+**What the toolchain mismatch was worth here.** Measured in the session that
+produced the previous edition of this table, and not re-measured since — the
+finding is about the harness rather than about the library, and neither has moved
+in that respect. Running the net10 side out-of-process in the same window — the
+shape of the command pair this section used to publish — made the same binary
+read up to 8% faster (`TfidfLoad` 4.625 ms against 4.920 / 5.047 in-process;
+`VocabTxt` 4.092 against 4.251 / 4.308). Pairing that column against the
+in-process netstandard2.0 one gave `TfidfLoad` 1.10×–1.11× and `VocabTxt`
+1.03×–1.06×, where the matched pairing gave 1.01×–1.04× and 0.99×–1.01×. The
+mismatch is the same size as the differences the noise rows are read for, which
+is why nothing can be concluded from them under it. It is far too small to touch
+`SpieceModel`.
 
-**Conditions.** The one-minute load average was 4.7–8.1 on 8 logical cores across
-the five runs; the editor's language servers and the session driving them are
-part of that and cannot be excluded from inside it. Both columns pay it equally
-and the runs alternate, so the table is internally comparable — but it is not
-comparable to figures taken on this machine in a quieter state, and the earlier
-ones are withdrawn for their mismatched pairing rather than because these
-disagree with them.
+**Conditions.** The one-minute load average was 1.4–4.1 on 8 logical cores across
+the four runs above, and 1.8–3.2 across the four `main` runs they are compared
+against; the editor's language servers and the session driving them are part of
+that and cannot be excluded from inside it. Both columns pay it equally and the
+runs alternate, so the table is internally comparable — and the before/after
+table is comparable to it, having been taken in the same session on the same
+corpus. Neither is comparable to the previous edition, for the reason given
+above it.
 
 ### vs Python
 
@@ -253,33 +293,47 @@ faster.
 
 | Operation | DataNet | Python | wall | DataNet cpu | Python cpu | **cpu** |
 | --- | --- | --- | --- | --- | --- | --- |
-| `spiece_model` | 4.604 ms | 40.049 ms | 8.70× | 5.496 ms | 40.049 ms | **7.29×** |
-| `tokenizer_json_unigram` | 17.265 ms | 65.289 ms | 3.78× | 19.106 ms | 65.288 ms | **3.42×** |
-| `vocab_txt` | 4.165 ms | 16.860 ms | 4.05× | 5.230 ms | 16.859 ms | **3.22×** |
-| `tokenizer_json_wordpiece` | 11.417 ms | 23.782 ms | 2.08× | 14.375 ms | 23.781 ms | **1.65×** |
-| `tfidf_save` | 2.028 ms | 4.734 ms | 2.33× | 2.343 ms | 4.734 ms | **2.02×** |
-| `tfidf_load` | 5.305 ms | 5.043 ms | 0.95× | 6.568 ms | 5.028 ms | **0.77×** |
+| `spiece_model` | 6.163 ms | 33.475 ms | 5.43× | 6.462 ms | 33.473 ms | **5.18×** |
+| `tokenizer_json_unigram` | 15.623 ms | 53.566 ms | 3.43× | 16.126 ms | 53.559 ms | **3.32×** |
+| `vocab_txt` | 6.354 ms | 11.632 ms | 1.83× | 6.699 ms | 11.631 ms | **1.74×** |
+| `tokenizer_json_wordpiece` | 13.328 ms | 18.494 ms | 1.39× | 13.754 ms | 18.490 ms | **1.34×** |
+| `tfidf_save` | 1.925 ms | 3.232 ms | 1.68× | 1.970 ms | 3.232 ms | **1.64×** |
+| `tfidf_load` | 5.525 ms | 4.205 ms | 0.76× | 5.821 ms | 4.205 ms | **0.72×** |
 
 Both sides were run back to back on an otherwise idle machine, and the pair above
 comes from one such run rather than the best figure of each operation across
 several — picking per-row winners from different runs would flatter whichever
 side happened to be measured last. Run-to-run spread on this harness is a few
 percent, so treat differences smaller than that as noise; the loader ratios are
-far larger than it, and `tfidf_load` sits inside it on the wall column.
+far larger than it.
+
+Every ratio here is smaller than the previous edition's, and none of that is a
+regression: this is the regenerated corpus of the section above, on which the
+Python side is uniformly faster than it was on the old one (`vocab_txt` 11.632 ms
+against 16.860). The DataNet column moved in the other direction — the same
+harness on `main`, on this corpus, in this session, read `vocab_txt` 6.799 ms,
+`tokenizer_json_wordpiece` 14.269, `tfidf_load` 6.277 and `tfidf_save` 2.032, so
+every row above except `tokenizer_json_unigram` is faster after issue #100 than
+before it, `tfidf_load` by 12%.
 
 ### Why processor time is reported too
 
 Elapsed time alone flatters this runtime. .NET's background collector does its
 work on other threads, so an allocation-heavy operation finishes in less elapsed
-time than it costs: every DataNet row above burns 1.12–1.21 processor-seconds per
+time than it costs: every DataNet row above burns 1.02–1.07 processor-seconds per
 elapsed second, while CPython is strictly single-threaded and measures 1.00 on
-every row. Reading only the wall column would report a parity on `tfidf_load`
-that disappears the moment two models load at once.
+every row. That gap is narrower than the 1.12–1.21 the previous edition reported,
+and it narrowed for the reason issue #100 exists: an operation that allocates a
+third less gives the background collector a third less to do.
 
-`tfidf_load` is the one row where Python still wins, by 22% of processor time for
-the same elapsed time. That residue is background collection, which is a property
-of the host runtime rather than something a library chooses — an application that
-wants it gone sets `ConcurrentGarbageCollection=false` in its own runtimeconfig.
+`tfidf_load` is the one row Python still wins, and it now wins it on both columns
+rather than only on processor time — 0.76× wall, 0.72× cpu. Issue #100 moved that
+row toward parity rather than away from it (0.67× wall on `main`, same corpus,
+same session); what is left is a corpus on which scikit-learn's loader does
+better than on the previous one, plus the background-collection residue, which is
+a property of the host runtime rather than something a library chooses — an
+application that wants it gone sets `ConcurrentGarbageCollection=false` in its own
+runtimeconfig.
 
 ### Reading the numbers
 
@@ -294,10 +348,12 @@ Both are also native code behind a thin binding, not interpreted Python.
 
 The `tfidf_save` / `tfidf_load` pair is the one comparison that is close to like
 for like, and it is the one that moved most. It started at 0.60× and 0.44× — both
-losses — and reached the table above through five changes, each of which was kept
+losses — and reached the table above through six changes, each of which was kept
 only because it measured: shortest-round-trippable doubles, the idf vector as
 base64, the relaxed JSON encoder, folding the ordering check into the read loop,
-and sizing the vocabulary buffer from the declared count. Two further changes
+sizing the vocabulary buffer from the declared count, and — issue #100 — reading
+the payload into one buffer sized before it is filled while decoding the base64
+straight into the array that keeps it. Two further changes
 were measured and **discarded** for showing no gain: disabling writer validation,
 and an earlier version of that last buffer change, which paid nothing until the
 idf vector stopped dominating the profile. The reasoning is in
@@ -558,13 +614,11 @@ Measuring this shape is what found a bug: loading it used to need an explicit
 `ArtifactLoadOptions { MaxArrayLength = 4_000_000 }`, because the reader applied
 that 1 000 000-element default — sized for vocabularies, not vector blocks — to
 the decoded float count, refusing 10 000 × 384 = 3 840 000 floats and, with it,
-any index past 2 604 vectors of this dimension. The figures below were taken
-before that was fixed, with the limit raised the same way a real caller would
-have had to. Fixing it changed no measured work — a bound check is O(1) — so the
-numbers stand: the vector block is now bounded by `MaxTotalBytes` instead, which
-caps the whole payload in bytes before parsing begins rather than the decoded
-element count after, and `EmbeddingIndexLoad` and `embedding_index_load` below
-call `Load` with the library's own defaults.
+any index past 2 604 vectors of this dimension. It is fixed: the vector block is
+bounded by `MaxTotalBytes` instead, which caps the whole payload in bytes before
+parsing begins rather than the decoded element count after. `EmbeddingIndexLoad`
+and `embedding_index_load` below call `Load` with the library's own defaults, and
+need no options to do it.
 
 ### net10 vs netstandard2.0
 
@@ -579,22 +633,48 @@ gives: one run per side cannot tell a small consistent penalty from noise.
 
 | Operation | net10 | netstandard2.0 | ratio | net10 alloc | ns2.0 alloc |
 | --- | --- | --- | --- | --- | --- |
-| `EmbeddingIndexSave` | 16.15 / 16.17 ms | 16.35 / 16.14 ms | 1.01 / 1.00 | 54.29 MB | 54.29 MB |
-| `EmbeddingIndexLoad` | 36.50 / 36.60 ms | 36.19 / 36.84 ms | 0.99 / 1.01 | 90 MB | 90 MB |
+| `EmbeddingIndexSave` | 13.75 / 13.57 ms | 14.83 / 15.24 ms | **1.08 / 1.12** | 54.29 MB | 54.29 MB |
+| `EmbeddingIndexLoad` | 12.96 / 12.68 ms | 14.36 / 14.41 ms | **1.11 / 1.14** | 35.35 MB | 35.35 MB |
 
-Both rows land inside 0.99×–1.01×, which is what noise looks like on this
-harness — there is no `SpieceModel`-shaped story here. `Base64Numbers.WriteSingles`
-and `ReadSingles` use `MemoryMarshal.Cast`/`AsBytes` on both targets, on purpose:
-`BitConverter.SingleToInt32Bits` does not exist on netstandard2.0, so the code
-never forks into a per-target path the way `ProtobufReader` does. Allocation is
-identical down to the byte and does not move between runs, which section 4
-already established is what the counted (not sampled) column does.
+**The two targets now diverge, and they did not before.** This table used to read
+0.99×–1.01× on both rows, and the previous edition said in as many words that
+there was no `SpieceModel`-shaped story here. There is one now, and issue #100
+put it there. Both operations scan the whole vector block for non-finite
+components — `Load` before handing the index back, `Save` before writing a file
+it could not honestly write — and that scan is 3.84 million floats. It is now
+vectorized through `Vector<float>`, which the netstandard2.0 build does not
+compile: `Vector.IsHardwareAccelerated` and the span constructor sit behind
+`#if NET5_0_OR_GREATER`, the same guard `Pooling.cs` and `VectorMath.cs` already
+use. netstandard2.0 keeps the scalar loop and pays for it.
 
-**Conditions.** The one-minute load average ran 4.95–5.68 across these four runs,
-in the same session as the cross-language pair below — see that section's
-measurement-conditions note; there was no quieter window available to wait for,
-so all six runs in this section share one load regime and are comparable to each
-other but not to the lower floor sections 4 and 5 recorded on a different day.
+The size of the gap says the same thing twice: 1.47 ms on `Save` and 1.45 ms on
+`Load`, on two operations that share nothing else. That is the scan, priced on
+its own — and it matches the 18% of the load figure the scan measured at before
+it was vectorized, which is what decided it was worth vectorizing at all.
+
+Everything else about the two targets is still identical.
+`Base64Numbers.WriteSingles` and `ReadSingles` use `MemoryMarshal.Cast`/`AsBytes`
+on both, on purpose: `BitConverter.SingleToInt32Bits` does not exist on
+netstandard2.0, so the encoding path never forks the way `ProtobufReader` does.
+Allocation is identical down to the byte and does not move between runs, which
+section 4 already established is what the counted (not sampled) column does.
+
+**What the read path change was worth here.** Against `main` (`cec02e1`) in the
+same session: `EmbeddingIndexLoad` 36.894 / 37.485 ms → 12.948 / 12.921 on net10
+and 34.437 / 34.341 → 14.36 / 14.41 on netstandard2.0, with allocation falling
+from 90 MB to 35.35 MB on both. That is **2.88× faster on net10 and 2.39× on
+netstandard2.0**, for an artifact whose bytes did not change. `EmbeddingIndexSave`
+falls too, 16.96 ms to 13.57 on net10, which is the vectorized scan rather than
+the read path — `Save` runs the same check. Its netstandard2.0 side reads 16.88 →
+15.04 ms, an 11% improvement this work does not explain: nothing on that target's
+write path changed, and it is recorded here as measured rather than attributed.
+
+**Conditions.** The one-minute load average ran 1.6–1.9 across these four runs and
+1.4–3.2 across the four `main` runs they are compared against, in the same session
+as the cross-language pair below — see that section's measurement-conditions note.
+All of section 4, section 6 and the cross-language pair were taken in this one
+session, on one regenerated corpus, and are comparable to each other; none of them
+is comparable to the editions they replace.
 
 ### vs numpy — what the format choice costs
 
@@ -617,12 +697,21 @@ DataNet is faster.
 
 | Operation | DataNet | numpy | wall | DataNet cpu | numpy cpu | **cpu** |
 | --- | --- | --- | --- | --- | --- | --- |
-| `embedding_index_save` | 16.921 ms | 16.724 ms | 0.99× | 18.524 ms | 16.723 ms | **0.90×** |
-| `embedding_index_load` | 32.627 ms | 2.811 ms | 0.09× | 33.747 ms | 2.811 ms | **0.08×** |
+| `embedding_index_save` | 12.419 ms | 15.084 ms | 1.21× | 13.349 ms | 15.083 ms | **1.13×** |
+| `embedding_index_load` | 12.129 ms | 2.492 ms | 0.21× | 13.897 ms | 2.492 ms | **0.18×** |
+
+Against `main` in the same session, on the same numpy figures:
+`embedding_index_save` read 14.164 ms (0.94× wall, 1.06× cpu) and
+`embedding_index_load` 32.460 ms (0.08× wall, 0.07× cpu).
 
 | | DataNet artifact | `.npy` |
 | --- | --- | --- |
 | bytes on disk | 20 589 007 | 15 360 128 |
+
+That row is the one thing in this section issue #100 did not move, and not moving
+it was the point: the same index saved by the build before this work and by the
+build after it produces the same file, verified byte for byte by hash, and each
+build reads the other's.
 
 Neither harness command above prints a byte count — `Harness.Measure` only
 records `ms_per_op` and `cpu_ms_per_op`. The DataNet figure is `stream.Length`
@@ -639,45 +728,42 @@ ids, none of which `.npy`'s header carries.
 ### Reading the numbers
 
 The size ratio is what the design predicted: about 4/3, plus a fraction of a
-percent for the fields a raw block does not need. `EmbeddingIndexSave` is close
-to that too — 0.99× wall and 0.90× cpu, roughly an 11% cpu penalty for one extra
-copy-and-encode pass over a payload whose cost is otherwise dominated by writing
-15–20 MB somewhere, base64 or not.
+percent for the fields a raw block does not need. It has not moved and cannot:
+this is the same artifact, byte for byte, as before issue #100.
 
-`EmbeddingIndexLoad` is not close to that, and this is where the decision costs
-more than its own framing suggests. It is not 1.34× slower than `numpy.load`; it
-is 11.6× slower on wall time and 12.0× on cpu — an order of magnitude past what a
-reader who assumes size and time move together would extrapolate from the 33%
-the design already priced. The allocation column in the section above says the
-same thing more plainly: `EmbeddingIndexSave` allocates 54.29 MB to move 15 MB of
-floats, `EmbeddingIndexLoad` allocates 90 MB to move the same 15 MB back — six
-times the payload, where `numpy.load` allocates one array sized to it. Reading
-the loader (`src/Shared/Persistence/JsonArtifact.cs`,
-`src/Shared/Persistence/Base64Numbers.cs`) shows why: `JsonArtifact.ReadAllBytes`
-copies the stream into a growable `MemoryStream` in 80 KB chunks — reallocating
-as it doubles — and then calls `.ToArray()` for one more full copy; decoding then
-materialises the base64 block as `raw` bytes and copies it a second time into the
-final `float[]` (`Base64Numbers.ReadUnboundedRaw` and `ReadSingles`); and `EnsureFinite`
-scans every one of the 3 840 000 restored floats before the index is handed back.
-That is on the order of five passes over a 15–20 MB block where `numpy.load`
-performs close to one. `Save` avoids most of this because `Utf8JsonWriter` writes
-its base64 text straight to the output stream — one encode pass, no growable
-accumulation buffer — which is exactly why the two operations diverge as sharply
-as they do.
+`EmbeddingIndexSave` now reads 1.21× wall and 1.13× cpu — faster than
+`numpy.save` rather than 1% behind it, which is not the read path but the
+non-finite scan `Save` shares with `Load` becoming a vector pass.
+
+`EmbeddingIndexLoad` is still the row that costs. It is 4.87× slower than
+`numpy.load` on wall time and 5.58× on cpu, against 11.6× and 12.0× before this
+work — a real change, and still not parity. The gap is no longer made of copies.
+The read path now reads the payload into one buffer sized from the stream's own
+length before it is filled, decodes the base64 straight into the `float[]` that
+keeps it, and scans that array for non-finite components by vector: three passes
+where it used to take five, and 35.35 MB allocated to move 15 MB of floats where
+it used to take 90 MB. What remains is the format's own floor — 20 MB of base64
+text has to be read and decoded where `.npy` reads 15 MB and casts it — plus a
+scan `numpy.load` does not perform at all, because it does not promise what this
+artifact promises about its contents. Closing the rest of that gap means not
+materialising the payload, which `MaxTotalBytes` currently forbids by design; that
+is a different decision from this one and has not been taken.
 
 None of this was anticipated by size alone, and the honest reading is not that
 the design was wrong to choose JSON: ADR 0011 weighed one format against two and
 a fixed 33% against a decode that reads the whole payload into memory first, and
 said so plainly. What the 33% figure did not say, because nothing in that
-decision measured it, is that the buffered decode this section was written to
-verify costs an order of magnitude in time on `Load` — not the size-sized cost a
-reader would reasonably guess at from the ADR's own number. Where the size cost
-lands almost exactly on prediction, the time cost of loading a large vector block
-does not, and the gap is real rather than noise: both cross-language figures are
-the best of five repeated measurements each, not a single sample, and the four
-BenchmarkDotNet figures above (two runs each, two targets) spread no more than
-1.8% from their own minimum on either operation — nowhere near the order of
-magnitude the cross-language table shows.
+decision measured it, is what the *implementation* of that buffered decode would
+cost — an order of magnitude on `Load`, most of it in copies the format never
+required. Issue #100 measured that, removed it, and re-measured: the size cost
+landed on prediction and stayed there, the time cost did not and has now come
+down by 2.9× without the format moving. The residue above is the format's, and
+this section will keep reporting it.
+
+The figures carry their own error bars: both cross-language figures are the best
+of five repeated measurements each, not a single sample, and the BenchmarkDotNet
+figures above spread no more than 2.8% from their own minimum within a target —
+nowhere near either the 2.9× the change is worth or the 4.9× that is left.
 
 **Measurement conditions.** Both sides were run back to back, Python first, in
 the same session as the BenchmarkDotNet runs above — this machine carries a
@@ -687,13 +773,15 @@ without breaking the back-to-back pairing the comparison depends on:
 
 | Side | Started | Written | Load at start (1 / 5 / 15 min) |
 | --- | --- | --- | --- |
-| Python (`python-persistence.json`) | 12:08:41 | 12:09:40 | 4.45 / 5.08 / 5.85 |
-| C# (`csharp-persistence.json`) | 12:10:57 | 12:11:59 | 4.65 / 4.92 / 5.68 |
+| Python (`python-persistence.json`) | 17:58:14 | 17:59:14 | 1.59 / 1.82 / 3.77 |
+| C# (`csharp-persistence.json`) | 17:59:14 | 18:00:24 | 1.74 / 1.81 / 3.64 |
+| C# on `main`, for the before/after | 18:16:38 | 18:17:44 | 1.44 / 1.91 / 2.62 |
 
-The two starts are close on all three windows — within 0.2 on the one-minute
+The two starts are close on all three windows — within 0.15 on the one-minute
 average, lower on five and fifteen minutes for the side measured second — so,
 unlike section 5's pair, there is no direction here for the load itself to have
 biased the ratio: neither side woke the other into a spike the way section 5's
-C# side inherited from Python's. The 77-second gap between Python's write and
-C#'s start is this session's own overhead (issuing the next command, `dotnet`
-restoring before it starts producing output), not additional benchmarked work.
+C# side inherited from Python's. The C# side started the moment Python's file was
+written, with no gap for this session's own overhead to open. The `main` row was
+taken 16 minutes later at a comparable load, which is what makes the before/after
+in this section and in section 4 a comparison rather than two tables.
