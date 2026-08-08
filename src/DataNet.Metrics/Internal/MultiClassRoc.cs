@@ -14,25 +14,29 @@ internal static class MultiClassRoc
         ReadOnlySpan<int> yTrue,
         ReadOnlySpan<double> yScore,
         int classCount,
-        MultiClassStrategy strategy,
-        Averaging average,
-        ReadOnlySpan<int> labels,
-        ReadOnlySpan<double> sampleWeight)
+        MultiClassRocOptions options)
     {
-        int n = Validate(yTrue, yScore, classCount, strategy, average, sampleWeight);
-        int[] classes = ResolveLabels(yTrue, labels, classCount);
+        Averaging average = options.Average ?? Averaging.Macro;
+        int n = Validate(yTrue, yScore, classCount, options, average);
+        int[] classes = ResolveLabels(yTrue, options.Labels, classCount);
         ValidateRowSums(yScore, n, classCount);
 
-        return strategy == MultiClassStrategy.OneVsRest
-            ? OneVsRest(yTrue, yScore, classes, average, sampleWeight)
+        return options.Strategy == MultiClassStrategy.OneVsRest
+            ? OneVsRest(yTrue, yScore, classes, average, options.SampleWeight)
             : OneVsOne(yTrue, yScore, classes, average);
     }
 
     private static int Validate(
         ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int classCount,
-        MultiClassStrategy strategy, Averaging average, ReadOnlySpan<double> sampleWeight)
+        MultiClassRocOptions options, Averaging average)
     {
         int n = yTrue.Length;
+        if (options.MaxDegreeOfParallelism < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(options), options.MaxDegreeOfParallelism,
+                "MaxDegreeOfParallelism cannot be negative. 0 and 1 are both sequential.");
+        }
         if (n == 0)
         {
             throw new ArgumentException("yTrue is empty; there is nothing to score.", nameof(yTrue));
@@ -52,21 +56,21 @@ internal static class MultiClassRoc
         {
             throw new ArgumentException(
                 "Multiclass ROC AUC accepts only Averaging.Macro and Averaging.Weighted, as scikit-learn does.",
-                nameof(average));
+                nameof(options));
         }
-        if (!sampleWeight.IsEmpty)
+        if (!options.SampleWeight.IsEmpty)
         {
-            if (sampleWeight.Length != n)
+            if (options.SampleWeight.Length != n)
             {
                 throw new ArgumentException(
-                    $"sampleWeight has {sampleWeight.Length} entries but there are {n} samples.",
-                    nameof(sampleWeight));
+                    $"sampleWeight has {options.SampleWeight.Length} entries but there are {n} samples.",
+                    nameof(options));
             }
-            if (strategy == MultiClassStrategy.OneVsOne)
+            if (options.Strategy == MultiClassStrategy.OneVsOne)
             {
                 throw new ArgumentException(
                     "scikit-learn does not support sampleWeight for one-vs-one ROC AUC, and neither does this.",
-                    nameof(sampleWeight));
+                    nameof(options));
             }
         }
 

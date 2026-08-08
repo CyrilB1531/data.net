@@ -23,8 +23,12 @@ public sealed class RocAucMultiClassTests
                 : MultiClassStrategy.OneVsOne;
             Averaging average = parts[1] == "macro" ? Averaging.Macro : Averaging.Weighted;
 
-            double actual = RocAuc.MultiClass(
-                yTrue, scores, classCount, strategy, average, default, weight);
+            double actual = RocAuc.MultiClass(yTrue, scores, classCount, new MultiClassRocOptions
+            {
+                Strategy = strategy,
+                Average = average,
+                SampleWeight = weight,
+            });
 
             Assert.True(Math.Abs(entry.Value.GetDouble() - actual) < MetricsCorpus.Tolerance,
                 $"{RocCorpus.Describe(c)} {entry.Name}: expected {entry.Value.GetDouble()}, got {actual}");
@@ -39,8 +43,11 @@ public sealed class RocAucMultiClassTests
                                 [0.5, 0.3, 0.2], [0.3, 0.5, 0.2], [0.1, 0.2, 0.7]]);
         double[] weight = [1, 2, 1, 1, 2, 1];
 
-        Assert.Throws<ArgumentException>(() => RocAuc.MultiClass(
-            yTrue, scores, 3, MultiClassStrategy.OneVsOne, Averaging.Macro, default, weight));
+        Assert.Throws<ArgumentException>(() => RocAuc.MultiClass(yTrue, scores, 3, new MultiClassRocOptions
+        {
+            Strategy = MultiClassStrategy.OneVsOne,
+            SampleWeight = weight,
+        }));
     }
 
     [Fact]
@@ -67,8 +74,8 @@ public sealed class RocAucMultiClassTests
         int[] yTrue = [0, 1, 2];
         double[] scores = Rows([[0.6, 0.2, 0.2], [0.2, 0.6, 0.2], [0.2, 0.2, 0.6]]);
 
-        Assert.Throws<ArgumentException>(
-            () => RocAuc.MultiClass(yTrue, scores, 3, MultiClassStrategy.OneVsRest, Averaging.Micro));
+        Assert.Throws<ArgumentException>(() => RocAuc.MultiClass(
+            yTrue, scores, 3, new MultiClassRocOptions { Average = Averaging.Micro }));
     }
 
     [Fact]
@@ -79,7 +86,7 @@ public sealed class RocAucMultiClassTests
         int[] labels = [2, 0, 1];
 
         Assert.Throws<ArgumentException>(() => RocAuc.MultiClass(
-            yTrue, scores, 3, MultiClassStrategy.OneVsRest, Averaging.Macro, labels));
+            yTrue, scores, 3, new MultiClassRocOptions { Labels = labels }));
     }
 
     [Fact]
@@ -108,7 +115,7 @@ public sealed class RocAucMultiClassTests
         double[] weight = [1, 2];
 
         Assert.Throws<ArgumentException>(() => RocAuc.MultiClass(
-            yTrue, scores, 3, MultiClassStrategy.OneVsRest, Averaging.Macro, default, weight));
+            yTrue, scores, 3, new MultiClassRocOptions { SampleWeight = weight }));
     }
 
     [Fact]
@@ -128,7 +135,57 @@ public sealed class RocAucMultiClassTests
         int[] labels = [0, 1];
 
         Assert.Throws<ArgumentException>(() => RocAuc.MultiClass(
-            yTrue, scores, 3, MultiClassStrategy.OneVsRest, Averaging.Macro, labels));
+            yTrue, scores, 3, new MultiClassRocOptions { Labels = labels }));
+    }
+
+    [Fact]
+    public void Default_options_reproduce_one_vs_rest_macro_exactly()
+    {
+        int[] yTrue = [0, 1, 2, 2, 1, 0];
+        double[] scores = Rows([[0.70, 0.20, 0.10], [0.10, 0.60, 0.30], [0.15, 0.25, 0.60],
+                                [0.20, 0.20, 0.60], [0.30, 0.50, 0.20], [0.55, 0.30, 0.15]]);
+
+        double implicitDefaults = RocAuc.MultiClass(yTrue, scores, 3);
+        double spelledOut = RocAuc.MultiClass(yTrue, scores, 3, new MultiClassRocOptions
+        {
+            Strategy = MultiClassStrategy.OneVsRest,
+            Average = Averaging.Macro,
+        });
+
+        Assert.Equal(BitConverter.DoubleToInt64Bits(spelledOut), BitConverter.DoubleToInt64Bits(implicitDefaults));
+    }
+
+    [Fact]
+    public void Zero_and_one_workers_are_the_same_sequential_path()
+    {
+        int[] yTrue = [0, 1, 2, 2, 1, 0];
+        double[] scores = Rows([[0.70, 0.20, 0.10], [0.10, 0.60, 0.30], [0.15, 0.25, 0.60],
+                                [0.20, 0.20, 0.60], [0.30, 0.50, 0.20], [0.55, 0.30, 0.15]]);
+
+        double zero = RocAuc.MultiClass(yTrue, scores, 3, new MultiClassRocOptions { MaxDegreeOfParallelism = 0 });
+        double one = RocAuc.MultiClass(yTrue, scores, 3, new MultiClassRocOptions { MaxDegreeOfParallelism = 1 });
+
+        Assert.Equal(BitConverter.DoubleToInt64Bits(one), BitConverter.DoubleToInt64Bits(zero));
+    }
+
+    [Fact]
+    public void Rejects_a_negative_degree_of_parallelism()
+    {
+        int[] yTrue = [0, 1, 2];
+        double[] scores = Rows([[0.6, 0.2, 0.2], [0.2, 0.6, 0.2], [0.2, 0.2, 0.6]]);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => RocAuc.MultiClass(
+            yTrue, scores, 3, new MultiClassRocOptions { MaxDegreeOfParallelism = -1 }));
+    }
+
+    [Fact]
+    public void Rejects_binary_averaging_even_though_it_is_the_enum_default()
+    {
+        int[] yTrue = [0, 1, 2];
+        double[] scores = Rows([[0.6, 0.2, 0.2], [0.2, 0.6, 0.2], [0.2, 0.2, 0.6]]);
+
+        Assert.Throws<ArgumentException>(() => RocAuc.MultiClass(
+            yTrue, scores, 3, new MultiClassRocOptions { Average = Averaging.Binary }));
     }
 
     private static double[] Rows(double[][] rows) => [.. rows.SelectMany(r => r)];

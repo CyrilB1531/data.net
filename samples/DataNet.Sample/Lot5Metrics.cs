@@ -186,11 +186,18 @@ internal static class Lot5Metrics
         ];
 
         Console.WriteLine($"  MultiClass ovr macro  = "
-            + $"{RocAuc.MultiClass(truth, probabilities, classCount: 3, MultiClassStrategy.OneVsRest, Averaging.Macro):F3}");
+            + $"{RocAuc.MultiClass(truth, probabilities, classCount: 3):F3}");
         Console.WriteLine($"  MultiClass ovr weight = "
-            + $"{RocAuc.MultiClass(truth, probabilities, classCount: 3, MultiClassStrategy.OneVsRest, Averaging.Weighted):F3}");
+            + $"{RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { Average = Averaging.Weighted }):F3}");
         Console.WriteLine($"  MultiClass ovo macro  = "
-            + $"{RocAuc.MultiClass(truth, probabilities, classCount: 3, MultiClassStrategy.OneVsOne, Averaging.Macro):F3}");
+            + $"{RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { Strategy = MultiClassStrategy.OneVsOne }):F3}");
+
+        // Opt-in parallelism over the per-class loop. Six samples and three
+        // classes is far too small to gain anything — the point here is that the
+        // number does not move, which is the guarantee the knob carries.
+        Console.WriteLine($"  MultiClass ovr macro  = "
+            + $"{RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }):F3}"
+            + "  (parallel, same value)");
         Console.WriteLine();
     }
 

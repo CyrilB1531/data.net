@@ -144,7 +144,7 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | `classification_report(…)` | scikit-learn | `ClassificationReport.Compute(…)`, `.ToText(digits)` | Structured *and* character-exact text. `ZeroDivision.NaN` renders `NaN` where Python writes `nan`; the numbers still match. |
 | `zero_division=0/1/np.nan` | scikit-learn | `ZeroDivision.Zero/One/NaN` | Values identical. The `UndefinedMetricWarning` has no equivalent; `ZeroDivision.Throw` is the opt-in replacement. |
 | `roc_auc_score(y_true, y_score)` | scikit-learn | `RocAuc.Score(…)` | Binary. `posLabel` is explicit here (default 1) where scikit-learn infers it. |
-| `roc_auc_score(…, multi_class=…)` | scikit-learn | `RocAuc.MultiClass(…)` | `ovr` and `ovo`. Separate method: the overloads would be ambiguous. `sampleWeight` refused for `ovo`, as in scikit-learn. |
+| `roc_auc_score(…, multi_class=…)` | scikit-learn | `RocAuc.MultiClass(…, MultiClassRocOptions)` | `ovr` and `ovo`. Separate method: the overloads would be ambiguous. Strategy, averaging, labels and weights travel in `MultiClassRocOptions`, which also carries `MaxDegreeOfParallelism` — no scikit-learn equivalent, opt-in, sequential by default. `sampleWeight` refused for `ovo`, as in scikit-learn. |
 
 ## Conventions
 
