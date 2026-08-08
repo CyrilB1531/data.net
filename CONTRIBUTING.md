@@ -38,15 +38,29 @@ request. That constrains how `main` can be protected: **GitHub does not let you
 approve your own pull request**, so a rule requiring an approving review would
 block every PR here — there would be nobody able to give it.
 
-Protection is therefore built on checks rather than approvals. A pull request may
-merge once CI is green:
+Protection is therefore built on checks rather than approvals. A repository
+ruleset named **`main protected by checks`** targets the default branch, requires
+a pull request, and requires these four checks to pass before the merge button
+becomes available:
 
 | Job | What it guards |
 | --- | --- |
 | `Lint (markdown + C# format)` | markdownlint, and `dotnet format --verify-no-changes` |
 | `Build, test, pack` | the build, the full test suite, and that the packages still pack |
 | `Oracles are reproducible` | that the committed corpora match a fresh generation |
-| `Build and analyze` | publishes analysis and coverage to SonarQube Cloud |
+| `Build and analyze` | publishes analysis and coverage to SonarQube Cloud, **and fails the job when the quality gate fails** — a finding in the code a pull request introduces blocks its merge |
+
+The ruleset has **no bypass list, and it binds the administrator**. That is
+deliberate: a guard rail the sole maintainer can step over on a tired evening is
+a suggestion. Getting past it means disabling the rule in Settings → Rules, which
+is a visible act with a record, rather than a merge nobody would have noticed.
+
+`Build and analyze` is skipped on Dependabot and fork pull requests, where
+`SONAR_TOKEN` is unreachable. GitHub counts a skipped check as satisfied, so
+those pull requests are not stuck — which is also why the required check is this
+repository's own job and not SonarQube Cloud's `SonarCloud Code Analysis`: that
+one is never posted at all on such a pull request, and a required check that
+never arrives stays pending forever.
 
 "Require approvals" stays off until a second maintainer joins. Self-merging after
 green checks is the expected flow here, not a shortcut — the pull request still

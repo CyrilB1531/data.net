@@ -115,6 +115,19 @@ jobs:
       # exclusions would fail open — silently, because the only symptom is a WARN,
       # and a WARN never fails a job. $GITHUB_WORKSPACE is the value auto-detection
       # resolves to today, so pinning it changes no file key and re-keys no issue.
+      #
+      # qualitygate.wait is what makes this job's colour mean something. Without
+      # it `end` uploads the analysis and exits 0 whatever the gate says, so a
+      # pull request that fails the gate reported a green "Build and analyze" and
+      # nothing stopped it — the analysis was published and then ignored. With it,
+      # `end` polls until the gate is computed and exits non-zero when it fails,
+      # which is what the branch ruleset on main requires to pass. The cost is
+      # waiting for the server: the poll gives up after sonar.qualitygate.timeout,
+      # 300 seconds by default, and a timeout also fails the job.
+      #
+      # The gate is Sonar's own "Clean as You Code" definition, on *new* code, so
+      # what it blocks is what this pull request introduced — not the backlog it
+      # inherited.
       - name: Begin analysis
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -124,6 +137,7 @@ jobs:
             /o:"cyrilb1531" \
             /d:sonar.token="$SONAR_TOKEN" \
             /d:sonar.host.url="https://sonarcloud.io" \
+            /d:sonar.qualitygate.wait=true \
             /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
             /d:sonar.python.version="3.12" \
             /d:sonar.projectBaseDir="$GITHUB_WORKSPACE" \
