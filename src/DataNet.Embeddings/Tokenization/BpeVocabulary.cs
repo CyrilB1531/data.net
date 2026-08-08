@@ -17,7 +17,7 @@ public readonly record struct MergePair(string Left, string Right);
 /// <remarks>
 /// Read from a <c>tokenizer.json</c> by <see cref="Persistence.TokenizerJsonLoader"/>
 /// or from a <c>vocab.json</c>/<c>merges.txt</c> pair by
-/// <c>BpeFilesLoader</c>. It restates what the file declared
+/// <see cref="Persistence.BpeFilesLoader"/>. It restates what the file declared
 /// and decides nothing itself.
 /// </remarks>
 /// <param name="Vocab">Token to id.</param>
