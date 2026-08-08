@@ -36,6 +36,15 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 {
     private const int StackThreshold = 256;
 
+    /// <summary>No such neighbour: the ends of <see cref="Merge"/>'s list, and every symbol merged away.</summary>
+    /// <remarks>
+    /// One sentinel serves both because a symbol that has been merged away never
+    /// needs a successor again. That is also what makes a stale queue entry cheap
+    /// to spot: a candidate whose left symbol is gone reads <see cref="End"/>
+    /// where its partner used to be, exactly as the last symbol of the list does.
+    /// </remarks>
+    private const int End = -1;
+
     private readonly Dictionary<string, int> _vocab;
     private readonly string[] _tokens;          // id -> token, the inverse of _vocab
     private readonly Dictionary<long, int> _ranks;   // (left << 32 | right) -> rank
@@ -375,32 +384,233 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     }
 
     /// <summary>Applies the lowest-ranked applicable merge until none applies. Returns the new symbol count.</summary>
+    /// <remarks>
+    /// <para>
+    /// Rescanning every adjacent pair after every merge, and shifting the array
+    /// down to close the gap, costs the square of the symbol count: a measured
+    /// 3.80x, 3.91x and 4.17x per doubling of a token with no split point in it.
+    /// So the symbols are threaded on a doubly-linked list instead — a merge
+    /// unlinks one node and nothing moves — and the candidate merges are kept in
+    /// a priority queue, so each round takes the best one instead of looking for
+    /// it. Only the two pairs a merge actually creates are new candidates.
+    /// </para>
+    /// <para>
+    /// Positions are indices into <paramref name="symbols"/> and never change,
+    /// which is what lets the queue express the whole ordering rule: an entry is
+    /// the rank in the high 32 bits and the left position in the low 32, so
+    /// comparing the two packed <see cref="long"/>s <em>is</em> "lowest rank
+    /// first, leftmost occurrence on a tie". Both halves are non-negative, so the
+    /// natural ordering of the packed value is the lexicographic ordering of the
+    /// pair.
+    /// </para>
+    /// <para>
+    /// Entries are never removed when they go stale — a merge would otherwise
+    /// have to find the queue entries mentioning the two symbols it consumed.
+    /// They are validated when they come off the queue instead, by
+    /// <see cref="Applies"/>, and dropped in silence when they no longer describe
+    /// an adjacent pair of exactly their rank. The queue can therefore hold
+    /// entries no longer worth acting on, but never misses one that is: every
+    /// adjacency the merge table knows about is offered when it is created, and
+    /// an adjacency changes only when one of its two symbols is merged, which
+    /// either destroys it or produces the merge that offers it again.
+    /// </para>
+    /// </remarks>
     private int Merge(Span<int> symbols, int count)
     {
-        while (count > 1)
+        if (count < 2)
         {
-            int bestRank = int.MaxValue;
-            int bestAt = -1;
-            for (int i = 0; i + 1 < count; i++)
+            return count;
+        }
+
+        // Both buffers are rented in a statement of their own and returned in a
+        // finally, the discipline EncodePiece already follows for symbols itself.
+        // The links are one array holding two spans rather than two rentals, so
+        // there is one fewer thing to give back.
+        int capacity = QueueCapacity(count);
+        int[] links = ArrayPool<int>.Shared.Rent(2 * count);
+        try
+        {
+            long[] queue = ArrayPool<long>.Shared.Rent(capacity);
+            try
             {
-                if (_ranks.TryGetValue(Key(symbols[i], symbols[i + 1]), out int rank) && rank < bestRank)
-                {
-                    bestRank = rank;
-                    bestAt = i;
-                }
+                return MergeQueued(symbols, count, links.AsSpan(0, 2 * count), queue.AsSpan(0, capacity));
             }
-            if (bestAt < 0)
+            finally
+            {
+                ArrayPool<long>.Shared.Return(queue);
+            }
+        }
+        finally
+        {
+            ArrayPool<int>.Shared.Return(links);
+        }
+    }
+
+    /// <summary>
+    /// How many entries the queue can ever hold for <paramref name="count"/>
+    /// symbols: the <c>count - 1</c> adjacent pairs it starts with, plus two per
+    /// merge applied, of which there can be at most <c>count - 1</c> since each
+    /// one removes a symbol and one always remains.
+    /// </summary>
+    private static int QueueCapacity(int count) => 3 * (count - 1);
+
+    /// <summary>Runs the merge loop over a linked list of symbols and a queue of candidates.</summary>
+    /// <param name="symbols">The symbols, rewritten in place; only the first <c>count</c> entries are read.</param>
+    /// <param name="count">How many symbols there are, at least two.</param>
+    /// <param name="links">Scratch space for the list: the first half is <c>prev</c>, the second <c>next</c>.</param>
+    /// <param name="queue">Scratch space for the binary heap of candidate merges.</param>
+    private int MergeQueued(Span<int> symbols, int count, Span<int> links, Span<long> queue)
+    {
+        Span<int> previous = links.Slice(0, count);
+        Span<int> next = links.Slice(count, count);
+        for (int i = 0; i < count; i++)
+        {
+            previous[i] = i - 1;
+            next[i] = i + 1;
+        }
+        next[count - 1] = End;
+
+        int size = 0;
+        for (int i = 0; i + 1 < count; i++)
+        {
+            Offer(symbols, queue, ref size, i, i + 1);
+        }
+
+        while (size > 0)
+        {
+            long candidate = Take(queue, ref size);
+            int at = (int)candidate;
+            int rank = (int)(candidate >> 32);
+            if (!Applies(symbols, next, at, rank))
+            {
+                continue;
+            }
+
+            symbols[at] = _merged[rank];
+            Unlink(previous, next, at, next[at]);
+            if (previous[at] != End)
+            {
+                Offer(symbols, queue, ref size, previous[at], at);
+            }
+            if (next[at] != End)
+            {
+                Offer(symbols, queue, ref size, at, next[at]);
+            }
+        }
+
+        return Compact(symbols, next);
+    }
+
+    /// <summary>Queues the pair at <paramref name="left"/> and <paramref name="right"/>, if the merge table knows it.</summary>
+    private void Offer(ReadOnlySpan<int> symbols, Span<long> queue, ref int size, int left, int right)
+    {
+        if (!_ranks.TryGetValue(Key(symbols[left], symbols[right]), out int rank))
+        {
+            return;
+        }
+        queue[size] = ((long)rank << 32) | (uint)left;
+        size++;
+        SiftUp(queue, size - 1);
+    }
+
+    /// <summary>Whether a candidate taken off the queue still describes an adjacent pair of exactly its rank.</summary>
+    /// <remarks>
+    /// Rank identifies the pair: the constructor gives each pair the index of its
+    /// line in the merge table, and never two lines to one pair. So a candidate
+    /// whose neighbours still resolve to its own rank is one whose two symbols
+    /// are the two it was queued for, and any other outcome — no successor, no
+    /// known pair, a different rank — is a candidate some earlier merge has
+    /// overtaken.
+    /// </remarks>
+    private bool Applies(ReadOnlySpan<int> symbols, ReadOnlySpan<int> next, int at, int rank)
+    {
+        int right = next[at];
+        return right != End
+            && _ranks.TryGetValue(Key(symbols[at], symbols[right]), out int current)
+            && current == rank;
+    }
+
+    /// <summary>Drops <paramref name="right"/> out of the list, joining its neighbour to <paramref name="left"/>.</summary>
+    private static void Unlink(Span<int> previous, Span<int> next, int left, int right)
+    {
+        int after = next[right];
+        next[left] = after;
+        if (after != End)
+        {
+            previous[after] = left;
+        }
+        next[right] = End;
+    }
+
+    /// <summary>Rewrites the surviving symbols into <c>symbols[0..n]</c> in list order and returns <c>n</c>.</summary>
+    /// <remarks>
+    /// Position 0 always survives: a merge only ever unlinks the right-hand
+    /// symbol of a pair, and nothing is to the left of the first one. Writing
+    /// forward is safe for the same reason the list stays in order — the
+    /// destination has never got past the position being read.
+    /// </remarks>
+    private static int Compact(Span<int> symbols, ReadOnlySpan<int> next)
+    {
+        int n = 1;
+        for (int at = next[0]; at != End; at = next[at])
+        {
+            symbols[n] = symbols[at];
+            n++;
+        }
+        return n;
+    }
+
+    /// <summary>Removes and returns the smallest entry of the heap.</summary>
+    private static long Take(Span<long> queue, ref int size)
+    {
+        long best = queue[0];
+        size--;
+        if (size > 0)
+        {
+            queue[0] = queue[size];
+            SiftDown(queue, size);
+        }
+        return best;
+    }
+
+    /// <summary>Moves the entry at <paramref name="at"/> up to where the heap order puts it.</summary>
+    private static void SiftUp(Span<long> queue, int at)
+    {
+        long entry = queue[at];
+        while (at > 0)
+        {
+            int parent = (at - 1) / 2;
+            if (queue[parent] <= entry)
             {
                 break;
             }
-            symbols[bestAt] = _merged[bestRank];
-            for (int i = bestAt + 1; i + 1 < count; i++)
-            {
-                symbols[i] = symbols[i + 1];
-            }
-            count--;
+            queue[at] = queue[parent];
+            at = parent;
         }
-        return count;
+        queue[at] = entry;
+    }
+
+    /// <summary>Moves the root down to where the heap order puts it.</summary>
+    private static void SiftDown(Span<long> queue, int size)
+    {
+        long entry = queue[0];
+        int at = 0;
+        int child = 1;
+        while (child < size)
+        {
+            if (child + 1 < size && queue[child + 1] < queue[child])
+            {
+                child++;
+            }
+            if (queue[child] >= entry)
+            {
+                break;
+            }
+            queue[at] = queue[child];
+            at = child;
+            child = (2 * at) + 1;
+        }
+        queue[at] = entry;
     }
 
     /// <summary>Reassembles the text <paramref name="ids"/> encode.</summary>
