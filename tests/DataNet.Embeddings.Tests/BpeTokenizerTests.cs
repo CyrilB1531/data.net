@@ -292,8 +292,26 @@ public sealed class BpeTokenizerTests
     /// repeat. Deliberately not the shipped algorithm — it is the definition the
     /// shipped algorithm is answerable to.
     /// </summary>
+    /// <remarks>
+    /// The rank of a pair is looked up in a dictionary rather than by scanning
+    /// the merge list, which is the one thing here that is not naive. It changes
+    /// no outcome — the dictionary keeps the first rank a pair is listed at,
+    /// which is what scanning for the first match would find — and it is what
+    /// makes the reference affordable on a piece long enough to be worth
+    /// comparing against. What has to stay slow and obvious is the rescan of
+    /// every pair after every merge, and that is exactly what is left.
+    /// </remarks>
     private static List<string> NaiveMerge(string piece, List<MergePair> merges)
     {
+        var ranks = new Dictionary<(string Left, string Right), int>();
+        for (int rank = 0; rank < merges.Count; rank++)
+        {
+            if (!ranks.ContainsKey((merges[rank].Left, merges[rank].Right)))
+            {
+                ranks[(merges[rank].Left, merges[rank].Right)] = rank;
+            }
+        }
+
         List<string> symbols = [.. piece.Select(c => c.ToString())];
         while (symbols.Count > 1)
         {
@@ -301,9 +319,7 @@ public sealed class BpeTokenizerTests
             int bestAt = -1;
             for (int i = 0; i + 1 < symbols.Count; i++)
             {
-                int at = i;
-                int rank = merges.FindIndex(m => m.Left == symbols[at] && m.Right == symbols[at + 1]);
-                if (rank >= 0 && rank < bestRank)
+                if (ranks.TryGetValue((symbols[i], symbols[i + 1]), out int rank) && rank < bestRank)
                 {
                     bestRank = rank;
                     bestAt = i;
@@ -317,6 +333,60 @@ public sealed class BpeTokenizerTests
             symbols.RemoveAt(bestAt + 1);
         }
         return symbols;
+    }
+
+    /// <summary>
+    /// A generated model over <paramref name="alphabet"/>: each merge joins two
+    /// tokens the vocabulary already has, and adds the result as a new one, so
+    /// every merge is applicable and the ranks are the order they were made in.
+    /// </summary>
+    private static (BpeVocabulary Vocabulary, List<MergePair> Merges) GenerateModel(
+        Random random, string alphabet, int mergeCount)
+    {
+        List<string> tokens = [.. alphabet.Select(c => c.ToString())];
+        var merges = new List<MergePair>();
+        while (merges.Count < mergeCount)
+        {
+            string left = tokens[random.Next(tokens.Count)];
+            string right = tokens[random.Next(tokens.Count)];
+            // A token string is a vocabulary key, so the same spelling cannot be
+            // reached two ways; skipping keeps every merge distinct and applicable.
+            if (tokens.Contains(left + right, StringComparer.Ordinal))
+            {
+                continue;
+            }
+            merges.Add(new MergePair(left, right));
+            tokens.Add(left + right);
+        }
+        return (HandBuiltVocabulary([.. tokens]) with { Merges = merges }, merges);
+    }
+
+    /// <summary>
+    /// A model where every pair of tokens at one level is a merge producing a
+    /// token of the next: 2 letters give 4 two-letter tokens, which give 16
+    /// four-letter tokens, and so on. Nothing is left inapplicable, so a piece
+    /// keeps merging instead of stalling early — which is what fills the queue.
+    /// </summary>
+    private static (BpeVocabulary Vocabulary, List<MergePair> Merges) DenseModel(string alphabet, int levels)
+    {
+        List<string> tokens = [.. alphabet.Select(c => c.ToString())];
+        var merges = new List<MergePair>();
+        List<string> level = [.. tokens];
+        for (int l = 0; l < levels; l++)
+        {
+            var next = new List<string>();
+            foreach (string left in level)
+            {
+                foreach (string right in level)
+                {
+                    merges.Add(new MergePair(left, right));
+                    next.Add(left + right);
+                }
+            }
+            tokens.AddRange(next);
+            level = next;
+        }
+        return (HandBuiltVocabulary([.. tokens]) with { Merges = merges }, merges);
     }
 
     /// <summary>
@@ -336,20 +406,8 @@ public sealed class BpeTokenizerTests
 
         for (int trial = 0; trial < 40; trial++)
         {
-            List<string> tokens = [.. Alphabet.Select(c => c.ToString())];
-            var merges = new List<MergePair>();
-            while (merges.Count < 24)
-            {
-                string left = tokens[random.Next(tokens.Count)];
-                string right = tokens[random.Next(tokens.Count)];
-                if (tokens.Contains(left + right, StringComparer.Ordinal))
-                {
-                    continue;
-                }
-                merges.Add(new MergePair(left, right));
-                tokens.Add(left + right);
-            }
-            var tokenizer = new BpeTokenizer(HandBuiltVocabulary([.. tokens]) with { Merges = merges });
+            (BpeVocabulary vocabulary, List<MergePair> merges) = GenerateModel(random, Alphabet, 24);
+            var tokenizer = new BpeTokenizer(vocabulary);
 
             for (int c = 0; c < 25; c++)
             {
@@ -364,6 +422,64 @@ public sealed class BpeTokenizerTests
         }
 
         Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    /// <summary>
+    /// The regime the priority queue was written for, which nothing else in the
+    /// suite reaches: one unsplittable piece of 1024 symbols, where the queue is
+    /// ten-odd levels deep and takes thousands of entries.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Every other test here merges a handful of symbols, and a benchmark is not
+    /// a gate — it does not run in CI, and it asserts nothing about the tokens.
+    /// So the deep-queue regime, the one this whole algorithm exists for, was
+    /// proven only by a stopwatch. Here it is proven by the tokens: 1024 symbols
+    /// over a two-letter alphabet, against a model where every pair at every
+    /// level is applicable so the piece keeps merging instead of stalling. It
+    /// ends at 322 tokens, so 702 merges run, each one taking a candidate off a
+    /// queue ten levels deep and putting two more back. A sparser, generated
+    /// model was tried first and stalled at 552 tokens, which is why this one is
+    /// built rather than generated.
+    /// </para>
+    /// <para>
+    /// What this does <em>not</em> pin is <c>QueueCapacity</c>. That was the
+    /// intent, and measuring killed it: the queue is bounded by how many entries
+    /// are in it at once, not by how many are ever pushed, and each round takes
+    /// one before offering at most two. Even <c>count</c> entries — a third of
+    /// what is rented — carries this case, verified by shrinking the bound until
+    /// something broke and finding that nothing did. So the bound keeps its
+    /// slack, and no test claims to be guarding it.
+    /// </para>
+    /// <para>
+    /// Length was chosen against the reference, not the shipped code: the naive
+    /// scan is quadratic by construction, which is the whole point of it, so it
+    /// is what sets what the suite can afford. At 1024 the whole case runs in
+    /// about 40 ms, while sitting 25x past the longest piece any other test
+    /// merges.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Merging_agrees_with_a_naive_scan_over_a_long_unsplittable_piece()
+    {
+        const string Alphabet = "ab";
+        const int Length = 1024;
+        var random = new Random(20260809);
+        (BpeVocabulary vocabulary, List<MergePair> merges) = DenseModel(Alphabet, 3);
+        var tokenizer = new BpeTokenizer(vocabulary);
+        string piece = new([.. Enumerable.Range(0, Length).Select(_ => Alphabet[random.Next(Alphabet.Length)])]);
+
+        IReadOnlyList<string> actual = tokenizer.Encode(piece).Tokens;
+
+        // No whitespace and no punctuation, so the pre-tokenizer hands the whole
+        // run to one Merge call rather than splitting it into cheap little pieces.
+        Assert.Equal(Length, string.Concat(actual).Length);
+        Assert.True(actual.Count * 2 <= Length, $"only {actual.Count} of {Length} symbols merged; the queue barely filled");
+        List<string> expected = NaiveMerge(piece, merges);
+        Assert.True(
+            expected.SequenceEqual(actual),
+            $"exp {expected.Count} tokens: [{string.Join(" | ", expected.Take(20))} ...]\n"
+            + $"got {actual.Count} tokens: [{string.Join(" | ", actual.Take(20))} ...]");
     }
 
     /// <summary>

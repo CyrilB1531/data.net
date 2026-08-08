@@ -39,9 +39,13 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// <summary>No such neighbour: the ends of <see cref="Merge"/>'s list, and every symbol merged away.</summary>
     /// <remarks>
     /// One sentinel serves both because a symbol that has been merged away never
-    /// needs a successor again. That is also what makes a stale queue entry cheap
-    /// to spot: a candidate whose left symbol is gone reads <see cref="End"/>
-    /// where its partner used to be, exactly as the last symbol of the list does.
+    /// needs a successor again. The two are therefore not distinguishable — a
+    /// live symbol at the tail of the list reads <see cref="End"/> just as a dead
+    /// one does — and they do not need to be: <see cref="Applies"/> asks only
+    /// whether a candidate still has a right-hand symbol to merge with, and the
+    /// answer is no in both cases. A pair needs a successor, so dropping the
+    /// candidate is the correct outcome for the live tail on its own terms, not
+    /// merely a tolerable one.
     /// </remarks>
     private const int End = -1;
 
@@ -387,9 +391,12 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// <remarks>
     /// <para>
     /// Rescanning every adjacent pair after every merge, and shifting the array
-    /// down to close the gap, costs the square of the symbol count: a measured
-    /// 3.80x, 3.91x and 4.17x per doubling of a token with no split point in it.
-    /// So the symbols are threaded on a doubly-linked list instead — a merge
+    /// down to close the gap, costs the square of the symbol count: 3.80x, 3.91x
+    /// and 4.17x per doubling of a token with no split point in it, against the
+    /// 2.02x, 2.08x and 2.00x this costs instead. Those figures are one machine's
+    /// — an Intel Core i7-4770S (Haswell), Ubuntu 24.04.4, .NET SDK 10.0.110 —
+    /// and <c>BpeScalingBenchmarks</c> in <c>bench/</c> is what re-measures them
+    /// anywhere else. So the symbols are threaded on a doubly-linked list — a merge
     /// unlinks one node and nothing moves — and the candidate merges are kept in
     /// a priority queue, so each round takes the best one instead of looking for
     /// it. Only the two pairs a merge actually creates are new candidates.
@@ -422,10 +429,15 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             return count;
         }
 
-        // Both buffers are rented in a statement of their own and returned in a
-        // finally, the discipline EncodePiece already follows for symbols itself.
-        // The links are one array holding two spans rather than two rentals, so
-        // there is one fewer thing to give back.
+        // Both buffers are always rented, never stackalloc'd below a threshold the
+        // way EncodePiece sizes symbols itself. That is a deliberate difference:
+        // the threshold would put two conditional rentals and two conditional
+        // returns around the loop that carries the algorithm, and the corpus
+        // benchmark -- 5000 documents of ordinary text, which is where short
+        // pieces dominate -- measures no cost to renting unconditionally. Each is
+        // still rented in a statement of its own and returned in a finally, so
+        // every path out of here gives both back. The links are one array holding
+        // two spans rather than two rentals, so there is one fewer to give back.
         int capacity = QueueCapacity(count);
         int[] links = ArrayPool<int>.Shared.Rent(2 * count);
         try
