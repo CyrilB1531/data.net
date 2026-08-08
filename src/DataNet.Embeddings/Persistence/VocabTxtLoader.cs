@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text;
 using DataNet.Embeddings.Tokenization;
 using DataNet.Internal.Persistence;
@@ -89,12 +90,12 @@ public static class VocabTxtLoader
         CancellationToken cancellationToken = default)
     {
         ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
-        byte[] payload = await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false);
+        ReadOnlyMemory<byte> payload = await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false);
         return Parse(payload, limits, unkToken, continuationPrefix, lowercase);
     }
 
     private static WordPieceVocabulary Parse(
-        byte[] payload,
+        ReadOnlyMemory<byte> payload,
         in ArtifactLimits limits,
         string unkToken,
         string continuationPrefix,
@@ -151,13 +152,21 @@ public static class VocabTxtLoader
         return new WordPieceVocabulary(vocab, unkToken, continuationPrefix, lowercase);
     }
 
-    private static string Decode(byte[] payload)
+    private static string Decode(ReadOnlyMemory<byte> payload)
     {
         // A vocab.txt written on Windows may carry a byte-order mark; Python's
         // "utf-8" codec would keep it as part of the first token, but every real
         // file that has one was meant to be read without it.
-        int offset = payload.Length >= 3 && payload[0] == 0xEF && payload[1] == 0xBB && payload[2] == 0xBF ? 3 : 0;
-        return JsonArtifact.Utf8NoBom.GetString(payload, offset, payload.Length - offset);
+        ReadOnlySpan<byte> span = payload.Span;
+        int offset = span.Length >= 3 && span[0] == 0xEF && span[1] == 0xBB && span[2] == 0xBF ? 3 : 0;
+
+        // TryGetArray rather than ToArray: this memory always wraps an array — it
+        // comes from JsonArtifact.ReadAllBytes — and netstandard2.0's Encoding has
+        // no span overload to decode through instead.
+        ReadOnlyMemory<byte> text = payload.Slice(offset);
+        return MemoryMarshal.TryGetArray(text, out ArraySegment<byte> segment) && segment.Array is not null
+            ? JsonArtifact.Utf8NoBom.GetString(segment.Array, segment.Offset, segment.Count)
+            : JsonArtifact.Utf8NoBom.GetString(text.ToArray());
     }
 
 }

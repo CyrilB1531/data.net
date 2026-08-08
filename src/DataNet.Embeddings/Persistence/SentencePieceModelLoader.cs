@@ -91,11 +91,11 @@ public static class SentencePieceModelLoader
         CancellationToken cancellationToken = default)
     {
         ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
-        byte[] payload = await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false);
+        ReadOnlyMemory<byte> payload = await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false);
         return Parse(payload, limits);
     }
 
-    private static SentencePieceVocabulary Parse(byte[] payload, in ArtifactLimits limits)
+    private static SentencePieceVocabulary Parse(ReadOnlyMemory<byte> payload, in ArtifactLimits limits)
     {
         var pieces = new List<SentencePiece>();
         var types = new List<SentencePieceType>();
@@ -107,7 +107,7 @@ public static class SentencePieceModelLoader
         bool sawNormalizerSpec = false;
         PrecompiledNormalizer? normalizer = null;
 
-        var reader = new ProtobufReader(payload);
+        var reader = new ProtobufReader(payload.Span);
         while (reader.TryReadTag(out int field, out int wireType))
         {
             // Every section of a ModelProto is length-delimited, so anything else is

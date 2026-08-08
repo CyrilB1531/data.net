@@ -55,7 +55,7 @@ internal static class ArtifactIo
     }
 
     /// <summary>Creates a reader over <paramref name="payload"/> positioned on the artifact's opening brace.</summary>
-    public static Utf8JsonReader CreateReader(byte[] payload, string artifact, in ArtifactLimits limits)
+    public static Utf8JsonReader CreateReader(ReadOnlySpan<byte> payload, string artifact, in ArtifactLimits limits)
     {
         var reader = new Utf8JsonReader(payload, JsonArtifact.ReaderOptions(limits));
         if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject)

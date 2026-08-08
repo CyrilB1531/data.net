@@ -69,7 +69,7 @@ public sealed partial class HashingVectorizer
         CancellationToken cancellationToken = default)
     {
         ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
-        byte[] payload = await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false);
+        ReadOnlyMemory<byte> payload = await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false);
         return FromPayload(payload, limits);
     }
 
@@ -81,7 +81,7 @@ public sealed partial class HashingVectorizer
         VectorizerOptionsJson.WriteNorm(writer, "norm", _options.Norm);
     }
 
-    private static HashingVectorizer FromPayload(byte[] payload, in ArtifactLimits limits)
+    private static HashingVectorizer FromPayload(ReadOnlyMemory<byte> payload, in ArtifactLimits limits)
     {
         try
         {
@@ -93,9 +93,9 @@ public sealed partial class HashingVectorizer
         }
     }
 
-    private static HashingVectorizer Parse(byte[] payload, in ArtifactLimits limits)
+    private static HashingVectorizer Parse(ReadOnlyMemory<byte> payload, in ArtifactLimits limits)
     {
-        Utf8JsonReader reader = ArtifactIo.CreateReader(payload, ArtifactName, limits);
+        Utf8JsonReader reader = ArtifactIo.CreateReader(payload.Span, ArtifactName, limits);
         var header = new ArtifactHeader(ArtifactName, ArtifactVersion);
 
         var result = new HashingVectorizerOptions();

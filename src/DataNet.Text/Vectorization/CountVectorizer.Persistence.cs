@@ -84,7 +84,7 @@ public sealed partial class CountVectorizer
         CancellationToken cancellationToken = default)
     {
         ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
-        byte[] payload = await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false);
+        ReadOnlyMemory<byte> payload = await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false);
         return FromPayload(payload, limits);
     }
 
@@ -118,7 +118,7 @@ public sealed partial class CountVectorizer
         FeatureVocabularyJson.WriteVocabulary(writer, _featureNames);
     }
 
-    private static CountVectorizer FromPayload(byte[] payload, in ArtifactLimits limits)
+    private static CountVectorizer FromPayload(ReadOnlyMemory<byte> payload, in ArtifactLimits limits)
     {
         try
         {
@@ -130,9 +130,9 @@ public sealed partial class CountVectorizer
         }
     }
 
-    private static CountVectorizer Parse(byte[] payload, in ArtifactLimits limits)
+    private static CountVectorizer Parse(ReadOnlyMemory<byte> payload, in ArtifactLimits limits)
     {
-        Utf8JsonReader reader = ArtifactIo.CreateReader(payload, ArtifactName, limits);
+        Utf8JsonReader reader = ArtifactIo.CreateReader(payload.Span, ArtifactName, limits);
         var header = new ArtifactHeader(ArtifactName, ArtifactVersion);
 
         CountVectorizerOptions? options = null;

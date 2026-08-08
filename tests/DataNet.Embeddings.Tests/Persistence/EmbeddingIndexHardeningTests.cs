@@ -136,6 +136,26 @@ public sealed class EmbeddingIndexHardeningTests
     }
 
     [Fact]
+    public void A_non_finite_value_deep_in_a_large_block_is_rejected_and_located()
+    {
+        // Six floats — the small case above — is below the SIMD width on every
+        // machine this runs on, so it cannot reach a vectorized scan. This one
+        // hides the NaN a million values in, where only the vector pass finds it,
+        // and checks the message still names the exact item and component: the
+        // vector pass detects, the scalar loop locates. The block is crafted
+        // rather than added through Add, whose normalization would spread one NaN
+        // across the whole item and move the reported component to zero.
+        byte[] raw = new byte[3_000 * 384 * sizeof(float)];
+        BitConverter.GetBytes(float.NaN).CopyTo(raw, (2_000 * 384 + 7) * sizeof(float));
+
+        using var stream = new MemoryStream();
+        RealisticIndex().Save(stream);
+        string json = ReplaceVectors(Encoding.UTF8.GetString(stream.ToArray()), Convert.ToBase64String(raw));
+
+        Assert.Contains("item 2000, component 7", Load(json).Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void An_ids_section_of_the_wrong_length_is_rejected()
     {
         string json = WithIds().Replace("[\"a\",\"b\"]", "[\"a\"]", StringComparison.Ordinal);

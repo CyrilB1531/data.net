@@ -92,7 +92,7 @@ public static class TokenizerJsonLoader
         CancellationToken cancellationToken = default)
     {
         ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
-        byte[] payload = await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false);
+        ReadOnlyMemory<byte> payload = await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false);
         using JsonDocument document = ParseDocument(payload, limits);
         return ReadWordPiece(document.RootElement, limits);
     }
@@ -128,12 +128,12 @@ public static class TokenizerJsonLoader
         CancellationToken cancellationToken = default)
     {
         ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
-        byte[] payload = await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false);
+        ReadOnlyMemory<byte> payload = await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false);
         using JsonDocument document = ParseDocument(payload, limits);
         return ReadUnigram(document.RootElement, limits);
     }
 
-    private static JsonDocument ParseDocument(byte[] payload, in ArtifactLimits limits)
+    private static JsonDocument ParseDocument(ReadOnlyMemory<byte> payload, in ArtifactLimits limits)
     {
         // A node tree rather than a single reader pass: the shape of "model"
         // depends on the "type" inside it, and HuggingFace does not guarantee an

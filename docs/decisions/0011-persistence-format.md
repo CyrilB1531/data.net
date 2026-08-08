@@ -143,7 +143,9 @@ Three things improve rather than degrade by moving it:
 - **Speed.** Saving fell from 9.05 ms to 1.95 ms, loading from 12.31 ms to
   5.85 ms.
 
-The security line holds: decoding is `Utf8JsonReader.GetBytesFromBase64`, the
+The security line holds: decoding is `System.Buffers.Text.Base64.DecodeFromUtf8`
+straight into the destination array, with `Utf8JsonReader.GetBytesFromBase64` as
+the fallback for a token that is escaped or split across segments — both are the
 same library that parses the rest of the file, not a hand-written decoder. The
 idf vector's decoded length is checked against `MaxArrayLength` and refused
 unless it is a whole number of 64-bit values. That element-count bound is
