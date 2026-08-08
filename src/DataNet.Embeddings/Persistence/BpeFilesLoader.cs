@@ -13,8 +13,8 @@ namespace DataNet.Embeddings.Persistence;
 /// Matches <c>tokenizers.models.BPE.from_file(vocab, merges)</c>. The two files
 /// carry the model and nothing else: what pattern the text was split on, and
 /// whether the model is byte-level, live in the tokenizer configuration beside
-/// them. Pass them here, or use <see cref="TokenizerJsonLoader"/>, which reads
-/// them from the file.
+/// them. Pass them here, or use <see cref="TokenizerJsonLoader.LoadBpe(string, ArtifactLoadOptions?)"/>,
+/// which reads them from the file.
 /// </para>
 /// <para>
 /// The defaults describe GPT-2, because that is the model this layout is almost

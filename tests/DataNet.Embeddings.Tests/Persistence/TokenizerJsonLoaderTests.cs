@@ -583,4 +583,136 @@ public sealed class TokenizerJsonLoaderTests
         "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[]," +
         $"\"normalizer\":{normalizer},\"pre_tokenizer\":{preTokenizer},\"post_processor\":null,\"decoder\":null," +
         $"\"model\":{{\"type\":\"Unigram\",\"unk_id\":{unkId},\"byte_fallback\":{byteFallback},\"vocab\":{vocab}}}}}";
+
+    // ---- BPE ----
+
+    private static Stream Bytes(string json) => new MemoryStream(Encoding.UTF8.GetBytes(json));
+
+    private static ArtifactLoadOptions BpeBounds() => new()
+    {
+        MaxTotalBytes = 8L * 1024 * 1024,
+        MaxVocabularySize = 100_000,
+        MaxArrayLength = 100_000,
+        MaxTokenLength = 512,
+    };
+
+    [Fact]
+    public void LoadBpe_reproduces_every_frozen_pipeline()
+    {
+        using JsonDocument doc = OracleLoader.Load("bpe_tokenizer_json.json");
+
+        var failures = new List<string>();
+        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
+        {
+            string name = c.GetProperty("name").GetString()!;
+            string text = c.GetProperty("text").GetString()!;
+            int[] expected = c.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32()).ToArray();
+
+            BpeVocabulary vocab = TokenizerJsonLoader.LoadBpe(
+                Bytes(c.GetProperty("tokenizer_json").GetString()!), BpeBounds());
+            int[] actual = [.. new BpeTokenizer(vocab).Encode(text).Ids];
+
+            if (!expected.SequenceEqual(actual))
+            {
+                failures.Add($"[{name}] exp [{string.Join(", ", expected)}] got [{string.Join(", ", actual)}]");
+            }
+        }
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    /// <summary>
+    /// byte_fallback is the Llama-2 / Mistral v0.1 pipeline (ADR 0017). Loading it
+    /// anyway would produce a tokenization that looks right and embeddings that
+    /// are not, so it is refused by name.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_refuses_byte_fallback()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[],"byte_fallback":true}}
+        """;
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+        Assert.Contains("byte_fallback", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LoadBpe_refuses_a_unigram_model()
+    {
+        const string Json = """{"model":{"type":"Unigram","vocab":[]}}""";
+        Assert.Throws<InvalidDataException>(() => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+    }
+
+    [Fact]
+    public void LoadBpe_refuses_a_pre_tokenizer_it_does_not_reproduce()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "pre_tokenizer":{"type":"BertPreTokenizer"}}
+        """;
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+        Assert.Contains("BertPreTokenizer", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LoadBpe_reads_both_merge_encodings()
+    {
+        const string Pairs = """
+        {"model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2},"merges":[["a","b"]]}}
+        """;
+        const string Lines = """
+        {"model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2},"merges":["a b"]}}
+        """;
+        Assert.Equal(
+            TokenizerJsonLoader.LoadBpe(Bytes(Pairs), BpeBounds()).Merges,
+            TokenizerJsonLoader.LoadBpe(Bytes(Lines), BpeBounds()).Merges);
+    }
+
+    [Fact]
+    public void LoadBpe_reads_ignore_merges()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[],"ignore_merges":true}}
+        """;
+        Assert.True(TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()).IgnoreMerges);
+    }
+
+    /// <summary>
+    /// Stock GPT-2 declares a bare <c>ByteLevel</c> pre-tokenizer with no
+    /// <c>Split</c> node at all. <see cref="BpeVocabulary.ByteLevel"/> and
+    /// <see cref="BpeVocabulary.PreTokenizerPattern"/> are independent flags for
+    /// exactly this shape: an earlier attempt on this branch inferred one from the
+    /// other and broke GPT-2 as a result. This pins both values for it directly,
+    /// rather than relying only on the end-to-end oracle replay to catch a regression.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_a_bare_byte_level_pre_tokenizer_gets_the_gpt2_pattern()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "pre_tokenizer":{"type":"ByteLevel","add_prefix_space":false,"use_regex":true}}
+        """;
+
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+
+        Assert.True(vocabulary.ByteLevel);
+        Assert.Equal(BpePatterns.Gpt2, vocabulary.PreTokenizerPattern);
+    }
+
+    /// <summary>The other side of <c>use_regex</c>: off leaves the pattern null without turning ByteLevel off.</summary>
+    [Fact]
+    public void LoadBpe_a_byte_level_pre_tokenizer_with_use_regex_off_has_no_pattern()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "pre_tokenizer":{"type":"ByteLevel","use_regex":false}}
+        """;
+
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+
+        Assert.True(vocabulary.ByteLevel);
+        Assert.Null(vocabulary.PreTokenizerPattern);
+    }
 }
