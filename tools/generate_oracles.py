@@ -2126,9 +2126,21 @@ def generate_bytelevel_bpe() -> dict:
     # the check this line is for.
     assert set(table) == set(ByteLevel.alphabet()), "derived alphabet disagrees with tokenizers"
 
+    # A second tokenizer with ignore_merges on, to record what changes when a
+    # pre-tokenized piece that is itself a vocabulary entry is emitted whole
+    # instead of being merged up to. tokenizers reads the flag from the model,
+    # so it is set on the deserialized JSON rather than on the Python object.
+    import json as _json  # noqa: PLC0415
+    from tokenizers import Tokenizer as _Tokenizer  # noqa: PLC0415
+
+    spec = _json.loads(tokenizer.to_str())
+    spec["model"]["ignore_merges"] = True
+    ignoring = _Tokenizer.from_str(_json.dumps(spec))
+
     cases = []
     for i, text in enumerate(BPE_TEXTS):
         enc = tokenizer.encode(text)
+        enc_ignoring = ignoring.encode(text)
         cases.append({
             "id": i,
             "text": text,
@@ -2136,6 +2148,8 @@ def generate_bytelevel_bpe() -> dict:
             "ids": enc.ids,
             "decoded": tokenizer.decode(enc.ids, skip_special_tokens=False),
             "decoded_skip_specials": tokenizer.decode(enc.ids, skip_special_tokens=True),
+            "tokens_ignore_merges": enc_ignoring.tokens,
+            "ids_ignore_merges": enc_ignoring.ids,
         })
     return {
         "metadata": {
@@ -2165,6 +2179,58 @@ def generate_bpe() -> dict:
             "library": "tokenizers",
             "library_version": version("tokenizers"),
             "model": "tiny_bpe.json (self-trained, end_of_word_suffix </w>)",
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+# The vendored GPT-2 model cannot exercise ignore_merges: checked over all
+# 50 257 of its vocabulary entries, none diverges, because a natively-trained
+# merge table always retraces to its own entries (see the ignore_merges task's
+# amended plan for the argument in full). The flag only rescues *orphaned*
+# entries -- present in a model's vocabulary but unreachable by replaying its
+# merges -- which is what a tiktoken-to-tokenizer.json conversion produces and
+# what training never does. orphan_bpe_model.json (tools/build_tiny_models.py)
+# holds exactly one such entry, on purpose, so this corpus is the only one in
+# the suite that can prove the flag does anything.
+ORPHAN_BPE_TEXTS = [
+    "abc",       # the orphan itself: ['ab', 'c'] normally, ['abc'] with the flag
+    "x abc y",   # the orphan as one piece among ordinary ones
+    "x y",       # no piece here is the orphan
+    "ab c",      # "ab" is a legitimately reachable entry, not the orphan
+    "",
+]
+
+
+def generate_orphan_bpe() -> dict:
+    """Classic BPE over a model with one vocabulary entry the merge table cannot reach."""
+    import json as _json  # noqa: PLC0415
+    from tokenizers import Tokenizer  # noqa: PLC0415
+
+    tokenizer = Tokenizer.from_file(str(ORACLE_DIR / "orphan_bpe_model.json"))
+    spec = _json.loads(tokenizer.to_str())
+    spec["model"]["ignore_merges"] = True
+    ignoring = Tokenizer.from_str(_json.dumps(spec))
+
+    cases = []
+    for i, text in enumerate(ORPHAN_BPE_TEXTS):
+        enc = tokenizer.encode(text)
+        enc_ignoring = ignoring.encode(text)
+        cases.append({
+            "id": i,
+            "text": text,
+            "tokens": enc.tokens,
+            "ids": enc.ids,
+            "tokens_ignore_merges": enc_ignoring.tokens,
+            "ids_ignore_merges": enc_ignoring.ids,
+        })
+    return {
+        "metadata": {
+            "algorithm": "BPE",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "orphan_bpe_model.json (hand-constructed, one orphaned entry)",
             "count": len(cases),
         },
         "cases": cases,
@@ -2302,6 +2368,7 @@ def main() -> None:
         "classification_metrics.json": generate_classification_metrics,
         "roc_auc.json": generate_roc_auc,
         "bpe.json": generate_bpe,
+        "orphan_bpe.json": generate_orphan_bpe,
         "bytelevel_bpe.json": generate_bytelevel_bpe,
         "bpe_pretokenize.json": generate_bpe_pretokenize,
         "bpe_tokenizer_json.json": generate_bpe_tokenizer_json,

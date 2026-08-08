@@ -1,0 +1,103 @@
+{
+ "metadata": {
+  "algorithm": "BPE",
+  "library": "tokenizers",
+  "library_version": "0.23.1",
+  "model": "orphan_bpe_model.json (hand-constructed, one orphaned entry)",
+  "count": 5
+ },
+ "cases": [
+  {
+   "id": 0,
+   "text": "abc",
+   "tokens": [
+    "ab",
+    "c"
+   ],
+   "ids": [
+    5,
+    2
+   ],
+   "tokens_ignore_merges": [
+    "abc"
+   ],
+   "ids_ignore_merges": [
+    7
+   ]
+  },
+  {
+   "id": 1,
+   "text": "x abc y",
+   "tokens": [
+    "x",
+    "ab",
+    "c",
+    "y"
+   ],
+   "ids": [
+    3,
+    5,
+    2,
+    4
+   ],
+   "tokens_ignore_merges": [
+    "x",
+    "abc",
+    "y"
+   ],
+   "ids_ignore_merges": [
+    3,
+    7,
+    4
+   ]
+  },
+  {
+   "id": 2,
+   "text": "x y",
+   "tokens": [
+    "x",
+    "y"
+   ],
+   "ids": [
+    3,
+    4
+   ],
+   "tokens_ignore_merges": [
+    "x",
+    "y"
+   ],
+   "ids_ignore_merges": [
+    3,
+    4
+   ]
+  },
+  {
+   "id": 3,
+   "text": "ab c",
+   "tokens": [
+    "ab",
+    "c"
+   ],
+   "ids": [
+    5,
+    2
+   ],
+   "tokens_ignore_merges": [
+    "ab",
+    "c"
+   ],
+   "ids_ignore_merges": [
+    5,
+    2
+   ]
+  },
+  {
+   "id": 4,
+   "text": "",
+   "tokens": [],
+   "ids": [],
+   "tokens_ignore_merges": [],
+   "ids_ignore_merges": []
+  }
+ ]
+}

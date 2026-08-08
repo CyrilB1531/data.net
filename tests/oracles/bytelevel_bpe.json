@@ -271,7 +271,9 @@
    "tokens": [],
    "ids": [],
    "decoded": "",
-   "decoded_skip_specials": ""
+   "decoded_skip_specials": "",
+   "tokens_ignore_merges": [],
+   "ids_ignore_merges": []
   },
   {
    "id": 1,
@@ -283,7 +285,13 @@
     220
    ],
    "decoded": " ",
-   "decoded_skip_specials": " "
+   "decoded_skip_specials": " ",
+   "tokens_ignore_merges": [
+    "Ġ"
+   ],
+   "ids_ignore_merges": [
+    220
+   ]
   },
   {
    "id": 2,
@@ -299,7 +307,17 @@
     220
    ],
    "decoded": "   ",
-   "decoded_skip_specials": "   "
+   "decoded_skip_specials": "   ",
+   "tokens_ignore_merges": [
+    "Ġ",
+    "Ġ",
+    "Ġ"
+   ],
+   "ids_ignore_merges": [
+    220,
+    220,
+    220
+   ]
   },
   {
    "id": 3,
@@ -317,7 +335,19 @@
     0
    ],
    "decoded": "Hello, world!",
-   "decoded_skip_specials": "Hello, world!"
+   "decoded_skip_specials": "Hello, world!",
+   "tokens_ignore_merges": [
+    "Hello",
+    ",",
+    "Ġworld",
+    "!"
+   ],
+   "ids_ignore_merges": [
+    15496,
+    11,
+    995,
+    0
+   ]
   },
   {
    "id": 4,
@@ -331,7 +361,15 @@
     2272
    ],
    "decoded": " leading space",
-   "decoded_skip_specials": " leading space"
+   "decoded_skip_specials": " leading space",
+   "tokens_ignore_merges": [
+    "Ġleading",
+    "Ġspace"
+   ],
+   "ids_ignore_merges": [
+    3756,
+    2272
+   ]
   },
   {
    "id": 5,
@@ -349,7 +387,19 @@
     220
    ],
    "decoded": "trailing space ",
-   "decoded_skip_specials": "trailing space "
+   "decoded_skip_specials": "trailing space ",
+   "tokens_ignore_merges": [
+    "tra",
+    "iling",
+    "Ġspace",
+    "Ġ"
+   ],
+   "ids_ignore_merges": [
+    9535,
+    4386,
+    2272,
+    220
+   ]
   },
   {
    "id": 6,
@@ -365,7 +415,17 @@
     2272
    ],
    "decoded": "double  space",
-   "decoded_skip_specials": "double  space"
+   "decoded_skip_specials": "double  space",
+   "tokens_ignore_merges": [
+    "double",
+    "Ġ",
+    "Ġspace"
+   ],
+   "ids_ignore_merges": [
+    23352,
+    220,
+    2272
+   ]
   },
   {
    "id": 7,
@@ -391,7 +451,27 @@
     67
    ],
    "decoded": "a\tb\nc\r\nd",
-   "decoded_skip_specials": "a\tb\nc\r\nd"
+   "decoded_skip_specials": "a\tb\nc\r\nd",
+   "tokens_ignore_merges": [
+    "a",
+    "ĉ",
+    "b",
+    "Ċ",
+    "c",
+    "č",
+    "Ċ",
+    "d"
+   ],
+   "ids_ignore_merges": [
+    64,
+    197,
+    65,
+    198,
+    66,
+    201,
+    198,
+    67
+   ]
   },
   {
    "id": 8,
@@ -435,7 +515,45 @@
     13
    ],
    "decoded": "Il était une fois, à Paris — déjà vu.",
-   "decoded_skip_specials": "Il était une fois, à Paris — déjà vu."
+   "decoded_skip_specials": "Il était une fois, à Paris — déjà vu.",
+   "tokens_ignore_merges": [
+    "Il",
+    "Ġ",
+    "Ã©t",
+    "ait",
+    "Ġune",
+    "Ġf",
+    "ois",
+    ",",
+    "ĠÃł",
+    "ĠParis",
+    "ĠâĢĶ",
+    "ĠdÃ©",
+    "j",
+    "Ãł",
+    "Ġv",
+    "u",
+    "."
+   ],
+   "ids_ignore_merges": [
+    33666,
+    220,
+    25125,
+    4548,
+    17809,
+    277,
+    10924,
+    11,
+    28141,
+    6342,
+    851,
+    39073,
+    73,
+    24247,
+    410,
+    84,
+    13
+   ]
   },
   {
    "id": 9,
@@ -457,7 +575,23 @@
     2634
    ],
    "decoded": "naïve café résumé",
-   "decoded_skip_specials": "naïve café résumé"
+   "decoded_skip_specials": "naïve café résumé",
+   "tokens_ignore_merges": [
+    "na",
+    "Ã¯ve",
+    "ĠcafÃ©",
+    "ĠrÃ©",
+    "sum",
+    "Ã©"
+   ],
+   "ids_ignore_merges": [
+    2616,
+    38776,
+    40304,
+    40560,
+    16345,
+    2634
+   ]
   },
   {
    "id": 10,
@@ -493,7 +627,37 @@
     25224
    ],
    "decoded": "東京都から来ました",
-   "decoded_skip_specials": "東京都から来ました"
+   "decoded_skip_specials": "東京都から来ました",
+   "tokens_ignore_merges": [
+    "æĿ",
+    "±",
+    "äº",
+    "¬",
+    "éĥ",
+    "½",
+    "ãģĭ",
+    "ãĤī",
+    "æĿ",
+    "¥",
+    "ãģ¾",
+    "ãģĹ",
+    "ãģŁ"
+   ],
+   "ids_ignore_merges": [
+    30266,
+    109,
+    12859,
+    105,
+    32849,
+    121,
+    27370,
+    36853,
+    30266,
+    98,
+    30159,
+    22180,
+    25224
+   ]
   },
   {
    "id": 11,
@@ -525,7 +689,33 @@
     243
    ],
    "decoded": "中文分词测试",
-   "decoded_skip_specials": "中文分词测试"
+   "decoded_skip_specials": "中文分词测试",
+   "tokens_ignore_merges": [
+    "ä¸Ń",
+    "æĸ",
+    "ĩ",
+    "åĪ",
+    "Ĩ",
+    "è¯",
+    "į",
+    "æµ",
+    "ĭ",
+    "è¯",
+    "ķ"
+   ],
+   "ids_ignore_merges": [
+    40792,
+    23877,
+    229,
+    26344,
+    228,
+    46237,
+    235,
+    38184,
+    233,
+    46237,
+    243
+   ]
   },
   {
    "id": 12,
@@ -593,7 +783,69 @@
     115
    ],
    "decoded": "emoji 👋🏽 family 👨‍👩‍👧‍👦 flag 🇫🇷",
-   "decoded_skip_specials": "emoji 👋🏽 family 👨‍👩‍👧‍👦 flag 🇫🇷"
+   "decoded_skip_specials": "emoji 👋🏽 family 👨‍👩‍👧‍👦 flag 🇫🇷",
+   "tokens_ignore_merges": [
+    "em",
+    "oji",
+    "ĠðŁĳ",
+    "ĭ",
+    "ðŁ",
+    "ı",
+    "½",
+    "Ġfamily",
+    "ĠðŁĳ",
+    "¨",
+    "âĢ",
+    "į",
+    "ðŁĳ",
+    "©",
+    "âĢ",
+    "į",
+    "ðŁĳ",
+    "§",
+    "âĢ",
+    "į",
+    "ðŁĳ",
+    "¦",
+    "Ġflag",
+    "ĠðŁ",
+    "ĩ",
+    "«",
+    "ðŁ",
+    "ĩ",
+    "·"
+   ],
+   "ids_ignore_merges": [
+    368,
+    31370,
+    50169,
+    233,
+    8582,
+    237,
+    121,
+    1641,
+    50169,
+    101,
+    447,
+    235,
+    41840,
+    102,
+    447,
+    235,
+    41840,
+    100,
+    447,
+    235,
+    41840,
+    99,
+    6056,
+    12520,
+    229,
+    104,
+    8582,
+    229,
+    115
+   ]
   },
   {
    "id": 13,
@@ -625,7 +877,33 @@
     7360
    ],
    "decoded": "<|endoftext|> is written here literally",
-   "decoded_skip_specials": "<|endoftext|> is written here literally"
+   "decoded_skip_specials": "<|endoftext|> is written here literally",
+   "tokens_ignore_merges": [
+    "<",
+    "|",
+    "end",
+    "of",
+    "text",
+    "|",
+    ">",
+    "Ġis",
+    "Ġwritten",
+    "Ġhere",
+    "Ġliterally"
+   ],
+   "ids_ignore_merges": [
+    27,
+    91,
+    437,
+    1659,
+    5239,
+    91,
+    29,
+    318,
+    3194,
+    994,
+    7360
+   ]
   },
   {
    "id": 14,
@@ -663,7 +941,39 @@
     2420
    ],
    "decoded": "[UNK] [CLS] [SEP] as text",
-   "decoded_skip_specials": "[UNK] [CLS] [SEP] as text"
+   "decoded_skip_specials": "[UNK] [CLS] [SEP] as text",
+   "tokens_ignore_merges": [
+    "[",
+    "UN",
+    "K",
+    "]",
+    "Ġ[",
+    "CL",
+    "S",
+    "]",
+    "Ġ[",
+    "SE",
+    "P",
+    "]",
+    "Ġas",
+    "Ġtext"
+   ],
+   "ids_ignore_merges": [
+    58,
+    4944,
+    42,
+    60,
+    685,
+    5097,
+    50,
+    60,
+    685,
+    5188,
+    47,
+    60,
+    355,
+    2420
+   ]
   },
   {
    "id": 15,
@@ -689,7 +999,27 @@
     3682
    ],
    "decoded": "123 4567 89.01 -42",
-   "decoded_skip_specials": "123 4567 89.01 -42"
+   "decoded_skip_specials": "123 4567 89.01 -42",
+   "tokens_ignore_merges": [
+    "123",
+    "Ġ45",
+    "67",
+    "Ġ89",
+    ".",
+    "01",
+    "Ġ-",
+    "42"
+   ],
+   "ids_ignore_merges": [
+    10163,
+    4153,
+    3134,
+    9919,
+    13,
+    486,
+    532,
+    3682
+   ]
   },
   {
    "id": 16,
@@ -729,7 +1059,41 @@
     17
    ],
    "decoded": "https://example.com/path?q=1&r=2",
-   "decoded_skip_specials": "https://example.com/path?q=1&r=2"
+   "decoded_skip_specials": "https://example.com/path?q=1&r=2",
+   "tokens_ignore_merges": [
+    "https",
+    "://",
+    "example",
+    ".",
+    "com",
+    "/",
+    "path",
+    "?",
+    "q",
+    "=",
+    "1",
+    "&",
+    "r",
+    "=",
+    "2"
+   ],
+   "ids_ignore_merges": [
+    5450,
+    1378,
+    20688,
+    13,
+    785,
+    14,
+    6978,
+    30,
+    80,
+    28,
+    16,
+    5,
+    81,
+    28,
+    17
+   ]
   },
   {
    "id": 17,
@@ -773,7 +1137,45 @@
     11159
    ],
    "decoded": "snake_case camelCase kebab-case SCREAMING_CASE",
-   "decoded_skip_specials": "snake_case camelCase kebab-case SCREAMING_CASE"
+   "decoded_skip_specials": "snake_case camelCase kebab-case SCREAMING_CASE",
+   "tokens_ignore_merges": [
+    "sn",
+    "ake",
+    "_",
+    "case",
+    "Ġcamel",
+    "Case",
+    "Ġke",
+    "b",
+    "ab",
+    "-",
+    "case",
+    "ĠSC",
+    "REAM",
+    "ING",
+    "_",
+    "C",
+    "ASE"
+   ],
+   "ids_ignore_merges": [
+    16184,
+    539,
+    62,
+    7442,
+    41021,
+    20448,
+    885,
+    65,
+    397,
+    12,
+    7442,
+    6374,
+    32235,
+    2751,
+    62,
+    34,
+    11159
+   ]
   },
   {
    "id": 18,
@@ -801,7 +1203,29 @@
     3290
    ],
    "decoded": "the quick brown fox jumps over the lazy dog",
-   "decoded_skip_specials": "the quick brown fox jumps over the lazy dog"
+   "decoded_skip_specials": "the quick brown fox jumps over the lazy dog",
+   "tokens_ignore_merges": [
+    "the",
+    "Ġquick",
+    "Ġbrown",
+    "Ġfox",
+    "Ġjumps",
+    "Ġover",
+    "Ġthe",
+    "Ġlazy",
+    "Ġdog"
+   ],
+   "ids_ignore_merges": [
+    1169,
+    2068,
+    7586,
+    21831,
+    18045,
+    625,
+    262,
+    16931,
+    3290
+   ]
   },
   {
    "id": 19,
@@ -827,7 +1251,27 @@
     654
    ],
    "decoded": "tokenization is embedding embeddings",
-   "decoded_skip_specials": "tokenization is embedding embeddings"
+   "decoded_skip_specials": "tokenization is embedding embeddings",
+   "tokens_ignore_merges": [
+    "token",
+    "ization",
+    "Ġis",
+    "Ġembed",
+    "ding",
+    "Ġembed",
+    "d",
+    "ings"
+   ],
+   "ids_ignore_merges": [
+    30001,
+    1634,
+    318,
+    11525,
+    12083,
+    11525,
+    67,
+    654
+   ]
   }
  ]
 }

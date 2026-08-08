@@ -209,4 +209,69 @@ public sealed class BpeTokenizerTests
         Assert.Equal("the <sep>fox", tokenizer.Decode(ids));
         Assert.Equal("the fox", tokenizer.Decode(ids, skipSpecialTokens: true));
     }
+
+    /// <summary>
+    /// Reads orphan_bpe_model.json directly: this suite tests merging, not loading.
+    /// The vocabulary declares no added tokens, unlike <see cref="TinyVocabulary"/>,
+    /// so <c>added_tokens</c> is not read here.
+    /// </summary>
+    internal static BpeVocabulary OrphanVocabulary()
+    {
+        using JsonDocument doc = OracleLoader.Load("orphan_bpe_model.json");
+        JsonElement model = doc.RootElement.GetProperty("model");
+
+        var vocab = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (JsonProperty entry in model.GetProperty("vocab").EnumerateObject())
+        {
+            vocab[entry.Name] = entry.Value.GetInt32();
+        }
+
+        var merges = new List<MergePair>();
+        foreach (JsonElement merge in model.GetProperty("merges").EnumerateArray())
+        {
+            merges.Add(new MergePair(merge[0].GetString()!, merge[1].GetString()!));
+        }
+
+        return new BpeVocabulary(vocab, merges);
+    }
+
+    /// <summary>
+    /// <c>orphan_bpe_model.json</c> declares "abc" as a vocabulary entry without
+    /// registering the merge that would let the ordinary merge loop reach it --
+    /// "abc" is byte-for-byte what a tiktoken-to-tokenizer.json conversion (Llama-3,
+    /// Qwen) produces, and what GPT-2's own natively-trained table structurally
+    /// cannot (see <see cref="ByteLevelBpeTests.IgnoreMerges_is_behaviour_neutral_on_a_natively_trained_vocabulary"/>).
+    /// With the flag off, encoding "abc" merges greedily to ["ab", "c"], stepping
+    /// past the very entry that is sitting in the vocabulary; with it on, the whole
+    /// piece is looked up first and emitted as the single "abc" token instead. This
+    /// is the test that would still fail if <c>EncodePiece</c> never read
+    /// <c>_ignoreMerges</c>.
+    /// </summary>
+    [Fact]
+    public void IgnoreMerges_emits_a_whole_piece_present_in_the_vocabulary()
+    {
+        using JsonDocument doc = OracleLoader.Load("orphan_bpe.json");
+        var normal = new BpeTokenizer(OrphanVocabulary());
+        var ignoring = new BpeTokenizer(OrphanVocabulary() with { IgnoreMerges = true });
+
+        var failures = new List<string>();
+        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
+        {
+            string text = c.GetProperty("text").GetString()!;
+            int[] expected = c.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32()).ToArray();
+            int[] expectedIgnoring = c.GetProperty("ids_ignore_merges").EnumerateArray().Select(e => e.GetInt32()).ToArray();
+            int[] actual = [.. normal.Encode(text).Ids];
+            int[] actualIgnoring = [.. ignoring.Encode(text).Ids];
+            if (!expected.SequenceEqual(actual))
+            {
+                failures.Add($"normal {JsonSerializer.Serialize(text)}\n  exp: [{string.Join(", ", expected)}]\n  got: [{string.Join(", ", actual)}]");
+            }
+            if (!expectedIgnoring.SequenceEqual(actualIgnoring))
+            {
+                failures.Add($"ignore_merges {JsonSerializer.Serialize(text)}\n  exp: [{string.Join(", ", expectedIgnoring)}]\n  got: [{string.Join(", ", actualIgnoring)}]");
+            }
+        }
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
 }

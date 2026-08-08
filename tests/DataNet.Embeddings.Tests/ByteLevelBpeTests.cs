@@ -150,4 +150,39 @@ public sealed class ByteLevelBpeTests
         var tokenizer = new BpeTokenizer(Gpt2Vocabulary());
         Assert.Throws<ArgumentOutOfRangeException>(() => tokenizer.Decode(new[] { 999_999 }));
     }
+
+    /// <summary>
+    /// Not proof that <c>ignore_merges</c> does anything -- <c>ids_ignore_merges</c>
+    /// equals <c>ids</c> for every one of these 20 cases, because every multi-symbol
+    /// entry in a natively-trained vocabulary like GPT-2's is reachable by replaying
+    /// its own creating merge (checked exhaustively over all 50 257 entries while
+    /// investigating this test; none diverges). What this pins instead is the
+    /// complementary fact: a short-circuit that misfired -- e.g. one keyed on the
+    /// wrong string, or applied before the byte-level mapping -- would turn some of
+    /// these 20 cases red even though the flag is supposed to be inert here. The test
+    /// that proves the flag does something is
+    /// <see cref="BpeTokenizerTests.IgnoreMerges_emits_a_whole_piece_present_in_the_vocabulary"/>,
+    /// run against a fixture built to hold a vocabulary entry GPT-2's own structurally
+    /// cannot.
+    /// </summary>
+    [Fact]
+    public void IgnoreMerges_is_behaviour_neutral_on_a_natively_trained_vocabulary()
+    {
+        using JsonDocument doc = OracleLoader.Load("bytelevel_bpe.json");
+        var tokenizer = new BpeTokenizer(Gpt2Vocabulary() with { IgnoreMerges = true });
+
+        var failures = new List<string>();
+        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
+        {
+            string text = c.GetProperty("text").GetString()!;
+            int[] expected = c.GetProperty("ids_ignore_merges").EnumerateArray().Select(e => e.GetInt32()).ToArray();
+            int[] actual = [.. tokenizer.Encode(text).Ids];
+            if (!expected.SequenceEqual(actual))
+            {
+                failures.Add($"{JsonSerializer.Serialize(text)}\n  exp: [{string.Join(", ", expected)}]\n  got: [{string.Join(", ", actual)}]");
+            }
+        }
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
 }

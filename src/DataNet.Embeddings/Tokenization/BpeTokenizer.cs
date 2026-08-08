@@ -48,6 +48,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private readonly int _unkId;
     private readonly bool _hasUnk;
     private readonly bool _byteLevel;
+    private readonly bool _ignoreMerges;
 
     /// <summary>Creates a tokenizer from a loaded BPE model.</summary>
     /// <param name="vocabulary">A vocabulary from <c>BpeFilesLoader</c> or <see cref="Persistence.TokenizerJsonLoader"/>.</param>
@@ -58,6 +59,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         _vocabulary = vocabulary;
         _endOfWord = vocabulary.EndOfWordSuffix;
         _byteLevel = vocabulary.ByteLevel;
+        _ignoreMerges = vocabulary.IgnoreMerges;
 
         _vocab = new Dictionary<string, int>(vocabulary.Vocab.Count, StringComparer.Ordinal);
         int maxId = -1;
@@ -233,6 +235,20 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             return;
         }
 
+        // ignore_merges: a piece that is itself a vocabulary entry is emitted whole.
+        // Llama-3 declares this, and without it that family tokenizes differently
+        // while looking entirely plausible.
+        if (_ignoreMerges)
+        {
+            string mapped = _byteLevel ? MapBytes(piece) : piece;
+            if (_vocab.TryGetValue(mapped, out int whole))
+            {
+                ids.Add(whole);
+                tokens.Add(_tokens[whole]);
+                return;
+            }
+        }
+
         // One symbol per character is the upper bound for the classic path; a
         // byte-level piece is sized by its UTF-8 byte count instead, because one
         // character can become up to four symbols. The pool is rented before the
@@ -344,6 +360,18 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             symbols[i] = id;
         }
         return bytes.Length;
+    }
+
+    /// <summary>The piece as the byte alphabet renders it, which is how the vocabulary spells it.</summary>
+    private static string MapBytes(string piece)
+    {
+        byte[] bytes = JsonArtifact.Utf8NoBom.GetBytes(piece);
+        var mapped = new StringBuilder(bytes.Length);
+        for (int i = 0; i < bytes.Length; i++)
+        {
+            mapped.Append(ByteLevelAlphabet.ToChar(bytes[i]));
+        }
+        return mapped.ToString();
     }
 
     /// <summary>Applies the lowest-ranked applicable merge until none applies. Returns the new symbol count.</summary>
