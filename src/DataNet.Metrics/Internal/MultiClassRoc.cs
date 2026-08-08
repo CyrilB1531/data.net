@@ -136,26 +136,62 @@ internal static class MultiClassRoc
     }
 
     /// <summary>
-    /// One binary ROC-AUC over a column of the score matrix, where the column is
-    /// addressed as <c>scores[offset + (i * stride)]</c>.
+    /// A score matrix and the layout it is stored in, so a column can be read
+    /// without the caller and the callee having to agree on two loose integers.
+    /// The sequential driver builds one over the caller's row-major span; the
+    /// parallel driver (Task 3) builds one over a column-major copy.
     /// </summary>
     /// <remarks>
-    /// The two callers hold the same numbers in two layouts, and this is where
-    /// that difference is confined to two integers. The sequential driver passes
-    /// the caller's row-major span with <c>offset = c</c> and <c>stride = k</c>,
-    /// reading it in place; the parallel driver passes a column-major transpose
-    /// with <c>offset = c * n</c> and <c>stride = 1</c>, because a span cannot be
-    /// captured by a worker's lambda and the copy may as well be contiguous per
-    /// column while it is being made.
+    /// This is the fix for the bug the (offset, stride) version of this file
+    /// had: two integers that were supposed to always vary together are one
+    /// fact — the layout — expressed once here instead of threaded separately
+    /// through every call.
+    /// </remarks>
+    private readonly ref struct ScoreSource
+    {
+        private readonly int _classCount;
+        private readonly bool _columnMajor;
+
+        public ScoreSource(ReadOnlySpan<int> yTrue, ReadOnlySpan<double> scores, int classCount, bool columnMajor)
+        {
+            YTrue = yTrue;
+            Scores = scores;
+            _classCount = classCount;
+            _columnMajor = columnMajor;
+        }
+
+        public ReadOnlySpan<int> YTrue { get; }
+
+        public ReadOnlySpan<double> Scores { get; }
+
+        /// <summary>Where class <paramref name="column"/>'s scores begin.</summary>
+        public int Offset(int column) => _columnMajor ? column * YTrue.Length : column;
+
+        /// <summary>How far apart consecutive samples of one column are.</summary>
+        public int Step => _columnMajor ? 1 : _classCount;
+    }
+
+    /// <summary>
+    /// One binary ROC-AUC over column <paramref name="column"/> of
+    /// <paramref name="source"/>, where samples equal to
+    /// <paramref name="positiveLabel"/> are the positive class.
+    /// </summary>
+    /// <remarks>
+    /// <paramref name="column"/> is the class's position in the score matrix and
+    /// <paramref name="positiveLabel"/> is the label value compared against
+    /// <c>yTrue</c>; one-vs-rest needs both because they are not always the same
+    /// number once <see cref="MultiClassRocOptions.Labels"/> is used.
     /// </remarks>
     private static double ClassScore(
-        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> scores, int offset, int stride,
-        int positiveLabel, ReadOnlySpan<double> sampleWeight, BinaryRoc.Scratch scratch,
-        out double positiveWeight)
+        ScoreSource source, int column, int positiveLabel, ReadOnlySpan<double> sampleWeight,
+        BinaryRoc.Scratch scratch, out double positiveWeight)
     {
+        ReadOnlySpan<int> yTrue = source.YTrue;
+        int offset = source.Offset(column);
+        int step = source.Step;
         int n = yTrue.Length;
         int[] binary = scratch.Binary;
-        double[] column = scratch.Column;
+        double[] scoreColumn = scratch.Column;
         bool weighted = !sampleWeight.IsEmpty;
         positiveWeight = 0.0;
 
@@ -163,7 +199,7 @@ internal static class MultiClassRoc
         {
             bool positive = yTrue[i] == positiveLabel;
             binary[i] = positive ? 1 : 0;
-            column[i] = scores[offset + (i * stride)];
+            scoreColumn[i] = source.Scores[offset + (i * step)];
             if (positive)
             {
                 positiveWeight += weighted ? sampleWeight[i] : 1.0;
@@ -171,19 +207,22 @@ internal static class MultiClassRoc
         }
 
         return BinaryRoc.Score(
-            binary.AsSpan(0, n), column.AsSpan(0, n), 1, sampleWeight, scratch);
+            binary.AsSpan(0, n), scoreColumn.AsSpan(0, n), 1, sampleWeight, scratch);
     }
 
     /// <summary>
     /// One ordering of one Hand &amp; Till pair: the samples of two classes only,
-    /// scored with <paramref name="positiveLabel"/>'s column.
+    /// scored with column <paramref name="column"/> — <paramref name="positiveLabel"/>'s
+    /// column, which is one of <paramref name="labelA"/>'s or <paramref name="labelB"/>'s.
     /// </summary>
     private static double PairScore(
-        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> scores, int offset, int stride,
-        int labelA, int labelB, int positiveLabel, BinaryRoc.Scratch scratch)
+        ScoreSource source, int column, int labelA, int labelB, int positiveLabel, BinaryRoc.Scratch scratch)
     {
+        ReadOnlySpan<int> yTrue = source.YTrue;
+        int offset = source.Offset(column);
+        int step = source.Step;
         int[] binary = scratch.Binary;
-        double[] column = scratch.Column;
+        double[] scoreColumn = scratch.Column;
         int next = 0;
 
         for (int i = 0; i < yTrue.Length; i++)
@@ -194,12 +233,12 @@ internal static class MultiClassRoc
             }
 
             binary[next] = yTrue[i] == positiveLabel ? 1 : 0;
-            column[next] = scores[offset + (i * stride)];
+            scoreColumn[next] = source.Scores[offset + (i * step)];
             next++;
         }
 
         return BinaryRoc.Score(
-            binary.AsSpan(0, next), column.AsSpan(0, next), 1, default, scratch);
+            binary.AsSpan(0, next), scoreColumn.AsSpan(0, next), 1, default, scratch);
     }
 
     private static double OneVsRest(
@@ -210,13 +249,13 @@ internal static class MultiClassRoc
         double[] scores = new double[k];
         double[] weights = new double[k];
         BinaryRoc.Scratch scratch = BinaryRoc.Scratch.Rent(yTrue.Length);
+        ScoreSource source = new(yTrue, yScore, k, columnMajor: false);
 
         try
         {
             for (int c = 0; c < k; c++)
             {
-                scores[c] = ClassScore(
-                    yTrue, yScore, c, k, classes[c], sampleWeight, scratch, out double positiveWeight);
+                scores[c] = ClassScore(source, c, classes[c], sampleWeight, scratch, out double positiveWeight);
                 weights[c] = positiveWeight;
             }
         }
@@ -231,18 +270,18 @@ internal static class MultiClassRoc
     private static double OneVsOne(
         ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int[] classes, Averaging average)
     {
-        int n = yTrue.Length;
         int k = classes.Length;
         (int A, int B)[] pairs = Pairs(k);
         double[] pairScores = new double[pairs.Length];
         double[] prevalence = new double[pairs.Length];
-        BinaryRoc.Scratch scratch = BinaryRoc.Scratch.Rent(n);
+        BinaryRoc.Scratch scratch = BinaryRoc.Scratch.Rent(yTrue.Length);
+        ScoreSource source = new(yTrue, yScore, k, columnMajor: false);
 
         try
         {
             for (int pair = 0; pair < pairs.Length; pair++)
             {
-                ScorePair(yTrue, yScore, classes, k, 1, pairs[pair], pair, pairScores, prevalence, scratch);
+                ScorePair(source, classes, pairs[pair], pair, pairScores, prevalence, scratch);
             }
         }
         finally
@@ -258,9 +297,10 @@ internal static class MultiClassRoc
     /// arithmetic exists once. Writes only its own two slots.
     /// </summary>
     private static void ScorePair(
-        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> scores, int[] classes, int stride, int columnStride,
-        (int A, int B) pair, int index, double[] pairScores, double[] prevalence, BinaryRoc.Scratch scratch)
+        ScoreSource source, int[] classes, (int A, int B) pair, int index,
+        double[] pairScores, double[] prevalence, BinaryRoc.Scratch scratch)
     {
+        ReadOnlySpan<int> yTrue = source.YTrue;
         int n = yTrue.Length;
         int labelA = classes[pair.A];
         int labelB = classes[pair.B];
@@ -274,17 +314,9 @@ internal static class MultiClassRoc
         }
 
         // Hand & Till: each ordering of the pair is scored with its own column,
-        // and the two are averaged. columnStride is the distance between one
-        // column's start and the next: 1 for the row-major span the sequential
-        // driver owns (columns are adjacent; stride carries the row-to-row
-        // step), n for the column-major transpose a parallel worker is handed
-        // (columns are n apart; the row-to-row step within one is 1). Deriving
-        // both offsets from columnStride, rather than branching on it, is what
-        // keeps this arithmetic in one place for both layouts.
-        int offsetA = pair.A * columnStride;
-        int offsetB = pair.B * columnStride;
-        double aScore = PairScore(yTrue, scores, offsetA, stride, labelA, labelB, labelA, scratch);
-        double bScore = PairScore(yTrue, scores, offsetB, stride, labelA, labelB, labelB, scratch);
+        // and the two are averaged.
+        double aScore = PairScore(source, pair.A, labelA, labelB, labelA, scratch);
+        double bScore = PairScore(source, pair.B, labelA, labelB, labelB, scratch);
 
         pairScores[index] = (aScore + bScore) * 0.5;
         prevalence[index] = (double)size / n;
