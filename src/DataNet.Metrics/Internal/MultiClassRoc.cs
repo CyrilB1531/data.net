@@ -138,15 +138,11 @@ internal static class MultiClassRoc
     /// <summary>
     /// A score matrix and the layout it is stored in, so a column can be read
     /// without the caller and the callee having to agree on two loose integers.
-    /// The sequential driver builds one over the caller's row-major span; the
-    /// parallel driver (Task 3) builds one over a column-major copy.
+    /// A row-major source is built over the caller's own span; a future
+    /// column-major source would be built over a column-major copy instead —
+    /// one <see langword="bool"/> picks the layout, rather than a pair of
+    /// integers that could disagree with each other.
     /// </summary>
-    /// <remarks>
-    /// This is the fix for the bug the (offset, stride) version of this file
-    /// had: two integers that were supposed to always vary together are one
-    /// fact — the layout — expressed once here instead of threaded separately
-    /// through every call.
-    /// </remarks>
     private readonly ref struct ScoreSource
     {
         private readonly int _classCount;
@@ -154,6 +150,21 @@ internal static class MultiClassRoc
 
         public ScoreSource(ReadOnlySpan<int> yTrue, ReadOnlySpan<double> scores, int classCount, bool columnMajor)
         {
+            // Offset(column) trusts yTrue.Length as the sample count. A span
+            // sliced to a rented array's full length rather than the actual
+            // sample count would still be in bounds — just wrong — and
+            // multiplying by the wrong count is exactly the silent failure
+            // this type exists to rule out. scores.Length is the one
+            // independent fact available here to cross-check it against.
+            if (scores.Length != yTrue.Length * classCount)
+            {
+                throw new ArgumentException(
+                    $"scores holds {scores.Length} entries; {yTrue.Length} samples over {classCount} classes needs "
+                    + $"{yTrue.Length * classCount}. A span sliced to a rented array's length rather than the sample "
+                    + "count lands here, and would otherwise read the wrong column at no visible cost.",
+                    nameof(scores));
+            }
+
             YTrue = yTrue;
             Scores = scores;
             _classCount = classCount;
@@ -249,10 +260,10 @@ internal static class MultiClassRoc
         double[] scores = new double[k];
         double[] weights = new double[k];
         BinaryRoc.Scratch scratch = BinaryRoc.Scratch.Rent(yTrue.Length);
-        ScoreSource source = new(yTrue, yScore, k, columnMajor: false);
 
         try
         {
+            ScoreSource source = new(yTrue, yScore, k, columnMajor: false);
             for (int c = 0; c < k; c++)
             {
                 scores[c] = ClassScore(source, c, classes[c], sampleWeight, scratch, out double positiveWeight);
@@ -275,10 +286,10 @@ internal static class MultiClassRoc
         double[] pairScores = new double[pairs.Length];
         double[] prevalence = new double[pairs.Length];
         BinaryRoc.Scratch scratch = BinaryRoc.Scratch.Rent(yTrue.Length);
-        ScoreSource source = new(yTrue, yScore, k, columnMajor: false);
 
         try
         {
+            ScoreSource source = new(yTrue, yScore, k, columnMajor: false);
             for (int pair = 0; pair < pairs.Length; pair++)
             {
                 ScorePair(source, classes, pairs[pair], pair, pairScores, prevalence, scratch);
@@ -293,8 +304,9 @@ internal static class MultiClassRoc
     }
 
     /// <summary>
-    /// The body of one pair, shared by the sequential and parallel drivers so the
-    /// arithmetic exists once. Writes only its own two slots.
+    /// The body of one pair, kept separate so the arithmetic exists in one
+    /// place regardless of what iterates the pairs. Writes only its own two
+    /// slots.
     /// </summary>
     private static void ScorePair(
         ScoreSource source, int[] classes, (int A, int B) pair, int index,
@@ -322,7 +334,7 @@ internal static class MultiClassRoc
         prevalence[index] = (double)size / n;
     }
 
-    /// <summary>Every unordered class pair, in the order the nested loops produced.</summary>
+    /// <summary>Every unordered class pair, in the order this method's nested loops produce them.</summary>
     private static (int A, int B)[] Pairs(int k)
     {
         (int A, int B)[] pairs = new (int, int)[k * (k - 1) / 2];

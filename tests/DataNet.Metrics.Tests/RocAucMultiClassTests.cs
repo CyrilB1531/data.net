@@ -156,6 +156,32 @@ public sealed class RocAucMultiClassTests
     }
 
     [Fact]
+    public void Labels_that_are_not_zero_based_score_identically_to_zero_based_ones()
+    {
+        // A column's position in the score matrix and its label value are the
+        // same number only when the labels happen to be 0..k-1. Scoring the same
+        // matrix under both spellings must produce the same bits: if a call site
+        // ever passes a label where a column index belongs, or the reverse, this
+        // is the only test that would notice.
+        int[] zeroBased = [0, 1, 2, 2, 1, 0];
+        int[] shifted = [10, 20, 30, 30, 20, 10];
+        double[] scores = Rows([[0.70, 0.20, 0.10], [0.10, 0.60, 0.30], [0.15, 0.25, 0.60],
+                                [0.20, 0.20, 0.60], [0.30, 0.50, 0.20], [0.55, 0.30, 0.15]]);
+
+        foreach (MultiClassStrategy strategy in new[] { MultiClassStrategy.OneVsRest, MultiClassStrategy.OneVsOne })
+        {
+            double baseline = RocAuc.MultiClass(zeroBased, scores, 3, new MultiClassRocOptions { Strategy = strategy });
+            double relabelled = RocAuc.MultiClass(shifted, scores, 3, new MultiClassRocOptions
+            {
+                Strategy = strategy,
+                Labels = [10, 20, 30],
+            });
+
+            Assert.Equal(BitConverter.DoubleToInt64Bits(baseline), BitConverter.DoubleToInt64Bits(relabelled));
+        }
+    }
+
+    [Fact]
     public void Zero_and_one_workers_are_the_same_sequential_path()
     {
         int[] yTrue = [0, 1, 2, 2, 1, 0];
