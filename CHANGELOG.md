@@ -206,7 +206,7 @@ and including `0.2.0` predate the split and covered all three at once — see
   destination, and the non-finite scan is vectorized on `net10.0`. `Load` went
   from 36.9 ms to 12.9 ms and from 90 MB to 35.35 MB (2.88× on `net10.0`, 2.39×
   on `netstandard2.0`, which keeps the scalar scan); against `numpy.load` that is
-  0.09× before and 0.21× after. `Save` runs the same scan and falls with it,
+  0.08× before and 0.21× after. `Save` runs the same scan and falls with it,
   16.96 ms to 13.57 ms, overtaking `numpy.save`. The artifact is unchanged — the
   same index saves to the same bytes as before, verified by hash in both
   directions — and no public signature moved. Numbers in

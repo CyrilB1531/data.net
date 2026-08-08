@@ -736,8 +736,8 @@ this is the same artifact, byte for byte, as before issue #100.
 non-finite scan `Save` shares with `Load` becoming a vector pass.
 
 `EmbeddingIndexLoad` is still the row that costs. It is 4.87× slower than
-`numpy.load` on wall time and 5.58× on cpu, against 11.6× and 12.0× before this
-work — a real change, and still not parity. The gap is no longer made of copies.
+`numpy.load` on wall time and 5.58× on cpu, against 13.0× and 13.7× on `main` in
+this same session — a real change, and still not parity. The gap is no longer made of copies.
 The read path now reads the payload into one buffer sized from the stream's own
 length before it is filled, decodes the base64 straight into the `float[]` that
 keeps it, and scans that array for non-finite components by vector: three passes
