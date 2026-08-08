@@ -115,9 +115,18 @@ public static class BpeFilesLoader
         {
             foreach (JsonProperty entry in doc.RootElement.EnumerateObject())
             {
+                // TryGetInt32, not GetInt32: a string value throws
+                // InvalidOperationException and an out-of-range or non-integer
+                // number throws FormatException, neither of which this loader
+                // documents. TokenizerJsonLoader.ReadWordPiece hits the same
+                // token-to-id shape and takes the same guard.
+                if (entry.Value.ValueKind != JsonValueKind.Number || !entry.Value.TryGetInt32(out int id))
+                {
+                    throw new InvalidDataException($"The vocab.json maps token '{entry.Name}' to a value that is not an integer id.");
+                }
                 limits.CheckTokenLength(entry.Name.Length);
                 limits.CheckVocabularySize(vocab.Count + 1);
-                vocab[entry.Name] = entry.Value.GetInt32();
+                vocab[entry.Name] = id;
             }
         }
         if (vocab.Count == 0)
@@ -154,7 +163,7 @@ public static class BpeFilesLoader
     private static List<MergePair> ParseMerges(byte[] mergesPayload, in ArtifactLimits limits)
     {
         var merges = new List<MergePair>();
-        string text = JsonArtifact.Utf8NoBom.GetString(mergesPayload, 0, mergesPayload.Length);
+        string text = DecodeMerges(mergesPayload);
         int start = 0;
         while (start < text.Length)
         {
@@ -168,6 +177,17 @@ public static class BpeFilesLoader
             start = stop + 1 < text.Length && text[stop] == '\r' && text[stop + 1] == '\n' ? stop + 2 : stop + 1;
         }
         return merges;
+    }
+
+    private static string DecodeMerges(byte[] payload)
+    {
+        // A merges.txt written on Windows may carry a byte-order mark. Left in,
+        // it lands on the first line as U+FEFF, "#version" no longer matches at
+        // offset 0, and the header row is misread as a merge instead of being
+        // skipped -- silently shifting every real merge's rank by one rather
+        // than throwing. Mirrors VocabTxtLoader.Decode.
+        int offset = payload.Length >= 3 && payload[0] == 0xEF && payload[1] == 0xBB && payload[2] == 0xBF ? 3 : 0;
+        return JsonArtifact.Utf8NoBom.GetString(payload, offset, payload.Length - offset);
     }
 
     private static void ParseMergeLine(string text, int start, int stop, List<MergePair> merges, in ArtifactLimits limits, bool isFirstLine)

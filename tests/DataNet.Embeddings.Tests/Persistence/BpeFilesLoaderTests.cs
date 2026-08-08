@@ -61,6 +61,36 @@ public sealed class BpeFilesLoaderTests
         Assert.Throws<InvalidDataException>(() => BpeFilesLoader.Load(Utf8("{}"), Utf8(Merges)));
     }
 
+    [Theory]
+    [InlineData("""{"a":"not a number"}""")]
+    [InlineData("""{"a":1.5}""")]
+    [InlineData("""{"a":99999999999}""")]
+    public void A_vocabulary_value_that_is_not_a_32_bit_integer_is_refused(string vocabJson)
+    {
+        // GetInt32 would leak InvalidOperationException for a string value and
+        // FormatException for a non-integer or out-of-range number -- neither
+        // matches the InvalidDataException this loader documents.
+        Assert.Throws<InvalidDataException>(() => BpeFilesLoader.Load(Utf8(vocabJson), Utf8(Merges)));
+    }
+
+    [Fact]
+    public void A_byte_order_mark_on_merges_txt_does_not_shift_ranks()
+    {
+        // Left undecoded, EF BB BF lands on the merges text as a leading U+FEFF,
+        // "#version" no longer matches at offset 0, and the header line is
+        // misread as a spurious rank-0 merge -- silently shifting every real
+        // merge's rank by one instead of throwing.
+        byte[] bom = [0xEF, 0xBB, 0xBF];
+        Stream withBom = new MemoryStream([.. bom, .. Encoding.UTF8.GetBytes(Merges)]);
+
+        BpeVocabulary vocab = BpeFilesLoader.Load(Utf8(Vocab), withBom);
+        BpeVocabulary withoutBom = BpeFilesLoader.Load(Utf8(Vocab), Utf8(Merges));
+
+        Assert.Equal(withoutBom.Merges, vocab.Merges);
+        Assert.Single(vocab.Merges);
+        Assert.Equal(new MergePair("a", "b"), vocab.Merges[0]);
+    }
+
     [Fact]
     public void A_vocabulary_over_the_limit_is_refused()
     {
