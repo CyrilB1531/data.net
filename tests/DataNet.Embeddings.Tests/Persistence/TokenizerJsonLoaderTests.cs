@@ -298,7 +298,7 @@ public sealed class TokenizerJsonLoaderTests
             normalizer: $"{{\"type\":\"Precompiled\",\"precompiled_charsmap\":\"{charsMap}\"}}"));
 
         Assert.NotNull(vocabulary.Normalizer);
-        Assert.Equal("ss 1 ", vocabulary.Normalizer!.Normalize("ß ① ¤"));
+        Assert.Equal("ss 1 ", vocabulary.Normalizer.Normalize("ß ① ¤"));
     }
 
     [Theory]
