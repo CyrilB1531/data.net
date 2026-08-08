@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Text.Json;
 using DataNet.Embeddings.Tokenization;
 using DataNet.Internal.Persistence;
@@ -705,6 +704,11 @@ public static class TokenizerJsonLoader
         {
             return;
         }
+        // Not routed through Unsupported(...): its fixed "would produce embeddings that
+        // do not match the model" tail would misdescribe this failure. Every other
+        // Unsupported(...) call in this file refuses something that changes what Encode
+        // produces; a decoder mismatch does not -- Encode is unaffected, only Decode
+        // would corrupt -- so this gets its own, accurate message instead.
         throw new InvalidDataException(
             $"The {SourceName} pre_tokenizer describes a {(byteLevel ? "byte-level" : "non-byte-level")} model but its decoder is '{type}', which would not decode the tokens it produces.");
     }

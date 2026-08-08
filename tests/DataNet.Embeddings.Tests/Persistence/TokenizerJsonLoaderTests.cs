@@ -715,4 +715,39 @@ public sealed class TokenizerJsonLoaderTests
         Assert.True(vocabulary.ByteLevel);
         Assert.Null(vocabulary.PreTokenizerPattern);
     }
+
+    /// <summary>
+    /// A byte-level model whose decoder is not <c>ByteLevel</c> would decode its own
+    /// output back into corrupt text -- the file will not round trip through
+    /// <c>tokenizers</c> itself either, so this is refused at load time.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_refuses_a_byte_level_model_with_a_mismatched_decoder()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "pre_tokenizer":{"type":"ByteLevel"},
+         "decoder":{"type":"BPEDecoder"}}
+        """;
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+
+        Assert.Contains("BPEDecoder", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>The reverse direction: a non-byte-level model with a <c>ByteLevel</c> decoder.</summary>
+    [Fact]
+    public void LoadBpe_refuses_a_classic_model_with_a_byte_level_decoder()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "decoder":{"type":"ByteLevel"}}
+        """;
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+
+        Assert.Contains("ByteLevel", error.Message, StringComparison.Ordinal);
+    }
 }
