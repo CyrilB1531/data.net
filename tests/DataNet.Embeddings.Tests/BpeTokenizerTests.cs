@@ -180,4 +180,33 @@ public sealed class BpeTokenizerTests
         TokenizationResult encoded = tokenizer.Encode("the quick brown fox");
         Assert.Equal("the quick brown fox", tokenizer.Decode(encoded.Ids));
     }
+
+    /// <summary>
+    /// None of the 20 cases in bytelevel_bpe.json ever tokenizes to an added-token
+    /// id, so the oracle-driven decode tests cannot exercise
+    /// <c>skipSpecialTokens</c> at all -- they would still pass if the flag were a
+    /// no-op. An id list is built by hand instead, following the same
+    /// <c>TinyVocabulary() with { AddedTokens = ... }</c> pattern the Encode-side
+    /// added-token tests already use, so the flag has at least one test where
+    /// deleting its branch in <c>Append</c> would turn a passing assertion red.
+    /// </summary>
+    [Fact]
+    public void Decode_renders_or_drops_an_added_token_per_the_flag()
+    {
+        BpeVocabulary vocab = TinyVocabulary() with
+        {
+            AddedTokens = new Dictionary<string, int>(StringComparer.Ordinal) { ["<sep>"] = 3000 },
+        };
+        var tokenizer = new BpeTokenizer(vocab);
+
+        // "the" -> "the</w>" (id 48) and "fox" -> "fox</w>" (id 144) are each a
+        // single token on their own, confirmed by bpe.json's
+        // "the quick brown fox ..." case. The added token sits between them, so
+        // its presence or absence is the only thing that can tell the two
+        // Decode calls below apart.
+        int[] ids = [48, 3000, 144];
+
+        Assert.Equal("the <sep>fox", tokenizer.Decode(ids));
+        Assert.Equal("the fox", tokenizer.Decode(ids, skipSpecialTokens: true));
+    }
 }
