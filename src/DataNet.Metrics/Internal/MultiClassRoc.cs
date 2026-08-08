@@ -135,60 +135,97 @@ internal static class MultiClassRoc
         }
     }
 
+    /// <summary>
+    /// One binary ROC-AUC over a column of the score matrix, where the column is
+    /// addressed as <c>scores[offset + (i * stride)]</c>.
+    /// </summary>
+    /// <remarks>
+    /// The two callers hold the same numbers in two layouts, and this is where
+    /// that difference is confined to two integers. The sequential driver passes
+    /// the caller's row-major span with <c>offset = c</c> and <c>stride = k</c>,
+    /// reading it in place; the parallel driver passes a column-major transpose
+    /// with <c>offset = c * n</c> and <c>stride = 1</c>, because a span cannot be
+    /// captured by a worker's lambda and the copy may as well be contiguous per
+    /// column while it is being made.
+    /// </remarks>
+    private static double ClassScore(
+        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> scores, int offset, int stride,
+        int positiveLabel, ReadOnlySpan<double> sampleWeight, BinaryRoc.Scratch scratch,
+        out double positiveWeight)
+    {
+        int n = yTrue.Length;
+        int[] binary = scratch.Binary;
+        double[] column = scratch.Column;
+        bool weighted = !sampleWeight.IsEmpty;
+        positiveWeight = 0.0;
+
+        for (int i = 0; i < n; i++)
+        {
+            bool positive = yTrue[i] == positiveLabel;
+            binary[i] = positive ? 1 : 0;
+            column[i] = scores[offset + (i * stride)];
+            if (positive)
+            {
+                positiveWeight += weighted ? sampleWeight[i] : 1.0;
+            }
+        }
+
+        return BinaryRoc.Score(
+            binary.AsSpan(0, n), column.AsSpan(0, n), 1, sampleWeight, scratch);
+    }
+
+    /// <summary>
+    /// One ordering of one Hand &amp; Till pair: the samples of two classes only,
+    /// scored with <paramref name="positiveLabel"/>'s column.
+    /// </summary>
+    private static double PairScore(
+        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> scores, int offset, int stride,
+        int labelA, int labelB, int positiveLabel, BinaryRoc.Scratch scratch)
+    {
+        int[] binary = scratch.Binary;
+        double[] column = scratch.Column;
+        int next = 0;
+
+        for (int i = 0; i < yTrue.Length; i++)
+        {
+            if (yTrue[i] != labelA && yTrue[i] != labelB)
+            {
+                continue;
+            }
+
+            binary[next] = yTrue[i] == positiveLabel ? 1 : 0;
+            column[next] = scores[offset + (i * stride)];
+            next++;
+        }
+
+        return BinaryRoc.Score(
+            binary.AsSpan(0, next), column.AsSpan(0, next), 1, default, scratch);
+    }
+
     private static double OneVsRest(
         ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int[] classes,
         Averaging average, ReadOnlySpan<double> sampleWeight)
     {
-        int n = yTrue.Length;
         int k = classes.Length;
-        int[] binary = new int[n];
-        double[] column = new double[n];
         double[] scores = new double[k];
         double[] weights = new double[k];
-        bool weighted = !sampleWeight.IsEmpty;
+        BinaryRoc.Scratch scratch = BinaryRoc.Scratch.Rent(yTrue.Length);
 
-        for (int c = 0; c < k; c++)
+        try
         {
-            double positiveWeight = 0.0;
-            for (int i = 0; i < n; i++)
+            for (int c = 0; c < k; c++)
             {
-                bool positive = yTrue[i] == classes[c];
-                binary[i] = positive ? 1 : 0;
-                column[i] = yScore[(i * k) + c];
-                if (positive)
-                {
-                    positiveWeight += weighted ? sampleWeight[i] : 1.0;
-                }
+                scores[c] = ClassScore(
+                    yTrue, yScore, c, k, classes[c], sampleWeight, scratch, out double positiveWeight);
+                weights[c] = positiveWeight;
             }
-
-            scores[c] = BinaryRoc.Score(binary, column, 1, sampleWeight);
-            weights[c] = positiveWeight;
+        }
+        finally
+        {
+            scratch.Return();
         }
 
         return average == Averaging.Macro ? Mean(scores) : WeightedMean(scores, weights);
-    }
-
-    /// <summary>
-    /// The part of a one-vs-one pair score that stays the same across every
-    /// call in the pair loop, so that <see cref="PairScore"/> takes the four
-    /// values that actually vary per call rather than threading all ten
-    /// through every invocation.
-    /// </summary>
-    private readonly ref struct PairContext(
-        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int[] classes, int classCount,
-        int[] binary, double[] column)
-    {
-        public ReadOnlySpan<int> YTrue { get; } = yTrue;
-
-        public ReadOnlySpan<double> YScore { get; } = yScore;
-
-        public int[] Classes { get; } = classes;
-
-        public int ClassCount { get; } = classCount;
-
-        public int[] Binary { get; } = binary;
-
-        public double[] Column { get; } = column;
     }
 
     private static double OneVsOne(
@@ -196,64 +233,76 @@ internal static class MultiClassRoc
     {
         int n = yTrue.Length;
         int k = classes.Length;
-        int pairCount = k * (k - 1) / 2;
-        double[] pairScores = new double[pairCount];
-        double[] prevalence = new double[pairCount];
-        int[] binary = new int[n];
-        double[] column = new double[n];
-        int pair = 0;
-        PairContext context = new(yTrue, yScore, classes, k, binary, column);
+        (int A, int B)[] pairs = Pairs(k);
+        double[] pairScores = new double[pairs.Length];
+        double[] prevalence = new double[pairs.Length];
+        BinaryRoc.Scratch scratch = BinaryRoc.Scratch.Rent(n);
 
-        for (int a = 0; a < k; a++)
+        try
         {
-            for (int b = a + 1; b < k; b++)
+            for (int pair = 0; pair < pairs.Length; pair++)
             {
-                int size = 0;
-                for (int i = 0; i < n; i++)
-                {
-                    if (yTrue[i] == classes[a] || yTrue[i] == classes[b])
-                    {
-                        size++;
-                    }
-                }
-
-                // Hand & Till: each ordering of the pair is scored with its own
-                // column, and the two are averaged.
-                double aScore = PairScore(context, a, b, a, size);
-                double bScore = PairScore(context, a, b, b, size);
-
-                pairScores[pair] = (aScore + bScore) * 0.5;
-                prevalence[pair] = (double)size / n;
-                pair++;
+                ScorePair(yTrue, yScore, classes, k, 1, pairs[pair], pair, pairScores, prevalence, scratch);
             }
+        }
+        finally
+        {
+            scratch.Return();
         }
 
         return average == Averaging.Macro ? Mean(pairScores) : WeightedMean(pairScores, prevalence);
     }
 
-    private static double PairScore(PairContext context, int a, int b, int positiveClass, int size)
+    /// <summary>
+    /// The body of one pair, shared by the sequential and parallel drivers so the
+    /// arithmetic exists once. Writes only its own two slots.
+    /// </summary>
+    private static void ScorePair(
+        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> scores, int[] classes, int stride, int columnStride,
+        (int A, int B) pair, int index, double[] pairScores, double[] prevalence, BinaryRoc.Scratch scratch)
     {
-        ReadOnlySpan<int> yTrue = context.YTrue;
-        int[] classes = context.Classes;
-        int k = context.ClassCount;
-        int[] binary = context.Binary;
-        double[] column = context.Column;
-        int next = 0;
-
-        for (int i = 0; i < yTrue.Length; i++)
+        int n = yTrue.Length;
+        int labelA = classes[pair.A];
+        int labelB = classes[pair.B];
+        int size = 0;
+        for (int i = 0; i < n; i++)
         {
-            if (yTrue[i] != classes[a] && yTrue[i] != classes[b])
+            if (yTrue[i] == labelA || yTrue[i] == labelB)
             {
-                continue;
+                size++;
             }
-
-            binary[next] = yTrue[i] == classes[positiveClass] ? 1 : 0;
-            column[next] = context.YScore[(i * k) + positiveClass];
-            next++;
         }
 
-        return BinaryRoc.Score(
-            binary.AsSpan(0, size), column.AsSpan(0, size), 1, default);
+        // Hand & Till: each ordering of the pair is scored with its own column,
+        // and the two are averaged. columnStride is the distance between one
+        // column's start and the next: 1 for the row-major span the sequential
+        // driver owns (columns are adjacent; stride carries the row-to-row
+        // step), n for the column-major transpose a parallel worker is handed
+        // (columns are n apart; the row-to-row step within one is 1). Deriving
+        // both offsets from columnStride, rather than branching on it, is what
+        // keeps this arithmetic in one place for both layouts.
+        int offsetA = pair.A * columnStride;
+        int offsetB = pair.B * columnStride;
+        double aScore = PairScore(yTrue, scores, offsetA, stride, labelA, labelB, labelA, scratch);
+        double bScore = PairScore(yTrue, scores, offsetB, stride, labelA, labelB, labelB, scratch);
+
+        pairScores[index] = (aScore + bScore) * 0.5;
+        prevalence[index] = (double)size / n;
+    }
+
+    /// <summary>Every unordered class pair, in the order the nested loops produced.</summary>
+    private static (int A, int B)[] Pairs(int k)
+    {
+        (int A, int B)[] pairs = new (int, int)[k * (k - 1) / 2];
+        int next = 0;
+        for (int a = 0; a < k; a++)
+        {
+            for (int b = a + 1; b < k; b++)
+            {
+                pairs[next++] = (a, b);
+            }
+        }
+        return pairs;
     }
 
     private static double Mean(double[] values)
