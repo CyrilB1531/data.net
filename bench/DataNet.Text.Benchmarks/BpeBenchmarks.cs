@@ -13,6 +13,9 @@ namespace DataNet.Text.Benchmarks;
 /// Both tokenizers are built once in <see cref="Setup"/>, so the numbers are
 /// encoding cost rather than model loading. The corpus is the shared 30 000-entry
 /// one, so a difference is the algorithm rather than the vocabulary.
+/// See <see cref="BpeScalingBenchmarks"/> for the pathological-token case: it
+/// was split out so its four lengths do not also rerun <see cref="Unigram"/>
+/// and <see cref="Bpe"/>, which do not depend on that parameter.
 /// </remarks>
 [MemoryDiagnoser]
 public class BpeBenchmarks
@@ -56,8 +59,4 @@ public class BpeBenchmarks
         }
         return total;
     }
-
-    /// <summary>A single long token with no split point, which is where a linear merge scan would hurt.</summary>
-    [Benchmark]
-    public int BpeOnOnePathologicalToken() => _bpe.Encode(new string('a', 2048)).Ids.Count;
 }
