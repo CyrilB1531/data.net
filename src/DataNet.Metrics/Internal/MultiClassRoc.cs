@@ -1,3 +1,6 @@
+using System.Buffers;
+using System.Runtime.ExceptionServices;
+
 namespace DataNet.Metrics.Internal;
 
 /// <summary>
@@ -21,9 +24,20 @@ internal static class MultiClassRoc
         int[] classes = ResolveLabels(yTrue, options.Labels, classCount);
         ValidateRowSums(yScore, n, classCount);
 
-        return options.Strategy == MultiClassStrategy.OneVsRest
-            ? OneVsRest(yTrue, yScore, classes, average, options.SampleWeight)
-            : OneVsOne(yTrue, yScore, classes, average);
+        // 0 and 1 both mean sequential, and the sequential drivers stay exactly
+        // as they were: they read the caller's spans in place and copy nothing.
+        int workers = Math.Max(1, options.MaxDegreeOfParallelism);
+
+        if (options.Strategy == MultiClassStrategy.OneVsRest)
+        {
+            return workers == 1
+                ? OneVsRest(yTrue, yScore, classes, average, options.SampleWeight)
+                : OneVsRestParallel(yTrue, yScore, classes, average, options.SampleWeight, workers);
+        }
+
+        return workers == 1
+            ? OneVsOne(yTrue, yScore, classes, average)
+            : OneVsOneParallel(yTrue, yScore, classes, average, workers);
     }
 
     private static int Validate(
@@ -138,10 +152,10 @@ internal static class MultiClassRoc
     /// <summary>
     /// A score matrix and the layout it is stored in, so a column can be read
     /// without the caller and the callee having to agree on two loose integers.
-    /// A row-major source is built over the caller's own span; a future
-    /// column-major source would be built over a column-major copy instead —
-    /// one <see langword="bool"/> picks the layout, rather than a pair of
-    /// integers that could disagree with each other.
+    /// The sequential path builds a row-major source over the caller's own span;
+    /// the parallel path builds a column-major one over the transposed copy from
+    /// <see cref="CopyForWorkers"/> — one <see langword="bool"/> picks the layout,
+    /// rather than a pair of integers that could disagree with each other.
     /// </summary>
     private readonly ref struct ScoreSource
     {
@@ -276,6 +290,190 @@ internal static class MultiClassRoc
         }
 
         return average == Averaging.Macro ? Mean(scores) : WeightedMean(scores, weights);
+    }
+
+    /// <summary>
+    /// The inputs, in a shape a worker thread can be handed.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A <see cref="ReadOnlySpan{T}"/> cannot be captured by the body of a
+    /// <c>Parallel.For</c>: the caller's span may point at the stack, and nothing
+    /// in the language lets it travel to another thread. Pinning it with
+    /// <c>fixed</c> would cost nothing and is refused — no project in <c>src/</c>
+    /// enables unsafe blocks, and a perf change does not reverse that.
+    /// </para>
+    /// <para>
+    /// So the parallel path copies, and pays for it once: <c>yTrue</c>, the
+    /// weights if any, and the score matrix <em>transposed</em>. The transpose
+    /// costs the same single pass as a straight copy and leaves each class's
+    /// column contiguous for the worker that reads it, instead of reads spaced
+    /// <c>classCount</c> apart. Reading rows in order and scattering across
+    /// <c>classCount</c> write streams is the right way round: the read side is
+    /// then sequential, and hardware handles a handful of write streams well.
+    /// </para>
+    /// <para>
+    /// Every span built over these arrays must be sliced to the sample count and
+    /// never to the rented length — <see cref="ArrayPool{T}.Rent"/> hands back
+    /// something longer than asked for, and <see cref="ScoreSource.Offset"/>
+    /// multiplies by <c>YTrue.Length</c> in column-major mode. Getting that wrong
+    /// reads the wrong column; <see cref="ScoreSource"/>'s constructor is what
+    /// turns it into an exception rather than a wrong number.
+    /// </para>
+    /// </remarks>
+    private static (int[] Labels, double[] ColumnMajor, double[] Weights) CopyForWorkers(
+        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int classCount, ReadOnlySpan<double> sampleWeight)
+    {
+        int n = yTrue.Length;
+        int[] labels = ArrayPool<int>.Shared.Rent(n);
+        double[] columnMajor = ArrayPool<double>.Shared.Rent(n * classCount);
+        double[] weights = sampleWeight.IsEmpty
+            ? []
+            : ArrayPool<double>.Shared.Rent(n);
+
+        yTrue.CopyTo(labels.AsSpan(0, n));
+        if (!sampleWeight.IsEmpty)
+        {
+            sampleWeight.CopyTo(weights.AsSpan(0, n));
+        }
+
+        for (int i = 0; i < n; i++)
+        {
+            int row = i * classCount;
+            for (int c = 0; c < classCount; c++)
+            {
+                columnMajor[(c * n) + i] = yScore[row + c];
+            }
+        }
+
+        return (labels, columnMajor, weights);
+    }
+
+    private static void ReturnToPool((int[] Labels, double[] ColumnMajor, double[] Weights) copy)
+    {
+        ArrayPool<int>.Shared.Return(copy.Labels);
+        ArrayPool<double>.Shared.Return(copy.ColumnMajor);
+        if (copy.Weights.Length > 0)
+        {
+            // Length 0 is the no-weights case: [] was never rented, so handing it
+            // back would give the pool an array it does not own.
+            ArrayPool<double>.Shared.Return(copy.Weights);
+        }
+    }
+
+    /// <summary>
+    /// One-vs-rest with the per-class loop spread over workers. Bit-identical to
+    /// <see cref="OneVsRest"/>: class <c>c</c> writes <c>scores[c]</c> and
+    /// <c>weights[c]</c> and nothing else, and the averaging below runs on this
+    /// thread in array order, so no thread's timing can reach a sum.
+    /// </summary>
+    /// <remarks>
+    /// One <see cref="BinaryRoc.Scratch"/> per worker, through
+    /// <c>localInit</c>/<c>localFinally</c> — not one per class, which would rent
+    /// four arrays per class for nothing, and not one shared between workers,
+    /// which would have two classes writing the same buffers.
+    /// </remarks>
+    private static double OneVsRestParallel(
+        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int[] classes,
+        Averaging average, ReadOnlySpan<double> sampleWeight, int workers)
+    {
+        int n = yTrue.Length;
+        int k = classes.Length;
+        bool weighted = !sampleWeight.IsEmpty;
+        double[] scores = new double[k];
+        double[] weights = new double[k];
+        Exception?[] failures = new Exception?[k];
+        var copy = CopyForWorkers(yTrue, yScore, k, sampleWeight);
+        var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = Math.Min(workers, k) };
+
+        try
+        {
+            Parallel.For(
+                0,
+                k,
+                parallelOptions,
+                () => BinaryRoc.Scratch.Rent(n),
+                (c, _, scratch) =>
+                {
+                    try
+                    {
+                        // Spans cannot cross into this lambda, but they can be
+                        // made inside it: these are views over the arrays the
+                        // closure captured, which is the whole point of the copy.
+                        // ScoreSource is a ref struct, so it is built here, per
+                        // iteration, and lives nowhere that outlives one.
+                        ScoreSource source = new(
+                            copy.Labels.AsSpan(0, n), copy.ColumnMajor.AsSpan(0, n * k), k, columnMajor: true);
+
+                        // default, not a zero-length slice: ClassScore reads
+                        // IsEmpty to decide whether weighting applies at all.
+                        scores[c] = ClassScore(
+                            source,
+                            c,
+                            classes[c],
+                            weighted ? copy.Weights.AsSpan(0, n) : default,
+                            scratch,
+                            out double positiveWeight);
+                        weights[c] = positiveWeight;
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        // Its own slot, so which worker lost the race cannot
+                        // decide which exception the caller sees.
+                        failures[c] = ex;
+                    }
+
+                    return scratch;
+                },
+                scratch => scratch.Return());
+        }
+        finally
+        {
+            ReturnToPool(copy);
+        }
+
+        RethrowFirst(failures);
+
+        return average == Averaging.Macro ? Mean(scores) : WeightedMean(scores, weights);
+    }
+
+    // Task 4 makes this parallel. Until then it is the sequential driver, which
+    // is a correct answer to any worker count — just not a fast one.
+    private static double OneVsOneParallel(
+        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int[] classes, Averaging average, int workers)
+    {
+        // The signature is the one the parallel pair loop will need, so that
+        // change lands in one method rather than two. Discarding the count says
+        // "known, not yet used" in the language and not in a comment only, which
+        // is also what keeps SonarAnalyzer S1172 satisfied without a suppression.
+        _ = workers;
+
+        return OneVsOne(yTrue, yScore, classes, average);
+    }
+
+    /// <summary>
+    /// Rethrows the failure of the lowest index, so a bad input produces the same
+    /// exception the sequential path would have produced.
+    /// </summary>
+    /// <remarks>
+    /// The loop above deliberately does not stop early.
+    /// <see cref="ParallelLoopState.Stop"/> would cancel iterations that had not
+    /// started, so a later class's exception could be reported where the
+    /// sequential path reports an earlier class's. The error path therefore does
+    /// all the work — it has no budget to defend — and
+    /// <see cref="ExceptionDispatchInfo"/> rethrows the original instance rather
+    /// than wrapping it, so type, message and <c>ParamName</c> survive and no
+    /// <see cref="AggregateException"/> crosses the public API.
+    /// </remarks>
+    private static void RethrowFirst(Exception?[] failures)
+    {
+        // Array.Find scans in index order, so this is the lowest failing class —
+        // the one the sequential loop would have met first.
+        Exception? first = Array.Find(failures, failure => failure is not null);
+        if (first is not null)
+        {
+            ExceptionDispatchInfo.Capture(first).Throw();
+        }
     }
 
     private static double OneVsOne(
