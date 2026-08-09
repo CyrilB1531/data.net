@@ -55,6 +55,41 @@ public sealed class BpeFilesLoaderTests
             () => BpeFilesLoader.Load(Utf8(Vocab), Utf8("#version: 0.2\nab\n")));
     }
 
+    /// <summary>
+    /// A line with more than one space is refused, not split on the first one.
+    /// </summary>
+    /// <remarks>
+    /// Python splits the whole line and refuses it unless it yields exactly two
+    /// fields, so <c>"a b c"</c> and <c>" a b"</c> are both errors there —
+    /// checked against <c>tokenizers</c> 0.23.1, which reports "Merges text file
+    /// invalid at line 1" for each. Splitting on the first space instead loaded them
+    /// as <c>("a", "b c")</c> and <c>("", "a b")</c>: a rank the model never had.
+    /// Unreachable for a byte-level model, whose alphabet leaves no symbol
+    /// containing a literal space, and reachable for the classic lineage.
+    /// </remarks>
+    [Theory]
+    [InlineData("a b c\n")]
+    [InlineData("a  b\n")]
+    [InlineData(" a b\n")]
+    public void A_merge_line_that_is_not_two_symbols_is_refused(string line)
+    {
+        Assert.Throws<InvalidDataException>(
+            () => BpeFilesLoader.Load(Utf8(Vocab), Utf8("#version: 0.2\n" + line)));
+    }
+
+    /// <summary>
+    /// A trailing space is the one case that stays accepted: <c>"a "</c> splits into
+    /// two fields, the second empty, and Python takes it.
+    /// </summary>
+    [Fact]
+    public void A_merge_line_ending_in_a_space_is_a_pair_with_an_empty_right_symbol()
+    {
+        BpeVocabulary vocab = BpeFilesLoader.Load(Utf8(Vocab), Utf8("#version: 0.2\na \n"));
+
+        Assert.Single(vocab.Merges);
+        Assert.Equal(new MergePair("a", string.Empty), vocab.Merges[0]);
+    }
+
     [Fact]
     public void An_empty_vocabulary_is_refused()
     {

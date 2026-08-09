@@ -218,6 +218,19 @@ public static class BpeFilesLoader
             throw new InvalidDataException(
                 $"The {SourceName} has a line with no separator: '{text.Substring(start, length)}'. Each line is two symbols separated by a space.");
         }
+        // Exactly one space, not merely a first one. Python splits the whole line and
+        // refuses it unless it yields two fields, so "a b c" and " a b" are errors
+        // there where splitting on the first space would silently load them as
+        // ("a", "b c") and ("", "a b"). A trailing space is not an error: "a "
+        // splits into two fields, the second empty, and Python takes it.
+        // Unreachable for a byte-level model -- its alphabet maps 0x20 to U+0120, so
+        // no symbol contains a literal space -- and reachable for the classic lineage,
+        // whose symbols are ordinary characters.
+        if (text.IndexOf(' ', space + 1, stop - space - 1) >= 0)
+        {
+            throw new InvalidDataException(
+                $"The {SourceName} has a line that is not two space-separated symbols: '{text.Substring(start, length)}'.");
+        }
         merges.Add(new MergePair(
             text.Substring(start, space - start),
             text.Substring(space + 1, stop - space - 1)));

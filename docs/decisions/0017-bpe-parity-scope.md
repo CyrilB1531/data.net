@@ -171,8 +171,12 @@ observable changed for the text this library is actually measured against; the
 rewrite paid for the pathological case without costing the common one.
 
 The rewrite produces byte-identical tokens to the loop it replaced: the full
-oracle corpus passes unchanged on both `net10.0` and `netstandard2.0` (319 and
-320 tests), with no assertion touched. Where two merges tie on rank, the leftmost
-occurrence wins — the queue's packed ordering makes that the natural comparison
-rather than an extra rule — and three tests pin the tie-break directly, since the
+oracle corpus passes unchanged on both `net10.0` and `netstandard2.0`, with no
+assertion touched. Where two merges tie on rank, the leftmost occurrence wins.
+That is HuggingFace's own rule, not an inference from DataNet's data structure:
+`tokenizers` keeps its candidate merges in a heap ordered by `(rank, position)`
+ascending, so the leftmost of two equally-ranked pairs is the one it pops first.
+The queue's packed `(rank, leftmost position)` ordering reproduces that
+comparison rather than defining it, which is the only reason the packing is
+allowed to be convenient. Three tests pin the tie-break directly, since the
 corpora happen not to exercise it.

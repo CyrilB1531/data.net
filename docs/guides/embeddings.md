@@ -80,11 +80,12 @@ Llama-2 and Mistral v0.1 are trained as **SentencePiece BPE with a `Metaspace`
 pre-tokenizer and `byte_fallback`** — a third pipeline, distinct from both the
 classic and byte-level lineages `BpeTokenizer` implements and from the
 `Unigram` + `Metaspace` pipeline `SentencePieceTokenizer` implements.
-`TokenizerJsonLoader.LoadUnigram` and `TokenizerJsonLoader.LoadBpe` both
-**refuse** a `tokenizer.json` declaring `byte_fallback`, by name, rather than
-silently producing a plausible-looking wrong answer — whichever one a caller
-reaches for first, loading either model's `tokenizer.json` fails at
-construction instead of embedding text nobody trained the model on.
+Whichever loader a caller reaches for first, the file **fails to load** rather
+than producing a plausible-looking wrong answer. A real Llama-2 or Mistral v0.1
+`tokenizer.json` declares `model.type == "BPE"`, so `LoadBpe` is the one that
+reaches `byte_fallback` and **refuses it by name**; `LoadUnigram` never gets that
+far, and refuses the file for declaring a `BPE` model where it reads `Unigram`.
+Both calls fail; only one of them fails for the reason this section is about.
 See [decision 0017](../decisions/0017-bpe-parity-scope.md) for the parity scope
 this table states — end-to-end for GPT-2 and the classic lineage, split-pattern
 only for Llama-3 and Qwen2 — and for a known split divergence from HuggingFace

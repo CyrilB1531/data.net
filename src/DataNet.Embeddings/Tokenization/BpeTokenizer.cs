@@ -160,6 +160,13 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// so there is no byte sequence for it to be lossless <em>about</em>. This cannot
     /// happen on the classic (non-byte-level) path, which never encodes to UTF-8.
     /// </exception>
+    /// <exception cref="ArgumentException">
+    /// A byte-level model whose vocabulary is missing one of the 256 byte-level
+    /// alphabet characters, which is a vocabulary that is not what
+    /// <see cref="BpeVocabulary.ByteLevel"/> claims it is. Thrown from here rather
+    /// than at construction because it is the input's own bytes that decide which
+    /// entries are looked up; see <see cref="ByteLevelSymbols"/>.
+    /// </exception>
     public TokenizationResult Encode(string text)
     {
         Guard.NotNull(text);
@@ -677,7 +684,13 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// </para>
     /// </remarks>
     /// <param name="ids">Token ids, e.g. from <see cref="Encode"/>.</param>
-    /// <param name="skipSpecialTokens">Drop added tokens instead of rendering them.</param>
+    /// <param name="skipSpecialTokens">
+    /// Drop added tokens instead of rendering them. Every added token, where Python
+    /// drops only those its <c>added_tokens</c> entry marks <c>special</c>:
+    /// <see cref="BpeVocabulary.AddedTokens"/> does not carry that flag. The two
+    /// coincide for every model in scope, whose added tokens are all special, and
+    /// differ for a table that mixes the two.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">An id is outside the vocabulary.</exception>
     /// <exception cref="DecoderFallbackException">
     /// A byte-level model's <paramref name="ids"/> decode to bytes that are not
