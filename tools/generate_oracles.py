@@ -2080,12 +2080,16 @@ GPT2_VOCAB = "gpt2_vocab.json"
 GPT2_MERGES = "gpt2_merges.txt"
 
 
-def _gpt2_tokenizer(pattern: str | None = None):
+def _gpt2_tokenizer(pattern: str | None = None, add_prefix_space: bool = False):
     """GPT-2's byte-level BPE, optionally with another model's split pattern.
 
     `pattern=None` is stock GPT-2: `ByteLevel` does its own splitting. A pattern
     reproduces the Llama-3 / Qwen2 shape, where a `Split` runs first and
     `ByteLevel` is reduced to the byte mapping.
+
+    `add_prefix_space` is HuggingFace's own `ByteLevel` default (True), left off
+    here because every corpus that predates issue #59's final review was
+    generated without it; `generate_bpe_added_tokens` is the one that turns it on.
     """
     from tokenizers import Regex, Tokenizer  # noqa: PLC0415
     from tokenizers.decoders import ByteLevel as ByteLevelDecoder  # noqa: PLC0415
@@ -2095,11 +2099,11 @@ def _gpt2_tokenizer(pattern: str | None = None):
     tokenizer = Tokenizer(BPE.from_file(
         str(ORACLE_DIR / GPT2_VOCAB), str(ORACLE_DIR / GPT2_MERGES)))
     if pattern is None:
-        tokenizer.pre_tokenizer = ByteLevel(add_prefix_space=False)
+        tokenizer.pre_tokenizer = ByteLevel(add_prefix_space=add_prefix_space)
     else:
         tokenizer.pre_tokenizer = Sequence([
             Split(Regex(pattern), behavior="isolated"),
-            ByteLevel(add_prefix_space=False, use_regex=False),
+            ByteLevel(add_prefix_space=add_prefix_space, use_regex=False),
         ])
     tokenizer.decoder = ByteLevelDecoder()
     return tokenizer
@@ -2328,6 +2332,66 @@ def generate_bpe_tokenizer_json() -> dict:
     }
 
 
+# The two settings the rest of the BPE corpus structurally cannot see, exercised
+# together because they interact.
+#
+#   1. `<|endoftext|>` is id 50256 in GPT-2's *own* model.vocab and is also listed
+#      in added_tokens. Every other BPE fixture here either registers no added
+#      token at all (`BPE.from_file` does not) or never names one in its text, so
+#      a loader that reads added_tokens as "the entries model.vocab lacks" passes
+#      the whole corpus while dropping every special token there is.
+#   2. `add_prefix_space` is HuggingFace's ByteLevel default and nothing on this
+#      branch had ever generated a corpus with it on. It is applied per
+#      added-token-delimited segment, not once to the whole input, and only when
+#      the segment does not already start with a space -- which is only
+#      observable when a text starts with a space, or when an added token sits
+#      between two segments, hence the extra texts below.
+BPE_ADDED_TOKEN_TEXTS = BPE_TEXTS + [
+    "hi<|endoftext|>bye",             # a segment after an added token, no space of its own
+    "<|endoftext|>",                  # nothing but the token
+    "<|endoftext|>tail",              # an empty segment before it
+    " <|endoftext|> ",                # segments that already start with a space
+    "x<|endoftext|> y<|endoftext|>z",  # several, mixed
+]
+
+
+def generate_bpe_added_tokens() -> dict:
+    """GPT-2 with its own <|endoftext|> registered, and add_prefix_space on.
+
+    The corpus carries the whole `tokenizer.json` once, in the metadata: the C#
+    side parses the exact bytes HuggingFace was handed, as
+    `generate_bpe_tokenizer_json` does, rather than a second fixture that could
+    drift from it.
+    """
+    from tokenizers import AddedToken  # noqa: PLC0415
+
+    tokenizer = _gpt2_tokenizer(add_prefix_space=True)
+    tokenizer.add_special_tokens([AddedToken("<|endoftext|>", special=True)])
+
+    cases = []
+    for i, text in enumerate(BPE_ADDED_TOKEN_TEXTS):
+        enc = tokenizer.encode(text)
+        cases.append({
+            "id": i,
+            "text": text,
+            "tokens": enc.tokens,
+            "ids": enc.ids,
+            "decoded": tokenizer.decode(enc.ids, skip_special_tokens=False),
+            "decoded_skip_specials": tokenizer.decode(enc.ids, skip_special_tokens=True),
+        })
+    return {
+        "metadata": {
+            "algorithm": "ByteLevelBPE with added tokens and add_prefix_space",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "gpt2 (vendored by tools/fetch_gpt2_bpe.py), <|endoftext|> added as special",
+            "tokenizer_json": tokenizer.to_str(),
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -2372,6 +2436,7 @@ def main() -> None:
         "bytelevel_bpe.json": generate_bytelevel_bpe,
         "bpe_pretokenize.json": generate_bpe_pretokenize,
         "bpe_tokenizer_json.json": generate_bpe_tokenizer_json,
+        "bpe_added_tokens.json": generate_bpe_added_tokens,
     }
     for filename, gen in generators.items():
         payload = gen()

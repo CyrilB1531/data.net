@@ -622,6 +622,87 @@ public sealed class TokenizerJsonLoaderTests
     }
 
     /// <summary>
+    /// Replays GPT-2's own shape with the two settings the rest of the BPE corpus
+    /// structurally cannot see: <c>&lt;|endoftext|&gt;</c> registered as an added token
+    /// at the id <c>model.vocab</c> already gives it, and <c>add_prefix_space</c> on,
+    /// which is HuggingFace's <c>ByteLevel</c> default.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The two interact, which is why one corpus carries both. Fixing the added-token
+    /// table is what makes <c>Encode</c> cut the input into segments at all, and the
+    /// prefix space goes on each of those segments rather than once on the whole
+    /// input — <c>"hi&lt;|endoftext|&gt;bye"</c> is <c>['Ġhi', '&lt;|endoftext|&gt;',
+    /// 'Ġbye']</c>, three pieces each carrying their own space.
+    /// </para>
+    /// <para>
+    /// Every other BPE fixture on this branch either registers no added token at all
+    /// (<c>BPE.from_file</c> does not) or never names one in its text, and every one
+    /// of them was generated with <c>add_prefix_space=False</c>.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void LoadBpe_matches_tokenizers_with_added_tokens_and_a_prefix_space_both_live()
+    {
+        using JsonDocument doc = OracleLoader.Load("bpe_added_tokens.json");
+        var tokenizer = new BpeTokenizer(TokenizerJsonLoader.LoadBpe(
+            Bytes(doc.RootElement.GetProperty("metadata").GetProperty("tokenizer_json").GetString()!),
+            BpeBounds()));
+
+        var failures = new List<string>();
+        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
+        {
+            string text = c.GetProperty("text").GetString()!;
+            string[] expectedTokens = c.GetProperty("tokens").EnumerateArray().Select(e => e.GetString()!).ToArray();
+            int[] expectedIds = c.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32()).ToArray();
+
+            TokenizationResult actual = tokenizer.Encode(text);
+            if (!expectedTokens.SequenceEqual(actual.Tokens) || !expectedIds.SequenceEqual(actual.Ids))
+            {
+                failures.Add($"{JsonSerializer.Serialize(text)}\n  exp: [{string.Join(" | ", expectedTokens)}]\n  got: [{string.Join(" | ", actual.Tokens)}]");
+            }
+        }
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    /// <summary>
+    /// The decode direction of the same corpus, which is what proves
+    /// <c>skipSpecialTokens</c> does anything at all through the loader: before the
+    /// added-token table was read whole, <c>BpeTokenizer</c>'s set of added ids came
+    /// out empty and the flag skipped nothing.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_decodes_an_added_token_the_way_tokenizers_does()
+    {
+        using JsonDocument doc = OracleLoader.Load("bpe_added_tokens.json");
+        var tokenizer = new BpeTokenizer(TokenizerJsonLoader.LoadBpe(
+            Bytes(doc.RootElement.GetProperty("metadata").GetProperty("tokenizer_json").GetString()!),
+            BpeBounds()));
+
+        var failures = new List<string>();
+        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
+        {
+            int[] ids = c.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32()).ToArray();
+            string expected = c.GetProperty("decoded").GetString()!;
+            string expectedSkipping = c.GetProperty("decoded_skip_specials").GetString()!;
+
+            string actual = tokenizer.Decode(ids);
+            string actualSkipping = tokenizer.Decode(ids, skipSpecialTokens: true);
+            if (!string.Equals(expected, actual, StringComparison.Ordinal))
+            {
+                failures.Add($"decode {JsonSerializer.Serialize(expected)} got {JsonSerializer.Serialize(actual)}");
+            }
+            if (!string.Equals(expectedSkipping, actualSkipping, StringComparison.Ordinal))
+            {
+                failures.Add($"decode-skipping {JsonSerializer.Serialize(expectedSkipping)} got {JsonSerializer.Serialize(actualSkipping)}");
+            }
+        }
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    /// <summary>
     /// A token listed in <c>added_tokens</c> <em>and</em> in <c>model.vocab</c> at the
     /// same id — which is how HuggingFace writes every special token, GPT-2's
     /// <c>&lt;|endoftext|&gt;</c> at id 50256 included — must still reach

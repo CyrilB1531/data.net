@@ -54,7 +54,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private readonly Dictionary<long, int> _ranks;   // (left << 32 | right) -> rank
     private readonly int[] _merged;             // rank -> the id the pair becomes
     private readonly BpePreTokenizer _split;
-    private readonly BpeVocabulary _vocabulary;
+    private readonly bool _addPrefixSpace;
     private readonly (string Token, int Id)[] _addedTokens; // any order -- NextAddedToken resolves leftmost, then longest, itself
     private readonly HashSet<int> _addedIds;
     private readonly string? _endOfWord;
@@ -69,7 +69,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     public BpeTokenizer(BpeVocabulary vocabulary)
     {
         Guard.NotNull(vocabulary);
-        _vocabulary = vocabulary;
+        _addPrefixSpace = vocabulary.AddPrefixSpace;
         _endOfWord = vocabulary.EndOfWordSuffix;
         _byteLevel = vocabulary.ByteLevel;
         _ignoreMerges = vocabulary.IgnoreMerges;
@@ -166,20 +166,19 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         var tokens = new List<string>();
         var ids = new List<int>();
         var pieces = new List<string>();
-        string effective = _vocabulary.AddPrefixSpace ? " " + text : text;
 
         int pos = 0;
-        while (pos < effective.Length)
+        while (pos < text.Length)
         {
-            (int at, string token, int id) = NextAddedToken(effective, pos);
+            (int at, string token, int id) = NextAddedToken(text, pos);
             if (at < 0)
             {
-                EncodeSegment(effective, pos, effective.Length, tokens, ids, pieces);
+                EncodeSegment(text, pos, text.Length, tokens, ids, pieces);
                 break;
             }
             if (at > pos)
             {
-                EncodeSegment(effective, pos, at, tokens, ids, pieces);
+                EncodeSegment(text, pos, at, tokens, ids, pieces);
             }
             tokens.Add(token);
             ids.Add(id);
@@ -231,10 +230,39 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     }
 
     /// <summary>Splits and merges the plain-text slice <c>text[start..end]</c>, which contains no added token.</summary>
+    /// <remarks>
+    /// <para>
+    /// This is where <see cref="BpeVocabulary.AddPrefixSpace"/> applies, and both
+    /// halves of where matter. HuggingFace prepends the space inside the
+    /// <c>ByteLevel</c> pre-tokenizer, which runs <em>after</em> <c>AddedVocabulary</c>
+    /// has cut the input at its added tokens — so the space goes on every segment,
+    /// not once on the whole input. And it prepends only when the segment does not
+    /// already begin with one: <c>' hello world'</c> and <c>'hello world'</c> both
+    /// give <c>['Ġhello', 'Ġworld']</c>, where an unconditional prepend would put a
+    /// bare <c>'Ġ'</c> in front of the first.
+    /// </para>
+    /// <para>
+    /// An empty segment produces nothing, which is why the prepend cannot be hoisted
+    /// out of this guard: prepending to one would emit a <c>'Ġ'</c> that Python does
+    /// not, e.g. for the empty string or for the gap between two adjacent added tokens.
+    /// </para>
+    /// </remarks>
     private void EncodeSegment(string text, int start, int end, List<string> tokens, List<int> ids, List<string> pieces)
     {
+        int length = end - start;
+        if (length == 0)
+        {
+            return;
+        }
+
+        string segment = text.Substring(start, length);
+        if (_addPrefixSpace && segment[0] != ' ')
+        {
+            segment = " " + segment;
+        }
+
         pieces.Clear();
-        _split.Split(text.Substring(start, end - start), pieces);
+        _split.Split(segment, pieces);
         foreach (string piece in pieces)
         {
             EncodePiece(piece, tokens, ids);
