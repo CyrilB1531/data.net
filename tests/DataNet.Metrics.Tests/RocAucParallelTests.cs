@@ -234,6 +234,57 @@ public sealed class RocAucParallelTests
     }
 
     [Fact]
+    public void One_vs_one_over_six_classes_is_bit_identical_in_parallel()
+    {
+        // 15 pairs and 30 curves, more pairs than workers and more workers than
+        // any single pair needs: the shape where a per-pair race would show.
+        const int k = 6;
+        const int n = 240;
+        int[] yTrue = new int[n];
+        double[] scores = new double[n * k];
+        var random = new Random(20260808);
+
+        for (int i = 0; i < n; i++)
+        {
+            yTrue[i] = i % k;
+            double total = 0.0;
+            for (int c = 0; c < k; c++)
+            {
+                double draw = random.NextDouble() + (c == yTrue[i] ? 0.75 : 0.0);
+                scores[(i * k) + c] = draw;
+                total += draw;
+            }
+            for (int c = 0; c < k; c++)
+            {
+                scores[(i * k) + c] /= total;
+            }
+        }
+
+        foreach (Averaging average in new[] { Averaging.Macro, Averaging.Weighted })
+        {
+            double sequential = RocAuc.MultiClass(yTrue, scores, k, new MultiClassRocOptions
+            {
+                Strategy = MultiClassStrategy.OneVsOne,
+                Average = average,
+            });
+
+            foreach (int workers in WorkerCounts)
+            {
+                double parallel = RocAuc.MultiClass(yTrue, scores, k, new MultiClassRocOptions
+                {
+                    Strategy = MultiClassStrategy.OneVsOne,
+                    Average = average,
+                    MaxDegreeOfParallelism = workers,
+                });
+
+                Assert.Equal(
+                    BitConverter.DoubleToInt64Bits(sequential),
+                    BitConverter.DoubleToInt64Bits(parallel));
+            }
+        }
+    }
+
+    [Fact]
     public void More_workers_than_classes_is_not_an_error()
     {
         int[] yTrue = [0, 1, 0, 1];

@@ -496,18 +496,80 @@ internal static class MultiClassRoc
         return average == Averaging.Macro ? Mean(scores) : WeightedMean(scores, weights);
     }
 
-    // Task 4 makes this parallel. Until then it is the sequential driver, which
-    // is a correct answer to any worker count — just not a fast one.
+    /// <summary>
+    /// One-vs-one with the per-pair loop spread over workers. Bit-identical to
+    /// <see cref="OneVsOne"/>: pair <c>p</c> writes <c>pairScores[p]</c> and
+    /// <c>prevalence[p]</c> and nothing else, and the averaging below runs on this
+    /// thread in array order, so no thread's timing can reach a sum.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The nested <c>(a, b)</c> loops become a flat range over the same
+    /// <see cref="Pairs"/> table the sequential driver walks — <c>k(k-1)/2</c>
+    /// tuples, built once. Reading the pair out of that table rather than decoding
+    /// a triangular index arithmetically pins the pair order to exactly the
+    /// sequential order, instead of resting on a decode agreeing with it.
+    /// </para>
+    /// <para>
+    /// No weights, by <see cref="Validate"/>: scikit-learn does not support
+    /// <c>sampleWeight</c> for one-vs-one and neither does this, so
+    /// <see cref="CopyForWorkers"/> is handed <see langword="default"/> — not an
+    /// empty rented array, which would be a buffer to hand back for nothing.
+    /// </para>
+    /// </remarks>
     private static double OneVsOneParallel(
         ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int[] classes, Averaging average, int workers)
     {
-        // The signature is the one the parallel pair loop will need, so that
-        // change lands in one method rather than two. Discarding the count says
-        // "known, not yet used" in the language and not in a comment only, which
-        // is also what keeps SonarAnalyzer S1172 satisfied without a suppression.
-        _ = workers;
+        int n = yTrue.Length;
+        int k = classes.Length;
+        (int A, int B)[] pairs = Pairs(k);
+        double[] pairScores = new double[pairs.Length];
+        double[] prevalence = new double[pairs.Length];
+        var copy = CopyForWorkers(yTrue, yScore, k, default);
 
-        return OneVsOne(yTrue, yScore, classes, average);
+        try
+        {
+            RunPerIndex(pairs.Length, workers, n, (pair, scratch) =>
+            {
+                // As in OneVsRestParallel: the spans cannot cross into this
+                // lambda but can be made inside it, over the arrays the closure
+                // captured, and ScoreSource is a ref struct so it is built here,
+                // per iteration, and stored nowhere that outlives one.
+                //
+                // Sliced to n and n * k, never to the rented lengths, and built
+                // *above* the try: a mis-sliced span is a broken internal
+                // invariant, and it must escape as the defect it is rather than
+                // reach the caller as an ArgumentException naming a parameter no
+                // public method has.
+                ScoreSource source = new(
+                    copy.YTrue.AsSpan(0, n), copy.ColumnMajor.AsSpan(0, n * k), n, k, columnMajor: true);
+
+                try
+                {
+                    // Everything the pair needs travels in what is already here:
+                    // the tuple carries the two columns and ScorePair resolves
+                    // their labels through classes. ScorePair is at seven
+                    // parameters, the most S107 allows, so a worker asks for
+                    // nothing by widening it.
+                    ScorePair(source, classes, pairs[pair], pair, pairScores, prevalence, scratch);
+                    return null;
+                }
+                catch (ArgumentException ex)
+                {
+                    // RunPerIndex cannot tell a broken invariant from a body that
+                    // forgot to catch, so the catch belongs here: without it both
+                    // the lowest-index rethrow and "no AggregateException crosses
+                    // the public API" would go quietly.
+                    return ex;
+                }
+            });
+        }
+        finally
+        {
+            ReturnToPool(copy);
+        }
+
+        return average == Averaging.Macro ? Mean(pairScores) : WeightedMean(pairScores, prevalence);
     }
 
     /// <summary>
