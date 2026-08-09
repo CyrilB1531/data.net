@@ -5,8 +5,8 @@ using DataNet.Internal.Persistence;
 namespace DataNet.Embeddings.Persistence;
 
 /// <summary>
-/// Reads a HuggingFace <c>tokenizer.json</c> — the WordPiece or Unigram model it
-/// declares, together with the settings that change tokenization.
+/// Reads a HuggingFace <c>tokenizer.json</c> — the WordPiece, Unigram or BPE
+/// model it declares, together with the settings that change tokenization.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -26,8 +26,13 @@ namespace DataNet.Embeddings.Persistence;
 /// model nobody trained.
 /// </para>
 /// <para>
-/// The <c>decoder</c> section is the one part accepted unchecked: it affects
-/// <c>decode</c> only, and DataNet's tokenizers encode.
+/// The <c>decoder</c> section is accepted unchecked for WordPiece and Unigram:
+/// it affects <c>decode</c> only, and <see cref="WordPieceTokenizer"/> and
+/// <see cref="SentencePieceTokenizer"/> only encode. <see cref="BpeTokenizer"/>
+/// does decode, so <see cref="LoadBpe(string, ArtifactLoadOptions?)"/> is the
+/// exception: it refuses a <c>decoder</c> whose byte-level-ness disagrees with
+/// the model's own, which would silently corrupt <see cref="BpeTokenizer.Decode(System.Collections.Generic.IReadOnlyList{int}, bool)"/>
+/// rather than merely go unused.
 /// </para>
 /// <para>
 /// Unrecognized <em>top-level</em> properties are likewise accepted in silence,
@@ -46,6 +51,14 @@ namespace DataNet.Embeddings.Persistence;
 /// <see cref="VocabTxtLoader"/> is the route for BERT, and
 /// <see cref="LoadWordPiece(string, ArtifactLoadOptions?)"/> is for files whose
 /// pipeline matches DataNet's.
+/// </para>
+/// <para>
+/// <see cref="LoadBpe(string, ArtifactLoadOptions?)"/> reads the third model
+/// type this file format can declare: GPT-2's byte-level BPE, the classic
+/// (non-byte-level) BPE lineage, and the <c>Split</c>-then-<c>ByteLevel</c>
+/// shape Llama-3 and Qwen2 use. See <see cref="BpeTokenizer"/> and
+/// <c>docs/decisions/0017-bpe-parity-scope.md</c> for what is and is not
+/// proven for each.
 /// </para>
 /// </remarks>
 /// <example>
