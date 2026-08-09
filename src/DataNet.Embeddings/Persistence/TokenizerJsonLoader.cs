@@ -539,6 +539,8 @@ public static class TokenizerJsonLoader
         JsonElement model = RequireObject(root, "model");
         EnsureModelType(model, "BPE");
         EnsureByteFallbackIsOff(model);
+        EnsureBpeModelSettingsAreReproduced(model);
+        EnsureBpeNormalizerIsAbsent(root);
         RejectNonNull(root, "truncation", "DataNet tokenizers do not truncate");
         RejectNonNull(root, "padding", "DataNet tokenizers do not pad");
         RejectNonNull(root, "post_processor", "DataNet tokenizers do not insert special tokens such as [CLS] and [SEP]");
@@ -558,10 +560,80 @@ public static class TokenizerJsonLoader
             IgnoreMerges = OptionalBoolean(model, "ignore_merges") ?? false,
             SkippedMerges = skippedMerges,
             EndOfWordSuffix = OptionalString(model, "end_of_word_suffix"),
-            ContinuingSubwordPrefix = OptionalString(model, "continuing_subword_prefix"),
+            // ContinuingSubwordPrefix is deliberately not carried across: a non-null one
+            // is refused above, so reading it here could only ever restate that null,
+            // and a property that is read but never applied is what made this a bug.
             UnkToken = OptionalString(model, "unk_token"),
             PreTokenizerPattern = pattern,
         };
+    }
+
+    /// <summary>
+    /// Refuses the three <c>model</c> settings that change what BPE produces and that
+    /// <see cref="BpeTokenizer"/> does not apply.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Each of these is read out of a shipped <c>tokenizer.json</c> today and each is
+    /// measurably not a no-op, so accepting one is a file that tokenizes differently
+    /// here than in Python without saying so. Verified against <c>tokenizers</c>
+    /// 0.23.1: with <c>continuing_subword_prefix="##"</c>, the vocabulary
+    /// <c>{a, b, ##b, ab, a##b}</c> and the single merge <c>("a", "##b")</c>, Python
+    /// encodes "ab" to the one id of <c>ab</c> where the same model without the prefix
+    /// gives two; <c>fuse_unk</c> collapses a run of uncovered characters into one
+    /// unknown token where this tokenizer always emits one per code point.
+    /// <c>dropout</c> is a training-time regularizer that drops merges at random,
+    /// which no deterministic tokenizer can reproduce at all.
+    /// </para>
+    /// <para>
+    /// Refused by name rather than implemented: support is a feature, and a file
+    /// naming one of these deserves to be told which one rather than to be tokenized
+    /// plausibly and wrongly.
+    /// </para>
+    /// </remarks>
+    private static void EnsureBpeModelSettingsAreReproduced(JsonElement model)
+    {
+        if (OptionalString(model, "continuing_subword_prefix") is { } prefix)
+        {
+            throw Unsupported(
+                $"its model declares continuing_subword_prefix '{prefix}'",
+                "HuggingFace prefixes every non-initial symbol with it before merging, where BpeTokenizer merges the symbols as they stand");
+        }
+        if (OptionalBoolean(model, "fuse_unk") is true)
+        {
+            throw Unsupported(
+                "its model declares fuse_unk",
+                "HuggingFace then collapses a run of uncovered characters into a single unknown token, where BpeTokenizer emits one per code point");
+        }
+        if (model.TryGetProperty("dropout", out JsonElement dropout) && dropout.ValueKind != JsonValueKind.Null)
+        {
+            throw Unsupported(
+                "its model declares dropout",
+                "that drops merges at random during tokenization, which no deterministic tokenizer reproduces");
+        }
+    }
+
+    /// <summary>
+    /// Refuses any normalizer, since <see cref="BpeTokenizer"/> applies none.
+    /// </summary>
+    /// <remarks>
+    /// The counterpart of <see cref="ReadLowercaseFrom"/> for WordPiece and
+    /// <see cref="ReadUnigramNormalizer"/> for Unigram, and the one this reader was
+    /// missing: a BPE file declaring <c>NFC</c>, <c>NFKC</c>, <c>Replace</c> or a
+    /// <c>Sequence</c> of them would otherwise load and skip the normalization in
+    /// silence. Absent or <c>null</c> is identity and is what every model in scope
+    /// declares.
+    /// </remarks>
+    private static void EnsureBpeNormalizerIsAbsent(JsonElement root)
+    {
+        if (!root.TryGetProperty("normalizer", out JsonElement normalizer) || normalizer.ValueKind == JsonValueKind.Null)
+        {
+            return;
+        }
+        string type = OptionalString(normalizer, "type") ?? UntypedName;
+        throw Unsupported(
+            $"its normalizer is '{type}'",
+            "BpeTokenizer normalizes nothing, so every rule this one declares would go unapplied");
     }
 
     private static Dictionary<string, int> ReadBpeVocab(JsonElement model, in ArtifactLimits limits)
@@ -691,15 +763,27 @@ public static class TokenizerJsonLoader
 
     /// <summary>
     /// A bare <c>ByteLevel</c> pre-tokenizer -- what stock GPT-2 declares, with no
-    /// <c>Split</c> node, so <see cref="BpeVocabulary.PreTokenizerPattern"/> stays
-    /// <see langword="null"/> and <see cref="BpePreTokenizer"/> falls back to
-    /// word-boundary splitting on the byte-mapped text.
+    /// <c>Split</c> node of its own: <c>ByteLevel</c> does the splitting, on the
+    /// pattern <see cref="BpePatterns.Gpt2"/> states.
     /// </summary>
+    /// <remarks>
+    /// <c>use_regex</c> defaults to <see langword="true"/> and stock GPT-2 omits it, so
+    /// that pattern is what stock GPT-2 gets. Turned off, HuggingFace hands the whole
+    /// normalized string to the model as one piece -- refused here, because the nearest
+    /// thing this library has is <see cref="BpePreTokenizer"/>'s word-boundary
+    /// fallback, which discards the whitespace between the words and so cannot round
+    /// trip, the one guarantee byte-level BPE exists to make.
+    /// </remarks>
     private static (bool ByteLevel, bool AddPrefixSpace, string? Pattern) ReadByteLevelPreTokenizer(JsonElement pre)
     {
+        if (OptionalBoolean(pre, "use_regex") is false)
+        {
+            throw Unsupported(
+                "its ByteLevel pre_tokenizer has use_regex off",
+                "HuggingFace then passes the whole text to the model as one piece, where BpeTokenizer would split it on word boundaries and drop the whitespace between them");
+        }
         bool addPrefixSpace = OptionalBoolean(pre, "add_prefix_space") ?? true;
-        bool useRegex = OptionalBoolean(pre, "use_regex") ?? true;
-        return (true, addPrefixSpace, useRegex ? BpePatterns.Gpt2 : null);
+        return (true, addPrefixSpace, BpePatterns.Gpt2);
     }
 
     /// <summary>

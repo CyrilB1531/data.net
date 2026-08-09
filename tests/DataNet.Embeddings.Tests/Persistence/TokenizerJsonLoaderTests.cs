@@ -740,19 +740,144 @@ public sealed class TokenizerJsonLoaderTests
         Assert.Equal(BpePatterns.Gpt2, vocabulary.PreTokenizerPattern);
     }
 
-    /// <summary>The other side of <c>use_regex</c>: off leaves the pattern null without turning ByteLevel off.</summary>
+    /// <summary>
+    /// The other side of <c>use_regex</c>. HuggingFace's <c>use_regex=false</c> hands
+    /// the whole normalized string to the model as a single piece; the null pattern
+    /// this used to be read as means <c>BpePreTokenizer</c>'s word-boundary fallback,
+    /// which drops the whitespace between the words outright and so cannot round trip.
+    /// Refused rather than silently tokenized as something else.
+    /// </summary>
     [Fact]
-    public void LoadBpe_a_byte_level_pre_tokenizer_with_use_regex_off_has_no_pattern()
+    public void LoadBpe_refuses_a_byte_level_pre_tokenizer_with_use_regex_off()
     {
         const string Json = """
         {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
          "pre_tokenizer":{"type":"ByteLevel","use_regex":false}}
         """;
 
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+
+        Assert.Contains("use_regex", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The same flag inside a <c>Sequence</c> of <c>Split</c> then <c>ByteLevel</c> is
+    /// the opposite case and stays accepted: that is exactly how Llama-3 and Qwen2
+    /// declare themselves, with the <c>Split</c> step carrying the pattern and
+    /// <c>ByteLevel</c> reduced to the byte mapping. Nothing is lost there, so nothing
+    /// is refused.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_accepts_use_regex_off_on_the_byte_level_step_of_a_split_sequence()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "pre_tokenizer":{"type":"Sequence","pretokenizers":[
+            {"type":"Split","pattern":{"Regex":"\\w+"},"behavior":"Isolated"},
+            {"type":"ByteLevel","add_prefix_space":false,"use_regex":false}]},
+         "decoder":{"type":"ByteLevel"}}
+        """;
+
         BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
 
         Assert.True(vocabulary.ByteLevel);
-        Assert.Null(vocabulary.PreTokenizerPattern);
+        Assert.Equal("\\w+", vocabulary.PreTokenizerPattern);
+    }
+
+    /// <summary>
+    /// <c>continuing_subword_prefix</c> was read into <see cref="BpeVocabulary"/>,
+    /// compared and hashed, and never applied. HuggingFace prefixes every non-initial
+    /// symbol with it before merging, which is not a no-op: over <c>tokenizers</c>
+    /// 0.23.1 with the vocabulary below and the merge <c>("a", "##b")</c>, Python
+    /// encodes "ab" to <c>[4]</c> where an implementation ignoring the prefix gives
+    /// <c>[1, 2]</c>. Refused by name until it is implemented.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_refuses_a_continuing_subword_prefix()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":1,"b":2,"##b":3,"ab":4,"a##b":5},
+                  "merges":[["a","##b"]],"continuing_subword_prefix":"##"}}
+        """;
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+
+        Assert.Contains("continuing_subword_prefix", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <c>fuse_unk</c> collapses a run of uncovered characters into one unknown token;
+    /// <c>InitialSymbols</c> always emits one per code point. Verified over
+    /// <c>tokenizers</c> 0.23.1: on, "azza" gives <c>['a', '[UNK]', 'a']</c>; off, it
+    /// gives <c>['a', '[UNK]', '[UNK]', 'a']</c>.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_refuses_fuse_unk()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"[UNK]":0,"a":1},"merges":[],
+                  "unk_token":"[UNK]","fuse_unk":true}}
+        """;
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+
+        Assert.Contains("fuse_unk", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <c>dropout</c> drops merges at random, so a file declaring it does not have one
+    /// tokenization to match. Rare in shipped files and read by nothing here, which is
+    /// exactly why it went unrejected.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_refuses_dropout()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[],"dropout":0.1}}
+        """;
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+
+        Assert.Contains("dropout", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A null <c>dropout</c> is what every shipped file writes when it has none, and
+    /// is not the same thing as declaring one.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_accepts_a_null_dropout()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[],"dropout":null,
+                  "continuing_subword_prefix":null,"fuse_unk":false}}
+        """;
+
+        Assert.Single(TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()).Vocab);
+    }
+
+    /// <summary>
+    /// <c>ReadBpe</c> never looked at the normalizer at all, where the WordPiece and
+    /// Unigram readers both do, so a BPE file declaring <c>NFC</c> or <c>NFKC</c>
+    /// loaded and skipped the normalization silently. <see cref="BpeTokenizer"/>
+    /// normalizes nothing, so any normalizer is refused by name.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_refuses_a_normalizer()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "normalizer":{"type":"NFKC"}}
+        """;
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+
+        Assert.Contains("NFKC", error.Message, StringComparison.Ordinal);
     }
 
     /// <summary>

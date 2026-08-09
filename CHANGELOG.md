@@ -145,7 +145,10 @@ and including `0.2.0` predate the split and covered all three at once — see
   `TokenizerJsonLoader.LoadBpe` **refuses `byte_fallback` by name** — Llama-2
   and Mistral v0.1 are SentencePiece BPE with `Metaspace` and `byte_fallback`,
   a third pipeline this package does not implement — rather than tokenizing
-  them to a plausible-looking wrong answer. `BpeFilesLoader` has no such check
+  them to a plausible-looking wrong answer. It refuses `continuing_subword_prefix`,
+  `fuse_unk`, `dropout`, any `normalizer`, and a `ByteLevel` pre-tokenizer with
+  `use_regex` off by name too — each of those changes what HuggingFace produces
+  and none of them is applied here. `BpeFilesLoader` has no such check
   to make: its `vocab.json`/`merges.txt` pair carries no pipeline flags at all.
   [Decision 0017](docs/decisions/0017-bpe-parity-scope.md) records the scope,
   including a known split divergence from HuggingFace on letters and digits
