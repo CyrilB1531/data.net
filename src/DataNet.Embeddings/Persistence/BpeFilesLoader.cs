@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using DataNet.Embeddings.Tokenization;
 using DataNet.Internal.Persistence;
@@ -85,14 +86,14 @@ public static class BpeFilesLoader
         CancellationToken cancellationToken = default)
     {
         ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
-        byte[] vocabPayload = await JsonArtifact.ReadAllBytesAsync(vocabJson, limits, cancellationToken).ConfigureAwait(false);
-        byte[] mergesPayload = await JsonArtifact.ReadAllBytesAsync(merges, limits, cancellationToken).ConfigureAwait(false);
+        ReadOnlyMemory<byte> vocabPayload = await JsonArtifact.ReadAllBytesAsync(vocabJson, limits, cancellationToken).ConfigureAwait(false);
+        ReadOnlyMemory<byte> mergesPayload = await JsonArtifact.ReadAllBytesAsync(merges, limits, cancellationToken).ConfigureAwait(false);
         return Parse(vocabPayload, mergesPayload, limits, byteLevel);
     }
 
     private static BpeVocabulary Parse(
-        byte[] vocabPayload,
-        byte[] mergesPayload,
+        ReadOnlyMemory<byte> vocabPayload,
+        ReadOnlyMemory<byte> mergesPayload,
         in ArtifactLimits limits,
         bool byteLevel)
     {
@@ -108,7 +109,7 @@ public static class BpeFilesLoader
         };
     }
 
-    private static Dictionary<string, int> ParseVocab(byte[] vocabPayload, in ArtifactLimits limits)
+    private static Dictionary<string, int> ParseVocab(ReadOnlyMemory<byte> vocabPayload, in ArtifactLimits limits)
     {
         var vocab = new Dictionary<string, int>(StringComparer.Ordinal);
         using (JsonDocument doc = ParseVocabDocument(vocabPayload, limits))
@@ -136,7 +137,7 @@ public static class BpeFilesLoader
         return vocab;
     }
 
-    private static JsonDocument ParseVocabDocument(byte[] payload, in ArtifactLimits limits)
+    private static JsonDocument ParseVocabDocument(ReadOnlyMemory<byte> payload, in ArtifactLimits limits)
     {
         var documentOptions = new JsonDocumentOptions
         {
@@ -160,7 +161,7 @@ public static class BpeFilesLoader
         }
     }
 
-    private static List<MergePair> ParseMerges(byte[] mergesPayload, in ArtifactLimits limits)
+    private static List<MergePair> ParseMerges(ReadOnlyMemory<byte> mergesPayload, in ArtifactLimits limits)
     {
         var merges = new List<MergePair>();
         string text = DecodeMerges(mergesPayload);
@@ -179,15 +180,22 @@ public static class BpeFilesLoader
         return merges;
     }
 
-    private static string DecodeMerges(byte[] payload)
+    private static string DecodeMerges(ReadOnlyMemory<byte> payload)
     {
         // A merges.txt written on Windows may carry a byte-order mark. Left in,
         // it lands on the first line as U+FEFF, "#version" no longer matches at
         // offset 0, and the header row is misread as a merge instead of being
         // skipped -- silently shifting every real merge's rank by one rather
-        // than throwing. Mirrors VocabTxtLoader.Decode.
-        int offset = payload.Length >= 3 && payload[0] == 0xEF && payload[1] == 0xBB && payload[2] == 0xBF ? 3 : 0;
-        return JsonArtifact.Utf8NoBom.GetString(payload, offset, payload.Length - offset);
+        // than throwing. Mirrors VocabTxtLoader.Decode, down to the TryGetArray:
+        // this memory always wraps an array, and netstandard2.0's Encoding has no
+        // span overload to decode through instead.
+        ReadOnlySpan<byte> span = payload.Span;
+        int offset = span.Length >= 3 && span[0] == 0xEF && span[1] == 0xBB && span[2] == 0xBF ? 3 : 0;
+
+        ReadOnlyMemory<byte> text = payload.Slice(offset);
+        return MemoryMarshal.TryGetArray(text, out ArraySegment<byte> segment) && segment.Array is not null
+            ? JsonArtifact.Utf8NoBom.GetString(segment.Array, segment.Offset, segment.Count)
+            : JsonArtifact.Utf8NoBom.GetString(text.ToArray());
     }
 
     private static void ParseMergeLine(string text, int start, int stop, List<MergePair> merges, in ArtifactLimits limits, bool isFirstLine)

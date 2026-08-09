@@ -70,6 +70,15 @@ and including `0.2.0` predate the split and covered all three at once — see
   for the numbers, including processor time — which is the honest column, and
   where `Load` still costs 22% more than `pickle` because of background garbage
   collection.
+- **Loading an artifact stopped copying the payload around.** The shared read
+  path used to accumulate the file into a growable buffer, copy it out again, and
+  then decode each base64 block into a scratch array before copying that into its
+  final one. It now reads into a single buffer sized from the stream's own length
+  before it is filled, and decodes straight into the array that keeps the values.
+  `TfidfLoad` went from 6.44 ms to 5.44 ms and from 4.34 MB allocated to 2.86 MB;
+  every vocabulary loader allocates 15% to 52% less. `Save` is untouched and does
+  not move. This is internal: no public signature changed, and files written by
+  earlier versions load unchanged — the artifact is identical byte for byte.
 - **`CsrMatrix`'s public constructor now validates its arrays.** `RowPointers`
   must be non-decreasing, start at 0 and end at `Values.Length`, and every column
   index must be in range. This was caller discipline while the arrays could only
@@ -224,6 +233,19 @@ and including `0.2.0` predate the split and covered all three at once — see
 
 #### Changed
 
+- **`EmbeddingIndex.Load` moves a vector block in three passes instead of five.**
+  Loading 10 000 × 384 floats used to copy the payload through a growable buffer,
+  copy it out, decode the base64 into a scratch array, copy that into the
+  `float[]`, and scan it — 90 MB allocated to restore 15 MB of floats. The read
+  path now sizes one buffer from the stream's length and decodes into the
+  destination, and the non-finite scan is vectorized on `net10.0`. `Load` went
+  from 36.9 ms to 12.9 ms and from 90 MB to 35.35 MB (2.88× on `net10.0`, 2.39×
+  on `netstandard2.0`, which keeps the scalar scan); against `numpy.load` that is
+  0.08× before and 0.21× after. `Save` runs the same scan and falls with it,
+  16.96 ms to 13.57 ms, overtaking `numpy.save`. The artifact is unchanged — the
+  same index saves to the same bytes as before, verified by hash in both
+  directions — and no public signature moved. Numbers in
+  [`bench/README.md`](bench/README.md) §6.
 - **`OnnxTextEmbedder.Embed` takes `ReadOnlySpan<long>`** where it took
   `IReadOnlyList<long>`. This is a source break. An array still binds, so most
   call sites are untouched; a caller passing a `List<long>` needs
