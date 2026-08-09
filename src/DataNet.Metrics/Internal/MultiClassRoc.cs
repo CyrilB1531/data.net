@@ -559,7 +559,10 @@ internal static class MultiClassRoc
                     // RunPerIndex cannot tell a broken invariant from a body that
                     // forgot to catch, so the catch belongs here: without it both
                     // the lowest-index rethrow and "no AggregateException crosses
-                    // the public API" would go quietly.
+                    // the public API" would go quietly. Deleting these two lines
+                    // is a live mutation that
+                    // Reports_the_lowest_offending_pair_not_the_fastest_worker
+                    // fails on and that nothing else in the solution notices.
                     return ex;
                 }
             });

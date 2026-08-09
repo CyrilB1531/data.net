@@ -111,18 +111,30 @@ public sealed class RocAucParallelTests
         // sample count satisfies ScoreSource's length check and reads the wrong
         // column silently. The corpus cannot catch this: its class counts are 3
         // and 5, which do not collide.
+        //
+        // Both strategies, because k=2 is also the only shape that gives
+        // OneVsOneParallel a single pair: pairs.Length == 1, so the driver's
+        // Math.Min(workers, count) collapses to one worker whatever the caller
+        // asked for, and nothing else here exercises that.
         int[] yTrue = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1];
         double[] scores = [0.9, 0.1, 0.2, 0.8, 0.7, 0.3, 0.4, 0.6, 0.55, 0.45,
                            0.35, 0.65, 0.85, 0.15, 0.25, 0.75, 0.6, 0.4, 0.3, 0.7];
 
-        double sequential = RocAuc.MultiClass(yTrue, scores, 2);
-
-        foreach (int workers in WorkerCounts)
+        foreach (MultiClassStrategy strategy in new[] { MultiClassStrategy.OneVsRest, MultiClassStrategy.OneVsOne })
         {
-            double parallel = RocAuc.MultiClass(yTrue, scores, 2,
-                new MultiClassRocOptions { MaxDegreeOfParallelism = workers });
+            double sequential = RocAuc.MultiClass(yTrue, scores, 2,
+                new MultiClassRocOptions { Strategy = strategy });
 
-            Assert.Equal(BitConverter.DoubleToInt64Bits(sequential), BitConverter.DoubleToInt64Bits(parallel));
+            foreach (int workers in WorkerCounts)
+            {
+                double parallel = RocAuc.MultiClass(yTrue, scores, 2, new MultiClassRocOptions
+                {
+                    Strategy = strategy,
+                    MaxDegreeOfParallelism = workers,
+                });
+
+                Assert.Equal(BitConverter.DoubleToInt64Bits(sequential), BitConverter.DoubleToInt64Bits(parallel));
+            }
         }
     }
 
@@ -206,6 +218,60 @@ public sealed class RocAucParallelTests
         Assert.Equal(sequential.ParamName, parallel.ParamName);
     }
 
+    [Fact]
+    public void Reports_the_lowest_offending_pair_not_the_fastest_worker()
+    {
+        // The one-vs-one twin of Reports_the_lowest_offending_class_not_the_
+        // fastest_worker. Every other error-path test in this file uses default
+        // options, so all of them drive OneVsRestParallel and none had ever
+        // pushed a failure through OneVsOneParallel. Deleting that driver's
+        // ArgumentException handler changed no test result anywhere in the
+        // solution, and the AggregateException it then let out crossed the
+        // public API unnoticed.
+        //
+        // k=4 with a NaN at (row 3, column 2) and another at (row 5, column 3).
+        // yTrue[i] is i % 4, so row 3 is a label-3 sample and row 5 a label-1
+        // one, and each NaN is read by exactly one pair — the one that both
+        // selects its row and scores its column: pair 5 = (2,3) reaches the
+        // first, pair 4 = (1,3) the second.
+        //
+        // The lowest offending pair is therefore 4, not 0. That is the point of
+        // this fixture: pair 0 is the iteration the invoking thread always
+        // begins with, so a failure there would be reported first however the
+        // workers were scheduled and would prove nothing about ordering.
+        const int k = 4;
+        const int n = 64;
+        (int[] yTrue, double[] scores) = NanColumns(n, k, (2, 3), (3, 5));
+
+        ArgumentException sequential = Assert.Throws<ArgumentException>(
+            () => RocAuc.MultiClass(yTrue, scores, k, new MultiClassRocOptions
+            {
+                Strategy = MultiClassStrategy.OneVsOne,
+            }));
+
+        // Pair 4's message and not pair 5's: both pairs compact their two
+        // classes' samples before scoring, and the NaN lands at index 2 of
+        // pair 4's column and index 1 of pair 5's. Naming the index is what
+        // distinguishes "the lowest pair won" from "a pair won".
+        Assert.Equal("yScore[2] is NaN; scores must be numbers. (Parameter 'yScore')", sequential.Message);
+
+        foreach (int workers in WorkerCounts)
+        {
+            // Assert.Throws matches the exact type, so an AggregateException
+            // reaching the caller fails here rather than being unwrapped into a
+            // pass by a base-class match.
+            ArgumentException parallel = Assert.Throws<ArgumentException>(
+                () => RocAuc.MultiClass(yTrue, scores, k, new MultiClassRocOptions
+                {
+                    Strategy = MultiClassStrategy.OneVsOne,
+                    MaxDegreeOfParallelism = workers,
+                }));
+
+            Assert.Equal(sequential.Message, parallel.Message);
+            Assert.Equal(sequential.ParamName, parallel.ParamName);
+        }
+    }
+
     /// <summary>
     /// An <paramref name="n"/> by <paramref name="k"/> probability matrix whose
     /// rows sum to 1, with a NaN planted at each given (column, row).
@@ -267,6 +333,11 @@ public sealed class RocAucParallelTests
                 Strategy = MultiClassStrategy.OneVsOne,
                 Average = average,
             });
+
+            // Bit equality alone would hold if both paths degenerated to the same
+            // NaN, so pin the value to the band a separable six-class problem
+            // belongs in first.
+            Assert.InRange(sequential, 0.5, 1.0);
 
             foreach (int workers in WorkerCounts)
             {
