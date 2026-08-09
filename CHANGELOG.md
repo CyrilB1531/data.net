@@ -142,10 +142,11 @@ and including `0.2.0` predate the split and covered all three at once — see
   every byte comes back. Proven end to end against GPT-2's real 50 257-entry
   vocabulary and merge table; `BpePatterns.Llama3` and `BpePatterns.Qwen2` are
   proven at the split level only, against a vocabulary the caller supplies.
-  **Refuses `byte_fallback` by name** — Llama-2 and Mistral v0.1 are
-  SentencePiece BPE with `Metaspace` and `byte_fallback`, a third pipeline this
-  package does not implement — rather than tokenizing them to a
-  plausible-looking wrong answer.
+  `TokenizerJsonLoader.LoadBpe` **refuses `byte_fallback` by name** — Llama-2
+  and Mistral v0.1 are SentencePiece BPE with `Metaspace` and `byte_fallback`,
+  a third pipeline this package does not implement — rather than tokenizing
+  them to a plausible-looking wrong answer. `BpeFilesLoader` has no such check
+  to make: its `vocab.json`/`merges.txt` pair carries no pipeline flags at all.
   [Decision 0017](docs/decisions/0017-bpe-parity-scope.md) records the scope,
   including a known split divergence from HuggingFace on letters and digits
   above the Basic Multilingual Plane.

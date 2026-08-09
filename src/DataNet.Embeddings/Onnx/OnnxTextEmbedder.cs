@@ -86,7 +86,7 @@ public sealed class OnnxTextEmbedder : IDisposable
     /// that are wrong without being invalid.
     /// </remarks>
     /// <param name="modelPath">Path to the <c>.onnx</c> model file.</param>
-    /// <param name="tokenizer">The tokenizer matching the model — a <see cref="WordPieceTokenizer"/> or a <see cref="SentencePieceTokenizer"/>.</param>
+    /// <param name="tokenizer">The tokenizer matching the model — a <see cref="WordPieceTokenizer"/>, a <see cref="SentencePieceTokenizer"/> or a <see cref="BpeTokenizer"/>, or any other <see cref="ISubwordTokenizer"/>.</param>
     /// <param name="options">Optional ONNX Runtime session options.</param>
     /// <param name="inputIdsName">Name of the token-ids input (default <c>input_ids</c>).</param>
     /// <param name="attentionMaskName">Name of the attention-mask input (default <c>attention_mask</c>).</param>

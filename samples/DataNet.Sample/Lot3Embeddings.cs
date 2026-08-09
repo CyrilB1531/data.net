@@ -97,7 +97,7 @@ internal static class Lot3Embeddings
         var bpeVocab = new Dictionary<string, int>(StringComparer.Ordinal)
         {
             ["Ġ"] = 0, ["t"] = 1, ["o"] = 2, ["k"] = 3, ["e"] = 4, ["n"] = 5,
-            ["to"] = 6, ["ken"] = 7, ["token"] = 8, ["Ġtoken"] = 9,
+            ["to"] = 6, ["ken"] = 7, ["token"] = 8, ["Ġtoken"] = 9, ["ke"] = 10,
         };
         var bpeMerges = new List<MergePair> { new("t", "o"), new("k", "e"), new("ke", "n") };
         var bpeModel = new BpeVocabulary(bpeVocab, bpeMerges)
@@ -114,7 +114,7 @@ internal static class Lot3Embeddings
 
         // The same model as a consumer gets it: vocab.json + merges.txt.
         BpeVocabulary fromFiles = BpeFilesLoader.Load(
-            Utf8("""{"Ġ":0,"t":1,"o":2,"k":3,"e":4,"n":5,"to":6,"ken":7,"token":8,"Ġtoken":9}"""),
+            Utf8("""{"Ġ":0,"t":1,"o":2,"k":3,"e":4,"n":5,"to":6,"ken":7,"token":8,"Ġtoken":9,"ke":10}"""),
             Utf8("#version: 0.2\nt o\nk e\nke n\n"));
         Console.WriteLine($"  BPE from files   : {fromFiles.Count} tokens, {fromFiles.Merges.Count} merges");
 

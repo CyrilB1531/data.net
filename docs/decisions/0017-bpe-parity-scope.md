@@ -51,8 +51,11 @@ level.
 
 ### 3. `byte_fallback` is refused; Llama-2 and Mistral v0.1 have no path here
 
-Both loaders (`BpeFilesLoader`, `TokenizerJsonLoader.LoadBpe`) refuse a model
-declaring `byte_fallback`, naming it in the exception. Llama-2 and Mistral v0.1
+`TokenizerJsonLoader.LoadBpe` refuses a model declaring `byte_fallback`, naming
+it in the exception. `BpeFilesLoader` has nothing to check here: `vocab.json` +
+`merges.txt` carries no pipeline flags at all, `byte_fallback` included — the
+only route by which a `byte_fallback` model reaches `BpeVocabulary` is
+`tokenizer.json`, which `LoadBpe` reads and refuses. Llama-2 and Mistral v0.1
 are trained as **SentencePiece BPE with a `Metaspace` pre-tokenizer**, not
 HuggingFace byte-level BPE — a third pipeline, distinct from both the classic
 and byte-level lineages `BpeTokenizer` implements and from the `Unigram` +
