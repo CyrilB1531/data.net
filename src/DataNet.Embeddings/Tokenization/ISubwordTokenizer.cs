@@ -7,10 +7,11 @@ namespace DataNet.Embeddings.Tokenization;
 /// <remarks>
 /// <para>
 /// Matches the surface HuggingFace <c>tokenizers.Tokenizer</c> exposes as
-/// <c>encode(text)</c> and <c>token_to_id(token)</c>. Both
-/// <see cref="WordPieceTokenizer"/> and <see cref="SentencePieceTokenizer"/>
-/// implement it, so <see cref="BatchEncoder"/> — and therefore
-/// <c>OnnxTextEmbedder.EmbedBatch</c> — works with either without knowing which.
+/// <c>encode(text)</c> and <c>token_to_id(token)</c>.
+/// <see cref="WordPieceTokenizer"/>, <see cref="SentencePieceTokenizer"/> and
+/// <see cref="BpeTokenizer"/> all implement it, so <see cref="BatchEncoder"/> —
+/// and therefore <c>OnnxTextEmbedder.EmbedBatch</c> — works with any of them
+/// without knowing which.
 /// </para>
 /// <para>
 /// <see cref="TryGetId"/> is what makes the special-token template *data*: the

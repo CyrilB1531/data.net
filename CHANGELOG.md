@@ -143,6 +143,41 @@ and including `0.2.0` predate the split and covered all three at once — see
   `model.vocab`; they are now folded into the loaded WordPiece vocabulary instead
   of tokenizing to the unknown token. An entry that contradicts `model.vocab`, or
   that asks for `lstrip`/`rstrip`/`single_word` matching, is refused.
+- **`BpeTokenizer`, `BpeVocabulary`, `BpeFilesLoader` and `TokenizerJsonLoader.LoadBpe`** —
+  a third sub-word tokenizer, matching `tokenizers.models.BPE` in both the
+  classic (character-level) lineage and the byte-level one GPT-2 introduced.
+  `LoadBpe` carries the whole `added_tokens` table into `BpeVocabulary.AddedTokens`
+  — the entries `model.vocab` also declares included, which is where every special
+  token lives — because `BpeTokenizer` matches them as literal text ahead of the
+  merge loop rather than looking them up as ordinary entries.
+  Byte-level `Encode`/`Decode` round-trips any well-formed `string` exactly,
+  valid UTF-8 or not: every byte becomes one symbol before merging starts, so
+  every byte comes back. Proven end to end against GPT-2's real 50 257-entry
+  vocabulary and merge table; `BpePatterns.Llama3` and `BpePatterns.Qwen2` are
+  proven at the split level only, against a vocabulary the caller supplies.
+  `TokenizerJsonLoader.LoadBpe` **refuses `byte_fallback` by name** — Llama-2
+  and Mistral v0.1 are SentencePiece BPE with `Metaspace` and `byte_fallback`,
+  a third pipeline this package does not implement — rather than tokenizing
+  them to a plausible-looking wrong answer. It refuses `continuing_subword_prefix`,
+  `fuse_unk`, `dropout`, any `normalizer`, and a `ByteLevel` pre-tokenizer with
+  `use_regex` off by name too — each of those changes what HuggingFace produces
+  and none of them is applied here. `BpeFilesLoader` has no such check
+  to make: its `vocab.json`/`merges.txt` pair carries no pipeline flags at all.
+  [Decision 0017](docs/decisions/0017-bpe-parity-scope.md) records the scope,
+  including a known split divergence from HuggingFace on letters and digits
+  above the Basic Multilingual Plane.
+- **The merge loop threads symbols on a doubly-linked list and a hand-rolled
+  priority queue**, after a benchmark measured the rescan-and-shift loop it
+  replaced as quadratic on a token with no split point — cost roughly
+  quadrupling per doubling of length from 512 to 4096 characters (3.80×,
+  3.91×, 4.17×), reaching 443.203 ms at 4096. The rewrite costs 2.02×, 2.08×
+  and 2.00× per doubling instead — linear per symbol — and is up to 320×
+  faster on that shape (443.203 ms → 1.383 ms at 4096), while ordinary corpus
+  text is unaffected: 1.08× `SentencePieceTokenizer` before the rewrite, 1.10×
+  after, both inside that baseline's own run-to-run noise. The tokens produced
+  are unchanged — the full oracle corpus passes on both target frameworks with
+  no assertion touched. Measured on an Intel Core i7-4770S (Haswell), Ubuntu
+  24.04.4, .NET SDK 10.0.110, BenchmarkDotNet 0.14.0.
 
 - **A batch encoding pipeline: `BatchEncoder`, `EncodingOptions`,
   `SpecialTokenTemplate`, `EncodedBatch`, `ISubwordTokenizer`.** The guide used

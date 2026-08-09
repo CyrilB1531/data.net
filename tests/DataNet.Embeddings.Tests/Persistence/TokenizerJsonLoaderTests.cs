@@ -298,7 +298,7 @@ public sealed class TokenizerJsonLoaderTests
             normalizer: $"{{\"type\":\"Precompiled\",\"precompiled_charsmap\":\"{charsMap}\"}}"));
 
         Assert.NotNull(vocabulary.Normalizer);
-        Assert.Equal("ss 1 ", vocabulary.Normalizer!.Normalize("ß ① ¤"));
+        Assert.Equal("ss 1 ", vocabulary.Normalizer.Normalize("ß ① ¤"));
     }
 
     [Theory]
@@ -583,4 +583,476 @@ public sealed class TokenizerJsonLoaderTests
         "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[]," +
         $"\"normalizer\":{normalizer},\"pre_tokenizer\":{preTokenizer},\"post_processor\":null,\"decoder\":null," +
         $"\"model\":{{\"type\":\"Unigram\",\"unk_id\":{unkId},\"byte_fallback\":{byteFallback},\"vocab\":{vocab}}}}}";
+
+    // ---- BPE ----
+
+    private static MemoryStream Bytes(string json) => new MemoryStream(Encoding.UTF8.GetBytes(json));
+
+    private static ArtifactLoadOptions BpeBounds() => new()
+    {
+        MaxTotalBytes = 8L * 1024 * 1024,
+        MaxVocabularySize = 100_000,
+        MaxArrayLength = 100_000,
+        MaxTokenLength = 512,
+    };
+
+    [Fact]
+    public void LoadBpe_reproduces_every_frozen_pipeline()
+    {
+        using JsonDocument doc = OracleLoader.Load("bpe_tokenizer_json.json");
+
+        var failures = new List<string>();
+        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
+        {
+            string name = c.GetProperty("name").GetString()!;
+            string text = c.GetProperty("text").GetString()!;
+            int[] expected = c.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32()).ToArray();
+
+            BpeVocabulary vocab = TokenizerJsonLoader.LoadBpe(
+                Bytes(c.GetProperty("tokenizer_json").GetString()!), BpeBounds());
+            int[] actual = [.. new BpeTokenizer(vocab).Encode(text).Ids];
+
+            if (!expected.SequenceEqual(actual))
+            {
+                failures.Add($"[{name}] exp [{string.Join(", ", expected)}] got [{string.Join(", ", actual)}]");
+            }
+        }
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    /// <summary>
+    /// Replays GPT-2's own shape with the two settings the rest of the BPE corpus
+    /// structurally cannot see: <c>&lt;|endoftext|&gt;</c> registered as an added token
+    /// at the id <c>model.vocab</c> already gives it, and <c>add_prefix_space</c> on,
+    /// which is HuggingFace's <c>ByteLevel</c> default.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The two interact, which is why one corpus carries both. Fixing the added-token
+    /// table is what makes <c>Encode</c> cut the input into segments at all, and the
+    /// prefix space goes on each of those segments rather than once on the whole
+    /// input — <c>"hi&lt;|endoftext|&gt;bye"</c> is <c>['Ġhi', '&lt;|endoftext|&gt;',
+    /// 'Ġbye']</c>, three pieces each carrying their own space.
+    /// </para>
+    /// <para>
+    /// Every other BPE fixture on this branch either registers no added token at all
+    /// (<c>BPE.from_file</c> does not) or never names one in its text, and every one
+    /// of them was generated with <c>add_prefix_space=False</c>.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void LoadBpe_matches_tokenizers_with_added_tokens_and_a_prefix_space_both_live()
+    {
+        using JsonDocument doc = OracleLoader.Load("bpe_added_tokens.json");
+        var tokenizer = new BpeTokenizer(TokenizerJsonLoader.LoadBpe(
+            Bytes(doc.RootElement.GetProperty("metadata").GetProperty("tokenizer_json").GetString()!),
+            BpeBounds()));
+
+        var failures = new List<string>();
+        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
+        {
+            string text = c.GetProperty("text").GetString()!;
+            string[] expectedTokens = c.GetProperty("tokens").EnumerateArray().Select(e => e.GetString()!).ToArray();
+            int[] expectedIds = c.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32()).ToArray();
+
+            TokenizationResult actual = tokenizer.Encode(text);
+            if (!expectedTokens.SequenceEqual(actual.Tokens) || !expectedIds.SequenceEqual(actual.Ids))
+            {
+                failures.Add($"{JsonSerializer.Serialize(text)}\n  exp: [{string.Join(" | ", expectedTokens)}]\n  got: [{string.Join(" | ", actual.Tokens)}]");
+            }
+        }
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    /// <summary>
+    /// The decode direction of the same corpus, which is what proves
+    /// <c>skipSpecialTokens</c> does anything at all through the loader: before the
+    /// added-token table was read whole, <c>BpeTokenizer</c>'s set of added ids came
+    /// out empty and the flag skipped nothing.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_decodes_an_added_token_the_way_tokenizers_does()
+    {
+        using JsonDocument doc = OracleLoader.Load("bpe_added_tokens.json");
+        var tokenizer = new BpeTokenizer(TokenizerJsonLoader.LoadBpe(
+            Bytes(doc.RootElement.GetProperty("metadata").GetProperty("tokenizer_json").GetString()!),
+            BpeBounds()));
+
+        var failures = new List<string>();
+        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
+        {
+            int[] ids = c.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32()).ToArray();
+            string expected = c.GetProperty("decoded").GetString()!;
+            string expectedSkipping = c.GetProperty("decoded_skip_specials").GetString()!;
+
+            string actual = tokenizer.Decode(ids);
+            string actualSkipping = tokenizer.Decode(ids, skipSpecialTokens: true);
+            if (!string.Equals(expected, actual, StringComparison.Ordinal))
+            {
+                failures.Add($"decode {JsonSerializer.Serialize(expected)} got {JsonSerializer.Serialize(actual)}");
+            }
+            if (!string.Equals(expectedSkipping, actualSkipping, StringComparison.Ordinal))
+            {
+                failures.Add($"decode-skipping {JsonSerializer.Serialize(expectedSkipping)} got {JsonSerializer.Serialize(actualSkipping)}");
+            }
+        }
+
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    /// <summary>
+    /// A token listed in <c>added_tokens</c> <em>and</em> in <c>model.vocab</c> at the
+    /// same id — which is how HuggingFace writes every special token, GPT-2's
+    /// <c>&lt;|endoftext|&gt;</c> at id 50256 included — must still reach
+    /// <see cref="BpeVocabulary.AddedTokens"/>.
+    /// </summary>
+    /// <remarks>
+    /// That property is the only input to <c>BpeTokenizer</c>'s pre-merge scan, so
+    /// treating the table as "the tokens model.vocab lacks" and subtracting the
+    /// intersection removes exactly the tokens the scan exists for. The encode
+    /// assertion below is what tells the two apart: with the token matched literally
+    /// the whole marker is one id, and without it the marker's characters are not in
+    /// this vocabulary at all and are dropped one by one, leaving [2, 2].
+    /// </remarks>
+    [Fact]
+    public void LoadBpe_keeps_an_added_token_that_model_vocab_also_declares()
+    {
+        const string Json = """
+        {"added_tokens":[{"id":3,"content":"<|eot|>","single_word":false,"lstrip":false,"rstrip":false,"special":true}],
+         "pre_tokenizer":{"type":"Whitespace"},
+         "model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2,"<|eot|>":3},"merges":[["a","b"]]}}
+        """;
+
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+
+        Assert.Equal(3, vocabulary.AddedTokens["<|eot|>"]);
+        // model.vocab is left as the file declared it: the added table is a property
+        // of its own, not a fold into the vocabulary.
+        Assert.Equal(4, vocabulary.Vocab.Count);
+
+        var tokenizer = new BpeTokenizer(vocabulary);
+        TokenizationResult encoded = tokenizer.Encode("ab<|eot|>ab");
+
+        // tokenizers 0.23.1 over the same file: ['ab', '<|eot|>', 'ab'], [2, 3, 2].
+        Assert.Equal(["ab", "<|eot|>", "ab"], encoded.Tokens);
+        Assert.Equal([2, 3, 2], encoded.Ids);
+        Assert.Equal("abab", tokenizer.Decode(encoded.Ids, skipSpecialTokens: true));
+    }
+
+    /// <summary>
+    /// An added token that <c>model.vocab</c> also declares still goes through the
+    /// matching-flags check -- the same one a token added for the first time goes
+    /// through. Fixture shaped after <c>roberta-base</c>'s own <c>tokenizer.json</c>,
+    /// whose <c>&lt;mask&gt;</c> is id 50264 in both tables with <c>lstrip: true</c>.
+    /// </summary>
+    /// <remarks>
+    /// Before the fold-in check moved onto this branch, that file loaded with
+    /// <c>lstrip</c> silently ignored; this pins the refusal so it is not
+    /// silently undone by a later change.
+    /// </remarks>
+    [Fact]
+    public void LoadBpe_refuses_an_added_token_in_model_vocab_with_lstrip_on()
+    {
+        const string Json = """
+        {"added_tokens":[{"id":3,"content":"<mask>","single_word":false,"lstrip":true,"rstrip":false,"special":true}],
+         "model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2,"<mask>":3},"merges":[["a","b"]]}}
+        """;
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+
+        Assert.Contains("lstrip", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// byte_fallback is the Llama-2 / Mistral v0.1 pipeline (ADR 0017). Loading it
+    /// anyway would produce a tokenization that looks right and embeddings that
+    /// are not, so it is refused by name.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_refuses_byte_fallback()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[],"byte_fallback":true}}
+        """;
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+        Assert.Contains("byte_fallback", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LoadBpe_refuses_a_unigram_model()
+    {
+        const string Json = """{"model":{"type":"Unigram","vocab":[]}}""";
+        Assert.Throws<InvalidDataException>(() => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+    }
+
+    [Fact]
+    public void LoadBpe_refuses_a_pre_tokenizer_it_does_not_reproduce()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "pre_tokenizer":{"type":"BertPreTokenizer"}}
+        """;
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+        Assert.Contains("BertPreTokenizer", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LoadBpe_reads_both_merge_encodings()
+    {
+        const string Pairs = """
+        {"model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2},"merges":[["a","b"]]}}
+        """;
+        const string Lines = """
+        {"model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2},"merges":["a b"]}}
+        """;
+        Assert.Equal(
+            TokenizerJsonLoader.LoadBpe(Bytes(Pairs), BpeBounds()).Merges,
+            TokenizerJsonLoader.LoadBpe(Bytes(Lines), BpeBounds()).Merges);
+    }
+
+    /// <summary>
+    /// A string-form merge with more than one space is refused, not split on the
+    /// first one -- the same rule <see cref="BpeFilesLoaderTests"/> pins for the
+    /// classic-lineage merges file.
+    /// </summary>
+    /// <remarks>
+    /// Python splits the whole line and refuses it unless it yields exactly two
+    /// fields, checked against <c>tokenizers</c> 0.23.1: <c>Tokenizer.from_str</c>
+    /// on a BPE model whose merges are <c>["a b c"]</c> reports "Merges text file
+    /// invalid at line 1", where <c>["a b"]</c> loads. Splitting on the first space
+    /// instead would silently load <c>"a b c"</c> as <c>("a", "b c")</c>.
+    /// </remarks>
+    [Fact]
+    public void LoadBpe_refuses_a_string_merge_that_is_not_two_symbols()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0,"b":1,"c":2},"merges":["a b c"]}}
+        """;
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+        Assert.Contains("not two space-separated symbols", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LoadBpe_reads_a_well_formed_two_field_string_merge()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2},"merges":["a b"]}}
+        """;
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+
+        Assert.Single(vocabulary.Merges);
+        Assert.Equal(new MergePair("a", "b"), vocabulary.Merges[0]);
+    }
+
+    [Fact]
+    public void LoadBpe_reads_ignore_merges()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[],"ignore_merges":true}}
+        """;
+        Assert.True(TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()).IgnoreMerges);
+    }
+
+    /// <summary>
+    /// Stock GPT-2 declares a bare <c>ByteLevel</c> pre-tokenizer with no
+    /// <c>Split</c> node at all. <see cref="BpeVocabulary.ByteLevel"/> and
+    /// <see cref="BpeVocabulary.PreTokenizerPattern"/> are independent flags for
+    /// exactly this shape: an earlier attempt on this branch inferred one from the
+    /// other and broke GPT-2 as a result. This pins both values for it directly,
+    /// rather than relying only on the end-to-end oracle replay to catch a regression.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_a_bare_byte_level_pre_tokenizer_gets_the_gpt2_pattern()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "pre_tokenizer":{"type":"ByteLevel","add_prefix_space":false,"use_regex":true}}
+        """;
+
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+
+        Assert.True(vocabulary.ByteLevel);
+        Assert.Equal(BpePatterns.Gpt2, vocabulary.PreTokenizerPattern);
+    }
+
+    /// <summary>
+    /// The other side of <c>use_regex</c>. HuggingFace's <c>use_regex=false</c> hands
+    /// the whole normalized string to the model as a single piece; the null pattern
+    /// this used to be read as means <c>BpePreTokenizer</c>'s word-boundary fallback,
+    /// which drops the whitespace between the words outright and so cannot round trip.
+    /// Refused rather than silently tokenized as something else.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_refuses_a_byte_level_pre_tokenizer_with_use_regex_off()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "pre_tokenizer":{"type":"ByteLevel","use_regex":false}}
+        """;
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+
+        Assert.Contains("use_regex", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The same flag inside a <c>Sequence</c> of <c>Split</c> then <c>ByteLevel</c> is
+    /// the opposite case and stays accepted: that is exactly how Llama-3 and Qwen2
+    /// declare themselves, with the <c>Split</c> step carrying the pattern and
+    /// <c>ByteLevel</c> reduced to the byte mapping. Nothing is lost there, so nothing
+    /// is refused.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_accepts_use_regex_off_on_the_byte_level_step_of_a_split_sequence()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "pre_tokenizer":{"type":"Sequence","pretokenizers":[
+            {"type":"Split","pattern":{"Regex":"\\w+"},"behavior":"Isolated"},
+            {"type":"ByteLevel","add_prefix_space":false,"use_regex":false}]},
+         "decoder":{"type":"ByteLevel"}}
+        """;
+
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+
+        Assert.True(vocabulary.ByteLevel);
+        Assert.Equal("\\w+", vocabulary.PreTokenizerPattern);
+    }
+
+    /// <summary>
+    /// <c>continuing_subword_prefix</c> was read into <see cref="BpeVocabulary"/>,
+    /// compared and hashed, and never applied. HuggingFace prefixes every non-initial
+    /// symbol with it before merging, which is not a no-op: over <c>tokenizers</c>
+    /// 0.23.1 with the vocabulary below and the merge <c>("a", "##b")</c>, Python
+    /// encodes "ab" to <c>[4]</c> where an implementation ignoring the prefix gives
+    /// <c>[1, 2]</c>. Refused by name until it is implemented.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_refuses_a_continuing_subword_prefix()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":1,"b":2,"##b":3,"ab":4,"a##b":5},
+                  "merges":[["a","##b"]],"continuing_subword_prefix":"##"}}
+        """;
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+
+        Assert.Contains("continuing_subword_prefix", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <c>fuse_unk</c> collapses a run of uncovered characters into one unknown token;
+    /// <c>InitialSymbols</c> always emits one per code point. Verified over
+    /// <c>tokenizers</c> 0.23.1: on, "azza" gives <c>['a', '[UNK]', 'a']</c>; off, it
+    /// gives <c>['a', '[UNK]', '[UNK]', 'a']</c>.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_refuses_fuse_unk()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"[UNK]":0,"a":1},"merges":[],
+                  "unk_token":"[UNK]","fuse_unk":true}}
+        """;
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+
+        Assert.Contains("fuse_unk", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <c>dropout</c> drops merges at random, so a file declaring it does not have one
+    /// tokenization to match. Rare in shipped files and read by nothing here, which is
+    /// exactly why it went unrejected.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_refuses_dropout()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[],"dropout":0.1}}
+        """;
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+
+        Assert.Contains("dropout", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A null <c>dropout</c> is what every shipped file writes when it has none, and
+    /// is not the same thing as declaring one.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_accepts_a_null_dropout()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[],"dropout":null,
+                  "continuing_subword_prefix":null,"fuse_unk":false}}
+        """;
+
+        Assert.Single(TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()).Vocab);
+    }
+
+    /// <summary>
+    /// <c>ReadBpe</c> never looked at the normalizer at all, where the WordPiece and
+    /// Unigram readers both do, so a BPE file declaring <c>NFC</c> or <c>NFKC</c>
+    /// loaded and skipped the normalization silently. <see cref="BpeTokenizer"/>
+    /// normalizes nothing, so any normalizer is refused by name.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_refuses_a_normalizer()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "normalizer":{"type":"NFKC"}}
+        """;
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+
+        Assert.Contains("NFKC", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A byte-level model whose decoder is not <c>ByteLevel</c> would decode its own
+    /// output back into corrupt text -- the file will not round trip through
+    /// <c>tokenizers</c> itself either, so this is refused at load time.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_refuses_a_byte_level_model_with_a_mismatched_decoder()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "pre_tokenizer":{"type":"ByteLevel"},
+         "decoder":{"type":"BPEDecoder"}}
+        """;
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+
+        Assert.Contains("BPEDecoder", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>The reverse direction: a non-byte-level model with a <c>ByteLevel</c> decoder.</summary>
+    [Fact]
+    public void LoadBpe_refuses_a_classic_model_with_a_byte_level_decoder()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "decoder":{"type":"ByteLevel"}}
+        """;
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+
+        Assert.Contains("ByteLevel", error.Message, StringComparison.Ordinal);
+    }
 }

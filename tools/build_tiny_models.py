@@ -1,4 +1,6 @@
-"""Rebuild the synthetic ONNX encoders committed under ``tests/oracles/``.
+"""Rebuild the tiny fixtures committed under ``tests/oracles/``: two synthetic
+ONNX encoders, a trained character-level BPE, and a hand-constructed BPE
+holding one orphaned vocabulary entry.
 
 Model weights are never committed (``CONTRIBUTING.md``), so the ONNX path is
 exercised against models small enough to read: a couple of nodes and a table of
@@ -6,13 +8,14 @@ a few hundred bytes. This script is how they are produced, so "synthetic" is a
 verifiable claim rather than an assertion about two opaque binaries.
 
 It is deliberately **not** part of ``generate_oracles.py``: building an ONNX
-graph needs the ``onnx`` package, which the oracle lock file does not carry, and
-the models are frozen fixtures rather than reference values that must track a
-library version. Run it only when a fixture has to change:
+graph needs the ``onnx`` package, which the oracle lock file does not carry,
+and none of the three outputs here are reference values that must track a
+library version the way ``generate_oracles.py``'s are — all three are frozen
+fixtures, rebuilt only when one of them has to change:
 
-    python -m venv .venv-onnx
-    .venv-onnx/bin/pip install onnx==1.16.0
-    .venv-onnx/bin/python tools/build_tiny_models.py
+    python -m venv .venv-tiny-models
+    .venv-tiny-models/bin/pip install onnx==1.16.0 tokenizers==0.23.1
+    .venv-tiny-models/bin/python tools/build_tiny_models.py
 
 ``tiny_encoder.onnx``
     ``last_hidden_state[b, t, :] = input_ids[b, t] * W`` — every token maps to a
@@ -27,6 +30,19 @@ library version. Run it only when a fixture has to change:
     ``E[0]`` enters the mean and moves the vector. It also declares
     ``token_type_ids``, which ``tiny_encoder.onnx`` does not, so the branch that
     feeds it is covered.
+
+``tiny_bpe.json``
+    A trained character-level BPE — see ``build_tiny_bpe()`` for what it proves
+    and, importantly, for why the committed file rather than this script is the
+    reference: its trainer is not byte-reproducible across runs, so rerunning
+    this recipe is not the same operation as regenerating an oracle.
+
+``orphan_bpe_model.json``
+    A hand-constructed BPE holding one *orphaned* vocabulary entry — see
+    ``build_orphan_bpe()`` for what it proves. Unlike ``tiny_bpe.json``, it is
+    **constructed, not trained**: every id and every merge is stated directly,
+    so it is byte-reproducible across runs and carries none of
+    ``tiny_bpe.json``'s caveat above.
 """
 
 from __future__ import annotations
@@ -104,6 +120,97 @@ def build_tiny_embedder() -> onnx.ModelProto:
                              opset_imports=[helper.make_opsetid("", OPSET)])
 
 
+# A character-level BPE, the subword-nmt lineage: no byte alphabet, an explicit
+# end-of-word marker, and a vocabulary small enough to read in a diff. It exists
+# to exercise the merge loop on its own, with none of the byte-level mapping the
+# GPT-2 fixture brings.
+BPE_CORPUS = [
+    "the quick brown fox jumps over the lazy dog",
+    "tokenization is embedding embeddings",
+    "the cat sat on the mat and the cat sat again",
+    "lovely love loved lover loving",
+    "bigger biggest big",
+    "natural language processing processes language naturally",
+    "machine learning and data science",
+    "programming programs a program",
+]
+
+
+def build_tiny_bpe() -> str:
+    """A trained character-level BPE, serialized as a tokenizer.json.
+
+    ``BpeTrainer`` is not byte-reproducible across process runs: tokens and
+    merges that tie in frequency break ties differently each time, because the
+    Rust ``HashMap`` behind the frequency counts seeds its hash randomly per
+    process. Vocabulary size and merge count come out the same every run; the
+    ids assigned to tied tokens and their order among tied merges do not. The
+    committed ``tests/oracles/tiny_bpe.json`` is therefore authoritative, not
+    this function — running it again produces a valid but different model, so
+    a diff there is expected and must never be committed without regenerating
+    ``bpe.json`` in the same commit.
+    """
+    from tokenizers import Tokenizer  # noqa: PLC0415
+    from tokenizers.models import BPE  # noqa: PLC0415
+    from tokenizers.pre_tokenizers import Whitespace  # noqa: PLC0415
+    from tokenizers.trainers import BpeTrainer  # noqa: PLC0415
+
+    tokenizer = Tokenizer(BPE(unk_token="[UNK]", end_of_word_suffix="</w>"))
+    tokenizer.pre_tokenizer = Whitespace()
+    tokenizer.train_from_iterator(
+        BPE_CORPUS,
+        BpeTrainer(
+            vocab_size=200,
+            min_frequency=1,
+            special_tokens=["[UNK]"],
+            end_of_word_suffix="</w>",
+            show_progress=False,
+        ),
+    )
+    return tokenizer.to_str(pretty=True)
+
+
+# A hand-constructed BPE, the shape ``ignore_merges`` exists for: a vocabulary
+# entry unreachable by replaying the merge table. Three base characters (a, b,
+# c) give two ordinary two-symbol entries via registered merges -- "ab" from
+# (a, b), "bc" from (b, c) -- the same rule ``build_tiny_bpe()``'s trainer would
+# have applied. A third, longer entry, "abc", is then added straight to the
+# vocabulary, skipping the merge that would make it reachable: neither ("ab",
+# "c") nor ("a", "bc") is registered, so encoding "abc" greedily lands on
+# ["ab", "c"], not on the single token that is sitting right there in the
+# vocabulary. That is the orphan, and it is the only reason this fixture
+# exists. Two more base characters, x and y, round it out with pieces that
+# never touch the orphan, for a corpus that can show the flag changing nothing
+# where there is nothing to rescue.
+ORPHAN_VOCAB = {"a": 0, "b": 1, "c": 2, "x": 3, "y": 4, "ab": 5, "bc": 6, "abc": 7}
+ORPHAN_MERGES = [("a", "b"), ("b", "c")]  # neither ("ab","c") nor ("a","bc") is registered
+
+
+def build_orphan_bpe() -> str:
+    """A hand-constructed BPE with one orphaned vocabulary entry, serialized as a tokenizer.json.
+
+    Unlike ``build_tiny_bpe()``, this model is **constructed, not trained**:
+    ``ORPHAN_VOCAB`` and ``ORPHAN_MERGES`` are stated directly rather than
+    produced by ``BpeTrainer``, so there is no tie-breaking hash to reseed and
+    the output is byte-identical on every run. The committed file and this
+    function can never drift from each other the way ``tiny_bpe.json`` and
+    ``build_tiny_bpe()`` can.
+
+    A pre-tokenizer is still needed to turn a multi-word input into pieces a
+    merge can never cross, so this reuses ``Whitespace()`` -- the same type
+    ``build_tiny_bpe()`` uses, and the split ``BpeVocabulary.PreTokenizerPattern
+    = null`` reproduces on the C# side. Nothing else about the model -- no
+    end-of-word suffix, no byte-level mapping, no unknown token -- is needed to
+    make the orphan reachable or unreachable, so nothing else is declared.
+    """
+    from tokenizers import Tokenizer  # noqa: PLC0415
+    from tokenizers.models import BPE  # noqa: PLC0415
+    from tokenizers.pre_tokenizers import Whitespace  # noqa: PLC0415
+
+    tokenizer = Tokenizer(BPE(ORPHAN_VOCAB, ORPHAN_MERGES))
+    tokenizer.pre_tokenizer = Whitespace()
+    return tokenizer.to_str(pretty=True)
+
+
 def main() -> None:
     for filename, build in (("tiny_encoder.onnx", build_tiny_encoder),
                             ("tiny_embedder.onnx", build_tiny_embedder)):
@@ -112,6 +219,14 @@ def main() -> None:
         path = ORACLE_DIR / filename
         path.write_bytes(model.SerializeToString())
         print(f"{filename}: {path.stat().st_size} bytes -> {path}")
+
+    path = ORACLE_DIR / "tiny_bpe.json"
+    path.write_text(build_tiny_bpe() + "\n", encoding="utf-8")
+    print(f"tiny_bpe.json: {path.stat().st_size} bytes -> {path}")
+
+    path = ORACLE_DIR / "orphan_bpe_model.json"
+    path.write_text(build_orphan_bpe() + "\n", encoding="utf-8")
+    print(f"orphan_bpe_model.json: {path.stat().st_size} bytes -> {path}")
 
 
 if __name__ == "__main__":

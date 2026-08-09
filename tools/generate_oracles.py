@@ -63,6 +63,35 @@ TINY_SP_MODEL = "tiny_sp.model"
 EMBEDDING_SENTENCE = "tokenization is embedding embeddings"
 XLMR_FAIRSEQ_MODEL = "xlmr_fairseq.model"
 
+# The inputs byte-level pre-tokenization diverges from intuition on. Whitespace
+# runs first, because " a" and "a " are different tokens and a tokenizer that
+# trims either is wrong; then the scripts whose UTF-8 spans several bytes, which
+# is what turns one character into several byte-level symbols; then text naming
+# the special-token strings literally, which a tokenizer that special-cases them
+# by string rather than by table would get wrong.
+BPE_TEXTS = [
+    "",
+    " ",
+    "   ",
+    "Hello, world!",
+    " leading space",
+    "trailing space ",
+    "double  space",
+    "a\tb\nc\r\nd",
+    "Il était une fois, à Paris — déjà vu.",
+    "naïve café résumé",
+    "東京都から来ました",
+    "中文分词测试",
+    "emoji 👋🏽 family 👨‍👩‍👧‍👦 flag 🇫🇷",
+    "<|endoftext|> is written here literally",
+    "[UNK] [CLS] [SEP] as text",
+    "123 4567 89.01 -42",
+    "https://example.com/path?q=1&r=2",
+    "snake_case camelCase kebab-case SCREAMING_CASE",
+    "the quick brown fox jumps over the lazy dog",
+    "tokenization is embedding embeddings",
+]
+
 # Code-point ranges per category. Surrogates (0xD800..0xDFFF) are filtered out.
 RANGES = {
     "ascii": [(0x20, 0x7E)],
@@ -2045,6 +2074,324 @@ def generate_roc_auc() -> dict:
     }
 
 
+# --- BPE and byte-level BPE tokenizers (issue #59) ---------------------------
+
+GPT2_VOCAB = "gpt2_vocab.json"
+GPT2_MERGES = "gpt2_merges.txt"
+
+
+def _gpt2_tokenizer(pattern: str | None = None, add_prefix_space: bool = False):
+    """GPT-2's byte-level BPE, optionally with another model's split pattern.
+
+    `pattern=None` is stock GPT-2: `ByteLevel` does its own splitting. A pattern
+    reproduces the Llama-3 / Qwen2 shape, where a `Split` runs first and
+    `ByteLevel` is reduced to the byte mapping.
+
+    `add_prefix_space` is HuggingFace's own `ByteLevel` default (True), left off
+    here because every corpus that predates issue #59's final review was
+    generated without it; `generate_bpe_added_tokens` is the one that turns it on.
+    """
+    from tokenizers import Regex, Tokenizer  # noqa: PLC0415
+    from tokenizers.decoders import ByteLevel as ByteLevelDecoder  # noqa: PLC0415
+    from tokenizers.models import BPE  # noqa: PLC0415
+    from tokenizers.pre_tokenizers import ByteLevel, Sequence, Split  # noqa: PLC0415
+
+    tokenizer = Tokenizer(BPE.from_file(
+        str(ORACLE_DIR / GPT2_VOCAB), str(ORACLE_DIR / GPT2_MERGES)))
+    if pattern is None:
+        tokenizer.pre_tokenizer = ByteLevel(add_prefix_space=add_prefix_space)
+    else:
+        tokenizer.pre_tokenizer = Sequence([
+            Split(Regex(pattern), behavior="isolated"),
+            ByteLevel(add_prefix_space=add_prefix_space, use_regex=False),
+        ])
+    tokenizer.decoder = ByteLevelDecoder()
+    return tokenizer
+
+
+def generate_bytelevel_bpe() -> dict:
+    from tokenizers.pre_tokenizers import ByteLevel  # noqa: PLC0415
+
+    tokenizer = _gpt2_tokenizer()
+    # The published bytes_to_unicode construction: the three printable ranges map
+    # to themselves, and the 68 bytes left over take 256, 257, ... in byte order.
+    printable = (list(range(0x21, 0x7F)) + list(range(0xA1, 0xAD)) + list(range(0xAE, 0x100)))
+    table = [None] * 256
+    for byte in printable:
+        table[byte] = chr(byte)
+    spare = 0
+    for byte in range(256):
+        if table[byte] is None:
+            table[byte] = chr(256 + spare)
+            spare += 1
+    # ByteLevel.alphabet() returns a list in this tokenizers version, not a set,
+    # so both sides are coerced to sets: a bare `set(table) == ByteLevel.alphabet()`
+    # compares a set to a list and is False regardless of contents, which is not
+    # the check this line is for.
+    assert set(table) == set(ByteLevel.alphabet()), "derived alphabet disagrees with tokenizers"
+
+    # A second tokenizer with ignore_merges on, to record what changes when a
+    # pre-tokenized piece that is itself a vocabulary entry is emitted whole
+    # instead of being merged up to. tokenizers reads the flag from the model,
+    # so it is set on the deserialized JSON rather than on the Python object.
+    import json as _json  # noqa: PLC0415
+    from tokenizers import Tokenizer as _Tokenizer  # noqa: PLC0415
+
+    spec = _json.loads(tokenizer.to_str())
+    spec["model"]["ignore_merges"] = True
+    ignoring = _Tokenizer.from_str(_json.dumps(spec))
+
+    cases = []
+    for i, text in enumerate(BPE_TEXTS):
+        enc = tokenizer.encode(text)
+        enc_ignoring = ignoring.encode(text)
+        cases.append({
+            "id": i,
+            "text": text,
+            "tokens": enc.tokens,
+            "ids": enc.ids,
+            "decoded": tokenizer.decode(enc.ids, skip_special_tokens=False),
+            "decoded_skip_specials": tokenizer.decode(enc.ids, skip_special_tokens=True),
+            "tokens_ignore_merges": enc_ignoring.tokens,
+            "ids_ignore_merges": enc_ignoring.ids,
+        })
+    return {
+        "metadata": {
+            "algorithm": "ByteLevelBPE",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "gpt2 (vendored by tools/fetch_gpt2_bpe.py)",
+            "alphabet": table,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+def generate_bpe() -> dict:
+    """Classic character-level BPE over the small self-trained model."""
+    from tokenizers import Tokenizer  # noqa: PLC0415
+
+    tokenizer = Tokenizer.from_file(str(ORACLE_DIR / "tiny_bpe.json"))
+    cases = []
+    for i, text in enumerate(BPE_TEXTS):
+        enc = tokenizer.encode(text)
+        cases.append({"id": i, "text": text, "tokens": enc.tokens, "ids": enc.ids})
+    return {
+        "metadata": {
+            "algorithm": "BPE",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "tiny_bpe.json (self-trained, end_of_word_suffix </w>)",
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+# The vendored GPT-2 model cannot exercise ignore_merges: checked over all
+# 50 257 of its vocabulary entries, none diverges, because a natively-trained
+# merge table always retraces to its own entries (see the ignore_merges task's
+# amended plan for the argument in full). The flag only rescues *orphaned*
+# entries -- present in a model's vocabulary but unreachable by replaying its
+# merges -- which is what a tiktoken-to-tokenizer.json conversion produces and
+# what training never does. orphan_bpe_model.json (tools/build_tiny_models.py)
+# holds exactly one such entry, on purpose, so this corpus is the only one in
+# the suite that can prove the flag does anything.
+ORPHAN_BPE_TEXTS = [
+    "abc",       # the orphan itself: ['ab', 'c'] normally, ['abc'] with the flag
+    "x abc y",   # the orphan as one piece among ordinary ones
+    "x y",       # no piece here is the orphan
+    "ab c",      # "ab" is a legitimately reachable entry, not the orphan
+    "",
+]
+
+
+def generate_orphan_bpe() -> dict:
+    """Classic BPE over a model with one vocabulary entry the merge table cannot reach."""
+    import json as _json  # noqa: PLC0415
+    from tokenizers import Tokenizer  # noqa: PLC0415
+
+    tokenizer = Tokenizer.from_file(str(ORACLE_DIR / "orphan_bpe_model.json"))
+    spec = _json.loads(tokenizer.to_str())
+    spec["model"]["ignore_merges"] = True
+    ignoring = Tokenizer.from_str(_json.dumps(spec))
+
+    cases = []
+    for i, text in enumerate(ORPHAN_BPE_TEXTS):
+        enc = tokenizer.encode(text)
+        enc_ignoring = ignoring.encode(text)
+        cases.append({
+            "id": i,
+            "text": text,
+            "tokens": enc.tokens,
+            "ids": enc.ids,
+            "tokens_ignore_merges": enc_ignoring.tokens,
+            "ids_ignore_merges": enc_ignoring.ids,
+        })
+    return {
+        "metadata": {
+            "algorithm": "BPE",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "orphan_bpe_model.json (hand-constructed, one orphaned entry)",
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+# Transcribe each of these from the model's own tokenizer.json rather than from
+# memory: they differ from GPT-2 in newline handling and in the case-insensitive
+# contraction group, and from each other only in a quantifier on \p{N}.
+#
+# Provenance:
+#   gpt2   - tests/oracles/gpt2_vocab.json / gpt2_merges.txt (vendored by
+#            tools/fetch_gpt2_bpe.py); ByteLevel does its own splitting, so
+#            this is the pattern GPT-2's own pre-tokenizer is equivalent to.
+#   qwen2  - https://huggingface.co/Qwen/Qwen2-0.5B/resolve/main/tokenizer.json
+#            (Apache-2.0, ungated), `pre_tokenizer.pretokenizers[0].pattern.Regex`.
+#   llama3 - meta-llama/Meta-Llama-3-8B is gated and returns HTTP 401 without
+#            an authorized token, so this was read from two independent
+#            mirrors instead and cross-checked byte-for-byte:
+#              https://huggingface.co/NousResearch/Meta-Llama-3-8B/resolve/main/tokenizer.json
+#              https://huggingface.co/unsloth/llama-3-8b/resolve/main/tokenizer.json
+#            Both carry the same `pre_tokenizer.pretokenizers[0].pattern.Regex`,
+#            the same `model.ignore_merges = true`, and the same 128 000-entry
+#            vocabulary, which is what stands in for reading the gated
+#            original. It differs from qwen2 in exactly one place: `\p{N}{1,3}`
+#            where qwen2 has `\p{N}`.
+BPE_PATTERNS = {
+    "gpt2": r"'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+",
+    "llama3": r"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+",
+    "qwen2": r"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+",
+}
+
+
+def generate_bpe_pretokenize() -> dict:
+    """Prove the split, not the vocabulary.
+
+    The Llama-3 and Qwen2 rows of the parity table are claimed at the split
+    level only (ADR 0017). Running their patterns over GPT-2's vocabulary is
+    what proves the C# regex behaves as HuggingFace's does, without vendoring a
+    second and third 150 000-entry vocabulary to prove a merge loop the GPT-2
+    corpus already proves.
+    """
+    cases = []
+    case_id = 0
+    for name, pattern in BPE_PATTERNS.items():
+        tokenizer = _gpt2_tokenizer(None if name == "gpt2" else pattern)
+        for text in BPE_TEXTS:
+            pieces = [piece for piece, _ in tokenizer.pre_tokenizer.pre_tokenize_str(text)]
+            cases.append({"id": case_id, "pattern": name, "text": text, "pieces": pieces})
+            case_id += 1
+    return {
+        "metadata": {
+            "algorithm": "BPE pre-tokenization",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "patterns": BPE_PATTERNS,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+def generate_bpe_tokenizer_json() -> dict:
+    """The tokenizer.json shapes TokenizerJsonLoader.LoadBpe must read.
+
+    Each case carries the file itself, so the C# side parses the exact bytes
+    HuggingFace was handed rather than a second fixture that could drift.
+    """
+    from tokenizers import Tokenizer  # noqa: PLC0415
+
+    text = "Hello, world! déjà 東京 👋"
+    cases = []
+    for i, (name, tokenizer) in enumerate([
+        ("bytelevel", _gpt2_tokenizer()),
+        ("split_sequence", _gpt2_tokenizer(BPE_PATTERNS["qwen2"])),
+        ("classic", Tokenizer.from_file(str(ORACLE_DIR / "tiny_bpe.json"))),
+    ]):
+        enc = tokenizer.encode(text)
+        cases.append({
+            "id": i,
+            "name": name,
+            "tokenizer_json": tokenizer.to_str(),
+            "text": text,
+            "tokens": enc.tokens,
+            "ids": enc.ids,
+        })
+    return {
+        "metadata": {
+            "algorithm": "BPE tokenizer.json",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+# The two settings the rest of the BPE corpus structurally cannot see, exercised
+# together because they interact.
+#
+#   1. `<|endoftext|>` is id 50256 in GPT-2's *own* model.vocab and is also listed
+#      in added_tokens. Every other BPE fixture here either registers no added
+#      token at all (`BPE.from_file` does not) or never names one in its text, so
+#      a loader that reads added_tokens as "the entries model.vocab lacks" passes
+#      the whole corpus while dropping every special token there is.
+#   2. `add_prefix_space` is HuggingFace's ByteLevel default and nothing on this
+#      branch had ever generated a corpus with it on. It is applied per
+#      added-token-delimited segment, not once to the whole input, and only when
+#      the segment does not already start with a space -- which is only
+#      observable when a text starts with a space, or when an added token sits
+#      between two segments, hence the extra texts below.
+BPE_ADDED_TOKEN_TEXTS = BPE_TEXTS + [
+    "hi<|endoftext|>bye",             # a segment after an added token, no space of its own
+    "<|endoftext|>",                  # nothing but the token
+    "<|endoftext|>tail",              # an empty segment before it
+    " <|endoftext|> ",                # segments that already start with a space
+    "x<|endoftext|> y<|endoftext|>z",  # several, mixed
+]
+
+
+def generate_bpe_added_tokens() -> dict:
+    """GPT-2 with its own <|endoftext|> registered, and add_prefix_space on.
+
+    The corpus carries the whole `tokenizer.json` once, in the metadata: the C#
+    side parses the exact bytes HuggingFace was handed, as
+    `generate_bpe_tokenizer_json` does, rather than a second fixture that could
+    drift from it.
+    """
+    from tokenizers import AddedToken  # noqa: PLC0415
+
+    tokenizer = _gpt2_tokenizer(add_prefix_space=True)
+    tokenizer.add_special_tokens([AddedToken("<|endoftext|>", special=True)])
+
+    cases = []
+    for i, text in enumerate(BPE_ADDED_TOKEN_TEXTS):
+        enc = tokenizer.encode(text)
+        cases.append({
+            "id": i,
+            "text": text,
+            "tokens": enc.tokens,
+            "ids": enc.ids,
+            "decoded": tokenizer.decode(enc.ids, skip_special_tokens=False),
+            "decoded_skip_specials": tokenizer.decode(enc.ids, skip_special_tokens=True),
+        })
+    return {
+        "metadata": {
+            "algorithm": "ByteLevelBPE with added tokens and add_prefix_space",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "gpt2 (vendored by tools/fetch_gpt2_bpe.py), <|endoftext|> added as special",
+            "tokenizer_json": tokenizer.to_str(),
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -2084,6 +2431,12 @@ def main() -> None:
         "process.json": generate_process,
         "classification_metrics.json": generate_classification_metrics,
         "roc_auc.json": generate_roc_auc,
+        "bpe.json": generate_bpe,
+        "orphan_bpe.json": generate_orphan_bpe,
+        "bytelevel_bpe.json": generate_bytelevel_bpe,
+        "bpe_pretokenize.json": generate_bpe_pretokenize,
+        "bpe_tokenizer_json.json": generate_bpe_tokenizer_json,
+        "bpe_added_tokens.json": generate_bpe_added_tokens,
     }
     for filename, gen in generators.items():
         payload = gen()

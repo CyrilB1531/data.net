@@ -76,6 +76,35 @@ def write_unigram_json(tokens: list[str], rng: SeededRandom) -> None:
     tokenizer.save(str(OUT / "tokenizer_30k_unigram.json"))
 
 
+def write_bpe_json(documents: list[str]) -> None:
+    """A byte-level BPE, trained on the same documents the other three see.
+
+    Task 13 benchmarks this against the shipped unigram tokenizer, so the
+    comparison is only meaningful if both saw the same text at the same
+    vocabulary size -- hence the shared ``documents`` and ``VOCAB_SIZE`` rather
+    than a fresh corpus or a different target.
+    """
+    from tokenizers import Tokenizer  # noqa: PLC0415
+    from tokenizers.decoders import ByteLevel as ByteLevelDecoder  # noqa: PLC0415
+    from tokenizers.models import BPE  # noqa: PLC0415
+    from tokenizers.pre_tokenizers import ByteLevel  # noqa: PLC0415
+    from tokenizers.trainers import BpeTrainer  # noqa: PLC0415
+
+    tokenizer = Tokenizer(BPE(unk_token=None))
+    tokenizer.pre_tokenizer = ByteLevel(add_prefix_space=False)
+    tokenizer.decoder = ByteLevelDecoder()
+    tokenizer.train_from_iterator(
+        documents,
+        BpeTrainer(
+            vocab_size=VOCAB_SIZE,
+            min_frequency=1,
+            initial_alphabet=ByteLevel.alphabet(),
+            show_progress=False,
+        ),
+    )
+    tokenizer.save(str(OUT / "tokenizer_30k_bpe.json"))
+
+
 def write_spiece_model(documents: list[str]) -> None:
     """Train a real model: SentencePieceProcessor is the Python side of this
     comparison and validates more than a hand-assembled proto is known to satisfy.
@@ -126,6 +155,7 @@ def main() -> None:
     write_vocab_txt(tokens)
     write_wordpiece_json(tokens)
     write_unigram_json(tokens, rng)
+    write_bpe_json(documents)
     write_spiece_model(documents)
     (OUT / "documents.json").write_text(json.dumps(documents), encoding="utf-8")
 

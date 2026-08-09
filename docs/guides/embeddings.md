@@ -10,8 +10,9 @@ dotnet add package DataNet.Embeddings
 
 ## Sub-word tokenization
 
-Two tokenizers, depending on the model — and in both cases the vocabulary is
-**read from the file the model ships with**, never assembled by hand.
+Three tokenizers, depending on the model family — and in every case the
+vocabulary is **read from the file the model ships with**, never assembled by
+hand.
 
 **WordPiece** (BERT), from a `vocab.txt` or a `tokenizer.json`:
 
@@ -35,31 +36,92 @@ var sp = new SentencePieceTokenizer(vocab);
 TokenizationResult t = sp.Encode("the quick brown fox");
 ```
 
-The loader is what makes the second example correct rather than merely short:
-`spiece.model` records the *type* of every piece, so the tokenizer knows which
-entries are control markers instead of inferring it from their ids. See
-[loading vocabularies](#loading-vocabularies) for `tokenizer.json`, for the
-limits applied to untrusted files, and for which models are refused outright.
+**BPE** (GPT-2 and its byte-level descendants) — lowest-ranked-merge-first over a
+`vocab.json` + `merges.txt` pair or a `tokenizer.json`. The byte-level variant is
+lossless over any well-formed `string`, valid UTF-8 or not, because every byte of
+the input becomes one symbol before merging starts:
+
+```csharp
+BpeVocabulary vocab = BpeFilesLoader.Load("gpt2/vocab.json", "gpt2/merges.txt");
+var bpe = new BpeTokenizer(vocab);
+TokenizationResult t = bpe.Encode("Hello, world! 🎉");
+string back = bpe.Decode(t.Ids);   // == "Hello, world! 🎉", byte for byte
+```
+
+See [Which tokenizer for which model family](#which-tokenizer-for-which-model-family)
+for the family-to-class mapping, including the one family this package refuses
+outright.
+
+The loaders are what make the second and third examples correct rather than
+merely short: `spiece.model` records the *type* of every piece, so the
+tokenizer knows which entries are control markers instead of inferring it from
+their ids, and the BPE loaders read `ignore_merges`, the split pattern and the
+byte-level flag straight from the model rather than asking the caller to get
+them right. See [loading vocabularies](#loading-vocabularies) for
+`tokenizer.json`, for the limits applied to untrusted files, and for which
+models are refused outright.
 
 > The tokenization must match the model's **exactly**, otherwise the embeddings
-> are wrong (§5 of the brief). Both tokenizers are validated token-for-token
+> are wrong (§5 of the brief). All three tokenizers are validated token-for-token
 > against HuggingFace `tokenizers` / the `sentencepiece` library, and so are the
-> three loaders.
+> four loaders.
+
+## Which tokenizer for which model family
+
+| Family | Class | How to load |
+| --- | --- | --- |
+| BERT, DistilBERT, and the WordPiece family | `WordPieceTokenizer` | `VocabTxtLoader` or `TokenizerJsonLoader.LoadWordPiece` |
+| T5, ALBERT, camemBERT, XLM-R | `SentencePieceTokenizer` | `SentencePieceModelLoader` or `TokenizerJsonLoader.LoadUnigram` |
+| GPT-2 and its byte-level descendants | `BpeTokenizer` | `BpeFilesLoader` or `TokenizerJsonLoader.LoadBpe` |
+| Llama-3, Qwen2 | `BpeTokenizer` with `BpePatterns.Llama3` / `BpePatterns.Qwen2` | `TokenizerJsonLoader.LoadBpe` |
+| **Llama-2, Mistral v0.1** | **none** | — |
+
+Llama-2 and Mistral v0.1 are trained as **SentencePiece BPE with a `Metaspace`
+pre-tokenizer and `byte_fallback`** — a third pipeline, distinct from both the
+classic and byte-level lineages `BpeTokenizer` implements and from the
+`Unigram` + `Metaspace` pipeline `SentencePieceTokenizer` implements.
+Whichever loader a caller reaches for first, the file **fails to load** rather
+than producing a plausible-looking wrong answer. A real Llama-2 or Mistral v0.1
+`tokenizer.json` declares `model.type == "BPE"`, so `LoadBpe` is the one that
+reaches `byte_fallback` and **refuses it by name**; `LoadUnigram` never gets that
+far, and refuses the file for declaring a `BPE` model where it reads `Unigram`.
+Both calls fail; only one of them fails for the reason this section is about.
+See [decision 0017](../decisions/0017-bpe-parity-scope.md) for the parity scope
+this table states — end-to-end for GPT-2 and the classic lineage, split-pattern
+only for Llama-3 and Qwen2 — and for a known split divergence from HuggingFace
+above the Basic Multilingual Plane.
+
+```csharp
+try
+{
+    BpeVocabulary llama2 = TokenizerJsonLoader.LoadBpe("llama-2-7b/tokenizer.json");
+}
+catch (InvalidDataException e)
+{
+    // "This tokenizer.json cannot be loaded because its model declares
+    // byte_fallback: Python resolves an uncovered character into <0x..>
+    // byte pieces where this tokenizer emits the unknown piece. Loading
+    // it anyway would produce embeddings that do not match the model."
+    Console.WriteLine(e.Message);
+}
+```
 
 ## Loading vocabularies
 
-Three formats, three loaders. Each has `Load(Stream)`, `Load(string path)` and an
+Four formats, four loaders. Each has `Load(Stream)`, `Load(string path)` and an
 async counterpart; a stream you pass in is never disposed for you.
 
 | File | Loader | Produces |
 | --- | --- | --- |
 | `vocab.txt` (BERT) | `VocabTxtLoader.Load` | `WordPieceVocabulary` |
-| `tokenizer.json` (HuggingFace) | `TokenizerJsonLoader.LoadWordPiece` / `.LoadUnigram` | `WordPieceVocabulary` / `SentencePieceVocabulary` |
+| `tokenizer.json` (HuggingFace) | `TokenizerJsonLoader.LoadWordPiece` / `.LoadUnigram` / `.LoadBpe` | `WordPieceVocabulary` / `SentencePieceVocabulary` / `BpeVocabulary` |
 | `spiece.model` (SentencePiece) | `SentencePieceModelLoader.Load` | `SentencePieceVocabulary` |
+| `vocab.json` + `merges.txt` (GPT-2) | `BpeFilesLoader.Load` | `BpeVocabulary` |
 
 ```csharp
 WordPieceVocabulary wpVocab = TokenizerJsonLoader.LoadWordPiece("tokenizer.json");
 SentencePieceVocabulary uniVocab = TokenizerJsonLoader.LoadUnigram("tokenizer.json");
+BpeVocabulary bpeVocab = TokenizerJsonLoader.LoadBpe("tokenizer.json");
 ```
 
 `vocab.txt` carries only the tokens, so the settings that are not in the file —
@@ -101,6 +163,18 @@ different one is **rejected**, with a message naming what was found:
 - a pre-tokenizer other than `Whitespace` (WordPiece) or `Metaspace` (Unigram),
   and a `Metaspace` whose `replacement`, `prepend_scheme` (or the older
   `add_prefix_space`) or `split` is away from the default;
+- for BPE, a pre-tokenizer other than a bare `ByteLevel` (stock GPT-2),
+  `Whitespace` (the classic, non-byte-level lineage), or a `Sequence` of exactly
+  `Split` then `ByteLevel` (Llama-3, Qwen2) — and, on the byte-level path, a
+  `decoder` whose byte-level-ness disagrees with the model's own, which would
+  not decode what it encodes;
+- for BPE, any `normalizer` at all (`BpeTokenizer` normalizes nothing), a
+  `continuing_subword_prefix`, `fuse_unk`, `dropout`, and a bare `ByteLevel`
+  with `use_regex` off — each of those changes what Python produces and none of
+  them is applied here. `use_regex` off on the `ByteLevel` step of a
+  `Split`-then-`ByteLevel` `Sequence` is a different thing, and is accepted: the
+  `Split` step carries the pattern there, which is how Llama-3 and Qwen2 are
+  written;
 - a `post_processor` — the wrapping lives in `EncodingOptions.Template`
   ([Embed a batch](#embed-a-batch)), and a `post_processor` in the file would be
   a second source of truth for it, free to disagree with the first;
@@ -116,6 +190,13 @@ Entries in `added_tokens` that sit outside `model.vocab` are **folded into the
 vocabulary** rather than dropped, so a token added with `Tokenizer.add_tokens`
 stays reachable. A stock BERT file lists its special tokens in both tables at
 the same ids, which folds to a no-op.
+
+BPE is the exception, because `BpeTokenizer` matches added tokens as literal
+text ahead of the merge loop rather than looking them up as ordinary vocabulary
+entries. `LoadBpe` therefore carries the **whole** `added_tokens` table into
+`BpeVocabulary.AddedTokens`, the entries `model.vocab` also declares included —
+which is where every special token lives: `<|endoftext|>` is id 50256 in GPT-2's
+own `model.vocab` as well as in its `added_tokens`.
 
 This is deliberate. The alternative is a vocabulary that loads cleanly and
 produces embeddings for a model nobody trained, which is the failure this whole
