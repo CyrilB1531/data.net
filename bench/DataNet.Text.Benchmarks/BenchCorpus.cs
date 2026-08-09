@@ -17,6 +17,7 @@ public static class BenchCorpus
         "vocab_30k.txt",
         "tokenizer_30k_wordpiece.json",
         "tokenizer_30k_unigram.json",
+        "tokenizer_30k_bpe.json",
         "spiece_30k.model",
         "documents.json",
     ];

@@ -47,6 +47,8 @@
     <None Include="../oracles/**/*.onnx" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
     <!-- The SentencePiece loader is replayed against the real model file, not a copy of its contents. -->
     <None Include="../oracles/**/*.model" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
+    <!-- merges.txt is a fixture like any other; without this glob the BPE suite cannot find it. -->
+    <None Include="../oracles/**/*.txt" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
   </ItemGroup>
 
 </Project>

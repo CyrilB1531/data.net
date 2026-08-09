@@ -5,8 +5,8 @@ using DataNet.Internal.Persistence;
 namespace DataNet.Embeddings.Persistence;
 
 /// <summary>
-/// Reads a HuggingFace <c>tokenizer.json</c> — the WordPiece or Unigram model it
-/// declares, together with the settings that change tokenization.
+/// Reads a HuggingFace <c>tokenizer.json</c> — the WordPiece, Unigram or BPE
+/// model it declares, together with the settings that change tokenization.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -26,8 +26,13 @@ namespace DataNet.Embeddings.Persistence;
 /// model nobody trained.
 /// </para>
 /// <para>
-/// The <c>decoder</c> section is the one part accepted unchecked: it affects
-/// <c>decode</c> only, and DataNet's tokenizers encode.
+/// The <c>decoder</c> section is accepted unchecked for WordPiece and Unigram:
+/// it affects <c>decode</c> only, and <see cref="WordPieceTokenizer"/> and
+/// <see cref="SentencePieceTokenizer"/> only encode. <see cref="BpeTokenizer"/>
+/// does decode, so <see cref="LoadBpe(string, ArtifactLoadOptions?)"/> is the
+/// exception: it refuses a <c>decoder</c> whose byte-level-ness disagrees with
+/// the model's own, which would silently corrupt <see cref="BpeTokenizer.Decode(System.Collections.Generic.IReadOnlyList{int}, bool)"/>
+/// rather than merely go unused.
 /// </para>
 /// <para>
 /// Unrecognized <em>top-level</em> properties are likewise accepted in silence,
@@ -46,6 +51,14 @@ namespace DataNet.Embeddings.Persistence;
 /// <see cref="VocabTxtLoader"/> is the route for BERT, and
 /// <see cref="LoadWordPiece(string, ArtifactLoadOptions?)"/> is for files whose
 /// pipeline matches DataNet's.
+/// </para>
+/// <para>
+/// <see cref="LoadBpe(string, ArtifactLoadOptions?)"/> reads the third model
+/// type this file format can declare: GPT-2's byte-level BPE, the classic
+/// (non-byte-level) BPE lineage, and the <c>Split</c>-then-<c>ByteLevel</c>
+/// shape Llama-3 and Qwen2 use. See <see cref="BpeTokenizer"/> and
+/// <c>docs/decisions/0017-bpe-parity-scope.md</c> for what is and is not
+/// proven for each.
 /// </para>
 /// </remarks>
 /// <example>
@@ -131,6 +144,42 @@ public static class TokenizerJsonLoader
         ReadOnlyMemory<byte> payload = await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false);
         using JsonDocument document = ParseDocument(payload, limits);
         return ReadUnigram(document.RootElement, limits);
+    }
+
+    /// <summary>Reads the BPE model declared by <paramref name="source"/>.</summary>
+    /// <param name="source">The <c>tokenizer.json</c> bytes; never disposed by this method.</param>
+    /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
+    /// <exception cref="InvalidDataException">The file is malformed, exceeds a limit, declares a different model type, or describes a pipeline this library does not reproduce.</exception>
+    public static BpeVocabulary LoadBpe(Stream source, ArtifactLoadOptions? options = null)
+    {
+        ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
+        using JsonDocument document = ParseDocument(JsonArtifact.ReadAllBytes(source, limits), limits);
+        return ReadBpe(document.RootElement, limits);
+    }
+
+    /// <summary>Reads the BPE model declared by the file at <paramref name="path"/>.</summary>
+    /// <param name="path">Path to a <c>tokenizer.json</c>.</param>
+    /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
+    /// <exception cref="InvalidDataException">The file is malformed, exceeds a limit, declares a different model type, or describes a pipeline this library does not reproduce.</exception>
+    public static BpeVocabulary LoadBpe(string path, ArtifactLoadOptions? options = null)
+    {
+        using FileStream file = JsonArtifact.OpenRead(path);
+        return LoadBpe(file, options);
+    }
+
+    /// <summary>Asynchronous counterpart of <see cref="LoadBpe(Stream, ArtifactLoadOptions?)"/>.</summary>
+    /// <param name="source">The <c>tokenizer.json</c> bytes; never disposed by this method.</param>
+    /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    public static async Task<BpeVocabulary> LoadBpeAsync(
+        Stream source,
+        ArtifactLoadOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
+        ReadOnlyMemory<byte> payload = await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false);
+        using JsonDocument document = ParseDocument(payload, limits);
+        return ReadBpe(document.RootElement, limits);
     }
 
     private static JsonDocument ParseDocument(ReadOnlyMemory<byte> payload, in ArtifactLimits limits)
@@ -294,7 +343,21 @@ public static class TokenizerJsonLoader
     /// rather than resolved by guesswork.
     /// </para>
     /// </remarks>
-    private static void ReadAddedTokens(JsonElement root, Dictionary<string, int> vocab, in ArtifactLimits limits)
+    /// <param name="root">The <c>tokenizer.json</c> root object.</param>
+    /// <param name="vocab">The model's vocabulary; entries it lacks are folded in.</param>
+    /// <param name="limits">Bounds applied while reading.</param>
+    /// <param name="matchedLiterally">
+    /// When non-<see langword="null"/>, <em>every</em> entry of the table is recorded
+    /// here and checked for matching flags DataNet does not reproduce — the BPE path,
+    /// where the table is scanned as literal text ahead of the model rather than merely
+    /// folded into the vocabulary, so an entry <c>model.vocab</c> already declares is
+    /// not the no-op it is for WordPiece.
+    /// </param>
+    private static void ReadAddedTokens(
+        JsonElement root,
+        Dictionary<string, int> vocab,
+        in ArtifactLimits limits,
+        Dictionary<string, int>? matchedLiterally = null)
     {
         if (!root.TryGetProperty(AddedTokensProperty, out JsonElement added) || added.ValueKind != JsonValueKind.Array)
         {
@@ -316,28 +379,51 @@ public static class TokenizerJsonLoader
 
             string content = contentElement.GetString()!;
             limits.CheckTokenLength(content.Length);
-            if (id < 0)
+            FoldAddedToken(token, content, id, vocab, limits, matchedLiterally);
+            if (matchedLiterally is not null)
             {
-                // The id is folded into the vocabulary and comes straight back out of
-                // Encode, into the caller's embedding lookup. A negative one is an
-                // out-of-range index in their code, blamed on them.
-                throw new InvalidDataException(
-                    $"The {SourceName} adds token '{content}' with the negative id {id}.");
+                matchedLiterally[content] = id;
             }
-            if (vocab.TryGetValue(content, out int existing))
-            {
-                if (existing != id)
-                {
-                    throw new InvalidDataException(
-                        $"The {SourceName} adds token '{content}' as id {id} but its vocabulary already maps it to {existing}.");
-                }
-                continue;
-            }
-
-            EnsureAddedTokenMatchesPlainly(content, token);
-            vocab[content] = id;
-            limits.CheckVocabularySize(vocab.Count);
         }
+    }
+
+    /// <summary>Folds one <c>added_tokens</c> entry into <paramref name="vocab"/>, or checks it agrees with what is there.</summary>
+    private static void FoldAddedToken(
+        JsonElement token,
+        string content,
+        int id,
+        Dictionary<string, int> vocab,
+        in ArtifactLimits limits,
+        Dictionary<string, int>? matchedLiterally)
+    {
+        if (id < 0)
+        {
+            // The id is folded into the vocabulary and comes straight back out of
+            // Encode, into the caller's embedding lookup. A negative one is an
+            // out-of-range index in their code, blamed on them.
+            throw new InvalidDataException(
+                $"The {SourceName} adds token '{content}' with the negative id {id}.");
+        }
+        if (vocab.TryGetValue(content, out int existing))
+        {
+            if (existing != id)
+            {
+                throw new InvalidDataException(
+                    $"The {SourceName} adds token '{content}' as id {id} but its vocabulary already maps it to {existing}.");
+            }
+            // Folding is a no-op, but the matching flags are not: on the BPE path this
+            // entry is still scanned as literal text, so they have to be checked here
+            // too rather than only on the branch that adds a new id.
+            if (matchedLiterally is not null)
+            {
+                EnsureAddedTokenMatchesPlainly(content, token);
+            }
+            return;
+        }
+
+        EnsureAddedTokenMatchesPlainly(content, token);
+        vocab[content] = id;
+        limits.CheckVocabularySize(vocab.Count);
     }
 
     /// <summary>
@@ -434,6 +520,352 @@ public static class TokenizerJsonLoader
             }
         }
         return -1;
+    }
+
+    /// <summary>
+    /// Reads a BPE model: its vocabulary, its ranked merge table, and the pipeline
+    /// flags that decide how text reaches them.
+    /// </summary>
+    /// <remarks>
+    /// Unlike <see cref="ReadWordPiece"/> and <see cref="ReadUnigram"/>, the
+    /// pre-tokenizer here is not merely accepted or refused: <c>ByteLevel</c>,
+    /// <c>Whitespace</c>, and a <c>Sequence</c> of <c>Split</c> then <c>ByteLevel</c>
+    /// each set <see cref="BpeVocabulary.ByteLevel"/>, <see cref="BpeVocabulary.AddPrefixSpace"/>
+    /// and <see cref="BpeVocabulary.PreTokenizerPattern"/> differently, because stock
+    /// GPT-2 declares a bare <c>ByteLevel</c> node with no <c>Split</c> at all.
+    /// </remarks>
+    private static BpeVocabulary ReadBpe(JsonElement root, in ArtifactLimits limits)
+    {
+        JsonElement model = RequireObject(root, "model");
+        EnsureModelType(model, "BPE");
+        EnsureByteFallbackIsOff(model);
+        EnsureBpeModelSettingsAreReproduced(model);
+        EnsureBpeNormalizerIsAbsent(root);
+        RejectNonNull(root, "truncation", "DataNet tokenizers do not truncate");
+        RejectNonNull(root, "padding", "DataNet tokenizers do not pad");
+        RejectNonNull(root, "post_processor", "DataNet tokenizers do not insert special tokens such as [CLS] and [SEP]");
+        (bool byteLevel, bool addPrefixSpace, string? pattern) = ReadBpePreTokenizer(root);
+        EnsureDecoderMatchesModel(root, byteLevel);
+
+        Dictionary<string, int> vocab = ReadBpeVocab(model, limits);
+        List<MergePair> merges = ReadBpeMerges(model, limits);
+        int skippedMerges = merges.Count(pair => !vocab.ContainsKey(pair.Left) || !vocab.ContainsKey(pair.Right));
+        Dictionary<string, int> addedTokens = ReadBpeAddedTokens(root, vocab, limits);
+
+        return new BpeVocabulary(vocab, merges)
+        {
+            AddedTokens = addedTokens,
+            ByteLevel = byteLevel,
+            AddPrefixSpace = addPrefixSpace,
+            IgnoreMerges = OptionalBoolean(model, "ignore_merges") ?? false,
+            SkippedMerges = skippedMerges,
+            EndOfWordSuffix = OptionalString(model, "end_of_word_suffix"),
+            // ContinuingSubwordPrefix is deliberately not carried across: a non-null one
+            // is refused above, so reading it here could only ever restate that null,
+            // and a property that is read but never applied is what made this a bug.
+            UnkToken = OptionalString(model, "unk_token"),
+            PreTokenizerPattern = pattern,
+        };
+    }
+
+    /// <summary>
+    /// Refuses the three <c>model</c> settings that change what BPE produces and that
+    /// <see cref="BpeTokenizer"/> does not apply.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Each of these is read out of a shipped <c>tokenizer.json</c> today and each is
+    /// measurably not a no-op, so accepting one is a file that tokenizes differently
+    /// here than in Python without saying so. Verified against <c>tokenizers</c>
+    /// 0.23.1: with <c>continuing_subword_prefix="##"</c>, the vocabulary
+    /// <c>{a, b, ##b, ab, a##b}</c> and the single merge <c>("a", "##b")</c>, Python
+    /// encodes "ab" to the one id of <c>ab</c> where the same model without the prefix
+    /// gives two; <c>fuse_unk</c> collapses a run of uncovered characters into one
+    /// unknown token where this tokenizer always emits one per code point.
+    /// <c>dropout</c> is a training-time regularizer that drops merges at random,
+    /// which no deterministic tokenizer can reproduce at all.
+    /// </para>
+    /// <para>
+    /// Refused by name rather than implemented: support is a feature, and a file
+    /// naming one of these deserves to be told which one rather than to be tokenized
+    /// plausibly and wrongly.
+    /// </para>
+    /// </remarks>
+    private static void EnsureBpeModelSettingsAreReproduced(JsonElement model)
+    {
+        if (OptionalString(model, "continuing_subword_prefix") is { } prefix)
+        {
+            throw Unsupported(
+                $"its model declares continuing_subword_prefix '{prefix}'",
+                "HuggingFace prefixes every non-initial symbol with it before merging, where BpeTokenizer merges the symbols as they stand");
+        }
+        if (OptionalBoolean(model, "fuse_unk") is true)
+        {
+            throw Unsupported(
+                "its model declares fuse_unk",
+                "HuggingFace then collapses a run of uncovered characters into a single unknown token, where BpeTokenizer emits one per code point");
+        }
+        if (model.TryGetProperty("dropout", out JsonElement dropout) && dropout.ValueKind != JsonValueKind.Null)
+        {
+            throw Unsupported(
+                "its model declares dropout",
+                "that drops merges at random during tokenization, which no deterministic tokenizer reproduces");
+        }
+    }
+
+    /// <summary>
+    /// Refuses any normalizer, since <see cref="BpeTokenizer"/> applies none.
+    /// </summary>
+    /// <remarks>
+    /// The counterpart of <see cref="ReadLowercaseFrom"/> for WordPiece and
+    /// <see cref="ReadUnigramNormalizer"/> for Unigram, and the one this reader was
+    /// missing: a BPE file declaring <c>NFC</c>, <c>NFKC</c>, <c>Replace</c> or a
+    /// <c>Sequence</c> of them would otherwise load and skip the normalization in
+    /// silence. Absent or <c>null</c> is identity and is what every model in scope
+    /// declares.
+    /// </remarks>
+    private static void EnsureBpeNormalizerIsAbsent(JsonElement root)
+    {
+        if (!root.TryGetProperty("normalizer", out JsonElement normalizer) || normalizer.ValueKind == JsonValueKind.Null)
+        {
+            return;
+        }
+        string type = OptionalString(normalizer, "type") ?? UntypedName;
+        throw Unsupported(
+            $"its normalizer is '{type}'",
+            "BpeTokenizer normalizes nothing, so every rule this one declares would go unapplied");
+    }
+
+    private static Dictionary<string, int> ReadBpeVocab(JsonElement model, in ArtifactLimits limits)
+    {
+        var vocab = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (JsonProperty entry in RequireObject(model, "vocab").EnumerateObject())
+        {
+            if (entry.Value.ValueKind != JsonValueKind.Number || !entry.Value.TryGetInt32(out int id))
+            {
+                throw new InvalidDataException($"The {SourceName} maps token '{entry.Name}' to a value that is not an integer id.");
+            }
+            limits.CheckTokenLength(entry.Name.Length);
+            vocab[entry.Name] = id;
+            limits.CheckVocabularySize(vocab.Count);
+        }
+        if (vocab.Count == 0)
+        {
+            throw new InvalidDataException($"The {SourceName} declares an empty vocabulary.");
+        }
+        return vocab;
+    }
+
+    private static List<MergePair> ReadBpeMerges(JsonElement model, in ArtifactLimits limits)
+    {
+        if (!model.TryGetProperty("merges", out JsonElement mergesElement) || mergesElement.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidDataException($"The {SourceName} BPE model has no 'merges' array.");
+        }
+        limits.CheckArrayLength(mergesElement.GetArrayLength(), "model.merges");
+
+        var merges = new List<MergePair>();
+        foreach (JsonElement entry in mergesElement.EnumerateArray())
+        {
+            merges.Add(ReadBpeMerge(entry, merges.Count));
+        }
+        return merges;
+    }
+
+    /// <summary>
+    /// Reads one merge, in either encoding <c>tokenizers</c> has used: a
+    /// <c>[left, right]</c> pair of strings, or a single <c>"left right"</c> string.
+    /// </summary>
+    private static MergePair ReadBpeMerge(JsonElement entry, int index)
+    {
+        if (entry.ValueKind == JsonValueKind.String)
+        {
+            string line = entry.GetString()!;
+            // Exactly one space, not merely a first one. Python splits the whole line
+            // and refuses it unless it yields two fields, so "a b c" and " a b" are
+            // errors there where splitting on the first space would silently load
+            // them as ("a", "b c") and ("", "a b"). A trailing space is not an error:
+            // "a " splits into two fields, the second empty, and Python takes it.
+            int space = line.IndexOf(' ');
+            if (space < 0)
+            {
+                throw new InvalidDataException(
+                    $"The {SourceName} BPE merge at index {index} has no separator: '{line}'.");
+            }
+            if (line.IndexOf(' ', space + 1) >= 0)
+            {
+                throw new InvalidDataException(
+                    $"The {SourceName} BPE merge at index {index} is not two space-separated symbols: '{line}'.");
+            }
+            return new MergePair(line.Substring(0, space), line.Substring(space + 1));
+        }
+        if (entry.ValueKind == JsonValueKind.Array
+            && entry.GetArrayLength() == 2
+            && entry[0].ValueKind == JsonValueKind.String
+            && entry[1].ValueKind == JsonValueKind.String)
+        {
+            return new MergePair(entry[0].GetString()!, entry[1].GetString()!);
+        }
+        throw new InvalidDataException(
+            $"The {SourceName} BPE merge at index {index} is neither a [left, right] pair nor a space-separated string.");
+    }
+
+    /// <summary>
+    /// Reads the whole <c>added_tokens</c> table into
+    /// <see cref="BpeVocabulary.AddedTokens"/>, which is a property of its own rather
+    /// than a fold into <see cref="BpeVocabulary.Vocab"/> because
+    /// <see cref="BpeTokenizer"/> matches added tokens as literal text before any
+    /// merging happens.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The <em>whole</em> table, intersection with <c>model.vocab</c> included. That
+    /// intersection is not redundant here the way it is for WordPiece: HuggingFace
+    /// lists a special token in both tables — <c>&lt;|endoftext|&gt;</c> is id 50256 in
+    /// GPT-2's own <c>model.vocab</c> <em>and</em> in its <c>added_tokens</c> — and
+    /// <see cref="BpeTokenizer"/>'s pre-merge scan reads nothing but this property.
+    /// Subtracting the intersection would therefore drop exactly the tokens the scan
+    /// exists for, and <c>&lt;|endoftext|&gt;</c> would tokenize as the eight ordinary
+    /// pieces its characters merge into.
+    /// </para>
+    /// <para>
+    /// <paramref name="vocab"/> is copied rather than written to, so
+    /// <see cref="BpeVocabulary.Vocab"/> stays what <c>model.vocab</c> declared; the
+    /// copy is what gives the id-agreement check something to check against.
+    /// </para>
+    /// </remarks>
+    private static Dictionary<string, int> ReadBpeAddedTokens(JsonElement root, Dictionary<string, int> vocab, in ArtifactLimits limits)
+    {
+        var withAdded = new Dictionary<string, int>(vocab, StringComparer.Ordinal);
+        var added = new Dictionary<string, int>(StringComparer.Ordinal);
+        ReadAddedTokens(root, withAdded, limits, added);
+        return added;
+    }
+
+    /// <summary>
+    /// Validates the pre-tokenizer and derives the three flags <see cref="BpeVocabulary"/>
+    /// carries independently: whether the model is byte-level, whether a space is
+    /// prepended, and the pattern text is split on.
+    /// </summary>
+    private static (bool ByteLevel, bool AddPrefixSpace, string? Pattern) ReadBpePreTokenizer(JsonElement root)
+    {
+        if (!root.TryGetProperty("pre_tokenizer", out JsonElement pre) || pre.ValueKind == JsonValueKind.Null)
+        {
+            // Absent is the classic (non-byte-level) lineage's own default: BpeTokenizer
+            // falls back to word-boundary splitting when PreTokenizerPattern is null.
+            return (false, false, null);
+        }
+
+        string type = OptionalString(pre, "type") ?? UntypedName;
+        return type switch
+        {
+            "Whitespace" => (false, false, null),
+            "ByteLevel" => ReadByteLevelPreTokenizer(pre),
+            "Sequence" => ReadBpeSequencePreTokenizer(pre),
+            _ => throw Unsupported(
+                $"its pre_tokenizer is '{type}'",
+                "BpeTokenizer reproduces ByteLevel, a Sequence of Split then ByteLevel, and Whitespace only"),
+        };
+    }
+
+    /// <summary>
+    /// A bare <c>ByteLevel</c> pre-tokenizer -- what stock GPT-2 declares, with no
+    /// <c>Split</c> node of its own: <c>ByteLevel</c> does the splitting, on the
+    /// pattern <see cref="BpePatterns.Gpt2"/> states.
+    /// </summary>
+    /// <remarks>
+    /// <c>use_regex</c> defaults to <see langword="true"/> and stock GPT-2 omits it, so
+    /// that pattern is what stock GPT-2 gets. Turned off, HuggingFace hands the whole
+    /// normalized string to the model as one piece -- refused here, because the nearest
+    /// thing this library has is <see cref="BpePreTokenizer"/>'s word-boundary
+    /// fallback, which discards the whitespace between the words and so cannot round
+    /// trip, the one guarantee byte-level BPE exists to make.
+    /// </remarks>
+    private static (bool ByteLevel, bool AddPrefixSpace, string? Pattern) ReadByteLevelPreTokenizer(JsonElement pre)
+    {
+        if (OptionalBoolean(pre, "use_regex") is false)
+        {
+            throw Unsupported(
+                "its ByteLevel pre_tokenizer has use_regex off",
+                "HuggingFace then passes the whole text to the model as one piece, where BpeTokenizer would split it on word boundaries and drop the whitespace between them");
+        }
+        bool addPrefixSpace = OptionalBoolean(pre, "add_prefix_space") ?? true;
+        return (true, addPrefixSpace, BpePatterns.Gpt2);
+    }
+
+    /// <summary>
+    /// A <c>Sequence</c> of exactly a <c>Split</c> step then a <c>ByteLevel</c> step --
+    /// what Llama-3 and Qwen2 declare, splitting on their own pattern before the bytes
+    /// are mapped rather than delegating the split to <c>ByteLevel</c> itself.
+    /// </summary>
+    private static (bool ByteLevel, bool AddPrefixSpace, string? Pattern) ReadBpeSequencePreTokenizer(JsonElement pre)
+    {
+        if (!pre.TryGetProperty("pretokenizers", out JsonElement steps)
+            || steps.ValueKind != JsonValueKind.Array
+            || steps.GetArrayLength() != 2)
+        {
+            throw Unsupported(
+                "its pre_tokenizer is a Sequence that is not exactly [Split, ByteLevel]",
+                "BpeTokenizer reproduces that shape only");
+        }
+
+        JsonElement split = steps[0];
+        JsonElement byteLevelStep = steps[1];
+        string splitType = OptionalString(split, "type") ?? UntypedName;
+        string byteLevelType = OptionalString(byteLevelStep, "type") ?? UntypedName;
+        if (!string.Equals(splitType, "Split", StringComparison.Ordinal)
+            || !string.Equals(byteLevelType, "ByteLevel", StringComparison.Ordinal))
+        {
+            throw Unsupported(
+                $"its pre_tokenizer is a Sequence of '{splitType}' then '{byteLevelType}'",
+                "BpeTokenizer reproduces a Sequence of Split then ByteLevel only");
+        }
+
+        if (!split.TryGetProperty("pattern", out JsonElement pattern)
+            || !pattern.TryGetProperty("Regex", out JsonElement regexElement)
+            || regexElement.ValueKind != JsonValueKind.String)
+        {
+            throw Unsupported(
+                "its Sequence's Split step has no pattern.Regex",
+                "BpeTokenizer reproduces a regex Split pattern only");
+        }
+
+        bool addPrefixSpace = OptionalBoolean(byteLevelStep, "add_prefix_space") ?? false;
+        return (true, addPrefixSpace, regexElement.GetString());
+    }
+
+    /// <summary>
+    /// Refuses a <c>decoder</c> that could not have produced the pre-tokenizer this
+    /// file also declares: a byte-level model whose decoder is not <c>ByteLevel</c>,
+    /// or the reverse.
+    /// </summary>
+    /// <remarks>
+    /// <c>DataNet</c>'s tokenizers encode, not decode, so this is checked rather than
+    /// applied -- but a mismatch here means the file will not round trip through
+    /// <c>tokenizers</c> itself either, which makes it worth catching at load time
+    /// rather than as corrupt text out of <see cref="BpeTokenizer.Decode(IReadOnlyList{int}, bool)"/>.
+    /// An absent <c>decoder</c> is fine: it is what <c>models.BPE</c> built in code
+    /// produces.
+    /// </remarks>
+    private static void EnsureDecoderMatchesModel(JsonElement root, bool byteLevel)
+    {
+        if (!root.TryGetProperty("decoder", out JsonElement decoder) || decoder.ValueKind == JsonValueKind.Null)
+        {
+            return;
+        }
+        string type = OptionalString(decoder, "type") ?? UntypedName;
+        bool decoderIsByteLevel = string.Equals(type, "ByteLevel", StringComparison.Ordinal);
+        if (decoderIsByteLevel == byteLevel)
+        {
+            return;
+        }
+        // Not routed through Unsupported(...): its fixed "would produce embeddings that
+        // do not match the model" tail would misdescribe this failure. Every other
+        // Unsupported(...) call in this file refuses something that changes what Encode
+        // produces; a decoder mismatch does not -- Encode is unaffected, only Decode
+        // would corrupt -- so this gets its own, accurate message instead.
+        throw new InvalidDataException(
+            $"The {SourceName} pre_tokenizer describes a {(byteLevel ? "byte-level" : "non-byte-level")} model but its decoder is '{type}', which would not decode the tokens it produces.");
     }
 
     private enum PipelineKind

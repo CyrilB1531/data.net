@@ -21,4 +21,10 @@
     <PackageReference Include="Microsoft.ML.OnnxRuntime" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="DataNet.Embeddings.Tests" />
+    <!-- Same suite, replayed against the netstandard2.0 build. -->
+    <InternalsVisibleTo Include="DataNet.Embeddings.NetStandard.Tests" />
+  </ItemGroup>
+
 </Project>

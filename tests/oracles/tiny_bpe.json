@@ -1,0 +1,656 @@
+{
+  "version": "1.0",
+  "truncation": null,
+  "padding": null,
+  "added_tokens": [
+    {
+      "id": 0,
+      "content": "[UNK]",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    }
+  ],
+  "normalizer": null,
+  "pre_tokenizer": {
+    "type": "Whitespace"
+  },
+  "post_processor": null,
+  "decoder": null,
+  "model": {
+    "type": "BPE",
+    "dropout": null,
+    "unk_token": "[UNK]",
+    "continuing_subword_prefix": null,
+    "end_of_word_suffix": "</w>",
+    "fuse_unk": false,
+    "byte_fallback": false,
+    "ignore_merges": false,
+    "vocab": {
+      "[UNK]": 0,
+      "a": 1,
+      "b": 2,
+      "c": 3,
+      "d": 4,
+      "e": 5,
+      "f": 6,
+      "g": 7,
+      "h": 8,
+      "i": 9,
+      "j": 10,
+      "k": 11,
+      "l": 12,
+      "m": 13,
+      "n": 14,
+      "o": 15,
+      "p": 16,
+      "q": 17,
+      "r": 18,
+      "s": 19,
+      "t": 20,
+      "u": 21,
+      "v": 22,
+      "w": 23,
+      "x": 24,
+      "y": 25,
+      "z": 26,
+      "e</w>": 27,
+      "s</w>": 28,
+      "t</w>": 29,
+      "r</w>": 30,
+      "n</w>": 31,
+      "k</w>": 32,
+      "y</w>": 33,
+      "g</w>": 34,
+      "d</w>": 35,
+      "l</w>": 36,
+      "a</w>": 37,
+      "x</w>": 38,
+      "m</w>": 39,
+      "in": 40,
+      "ov": 41,
+      "ro": 42,
+      "at</w>": 43,
+      "he</w>": 44,
+      "lov": 45,
+      "pro": 46,
+      "ra": 47,
+      "the</w>": 48,
+      "ing</w>": 49,
+      "an": 50,
+      "at": 51,
+      "ag": 52,
+      "bi": 53,
+      "es": 54,
+      "er</w>": 55,
+      "gra": 56,
+      "progra": 57,
+      "be": 58,
+      "cat</w>": 59,
+      "ces": 60,
+      "dd": 61,
+      "em": 62,
+      "en": 63,
+      "gg": 64,
+      "gu": 65,
+      "ly</w>": 66,
+      "lan": 67,
+      "nat": 68,
+      "on</w>": 69,
+      "sat</w>": 70,
+      "ura": 71,
+      "love": 72,
+      "proces": 73,
+      "and</w>": 74,
+      "age</w>": 75,
+      "bigg": 76,
+      "program": 77,
+      "bedd": 78,
+      "embedd": 79,
+      "guage</w>": 80,
+      "language</w>": 81,
+      "natura": 82,
+      "process": 83,
+      "ac": 84,
+      "ai": 85,
+      "ar": 86,
+      "az": 87,
+      "bro": 88,
+      "ci": 89,
+      "ce</w>": 90,
+      "ck</w>": 91,
+      "do": 92,
+      "dat": 93,
+      "es</w>": 94,
+      "ear": 95,
+      "fo": 96,
+      "gs</w>": 97,
+      "hin": 98,
+      "iz": 99,
+      "is</w>": 100,
+      "ion</w>": 101,
+      "ick</w>": 102,
+      "ju": 103,
+      "ken": 104,
+      "lly</w>": 105,
+      "laz": 106,
+      "lear": 107,
+      "mp": 108,
+      "mat</w>": 109,
+      "ming</w>": 110,
+      "mac": 111,
+      "ning</w>": 112,
+      "oken": 113,
+      "qu": 114,
+      "sci": 115,
+      "token": 116,
+      "wn</w>": 117,
+      "ings</w>": 118,
+      "over</w>": 119,
+      "love</w>": 120,
+      "loving</w>": 121,
+      "lover</w>": 122,
+      "ation</w>": 123,
+      "agai": 124,
+      "big</w>": 125,
+      "est</w>": 126,
+      "program</w>": 127,
+      "ence</w>": 128,
+      "loved</w>": 129,
+      "lovely</w>": 130,
+      "bigger</w>": 131,
+      "biggest</w>": 132,
+      "programs</w>": 133,
+      "programming</w>": 134,
+      "embedding</w>": 135,
+      "embeddings</w>": 136,
+      "natural</w>": 137,
+      "naturally</w>": 138,
+      "processing</w>": 139,
+      "processes</w>": 140,
+      "brown</w>": 141,
+      "dog</w>": 142,
+      "data</w>": 143,
+      "fox</w>": 144,
+      "hine</w>": 145,
+      "ization</w>": 146,
+      "jump": 147,
+      "lazy</w>": 148,
+      "learning</w>": 149,
+      "machine</w>": 150,
+      "quick</w>": 151,
+      "science</w>": 152,
+      "tokenization</w>": 153,
+      "again</w>": 154,
+      "jumps</w>": 155
+    },
+    "merges": [
+      [
+        "i",
+        "n"
+      ],
+      [
+        "o",
+        "v"
+      ],
+      [
+        "r",
+        "o"
+      ],
+      [
+        "a",
+        "t</w>"
+      ],
+      [
+        "h",
+        "e</w>"
+      ],
+      [
+        "l",
+        "ov"
+      ],
+      [
+        "p",
+        "ro"
+      ],
+      [
+        "r",
+        "a"
+      ],
+      [
+        "t",
+        "he</w>"
+      ],
+      [
+        "in",
+        "g</w>"
+      ],
+      [
+        "a",
+        "n"
+      ],
+      [
+        "a",
+        "t"
+      ],
+      [
+        "a",
+        "g"
+      ],
+      [
+        "b",
+        "i"
+      ],
+      [
+        "e",
+        "s"
+      ],
+      [
+        "e",
+        "r</w>"
+      ],
+      [
+        "g",
+        "ra"
+      ],
+      [
+        "pro",
+        "gra"
+      ],
+      [
+        "b",
+        "e"
+      ],
+      [
+        "c",
+        "at</w>"
+      ],
+      [
+        "c",
+        "es"
+      ],
+      [
+        "d",
+        "d"
+      ],
+      [
+        "e",
+        "m"
+      ],
+      [
+        "e",
+        "n"
+      ],
+      [
+        "g",
+        "g"
+      ],
+      [
+        "g",
+        "u"
+      ],
+      [
+        "l",
+        "y</w>"
+      ],
+      [
+        "l",
+        "an"
+      ],
+      [
+        "n",
+        "at"
+      ],
+      [
+        "o",
+        "n</w>"
+      ],
+      [
+        "s",
+        "at</w>"
+      ],
+      [
+        "u",
+        "ra"
+      ],
+      [
+        "lov",
+        "e"
+      ],
+      [
+        "pro",
+        "ces"
+      ],
+      [
+        "an",
+        "d</w>"
+      ],
+      [
+        "ag",
+        "e</w>"
+      ],
+      [
+        "bi",
+        "gg"
+      ],
+      [
+        "progra",
+        "m"
+      ],
+      [
+        "be",
+        "dd"
+      ],
+      [
+        "em",
+        "bedd"
+      ],
+      [
+        "gu",
+        "age</w>"
+      ],
+      [
+        "lan",
+        "guage</w>"
+      ],
+      [
+        "nat",
+        "ura"
+      ],
+      [
+        "proces",
+        "s"
+      ],
+      [
+        "a",
+        "c"
+      ],
+      [
+        "a",
+        "i"
+      ],
+      [
+        "a",
+        "r"
+      ],
+      [
+        "a",
+        "z"
+      ],
+      [
+        "b",
+        "ro"
+      ],
+      [
+        "c",
+        "i"
+      ],
+      [
+        "c",
+        "e</w>"
+      ],
+      [
+        "c",
+        "k</w>"
+      ],
+      [
+        "d",
+        "o"
+      ],
+      [
+        "d",
+        "at"
+      ],
+      [
+        "e",
+        "s</w>"
+      ],
+      [
+        "e",
+        "ar"
+      ],
+      [
+        "f",
+        "o"
+      ],
+      [
+        "g",
+        "s</w>"
+      ],
+      [
+        "h",
+        "in"
+      ],
+      [
+        "i",
+        "z"
+      ],
+      [
+        "i",
+        "s</w>"
+      ],
+      [
+        "i",
+        "on</w>"
+      ],
+      [
+        "i",
+        "ck</w>"
+      ],
+      [
+        "j",
+        "u"
+      ],
+      [
+        "k",
+        "en"
+      ],
+      [
+        "l",
+        "ly</w>"
+      ],
+      [
+        "l",
+        "az"
+      ],
+      [
+        "l",
+        "ear"
+      ],
+      [
+        "m",
+        "p"
+      ],
+      [
+        "m",
+        "at</w>"
+      ],
+      [
+        "m",
+        "ing</w>"
+      ],
+      [
+        "m",
+        "ac"
+      ],
+      [
+        "n",
+        "ing</w>"
+      ],
+      [
+        "o",
+        "ken"
+      ],
+      [
+        "q",
+        "u"
+      ],
+      [
+        "s",
+        "ci"
+      ],
+      [
+        "t",
+        "oken"
+      ],
+      [
+        "w",
+        "n</w>"
+      ],
+      [
+        "in",
+        "gs</w>"
+      ],
+      [
+        "ov",
+        "er</w>"
+      ],
+      [
+        "lov",
+        "e</w>"
+      ],
+      [
+        "lov",
+        "ing</w>"
+      ],
+      [
+        "lov",
+        "er</w>"
+      ],
+      [
+        "at",
+        "ion</w>"
+      ],
+      [
+        "ag",
+        "ai"
+      ],
+      [
+        "bi",
+        "g</w>"
+      ],
+      [
+        "es",
+        "t</w>"
+      ],
+      [
+        "progra",
+        "m</w>"
+      ],
+      [
+        "en",
+        "ce</w>"
+      ],
+      [
+        "love",
+        "d</w>"
+      ],
+      [
+        "love",
+        "ly</w>"
+      ],
+      [
+        "bigg",
+        "er</w>"
+      ],
+      [
+        "bigg",
+        "est</w>"
+      ],
+      [
+        "program",
+        "s</w>"
+      ],
+      [
+        "program",
+        "ming</w>"
+      ],
+      [
+        "embedd",
+        "ing</w>"
+      ],
+      [
+        "embedd",
+        "ings</w>"
+      ],
+      [
+        "natura",
+        "l</w>"
+      ],
+      [
+        "natura",
+        "lly</w>"
+      ],
+      [
+        "process",
+        "ing</w>"
+      ],
+      [
+        "process",
+        "es</w>"
+      ],
+      [
+        "bro",
+        "wn</w>"
+      ],
+      [
+        "do",
+        "g</w>"
+      ],
+      [
+        "dat",
+        "a</w>"
+      ],
+      [
+        "fo",
+        "x</w>"
+      ],
+      [
+        "hin",
+        "e</w>"
+      ],
+      [
+        "iz",
+        "ation</w>"
+      ],
+      [
+        "ju",
+        "mp"
+      ],
+      [
+        "laz",
+        "y</w>"
+      ],
+      [
+        "lear",
+        "ning</w>"
+      ],
+      [
+        "mac",
+        "hine</w>"
+      ],
+      [
+        "qu",
+        "ick</w>"
+      ],
+      [
+        "sci",
+        "ence</w>"
+      ],
+      [
+        "token",
+        "ization</w>"
+      ],
+      [
+        "agai",
+        "n</w>"
+      ],
+      [
+        "jump",
+        "s</w>"
+      ]
+    ]
+  }
+}

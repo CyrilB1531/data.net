@@ -81,6 +81,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 | Component | License | Used by | Source |
 | --- | --- | --- | --- |
 | `xlm-roberta-base` SentencePiece vocabulary | MIT | `tests/oracles/xlmr_fairseq.model` | `https://huggingface.co/xlm-roberta-base/resolve/main/sentencepiece.bpe.model` |
+| `gpt2` byte-level BPE vocabulary and merge table | MIT | `tests/oracles/gpt2_vocab.json`, `tests/oracles/gpt2_merges.txt` | `https://huggingface.co/openai-community/gpt2/resolve/main/vocab.json`, `.../merges.txt` |
 
 The **vocabulary only** — the 250 000 pieces, their scores, their types and the
 `nmt_nfkc` character map the file's `normalizer_spec` carries (a table compiled
@@ -96,6 +97,41 @@ SHA-256; the reasoning is in
 
 `xlm-roberta-base` is published under the MIT license by its authors (Facebook AI
 Research), as declared on its model card:
+
+```text
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+The **vocabulary and merge table only** — the 50 257 token-to-id entries of
+`gpt2_vocab.json` and the ranked merge pairs of `gpt2_merges.txt`, in the exact
+`merges.txt` layout GPT-2 ships. No model weights are redistributed, per
+[`docs/decisions/0003-provenance-and-licensing.md`](docs/decisions/0003-provenance-and-licensing.md).
+The files are compiled into no package: they live under `tests/`, are copied to
+the test output, and exist so `ByteLevelBpeTests`' claim of byte-exact parity
+with HuggingFace `tokenizers` is checked against GPT-2's real 50 257-entry
+vocabulary — a self-trained toy model could never exercise a merge table with
+50 000 ranks. They are downloaded verbatim by `tools/fetch_gpt2_bpe.py`, which
+pins the upstream SHA-256 of each file.
+
+`gpt2` is published under the MIT license by its authors (OpenAI, mirrored as
+`openai-community/gpt2`), as declared on its model card:
 
 ```text
 MIT License

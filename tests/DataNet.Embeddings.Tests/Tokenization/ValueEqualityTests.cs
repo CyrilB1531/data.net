@@ -120,4 +120,49 @@ public sealed class ValueEqualityTests
 
         Assert.Equal(new TokenizationResult(["play", "##ing"], [1, 2]), actual);
     }
+
+    private static BpeVocabulary SampleBpe() => new(
+        new Dictionary<string, int>(StringComparer.Ordinal) { ["a"] = 0, ["b"] = 1, ["ab"] = 2 },
+        [new MergePair("a", "b")])
+    {
+        ByteLevel = true,
+        PreTokenizerPattern = BpePatterns.Gpt2,
+    };
+
+    [Fact]
+    public void Two_BpeVocabularies_with_the_same_content_are_equal()
+    {
+        Assert.Equal(SampleBpe(), SampleBpe());
+        Assert.Equal(SampleBpe().GetHashCode(), SampleBpe().GetHashCode());
+    }
+
+    [Fact]
+    public void A_BpeVocabulary_differing_in_one_merge_is_not_equal()
+    {
+        BpeVocabulary other = SampleBpe() with { Merges = [new MergePair("b", "a")] };
+        Assert.NotEqual(SampleBpe(), other);
+    }
+
+    [Fact]
+    public void A_BpeVocabulary_differing_in_a_flag_is_not_equal()
+    {
+        Assert.NotEqual(SampleBpe(), SampleBpe() with { ByteLevel = false });
+    }
+
+    [Fact]
+    public void Merge_order_is_rank_order()
+    {
+        BpeVocabulary vocab = SampleBpe();
+        Assert.Equal(new MergePair("a", "b"), vocab.Merges[0]);
+        Assert.Equal(3, vocab.Count);
+    }
+
+    [Fact]
+    public void BpeVocabularies_differing_only_in_pre_tokenizer_pattern_are_not_equal_and_do_not_share_a_hash()
+    {
+        BpeVocabulary other = SampleBpe() with { PreTokenizerPattern = BpePatterns.Llama3 };
+
+        Assert.NotEqual(SampleBpe(), other);
+        Assert.NotEqual(SampleBpe().GetHashCode(), other.GetHashCode());
+    }
 }
