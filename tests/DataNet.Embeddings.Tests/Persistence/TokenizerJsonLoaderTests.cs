@@ -742,6 +742,31 @@ public sealed class TokenizerJsonLoaderTests
     }
 
     /// <summary>
+    /// An added token that <c>model.vocab</c> also declares still goes through the
+    /// matching-flags check -- the same one a token added for the first time goes
+    /// through. Fixture shaped after <c>roberta-base</c>'s own <c>tokenizer.json</c>,
+    /// whose <c>&lt;mask&gt;</c> is id 50264 in both tables with <c>lstrip: true</c>.
+    /// </summary>
+    /// <remarks>
+    /// Before the fold-in check moved onto this branch, that file loaded with
+    /// <c>lstrip</c> silently ignored; this pins the refusal so it is not
+    /// silently undone by a later change.
+    /// </remarks>
+    [Fact]
+    public void LoadBpe_refuses_an_added_token_in_model_vocab_with_lstrip_on()
+    {
+        const string Json = """
+        {"added_tokens":[{"id":3,"content":"<mask>","single_word":false,"lstrip":true,"rstrip":false,"special":true}],
+         "model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2,"<mask>":3},"merges":[["a","b"]]}}
+        """;
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+
+        Assert.Contains("lstrip", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// byte_fallback is the Llama-2 / Mistral v0.1 pipeline (ADR 0017). Loading it
     /// anyway would produce a tokenization that looks right and embeddings that
     /// are not, so it is refused by name.
@@ -788,6 +813,41 @@ public sealed class TokenizerJsonLoaderTests
         Assert.Equal(
             TokenizerJsonLoader.LoadBpe(Bytes(Pairs), BpeBounds()).Merges,
             TokenizerJsonLoader.LoadBpe(Bytes(Lines), BpeBounds()).Merges);
+    }
+
+    /// <summary>
+    /// A string-form merge with more than one space is refused, not split on the
+    /// first one -- the same rule <see cref="BpeFilesLoaderTests"/> pins for the
+    /// classic-lineage merges file.
+    /// </summary>
+    /// <remarks>
+    /// Python splits the whole line and refuses it unless it yields exactly two
+    /// fields, checked against <c>tokenizers</c> 0.23.1: <c>Tokenizer.from_str</c>
+    /// on a BPE model whose merges are <c>["a b c"]</c> reports "Merges text file
+    /// invalid at line 1", where <c>["a b"]</c> loads. Splitting on the first space
+    /// instead would silently load <c>"a b c"</c> as <c>("a", "b c")</c>.
+    /// </remarks>
+    [Fact]
+    public void LoadBpe_refuses_a_string_merge_that_is_not_two_symbols()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0,"b":1,"c":2},"merges":["a b c"]}}
+        """;
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+        Assert.Contains("not two space-separated symbols", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LoadBpe_reads_a_well_formed_two_field_string_merge()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2},"merges":["a b"]}}
+        """;
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+
+        Assert.Single(vocabulary.Merges);
+        Assert.Equal(new MergePair("a", "b"), vocabulary.Merges[0]);
     }
 
     [Fact]

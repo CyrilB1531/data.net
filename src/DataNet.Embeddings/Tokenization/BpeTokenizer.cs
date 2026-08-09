@@ -709,7 +709,11 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
     /// <summary>Reassembles the text <paramref name="ids"/> encode.</summary>
     /// <param name="ids">Token ids, e.g. from <see cref="Encode"/>.</param>
-    /// <param name="skipSpecialTokens">Drop added tokens instead of rendering them.</param>
+    /// <param name="skipSpecialTokens">
+    /// Drop added tokens instead of rendering them, every one, where Python drops
+    /// only those its <c>added_tokens</c> entry marks <c>special</c>; see
+    /// <see cref="Decode(IReadOnlyList{int}, bool)"/>.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">An id is outside the vocabulary.</exception>
     /// <exception cref="DecoderFallbackException">
     /// A byte-level model's <paramref name="ids"/> decode to bytes that are not

@@ -681,14 +681,21 @@ public static class TokenizerJsonLoader
         if (entry.ValueKind == JsonValueKind.String)
         {
             string line = entry.GetString()!;
-            // GPT-2's byte alphabet maps 0x20 to U+0120, so no byte-level token
-            // contains a literal space -- splitting the line on the first one is
-            // safe for every merge this string encoding can express.
+            // Exactly one space, not merely a first one. Python splits the whole line
+            // and refuses it unless it yields two fields, so "a b c" and " a b" are
+            // errors there where splitting on the first space would silently load
+            // them as ("a", "b c") and ("", "a b"). A trailing space is not an error:
+            // "a " splits into two fields, the second empty, and Python takes it.
             int space = line.IndexOf(' ');
             if (space < 0)
             {
                 throw new InvalidDataException(
                     $"The {SourceName} BPE merge at index {index} has no separator: '{line}'.");
+            }
+            if (line.IndexOf(' ', space + 1) >= 0)
+            {
+                throw new InvalidDataException(
+                    $"The {SourceName} BPE merge at index {index} is not two space-separated symbols: '{line}'.");
             }
             return new MergePair(line.Substring(0, space), line.Substring(space + 1));
         }
