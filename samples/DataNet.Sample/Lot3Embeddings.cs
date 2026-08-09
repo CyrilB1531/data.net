@@ -92,6 +92,32 @@ internal static class Lot3Embeddings
         PrecompiledNormalizer? normalizer = fromModel.Normalizer;
         Console.WriteLine($"  normalizer       : {(normalizer is null ? "identity, no charsmap" : $"{normalizer.CharsMapLength} bytes")}");
 
+        // BPE, the decoder-model side of the library. Byte-level is the variant
+        // GPT-2, Llama-3 and Qwen2 use, and the one that round-trips exactly.
+        var bpeVocab = new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["Ġ"] = 0, ["t"] = 1, ["o"] = 2, ["k"] = 3, ["e"] = 4, ["n"] = 5,
+            ["to"] = 6, ["ken"] = 7, ["token"] = 8, ["Ġtoken"] = 9,
+        };
+        var bpeMerges = new List<MergePair> { new("t", "o"), new("k", "e"), new("ke", "n") };
+        var bpeModel = new BpeVocabulary(bpeVocab, bpeMerges)
+        {
+            ByteLevel = true,
+            PreTokenizerPattern = BpePatterns.Gpt2,
+        };
+        var bpe = new BpeTokenizer(bpeModel);
+        TokenizationResult bpeEncoded = bpe.Encode("token");
+        Console.WriteLine($"  BPE byte-level   : [{string.Join(", ", bpeEncoded.Tokens)}] -> [{string.Join(", ", bpeEncoded.Ids)}]");
+        Console.WriteLine($"  BPE round trip   : \"{bpe.Decode(bpeEncoded.Ids)}\"");
+        Console.WriteLine($"  merge rank 0     : {bpeModel.Merges[0].Left} + {bpeModel.Merges[0].Right}");
+        Console.WriteLine($"  merges skipped   : {bpeModel.SkippedMerges}");
+
+        // The same model as a consumer gets it: vocab.json + merges.txt.
+        BpeVocabulary fromFiles = BpeFilesLoader.Load(
+            Utf8("""{"Ġ":0,"t":1,"o":2,"k":3,"e":4,"n":5,"to":6,"ken":7,"token":8,"Ġtoken":9}"""),
+            Utf8("#version: 0.2\nt o\nk e\nke n\n"));
+        Console.WriteLine($"  BPE from files   : {fromFiles.Count} tokens, {fromFiles.Merges.Count} merges");
+
         // Batch encoding: the special tokens, the truncation and the padding the
         // caller used to have to reproduce from memory. Everything the model is
         // fed comes out of the template and the vocabulary — nothing is a
