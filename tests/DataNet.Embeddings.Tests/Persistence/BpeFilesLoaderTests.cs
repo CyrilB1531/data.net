@@ -10,7 +10,7 @@ public sealed class BpeFilesLoaderTests
     private const string Vocab = """{"a":0,"b":1,"ab":2,"[UNK]":3}""";
     private const string Merges = "#version: 0.2\na b\n";
 
-    private static Stream Utf8(string text) => new MemoryStream(Encoding.UTF8.GetBytes(text));
+    private static MemoryStream Utf8(string text) => new MemoryStream(Encoding.UTF8.GetBytes(text));
 
     [Fact]
     public void Load_reads_the_vocabulary_and_the_ranked_merges()

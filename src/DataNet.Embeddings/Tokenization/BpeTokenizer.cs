@@ -352,9 +352,16 @@ public sealed class BpeTokenizer : ISubwordTokenizer
                 ? 2
                 : 1;
             bool last = i + width == piece.Length;
+            // CA1845 wants string.Concat over spans here. Its two-span overload
+            // arrived in netstandard2.1, and this library targets netstandard2.0
+            // as well, where the call binds to Concat(object, object) and does
+            // not compile. The suffix is null for every byte-level model, so this
+            // branch is the classic lineage's alone.
+#pragma warning disable CA1845
             string symbol = last && _endOfWord is not null
                 ? piece.Substring(i, width) + _endOfWord
                 : piece.Substring(i, width);
+#pragma warning restore CA1845
             if (_vocab.TryGetValue(symbol, out int id))
             {
                 symbols[count++] = id;

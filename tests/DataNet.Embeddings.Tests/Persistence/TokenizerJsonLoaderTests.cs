@@ -586,7 +586,7 @@ public sealed class TokenizerJsonLoaderTests
 
     // ---- BPE ----
 
-    private static Stream Bytes(string json) => new MemoryStream(Encoding.UTF8.GetBytes(json));
+    private static MemoryStream Bytes(string json) => new MemoryStream(Encoding.UTF8.GetBytes(json));
 
     private static ArtifactLoadOptions BpeBounds() => new()
     {

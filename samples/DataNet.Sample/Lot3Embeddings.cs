@@ -19,6 +19,9 @@ internal static class Lot3Embeddings
     /// <summary>Two words the four-entry vocabulary below covers: token + ##ize, text.</summary>
     private const string SampleText = "tokenize text";
 
+    /// <summary>The word three of the four vocabularies below spell out.</summary>
+    private const string Token = "token";
+
     public static void Run()
     {
         Console.WriteLine("lot 3 — embeddings (tokenizers, pooling, search)");
@@ -36,7 +39,7 @@ internal static class Lot3Embeddings
         var vocab = new Dictionary<string, int>(StringComparer.Ordinal)
         {
             [Unknown] = 0,
-            ["token"] = 1,
+            [Token] = 1,
             ["##ize"] = 2,
             ["text"] = 3,
         };
@@ -97,7 +100,7 @@ internal static class Lot3Embeddings
         var bpeVocab = new Dictionary<string, int>(StringComparer.Ordinal)
         {
             ["Ġ"] = 0, ["t"] = 1, ["o"] = 2, ["k"] = 3, ["e"] = 4, ["n"] = 5,
-            ["to"] = 6, ["ken"] = 7, ["token"] = 8, ["Ġtoken"] = 9, ["ke"] = 10,
+            ["to"] = 6, ["ken"] = 7, [Token] = 8, ["Ġtoken"] = 9, ["ke"] = 10,
         };
         var bpeMerges = new List<MergePair> { new("t", "o"), new("k", "e"), new("ke", "n") };
         var bpeModel = new BpeVocabulary(bpeVocab, bpeMerges)
@@ -106,7 +109,7 @@ internal static class Lot3Embeddings
             PreTokenizerPattern = BpePatterns.Gpt2,
         };
         var bpe = new BpeTokenizer(bpeModel);
-        TokenizationResult bpeEncoded = bpe.Encode("token");
+        TokenizationResult bpeEncoded = bpe.Encode(Token);
         Console.WriteLine($"  BPE byte-level   : [{string.Join(", ", bpeEncoded.Tokens)}] -> [{string.Join(", ", bpeEncoded.Ids)}]");
         Console.WriteLine($"  BPE round trip   : \"{bpe.Decode(bpeEncoded.Ids)}\"");
         Console.WriteLine($"  merge rank 0     : {bpeModel.Merges[0].Left} + {bpeModel.Merges[0].Right}");
@@ -125,7 +128,7 @@ internal static class Lot3Embeddings
         var batchVocab = new Dictionary<string, int>(StringComparer.Ordinal)
         {
             [Unknown] = 0,
-            ["token"] = 1,
+            [Token] = 1,
             ["##ize"] = 2,
             ["text"] = 3,
             ["[CLS]"] = 4,
