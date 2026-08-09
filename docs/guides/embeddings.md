@@ -168,6 +168,13 @@ different one is **rejected**, with a message naming what was found:
   `Split` then `ByteLevel` (Llama-3, Qwen2) — and, on the byte-level path, a
   `decoder` whose byte-level-ness disagrees with the model's own, which would
   not decode what it encodes;
+- for BPE, any `normalizer` at all (`BpeTokenizer` normalizes nothing), a
+  `continuing_subword_prefix`, `fuse_unk`, `dropout`, and a bare `ByteLevel`
+  with `use_regex` off — each of those changes what Python produces and none of
+  them is applied here. `use_regex` off on the `ByteLevel` step of a
+  `Split`-then-`ByteLevel` `Sequence` is a different thing, and is accepted: the
+  `Split` step carries the pattern there, which is how Llama-3 and Qwen2 are
+  written;
 - a `post_processor` — the wrapping lives in `EncodingOptions.Template`
   ([Embed a batch](#embed-a-batch)), and a `post_processor` in the file would be
   a second source of truth for it, free to disagree with the first;
@@ -183,6 +190,13 @@ Entries in `added_tokens` that sit outside `model.vocab` are **folded into the
 vocabulary** rather than dropped, so a token added with `Tokenizer.add_tokens`
 stays reachable. A stock BERT file lists its special tokens in both tables at
 the same ids, which folds to a no-op.
+
+BPE is the exception, because `BpeTokenizer` matches added tokens as literal
+text ahead of the merge loop rather than looking them up as ordinary vocabulary
+entries. `LoadBpe` therefore carries the **whole** `added_tokens` table into
+`BpeVocabulary.AddedTokens`, the entries `model.vocab` also declares included —
+which is where every special token lives: `<|endoftext|>` is id 50256 in GPT-2's
+own `model.vocab` as well as in its `added_tokens`.
 
 This is deliberate. The alternative is a vocabulary that loads cleanly and
 produces embeddings for a model nobody trained, which is the failure this whole

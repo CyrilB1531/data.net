@@ -137,6 +137,10 @@ and including `0.2.0` predate the split and covered all three at once — see
 - **`BpeTokenizer`, `BpeVocabulary`, `BpeFilesLoader` and `TokenizerJsonLoader.LoadBpe`** —
   a third sub-word tokenizer, matching `tokenizers.models.BPE` in both the
   classic (character-level) lineage and the byte-level one GPT-2 introduced.
+  `LoadBpe` carries the whole `added_tokens` table into `BpeVocabulary.AddedTokens`
+  — the entries `model.vocab` also declares included, which is where every special
+  token lives — because `BpeTokenizer` matches them as literal text ahead of the
+  merge loop rather than looking them up as ordinary entries.
   Byte-level `Encode`/`Decode` round-trips any well-formed `string` exactly,
   valid UTF-8 or not: every byte becomes one symbol before merging starts, so
   every byte comes back. Proven end to end against GPT-2's real 50 257-entry
