@@ -26,7 +26,25 @@ public sealed record BpeVocabulary(
     IReadOnlyDictionary<string, int> Vocab,
     IReadOnlyList<MergePair> Merges)
 {
-    /// <summary>Tokens added after training, which the model's own vocabulary does not contain.</summary>
+    /// <summary>The whole <c>added_tokens</c> table: every token matched as literal text ahead of the merge loop.</summary>
+    /// <remarks>
+    /// <para>
+    /// Not "the tokens <see cref="Vocab"/> lacks". HuggingFace lists a special token in
+    /// both tables at the same id — <c>&lt;|endoftext|&gt;</c> is 50256 in GPT-2's own
+    /// <c>model.vocab</c> as well as in its <c>added_tokens</c> — and this property is
+    /// the only input to <see cref="BpeTokenizer"/>'s pre-merge scan, so a token left
+    /// out of it here is a token that tokenizes character by character instead of being
+    /// matched whole. Overlap with <see cref="Vocab"/> is expected, and the two must
+    /// agree on the id where they overlap.
+    /// </para>
+    /// <para>
+    /// It is also what <c>skipSpecialTokens</c> drops in
+    /// <see cref="BpeTokenizer.Decode(IReadOnlyList{int}, bool)"/>. The
+    /// <c>special</c> flag a <c>tokenizer.json</c> records per entry is not carried
+    /// here, so that flag drops every added token where Python drops only the special
+    /// ones; see <c>docs/equivalence.md</c>.
+    /// </para>
+    /// </remarks>
     public IReadOnlyDictionary<string, int> AddedTokens { get; init; } =
         new Dictionary<string, int>(StringComparer.Ordinal);
 

@@ -622,6 +622,45 @@ public sealed class TokenizerJsonLoaderTests
     }
 
     /// <summary>
+    /// A token listed in <c>added_tokens</c> <em>and</em> in <c>model.vocab</c> at the
+    /// same id — which is how HuggingFace writes every special token, GPT-2's
+    /// <c>&lt;|endoftext|&gt;</c> at id 50256 included — must still reach
+    /// <see cref="BpeVocabulary.AddedTokens"/>.
+    /// </summary>
+    /// <remarks>
+    /// That property is the only input to <c>BpeTokenizer</c>'s pre-merge scan, so
+    /// treating the table as "the tokens model.vocab lacks" and subtracting the
+    /// intersection removes exactly the tokens the scan exists for. The encode
+    /// assertion below is what tells the two apart: with the token matched literally
+    /// the whole marker is one id, and without it the marker's characters are not in
+    /// this vocabulary at all and are dropped one by one, leaving [2, 2].
+    /// </remarks>
+    [Fact]
+    public void LoadBpe_keeps_an_added_token_that_model_vocab_also_declares()
+    {
+        const string Json = """
+        {"added_tokens":[{"id":3,"content":"<|eot|>","single_word":false,"lstrip":false,"rstrip":false,"special":true}],
+         "pre_tokenizer":{"type":"Whitespace"},
+         "model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2,"<|eot|>":3},"merges":[["a","b"]]}}
+        """;
+
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+
+        Assert.Equal(3, vocabulary.AddedTokens["<|eot|>"]);
+        // model.vocab is left as the file declared it: the added table is a property
+        // of its own, not a fold into the vocabulary.
+        Assert.Equal(4, vocabulary.Vocab.Count);
+
+        var tokenizer = new BpeTokenizer(vocabulary);
+        TokenizationResult encoded = tokenizer.Encode("ab<|eot|>ab");
+
+        // tokenizers 0.23.1 over the same file: ['ab', '<|eot|>', 'ab'], [2, 3, 2].
+        Assert.Equal(["ab", "<|eot|>", "ab"], encoded.Tokens);
+        Assert.Equal([2, 3, 2], encoded.Ids);
+        Assert.Equal("abab", tokenizer.Decode(encoded.Ids, skipSpecialTokens: true));
+    }
+
+    /// <summary>
     /// byte_fallback is the Llama-2 / Mistral v0.1 pipeline (ADR 0017). Loading it
     /// anyway would produce a tokenization that looks right and embeddings that
     /// are not, so it is refused by name.
