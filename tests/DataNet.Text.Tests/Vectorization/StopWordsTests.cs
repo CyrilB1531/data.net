@@ -3,6 +3,11 @@ using Xunit;
 
 namespace DataNet.Text.Tests.Vectorization;
 
+// CA1308 (normalize to uppercase): the assertion below is precisely that every
+// shipped stop word is already lowercase, which is the invariant the lists are
+// built on. Uppercasing would assert the opposite of what is meant.
+#pragma warning disable CA1308
+
 /// <summary>
 /// The shipped lists are vendored data, so what needs pinning is their identity:
 /// the exact counts of their source, and the words that tell the two candidate

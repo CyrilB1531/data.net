@@ -10,7 +10,17 @@ namespace DataNet.Text.Stemming;
 // CA1845 (use span-based string.Concat): that overload does not exist on
 // netstandard2.0. The Substring form is what makes this file compile there.
 #pragma warning disable CA1845
-#pragma warning disable S3776, S3267
+// CA1307 (specify StringComparison): the overload it asks for —
+// string.IndexOf(char, StringComparison) / string.Replace(string, string?,
+// StringComparison) — does not exist on netstandard2.0, which this assembly
+// targets. Both calls are ordinal on every runtime that has them, so the
+// suggestion would change nothing but the compilation.
+// CA1308 (normalize to uppercase): Snowball and Porter are *defined* on
+// lowercase input — the published algorithms, the reference implementations and
+// the oracle corpora this suite is checked against all lowercase first.
+// ToUpperInvariant would return different stems, which is a wrong answer rather
+// than a differently-cased one.
+#pragma warning disable S3776, S3267, CA1307, CA1308
 
 /// <summary>
 /// The Portuguese Snowball stemming algorithm.

@@ -38,12 +38,12 @@ internal static class ArtifactIo
         using (var writer = new Utf8JsonWriter(buffer, JsonArtifact.WriterOptions))
         {
             WriteDocument(writer, artifact, version, writeBody);
-            // SonarLint S6966: the destination here is the MemoryStream above, whose
+            // CA1849 / SonarLint S6966: the destination here is the MemoryStream above, whose
             // FlushAsync performs no I/O and returns an already-completed task. The
             // one async call is the write to the caller's stream below.
-#pragma warning disable S6966
+#pragma warning disable S6966, CA1849
             writer.Flush();
-#pragma warning restore S6966
+#pragma warning restore S6966, CA1849
         }
 
         byte[] payload = buffer.GetBuffer();

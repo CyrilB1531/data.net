@@ -1,5 +1,11 @@
 namespace DataNet.Embeddings.Tokenization;
 
+// CA1008 (enums should have a zero value): the members mirror the piece types of
+// SentencePiece's own ModelProto, which are numbered from 1. A synthetic None = 0
+// would be a value no model file can carry. See
+// docs/decisions/0013-sentencepiece-parity-scope.md.
+#pragma warning disable CA1008
+
 /// <summary>
 /// What a piece is for, as recorded in the <c>spiece.model</c> proto.
 /// </summary>

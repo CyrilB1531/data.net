@@ -8,7 +8,10 @@ namespace DataNet.Text.Vectorization;
 // SonarLint S3267: the suggested Select does not compile on netstandard2.0 —
 // MatchCollection implements only the non-generic IEnumerable there, so LINQ
 // would need a Cast<Match>() and an extra allocation in a per-document path.
-#pragma warning disable S3267
+// CA1720 (identifier contains type name): AnalyzerKind.Char mirrors
+// scikit-learn's analyzer='char', which is the name a reader arrives with, and it
+// has been public since 0.1.0 — renaming it breaks consumers for a naming rule.
+#pragma warning disable S3267, CA1720
 /// <summary>The kind of tokens a vectorizer extracts.</summary>
 public enum AnalyzerKind
 {
@@ -21,6 +24,12 @@ public enum AnalyzerKind
     /// <summary>Character n-grams that do not cross word boundaries (words padded with spaces).</summary>
     CharWordBoundary,
 }
+
+// CA1308 (normalize to uppercase): lowercasing here is the pipeline's default
+// behavior, when `Lowercase` is set, mirroring scikit-learn's text vectorizers.
+// ToUpperInvariant would change which terms come out, which breaks the oracle
+// corpora this suite is checked against rather than merely recasing them.
+#pragma warning disable CA1308
 
 /// <summary>
 /// Turns a document into its sequence of terms, mirroring the preprocessing and

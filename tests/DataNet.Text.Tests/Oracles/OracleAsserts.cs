@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json.Serialization;
 using Xunit;
@@ -85,7 +86,7 @@ public static class OracleAsserts
             string a = actual(c);
             if (!string.Equals(e, a, StringComparison.Ordinal) && failures.Length < ReportCap)
             {
-                failures.Append($"  {describe(c)}: expected \"{e}\", got \"{a}\"\n");
+                failures.Append(CultureInfo.InvariantCulture, $"  {describe(c)}: expected \"{e}\", got \"{a}\"\n");
             }
         }
 
@@ -106,7 +107,7 @@ public static class OracleAsserts
             int a = actual(c);
             if (e != a && failures.Length < ReportCap)
             {
-                failures.Append($"  {describe(c)}: expected {e}, got {a}\n");
+                failures.Append(CultureInfo.InvariantCulture, $"  {describe(c)}: expected {e}, got {a}\n");
             }
         }
 
@@ -128,7 +129,7 @@ public static class OracleAsserts
             double a = actual(c);
             if (Math.Abs(e - a) > tolerance && failures.Length < ReportCap)
             {
-                failures.Append($"  {describe(c)}: expected {e:R}, got {a:R}\n");
+                failures.Append(CultureInfo.InvariantCulture, $"  {describe(c)}: expected {e:R}, got {a:R}\n");
             }
         }
 

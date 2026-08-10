@@ -90,6 +90,8 @@ public static class Fuzz
     /// <summary><see cref="Ratio"/> after splitting, sorting and rejoining the tokens of each string.</summary>
     public static double TokenSortRatio(string a, string b)
     {
+        Guard.NotNull(a);
+        Guard.NotNull(b);
         return Ratio(SortedJoin(Tokenize(a)), SortedJoin(Tokenize(b)));
     }
 
@@ -102,6 +104,8 @@ public static class Fuzz
     /// <summary><see cref="PartialRatio"/> on sorted-token strings.</summary>
     public static double PartialTokenSortRatio(string a, string b)
     {
+        Guard.NotNull(a);
+        Guard.NotNull(b);
         return PartialRatio(SortedJoin(Tokenize(a)), SortedJoin(Tokenize(b)));
     }
 
