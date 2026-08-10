@@ -74,7 +74,13 @@ public readonly ref struct MultiClassRocOptions
     /// sentinel for "all cores": write <see cref="Environment.ProcessorCount"/> if
     /// that is what is meant, so the number is visible at the call site.
     /// scikit-learn does not parallelise <c>roc_auc_score</c> at all — see
-    /// <c>docs/decisions/0017-multiclass-roc-auc-parallelism-is-opt-in.md</c>.
+    /// <c>docs/decisions/0018-multiclass-roc-auc-parallelism-is-opt-in.md</c>.
+    /// </para>
+    /// <para>
+    /// <see cref="Environment.ProcessorCount"/> is not always the fastest choice:
+    /// it counts logical threads, and on a hyperthreaded machine more workers than
+    /// physical cores can be slower. Measured figures for both, per shape, are in
+    /// <c>docs/guides/performance.md</c>.
     /// </para>
     /// </remarks>
     public int MaxDegreeOfParallelism { get; init; }
