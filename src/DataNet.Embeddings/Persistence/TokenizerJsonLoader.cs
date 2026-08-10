@@ -238,7 +238,7 @@ public static class TokenizerJsonLoader
         {
             throw new InvalidDataException($"The {SourceName} declares an empty vocabulary.");
         }
-        ReadAddedTokens(root, vocab, limits);
+        ReadAddedTokens(root, vocab, limits, reproducesFlags: false);
         if (!vocab.ContainsKey(unkToken))
         {
             throw new InvalidDataException($"The {SourceName} names '{unkToken}' as its unknown token but does not define it.");
@@ -346,17 +346,25 @@ public static class TokenizerJsonLoader
     /// <param name="root">The <c>tokenizer.json</c> root object.</param>
     /// <param name="vocab">The model's vocabulary; entries it lacks are folded in.</param>
     /// <param name="limits">Bounds applied while reading.</param>
+    /// <param name="reproducesFlags">
+    /// Whether the caller's tokenizer applies <c>lstrip</c>, <c>rstrip</c> and
+    /// <c>single_word</c> itself — the BPE path, whose <see cref="AddedTokenScanner"/>
+    /// matches the table as literal text ahead of the model and reads the flags
+    /// rather than needing them to sit at their defaults. WordPiece merely folds an
+    /// added token into its vocabulary, matchable as a whole word only, so a flag
+    /// that would change that is refused instead.
+    /// </param>
     /// <param name="matchedLiterally">
     /// When non-<see langword="null"/>, <em>every</em> entry of the table is recorded
-    /// here and checked for matching flags DataNet does not reproduce — the BPE path,
-    /// where the table is scanned as literal text ahead of the model rather than merely
-    /// folded into the vocabulary, so an entry <c>model.vocab</c> already declares is
-    /// not the no-op it is for WordPiece.
+    /// here — the BPE path, where the table is scanned as literal text ahead of the
+    /// model rather than merely folded into the vocabulary, so an entry
+    /// <c>model.vocab</c> already declares is not the no-op it is for WordPiece.
     /// </param>
     private static void ReadAddedTokens(
         JsonElement root,
         Dictionary<string, int> vocab,
         in ArtifactLimits limits,
+        bool reproducesFlags,
         List<AddedToken>? matchedLiterally = null)
     {
         if (!root.TryGetProperty(AddedTokensProperty, out JsonElement added) || added.ValueKind != JsonValueKind.Array)
@@ -379,8 +387,14 @@ public static class TokenizerJsonLoader
 
             string content = contentElement.GetString()!;
             limits.CheckTokenLength(content.Length);
-            FoldAddedToken(token, content, id, vocab, limits, matchedLiterally);
-            matchedLiterally?.Add(new AddedToken(content, id) { Special = OptionalBoolean(token, "special") is true });
+            FoldAddedToken(token, content, id, vocab, limits, reproducesFlags);
+            matchedLiterally?.Add(new AddedToken(content, id)
+            {
+                Lstrip = OptionalBoolean(token, "lstrip") is true,
+                Rstrip = OptionalBoolean(token, "rstrip") is true,
+                SingleWord = OptionalBoolean(token, "single_word") is true,
+                Special = OptionalBoolean(token, "special") is true,
+            });
         }
     }
 
@@ -391,7 +405,7 @@ public static class TokenizerJsonLoader
         int id,
         Dictionary<string, int> vocab,
         in ArtifactLimits limits,
-        List<AddedToken>? matchedLiterally)
+        bool reproducesFlags)
     {
         if (id < 0)
         {
@@ -408,17 +422,18 @@ public static class TokenizerJsonLoader
                 throw new InvalidDataException(
                     $"The {SourceName} adds token '{content}' as id {id} but its vocabulary already maps it to {existing}.");
             }
-            // Folding is a no-op, but the matching flags are not: on the BPE path this
-            // entry is still scanned as literal text, so they have to be checked here
-            // too rather than only on the branch that adds a new id.
-            if (matchedLiterally is not null)
-            {
-                EnsureAddedTokenMatchesPlainly(content, token);
-            }
+            // Folding is a no-op here regardless of caller: the id is already what
+            // model.vocab gives this text, so there is nothing this branch adds that
+            // the matching flags could change. A caller that reproduces them (BPE)
+            // reads them from the recorded AddedToken instead; one that does not
+            // (WordPiece) never applies them either way.
             return;
         }
 
-        EnsureAddedTokenMatchesPlainly(content, token);
+        if (!reproducesFlags)
+        {
+            EnsureAddedTokenMatchesPlainly(content, token);
+        }
         vocab[content] = id;
         limits.CheckVocabularySize(vocab.Count);
     }
@@ -742,7 +757,7 @@ public static class TokenizerJsonLoader
     {
         var withAdded = new Dictionary<string, int>(vocab, StringComparer.Ordinal);
         var added = new List<AddedToken>();
-        ReadAddedTokens(root, withAdded, limits, added);
+        ReadAddedTokens(root, withAdded, limits, reproducesFlags: true, matchedLiterally: added);
         return added;
     }
 

@@ -743,25 +743,85 @@ public sealed class TokenizerJsonLoaderTests
 
     /// <summary>
     /// An added token that <c>model.vocab</c> also declares still goes through the
-    /// matching-flags check -- the same one a token added for the first time goes
+    /// matching-flags read -- the same one a token added for the first time goes
     /// through. Fixture shaped after <c>roberta-base</c>'s own <c>tokenizer.json</c>,
     /// whose <c>&lt;mask&gt;</c> is id 50264 in both tables with <c>lstrip: true</c>.
     /// </summary>
     /// <remarks>
     /// Before the fold-in check moved onto this branch, that file loaded with
-    /// <c>lstrip</c> silently ignored; this pins the refusal so it is not
-    /// silently undone by a later change.
+    /// <c>lstrip</c> silently ignored. Now that <see cref="AddedTokenScanner"/>
+    /// applies the flag, this fixture pins the fold-in branch specifically: it is
+    /// separate code from the "new id" branch <c>LoadBpe_reads_the_added_token_matching_flags</c>
+    /// exercises.
     /// </remarks>
     [Fact]
-    public void LoadBpe_refuses_an_added_token_in_model_vocab_with_lstrip_on()
+    public void LoadBpe_reads_lstrip_on_an_added_token_that_model_vocab_also_declares()
     {
         const string Json = """
         {"added_tokens":[{"id":3,"content":"<mask>","single_word":false,"lstrip":true,"rstrip":false,"special":true}],
          "model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2,"<mask>":3},"merges":[["a","b"]]}}
         """;
 
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+
+        AddedToken mask = Assert.Single(vocabulary.AddedTokens, t => t.Content == "<mask>");
+        Assert.True(mask.Lstrip);
+        Assert.False(mask.Rstrip);
+        Assert.False(mask.SingleWord);
+        Assert.True(mask.Special);
+    }
+
+    /// <summary>
+    /// The added-token matching flags reach <see cref="BpeVocabulary.AddedTokens"/>
+    /// for a token that is new to <c>model.vocab</c> too, not only the fold-in
+    /// branch above. Issue #104: <c>roberta-base</c> declares <c>lstrip=true</c> on
+    /// <c>&lt;mask&gt;</c>, and this loader used to refuse it outright.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_reads_the_added_token_matching_flags()
+    {
+        const string Json = """
+        {
+          "added_tokens": [
+            { "id": 2, "content": "<mask>", "lstrip": true, "rstrip": false, "single_word": false, "special": true }
+          ],
+          "pre_tokenizer": { "type": "ByteLevel", "add_prefix_space": false },
+          "model": { "type": "BPE", "vocab": { "a": 0, "b": 1, "<mask>": 2 }, "merges": [] }
+        }
+        """;
+
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+
+        AddedToken mask = Assert.Single(vocabulary.AddedTokens, t => t.Content == "<mask>");
+        Assert.True(mask.Lstrip);
+        Assert.False(mask.Rstrip);
+        Assert.False(mask.SingleWord);
+        Assert.True(mask.Special);
+    }
+
+    /// <summary>
+    /// <see cref="TokenizerJsonLoader.LoadWordPiece(Stream, ArtifactLoadOptions?)"/>
+    /// still refuses the matching flags on an added token new to its vocabulary:
+    /// WordPiece folds it in rather than scanning it as literal text, and has no
+    /// scanner of its own yet to apply <c>lstrip</c> with. Without this test, a
+    /// later change to the shared <c>ReadAddedTokens</c> helper could silently lift
+    /// the WordPiece refusal too.
+    /// </summary>
+    [Fact]
+    public void LoadWordPiece_still_refuses_an_added_token_with_lstrip_on()
+    {
+        const string Json = """
+        {
+          "added_tokens": [
+            { "id": 2, "content": "<mask>", "lstrip": true, "rstrip": false, "single_word": false, "special": true }
+          ],
+          "pre_tokenizer": { "type": "Whitespace" },
+          "model": { "type": "WordPiece", "unk_token": "[UNK]", "vocab": { "a": 0, "b": 1 } }
+        }
+        """;
+
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadWordPiece(Bytes(Json)));
 
         Assert.Contains("lstrip", error.Message, StringComparison.Ordinal);
     }
