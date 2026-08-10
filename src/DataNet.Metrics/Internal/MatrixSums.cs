@@ -12,6 +12,13 @@ namespace DataNet.Metrics.Internal;
 /// three metrics must not, because scikit-learn computes them from
 /// <c>confusion_matrix(y_true, y_pred, labels=…)</c>, which is <c>k × k</c> and
 /// drops the samples outside the requested labels.
+/// <para>
+/// Not every caller reads every output: <see cref="BalancedAccuracy"/> needs only
+/// <c>rowSums</c>, since a per-class recall is a diagonal cell over its own row
+/// sum. It still comes through here rather than summing rows of its own, so that
+/// the three metrics restricted to the <c>Size × Size</c> view have one pass
+/// between them and one place where that restriction is argued for.
+/// </para>
 /// </remarks>
 internal static class MatrixSums
 {

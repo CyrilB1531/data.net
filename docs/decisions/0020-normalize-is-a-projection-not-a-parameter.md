@@ -53,9 +53,28 @@ overload".
 
 ### `Score(cm)` computes over the classes the matrix holds
 
-A matrix built with `labels:` holds a subset of the classes, and every metric
-here that takes a `ConfusionMatrix` reads exactly the classes in it — never the
-samples it dropped.
+A matrix built with `labels:` holds a subset of the classes, and the three
+metrics added here — `BalancedAccuracy`, `MatthewsCorrelation` and `CohenKappa` —
+read exactly the classes in it, never the samples it dropped. Every quantity they
+use (cells, row sums, column sums, trace, total, and balanced accuracy's
+per-class recall denominator) comes from `Internal.MatrixSums`, which sums the
+`Size × Size` view only.
+
+This is not true of the metrics that came before, and the difference is
+deliberate rather than an inconsistency to tidy up. `Precision`, `Recall`, `F1`,
+`FBeta` and `ClassificationReport` go through `Internal.Prf`, whose `Support` is
+`ConfusionMatrix.TrueSum` and whose `PredictedSum` runs over all `Stride` rows —
+both counted against every *observed* label, not only the requested ones. They
+have to be: those are scikit-learn's `true_sum` and `pred_sum`, which
+`precision_recall_fscore_support(…, labels=…)` computes from the samples
+themselves, so a sample whose predicted label fell outside the request still
+lands in a requested class's row denominator there. Matching that is the whole
+point of `Prf.Support`'s own remarks. The three metrics here must not match it,
+because scikit-learn computes *them* from `confusion_matrix(y_true, y_pred,
+labels=…)`, which is `k × k` and has already dropped those samples. Two rules,
+each faithful to the reference call it mirrors; on a matrix that dropped nothing
+— which is every matrix built without explicit `labels`, since `Stride == Size`
+there — the two coincide exactly.
 
 This is a property of the matrix-consuming overload, not a claim about the
 reference, and the three metrics differ in whether a reference value even exists.
@@ -128,6 +147,15 @@ idea: `ZeroDivision.Throw` exists at all because a Python warning has no useful
 rejected alternative — would have left the one metric whose undefined case is
 *most* likely to be a real modelling bug, a target with one class in it, as the
 only one that cannot be made to say so.
+
+The cost is that the signature no longer transcribes: a reader porting
+`matthews_corrcoef(y_true, y_pred)` finds a second parameter with no counterpart
+to map it to, and has to be told that the default reproduces the reference. It
+also puts a fourth default on an enum that already defaults inconsistently across
+the package (above), so the *set* of defaults is one entry harder to remember for
+the sake of one metric's diagnostics. Both are paid in
+[`equivalence.md`](../equivalence.md), which states the row as an extension
+beyond parity rather than a divergence in value.
 
 ## Consequences
 
