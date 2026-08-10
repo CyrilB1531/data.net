@@ -428,25 +428,32 @@ public sealed class TokenizerJsonLoaderTests
     // ---- added_tokens are read rather than dropped ----
 
     [Fact]
-    public void An_added_token_outside_the_model_vocabulary_joins_it()
+    public void An_added_token_outside_the_model_vocabulary_is_matched_as_text_not_folded_in()
     {
         WordPieceVocabulary vocabulary = LoadWordPieceFrom(SyntheticWordPiece(
             addedTokens: "[{\"id\":3,\"content\":\"[EXTRA]\",\"special\":true}]"));
 
-        Assert.Equal(4, vocabulary.Count);
-        Assert.Equal(3, vocabulary.Vocab["[EXTRA]"]);
+        // model.vocab is what the file declared, entry for entry. [EXTRA] reaches
+        // the tokenizer through AddedTokens, which is scanned as literal text ahead
+        // of the model — folded in, it would be matchable as a whole word only.
+        Assert.Equal(3, vocabulary.Count);
+        Assert.False(vocabulary.Vocab.ContainsKey("[EXTRA]"));
+        Assert.Equal(new AddedToken("[EXTRA]", 3) { Special = true }, Assert.Single(vocabulary.AddedTokens));
     }
 
     [Fact]
-    public void An_added_token_already_in_the_vocabulary_at_the_same_id_is_a_no_op()
+    public void An_added_token_already_in_the_vocabulary_at_the_same_id_is_still_recorded()
     {
         // What every stock BERT tokenizer.json looks like: the special tokens are
-        // listed in both tables.
+        // listed in both tables, at the same ids. The overlap is not subtracted —
+        // the scan reads nothing but AddedTokens, so an entry left out of it is an
+        // entry that reaches the model as ordinary text.
         WordPieceVocabulary vocabulary = LoadWordPieceFrom(SyntheticWordPiece(
             addedTokens: "[{\"id\":0,\"content\":\"[UNK]\",\"special\":true}]"));
 
         Assert.Equal(3, vocabulary.Count);
         Assert.Equal(0, vocabulary.Vocab["[UNK]"]);
+        Assert.Equal(0, Assert.Single(vocabulary.AddedTokens).Id);
     }
 
     [Fact]
@@ -462,9 +469,9 @@ public sealed class TokenizerJsonLoaderTests
     [Fact]
     public void An_added_token_with_a_negative_id_is_rejected()
     {
-        // The id is folded into the vocabulary and comes back out of Encode, straight
-        // into the caller's embedding lookup. A negative one is an out-of-range index
-        // in their code, blamed on them.
+        // The id comes straight back out of Encode, into the caller's embedding
+        // lookup. A negative one is an out-of-range index in their code, blamed on
+        // them.
         InvalidDataException error = Assert.Throws<InvalidDataException>(
             () => LoadWordPieceFrom(SyntheticWordPiece(
                 addedTokens: "[{\"id\":-5,\"content\":\"[EXTRA]\"}]")));
@@ -476,13 +483,17 @@ public sealed class TokenizerJsonLoaderTests
     [InlineData("lstrip")]
     [InlineData("rstrip")]
     [InlineData("single_word")]
-    public void An_added_token_with_matching_flags_is_rejected(string flag)
+    public void An_added_token_carries_the_matching_flag_the_file_set(string flag)
     {
-        InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => LoadWordPieceFrom(SyntheticWordPiece(
-                addedTokens: $"[{{\"id\":3,\"content\":\"[EXTRA]\",\"{flag}\":true}}]")));
+        WordPieceVocabulary vocabulary = LoadWordPieceFrom(SyntheticWordPiece(
+            addedTokens: $"[{{\"id\":3,\"content\":\"[EXTRA]\",\"{flag}\":true}}]"));
 
-        Assert.Contains(flag, error.Message, StringComparison.Ordinal);
+        AddedToken added = Assert.Single(vocabulary.AddedTokens);
+        Assert.Equal(
+            flag,
+            (added.Lstrip ? "lstrip" : null)
+                ?? (added.Rstrip ? "rstrip" : null)
+                ?? (added.SingleWord ? "single_word" : null));
     }
 
     // ---- Bounds that were declared but never proven ----
@@ -801,14 +812,13 @@ public sealed class TokenizerJsonLoaderTests
 
     /// <summary>
     /// <see cref="TokenizerJsonLoader.LoadWordPiece(Stream, ArtifactLoadOptions?)"/>
-    /// still refuses the matching flags on an added token new to its vocabulary:
-    /// WordPiece folds it in rather than scanning it as literal text, and has no
-    /// scanner of its own yet to apply <c>lstrip</c> with. Without this test, a
-    /// later change to the shared <c>ReadAddedTokens</c> helper could silently lift
-    /// the WordPiece refusal too.
+    /// reads the matching flags rather than refusing them. It refused them for as
+    /// long as WordPiece folded an added token into its vocabulary, matchable as a
+    /// whole word only; now that <see cref="WordPieceTokenizer"/> scans the table as
+    /// literal text, the flags have somewhere to be applied.
     /// </summary>
     [Fact]
-    public void LoadWordPiece_still_refuses_an_added_token_with_lstrip_on()
+    public void LoadWordPiece_reads_the_matching_flags_of_an_added_token()
     {
         const string Json = """
         {
@@ -816,14 +826,21 @@ public sealed class TokenizerJsonLoaderTests
             { "id": 2, "content": "<mask>", "lstrip": true, "rstrip": false, "single_word": false, "special": true }
           ],
           "pre_tokenizer": { "type": "Whitespace" },
-          "model": { "type": "WordPiece", "unk_token": "[UNK]", "vocab": { "a": 0, "b": 1 } }
+          "model": { "type": "WordPiece", "unk_token": "[UNK]", "vocab": { "[UNK]": 0, "a": 1 } }
         }
         """;
 
-        InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadWordPiece(Bytes(Json)));
+        WordPieceVocabulary vocabulary = TokenizerJsonLoader.LoadWordPiece(Bytes(Json));
 
-        Assert.Contains("lstrip", error.Message, StringComparison.Ordinal);
+        AddedToken mask = Assert.Single(vocabulary.AddedTokens);
+        Assert.Equal(2, mask.Id);
+        Assert.True(mask.Lstrip);
+        Assert.False(mask.Rstrip);
+        Assert.False(mask.SingleWord);
+        Assert.True(mask.Special);
+        // And the model's own table is untouched: <mask> is matched as text, so
+        // folding it in would make it a whole word the model could produce.
+        Assert.Equal(2, vocabulary.Count);
     }
 
     /// <summary>

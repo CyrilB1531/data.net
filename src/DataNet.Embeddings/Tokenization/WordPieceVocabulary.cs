@@ -20,6 +20,14 @@ public sealed record WordPieceVocabulary(
     string ContinuationPrefix,
     bool Lowercase)
 {
+    /// <summary>The <c>added_tokens</c> table, matched as literal text ahead of the model.</summary>
+    /// <remarks>
+    /// Not folded into <see cref="Vocab"/>: a folded entry is matchable as a whole
+    /// word only, which is a different tokenizer as soon as an entry carries a
+    /// matching flag. See <c>docs/decisions/0022-added-token-matching-flags.md</c>.
+    /// </remarks>
+    public IReadOnlyList<AddedToken> AddedTokens { get; init; } = [];
+
     /// <summary>Number of entries in the vocabulary.</summary>
     public int Count => Vocab.Count;
 
@@ -39,9 +47,17 @@ public sealed record WordPieceVocabulary(
             || Lowercase != other.Lowercase
             || !string.Equals(UnkToken, other.UnkToken, StringComparison.Ordinal)
             || !string.Equals(ContinuationPrefix, other.ContinuationPrefix, StringComparison.Ordinal)
-            || Vocab.Count != other.Vocab.Count)
+            || Vocab.Count != other.Vocab.Count
+            || AddedTokens.Count != other.AddedTokens.Count)
         {
             return false;
+        }
+        for (int i = 0; i < AddedTokens.Count; i++)
+        {
+            if (!AddedTokens[i].Equals(other.AddedTokens[i]))
+            {
+                return false;
+            }
         }
         foreach (KeyValuePair<string, int> entry in Vocab)
         {
@@ -64,6 +80,7 @@ public sealed record WordPieceVocabulary(
         unchecked
         {
             int hash = (17 * 31) + Vocab.Count;
+            hash = (hash * 31) + AddedTokens.Count;
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(UnkToken);
             hash = (hash * 31) + StringComparer.Ordinal.GetHashCode(ContinuationPrefix);
             return (hash * 31) + (Lowercase ? 1 : 0);
