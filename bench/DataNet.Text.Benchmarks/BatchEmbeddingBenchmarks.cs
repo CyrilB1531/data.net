@@ -30,6 +30,10 @@ namespace DataNet.Text.Benchmarks;
 /// Run: <c>dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter *BatchEmbedding*</c>
 /// </para>
 /// </remarks>
+// CA1001 (owns a disposable field but is not IDisposable): BenchmarkDotNet owns
+// this type's lifecycle and calls [GlobalCleanup] below, which disposes
+// _embedder. IDisposable would advertise an ownership no caller ever takes.
+#pragma warning disable CA1001
 [MemoryDiagnoser]
 [Config(typeof(NonOptimizedOnnxRuntime))]
 public class BatchEmbeddingBenchmarks
