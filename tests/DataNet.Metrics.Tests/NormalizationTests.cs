@@ -19,32 +19,36 @@ public sealed class NormalizationTests
         Assert.True(double.IsNegativeInfinity(OracleLoader.Number(root.GetProperty("c"))));
     }
 
-    [Theory]
-    [InlineData("true", Normalization.True)]
-    [InlineData("pred", Normalization.Pred)]
-    [InlineData("all", Normalization.All)]
-    public void Matches_sklearn_confusion_matrix_normalize(string key, Normalization normalization)
+    /// <summary>One row per corpus case per normalization, so a failure names both.</summary>
+    public static TheoryData<int, string, Normalization> Rows()
     {
-        foreach (JsonElement c in MetricsCorpus.Cases)
+        var data = new TheoryData<int, string, Normalization>();
+        for (int i = 0; i < MetricsCorpus.Cases.Count; i++)
         {
-            if (!c.TryGetProperty("normalized", out JsonElement expectedAll))
-            {
-                continue;
-            }
+            data.Add(i, "true", Normalization.True);
+            data.Add(i, "pred", Normalization.Pred);
+            data.Add(i, "all", Normalization.All);
+        }
+        return data;
+    }
 
-            ConfusionMatrix cm = MetricsCorpus.Matrix(c);
-            double[,] actual = cm.ToArray(normalization);
-            JsonElement expected = expectedAll.GetProperty(key);
+    [Theory]
+    [MemberData(nameof(Rows))]
+    public void Matches_sklearn_confusion_matrix_normalize(int index, string key, Normalization normalization)
+    {
+        JsonElement c = MetricsCorpus.Cases[index];
+        ConfusionMatrix cm = MetricsCorpus.Matrix(c);
+        double[,] actual = cm.ToArray(normalization);
+        JsonElement expected = c.GetProperty("normalized").GetProperty(key);
 
-            int k = cm.Labels.Count;
-            for (int row = 0; row < k; row++)
+        int k = cm.Labels.Count;
+        for (int row = 0; row < k; row++)
+        {
+            for (int col = 0; col < k; col++)
             {
-                for (int col = 0; col < k; col++)
-                {
-                    double want = OracleLoader.Number(expected[row][col]);
-                    Assert.True(Math.Abs(want - actual[row, col]) < MetricsCorpus.Tolerance,
-                        $"{MetricsCorpus.Describe(c)} {key}[{row},{col}]: expected {want}, got {actual[row, col]}");
-                }
+                double want = OracleLoader.Number(expected[row][col]);
+                Assert.True(Math.Abs(want - actual[row, col]) < MetricsCorpus.Tolerance,
+                    $"{MetricsCorpus.Describe(c)} {key}[{row},{col}]: expected {want}, got {actual[row, col]}");
             }
         }
     }
