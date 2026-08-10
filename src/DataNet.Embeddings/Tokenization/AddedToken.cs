@@ -5,11 +5,21 @@ namespace DataNet.Embeddings.Tokenization;
 /// that decide where it matches.
 /// </summary>
 /// <remarks>
-/// The flags are HuggingFace's, reproduced as measured against
+/// <para>
+/// The five flags are HuggingFace's, reproduced as measured against
 /// <c>tokenizers</c> 0.23.1 — see
-/// <c>docs/decisions/0022-added-token-matching-flags.md</c>. All four default to
+/// <c>docs/decisions/0022-added-token-matching-flags.md</c>.
+/// </para>
+/// <para>
+/// Four of them — <see cref="Lstrip"/>, <see cref="Rstrip"/>,
+/// <see cref="SingleWord"/> and <see cref="Special"/> — default to
 /// <see langword="false"/>, which is the plain literal match this library did
-/// before they existed.
+/// before they existed. <see cref="Normalized"/> is the exception and defaults to
+/// <c>!</c><see cref="Special"/>, because that is the rule HuggingFace's own
+/// constructor applies and there is no value that would be inert: an entry is
+/// matched against either the raw text or the normalized one, and it has to be
+/// matched against something.
+/// </para>
 /// </remarks>
 /// <param name="Content">The text matched, exactly and ordinally.</param>
 /// <param name="Id">The id the match produces.</param>
@@ -85,6 +95,56 @@ public sealed record AddedToken(string Content, int Id)
     /// text. It is <see cref="WordPieceTokenizer"/>, which reads <c>lowercase</c>
     /// from the file, where the two differ.
     /// </para>
+    /// <para>
+    /// Unset, it reads <c>!</c><see cref="Special"/> — Rust's
+    /// <c>AddedToken::from(content, special)</c>, and the one place that rule
+    /// lives. A loader that read it from a file and a caller that wrote
+    /// <c>new AddedToken("&lt;x&gt;", 2)</c> by hand therefore describe the same
+    /// token, which they did not while the default sat in the loader alone.
+    /// </para>
     /// </remarks>
-    public bool Normalized { get; init; }
+    public bool Normalized
+    {
+        get => _normalized ?? !Special;
+        init => _normalized = value;
+    }
+
+    private readonly bool? _normalized;
+
+    /// <summary>Compares the content and all five flags, defaults resolved.</summary>
+    /// <remarks>
+    /// The generated equality would compare the <em>backing field</em> of
+    /// <see cref="Normalized"/>, so a token that left it unset and one that set it
+    /// to the value the default already gives would be unequal while agreeing on
+    /// every observable property — and unequal in exactly the case that matters,
+    /// comparing a vocabulary read from a file against one written out by hand.
+    /// <see cref="BpeVocabulary"/> and <see cref="WordPieceVocabulary"/> both
+    /// compare their tables element-wise through this method, so that difference
+    /// would surface as two equal vocabularies reporting themselves unequal.
+    /// </remarks>
+    /// <param name="other">The token to compare against.</param>
+    public bool Equals(AddedToken? other) =>
+        other is not null
+        && string.Equals(Content, other.Content, StringComparison.Ordinal)
+        && Id == other.Id
+        && Lstrip == other.Lstrip
+        && Rstrip == other.Rstrip
+        && SingleWord == other.SingleWord
+        && Special == other.Special
+        && Normalized == other.Normalized;
+
+    /// <summary>Hashes the content, the id and the flags, defaults resolved.</summary>
+    public override int GetHashCode()
+    {
+        unchecked
+        {
+            int hash = (17 * 31) + StringComparer.Ordinal.GetHashCode(Content);
+            hash = (hash * 31) + Id;
+            hash = (hash * 31) + (Lstrip ? 1 : 0);
+            hash = (hash * 31) + (Rstrip ? 1 : 0);
+            hash = (hash * 31) + (SingleWord ? 1 : 0);
+            hash = (hash * 31) + (Special ? 1 : 0);
+            return (hash * 31) + (Normalized ? 1 : 0);
+        }
+    }
 }

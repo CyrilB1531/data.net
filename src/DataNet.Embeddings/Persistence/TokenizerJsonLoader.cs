@@ -392,23 +392,22 @@ public static class TokenizerJsonLoader
             string content = contentElement.GetString()!;
             limits.CheckTokenLength(content.Length);
             EnsureAddedTokenAgrees(content, id, known, limits);
-            bool special = OptionalBoolean(token, "special") is true;
-            table.Add(new AddedToken(content, id)
+            var parsed = new AddedToken(content, id)
             {
                 Lstrip = OptionalBoolean(token, "lstrip") is true,
                 Rstrip = OptionalBoolean(token, "rstrip") is true,
                 SingleWord = OptionalBoolean(token, "single_word") is true,
-                Special = special,
-                // Absent defaults to !special, which is what Rust's
-                // AddedToken::from(content, special) does and therefore what every
-                // entry add_tokens or add_special_tokens wrote carries. This is a
-                // choice rather than a measurement: tokenizers' own deserializer
-                // requires the field and refuses a file without it, where this loader
-                // tolerates an absent flag everywhere else and would rather read an
-                // abbreviated file than reject it. The two are independent fields —
-                // see AddedToken.Normalized.
-                Normalized = OptionalBoolean(token, "normalized") ?? !special,
-            });
+                Special = OptionalBoolean(token, "special") is true,
+            };
+            // Set only where the file says so. Absent falls to AddedToken's own
+            // default of !Special — Rust's AddedToken::from(content, special), and
+            // stated once, on the type, rather than here as well. Absent is not a
+            // shape tokenizers itself accepts (its deserializer requires the field
+            // and refuses a file without it); this loader tolerates an absent flag
+            // everywhere else and reads the abbreviated file rather than rejecting it.
+            table.Add(OptionalBoolean(token, "normalized") is bool normalized
+                ? parsed with { Normalized = normalized }
+                : parsed);
         }
         return table;
     }

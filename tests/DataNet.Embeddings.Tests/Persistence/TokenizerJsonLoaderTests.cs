@@ -504,6 +504,24 @@ public sealed class TokenizerJsonLoaderTests
         Assert.Equal(expected, Assert.Single(vocabulary.AddedTokens).Normalized);
     }
 
+    /// <summary>
+    /// A token read from a file and the same token written out by hand compare
+    /// equal, which is the comparison a caller asserting a loaded vocabulary
+    /// actually makes. Real files always spell <c>normalized</c> out — tokenizers'
+    /// own serializer writes all five flags — so this is the ordinary case, not a
+    /// corner: the hand-built token leaves the flag to its default and the loaded
+    /// one states it.
+    /// </summary>
+    [Fact]
+    public void An_added_token_read_from_a_file_equals_the_same_token_written_by_hand()
+    {
+        WordPieceVocabulary vocabulary = LoadWordPieceFrom(SyntheticWordPiece(
+            addedTokens: "[{\"id\":3,\"content\":\"[EXTRA]\",\"single_word\":false,\"lstrip\":false,"
+                + "\"rstrip\":false,\"normalized\":false,\"special\":true}]"));
+
+        Assert.Equal(new AddedToken("[EXTRA]", 3) { Special = true }, Assert.Single(vocabulary.AddedTokens));
+    }
+
     [Fact]
     public void An_added_token_with_a_negative_id_is_rejected()
     {
