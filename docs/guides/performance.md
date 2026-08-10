@@ -324,6 +324,73 @@ conservative (not flattering) a ratio above 1× is — and this window's load
 average was roughly 5–13× the original run's, so these margins are, if
 anything, understated relative to a quiet machine.
 
+### Regression metrics — mse, mae, median_ae, r2 (issue #92)
+
+The eleven regression metrics landed for issue #92 add four benchmark
+operations — `mse`, `mae`, `median_ae`, `r2` — covering the four distinct cost
+shapes among them: a squared mean, an absolute mean, a sort, and a two-pass
+centred sum. The other seven metrics are one of those four with a different
+arithmetic kernel and are not separately timed. They run over
+`y_true_real`/`y_pred_real`, continuous targets drawn by a separate seeded
+random generator and attached to each of the six existing corpus shapes,
+independent of the classification columns those shapes already carry — the
+generator inserting these draws would otherwise have shifted every
+classification array after the insertion point, invalidating the 29 and 18
+rows above; a before/after comparison of `y_true[:10]` on the regenerated
+corpus confirmed it did not. Same corpus files, same harnesses, same
+methodology as the tables above — **but measured in yet another separate
+window, with its own load**: `uptime`'s one-minute average was **8.05** just
+before the Python side started (five/fifteen-minute: 11.95 / 14.25) and
+**6.05** by the time `compare.py` printed the numbers below (five/fifteen-minute:
+7.15 / 11.07). That is well below the 16–23 one-minute load this session saw
+at dispatch and while the code changes were being made, but still noticeably
+busier than the 1.52 one-minute load recorded for the original 29 rows, so
+these 24 rows should be read only under their own conditions, given here.
+
+| Operation | DataNet ms | Python ms | wall | DataNet cpu ms | Python cpu ms | **cpu** |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `mse_n1000_k2` | 0.005 | 0.486 | 104.89x | 0.005 | 0.458 | **98.88x** |
+| `mae_n1000_k2` | 0.005 | 0.358 | 77.79x | 0.005 | 0.358 | **77.70x** |
+| `median_ae_n1000_k2` | 0.038 | 0.386 | 10.23x | 0.038 | 0.385 | **10.23x** |
+| `r2_n1000_k2` | 0.008 | 0.443 | 57.72x | 0.008 | 0.442 | **57.66x** |
+| `mse_n1000_k10` | 0.005 | 1.003 | 219.23x | 0.005 | 0.646 | **141.17x** |
+| `mae_n1000_k10` | 0.005 | 0.541 | 119.33x | 0.005 | 0.507 | **111.80x** |
+| `median_ae_n1000_k10` | 0.038 | 0.379 | 10.04x | 0.038 | 0.379 | **10.03x** |
+| `r2_n1000_k10` | 0.008 | 0.447 | 55.95x | 0.008 | 0.447 | **55.86x** |
+| `mse_n100000_k2` | 0.452 | 0.645 | 1.43x | 0.452 | 0.645 | **1.43x** |
+| `mae_n100000_k2` | 0.466 | 1.588 | 3.41x | 0.466 | 1.295 | **2.78x** |
+| `median_ae_n100000_k2` | 7.358 | 3.139 | 0.43x | 7.522 | 2.739 | **0.36x** |
+| `r2_n100000_k2` | 0.759 | 0.991 | 1.31x | 0.759 | 0.991 | **1.31x** |
+| `mse_n100000_k10` | 0.455 | 0.628 | 1.38x | 0.454 | 0.628 | **1.38x** |
+| `mae_n100000_k10` | 0.458 | 0.673 | 1.47x | 0.458 | 0.672 | **1.47x** |
+| `median_ae_n100000_k10` | 7.398 | 1.905 | 0.26x | 7.508 | 1.905 | **0.25x** |
+| `r2_n100000_k10` | 0.743 | 0.950 | 1.28x | 0.743 | 0.950 | **1.28x** |
+| `mse_n1000000_k2` | 5.013 | 5.226 | 1.04x | 5.008 | 5.220 | **1.04x** |
+| `mae_n1000000_k2` | 5.054 | 5.635 | 1.12x | 5.036 | 5.633 | **1.12x** |
+| `median_ae_n1000000_k2` | 88.792 | 16.525 | 0.19x | 88.782 | 16.503 | **0.19x** |
+| `r2_n1000000_k2` | 8.093 | 9.205 | 1.14x | 8.083 | 9.204 | **1.14x** |
+| `mse_n1000000_k10` | 4.983 | 4.989 | 1.00x | 4.982 | 4.983 | **1.00x** |
+| `mae_n1000000_k10` | 5.040 | 5.712 | 1.13x | 5.035 | 5.711 | **1.13x** |
+| `median_ae_n1000000_k10` | 86.305 | 16.658 | 0.19x | 86.227 | 16.658 | **0.19x** |
+| `r2_n1000000_k10` | 7.807 | 9.687 | 1.24x | 7.807 | 9.686 | **1.24x** |
+
+**20/24 at or above 1× on processor time — `median_ae` is the finding, not a
+fluke to rerun away.** All four `median_ae` rows at n=100 000 and n=1 000 000
+land below the gate — **0.36×**, **0.25×**, **0.19×** and **0.19×** — meaning
+Python is 3× to over 5× *faster* there, the only rows on this page where that
+is true. The cause is the algorithm, not the run: scikit-learn's
+`median_absolute_error` calls NumPy's `median`, which selects via
+introselect/quickselect in expected `O(n)`; DataNet's `MedianAbsoluteError`
+sorts, which is `O(n log n)`, and the gap widens with `n` exactly as that
+complexity difference predicts (0.36× at 100 000 rows, 0.19× at 1 000 000).
+`mse_n1000000_k10` is the narrowest *passing* row at **1.00×** — a squared
+mean over a million rows, near enough to parity that a busier or quieter
+machine could tip it either way; every other passing row clears 1.12×.
+`median_ae`'s numbers are recorded here as measured rather than rerun to a
+different result; a quickselect-based rewrite of `MedianAbsoluteError` would
+close the gap but is left as follow-up work, out of scope for the task that
+added this benchmark section.
+
 ## Multiclass ROC-AUC, sequential against parallel (issue #86)
 
 ```bash

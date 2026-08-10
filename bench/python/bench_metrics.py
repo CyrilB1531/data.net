@@ -1,25 +1,28 @@
 #!/usr/bin/env python3
 """Time the Python counterparts of the DataNet.Metrics work (issue #61),
 extended with balanced accuracy, Matthews correlation and Cohen's kappa
-(issue #93).
+(issue #93), and with four regression operations (issue #92).
 
 Methodology is mirrored by the C# harness (bench/DataNet.Text.Benchmarks,
 `compare-metrics` mode) so the two are comparable:
 
   * same corpus files (bench/corpus/metrics/, from generate_metrics.py),
-  * same nine operations, in the same order, over the same shapes,
+  * same thirteen operations, in the same order, over the same shapes,
   * metric: milliseconds per operation,
   * auto-scaling: repeat until a measurement lasts >= MIN_TIME,
   * report the best (minimum) of REPEATS measurements,
   * elapsed time (perf_counter) and processor time (process_time) together.
 
-None of the nine calls below passes sample_weight, on either side of the
+None of the calls below passes sample_weight, on either side of the
 comparison -- the corpus carries a weight column for potential future use, but
-the nine named operations do not read it. roc_auc_binary only runs over the
+none of the named operations read it. roc_auc_binary only runs over the
 two-class files; roc_auc_ovr_macro only over the ten-class files whose
 `scores` matrix the generator actually wrote (it stops at 100 000 rows).
-balanced_accuracy, matthews and cohen_kappa run over every shape, unlike the
-two roc_auc rows.
+balanced_accuracy, matthews, cohen_kappa and the four regression operations
+(mse, mae, median_ae, r2) run over every shape, unlike the two roc_auc rows --
+the regression pair (y_true_real/y_pred_real) is continuous data drawn by a
+separate SeededRandom, independent of the classification shape it is
+attached to.
 """
 
 from __future__ import annotations
@@ -90,7 +93,16 @@ def load_shape(n: int, k: int) -> dict:
                       if payload["binary_scores"] is not None else None)
     scores = (np.asarray(payload["scores"], dtype=np.float64)
               if payload["scores"] is not None else None)
-    return {"y_true": y_true, "y_pred": y_pred, "binary_scores": binary_scores, "scores": scores}
+    y_true_real = np.asarray(payload["y_true_real"], dtype=np.float64)
+    y_pred_real = np.asarray(payload["y_pred_real"], dtype=np.float64)
+    return {
+        "y_true": y_true,
+        "y_pred": y_pred,
+        "binary_scores": binary_scores,
+        "scores": scores,
+        "y_true_real": y_true_real,
+        "y_pred_real": y_pred_real,
+    }
 
 
 def measure_shape(n: int, k: int) -> list[dict]:
@@ -121,6 +133,13 @@ def measure_shape(n: int, k: int) -> list[dict]:
     results.append(measure(f"balanced_accuracy_{suffix}", lambda: skm.balanced_accuracy_score(y_true, y_pred)))
     results.append(measure(f"matthews_{suffix}", lambda: skm.matthews_corrcoef(y_true, y_pred)))
     results.append(measure(f"cohen_kappa_{suffix}", lambda: skm.cohen_kappa_score(y_true, y_pred)))
+
+    yt_real = np.asarray(data["y_true_real"], dtype=np.float64)
+    yp_real = np.asarray(data["y_pred_real"], dtype=np.float64)
+    results.append(measure(f"mse_{suffix}", lambda: skm.mean_squared_error(yt_real, yp_real)))
+    results.append(measure(f"mae_{suffix}", lambda: skm.mean_absolute_error(yt_real, yp_real)))
+    results.append(measure(f"median_ae_{suffix}", lambda: skm.median_absolute_error(yt_real, yp_real)))
+    results.append(measure(f"r2_{suffix}", lambda: skm.r2_score(yt_real, yp_real)))
 
     return results
 

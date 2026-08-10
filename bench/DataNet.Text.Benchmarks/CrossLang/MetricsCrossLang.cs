@@ -13,14 +13,15 @@ namespace DataNet.Text.Benchmarks.CrossLang;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Nine operations are named in total: the six from issue #61 —
+/// Thirteen operations are named in total: the six from issue #61 —
 /// <c>confusion_matrix</c>, <c>accuracy</c>, <c>precision_recall_f1_macro</c>,
 /// <c>classification_report</c>, <c>roc_auc_binary</c> and
 /// <c>roc_auc_ovr_macro</c> — plus <c>balanced_accuracy</c>, <c>matthews</c> and
-/// <c>cohen_kappa</c> from issue #93, which (unlike the two ROC-AUC rows) run over
-/// every shape. None takes <c>sample_weight</c> — the Python calls this mirrors
-/// do not either — so the weight column the corpus carries is unused here, on
-/// both sides.
+/// <c>cohen_kappa</c> from issue #93, plus <c>mse</c>, <c>mae</c>,
+/// <c>median_ae</c> and <c>r2</c> from issue #92, which (unlike the two ROC-AUC
+/// rows) run over every shape. None takes <c>sample_weight</c> — the Python
+/// calls this mirrors do not either — so the weight column the corpus carries
+/// is unused here, on both sides.
 /// </para>
 /// <para>
 /// <c>roc_auc_binary</c> only runs over the two-class files, and
@@ -37,6 +38,16 @@ namespace DataNet.Text.Benchmarks.CrossLang;
 /// one <see cref="ConfusionMatrix.Compute(ReadOnlySpan{int},ReadOnlySpan{int},ReadOnlySpan{int},ReadOnlySpan{double})"/>
 /// call, then <see cref="Precision"/>, <see cref="Recall"/> and <see cref="F1"/>
 /// each read that same matrix rather than recomputing it.
+/// </para>
+/// <para>
+/// <c>mse</c>, <c>mae</c>, <c>median_ae</c> and <c>r2</c> cover the four
+/// distinct cost shapes among the eleven regression metrics landed for issue
+/// #92 — a squared mean, an absolute mean, a sort, and a two-pass centred sum —
+/// so the other seven are one of those four with a different arithmetic kernel
+/// and are not separately timed. They run over <c>y_true_real</c>/
+/// <c>y_pred_real</c>, continuous targets the generator draws from a
+/// separate seeded random instance and attaches to each shape's corpus file,
+/// independent of the classification columns above.
 /// </para>
 /// </remarks>
 public static class MetricsCrossLang
@@ -89,6 +100,8 @@ public static class MetricsCrossLang
         CorpusFile file = JsonSerializer.Deserialize<CorpusFile>(File.ReadAllBytes(path))!;
         int[] yTrue = file.YTrue;
         int[] yPred = file.YPred;
+        double[] yTrueReal = file.YTrueReal;
+        double[] yPredReal = file.YPredReal;
         string suffix = $"n{n}_k{k}";
 
         var results = new List<Harness.OperationResult>
@@ -114,6 +127,11 @@ public static class MetricsCrossLang
         results.Add(Harness.Measure($"balanced_accuracy_{suffix}", () => BalancedAccuracy.Score(yTrue, yPred)));
         results.Add(Harness.Measure($"matthews_{suffix}", () => MatthewsCorrelation.Score(yTrue, yPred)));
         results.Add(Harness.Measure($"cohen_kappa_{suffix}", () => CohenKappa.Score(yTrue, yPred)));
+
+        results.Add(Harness.Measure($"mse_{suffix}", () => MeanSquaredError.Score(yTrueReal, yPredReal)));
+        results.Add(Harness.Measure($"mae_{suffix}", () => MeanAbsoluteError.Score(yTrueReal, yPredReal)));
+        results.Add(Harness.Measure($"median_ae_{suffix}", () => MedianAbsoluteError.Score(yTrueReal, yPredReal)));
+        results.Add(Harness.Measure($"r2_{suffix}", () => R2.Score(yTrueReal, yPredReal)));
 
         return results;
     }
@@ -150,5 +168,7 @@ public static class MetricsCrossLang
         [JsonPropertyName("sample_weight")] public double[] SampleWeight { get; init; } = [];
         [JsonPropertyName("binary_scores")] public double[]? BinaryScores { get; init; }
         [JsonPropertyName("scores")] public double[][]? Scores { get; init; }
+        [JsonPropertyName("y_true_real")] public double[] YTrueReal { get; init; } = [];
+        [JsonPropertyName("y_pred_real")] public double[] YPredReal { get; init; } = [];
     }
 }
