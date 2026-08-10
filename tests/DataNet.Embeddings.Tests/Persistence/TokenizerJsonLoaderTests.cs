@@ -656,6 +656,14 @@ public sealed class TokenizerJsonLoaderTests
     private static MemoryStream Bytes(string json) => new MemoryStream(Encoding.UTF8.GetBytes(json));
 
     /// <summary>
+    /// A minimal BPE <c>tokenizer.json</c> document with one extra <c>model</c>
+    /// property appended -- e.g. <c>BpeJson(@"""dropout"": 0.0")</c> -- for the
+    /// acceptance/refusal pairs below that vary a single model setting.
+    /// </summary>
+    private static string BpeJson(string extraModelProperty) =>
+        "{\"model\":{\"type\":\"BPE\",\"vocab\":{\"a\":0},\"merges\":[]," + extraModelProperty + "}}";
+
+    /// <summary>
     /// The path to <c>tests/oracles/roberta_shaped_model.json</c>, not its parsed
     /// content: <see cref="TokenizerJsonLoader.LoadBpe(string, ArtifactLoadOptions?)"/>
     /// takes a file path, where <see cref="OracleLoader.Load(string)"/> returns an
@@ -1129,6 +1137,47 @@ public sealed class TokenizerJsonLoaderTests
         """;
 
         Assert.Single(TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()).Vocab);
+    }
+
+    [Fact]
+    public void LoadBpe_accepts_an_empty_continuing_subword_prefix()
+    {
+        // An empty prefix prefixes nothing, so the divergence the refusal guards cannot occur.
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(BpeJson(@"""continuing_subword_prefix"": """"")));
+
+        Assert.NotNull(vocabulary);
+    }
+
+    /// <summary>
+    /// <c>Unsupported</c> throws <see cref="InvalidDataException"/>, the type every
+    /// other refusal in this class asserts against -- not
+    /// <see cref="NotSupportedException"/>, which this loader never throws.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_still_refuses_a_non_empty_continuing_subword_prefix()
+    {
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(BpeJson(@"""continuing_subword_prefix"": ""##"""))));
+
+        Assert.Contains("continuing_subword_prefix", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LoadBpe_accepts_a_zero_dropout()
+    {
+        // At 0.0 no merge is ever skipped, which is the determinism the refusal protects.
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(BpeJson(@"""dropout"": 0.0")));
+
+        Assert.NotNull(vocabulary);
+    }
+
+    [Fact]
+    public void LoadBpe_still_refuses_a_non_zero_dropout()
+    {
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(BpeJson(@"""dropout"": 0.1"))));
+
+        Assert.Contains("dropout", error.Message, StringComparison.Ordinal);
     }
 
     /// <summary>

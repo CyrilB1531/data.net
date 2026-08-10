@@ -582,7 +582,9 @@ public static class TokenizerJsonLoader
     /// </remarks>
     private static void EnsureBpeModelSettingsAreReproduced(JsonElement model)
     {
-        if (OptionalString(model, "continuing_subword_prefix") is { } prefix)
+        // An empty prefix prefixes no symbol, so the divergence this refusal exists to
+        // guard against cannot occur; only a non-empty prefix is still refused.
+        if (OptionalString(model, "continuing_subword_prefix") is { Length: > 0 } prefix)
         {
             throw Unsupported(
                 $"its model declares continuing_subword_prefix '{prefix}'",
@@ -594,7 +596,18 @@ public static class TokenizerJsonLoader
                 "its model declares fuse_unk",
                 "HuggingFace then collapses a run of uncovered characters into a single unknown token, where BpeTokenizer emits one per code point");
         }
-        if (model.TryGetProperty("dropout", out JsonElement dropout) && dropout.ValueKind != JsonValueKind.Null)
+        // At 0.0 no merge is ever skipped, which is the determinism this refusal
+        // protects, so a numeric zero is exempt. A dropout that is present, non-null
+        // and not a number is malformed rather than a reproduced zero, so it still
+        // falls into the throw below instead of being let through.
+        // SonarLint S1244: the exact value matters here, not a tolerance. 0.0 is what
+        // "no dropout" round-trips to and is exactly representable; a tolerance would
+        // instead accept small non-zero dropouts this loader cannot reproduce.
+#pragma warning disable S1244
+        if (model.TryGetProperty("dropout", out JsonElement dropout)
+            && dropout.ValueKind != JsonValueKind.Null
+            && (dropout.ValueKind != JsonValueKind.Number || dropout.GetDouble() != 0.0))
+#pragma warning restore S1244
         {
             throw Unsupported(
                 "its model declares dropout",
