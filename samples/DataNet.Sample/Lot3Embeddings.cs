@@ -60,6 +60,19 @@ internal static class Lot3Embeddings
         WordPieceVocabulary fromJson = TokenizerJsonLoader.LoadWordPiece(Utf8(WordPieceJson), bounds);
         Console.WriteLine($"  tokenizer.json   : {fromJson.Count} WordPiece tokens");
 
+        // added_tokens rides outside the vocabulary above — matched as literal
+        // text before the model ever sees it, the way BERT's own [MASK] is. Its
+        // lstrip absorbs the whitespace immediately to its left into the match,
+        // so the token string below carries that space while the ids do not move:
+        // WordPiece's pre-tokenizer emits no whitespace piece for a strip to
+        // remove. Losing one — the Ġ — is the byte-level story, not this one.
+        AddedToken maskToken = fromJson.AddedTokens[0];
+        Console.WriteLine($"  added token      : '{maskToken.Content}'->{maskToken.Id}, special={maskToken.Special}, "
+            + $"lstrip={maskToken.Lstrip}, rstrip={maskToken.Rstrip}, singleWord={maskToken.SingleWord}, normalized={maskToken.Normalized}");
+        TokenizationResult maskEncoded = new WordPieceTokenizer(fromJson, maxCharsPerWord: 100).Encode("token [MASK]");
+        Console.WriteLine($"  lstrip in action : \"token [MASK]\" -> "
+            + $"[{string.Join(", ", maskEncoded.Tokens.Select(t => $"'{t}'"))}] -> [{string.Join(", ", maskEncoded.Ids)}]");
+
         // SentencePiece, three ways in: hand-built pieces, tokenizer.json, spiece.model.
         SentencePiece[] pieces =
         [
@@ -221,7 +234,8 @@ internal static class Lot3Embeddings
     }
 
     private const string WordPieceJson =
-        "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[]," +
+        "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null," +
+        "\"added_tokens\":[{\"id\":4,\"content\":\"[MASK]\",\"lstrip\":true,\"special\":true}]," +
         "\"normalizer\":{\"type\":\"Lowercase\"},\"pre_tokenizer\":{\"type\":\"Whitespace\"}," +
         "\"post_processor\":null,\"decoder\":null," +
         "\"model\":{\"type\":\"WordPiece\",\"unk_token\":\"[UNK]\",\"continuing_subword_prefix\":\"##\"," +

@@ -238,12 +238,18 @@ public static class TokenizerJsonLoader
         {
             throw new InvalidDataException($"The {SourceName} declares an empty vocabulary.");
         }
-        ReadAddedTokens(root, vocab, limits);
+        List<AddedToken> addedTokens = ReadAddedTokenTable(root, vocab, limits);
         if (!vocab.ContainsKey(unkToken))
         {
+            // model.vocab, not the added_tokens table: the table is matched as text
+            // ahead of the model, so an unknown token declared only there is one the
+            // model can never fall back to.
             throw new InvalidDataException($"The {SourceName} names '{unkToken}' as its unknown token but does not define it.");
         }
-        return new WordPieceVocabulary(vocab, unkToken, continuationPrefix, ReadLowercase(root));
+        return new WordPieceVocabulary(vocab, unkToken, continuationPrefix, ReadLowercase(root))
+        {
+            AddedTokens = addedTokens,
+        };
     }
 
     private static SentencePieceVocabulary ReadUnigram(JsonElement root, in ArtifactLimits limits)
@@ -327,44 +333,50 @@ public static class TokenizerJsonLoader
     }
 
     /// <summary>
-    /// Folds the <c>added_tokens</c> table into a WordPiece vocabulary.
+    /// Reads the whole <c>added_tokens</c> table: the entries both tokenizers match
+    /// as literal text ahead of the model, with the four flags that decide where
+    /// each one matches.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <c>Tokenizer.add_tokens</c> assigns ids <em>after</em> the model's own
-    /// vocabulary, so those entries appear nowhere in <c>model.vocab</c>. Left
-    /// unread they are silently lost, and a token the caller added deliberately
-    /// tokenizes to the unknown token instead.
+    /// The <em>whole</em> table, intersection with <c>model.vocab</c> included, and
+    /// folded into neither vocabulary. HuggingFace lists a special token in both
+    /// tables — <c>&lt;|endoftext|&gt;</c> is id 50256 in GPT-2's own <c>model.vocab</c>
+    /// <em>and</em> in its <c>added_tokens</c> — and the pre-model scan reads nothing
+    /// but this list, so subtracting the intersection would drop exactly the tokens
+    /// the scan exists for.
     /// </para>
     /// <para>
-    /// Standard BERT files list their special tokens in both tables at the same
-    /// ids, which folds to a no-op. A table that contradicts <c>model.vocab</c>,
-    /// or that asks for matching semantics DataNet does not reproduce, is refused
-    /// rather than resolved by guesswork.
+    /// <c>Tokenizer.add_tokens</c> assigns ids <em>after</em> the model's own
+    /// vocabulary, so an entry may appear nowhere in <c>model.vocab</c>; that is not
+    /// an error, and it is not folded in either, because a folded entry is matchable
+    /// as a whole word only — a different tokenizer as soon as an entry carries a
+    /// matching flag, and not what <c>tokenizers</c> does even when none does. A
+    /// table that <em>contradicts</em> <c>model.vocab</c> is still refused rather
+    /// than resolved by guesswork.
+    /// </para>
+    /// <para>
+    /// <paramref name="vocab"/> is copied rather than written to, so the model's own
+    /// table stays what the file declared; the copy is what gives the id-agreement
+    /// check something to check against, entry after entry.
     /// </para>
     /// </remarks>
     /// <param name="root">The <c>tokenizer.json</c> root object.</param>
-    /// <param name="vocab">The model's vocabulary; entries it lacks are folded in.</param>
+    /// <param name="vocab">The model's vocabulary, read but never written.</param>
     /// <param name="limits">Bounds applied while reading.</param>
-    /// <param name="matchedLiterally">
-    /// When non-<see langword="null"/>, <em>every</em> entry of the table is recorded
-    /// here and checked for matching flags DataNet does not reproduce — the BPE path,
-    /// where the table is scanned as literal text ahead of the model rather than merely
-    /// folded into the vocabulary, so an entry <c>model.vocab</c> already declares is
-    /// not the no-op it is for WordPiece.
-    /// </param>
-    private static void ReadAddedTokens(
+    private static List<AddedToken> ReadAddedTokenTable(
         JsonElement root,
         Dictionary<string, int> vocab,
-        in ArtifactLimits limits,
-        Dictionary<string, int>? matchedLiterally = null)
+        in ArtifactLimits limits)
     {
+        var table = new List<AddedToken>();
         if (!root.TryGetProperty(AddedTokensProperty, out JsonElement added) || added.ValueKind != JsonValueKind.Array)
         {
-            return;
+            return table;
         }
         limits.CheckArrayLength(added.GetArrayLength(), AddedTokensProperty);
 
+        var known = new Dictionary<string, int>(vocab, StringComparer.Ordinal);
         foreach (JsonElement token in added.EnumerateArray())
         {
             if (token.ValueKind != JsonValueKind.Object
@@ -379,77 +391,54 @@ public static class TokenizerJsonLoader
 
             string content = contentElement.GetString()!;
             limits.CheckTokenLength(content.Length);
-            FoldAddedToken(token, content, id, vocab, limits, matchedLiterally);
-            if (matchedLiterally is not null)
+            EnsureAddedTokenAgrees(content, id, known, limits);
+            var parsed = new AddedToken(content, id)
             {
-                matchedLiterally[content] = id;
-            }
+                Lstrip = OptionalBoolean(token, "lstrip") is true,
+                Rstrip = OptionalBoolean(token, "rstrip") is true,
+                SingleWord = OptionalBoolean(token, "single_word") is true,
+                Special = OptionalBoolean(token, "special") is true,
+            };
+            // Set only where the file says so. Absent falls to AddedToken's own
+            // default of !Special — Rust's AddedToken::from(content, special), and
+            // stated once, on the type, rather than here as well. Absent is not a
+            // shape tokenizers itself accepts (its deserializer requires the field
+            // and refuses a file without it); this loader tolerates an absent flag
+            // everywhere else and reads the abbreviated file rather than rejecting it.
+            table.Add(OptionalBoolean(token, "normalized") is bool normalized
+                ? parsed with { Normalized = normalized }
+                : parsed);
         }
+        return table;
     }
 
-    /// <summary>Folds one <c>added_tokens</c> entry into <paramref name="vocab"/>, or checks it agrees with what is there.</summary>
-    private static void FoldAddedToken(
-        JsonElement token,
+    /// <summary>Checks one entry against everything already known, and records it there.</summary>
+    private static void EnsureAddedTokenAgrees(
         string content,
         int id,
-        Dictionary<string, int> vocab,
-        in ArtifactLimits limits,
-        Dictionary<string, int>? matchedLiterally)
+        Dictionary<string, int> known,
+        in ArtifactLimits limits)
     {
         if (id < 0)
         {
-            // The id is folded into the vocabulary and comes straight back out of
-            // Encode, into the caller's embedding lookup. A negative one is an
-            // out-of-range index in their code, blamed on them.
+            // The id comes straight back out of Encode, into the caller's embedding
+            // lookup. A negative one is an out-of-range index in their code, blamed
+            // on them.
             throw new InvalidDataException(
                 $"The {SourceName} adds token '{content}' with the negative id {id}.");
         }
-        if (vocab.TryGetValue(content, out int existing))
+        if (known.TryGetValue(content, out int existing))
         {
             if (existing != id)
             {
                 throw new InvalidDataException(
                     $"The {SourceName} adds token '{content}' as id {id} but its vocabulary already maps it to {existing}.");
             }
-            // Folding is a no-op, but the matching flags are not: on the BPE path this
-            // entry is still scanned as literal text, so they have to be checked here
-            // too rather than only on the branch that adds a new id.
-            if (matchedLiterally is not null)
-            {
-                EnsureAddedTokenMatchesPlainly(content, token);
-            }
             return;
         }
 
-        EnsureAddedTokenMatchesPlainly(content, token);
-        vocab[content] = id;
-        limits.CheckVocabularySize(vocab.Count);
-    }
-
-    /// <summary>
-    /// Refuses an added token whose matching rules WordPiece cannot reproduce.
-    /// </summary>
-    /// <remarks>
-    /// HuggingFace matches added tokens ahead of the model, anywhere in the text
-    /// and with optional whitespace stripping. Folding one into the vocabulary
-    /// makes it matchable as a whole word only, which is the same thing whenever
-    /// these flags sit at their defaults — and a different tokenizer when they do not.
-    /// </remarks>
-    private static void EnsureAddedTokenMatchesPlainly(string content, JsonElement token)
-    {
-        EnsureAddedTokenFlagIsOff(content, token, "lstrip");
-        EnsureAddedTokenFlagIsOff(content, token, "rstrip");
-        EnsureAddedTokenFlagIsOff(content, token, "single_word");
-    }
-
-    private static void EnsureAddedTokenFlagIsOff(string content, JsonElement token, string flag)
-    {
-        if (OptionalBoolean(token, flag) is true)
-        {
-            throw Unsupported(
-                $"it adds token '{content}' with {flag} on",
-                "a folded-in token is matched as a whole word, so that flag would tokenize differently here");
-        }
+        known[content] = id;
+        limits.CheckVocabularySize(known.Count);
     }
 
     private static void EnsureByteFallbackIsOff(JsonElement model)
@@ -550,7 +539,7 @@ public static class TokenizerJsonLoader
         Dictionary<string, int> vocab = ReadBpeVocab(model, limits);
         List<MergePair> merges = ReadBpeMerges(model, limits);
         int skippedMerges = merges.Count(pair => !vocab.ContainsKey(pair.Left) || !vocab.ContainsKey(pair.Right));
-        Dictionary<string, int> addedTokens = ReadBpeAddedTokens(root, vocab, limits);
+        List<AddedToken> addedTokens = ReadAddedTokenTable(root, vocab, limits);
 
         return new BpeVocabulary(vocab, merges)
         {
@@ -715,38 +704,6 @@ public static class TokenizerJsonLoader
         }
         throw new InvalidDataException(
             $"The {SourceName} BPE merge at index {index} is neither a [left, right] pair nor a space-separated string.");
-    }
-
-    /// <summary>
-    /// Reads the whole <c>added_tokens</c> table into
-    /// <see cref="BpeVocabulary.AddedTokens"/>, which is a property of its own rather
-    /// than a fold into <see cref="BpeVocabulary.Vocab"/> because
-    /// <see cref="BpeTokenizer"/> matches added tokens as literal text before any
-    /// merging happens.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The <em>whole</em> table, intersection with <c>model.vocab</c> included. That
-    /// intersection is not redundant here the way it is for WordPiece: HuggingFace
-    /// lists a special token in both tables — <c>&lt;|endoftext|&gt;</c> is id 50256 in
-    /// GPT-2's own <c>model.vocab</c> <em>and</em> in its <c>added_tokens</c> — and
-    /// <see cref="BpeTokenizer"/>'s pre-merge scan reads nothing but this property.
-    /// Subtracting the intersection would therefore drop exactly the tokens the scan
-    /// exists for, and <c>&lt;|endoftext|&gt;</c> would tokenize as the eight ordinary
-    /// pieces its characters merge into.
-    /// </para>
-    /// <para>
-    /// <paramref name="vocab"/> is copied rather than written to, so
-    /// <see cref="BpeVocabulary.Vocab"/> stays what <c>model.vocab</c> declared; the
-    /// copy is what gives the id-agreement check something to check against.
-    /// </para>
-    /// </remarks>
-    private static Dictionary<string, int> ReadBpeAddedTokens(JsonElement root, Dictionary<string, int> vocab, in ArtifactLimits limits)
-    {
-        var withAdded = new Dictionary<string, int>(vocab, StringComparer.Ordinal);
-        var added = new Dictionary<string, int>(StringComparer.Ordinal);
-        ReadAddedTokens(root, withAdded, limits, added);
-        return added;
     }
 
     /// <summary>

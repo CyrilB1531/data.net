@@ -62,6 +62,9 @@ HELLO_WORLD = "hello world"
 TINY_SP_MODEL = "tiny_sp.model"
 EMBEDDING_SENTENCE = "tokenization is embedding embeddings"
 XLMR_FAIRSEQ_MODEL = "xlmr_fairseq.model"
+# XLM-R's mask marker, and the added token issue #104 was opened for: roberta-base
+# declares lstrip on this one.
+MASK_TOKEN = "<mask>"
 
 # The inputs byte-level pre-tokenization diverges from intuition on. Whitespace
 # runs first, because " a" and "a " are different tokens and a tokenizer that
@@ -1396,7 +1399,7 @@ XLMR_TEXTS = [
     "le chat <mask> sur le tapis",
     "<s> hello </s>",
     "<pad><pad> padding",
-    "<mask>",
+    MASK_TOKEN,
     "un texte avec <s>, </s>, <pad>, <unk> et <mask> dedans",
     # Since #75 the fixture carries XLM-R's own nmt_nfkc charsmap, so these are
     # no longer inert: each one is rewritten before it is segmented. Written with
@@ -1411,7 +1414,7 @@ XLMR_TEXTS = [
 ]
 
 # The five strings a vocabulary in this layout must never segment onto.
-XLMR_MARKERS = ["<s>", "<pad>", "</s>", "<unk>", "<mask>"]
+XLMR_MARKERS = ["<s>", "<pad>", "</s>", "<unk>", MASK_TOKEN]
 
 
 def generate_xlmr_fairseq() -> dict:
@@ -2447,6 +2450,204 @@ def generate_bpe_added_tokens() -> dict:
     }
 
 
+# The four matching flags an added_tokens entry carries beyond its content and
+# id, over a byte-level model (issue #104). One token per flag, because a flag
+# only shows in the pieces around the match: lstrip and rstrip make the space
+# beside a match disappear -- the id is unchanged, what is gone is the 'Ġ' the
+# whitespace would have produced -- and single_word makes a match not happen at
+# all, leaving the marker's own characters to the merge loop.
+#
+# add_prefix_space is off, unlike generate_bpe_added_tokens's tokenizer: a prefix
+# space is added per segment and would put a 'Ġ' beside every match, which is the
+# very piece the strips are read from. bpe_added_tokens.json is where that setting
+# is measured; this corpus keeps it out of the way.
+#
+# <m> is the one entry left non-special, so decoded_skip_specials shows the two
+# halves of the table apart: special is what a decoder drops, and it decides
+# nothing about where an entry matches.
+BPE_FLAG_TEXTS = [
+    # lstrip, on <mask> -- roberta-base's own shape.
+    "a <mask> b",
+    "a<mask>b",
+    "a  <mask>  b",
+    "<mask> a",
+    "a <mask>",
+    "a\t<mask>",
+    # A no-break space, written as an escape so no editor can flatten it to U+0020.
+    "a\u00a0<mask>",
+    "a. <mask>",
+    # rstrip, on <pad>, the mirror of the same shapes.
+    "a <pad> b",
+    "a<pad>b",
+    "a  <pad>  b",
+    "<pad> a",
+    "a <pad>",
+    "a <pad>\tb",
+    "a <pad>. b",
+    # single_word, on <m>: a letter, a digit or '_' on either side blocks it,
+    # punctuation and the ends of the text do not.
+    "a <m> b",
+    ".<m>.",
+    "-<m>-",
+    "1<m>1",
+    "_<m>_",
+    "é<m>é",
+    "<m>",
+    "a<m>b",
+    # Two matches with one space between them, so one entry's strip reaches for
+    # whitespace the entry beside it has a claim on. AddedTokenScanner stops a
+    # left-strip at the end of the previous match and its own comment records that
+    # as a design choice no probe had put to the test; these three are the probe.
+    "<pad> <mask>",
+    "<mask> <mask>",
+    "a <pad> <mask> b",
+]
+
+
+def generate_bpe_added_token_flags() -> dict:
+    """GPT-2 with one added token per matching flag.
+
+    Shaped after `generate_bpe_added_tokens`: the whole `tokenizer.json` rides in
+    the metadata, so the C# side parses the exact bytes HuggingFace was handed.
+    """
+    from tokenizers import AddedToken  # noqa: PLC0415
+
+    tokenizer = _gpt2_tokenizer()
+    tokenizer.add_tokens([
+        AddedToken(MASK_TOKEN, lstrip=True, special=True),
+        AddedToken("<pad>", rstrip=True, special=True),
+        AddedToken("<m>", single_word=True),
+    ])
+
+    cases = []
+    for i, text in enumerate(BPE_FLAG_TEXTS):
+        enc = tokenizer.encode(text)
+        cases.append({
+            "id": i,
+            "text": text,
+            "tokens": enc.tokens,
+            "ids": enc.ids,
+            "decoded": tokenizer.decode(enc.ids, skip_special_tokens=False),
+            "decoded_skip_specials": tokenizer.decode(enc.ids, skip_special_tokens=True),
+        })
+    return {
+        "metadata": {
+            "algorithm": "ByteLevelBPE with added-token matching flags",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "gpt2 (vendored by tools/fetch_gpt2_bpe.py), <mask> lstrip, <pad> rstrip, <m> single_word",
+            "tokenizer_json": tokenizer.to_str(),
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+# The same four flags over a WordPiece model that has a normalizer, which is what
+# BPE structurally cannot show: `normalized` decides which of two passes an entry
+# runs in, and only a tokenizer that normalizes anything can tell the passes
+# apart. Named cases, because each one is here for a reason:
+#
+#   * a raw entry ([CLS], normalized=false) is matched against the un-lowercased
+#     text and emits its own casing;
+#   * a normalized entry (<MASK>) has its own content lowercased and is matched
+#     against the lowercased text, so both spellings match and both emit <mask>;
+#   * [SEP] is special *and* normalized, which every file add_special_tokens
+#     wrote makes look impossible -- it sets normalized = !special. It is the
+#     case that proves the discriminator is `normalized`, not `special`;
+#   * <R> (raw) and A<R> (normalized) overlap, with the normalized one starting
+#     further left. HuggingFace splits on the raw trie first and runs the
+#     normalized one over what is left, so the raw entry wins -- an outcome a
+#     single merged leftmost-wins scan cannot produce.
+#
+# Plus the strip and single_word shapes from the BPE corpus, with lstrip on a raw
+# entry and rstrip on a normalized one so both passes carry a strip.
+#
+# Note for anyone regenerating: `tokenizers` refuses a tokenizer.json that omits
+# `normalized`, so every entry below states it. The absent-field default is
+# therefore a decision this library makes rather than a behaviour it measured,
+# and a C# unit test covers it instead.
+WORDPIECE_ADDED_TOKEN_TEXTS = [
+    ("raw_entry_matches_its_own_casing", "the [CLS] cat"),
+    ("raw_entry_ignores_the_lowercased_spelling", "the [cls] cat"),
+    ("normalized_entry_matches_the_declared_casing", "the <MASK> cat"),
+    ("normalized_entry_matches_the_lowercased_spelling", "the <mask> cat"),
+    ("special_and_normalized_matches_the_declared_casing", "the [SEP] cat"),
+    ("special_and_normalized_matches_the_lowercased_spelling", "the [sep] cat"),
+    ("the_raw_pass_wins_over_a_normalized_match_further_left", "the A<R> cat"),
+    ("a_normalized_match_stands_where_no_raw_one_does", "the a<r> cat"),
+    ("lstrip_absorbs_the_space", "the <L> cat"),
+    ("lstrip_absorbs_every_contiguous_space", "the  <L>  cat"),
+    ("lstrip_absorbs_a_tab", "the\t<L>"),
+    ("lstrip_absorbs_a_no_break_space", "the\u00a0<L>"),
+    ("lstrip_stops_at_punctuation", "the. <L>"),
+    ("lstrip_with_nothing_to_absorb", "the<L>cat"),
+    ("lstrip_at_the_start_of_the_text", "<L> the"),
+    ("lstrip_at_the_end_of_the_text", "the <L>"),
+    ("rstrip_absorbs_the_space", "the <W> cat"),
+    ("rstrip_absorbs_every_contiguous_space", "the  <W>  cat"),
+    ("rstrip_with_nothing_to_absorb", "the<W>cat"),
+    ("rstrip_at_the_start_of_the_text", "<W> the"),
+    ("rstrip_at_the_end_of_the_text", "the <W>"),
+    ("single_word_between_spaces", "the <S> cat"),
+    ("single_word_between_full_stops", ".<S>."),
+    ("single_word_between_hyphens", "-<S>-"),
+    ("single_word_blocked_by_digits", "1<S>1"),
+    ("single_word_blocked_by_underscores", "_<S>_"),
+    ("single_word_blocked_by_accented_letters", "é<S>é"),
+    ("single_word_blocked_by_letters", "the<S>cat"),
+    ("single_word_is_the_whole_text", "<S>"),
+]
+
+
+def generate_wordpiece_added_tokens() -> dict:
+    """A lowercasing WordPiece model with an added_tokens table that uses the flags.
+
+    No other committed WordPiece corpus adds a token at all, so this is the only
+    replayed evidence that the table is read and applied. The whole
+    `tokenizer.json` rides in the metadata, as the BPE flag corpus does.
+    """
+    from tokenizers import AddedToken  # noqa: PLC0415
+
+    vocab = {token: index for index, token in enumerate(WORDPIECE_VOCAB)}
+    tokenizer = _wordpiece_tokenizer(vocab, lowercase=True)
+    tokenizer.add_tokens([
+        AddedToken("[CLS]", special=True),
+        AddedToken("<MASK>"),
+        AddedToken("[SEP]", special=True, normalized=True),
+        AddedToken("<R>", special=True),
+        AddedToken("A<R>"),
+        AddedToken("<L>", lstrip=True, special=True),
+        AddedToken("<W>", rstrip=True),
+        AddedToken("<S>", single_word=True),
+    ])
+
+    cases = []
+    for i, (name, text) in enumerate(WORDPIECE_ADDED_TOKEN_TEXTS):
+        enc = tokenizer.encode(text)
+        cases.append({
+            "id": i,
+            "name": name,
+            "text": text,
+            "tokens": enc.tokens,
+            "ids": enc.ids,
+        })
+    return {
+        "metadata": {
+            "algorithm": "WordPiece with added tokens and a Lowercase normalizer",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "reference_calls": [
+                "tokenizers.Tokenizer(WordPiece(...)) with normalizers.Lowercase, then .add_tokens and .encode",
+            ],
+            "tokenizer_json": tokenizer.to_str(),
+            "unk_token": UNK_TOKEN,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -2492,6 +2693,8 @@ def main() -> None:
         "bpe_pretokenize.json": generate_bpe_pretokenize,
         "bpe_tokenizer_json.json": generate_bpe_tokenizer_json,
         "bpe_added_tokens.json": generate_bpe_added_tokens,
+        "bpe_added_token_flags.json": generate_bpe_added_token_flags,
+        "wordpiece_added_tokens.json": generate_wordpiece_added_tokens,
     }
     for filename, gen in generators.items():
         payload = gen()

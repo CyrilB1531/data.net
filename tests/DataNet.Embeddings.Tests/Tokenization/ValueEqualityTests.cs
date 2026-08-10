@@ -13,6 +13,65 @@ namespace DataNet.Embeddings.Tests.Tokenization;
 /// </summary>
 public sealed class ValueEqualityTests
 {
+    /// <summary>
+    /// <see cref="AddedToken.Normalized"/> defaults to <c>!Special</c> rather than to
+    /// <see langword="false"/>, so it is computed from a nullable backing field. The
+    /// generated record equality would compare that field, making a token that left
+    /// it unset unequal to one that set it to the value the default already gives —
+    /// while both report the same <c>Normalized</c>. That is not a corner: it is a
+    /// vocabulary read from a file compared against one written out by hand, which
+    /// both vocabulary types do element-wise.
+    /// </summary>
+    [Fact]
+    public void An_added_token_that_states_its_default_equals_one_that_leaves_it_unset()
+    {
+        var unset = new AddedToken("<x>", 2);
+        var stated = new AddedToken("<x>", 2) { Normalized = true };
+
+        Assert.True(unset.Normalized);
+        Assert.Equal(unset, stated);
+        Assert.Equal(unset.GetHashCode(), stated.GetHashCode());
+    }
+
+    [Fact]
+    public void An_added_token_that_states_the_special_default_equals_one_that_leaves_it_unset()
+    {
+        var unset = new AddedToken("<x>", 2) { Special = true };
+        var stated = new AddedToken("<x>", 2) { Special = true, Normalized = false };
+
+        Assert.False(unset.Normalized);
+        Assert.Equal(unset, stated);
+        Assert.Equal(unset.GetHashCode(), stated.GetHashCode());
+    }
+
+    [Fact]
+    public void Added_tokens_differing_only_in_the_pass_they_match_in_are_not_equal()
+    {
+        var raw = new AddedToken("<x>", 2) { Special = true };
+        var normalized = new AddedToken("<x>", 2) { Special = true, Normalized = true };
+
+        Assert.NotEqual(raw, normalized);
+    }
+
+    /// <summary>
+    /// A <c>with</c> must not silently move a token into the other pass. The backing
+    /// field carries through, so an explicit <see cref="AddedToken.Normalized"/>
+    /// survives a copy that sets <see cref="AddedToken.Special"/> — where recomputing
+    /// the default would flip it. <see cref="WordPieceTokenizer"/> copies added
+    /// tokens this way to lowercase their content.
+    /// </summary>
+    [Fact]
+    public void A_with_expression_keeps_an_explicitly_set_normalized_flag()
+    {
+        var special = new AddedToken("<x>", 2) { Normalized = true } with { Special = true };
+        var ordinary = new AddedToken("<x>", 2) { Special = true, Normalized = false } with { Special = false };
+
+        Assert.True(special.Normalized);
+        Assert.False(ordinary.Normalized);
+        // And an unset one still follows whatever Special the copy ends up with.
+        Assert.False((new AddedToken("<x>", 2) with { Special = true }).Normalized);
+    }
+
     [Fact]
     public void Two_word_piece_vocabularies_with_the_same_content_are_equal()
     {

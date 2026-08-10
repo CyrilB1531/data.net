@@ -55,7 +55,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private readonly int[] _merged;             // rank -> the id the pair becomes
     private readonly BpePreTokenizer _split;
     private readonly bool _addPrefixSpace;
-    private readonly (string Token, int Id)[] _addedTokens; // any order -- NextAddedToken resolves leftmost, then longest, itself
+    private readonly AddedTokenScanner _scanner;
     private readonly HashSet<int> _addedIds;
     private readonly string? _endOfWord;
     private readonly int _unkId;
@@ -81,10 +81,10 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             _vocab[entry.Key] = entry.Value;
             maxId = Math.Max(maxId, entry.Value);
         }
-        foreach (KeyValuePair<string, int> entry in vocabulary.AddedTokens)
+        foreach (AddedToken added in vocabulary.AddedTokens)
         {
-            _vocab[entry.Key] = entry.Value;
-            maxId = Math.Max(maxId, entry.Value);
+            _vocab[added.Content] = added.Id;
+            maxId = Math.Max(maxId, added.Id);
         }
 
         _tokens = new string[maxId + 1];
@@ -93,17 +93,8 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             _tokens[entry.Value] = entry.Key;
         }
 
-        // An empty added token would never advance Encode's scan position --
-        // IndexOf("", pos) always returns pos -- hanging the loop. The loader this
-        // vocabulary is meant to come from bounds a token's *upper* length but never
-        // rejects an empty one (TokenizerJsonLoader.cs), so this is not a case that
-        // can be assumed away; it is filtered here instead. The order of the array
-        // itself does not matter: NextAddedToken picks the leftmost match, and the
-        // longest on a tie, regardless of how these are enumerated.
-        _addedTokens = [.. vocabulary.AddedTokens
-            .Where(entry => entry.Key.Length > 0)
-            .Select(entry => (entry.Key, entry.Value))];
-        _addedIds = [.. vocabulary.AddedTokens.Values];
+        _scanner = new AddedTokenScanner(vocabulary.AddedTokens);
+        _addedIds = [.. vocabulary.AddedTokens.Where(a => a.Special).Select(a => a.Id)];
 
         if (vocabulary.UnkToken is { } unk)
         {
@@ -177,19 +168,18 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         int pos = 0;
         while (pos < text.Length)
         {
-            (int at, string token, int id) = NextAddedToken(text, pos);
-            if (at < 0)
+            if (!_scanner.TryNext(text, pos, out int start, out int end, out var added))
             {
                 EncodeSegment(text, pos, text.Length, tokens, ids, pieces);
                 break;
             }
-            if (at > pos)
+            if (start > pos)
             {
-                EncodeSegment(text, pos, at, tokens, ids, pieces);
+                EncodeSegment(text, pos, start, tokens, ids, pieces);
             }
-            tokens.Add(token);
-            ids.Add(id);
-            pos = at + token.Length;
+            tokens.Add(text.Substring(start, end - start));
+            ids.Add(added.Id);
+            pos = end;
         }
         return new TokenizationResult(tokens, ids);
     }
@@ -205,36 +195,6 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     }
 
     private static long Key(int left, int right) => ((long)left << 32) | (uint)right;
-
-    /// <summary>The earliest added token at or after <paramref name="from"/>; the longest one, on a tie. <c>At</c> is -1 when none remains.</summary>
-    private (int At, string Token, int Id) NextAddedToken(string text, int from)
-    {
-        int bestAt = -1;
-        string bestToken = string.Empty;
-        int bestId = 0;
-        foreach ((string token, int id) in _addedTokens)
-        {
-            // Once a candidate is found, only a match starting at or before it can
-            // still win (leftmost beats longer), so later tokens only need a window
-            // reaching bestAt plus their own length -- just enough to still find a
-            // match that starts exactly at bestAt. Llama-3 alone declares 256 added
-            // tokens; without this bound, every one of them would rescan to the end
-            // of whatever text remains, on every match found.
-            int windowEnd = bestAt < 0 ? text.Length : Math.Min(text.Length, bestAt + token.Length);
-            int at = text.IndexOf(token, from, windowEnd - from, StringComparison.Ordinal);
-            if (at < 0)
-            {
-                continue;
-            }
-            if (bestAt < 0 || at < bestAt || (at == bestAt && token.Length > bestToken.Length))
-            {
-                bestAt = at;
-                bestToken = token;
-                bestId = id;
-            }
-        }
-        return (bestAt, bestToken, bestId);
-    }
 
     /// <summary>Splits and merges the plain-text slice <c>text[start..end]</c>, which contains no added token.</summary>
     /// <remarks>
@@ -692,11 +652,10 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// </remarks>
     /// <param name="ids">Token ids, e.g. from <see cref="Encode"/>.</param>
     /// <param name="skipSpecialTokens">
-    /// Drop added tokens instead of rendering them. Every added token, where Python
-    /// drops only those its <c>added_tokens</c> entry marks <c>special</c>:
-    /// <see cref="BpeVocabulary.AddedTokens"/> does not carry that flag. The two
-    /// coincide for every model in scope, whose added tokens are all special, and
-    /// differ for a table that mixes the two.
+    /// Drop added tokens marked <c>special</c> instead of rendering them, the ones
+    /// <see cref="AddedToken.Special"/> carries from the file's <c>added_tokens</c>
+    /// entry. An ordinary added token -- <c>Special</c> unset -- is rendered
+    /// either way, matching Python's <c>skip_special_tokens</c>.
     /// </param>
     /// <exception cref="ArgumentOutOfRangeException">An id is outside the vocabulary.</exception>
     /// <exception cref="DecoderFallbackException">
@@ -717,8 +676,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// <summary>Reassembles the text <paramref name="ids"/> encode.</summary>
     /// <param name="ids">Token ids, e.g. from <see cref="Encode"/>.</param>
     /// <param name="skipSpecialTokens">
-    /// Drop added tokens instead of rendering them, every one, where Python drops
-    /// only those its <c>added_tokens</c> entry marks <c>special</c>; see
+    /// Drop added tokens marked <c>special</c> instead of rendering them; see
     /// <see cref="Decode(IReadOnlyList{int}, bool)"/>.
     /// </param>
     /// <exception cref="ArgumentOutOfRangeException">An id is outside the vocabulary.</exception>

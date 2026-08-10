@@ -1,0 +1,456 @@
+{
+ "metadata": {
+  "algorithm": "WordPiece with added tokens and a Lowercase normalizer",
+  "library": "tokenizers",
+  "library_version": "0.23.1",
+  "reference_calls": [
+   "tokenizers.Tokenizer(WordPiece(...)) with normalizers.Lowercase, then .add_tokens and .encode"
+  ],
+  "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[{\"id\":45,\"content\":\"[CLS]\",\"single_word\":false,\"lstrip\":false,\"rstrip\":false,\"normalized\":false,\"special\":true},{\"id\":46,\"content\":\"<MASK>\",\"single_word\":false,\"lstrip\":false,\"rstrip\":false,\"normalized\":true,\"special\":false},{\"id\":47,\"content\":\"[SEP]\",\"single_word\":false,\"lstrip\":false,\"rstrip\":false,\"normalized\":true,\"special\":true},{\"id\":48,\"content\":\"<R>\",\"single_word\":false,\"lstrip\":false,\"rstrip\":false,\"normalized\":false,\"special\":true},{\"id\":49,\"content\":\"A<R>\",\"single_word\":false,\"lstrip\":false,\"rstrip\":false,\"normalized\":true,\"special\":false},{\"id\":50,\"content\":\"<L>\",\"single_word\":false,\"lstrip\":true,\"rstrip\":false,\"normalized\":false,\"special\":true},{\"id\":51,\"content\":\"<W>\",\"single_word\":false,\"lstrip\":false,\"rstrip\":true,\"normalized\":true,\"special\":false},{\"id\":52,\"content\":\"<S>\",\"single_word\":true,\"lstrip\":false,\"rstrip\":false,\"normalized\":true,\"special\":false}],\"normalizer\":{\"type\":\"Lowercase\"},\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"WordPiece\",\"unk_token\":\"[UNK]\",\"continuing_subword_prefix\":\"##\",\"max_input_chars_per_word\":100,\"vocab\":{\"[UNK]\":0,\"the\":1,\"cat\":2,\"dog\":3,\"play\":4,\"un\":5,\"love\":6,\"run\":7,\"quick\":8,\"brown\":9,\"fox\":10,\"jump\":11,\"hello\":12,\"world\":13,\"token\":14,\"embed\":15,\"semantic\":16,\"search\":17,\"is\":18,\"are\":19,\"and\":20,\"this\":21,\"big\":22,\"a\":23,\".\":24,\"!\":25,\"?\":26,\"##s\":27,\"##ing\":28,\"##ed\":29,\"##er\":30,\"##aff\":31,\"##able\":32,\"##ly\":33,\"##ner\":34,\"##ning\":35,\"##ization\":36,\"##ize\":37,\"##ding\":38,\"##dings\":39,\"##ger\":40,\"##gest\":41,\"##a\":42,\"##b\":43,\"##c\":44}}}",
+  "unk_token": "[UNK]",
+  "count": 29
+ },
+ "cases": [
+  {
+   "id": 0,
+   "name": "raw_entry_matches_its_own_casing",
+   "text": "the [CLS] cat",
+   "tokens": [
+    "the",
+    "[CLS]",
+    "cat"
+   ],
+   "ids": [
+    1,
+    45,
+    2
+   ]
+  },
+  {
+   "id": 1,
+   "name": "raw_entry_ignores_the_lowercased_spelling",
+   "text": "the [cls] cat",
+   "tokens": [
+    "the",
+    "[UNK]",
+    "[UNK]",
+    "[UNK]",
+    "cat"
+   ],
+   "ids": [
+    1,
+    0,
+    0,
+    0,
+    2
+   ]
+  },
+  {
+   "id": 2,
+   "name": "normalized_entry_matches_the_declared_casing",
+   "text": "the <MASK> cat",
+   "tokens": [
+    "the",
+    "<mask>",
+    "cat"
+   ],
+   "ids": [
+    1,
+    46,
+    2
+   ]
+  },
+  {
+   "id": 3,
+   "name": "normalized_entry_matches_the_lowercased_spelling",
+   "text": "the <mask> cat",
+   "tokens": [
+    "the",
+    "<mask>",
+    "cat"
+   ],
+   "ids": [
+    1,
+    46,
+    2
+   ]
+  },
+  {
+   "id": 4,
+   "name": "special_and_normalized_matches_the_declared_casing",
+   "text": "the [SEP] cat",
+   "tokens": [
+    "the",
+    "[sep]",
+    "cat"
+   ],
+   "ids": [
+    1,
+    47,
+    2
+   ]
+  },
+  {
+   "id": 5,
+   "name": "special_and_normalized_matches_the_lowercased_spelling",
+   "text": "the [sep] cat",
+   "tokens": [
+    "the",
+    "[sep]",
+    "cat"
+   ],
+   "ids": [
+    1,
+    47,
+    2
+   ]
+  },
+  {
+   "id": 6,
+   "name": "the_raw_pass_wins_over_a_normalized_match_further_left",
+   "text": "the A<R> cat",
+   "tokens": [
+    "the",
+    "a",
+    "<R>",
+    "cat"
+   ],
+   "ids": [
+    1,
+    23,
+    48,
+    2
+   ]
+  },
+  {
+   "id": 7,
+   "name": "a_normalized_match_stands_where_no_raw_one_does",
+   "text": "the a<r> cat",
+   "tokens": [
+    "the",
+    "a<r>",
+    "cat"
+   ],
+   "ids": [
+    1,
+    49,
+    2
+   ]
+  },
+  {
+   "id": 8,
+   "name": "lstrip_absorbs_the_space",
+   "text": "the <L> cat",
+   "tokens": [
+    "the",
+    " <L>",
+    "cat"
+   ],
+   "ids": [
+    1,
+    50,
+    2
+   ]
+  },
+  {
+   "id": 9,
+   "name": "lstrip_absorbs_every_contiguous_space",
+   "text": "the  <L>  cat",
+   "tokens": [
+    "the",
+    "  <L>",
+    "cat"
+   ],
+   "ids": [
+    1,
+    50,
+    2
+   ]
+  },
+  {
+   "id": 10,
+   "name": "lstrip_absorbs_a_tab",
+   "text": "the\t<L>",
+   "tokens": [
+    "the",
+    "\t<L>"
+   ],
+   "ids": [
+    1,
+    50
+   ]
+  },
+  {
+   "id": 11,
+   "name": "lstrip_absorbs_a_no_break_space",
+   "text": "the <L>",
+   "tokens": [
+    "the",
+    " <L>"
+   ],
+   "ids": [
+    1,
+    50
+   ]
+  },
+  {
+   "id": 12,
+   "name": "lstrip_stops_at_punctuation",
+   "text": "the. <L>",
+   "tokens": [
+    "the",
+    ".",
+    " <L>"
+   ],
+   "ids": [
+    1,
+    24,
+    50
+   ]
+  },
+  {
+   "id": 13,
+   "name": "lstrip_with_nothing_to_absorb",
+   "text": "the<L>cat",
+   "tokens": [
+    "the",
+    "<L>",
+    "cat"
+   ],
+   "ids": [
+    1,
+    50,
+    2
+   ]
+  },
+  {
+   "id": 14,
+   "name": "lstrip_at_the_start_of_the_text",
+   "text": "<L> the",
+   "tokens": [
+    "<L>",
+    "the"
+   ],
+   "ids": [
+    50,
+    1
+   ]
+  },
+  {
+   "id": 15,
+   "name": "lstrip_at_the_end_of_the_text",
+   "text": "the <L>",
+   "tokens": [
+    "the",
+    " <L>"
+   ],
+   "ids": [
+    1,
+    50
+   ]
+  },
+  {
+   "id": 16,
+   "name": "rstrip_absorbs_the_space",
+   "text": "the <W> cat",
+   "tokens": [
+    "the",
+    "<w> ",
+    "cat"
+   ],
+   "ids": [
+    1,
+    51,
+    2
+   ]
+  },
+  {
+   "id": 17,
+   "name": "rstrip_absorbs_every_contiguous_space",
+   "text": "the  <W>  cat",
+   "tokens": [
+    "the",
+    "<w>  ",
+    "cat"
+   ],
+   "ids": [
+    1,
+    51,
+    2
+   ]
+  },
+  {
+   "id": 18,
+   "name": "rstrip_with_nothing_to_absorb",
+   "text": "the<W>cat",
+   "tokens": [
+    "the",
+    "<w>",
+    "cat"
+   ],
+   "ids": [
+    1,
+    51,
+    2
+   ]
+  },
+  {
+   "id": 19,
+   "name": "rstrip_at_the_start_of_the_text",
+   "text": "<W> the",
+   "tokens": [
+    "<w> ",
+    "the"
+   ],
+   "ids": [
+    51,
+    1
+   ]
+  },
+  {
+   "id": 20,
+   "name": "rstrip_at_the_end_of_the_text",
+   "text": "the <W>",
+   "tokens": [
+    "the",
+    "<w>"
+   ],
+   "ids": [
+    1,
+    51
+   ]
+  },
+  {
+   "id": 21,
+   "name": "single_word_between_spaces",
+   "text": "the <S> cat",
+   "tokens": [
+    "the",
+    "<s>",
+    "cat"
+   ],
+   "ids": [
+    1,
+    52,
+    2
+   ]
+  },
+  {
+   "id": 22,
+   "name": "single_word_between_full_stops",
+   "text": ".<S>.",
+   "tokens": [
+    ".",
+    "<s>",
+    "."
+   ],
+   "ids": [
+    24,
+    52,
+    24
+   ]
+  },
+  {
+   "id": 23,
+   "name": "single_word_between_hyphens",
+   "text": "-<S>-",
+   "tokens": [
+    "[UNK]",
+    "<s>",
+    "[UNK]"
+   ],
+   "ids": [
+    0,
+    52,
+    0
+   ]
+  },
+  {
+   "id": 24,
+   "name": "single_word_blocked_by_digits",
+   "text": "1<S>1",
+   "tokens": [
+    "[UNK]",
+    "[UNK]",
+    "[UNK]",
+    "[UNK]",
+    "[UNK]"
+   ],
+   "ids": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "id": 25,
+   "name": "single_word_blocked_by_underscores",
+   "text": "_<S>_",
+   "tokens": [
+    "[UNK]",
+    "[UNK]",
+    "[UNK]",
+    "[UNK]",
+    "[UNK]"
+   ],
+   "ids": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "id": 26,
+   "name": "single_word_blocked_by_accented_letters",
+   "text": "é<S>é",
+   "tokens": [
+    "[UNK]",
+    "[UNK]",
+    "[UNK]",
+    "[UNK]",
+    "[UNK]"
+   ],
+   "ids": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "id": 27,
+   "name": "single_word_blocked_by_letters",
+   "text": "the<S>cat",
+   "tokens": [
+    "the",
+    "[UNK]",
+    "[UNK]",
+    "[UNK]",
+    "cat"
+   ],
+   "ids": [
+    1,
+    0,
+    0,
+    0,
+    2
+   ]
+  },
+  {
+   "id": 28,
+   "name": "single_word_is_the_whole_text",
+   "text": "<S>",
+   "tokens": [
+    "<s>"
+   ],
+   "ids": [
+    52
+   ]
+  }
+ ]
+}
