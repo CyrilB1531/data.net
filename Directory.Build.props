@@ -11,6 +11,30 @@
     <!-- Warnings are errors everywhere: src, tests and bench alike. -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
+    <!-- The .NET code-quality rules, on and enforced. Two of them are the reason
+         this exists: CA1845 and CA1859 are `note` severity by default, so they
+         never appear in build output — while the compiler still writes them to
+         the SARIF error log the Sonar scanner reads, and the quality gate counts
+         them against a threshold of zero. AnalysisMode=All raises every rule to
+         warning, which TreatWarningsAsErrors above turns into a build failure.
+
+         EnableNETAnalyzers is not decorative: the SDK enables these analysers
+         only for net5.0 and later, so without it the netstandard2.0 leg of every
+         multi-targeted project goes unanalysed.
+
+         AnalysisLevel is pinned rather than `latest` for the reason
+         docs/decisions/0015-sonar-rules-in-the-build.md gives about the
+         SonarAnalyzer pin: adding rules to a build where warnings are errors
+         breaks it, so the bump must be an edit somebody makes on purpose rather
+         than a side effect of CI resolving a newer 10.0.x SDK.
+
+         What each area switches back off, and why, is in that area's
+         Directory.Build.props. See
+         docs/decisions/0019-the-net-analysers-run-in-the-build-too.md. -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>10.0</AnalysisLevel>
+    <AnalysisMode>All</AnalysisMode>
+
     <!-- The Sonar rules that gate the pull request also gate the build, so a
          finding is a compile error on the machine that wrote the code rather
          than a round trip through SonarCloud. Pinned once here and read from
