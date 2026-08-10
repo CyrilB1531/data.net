@@ -766,7 +766,12 @@ public static class TokenizerJsonLoader
                 "its ByteLevel pre_tokenizer has use_regex off",
                 "HuggingFace then passes the whole text to the model as one piece, where BpeTokenizer would split it on word boundaries and drop the whitespace between them");
         }
-        bool addPrefixSpace = OptionalBoolean(pre, "add_prefix_space") ?? true;
+        if (OptionalBoolean(pre, "add_prefix_space") is not bool addPrefixSpace)
+        {
+            throw Unsupported(
+                "its ByteLevel pre_tokenizer declares no add_prefix_space",
+                "tokenizers 0.23.1 has no default for that field and refuses the file identically, where accepting it here would invent the value that decides whether a leading space is added");
+        }
         return (true, addPrefixSpace, BpePatterns.Gpt2);
     }
 
@@ -807,7 +812,12 @@ public static class TokenizerJsonLoader
                 "BpeTokenizer reproduces a regex Split pattern only");
         }
 
-        bool addPrefixSpace = OptionalBoolean(byteLevelStep, "add_prefix_space") ?? false;
+        if (OptionalBoolean(byteLevelStep, "add_prefix_space") is not bool addPrefixSpace)
+        {
+            throw Unsupported(
+                "its Sequence's ByteLevel step declares no add_prefix_space",
+                "tokenizers 0.23.1 has no default for that field and refuses the file identically, where accepting it here would invent the value that decides whether a leading space is added");
+        }
         return (true, addPrefixSpace, regexElement.GetString());
     }
 
@@ -832,6 +842,7 @@ public static class TokenizerJsonLoader
         }
         string type = OptionalString(decoder, "type") ?? UntypedName;
         bool decoderIsByteLevel = string.Equals(type, "ByteLevel", StringComparison.Ordinal);
+        EnsureByteLevelDecoderDeclaresAddPrefixSpace(decoder, decoderIsByteLevel);
         if (decoderIsByteLevel == byteLevel)
         {
             return;
@@ -843,6 +854,29 @@ public static class TokenizerJsonLoader
         // would corrupt -- so this gets its own, accurate message instead.
         throw new InvalidDataException(
             $"The {SourceName} pre_tokenizer describes a {(byteLevel ? "byte-level" : "non-byte-level")} model but its decoder is '{type}', which would not decode the tokens it produces.");
+    }
+
+    /// <summary>
+    /// The decoder-side counterpart of <see cref="ReadByteLevelPreTokenizer"/>'s own
+    /// check: a <c>ByteLevel</c> decoder shares the same struct <c>tokenizers</c>
+    /// deserializes for the pre-tokenizer, so it has no default for
+    /// <c>add_prefix_space</c> either and is refused identically -- worded through an
+    /// untagged enum on the Rust side, but the same field, the same absent default.
+    /// </summary>
+    /// <remarks>
+    /// Not routed through <see cref="Unsupported(string, string)"/>, for the same
+    /// reason as the mismatch check above: <c>DataNet</c> never applies the decoder, so
+    /// its fixed "would produce embeddings that do not match the model" tail would
+    /// misdescribe this refusal too. The reason to refuse is that the reference cannot
+    /// even parse the file, not that this loader would tokenize it differently.
+    /// </remarks>
+    private static void EnsureByteLevelDecoderDeclaresAddPrefixSpace(JsonElement decoder, bool decoderIsByteLevel)
+    {
+        if (decoderIsByteLevel && OptionalBoolean(decoder, "add_prefix_space") is null)
+        {
+            throw new InvalidDataException(
+                $"The {SourceName} decoder is 'ByteLevel' but declares no add_prefix_space, which tokenizers has no default for and refuses too.");
+        }
     }
 
     private enum PipelineKind
