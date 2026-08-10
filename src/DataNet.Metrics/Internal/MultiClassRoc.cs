@@ -24,8 +24,11 @@ internal static class MultiClassRoc
         int[] classes = ResolveLabels(yTrue, options.Labels, classCount);
         ValidateRowSums(yScore, n, classCount);
 
-        // 0 and 1 both mean sequential, and the sequential drivers stay exactly
-        // as they were: they read the caller's spans in place and copy nothing.
+        // 0 and 1 both mean sequential: the drivers below read the caller's spans
+        // directly and take no private copy of them — CopyForWorkers is reached
+        // only from the *Parallel variants — and every worker count returns the
+        // same bits. Not that the drivers are unchanged; their allocation profile
+        // moved on this branch, which docs/decisions/0018 records.
         int workers = Math.Max(1, options.MaxDegreeOfParallelism);
 
         if (options.Strategy == MultiClassStrategy.OneVsRest)
