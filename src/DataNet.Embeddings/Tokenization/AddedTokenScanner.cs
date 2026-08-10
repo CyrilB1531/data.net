@@ -37,29 +37,7 @@ internal sealed class AddedTokenScanner
     /// <param name="token">The entry that matched.</param>
     internal bool TryNext(string text, int from, out int start, out int end, [MaybeNullWhen(false)] out AddedToken token)
     {
-        int bestAt = -1;
-        AddedToken? best = null;
-
-        foreach (AddedToken candidate in _tokens)
-        {
-            // Once a candidate is found, only a match starting at or before it can
-            // still win, so later entries need a window reaching bestAt plus their
-            // own length -- just enough to still find a match starting exactly at
-            // bestAt. Llama-3 alone declares 256 added tokens; without this bound
-            // every one of them would rescan to the end of the remaining text on
-            // every match found.
-            int windowEnd = bestAt < 0 ? text.Length : Math.Min(text.Length, bestAt + candidate.Content.Length);
-            int at = FirstMatch(text, candidate, from, windowEnd);
-            if (at < 0)
-            {
-                continue;
-            }
-            if (bestAt < 0 || at < bestAt || (at == bestAt && candidate.Content.Length > best!.Content.Length))
-            {
-                bestAt = at;
-                best = candidate;
-            }
-        }
+        AddedToken? best = BestMatch(text, from, out int bestAt);
 
         if (best is null)
         {
@@ -69,8 +47,8 @@ internal sealed class AddedTokenScanner
             return false;
         }
 
-        // The winner is decided on the raw match position (bestAt above), before
-        // either side's strip is applied. This matters only when two candidates
+        // The winner is decided on the raw match position (bestAt above, compared
+        // in BestMatch), before either side's strip is applied. This matters only when two candidates
         // compete and the one further right carries Lstrip: could its left-strip
         // reach back far enough to beat an earlier candidate? A left-strip only
         // crosses whitespace, and with ordinary non-whitespace added-token
@@ -100,6 +78,44 @@ internal sealed class AddedTokenScanner
         }
         token = best;
         return true;
+    }
+
+    /// <summary>
+    /// The entry that wins at or after <paramref name="from"/> — earliest, and the
+    /// longest of those tied on that position — or <see langword="null"/> when none
+    /// matches.
+    /// </summary>
+    /// <param name="text">The text being scanned.</param>
+    /// <param name="from">Where to start.</param>
+    /// <param name="at">The raw index the winner matched at, before stripping; -1 when none matched.</param>
+    private AddedToken? BestMatch(string text, int from, out int at)
+    {
+        int bestAt = -1;
+        AddedToken? best = null;
+
+        foreach (AddedToken candidate in _tokens)
+        {
+            // Once a candidate is found, only a match starting at or before it can
+            // still win, so later entries need a window reaching bestAt plus their
+            // own length -- just enough to still find a match starting exactly at
+            // bestAt. Llama-3 alone declares 256 added tokens; without this bound
+            // every one of them would rescan to the end of the remaining text on
+            // every match found.
+            int windowEnd = bestAt < 0 ? text.Length : Math.Min(text.Length, bestAt + candidate.Content.Length);
+            int found = FirstMatch(text, candidate, from, windowEnd);
+            if (found < 0)
+            {
+                continue;
+            }
+            if (bestAt < 0 || found < bestAt || (found == bestAt && candidate.Content.Length > best!.Content.Length))
+            {
+                bestAt = found;
+                best = candidate;
+            }
+        }
+
+        at = bestAt;
+        return best;
     }
 
     /// <summary>The first index at or after <paramref name="from"/> where the entry may match.</summary>
