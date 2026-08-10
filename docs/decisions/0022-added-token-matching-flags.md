@@ -106,12 +106,14 @@ the same shape show it without a counterfactual having to be constructed:
 `'a <mask> b'`, where `lstrip` absorbs the space, is `[64, 50257, 275]`; the
 mirror input `'a <pad> b'`, where `<pad>` carries `rstrip` and so leaves the
 space on its left alone, is `[64, 220, 50258, 65]` — with 220, `Ġ`, standing in
-the stream as its own piece. What the strip costs is that piece and nothing else:
-§1's first two rows carry the same entry with and without a whitespace neighbour,
-`a <mask> b` and `a<mask>b`, and `<mask>` is id 50257 in both. The design note
-records the direct with/without pair from an
-uncommitted probe on a smaller model — `[0, 7, 6, 1]` under `lstrip` against
-`[0, 6, 7, 6, 1]` without it, mask id 7 unchanged.
+the stream as its own piece. That pair is what fixes *which* piece the strip
+costs. That the entry's own id survives the strip is the other half, and §1's
+first two rows carry it: `a <mask> b` and `a<mask>b` hold the same entry with and
+without a whitespace neighbour, and `<mask>` is id 50257 in both. Those two rows
+also differ on the right — `275` `Ġb` against `65` `b` — so what they establish
+is the id, not the piece count. The design note records the direct with/without
+pair from an uncommitted probe on a smaller model — `[0, 7, 6, 1]` under `lstrip`
+against `[0, 6, 7, 6, 1]` without it, mask id 7 unchanged.
 
 **On WordPiece the id stream does not change at all.** Its pre-tokenizer is
 `\w+|[^\w\s]+`, which never emits a whitespace piece, so there is no piece for a
