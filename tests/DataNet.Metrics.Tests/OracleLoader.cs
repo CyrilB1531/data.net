@@ -31,9 +31,13 @@ internal static class OracleLoader
                 "NaN" => double.NaN,
                 "Infinity" => double.PositiveInfinity,
                 "-Infinity" => double.NegativeInfinity,
-                string other => throw new InvalidOperationException(
-                    $"The oracle holds the string '{other}' where a number belongs."),
-                null => throw new InvalidOperationException("The oracle holds a null where a number belongs."),
+                // A discard, not a `string other` arm with a `null` one beside it:
+                // GetString() returns null only for a Null element, which this
+                // branch has already excluded, so that second arm was unreachable
+                // and the analyser said so. The raw text names the offending value
+                // whatever its kind, which is what a failing test needs to read.
+                _ => throw new InvalidOperationException(
+                    $"The oracle holds {element.GetRawText()} where a number belongs."),
             }
             : element.GetDouble();
 }
