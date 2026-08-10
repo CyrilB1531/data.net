@@ -189,7 +189,7 @@ public sealed class BpeTokenizerTests
     {
         BpeVocabulary vocab = TinyVocabulary() with
         {
-            AddedTokens = [new AddedToken("<sep>", 3000)],
+            AddedTokens = [new AddedToken("<sep>", 3000) { Special = true }],
         };
         var tokenizer = new BpeTokenizer(vocab);
 
@@ -197,11 +197,31 @@ public sealed class BpeTokenizerTests
         // single token on their own, confirmed by bpe.json's
         // "the quick brown fox ..." case. The added token sits between them, so
         // its presence or absence is the only thing that can tell the two
-        // Decode calls below apart.
+        // Decode calls below apart. It is marked special, which is what
+        // skipSpecialTokens now keys on.
         int[] ids = [48, 3000, 144];
 
         Assert.Equal("the <sep>fox", tokenizer.Decode(ids));
         Assert.Equal("the fox", tokenizer.Decode(ids, skipSpecialTokens: true));
+    }
+
+    [Fact]
+    public void Decode_skipping_specials_keeps_an_ordinary_added_token()
+    {
+        var vocabulary = new BpeVocabulary(
+            new Dictionary<string, int>(StringComparer.Ordinal) { ["a"] = 0, ["<s>"] = 1, ["<x>"] = 2 },
+            [])
+        {
+            AddedTokens =
+            [
+                new AddedToken("<s>", 1) { Special = true },
+                new AddedToken("<x>", 2),
+            ],
+        };
+        var tokenizer = new BpeTokenizer(vocabulary);
+
+        Assert.Equal("<x>", tokenizer.Decode([1, 2], skipSpecialTokens: true));
+        Assert.Equal("<s><x>", tokenizer.Decode([1, 2], skipSpecialTokens: false));
     }
 
     /// <summary>

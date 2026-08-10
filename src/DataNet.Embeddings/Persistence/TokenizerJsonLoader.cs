@@ -380,7 +380,7 @@ public static class TokenizerJsonLoader
             string content = contentElement.GetString()!;
             limits.CheckTokenLength(content.Length);
             FoldAddedToken(token, content, id, vocab, limits, matchedLiterally);
-            matchedLiterally?.Add(new AddedToken(content, id));
+            matchedLiterally?.Add(new AddedToken(content, id) { Special = OptionalBoolean(token, "special") is true });
         }
     }
 

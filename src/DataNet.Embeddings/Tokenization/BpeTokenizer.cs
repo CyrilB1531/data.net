@@ -94,7 +94,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         }
 
         _scanner = new AddedTokenScanner(vocabulary.AddedTokens);
-        _addedIds = [.. vocabulary.AddedTokens.Select(a => a.Id)];
+        _addedIds = [.. vocabulary.AddedTokens.Where(a => a.Special).Select(a => a.Id)];
 
         if (vocabulary.UnkToken is { } unk)
         {
@@ -652,11 +652,10 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// </remarks>
     /// <param name="ids">Token ids, e.g. from <see cref="Encode"/>.</param>
     /// <param name="skipSpecialTokens">
-    /// Drop added tokens instead of rendering them. Every added token, where Python
-    /// drops only those its <c>added_tokens</c> entry marks <c>special</c>:
-    /// <see cref="BpeVocabulary.AddedTokens"/> does not carry that flag. The two
-    /// coincide for every model in scope, whose added tokens are all special, and
-    /// differ for a table that mixes the two.
+    /// Drop added tokens marked <c>special</c> instead of rendering them, the ones
+    /// <see cref="AddedToken.Special"/> carries from the file's <c>added_tokens</c>
+    /// entry. An ordinary added token -- <c>Special</c> unset -- is rendered
+    /// either way, matching Python's <c>skip_special_tokens</c>.
     /// </param>
     /// <exception cref="ArgumentOutOfRangeException">An id is outside the vocabulary.</exception>
     /// <exception cref="DecoderFallbackException">
@@ -677,8 +676,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// <summary>Reassembles the text <paramref name="ids"/> encode.</summary>
     /// <param name="ids">Token ids, e.g. from <see cref="Encode"/>.</param>
     /// <param name="skipSpecialTokens">
-    /// Drop added tokens instead of rendering them, every one, where Python drops
-    /// only those its <c>added_tokens</c> entry marks <c>special</c>; see
+    /// Drop added tokens marked <c>special</c> instead of rendering them; see
     /// <see cref="Decode(IReadOnlyList{int}, bool)"/>.
     /// </param>
     /// <exception cref="ArgumentOutOfRangeException">An id is outside the vocabulary.</exception>
