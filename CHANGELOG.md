@@ -140,9 +140,36 @@ and including `0.2.0` predate the split and covered all three at once — see
   file that carried it.
 - **`added_tokens` are read rather than dropped.** `Tokenizer.add_tokens` assigns
   ids after the model's own vocabulary, so those entries appear nowhere in
-  `model.vocab`; they are now folded into the loaded WordPiece vocabulary instead
-  of tokenizing to the unknown token. An entry that contradicts `model.vocab`, or
-  that asks for `lstrip`/`rstrip`/`single_word` matching, is refused.
+  `model.vocab`; they now reach both tokenizers instead of tokenizing to the
+  unknown token. An entry that contradicts `model.vocab` — the same content at a
+  different id — or that carries a negative id, is still refused.
+- **The `added_tokens` matching flags — the four that decide where an entry
+  matches — on both tokenizers.**
+  `AddedToken` is a public record carrying `Content`, `Id` and five flags, shared
+  by `BpeVocabulary.AddedTokens` and the new `WordPieceVocabulary.AddedTokens`
+  (both `IReadOnlyList<AddedToken>`; the BPE property was an
+  `IReadOnlyDictionary<string, int>`, which had nowhere to put a flag).
+  `lstrip` and `rstrip` absorb *all* the contiguous whitespace on their side of a
+  match into it, `single_word` matches only between non-word characters, and
+  `normalized` — not `special` — decides whether an entry is matched against the
+  raw text or the normalized one. `TokenizerJsonLoader` refused the first three
+  outright before, which meant `roberta-base` could not be loaded at all: it
+  declares `lstrip` on `<mask>`, and `SpecialTokenTemplate.Roberta` was already
+  advertising the family. Every rule here is replayed against `tokenizers`
+  0.23.1 rather than read off the file format, which is how the `special`-versus-
+  `normalized` distinction surfaced — see
+  [decision 0022](docs/decisions/0022-added-token-matching-flags.md), which also
+  records the two consequences worth knowing in advance: an `lstrip`ped token
+  breaks the byte-exact `Decode` round trip (`'a <mask> b'` comes back as
+  `'a<mask> b'`, in HuggingFace too), and `Count` on either vocabulary now
+  under-counts what `Encode` can emit.
+- **WordPiece added tokens are matched as text, not folded into the vocabulary.**
+  `WordPieceTokenizer` gains the added-token concept it had none of, through the
+  same internal scanner `BpeTokenizer` uses, so a flag cannot mean two things.
+  **This changes tokenization for every `tokenizer.json` carrying a non-empty
+  `added_tokens` table, flags or no flags** — a folded entry was matchable as a
+  whole word only, and was matched against the lowercased text whatever its
+  `normalized` field said.
 - **`BpeTokenizer`, `BpeVocabulary`, `BpeFilesLoader` and `TokenizerJsonLoader.LoadBpe`** —
   a third sub-word tokenizer, matching `tokenizers.models.BPE` in both the
   classic (character-level) lineage and the byte-level one GPT-2 introduced.

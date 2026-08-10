@@ -160,6 +160,24 @@ public sealed class TokenizerJsonLoaderTests
         Assert.Contains("names '[UNK]' as its unknown token but does not define it", error.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The added_tokens table does not satisfy the unknown-token requirement, and
+    /// this is the case that says so: it loaded while WordPiece folded the table
+    /// into its vocabulary. The table is matched as literal text ahead of the model,
+    /// so an unknown token declared only there is one the model can never fall back
+    /// to — an [UNK] emitted for an uncovered word would carry an id nothing defines.
+    /// </summary>
+    [Fact]
+    public void An_unknown_token_defined_only_in_added_tokens_is_rejected()
+    {
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => LoadWordPieceFrom(SyntheticWordPiece(
+                vocab: "{\"alpha\":0}",
+                addedTokens: "[{\"id\":1,\"content\":\"[UNK]\",\"special\":true}]")));
+
+        Assert.Contains("names '[UNK]' as its unknown token but does not define it", error.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void An_empty_vocabulary_is_rejected()
     {
@@ -428,25 +446,32 @@ public sealed class TokenizerJsonLoaderTests
     // ---- added_tokens are read rather than dropped ----
 
     [Fact]
-    public void An_added_token_outside_the_model_vocabulary_joins_it()
+    public void An_added_token_outside_the_model_vocabulary_is_matched_as_text_not_folded_in()
     {
         WordPieceVocabulary vocabulary = LoadWordPieceFrom(SyntheticWordPiece(
             addedTokens: "[{\"id\":3,\"content\":\"[EXTRA]\",\"special\":true}]"));
 
-        Assert.Equal(4, vocabulary.Count);
-        Assert.Equal(3, vocabulary.Vocab["[EXTRA]"]);
+        // model.vocab is what the file declared, entry for entry. [EXTRA] reaches
+        // the tokenizer through AddedTokens, which is scanned as literal text ahead
+        // of the model — folded in, it would be matchable as a whole word only.
+        Assert.Equal(3, vocabulary.Count);
+        Assert.False(vocabulary.Vocab.ContainsKey("[EXTRA]"));
+        Assert.Equal(new AddedToken("[EXTRA]", 3) { Special = true }, Assert.Single(vocabulary.AddedTokens));
     }
 
     [Fact]
-    public void An_added_token_already_in_the_vocabulary_at_the_same_id_is_a_no_op()
+    public void An_added_token_already_in_the_vocabulary_at_the_same_id_is_still_recorded()
     {
         // What every stock BERT tokenizer.json looks like: the special tokens are
-        // listed in both tables.
+        // listed in both tables, at the same ids. The overlap is not subtracted —
+        // the scan reads nothing but AddedTokens, so an entry left out of it is an
+        // entry that reaches the model as ordinary text.
         WordPieceVocabulary vocabulary = LoadWordPieceFrom(SyntheticWordPiece(
             addedTokens: "[{\"id\":0,\"content\":\"[UNK]\",\"special\":true}]"));
 
         Assert.Equal(3, vocabulary.Count);
         Assert.Equal(0, vocabulary.Vocab["[UNK]"]);
+        Assert.Equal(0, Assert.Single(vocabulary.AddedTokens).Id);
     }
 
     [Fact]
@@ -459,12 +484,50 @@ public sealed class TokenizerJsonLoaderTests
         Assert.Contains("already maps it to 0", error.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// <c>normalized</c> decides which pass an entry matches in, and an absent one
+    /// defaults to <c>!special</c> — what Rust's <c>AddedToken::from</c> does, so
+    /// every table <c>add_tokens</c> or <c>add_special_tokens</c> wrote keeps its
+    /// meaning. The field is read, not inferred: the last case sets it against the
+    /// grain of <c>special</c> and the loader must carry that through.
+    /// </summary>
+    [Theory]
+    [InlineData("\"special\":true", false)]
+    [InlineData("\"special\":false", true)]
+    [InlineData("\"special\":true,\"normalized\":true", true)]
+    [InlineData("\"special\":false,\"normalized\":false", false)]
+    public void An_added_token_defaults_normalized_to_the_opposite_of_special(string flags, bool expected)
+    {
+        WordPieceVocabulary vocabulary = LoadWordPieceFrom(SyntheticWordPiece(
+            addedTokens: $"[{{\"id\":3,\"content\":\"[EXTRA]\",{flags}}}]"));
+
+        Assert.Equal(expected, Assert.Single(vocabulary.AddedTokens).Normalized);
+    }
+
+    /// <summary>
+    /// A token read from a file and the same token written out by hand compare
+    /// equal, which is the comparison a caller asserting a loaded vocabulary
+    /// actually makes. Real files always spell <c>normalized</c> out — tokenizers'
+    /// own serializer writes all five flags — so this is the ordinary case, not a
+    /// corner: the hand-built token leaves the flag to its default and the loaded
+    /// one states it.
+    /// </summary>
+    [Fact]
+    public void An_added_token_read_from_a_file_equals_the_same_token_written_by_hand()
+    {
+        WordPieceVocabulary vocabulary = LoadWordPieceFrom(SyntheticWordPiece(
+            addedTokens: "[{\"id\":3,\"content\":\"[EXTRA]\",\"single_word\":false,\"lstrip\":false,"
+                + "\"rstrip\":false,\"normalized\":false,\"special\":true}]"));
+
+        Assert.Equal(new AddedToken("[EXTRA]", 3) { Special = true }, Assert.Single(vocabulary.AddedTokens));
+    }
+
     [Fact]
     public void An_added_token_with_a_negative_id_is_rejected()
     {
-        // The id is folded into the vocabulary and comes back out of Encode, straight
-        // into the caller's embedding lookup. A negative one is an out-of-range index
-        // in their code, blamed on them.
+        // The id comes straight back out of Encode, into the caller's embedding
+        // lookup. A negative one is an out-of-range index in their code, blamed on
+        // them.
         InvalidDataException error = Assert.Throws<InvalidDataException>(
             () => LoadWordPieceFrom(SyntheticWordPiece(
                 addedTokens: "[{\"id\":-5,\"content\":\"[EXTRA]\"}]")));
@@ -476,13 +539,17 @@ public sealed class TokenizerJsonLoaderTests
     [InlineData("lstrip")]
     [InlineData("rstrip")]
     [InlineData("single_word")]
-    public void An_added_token_with_matching_flags_is_rejected(string flag)
+    public void An_added_token_carries_the_matching_flag_the_file_set(string flag)
     {
-        InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => LoadWordPieceFrom(SyntheticWordPiece(
-                addedTokens: $"[{{\"id\":3,\"content\":\"[EXTRA]\",\"{flag}\":true}}]")));
+        WordPieceVocabulary vocabulary = LoadWordPieceFrom(SyntheticWordPiece(
+            addedTokens: $"[{{\"id\":3,\"content\":\"[EXTRA]\",\"{flag}\":true}}]"));
 
-        Assert.Contains(flag, error.Message, StringComparison.Ordinal);
+        AddedToken added = Assert.Single(vocabulary.AddedTokens);
+        Assert.Equal(
+            flag,
+            (added.Lstrip ? "lstrip" : null)
+                ?? (added.Rstrip ? "rstrip" : null)
+                ?? (added.SingleWord ? "single_word" : null));
     }
 
     // ---- Bounds that were declared but never proven ----
@@ -588,13 +655,15 @@ public sealed class TokenizerJsonLoaderTests
 
     private static MemoryStream Bytes(string json) => new MemoryStream(Encoding.UTF8.GetBytes(json));
 
-    private static ArtifactLoadOptions BpeBounds() => new()
-    {
-        MaxTotalBytes = 8L * 1024 * 1024,
-        MaxVocabularySize = 100_000,
-        MaxArrayLength = 100_000,
-        MaxTokenLength = 512,
-    };
+    /// <summary>
+    /// The path to <c>tests/oracles/roberta_shaped_model.json</c>, not its parsed
+    /// content: <see cref="TokenizerJsonLoader.LoadBpe(string, ArtifactLoadOptions?)"/>
+    /// takes a file path, where <see cref="OracleLoader.Load(string)"/> returns an
+    /// already-parsed <see cref="JsonDocument"/> — a type mismatch, not a
+    /// metadata-shape one, so this reads the file straight off disk instead.
+    /// </summary>
+    private static readonly string RobertaShapedFixturePath =
+        Path.Combine(AppContext.BaseDirectory, "oracles", "roberta_shaped_model.json");
 
     [Fact]
     public void LoadBpe_reproduces_every_frozen_pipeline()
@@ -609,7 +678,7 @@ public sealed class TokenizerJsonLoaderTests
             int[] expected = c.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32()).ToArray();
 
             BpeVocabulary vocab = TokenizerJsonLoader.LoadBpe(
-                Bytes(c.GetProperty("tokenizer_json").GetString()!), BpeBounds());
+                Bytes(c.GetProperty("tokenizer_json").GetString()!), OracleReplay.BpeBounds());
             int[] actual = [.. new BpeTokenizer(vocab).Encode(text).Ids];
 
             if (!expected.SequenceEqual(actual))
@@ -647,23 +716,9 @@ public sealed class TokenizerJsonLoaderTests
         using JsonDocument doc = OracleLoader.Load("bpe_added_tokens.json");
         var tokenizer = new BpeTokenizer(TokenizerJsonLoader.LoadBpe(
             Bytes(doc.RootElement.GetProperty("metadata").GetProperty("tokenizer_json").GetString()!),
-            BpeBounds()));
+            OracleReplay.BpeBounds()));
 
-        var failures = new List<string>();
-        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
-        {
-            string text = c.GetProperty("text").GetString()!;
-            string[] expectedTokens = c.GetProperty("tokens").EnumerateArray().Select(e => e.GetString()!).ToArray();
-            int[] expectedIds = c.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32()).ToArray();
-
-            TokenizationResult actual = tokenizer.Encode(text);
-            if (!expectedTokens.SequenceEqual(actual.Tokens) || !expectedIds.SequenceEqual(actual.Ids))
-            {
-                failures.Add($"{JsonSerializer.Serialize(text)}\n  exp: [{string.Join(" | ", expectedTokens)}]\n  got: [{string.Join(" | ", actual.Tokens)}]");
-            }
-        }
-
-        Assert.True(failures.Count == 0, string.Join("\n", failures));
+        OracleReplay.AssertEncodings(doc, tokenizer.Encode, "tokens");
     }
 
     /// <summary>
@@ -678,28 +733,9 @@ public sealed class TokenizerJsonLoaderTests
         using JsonDocument doc = OracleLoader.Load("bpe_added_tokens.json");
         var tokenizer = new BpeTokenizer(TokenizerJsonLoader.LoadBpe(
             Bytes(doc.RootElement.GetProperty("metadata").GetProperty("tokenizer_json").GetString()!),
-            BpeBounds()));
+            OracleReplay.BpeBounds()));
 
-        var failures = new List<string>();
-        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
-        {
-            int[] ids = c.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32()).ToArray();
-            string expected = c.GetProperty("decoded").GetString()!;
-            string expectedSkipping = c.GetProperty("decoded_skip_specials").GetString()!;
-
-            string actual = tokenizer.Decode(ids);
-            string actualSkipping = tokenizer.Decode(ids, skipSpecialTokens: true);
-            if (!string.Equals(expected, actual, StringComparison.Ordinal))
-            {
-                failures.Add($"decode {JsonSerializer.Serialize(expected)} got {JsonSerializer.Serialize(actual)}");
-            }
-            if (!string.Equals(expectedSkipping, actualSkipping, StringComparison.Ordinal))
-            {
-                failures.Add($"decode-skipping {JsonSerializer.Serialize(expectedSkipping)} got {JsonSerializer.Serialize(actualSkipping)}");
-            }
-        }
-
-        Assert.True(failures.Count == 0, string.Join("\n", failures));
+        OracleReplay.AssertDecodes(doc, (ids, skip) => tokenizer.Decode(ids, skipSpecialTokens: skip));
     }
 
     /// <summary>
@@ -725,9 +761,9 @@ public sealed class TokenizerJsonLoaderTests
          "model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2,"<|eot|>":3},"merges":[["a","b"]]}}
         """;
 
-        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
-        Assert.Equal(3, vocabulary.AddedTokens["<|eot|>"]);
+        Assert.Contains(vocabulary.AddedTokens, t => t.Content == "<|eot|>" && t.Id == 3);
         // model.vocab is left as the file declared it: the added table is a property
         // of its own, not a fold into the vocabulary.
         Assert.Equal(4, vocabulary.Vocab.Count);
@@ -743,27 +779,121 @@ public sealed class TokenizerJsonLoaderTests
 
     /// <summary>
     /// An added token that <c>model.vocab</c> also declares still goes through the
-    /// matching-flags check -- the same one a token added for the first time goes
+    /// matching-flags read -- the same one a token added for the first time goes
     /// through. Fixture shaped after <c>roberta-base</c>'s own <c>tokenizer.json</c>,
     /// whose <c>&lt;mask&gt;</c> is id 50264 in both tables with <c>lstrip: true</c>.
     /// </summary>
     /// <remarks>
     /// Before the fold-in check moved onto this branch, that file loaded with
-    /// <c>lstrip</c> silently ignored; this pins the refusal so it is not
-    /// silently undone by a later change.
+    /// <c>lstrip</c> silently ignored. Now that <see cref="AddedTokenScanner"/>
+    /// applies the flag, this fixture pins the fold-in branch specifically: it is
+    /// separate code from the "new id" branch <c>LoadBpe_reads_the_added_token_matching_flags</c>
+    /// exercises.
     /// </remarks>
     [Fact]
-    public void LoadBpe_refuses_an_added_token_in_model_vocab_with_lstrip_on()
+    public void LoadBpe_reads_lstrip_on_an_added_token_that_model_vocab_also_declares()
     {
         const string Json = """
         {"added_tokens":[{"id":3,"content":"<mask>","single_word":false,"lstrip":true,"rstrip":false,"special":true}],
          "model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2,"<mask>":3},"merges":[["a","b"]]}}
         """;
 
-        InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
-        Assert.Contains("lstrip", error.Message, StringComparison.Ordinal);
+        AddedToken mask = Assert.Single(vocabulary.AddedTokens, t => t.Content == "<mask>");
+        Assert.True(mask.Lstrip);
+        Assert.False(mask.Rstrip);
+        Assert.False(mask.SingleWord);
+        Assert.True(mask.Special);
+    }
+
+    /// <summary>
+    /// Issue #104's own acceptance criterion: the <c>added_tokens</c> table
+    /// <c>roberta-base</c> actually ships, loaded from a committed fixture
+    /// rather than asserted by hand against a string built inline.
+    /// <c>tests/oracles/roberta_shaped_model.json</c> is
+    /// <c>tools/build_tiny_models.py</c>'s <c>build_roberta_shaped()</c>,
+    /// reproducing the file's five entries verbatim: ids 0-3 for
+    /// <c>&lt;s&gt;</c>, <c>&lt;pad&gt;</c>, <c>&lt;/s&gt;</c>, <c>&lt;unk&gt;</c>
+    /// with every matching flag <see langword="false"/>, and id 50264 for
+    /// <c>&lt;mask&gt;</c> with <c>lstrip=true</c>. All five also sit in
+    /// <c>model.vocab</c> at the same ids, as <c>roberta-base</c> itself writes
+    /// them — 50264 nowhere near contiguous with the tiny vocabulary's own
+    /// handful of ids, which is deliberate: the loader must not assume an
+    /// added token's id sits next to the rest of the vocabulary just because
+    /// this fixture's does.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_accepts_the_roberta_added_token_table()
+    {
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(RobertaShapedFixturePath);
+
+        Assert.Equal(5, vocabulary.AddedTokens.Count);
+        AddedToken mask = Assert.Single(vocabulary.AddedTokens, t => t.Content == "<mask>");
+        Assert.True(mask.Lstrip);
+        Assert.True(mask.Special);
+        Assert.All(vocabulary.AddedTokens.Where(t => t.Content != "<mask>"), t => Assert.False(t.Lstrip));
+    }
+
+    /// <summary>
+    /// The added-token matching flags reach <see cref="BpeVocabulary.AddedTokens"/>
+    /// for a token that is new to <c>model.vocab</c> too, not only the fold-in
+    /// branch above. Issue #104: <c>roberta-base</c> declares <c>lstrip=true</c> on
+    /// <c>&lt;mask&gt;</c>, and this loader used to refuse it outright.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_reads_the_added_token_matching_flags()
+    {
+        const string Json = """
+        {
+          "added_tokens": [
+            { "id": 2, "content": "<mask>", "lstrip": true, "rstrip": false, "single_word": false, "special": true }
+          ],
+          "pre_tokenizer": { "type": "ByteLevel", "add_prefix_space": false },
+          "model": { "type": "BPE", "vocab": { "a": 0, "b": 1, "<mask>": 2 }, "merges": [] }
+        }
+        """;
+
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
+
+        AddedToken mask = Assert.Single(vocabulary.AddedTokens, t => t.Content == "<mask>");
+        Assert.True(mask.Lstrip);
+        Assert.False(mask.Rstrip);
+        Assert.False(mask.SingleWord);
+        Assert.True(mask.Special);
+    }
+
+    /// <summary>
+    /// <see cref="TokenizerJsonLoader.LoadWordPiece(Stream, ArtifactLoadOptions?)"/>
+    /// reads the matching flags rather than refusing them. It refused them for as
+    /// long as WordPiece folded an added token into its vocabulary, matchable as a
+    /// whole word only; now that <see cref="WordPieceTokenizer"/> scans the table as
+    /// literal text, the flags have somewhere to be applied.
+    /// </summary>
+    [Fact]
+    public void LoadWordPiece_reads_the_matching_flags_of_an_added_token()
+    {
+        const string Json = """
+        {
+          "added_tokens": [
+            { "id": 2, "content": "<mask>", "lstrip": true, "rstrip": false, "single_word": false, "special": true }
+          ],
+          "pre_tokenizer": { "type": "Whitespace" },
+          "model": { "type": "WordPiece", "unk_token": "[UNK]", "vocab": { "[UNK]": 0, "a": 1 } }
+        }
+        """;
+
+        WordPieceVocabulary vocabulary = TokenizerJsonLoader.LoadWordPiece(Bytes(Json));
+
+        AddedToken mask = Assert.Single(vocabulary.AddedTokens);
+        Assert.Equal(2, mask.Id);
+        Assert.True(mask.Lstrip);
+        Assert.False(mask.Rstrip);
+        Assert.False(mask.SingleWord);
+        Assert.True(mask.Special);
+        // And the model's own table is untouched: <mask> is matched as text, so
+        // folding it in would make it a whole word the model could produce.
+        Assert.Equal(2, vocabulary.Count);
     }
 
     /// <summary>
@@ -778,7 +908,7 @@ public sealed class TokenizerJsonLoaderTests
         {"model":{"type":"BPE","vocab":{"a":0},"merges":[],"byte_fallback":true}}
         """;
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
         Assert.Contains("byte_fallback", error.Message, StringComparison.Ordinal);
     }
 
@@ -786,7 +916,7 @@ public sealed class TokenizerJsonLoaderTests
     public void LoadBpe_refuses_a_unigram_model()
     {
         const string Json = """{"model":{"type":"Unigram","vocab":[]}}""";
-        Assert.Throws<InvalidDataException>(() => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+        Assert.Throws<InvalidDataException>(() => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
     }
 
     [Fact]
@@ -797,7 +927,7 @@ public sealed class TokenizerJsonLoaderTests
          "pre_tokenizer":{"type":"BertPreTokenizer"}}
         """;
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
         Assert.Contains("BertPreTokenizer", error.Message, StringComparison.Ordinal);
     }
 
@@ -811,8 +941,8 @@ public sealed class TokenizerJsonLoaderTests
         {"model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2},"merges":["a b"]}}
         """;
         Assert.Equal(
-            TokenizerJsonLoader.LoadBpe(Bytes(Pairs), BpeBounds()).Merges,
-            TokenizerJsonLoader.LoadBpe(Bytes(Lines), BpeBounds()).Merges);
+            TokenizerJsonLoader.LoadBpe(Bytes(Pairs), OracleReplay.BpeBounds()).Merges,
+            TokenizerJsonLoader.LoadBpe(Bytes(Lines), OracleReplay.BpeBounds()).Merges);
     }
 
     /// <summary>
@@ -834,7 +964,7 @@ public sealed class TokenizerJsonLoaderTests
         {"model":{"type":"BPE","vocab":{"a":0,"b":1,"c":2},"merges":["a b c"]}}
         """;
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
         Assert.Contains("not two space-separated symbols", error.Message, StringComparison.Ordinal);
     }
 
@@ -844,7 +974,7 @@ public sealed class TokenizerJsonLoaderTests
         const string Json = """
         {"model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2},"merges":["a b"]}}
         """;
-        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
         Assert.Single(vocabulary.Merges);
         Assert.Equal(new MergePair("a", "b"), vocabulary.Merges[0]);
@@ -856,7 +986,7 @@ public sealed class TokenizerJsonLoaderTests
         const string Json = """
         {"model":{"type":"BPE","vocab":{"a":0},"merges":[],"ignore_merges":true}}
         """;
-        Assert.True(TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()).IgnoreMerges);
+        Assert.True(TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()).IgnoreMerges);
     }
 
     /// <summary>
@@ -875,7 +1005,7 @@ public sealed class TokenizerJsonLoaderTests
          "pre_tokenizer":{"type":"ByteLevel","add_prefix_space":false,"use_regex":true}}
         """;
 
-        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
         Assert.True(vocabulary.ByteLevel);
         Assert.Equal(BpePatterns.Gpt2, vocabulary.PreTokenizerPattern);
@@ -897,7 +1027,7 @@ public sealed class TokenizerJsonLoaderTests
         """;
 
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
 
         Assert.Contains("use_regex", error.Message, StringComparison.Ordinal);
     }
@@ -920,7 +1050,7 @@ public sealed class TokenizerJsonLoaderTests
          "decoder":{"type":"ByteLevel"}}
         """;
 
-        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
         Assert.True(vocabulary.ByteLevel);
         Assert.Equal("\\w+", vocabulary.PreTokenizerPattern);
@@ -943,7 +1073,7 @@ public sealed class TokenizerJsonLoaderTests
         """;
 
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
 
         Assert.Contains("continuing_subword_prefix", error.Message, StringComparison.Ordinal);
     }
@@ -963,7 +1093,7 @@ public sealed class TokenizerJsonLoaderTests
         """;
 
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
 
         Assert.Contains("fuse_unk", error.Message, StringComparison.Ordinal);
     }
@@ -981,7 +1111,7 @@ public sealed class TokenizerJsonLoaderTests
         """;
 
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
 
         Assert.Contains("dropout", error.Message, StringComparison.Ordinal);
     }
@@ -998,7 +1128,7 @@ public sealed class TokenizerJsonLoaderTests
                   "continuing_subword_prefix":null,"fuse_unk":false}}
         """;
 
-        Assert.Single(TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()).Vocab);
+        Assert.Single(TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()).Vocab);
     }
 
     /// <summary>
@@ -1016,7 +1146,7 @@ public sealed class TokenizerJsonLoaderTests
         """;
 
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
 
         Assert.Contains("NFKC", error.Message, StringComparison.Ordinal);
     }
@@ -1036,7 +1166,7 @@ public sealed class TokenizerJsonLoaderTests
         """;
 
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
 
         Assert.Contains("BPEDecoder", error.Message, StringComparison.Ordinal);
     }
@@ -1051,7 +1181,7 @@ public sealed class TokenizerJsonLoaderTests
         """;
 
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
 
         Assert.Contains("ByteLevel", error.Message, StringComparison.Ordinal);
     }

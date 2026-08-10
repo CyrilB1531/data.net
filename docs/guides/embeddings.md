@@ -179,28 +179,47 @@ different one is **rejected**, with a message naming what was found:
   ([Embed a batch](#embed-a-batch)), and a `post_processor` in the file would be
   a second source of truth for it, free to disagree with the first;
 - a `truncation` or `padding` section;
-- an `added_tokens` entry that contradicts `model.vocab`, or that asks for
-  `lstrip`, `rstrip` or `single_word` matching;
+- an `added_tokens` entry that contradicts `model.vocab` — the same content at a
+  different id, or a negative id, which is an out-of-range index in the caller's
+  embedding lookup wherever it lands. The matching flags are **not** a refusal
+  any more: `lstrip`, `rstrip`, `single_word`, `special` and `normalized` are all
+  read and honoured
+  ([decision 0022](../decisions/0022-added-token-matching-flags.md));
 - a `spiece.model` with no `normalizer_spec` at all — treating "absent" as
   "identity" would make the normalizer check skippable by deleting a field;
 - a special-token id (`unk_id`, `bos_id`, `eos_id`, `pad_id`) outside the
   vocabulary. `-1` is how the format spells "this model has none".
 
-Entries in `added_tokens` that sit outside `model.vocab` are **folded into the
-vocabulary** rather than dropped, so a token added with `Tokenizer.add_tokens`
-stays reachable. A stock BERT file lists its special tokens in both tables at
-the same ids, which folds to a no-op.
+Refusing every one of these is deliberate. The alternative is a vocabulary that
+loads cleanly and produces embeddings for a model nobody trained, which is the
+failure this whole guide warns about — and it would be silent.
 
-BPE is the exception, because `BpeTokenizer` matches added tokens as literal
-text ahead of the merge loop rather than looking them up as ordinary vocabulary
-entries. `LoadBpe` therefore carries the **whole** `added_tokens` table into
-`BpeVocabulary.AddedTokens`, the entries `model.vocab` also declares included —
-which is where every special token lives: `<|endoftext|>` is id 50256 in GPT-2's
-own `model.vocab` as well as in its `added_tokens`.
+The **whole** `added_tokens` table is carried into `AddedTokens` on the loaded
+vocabulary — `BpeVocabulary.AddedTokens` and `WordPieceVocabulary.AddedTokens`,
+both `IReadOnlyList<AddedToken>` — and folded into neither vocabulary. The
+entries `model.vocab` also declares are included, because that is where every
+special token lives: `<|endoftext|>` is id 50256 in GPT-2's own `model.vocab`
+*and* in its `added_tokens`, and the pre-model scan reads nothing but this list,
+so subtracting the intersection would drop exactly the tokens the scan exists
+for. A token added with `Tokenizer.add_tokens` gets an id after the model's own
+vocabulary and appears nowhere in `model.vocab`; it stays reachable all the same.
 
-This is deliberate. The alternative is a vocabulary that loads cleanly and
-produces embeddings for a model nobody trained, which is the failure this whole
-guide warns about — and it would be silent.
+Both tokenizers match these entries as **text**, ahead of the model — the merge
+loop for BPE, the greedy longest match for WordPiece. Folding them into the
+vocabulary instead would make them matchable as a whole word only, which is a
+different tokenizer as soon as an entry carries `lstrip`, `rstrip` or
+`single_word`, and not what `tokenizers` does even when none does. Two things
+follow, and both are worth knowing before they surprise you:
+
+- `Count` on either vocabulary counts the model's own table alone, so it
+  under-counts what `Encode` can emit. Size an embedding table from the model,
+  not from `Count`.
+- An `lstrip`ped added token absorbs the whitespace on its left into the match,
+  and `BpeTokenizer.Decode` — the only decoder here, and the one whose byte-level
+  round trip is otherwise exact — does not put it back: `'a <mask> b'` comes back
+  as `'a<mask> b'`. HuggingFace loses it too, so this is parity rather than a
+  defect — [decision 0022](../decisions/0022-added-token-matching-flags.md)
+  records the measurement, and which of the five flags decides what.
 
 ## Embed a batch
 

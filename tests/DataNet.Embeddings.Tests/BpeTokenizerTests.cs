@@ -37,10 +37,12 @@ public sealed class BpeTokenizerTests
         // stages that consult it. "[UNK]" is both a plain vocabulary entry (id 0,
         // in model.vocab above) and a declared added token, so BpeTokenizer.Encode
         // recognizes it as a literal match rather than splitting it letter by letter.
-        var addedTokens = new Dictionary<string, int>(StringComparer.Ordinal);
+        var addedTokens = new List<AddedToken>();
         foreach (JsonElement added in doc.RootElement.GetProperty("added_tokens").EnumerateArray())
         {
-            addedTokens[added.GetProperty("content").GetString()!] = added.GetProperty("id").GetInt32();
+            addedTokens.Add(new AddedToken(
+                added.GetProperty("content").GetString()!,
+                added.GetProperty("id").GetInt32()));
         }
 
         return new BpeVocabulary(vocab, merges)
@@ -115,11 +117,7 @@ public sealed class BpeTokenizerTests
     {
         BpeVocabulary vocab = TinyVocabulary() with
         {
-            AddedTokens = new Dictionary<string, int>(StringComparer.Ordinal)
-            {
-                ["<a>"] = 1000,
-                ["<a>b"] = 1001,
-            },
+            AddedTokens = [new AddedToken("<a>", 1000), new AddedToken("<a>b", 1001)],
         };
         var tokenizer = new BpeTokenizer(vocab);
 
@@ -139,11 +137,7 @@ public sealed class BpeTokenizerTests
     {
         BpeVocabulary vocab = TinyVocabulary() with
         {
-            AddedTokens = new Dictionary<string, int>(StringComparer.Ordinal)
-            {
-                ["<z>"] = 2000,
-                ["<a><a>"] = 2001,
-            },
+            AddedTokens = [new AddedToken("<z>", 2000), new AddedToken("<a><a>", 2001)],
         };
         var tokenizer = new BpeTokenizer(vocab);
 
@@ -164,7 +158,7 @@ public sealed class BpeTokenizerTests
     {
         BpeVocabulary vocab = TinyVocabulary() with
         {
-            AddedTokens = new Dictionary<string, int>(StringComparer.Ordinal) { [string.Empty] = 999 },
+            AddedTokens = [new AddedToken(string.Empty, 999)],
         };
         var tokenizer = new BpeTokenizer(vocab);
 
@@ -195,7 +189,7 @@ public sealed class BpeTokenizerTests
     {
         BpeVocabulary vocab = TinyVocabulary() with
         {
-            AddedTokens = new Dictionary<string, int>(StringComparer.Ordinal) { ["<sep>"] = 3000 },
+            AddedTokens = [new AddedToken("<sep>", 3000) { Special = true }],
         };
         var tokenizer = new BpeTokenizer(vocab);
 
@@ -203,11 +197,31 @@ public sealed class BpeTokenizerTests
         // single token on their own, confirmed by bpe.json's
         // "the quick brown fox ..." case. The added token sits between them, so
         // its presence or absence is the only thing that can tell the two
-        // Decode calls below apart.
+        // Decode calls below apart. It is marked special, which is what
+        // skipSpecialTokens now keys on.
         int[] ids = [48, 3000, 144];
 
         Assert.Equal("the <sep>fox", tokenizer.Decode(ids));
         Assert.Equal("the fox", tokenizer.Decode(ids, skipSpecialTokens: true));
+    }
+
+    [Fact]
+    public void Decode_skipping_specials_keeps_an_ordinary_added_token()
+    {
+        var vocabulary = new BpeVocabulary(
+            new Dictionary<string, int>(StringComparer.Ordinal) { ["a"] = 0, ["<s>"] = 1, ["<x>"] = 2 },
+            [])
+        {
+            AddedTokens =
+            [
+                new AddedToken("<s>", 1) { Special = true },
+                new AddedToken("<x>", 2),
+            ],
+        };
+        var tokenizer = new BpeTokenizer(vocabulary);
+
+        Assert.Equal("<x>", tokenizer.Decode([1, 2], skipSpecialTokens: true));
+        Assert.Equal("<s><x>", tokenizer.Decode([1, 2], skipSpecialTokens: false));
     }
 
     /// <summary>
