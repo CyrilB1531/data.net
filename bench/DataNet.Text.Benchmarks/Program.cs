@@ -12,6 +12,8 @@ using DataNet.Text.Benchmarks.CrossLang;
 //                       round trip (bench/python/bench_persistence.py)
 //   * "compare-metrics" -> the same, for the #61 classification metrics
 //                       (bench/python/bench_metrics.py)
+//   * "roc-parallel" -> multiclass ROC-AUC at several worker counts, C# against
+//                       C#: the before/after for issue #86
 if (args.Length > 0 && args[0] == "compare")
 {
     LevenshteinCrossLang.Run(args);
@@ -27,6 +29,12 @@ if (args.Length > 0 && args[0] == "compare-persistence")
 if (args.Length > 0 && args[0] == "compare-metrics")
 {
     MetricsCrossLang.Run();
+    return;
+}
+
+if (args.Length > 0 && args[0] == "roc-parallel")
+{
+    RocParallelBench.Run();
     return;
 }
 

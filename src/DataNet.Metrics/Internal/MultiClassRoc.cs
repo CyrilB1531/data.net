@@ -1,3 +1,6 @@
+using System.Buffers;
+using System.Runtime.ExceptionServices;
+
 namespace DataNet.Metrics.Internal;
 
 /// <summary>
@@ -14,25 +17,43 @@ internal static class MultiClassRoc
         ReadOnlySpan<int> yTrue,
         ReadOnlySpan<double> yScore,
         int classCount,
-        MultiClassStrategy strategy,
-        Averaging average,
-        ReadOnlySpan<int> labels,
-        ReadOnlySpan<double> sampleWeight)
+        MultiClassRocOptions options)
     {
-        int n = Validate(yTrue, yScore, classCount, strategy, average, sampleWeight);
-        int[] classes = ResolveLabels(yTrue, labels, classCount);
+        Averaging average = options.Average ?? Averaging.Macro;
+        int n = Validate(yTrue, yScore, classCount, options, average);
+        int[] classes = ResolveLabels(yTrue, options.Labels, classCount);
         ValidateRowSums(yScore, n, classCount);
 
-        return strategy == MultiClassStrategy.OneVsRest
-            ? OneVsRest(yTrue, yScore, classes, average, sampleWeight)
-            : OneVsOne(yTrue, yScore, classes, average);
+        // 0 and 1 both mean sequential: the drivers below read the caller's spans
+        // directly and take no private copy of them — CopyForWorkers is reached
+        // only from the *Parallel variants — and every worker count returns the
+        // same bits. Not that the drivers are unchanged; their allocation profile
+        // moved on this branch, which docs/decisions/0018 records.
+        int workers = Math.Max(1, options.MaxDegreeOfParallelism);
+
+        if (options.Strategy == MultiClassStrategy.OneVsRest)
+        {
+            return workers == 1
+                ? OneVsRest(yTrue, yScore, classes, average, options.SampleWeight)
+                : OneVsRestParallel(yTrue, yScore, classes, average, options.SampleWeight, workers);
+        }
+
+        return workers == 1
+            ? OneVsOne(yTrue, yScore, classes, average)
+            : OneVsOneParallel(yTrue, yScore, classes, average, workers);
     }
 
     private static int Validate(
         ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int classCount,
-        MultiClassStrategy strategy, Averaging average, ReadOnlySpan<double> sampleWeight)
+        MultiClassRocOptions options, Averaging average)
     {
         int n = yTrue.Length;
+        if (options.MaxDegreeOfParallelism < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(options), options.MaxDegreeOfParallelism,
+                "MaxDegreeOfParallelism cannot be negative. 0 and 1 are both sequential.");
+        }
         if (n == 0)
         {
             throw new ArgumentException("yTrue is empty; there is nothing to score.", nameof(yTrue));
@@ -52,21 +73,21 @@ internal static class MultiClassRoc
         {
             throw new ArgumentException(
                 "Multiclass ROC AUC accepts only Averaging.Macro and Averaging.Weighted, as scikit-learn does.",
-                nameof(average));
+                nameof(options));
         }
-        if (!sampleWeight.IsEmpty)
+        if (!options.SampleWeight.IsEmpty)
         {
-            if (sampleWeight.Length != n)
+            if (options.SampleWeight.Length != n)
             {
                 throw new ArgumentException(
-                    $"sampleWeight has {sampleWeight.Length} entries but there are {n} samples.",
-                    nameof(sampleWeight));
+                    $"sampleWeight has {options.SampleWeight.Length} entries but there are {n} samples.",
+                    nameof(options));
             }
-            if (strategy == MultiClassStrategy.OneVsOne)
+            if (options.Strategy == MultiClassStrategy.OneVsOne)
             {
                 throw new ArgumentException(
                     "scikit-learn does not support sampleWeight for one-vs-one ROC AUC, and neither does this.",
-                    nameof(sampleWeight));
+                    nameof(options));
             }
         }
 
@@ -131,125 +152,532 @@ internal static class MultiClassRoc
         }
     }
 
+    /// <summary>
+    /// A score matrix and the layout it is stored in, so a column can be read
+    /// without the caller and the callee having to agree on two loose integers.
+    /// The sequential path builds a row-major source over the caller's own span;
+    /// the parallel path builds a column-major one over the transposed copy from
+    /// <see cref="CopyForWorkers"/> — one <see langword="bool"/> picks the layout,
+    /// rather than a pair of integers that could disagree with each other.
+    /// </summary>
+    private readonly ref struct ScoreSource
+    {
+        private readonly int _classCount;
+        private readonly bool _columnMajor;
+
+        public ScoreSource(
+            ReadOnlySpan<int> yTrue, ReadOnlySpan<double> scores, int sampleCount, int classCount, bool columnMajor)
+        {
+            // The sample count is a parameter rather than yTrue.Length because
+            // deriving it from a span cannot detect the failure it exists to
+            // detect. Checking only scores.Length == yTrue.Length * classCount
+            // lets two *unsliced* rented spans through whenever classCount is a
+            // power of two: ArrayPool buckets are powers of two, so
+            // Rent(n).Length * k == Rent(n * k).Length for k in {2, 4, 8, …} at
+            // almost every n — 4079 of the 4095 values of n in [2, 4096] for
+            // k in {2, 4, 8}. Both lengths would then agree with each other and
+            // disagree with reality, Offset(column) would multiply by the bucket
+            // size, and every column after the first would be read from the
+            // wrong place. Naming the count makes both spans answer to a fact
+            // neither of them supplies.
+            if (yTrue.Length != sampleCount)
+            {
+                throw new ArgumentException(
+                    $"yTrue holds {yTrue.Length} entries but sampleCount is {sampleCount}. A span sliced to a rented "
+                    + "array's length rather than the sample count lands here, and would otherwise shift every "
+                    + "column at no visible cost.",
+                    nameof(yTrue));
+            }
+            if (scores.Length != sampleCount * classCount)
+            {
+                throw new ArgumentException(
+                    $"scores holds {scores.Length} entries; {sampleCount} samples over {classCount} classes needs "
+                    + $"{sampleCount * classCount}. A span sliced to a rented array's length rather than the sample "
+                    + "count lands here, and would otherwise read the wrong column at no visible cost.",
+                    nameof(scores));
+            }
+
+            YTrue = yTrue;
+            Scores = scores;
+            _classCount = classCount;
+            _columnMajor = columnMajor;
+        }
+
+        public ReadOnlySpan<int> YTrue { get; }
+
+        public ReadOnlySpan<double> Scores { get; }
+
+        /// <summary>Where class <paramref name="column"/>'s scores begin.</summary>
+        public int Offset(int column) => _columnMajor ? column * YTrue.Length : column;
+
+        /// <summary>How far apart consecutive samples of one column are.</summary>
+        public int Step => _columnMajor ? 1 : _classCount;
+    }
+
+    /// <summary>
+    /// One binary ROC-AUC over column <paramref name="column"/> of
+    /// <paramref name="source"/>, where samples equal to
+    /// <paramref name="positiveLabel"/> are the positive class.
+    /// </summary>
+    /// <remarks>
+    /// <paramref name="column"/> is the class's position in the score matrix and
+    /// <paramref name="positiveLabel"/> is the label value compared against
+    /// <c>yTrue</c>; one-vs-rest needs both because they are not always the same
+    /// number once <see cref="MultiClassRocOptions.Labels"/> is used.
+    /// </remarks>
+    private static double ClassScore(
+        ScoreSource source, int column, int positiveLabel, ReadOnlySpan<double> sampleWeight,
+        BinaryRoc.Scratch scratch, out double positiveWeight)
+    {
+        ReadOnlySpan<int> yTrue = source.YTrue;
+        int offset = source.Offset(column);
+        int step = source.Step;
+        int n = yTrue.Length;
+        int[] binary = scratch.Binary;
+        double[] scoreColumn = scratch.Column;
+        bool weighted = !sampleWeight.IsEmpty;
+        positiveWeight = 0.0;
+
+        for (int i = 0; i < n; i++)
+        {
+            bool positive = yTrue[i] == positiveLabel;
+            binary[i] = positive ? 1 : 0;
+            scoreColumn[i] = source.Scores[offset + (i * step)];
+            if (positive)
+            {
+                positiveWeight += weighted ? sampleWeight[i] : 1.0;
+            }
+        }
+
+        return BinaryRoc.Score(
+            binary.AsSpan(0, n), scoreColumn.AsSpan(0, n), 1, sampleWeight, scratch);
+    }
+
+    /// <summary>
+    /// One ordering of one Hand &amp; Till pair: the samples of two classes only,
+    /// scored with column <paramref name="column"/> — <paramref name="positiveLabel"/>'s
+    /// column, which is one of <paramref name="labelA"/>'s or <paramref name="labelB"/>'s.
+    /// </summary>
+    private static double PairScore(
+        ScoreSource source, int column, int labelA, int labelB, int positiveLabel, BinaryRoc.Scratch scratch)
+    {
+        ReadOnlySpan<int> yTrue = source.YTrue;
+        int offset = source.Offset(column);
+        int step = source.Step;
+        int[] binary = scratch.Binary;
+        double[] scoreColumn = scratch.Column;
+        int next = 0;
+
+        for (int i = 0; i < yTrue.Length; i++)
+        {
+            if (yTrue[i] != labelA && yTrue[i] != labelB)
+            {
+                continue;
+            }
+
+            binary[next] = yTrue[i] == positiveLabel ? 1 : 0;
+            scoreColumn[next] = source.Scores[offset + (i * step)];
+            next++;
+        }
+
+        return BinaryRoc.Score(
+            binary.AsSpan(0, next), scoreColumn.AsSpan(0, next), 1, default, scratch);
+    }
+
     private static double OneVsRest(
         ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int[] classes,
         Averaging average, ReadOnlySpan<double> sampleWeight)
     {
-        int n = yTrue.Length;
         int k = classes.Length;
-        int[] binary = new int[n];
-        double[] column = new double[n];
         double[] scores = new double[k];
         double[] weights = new double[k];
-        bool weighted = !sampleWeight.IsEmpty;
+        BinaryRoc.Scratch scratch = BinaryRoc.Scratch.Rent(yTrue.Length);
 
-        for (int c = 0; c < k; c++)
+        try
         {
-            double positiveWeight = 0.0;
-            for (int i = 0; i < n; i++)
+            ScoreSource source = new(yTrue, yScore, yTrue.Length, k, columnMajor: false);
+            for (int c = 0; c < k; c++)
             {
-                bool positive = yTrue[i] == classes[c];
-                binary[i] = positive ? 1 : 0;
-                column[i] = yScore[(i * k) + c];
-                if (positive)
-                {
-                    positiveWeight += weighted ? sampleWeight[i] : 1.0;
-                }
+                scores[c] = ClassScore(source, c, classes[c], sampleWeight, scratch, out double positiveWeight);
+                weights[c] = positiveWeight;
             }
-
-            scores[c] = BinaryRoc.Score(binary, column, 1, sampleWeight);
-            weights[c] = positiveWeight;
+        }
+        finally
+        {
+            scratch.Return();
         }
 
         return average == Averaging.Macro ? Mean(scores) : WeightedMean(scores, weights);
     }
 
     /// <summary>
-    /// The part of a one-vs-one pair score that stays the same across every
-    /// call in the pair loop, so that <see cref="PairScore"/> takes the four
-    /// values that actually vary per call rather than threading all ten
-    /// through every invocation.
+    /// The inputs, in a shape a worker thread can be handed.
     /// </summary>
-    private readonly ref struct PairContext(
-        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int[] classes, int classCount,
-        int[] binary, double[] column)
+    /// <remarks>
+    /// <para>
+    /// A <see cref="ReadOnlySpan{T}"/> cannot be captured by the body of a
+    /// <c>Parallel.For</c>: the caller's span may point at the stack, and nothing
+    /// in the language lets it travel to another thread. The unsafe way round is
+    /// not merely <c>fixed</c> — a pinned pointer would have to be captured as a
+    /// raw pointer and every worker would index it unchecked — and it is refused
+    /// on its own terms: no project in <c>src/</c> enables unsafe blocks, and a
+    /// perf change does not reverse that.
+    /// </para>
+    /// <para>
+    /// So the parallel path copies, and pays for it once: <c>yTrue</c>, the
+    /// weights if any, and the score matrix <em>transposed</em>. The transpose
+    /// costs the same single pass as a straight copy and leaves each class's
+    /// column contiguous for the worker that reads it, instead of reads spaced
+    /// <c>classCount</c> apart. Reading rows in order and scattering across
+    /// <c>classCount</c> write streams is the right way round: the read side is
+    /// then sequential, and hardware handles a handful of write streams well.
+    /// </para>
+    /// <para>
+    /// Every span built over these arrays must be sliced to the sample count and
+    /// never to the rented length — <see cref="ArrayPool{T}.Rent"/> hands back
+    /// something longer than asked for, and <see cref="ScoreSource.Offset"/>
+    /// multiplies by the sample count in column-major mode. Getting that wrong
+    /// reads the wrong column, so <see cref="ScoreSource"/>'s constructor is
+    /// handed the sample count as a number and checks both spans against it. Two
+    /// unsliced spans cannot satisfy that check by agreeing with each other,
+    /// which is exactly what they did while the check compared them only to one
+    /// another.
+    /// </para>
+    /// </remarks>
+    private static (int[] YTrue, double[] ColumnMajor, double[] Weights) CopyForWorkers(
+        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int classCount, ReadOnlySpan<double> sampleWeight)
     {
-        public ReadOnlySpan<int> YTrue { get; } = yTrue;
+        int n = yTrue.Length;
+        // Named for what it holds — a copy of yTrue, one entry per sample. Not
+        // "labels": MultiClassRocOptions.Labels is the class vocabulary, k entries
+        // long, and the two are the same array only by coincidence of length.
+        int[] yTrueCopy = ArrayPool<int>.Shared.Rent(n);
+        double[] columnMajor = ArrayPool<double>.Shared.Rent(n * classCount);
+        double[] weights = sampleWeight.IsEmpty
+            ? []
+            : ArrayPool<double>.Shared.Rent(n);
 
-        public ReadOnlySpan<double> YScore { get; } = yScore;
+        yTrue.CopyTo(yTrueCopy.AsSpan(0, n));
+        if (!sampleWeight.IsEmpty)
+        {
+            sampleWeight.CopyTo(weights.AsSpan(0, n));
+        }
 
-        public int[] Classes { get; } = classes;
+        for (int i = 0; i < n; i++)
+        {
+            int row = i * classCount;
+            for (int c = 0; c < classCount; c++)
+            {
+                columnMajor[(c * n) + i] = yScore[row + c];
+            }
+        }
 
-        public int ClassCount { get; } = classCount;
-
-        public int[] Binary { get; } = binary;
-
-        public double[] Column { get; } = column;
+        return (yTrueCopy, columnMajor, weights);
     }
 
-    private static double OneVsOne(
-        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int[] classes, Averaging average)
+    private static void ReturnToPool((int[] YTrue, double[] ColumnMajor, double[] Weights) copy)
+    {
+        ArrayPool<int>.Shared.Return(copy.YTrue);
+        ArrayPool<double>.Shared.Return(copy.ColumnMajor);
+        if (copy.Weights.Length > 0)
+        {
+            // Length 0 is the no-weights case: [] was never rented, so handing it
+            // back would give the pool an array it does not own.
+            ArrayPool<double>.Shared.Return(copy.Weights);
+        }
+    }
+
+    /// <summary>
+    /// Runs indices <c>0 .. count - 1</c> over at most <paramref name="workers"/>
+    /// threads, one <see cref="BinaryRoc.Scratch"/> per worker, and rethrows the
+    /// failure of the lowest index once every index has been attempted.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The determinism lives here rather than in each driver: the slot array, the
+    /// refusal to stop early, and the lowest-index rethrow are the parts a second
+    /// parallel driver must not re-derive, and the one-vs-one pair loop is the
+    /// second one.
+    /// </para>
+    /// <para>
+    /// <paramref name="body"/> <em>returns</em> the exception it caught instead of
+    /// being wrapped in a <c>catch</c> here, which is deliberate: only the part of
+    /// a body that scores caller-supplied numbers should be guarded. A body
+    /// builds its own <see cref="ScoreSource"/> and its own slices first, outside
+    /// its <c>try</c>, so that a broken internal invariant escapes as the defect
+    /// it is instead of reaching the caller as an
+    /// <see cref="ArgumentException"/> naming a parameter no public method has.
+    /// </para>
+    /// <para>
+    /// One <see cref="BinaryRoc.Scratch"/> per worker, through
+    /// <c>localInit</c>/<c>localFinally</c> — not one per index, which would rent
+    /// four arrays per index for nothing, and not one shared between workers,
+    /// which would have two indices writing the same buffers. The
+    /// <see cref="ParallelLoopState"/> the overload requires is deliberately
+    /// ignored; see <see cref="RethrowFirst"/> for why nothing calls
+    /// <see cref="ParallelLoopState.Stop"/>.
+    /// </para>
+    /// </remarks>
+    private static void RunPerIndex(
+        int count, int workers, int scratchLength, Func<int, BinaryRoc.Scratch, ArgumentException?> body)
+    {
+        ArgumentException?[] failures = new ArgumentException?[count];
+        var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = Math.Min(workers, count) };
+
+        Parallel.For(
+            0,
+            count,
+            parallelOptions,
+            () => BinaryRoc.Scratch.Rent(scratchLength),
+            (index, _, scratch) =>
+            {
+                // Its own slot, so which worker lost the race cannot decide which
+                // exception the caller sees.
+                failures[index] = body(index, scratch);
+                return scratch;
+            },
+            scratch => scratch.Return());
+
+        RethrowFirst(failures);
+    }
+
+    /// <summary>
+    /// One-vs-rest with the per-class loop spread over workers. Bit-identical to
+    /// <see cref="OneVsRest"/>: class <c>c</c> writes <c>scores[c]</c> and
+    /// <c>weights[c]</c> and nothing else, and the averaging below runs on this
+    /// thread in array order, so no thread's timing can reach a sum.
+    /// </summary>
+    private static double OneVsRestParallel(
+        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int[] classes,
+        Averaging average, ReadOnlySpan<double> sampleWeight, int workers)
     {
         int n = yTrue.Length;
         int k = classes.Length;
-        int pairCount = k * (k - 1) / 2;
-        double[] pairScores = new double[pairCount];
-        double[] prevalence = new double[pairCount];
-        int[] binary = new int[n];
-        double[] column = new double[n];
-        int pair = 0;
-        PairContext context = new(yTrue, yScore, classes, k, binary, column);
+        bool weighted = !sampleWeight.IsEmpty;
+        double[] scores = new double[k];
+        double[] weights = new double[k];
+        var copy = CopyForWorkers(yTrue, yScore, k, sampleWeight);
 
-        for (int a = 0; a < k; a++)
+        try
         {
-            for (int b = a + 1; b < k; b++)
+            RunPerIndex(k, workers, n, (c, scratch) =>
             {
-                int size = 0;
-                for (int i = 0; i < n; i++)
+                // Spans cannot cross into this lambda, but they can be made
+                // inside it: these are views over the arrays the closure
+                // captured, which is the whole point of the copy. ScoreSource is
+                // a ref struct, so it is built here, per iteration, and lives
+                // nowhere that outlives one.
+                //
+                // Both of these are built *above* the try. A failure building
+                // them is a broken internal invariant — a mis-sliced span, not a
+                // number the caller supplied — and it must escape as a defect
+                // rather than be handed back as an ArgumentException about rented
+                // arrays, naming a parameter no public method has.
+                ScoreSource source = new(
+                    copy.YTrue.AsSpan(0, n), copy.ColumnMajor.AsSpan(0, n * k), n, k, columnMajor: true);
+
+                // default, not a zero-length slice: ClassScore reads IsEmpty to
+                // decide whether weighting applies at all.
+                ReadOnlySpan<double> classWeight = weighted ? copy.Weights.AsSpan(0, n) : default;
+
+                try
                 {
-                    if (yTrue[i] == classes[a] || yTrue[i] == classes[b])
-                    {
-                        size++;
-                    }
+                    // classes[c], not c: the column and the positive label are
+                    // the same number only when the labels happen to be 0..k-1.
+                    scores[c] = ClassScore(source, c, classes[c], classWeight, scratch, out double positiveWeight);
+                    weights[c] = positiveWeight;
+                    return null;
                 }
+                catch (ArgumentException ex)
+                {
+                    return ex;
+                }
+            });
+        }
+        finally
+        {
+            ReturnToPool(copy);
+        }
 
-                // Hand & Till: each ordering of the pair is scored with its own
-                // column, and the two are averaged.
-                double aScore = PairScore(context, a, b, a, size);
-                double bScore = PairScore(context, a, b, b, size);
+        return average == Averaging.Macro ? Mean(scores) : WeightedMean(scores, weights);
+    }
 
-                pairScores[pair] = (aScore + bScore) * 0.5;
-                prevalence[pair] = (double)size / n;
-                pair++;
-            }
+    /// <summary>
+    /// One-vs-one with the per-pair loop spread over workers. Bit-identical to
+    /// <see cref="OneVsOne"/>: pair <c>p</c> writes <c>pairScores[p]</c> and
+    /// <c>prevalence[p]</c> and nothing else, and the averaging below runs on this
+    /// thread in array order, so no thread's timing can reach a sum.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The nested <c>(a, b)</c> loops become a flat range over the same
+    /// <see cref="Pairs"/> table the sequential driver walks — <c>k(k-1)/2</c>
+    /// tuples, built once. Reading the pair out of that table rather than decoding
+    /// a triangular index arithmetically pins the pair order to exactly the
+    /// sequential order, instead of resting on a decode agreeing with it.
+    /// </para>
+    /// <para>
+    /// No weights, by <see cref="Validate"/>: scikit-learn does not support
+    /// <c>sampleWeight</c> for one-vs-one and neither does this, so
+    /// <see cref="CopyForWorkers"/> is handed <see langword="default"/> — not an
+    /// empty rented array, which would be a buffer to hand back for nothing.
+    /// </para>
+    /// </remarks>
+    private static double OneVsOneParallel(
+        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int[] classes, Averaging average, int workers)
+    {
+        int n = yTrue.Length;
+        int k = classes.Length;
+        (int A, int B)[] pairs = Pairs(k);
+        double[] pairScores = new double[pairs.Length];
+        double[] prevalence = new double[pairs.Length];
+        var copy = CopyForWorkers(yTrue, yScore, k, default);
+
+        try
+        {
+            RunPerIndex(pairs.Length, workers, n, (pair, scratch) =>
+            {
+                // As in OneVsRestParallel: the spans cannot cross into this
+                // lambda but can be made inside it, over the arrays the closure
+                // captured, and ScoreSource is a ref struct so it is built here,
+                // per iteration, and stored nowhere that outlives one.
+                //
+                // Sliced to n and n * k, never to the rented lengths, and built
+                // *above* the try: a mis-sliced span is a broken internal
+                // invariant, and it must escape as the defect it is rather than
+                // reach the caller as an ArgumentException naming a parameter no
+                // public method has.
+                ScoreSource source = new(
+                    copy.YTrue.AsSpan(0, n), copy.ColumnMajor.AsSpan(0, n * k), n, k, columnMajor: true);
+
+                try
+                {
+                    // Everything the pair needs travels in what is already here:
+                    // the tuple carries the two columns and ScorePair resolves
+                    // their labels through classes. ScorePair is at seven
+                    // parameters, the most S107 allows, so a worker asks for
+                    // nothing by widening it.
+                    ScorePair(source, classes, pairs[pair], pair, pairScores, prevalence, scratch);
+                    return null;
+                }
+                catch (ArgumentException ex)
+                {
+                    // RunPerIndex cannot tell a broken invariant from a body that
+                    // forgot to catch, so the catch belongs here: without it both
+                    // the lowest-index rethrow and "no AggregateException crosses
+                    // the public API" would go quietly. Deleting these two lines
+                    // is a live mutation that
+                    // Reports_the_lowest_offending_pair_not_the_fastest_worker
+                    // fails on and that nothing else in the solution notices.
+                    return ex;
+                }
+            });
+        }
+        finally
+        {
+            ReturnToPool(copy);
         }
 
         return average == Averaging.Macro ? Mean(pairScores) : WeightedMean(pairScores, prevalence);
     }
 
-    private static double PairScore(PairContext context, int a, int b, int positiveClass, int size)
+    /// <summary>
+    /// Rethrows the failure of the lowest index, so a bad input produces the same
+    /// exception the sequential path would have produced.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="RunPerIndex"/> deliberately does not stop early.
+    /// <see cref="ParallelLoopState.Stop"/> would cancel iterations that had not
+    /// started, so a later index's exception could be reported where the
+    /// sequential path reports an earlier index's. The error path therefore does
+    /// all the work — it has no budget to defend — and
+    /// <see cref="ExceptionDispatchInfo"/> rethrows the original instance rather
+    /// than wrapping it, so type, message and <c>ParamName</c> survive and no
+    /// <see cref="AggregateException"/> crosses the public API.
+    /// </remarks>
+    private static void RethrowFirst(ArgumentException?[] failures)
     {
-        ReadOnlySpan<int> yTrue = context.YTrue;
-        int[] classes = context.Classes;
-        int k = context.ClassCount;
-        int[] binary = context.Binary;
-        double[] column = context.Column;
-        int next = 0;
-
-        for (int i = 0; i < yTrue.Length; i++)
+        // An indexed loop, ascending: "lowest index wins" is then a property of
+        // this code rather than of a library method's documented scan order.
+        for (int i = 0; i < failures.Length; i++)
         {
-            if (yTrue[i] != classes[a] && yTrue[i] != classes[b])
+            ArgumentException? failure = failures[i];
+            if (failure is not null)
             {
-                continue;
+                ExceptionDispatchInfo.Capture(failure).Throw();
             }
+        }
+    }
 
-            binary[next] = yTrue[i] == classes[positiveClass] ? 1 : 0;
-            column[next] = context.YScore[(i * k) + positiveClass];
-            next++;
+    private static double OneVsOne(
+        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int[] classes, Averaging average)
+    {
+        int k = classes.Length;
+        (int A, int B)[] pairs = Pairs(k);
+        double[] pairScores = new double[pairs.Length];
+        double[] prevalence = new double[pairs.Length];
+        BinaryRoc.Scratch scratch = BinaryRoc.Scratch.Rent(yTrue.Length);
+
+        try
+        {
+            ScoreSource source = new(yTrue, yScore, yTrue.Length, k, columnMajor: false);
+            for (int pair = 0; pair < pairs.Length; pair++)
+            {
+                ScorePair(source, classes, pairs[pair], pair, pairScores, prevalence, scratch);
+            }
+        }
+        finally
+        {
+            scratch.Return();
         }
 
-        return BinaryRoc.Score(
-            binary.AsSpan(0, size), column.AsSpan(0, size), 1, default);
+        return average == Averaging.Macro ? Mean(pairScores) : WeightedMean(pairScores, prevalence);
+    }
+
+    /// <summary>
+    /// The body of one pair, kept separate so the arithmetic exists in one
+    /// place regardless of what iterates the pairs. Writes only its own two
+    /// slots.
+    /// </summary>
+    private static void ScorePair(
+        ScoreSource source, int[] classes, (int A, int B) pair, int index,
+        double[] pairScores, double[] prevalence, BinaryRoc.Scratch scratch)
+    {
+        ReadOnlySpan<int> yTrue = source.YTrue;
+        int n = yTrue.Length;
+        int labelA = classes[pair.A];
+        int labelB = classes[pair.B];
+        int size = 0;
+        for (int i = 0; i < n; i++)
+        {
+            if (yTrue[i] == labelA || yTrue[i] == labelB)
+            {
+                size++;
+            }
+        }
+
+        // Hand & Till: each ordering of the pair is scored with its own column,
+        // and the two are averaged.
+        double aScore = PairScore(source, pair.A, labelA, labelB, labelA, scratch);
+        double bScore = PairScore(source, pair.B, labelA, labelB, labelB, scratch);
+
+        pairScores[index] = (aScore + bScore) * 0.5;
+        prevalence[index] = (double)size / n;
+    }
+
+    /// <summary>Every unordered class pair, in the order this method's nested loops produce them.</summary>
+    private static (int A, int B)[] Pairs(int k)
+    {
+        (int A, int B)[] pairs = new (int, int)[k * (k - 1) / 2];
+        int next = 0;
+        for (int a = 0; a < k; a++)
+        {
+            for (int b = a + 1; b < k; b++)
+            {
+                pairs[next++] = (a, b);
+            }
+        }
+        return pairs;
     }
 
     private static double Mean(double[] values)

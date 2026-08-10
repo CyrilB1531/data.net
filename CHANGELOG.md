@@ -337,6 +337,33 @@ First release of a fourth package.
   — with the narrowest margin at 2.74×. net10 and netstandard2.0 are at parity
   at every size that supports the claim. Both tiers, and what their error bars do
   and do not cover, are in [`bench/README.md`](bench/README.md).
+- **Opt-in parallelism for multiclass ROC-AUC.**
+  `RocAuc.MultiClass(yTrue, yScore, classCount, new MultiClassRocOptions { … })`
+  gathers the strategy, averaging, labels and sample weights that used to be
+  trailing parameters, and adds `MaxDegreeOfParallelism`. One-vs-rest spreads its
+  per-class loop and one-vs-one its per-pair loop over that many workers; the
+  result is bit-identical, because each class and each pair writes its own slot
+  and the averaging happens afterwards in array order. The default is 0, and 0 and
+  1 both mean sequential — reading the caller's spans directly, with no private
+  copy of them — because a library that spawns threads a caller did not ask for
+  is hostile inside a server already running one request per core, and
+  scikit-learn does not parallelise `roc_auc_score` either. Above 1 the inputs are
+  copied, `samples × classes × 8` bytes for the transposed score matrix, which is
+  why the default does not pay for it. Either way the per-curve buffers come from
+  `ArrayPool<T>.Shared` and are reused across every class and pair rather than
+  allocated per curve. There is no `-1` sentinel and no internal size threshold:
+  the caller writes the number, and it is honoured at every input size.
+- **What that parallelism is worth, measured on elapsed time.** At n=100 000 and
+  k=10, on four physical cores: one-vs-rest 75.991 / 75.779 ms sequential →
+  26.648 / 26.379 at eight workers, and one-vs-one 127.375 / 126.810 →
+  37.162 / 36.875 at four. At n=1000 and k=10 it is a gain rather than the
+  expected dispatch cost — one-vs-one 0.745 / 0.741 ms → 0.297 / 0.279. Processor
+  time rises as elapsed time falls, which is what spending cores means, and both
+  columns are published for all 24 measured cells, two passes each, in
+  [the performance guide](docs/guides/performance.md) — along with the three
+  shapes where eight workers lose to four on a 4-core / 8-thread machine. The
+  reasoning is in
+  [`docs/decisions/0018`](docs/decisions/0018-multiclass-roc-auc-parallelism-is-opt-in.md).
 
 ## [0.2.0] — 2026-08-05
 

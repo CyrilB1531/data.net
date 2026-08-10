@@ -279,3 +279,177 @@ never a factor, so there is no gap between the two columns to explain away.
 Full breakdown, including the intra-C# and net10-vs-netstandard2.0 tiers and
 where the two language sides do not do identical work, in
 [`bench/README.md`](../../bench/README.md#5-classification-metrics-issue-61).
+
+## Multiclass ROC-AUC, sequential against parallel (issue #86)
+
+```bash
+dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- roc-parallel
+```
+
+### Read the axis before reading the table
+
+**The axis here is elapsed time, and processor time rises.** That is what
+spending cores means rather than a fault in the measurement, so both columns are
+printed side by side for every cell and neither is dropped. Concretely, on
+`ovr_n100000_k10` at eight workers: processor time goes from 75.993 ms to
+142.224 ms while elapsed time falls from 75.991 ms to 26.648 ms. The work got
+larger and the wait got shorter. A caller who is paying for CPU seconds should
+read the second column and may well conclude the default is right for them.
+
+**The table immediately above this one is on a different axis, and the two must
+not be paired.** Issue #61's comparison against scikit-learn is a *processor
+time* gate — every row at or above 1×, which is the property that survives being
+run on a busy machine — and it stays one. This table asks a different question of
+the same code: how long the caller waits. Setting a processor-time ratio beside
+an elapsed-time ratio and reading down the page is the easiest available way to
+mislead a reader, so the axes are named at both tables rather than inferred from
+the column headers.
+
+**One pair of numbers is on the same axis, and it is the one to watch.** Issue #61's
+table reports `roc_auc_ovr_macro_n100000_k10` at **88.385 ms wall** (91.396 ms
+processor); the table further down this page reports the same operation at `dop=1`
+as **75.991 / 75.779 ms elapsed**. Both are elapsed milliseconds, so the axis
+warning just given does not cover them — and they are still not the same
+measurement. Three things differ, and all three matter:
+
+- **Different input.** Issue #61 scores the committed corpus file
+  `bench/corpus/metrics/metrics_n100000_k10.json`; this bench generates a seeded
+  separable problem in process (`Random(86)`, rows normalised). How separable the
+  problem is decides how many equal scores `BinaryRoc` groups into one threshold,
+  which changes the work per curve.
+- **Different machine load.** Issue #61's pass was taken at a one-minute load of
+  1.52. These figures were taken between 2.31 and 4.01 — the Conditions section
+  below gives the three readings.
+- **Different code on the sequential path.** The sequential multiclass drivers were
+  rewritten for this issue: the per-curve buffers now come from one pooled
+  `BinaryRoc.Scratch` reused across every class, where Issue #61's build allocated
+  two fresh arrays per class inside `BinaryRoc.Score`. Issue #61's 88.385 ms and
+  this table's 75.991 ms were not produced by the same implementation, and nothing
+  here measures how much of the gap that accounts for.
+
+So the arithmetic a reader is most likely to reach for is the one nobody should
+publish: dividing this table's best `ovr_n100000_k10` cell (26.648 ms elapsed) into
+Issue #61's Python column for that row (250.400 ms wall) yields a tidy-looking
+"9.4× faster than scikit-learn" that no single run measured — two windows, two
+inputs, two builds. A cross-language figure for the parallel path would have to be
+measured as one pass with both sides on the same input, and it has not been.
+
+### Conditions
+
+Intel i7-4770S, **4 physical cores / 8 logical threads**, Ubuntu 24.04,
+.NET 10, one sitting. Inputs generated in-process from a fixed seed (`Random(86)`,
+rows normalised to sum to 1) — no shared corpus, because both sides of this
+comparison are C#. Each cell is the best of five repeats over a 0.5 s minimum,
+with wall and processor time taken from the same repeat.
+
+**Two back-to-back passes over all 24 cells, both published.** One-minute load
+average, from `uptime`: **2.31 before the first pass, 3.32 between them, 4.01
+after the second.** The rise across the window is the runs themselves — this
+workstation does not reach that on its own — and it is why both passes are shown
+instead of a mean, following `bench/README.md`'s "read the pairs, not the means"
+rule. The two passes are unusually close here: the sequential baselines of the
+two heaviest cells agree to 0.28% and 0.45%, against the up-to-15% dispersion
+that same section documents for this machine. The widest disagreement anywhere in
+the 24 pairs is 6.45%, on `ovo_n1000_k10` at four workers, where the whole cell
+is under 0.3 ms.
+
+Because the load climbed from 2.31 to 4.01 while these figures were taken, the
+table is comparable **to itself** — one window, all four worker counts of a shape
+measured next to each other — and **not** to the scikit-learn table above, which
+was taken at a one-minute load of 1.52. Those absolute milliseconds and these
+were not measured on the same machine state.
+
+### The 24 cells
+
+Elapsed and processor milliseconds per operation, as `pass 1 / pass 2`. The
+`cpu ÷ elapsed` column is what the harness prints as `(…x cores)` — how many
+cores' worth of work the call consumed. The speed-up column is elapsed time
+divided into the same pass's own `dop=1` row.
+
+| Operation | dop | elapsed ms | processor ms | cpu ÷ elapsed | speed-up vs dop=1 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `ovr_n1000_k10` | 1 | 0.466 / 0.470 | 0.467 / 0.470 | 1.00 / 1.00 | 1.00 / 1.00 |
+| `ovr_n1000_k10` | 2 | 0.294 / 0.301 | 0.647 / 0.672 | 2.20 / 2.23 | 1.59 / 1.56 |
+| `ovr_n1000_k10` | 4 | **0.240 / 0.238** | 0.958 / 0.944 | 3.98 / 3.96 | **1.94 / 1.97** |
+| `ovr_n1000_k10` | 8 | 0.249 / 0.244 | 1.066 / 1.036 | 4.28 / 4.24 | 1.87 / 1.93 |
+| `ovo_n1000_k10` | 1 | 0.745 / 0.741 | 0.745 / 0.741 | 1.00 / 1.00 | 1.00 / 1.00 |
+| `ovo_n1000_k10` | 2 | 0.438 / 0.439 | 0.957 / 0.943 | 2.19 / 2.15 | 1.70 / 1.69 |
+| `ovo_n1000_k10` | 4 | **0.297 / 0.279** | 1.215 / 1.169 | 4.09 / 4.19 | **2.51 / 2.66** |
+| `ovo_n1000_k10` | 8 | 0.423 / 0.421 | 1.627 / 1.603 | 3.84 / 3.81 | 1.76 / 1.76 |
+| `ovr_n100000_k5` | 1 | 36.770 / 36.633 | 36.770 / 36.635 | 1.00 / 1.00 | 1.00 / 1.00 |
+| `ovr_n100000_k5` | 2 | 23.535 / 23.444 | 38.852 / 38.905 | 1.65 / 1.66 | 1.56 / 1.56 |
+| `ovr_n100000_k5` | 4 | 17.777 / 17.656 | 45.709 / 46.358 | 2.57 / 2.63 | 2.07 / 2.07 |
+| `ovr_n100000_k5` | 8 | **14.380 / 14.405** | 56.961 / 57.354 | 3.96 / 3.98 | **2.56 / 2.54** |
+| `ovo_n100000_k5` | 1 | 55.121 / 54.865 | 55.117 / 54.860 | 1.00 / 1.00 | 1.00 / 1.00 |
+| `ovo_n100000_k5` | 2 | 29.305 / 29.674 | 56.743 / 57.214 | 1.94 / 1.93 | 1.88 / 1.85 |
+| `ovo_n100000_k5` | 4 | 24.177 / 24.151 | 60.830 / 60.723 | 2.52 / 2.51 | 2.28 / 2.27 |
+| `ovo_n100000_k5` | 8 | **17.331 / 17.535** | 91.430 / 91.555 | 5.28 / 5.22 | **3.18 / 3.13** |
+| `ovr_n100000_k10` | 1 | 75.991 / 75.779 | 75.993 / 75.785 | 1.00 / 1.00 | 1.00 / 1.00 |
+| `ovr_n100000_k10` | 2 | 40.242 / 40.163 | 77.532 / 77.425 | 1.93 / 1.93 | 1.89 / 1.89 |
+| `ovr_n100000_k10` | 4 | 34.997 / 35.644 | 94.273 / 91.616 | 2.69 / 2.57 | 2.17 / 2.13 |
+| `ovr_n100000_k10` | 8 | **26.648 / 26.379** | 142.224 / 140.712 | 5.34 / 5.33 | **2.85 / 2.87** |
+| `ovo_n100000_k10` | 1 | 127.375 / 126.810 | 127.377 / 126.801 | 1.00 / 1.00 | 1.00 / 1.00 |
+| `ovo_n100000_k10` | 2 | 64.317 / 64.250 | 123.433 / 123.341 | 1.92 / 1.92 | 1.98 / 1.97 |
+| `ovo_n100000_k10` | 4 | **37.162 / 36.875** | 133.183 / 131.681 | 3.58 / 3.57 | **3.43 / 3.44** |
+| `ovo_n100000_k10` | 8 | 37.284 / 37.457 | 187.662 / 184.325 | 5.03 / 4.92 | 3.42 / 3.39 |
+
+Bold marks the fastest worker count for each shape in elapsed time. Nothing was
+skipped: one-vs-one at n=100 000, k=10 is 45 pairs and 90 curves, the heaviest
+cell in the matrix, and a single sequential call is about 127 ms — well inside the
+bench's 60-second patience for that cell.
+
+### What the numbers say
+
+**At k=10 and n=100 000 the opt-in is worth 2.85×–2.87× on one-vs-rest and
+3.43×–3.44× on one-vs-one**, on four physical cores. One-vs-rest wants all eight
+logical threads to get there (26.6 / 26.4 ms); one-vs-one gets there at four
+(37.2 / 36.9 ms) and eight buys it nothing.
+
+**At k=5 the ceiling is lower, and part of it is arithmetic.** One-vs-rest tops
+out at 2.56× / 2.54×: five classes are five independent units of work, so the
+per-index loop is clamped to five workers however many the caller asks for, and
+five pieces cannot be spread evenly over four cores — one core does two while
+three do one. One-vs-one at the same shape has ten pairs to hand out and reaches
+3.18× / 3.13×, the best ratio in the table at n=100 000.
+
+**At n=1000 the opt-in is a gain, not a cost — which is not what was expected.**
+The design brief assumed the small-input row would be a dispatch overhead to
+justify. It is a doubling: one-vs-rest 0.466 / 0.470 ms → 0.240 / 0.238 at four
+workers (1.94× / 1.97×), one-vs-one 0.745 / 0.741 → 0.297 / 0.279 (2.51× /
+2.66×). Ten classes are ten independent sorts even when each sorts only a
+thousand values, and the copy the parallel path pays for is 1000 × 10 doubles —
+80 KB, which fits in L2. This is why the option has no internal size threshold:
+a crossover constant calibrated for "small inputs" would have thrown this away.
+
+**`dop=8` loses to `dop=4` on three of the six shapes, in both passes.**
+`ovr_n1000_k10` (0.249 / 0.244 against 0.240 / 0.238), `ovo_n1000_k10` (0.423 /
+0.421 against 0.297 / 0.279 — 42% / 51% slower) and `ovo_n100000_k10` (37.284 /
+37.457 against 37.162 / 36.875). This machine has **4 physical cores and 8
+logical threads**: past four workers the extra ones share execution units with a
+sibling rather than adding any, while still adding scheduling and cache
+pressure. The `ovo_n1000_k10` row is the clearest case, and it is a large
+regression, not a rounding error.
+
+The practical consequence is worth stating plainly, because
+`MaxDegreeOfParallelism`'s own documentation offers `Environment.ProcessorCount`
+as the way to ask for every core: **on a hyperthreaded machine that property can
+be the wrong number, and slower than half of it.** `ProcessorCount` is 8 here.
+Four is the better setting on half these shapes and never much worse on the rest.
+There is no recommended value in the library because there is no value that is
+right on every machine — measure your shape on your hardware, which is what this
+bench mode exists for.
+
+**Where the ceiling comes from.** Nothing here approaches 4× on four cores, and
+three things account for it, in decreasing order of confidence. `ValidateRowSums`
+walks all `samples × classes` scores on the calling thread before any dispatch —
+it stays sequential so its message can name the *first* bad row — and no worker
+count shortens it. The parallel path copies its inputs, `samples × classes × 8`
+bytes for the transposed score matrix, about 8 MB at n=100 000, k=10. And the
+per-index loop can only be as parallel as it has indices, which is what caps
+one-vs-rest at k=5. This run does not time those three separately, so the split
+between them is not quantified here; what is measured is the total, and it is in
+the table.
+
+The reasoning behind the opt-in default, the absent `-1` sentinel and the absent
+threshold is in
+[`../decisions/0018-multiclass-roc-auc-parallelism-is-opt-in.md`](../decisions/0018-multiclass-roc-auc-parallelism-is-opt-in.md).
