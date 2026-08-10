@@ -136,7 +136,7 @@ Every row below was measured against scikit-learn 1.9.0 in this repository's
 | MSLE / RMSLE with any target ≤ −1 | `ValueError` | `ArgumentException` naming the offending side |
 | `PinballLoss` with `alpha` outside [0, 1] | `InvalidParameterError` | `ArgumentOutOfRangeException` |
 | any non-finite input | `ValueError`, two distinct messages | `ArgumentException`, see below |
-| weighted median absolute error | a weighted percentile | see the invariant below |
+| weighted median absolute error | an *averaged* weighted percentile — it interpolates, rather than taking the value at the 50 % point: the mean of the first value whose cumulative weight reaches half the total and the one just past the last that stays at or below it | reproduce; see the invariant below |
 
 Concretely: `r2_score([2,2,2], [2,2,2])` is `1.0`, `r2_score([2,2,2], [1,2,3])` is
 `0.0`, and with `force_finite=False` those become `nan` and `-inf`.

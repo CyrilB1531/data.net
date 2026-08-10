@@ -34,6 +34,7 @@ Lot2Vectorization.Run();
 Lot3Embeddings.Run();
 Lot4Fuzzy.Run();
 Lot5Metrics.Run();
+Lot6Regression.Run();
 
 if (!PackagingGate.Verify())
 {
