@@ -5,8 +5,13 @@
 > tracking.
 
 **Goal:** Stop `LoadBpe` refusing two values that provably change nothing, stop an empty
-`end_of_word_suffix` crashing `Decode`, and make a `Sequence`'s `ByteLevel` step default
-`add_prefix_space` the way HuggingFace does.
+`end_of_word_suffix` crashing `Decode`, and refuse a `ByteLevel` block that omits `add_prefix_space` —
+the way the reference refuses it — instead of inventing a default for it.
+
+**Amended after Task 1, 2026-08-10.** The goal's third clause originally read "make a `Sequence`'s
+`ByteLevel` step default `add_prefix_space` the way HuggingFace does". The measurement showed HuggingFace
+has **no** default there: it refuses the file. Task 4 is rewritten accordingly, and Task 5's fourth corpus
+case with it. The spec's D3 carries the evidence table.
 
 **Architecture:** Three of the four changes are one line each. The fourth — the empty suffix — goes on
 `BpeVocabulary` rather than in the loader, because the type is public and constructible and a loader-side
@@ -49,7 +54,7 @@ nothing was thrown.
 | File | Responsibility |
 | --- | --- |
 | `src/DataNet.Embeddings/Tokenization/BpeVocabulary.cs` | `EndOfWordSuffix` gains a backing field so an empty suffix reads back as absent. |
-| `src/DataNet.Embeddings/Persistence/TokenizerJsonLoader.cs` | Two refusals become conditional; one default is corrected. |
+| `src/DataNet.Embeddings/Persistence/TokenizerJsonLoader.cs` | Two refusals become conditional; a missing `add_prefix_space` becomes a refusal in all three `ByteLevel` positions. |
 | `tests/DataNet.Embeddings.Tests/Tokenization/ValueEqualityTests.cs` | The type-level rule and its equality consequences. |
 | `tests/DataNet.Embeddings.Tests/BpeTokenizerTests.cs` | The `Decode` regression that used to throw. |
 | `tests/DataNet.Embeddings.Tests/Persistence/TokenizerJsonLoaderTests.cs` | The loader now accepts what it refused, and defaults the flag correctly. |
@@ -425,78 +430,104 @@ git commit -m "Refuse the model settings that change something, not the ones tha
 
 ---
 
-### Task 4: A Sequence's ByteLevel step defaults add_prefix_space the way HuggingFace does
+### Task 4: A ByteLevel block that omits add_prefix_space is refused
 
 **Files:**
 
-- Modify: `src/DataNet.Embeddings/Persistence/TokenizerJsonLoader.cs:797`
+- Modify: `src/DataNet.Embeddings/Persistence/TokenizerJsonLoader.cs` (every site parsing a `ByteLevel`
+  block: the top-level pre-tokenizer reader around `:756`, the `Sequence` step reader around `:797`, and
+  the decoder check around `:814`)
 - Modify: `tests/DataNet.Embeddings.Tests/Persistence/TokenizerJsonLoaderTests.cs`
 
-**Depends on:** Task 1 Step 3, which must have shown the omitted flag behaving as `true`.
+**Depends on:** Task 1, whose measurement replaced this task's original subject.
 
-- [ ] **Step 1: Write the failing test**
+**Interfaces:**
 
-The proof runs through `Encode`, not through the parsed flag: a test asserting
-`vocabulary.AddPrefixSpace` would pass even if the flag were never used.
+- Produces: `LoadBpe` throws `NotSupportedException` naming `add_prefix_space` when a `ByteLevel` block
+  omits it. No signature changes.
+
+**Why this is a refusal and not a default.** Measured on `tokenizers` 0.23.1: a `ByteLevel` block omitting
+`add_prefix_space` is refused in all three positions, and so is one omitting `trim_offsets`; a block
+omitting `use_regex` is accepted and defaults to `true`. The rule is per field. This library keeps
+tolerating an omitted `use_regex` — the comment at `:741` is right, and stock GPT-2 depends on it — and
+keeps tolerating an omitted `trim_offsets`, which it never reads. It refuses only the field whose absence
+would force it to invent a value that changes its output.
+
+- [ ] **Step 1: Find every ByteLevel parse site before writing anything**
+
+```bash
+grep -n "add_prefix_space\|ByteLevel" src/DataNet.Embeddings/Persistence/TokenizerJsonLoader.cs
+```
+
+The plan names three sites from a reading of the file. Confirm that count yourself and list what you found
+in your report. If there is a fourth, it gets the same treatment; if one of the three does not actually
+parse a `ByteLevel` block, say so rather than editing it to fit the plan.
+
+- [ ] **Step 2: Write the failing tests**
+
+Four tests, using the file's own JSON-building idiom — read a neighbouring test first:
 
 ```csharp
     /// <summary>
-    /// HuggingFace's <c>ByteLevel</c> defaults <c>add_prefix_space</c> to <see langword="true"/> in
-    /// both positions. This reader defaulted it to <see langword="false"/> inside a
-    /// <c>Sequence</c>, so a file omitting the flag loaded with the wrong value. Issue #118.
+    /// `tokenizers` has no default for this field: it refuses the file, in every position a
+    /// ByteLevel block can appear. Accepting it would mean inventing a value that changes the
+    /// token stream. Issue #118.
     /// </summary>
     [Fact]
-    public void LoadBpe_defaults_add_prefix_space_on_a_sequence_byte_level_step()
+    public void LoadBpe_refuses_a_top_level_byte_level_without_add_prefix_space()
     {
-        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(SequenceJsonWithoutAddPrefixSpace));
-        BpeTokenizer tokenizer = new(vocabulary);
+        NotSupportedException error = Assert.Throws<NotSupportedException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(TopLevelByteLevelWithoutAddPrefixSpace)));
 
-        Assert.Equal(["Ġa"], tokenizer.Encode("a").Tokens);
+        Assert.Contains("add_prefix_space", error.Message, StringComparison.Ordinal);
     }
 ```
 
-Build `SequenceJsonWithoutAddPrefixSpace` from the JSON your Task 1 Step 3 probe used, with the vocabulary
-the probe declared, and assert the token stream the probe recorded. Do not invent the expected value —
-copy it from the measurement.
+Then the same shape for the `Sequence` step and for the `decoder`, and a fourth test that a block
+**declaring** the field still loads and encodes as it did before — that one is the regression guard, and it
+must assert a token stream, not just that no exception was thrown.
 
-- [ ] **Step 2: Run it and watch it fail**
+- [ ] **Step 3: Run them and watch the three refusal tests fail**
 
 ```bash
-dotnet test DataNet.slnx -c Release --filter "FullyQualifiedName~defaults_add_prefix_space" > /tmp/118-t4-red.log 2>&1
+dotnet test DataNet.slnx -c Release --filter "FullyQualifiedName~without_add_prefix_space" > /tmp/118-t4-red.log 2>&1
 echo "test=$?"
 tail -20 /tmp/118-t4-red.log
 ```
 
-Expected: FAIL, the tokens lacking the `Ġ`.
+Expected: three failures, each because the file loaded instead of throwing. Read the count.
 
-- [ ] **Step 3: Correct the default**
+- [ ] **Step 4: Make the read required**
 
-`TokenizerJsonLoader.cs:797`:
+At each site, replace the defaulting read with one that throws when the property is absent, naming the
+field and saying the reference refuses it too. Follow `Unsupported(...)`'s existing two-argument shape —
+what the file declares, and why it cannot be reproduced — so the message reads like its neighbours.
 
-```csharp
-        bool addPrefixSpace = OptionalBoolean(byteLevelStep, "add_prefix_space") ?? true;
-```
+Both defaults disappear: `?? true` at `:756` and `?? false` at `:797` become unreachable once the omission
+throws, and leaving them would suggest a fallback that can never run.
 
-Add a comment naming the sibling at `:756` it now agrees with, so the next reader sees the two defaults are
-deliberately the same rather than coincidentally.
-
-- [ ] **Step 4: Run the whole suite**
+- [ ] **Step 5: Green, and fix what encoded the old permissiveness**
 
 ```bash
+dotnet build DataNet.slnx -c Release --no-incremental > /tmp/118-t4-build.log 2>&1
+echo "build=$?"
+tail -3 /tmp/118-t4-build.log
 dotnet test DataNet.slnx -c Release > /tmp/118-t4-green.log 2>&1
 echo "test=$?"
 tail -12 /tmp/118-t4-green.log
 ```
 
-Expected: **2253 passing** (2251 + 1 × 2). Watch for a *pre-existing* test that asserted the old default:
-if one fails, it encoded the bug, and its fix belongs in this commit with a comment saying so.
+Existing tests or fixtures that build a `ByteLevel` block without `add_prefix_space` will now fail. Each one
+encodes the permissiveness this task removes: declare the field in the fixture rather than exempting the
+site, and say in your report how many you had to touch. A fixture under `tests/oracles/` must **not** be
+edited by hand — if one fails, stop and report it, because that is corpus drift and not a test to fix.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add src/DataNet.Embeddings/Persistence/TokenizerJsonLoader.cs \
         tests/DataNet.Embeddings.Tests/Persistence/TokenizerJsonLoaderTests.cs
-git commit -m "Default a Sequence's byte-level prefix space the way both readers should"
+git commit -m "Refuse a byte-level block missing the field that decides its output"
 ```
 
 ---
@@ -532,8 +563,16 @@ Cases, each paired with a baseline built from the same vocabulary and merges wit
    carry the proof alone.
 2. `continuing_subword_prefix: ""` versus absent.
 3. `dropout: 0.0` versus absent.
-4. The `Sequence` with `add_prefix_space` omitted, versus the same file declaring it `true` and declaring
-   it `false` — three cases, so the corpus pins which one the default matches rather than asserting it.
+4. `ByteLevel` declaring `add_prefix_space: true` and declaring it `false` — two cases, which are the two
+   token streams Task 4's regression guard asserts against.
+
+   The omitted shapes cannot be cases: `tokenizers` refuses to build them, so there is no token stream to
+   record. Record them in the corpus **metadata** instead — one entry per position (top-level
+   `pre_tokenizer`, `Sequence` step, `decoder`) holding the exact error text the reference produced. That
+   is what Task 4's refusal tests cite, and it keeps the claim "the reference refuses this too" inside the
+   corpus rather than inside a commit message. Generate those entries by catching the exception in the
+   generator and storing `str(exc)`; a `try`/`except` whose `except` body is the measurement needs a
+   comment saying so, since it otherwise reads like swallowed error handling.
 
 Register it in `main`'s generators dict as `bpe_no_op_settings.json`.
 

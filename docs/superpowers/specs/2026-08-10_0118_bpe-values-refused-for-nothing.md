@@ -44,11 +44,38 @@ subject. Whether dropout above zero is ever reproduced stays open — it is
 [#123](https://github.com/CyrilB1531/data.net/issues/123)'s decision. This lot only removes the two values
 that provably change nothing.
 
-### D3 — a `Sequence`'s `ByteLevel` step defaults `add_prefix_space` to `true`
+### D3 — a `ByteLevel` block that omits `add_prefix_space` is refused, in all three positions
 
-`?? false` at `TokenizerJsonLoader.cs:797` becomes `?? true`, matching both HuggingFace's `ByteLevel`
-default and the sibling reader at `:756`. Empty today because Llama-3 and Qwen2 both declare the flag
-explicitly; live for the first file that does not.
+**This decision replaces the one first written here, which the measurement refuted.** The original D3 said
+`?? false` at `TokenizerJsonLoader.cs:797` should become `?? true`, "matching HuggingFace's `ByteLevel`
+default". There is no such default. Measured on `tokenizers` 0.23.1:
+
+| Shape | Result |
+| --- | --- |
+| `ByteLevel` omitting `add_prefix_space`, top-level `pre_tokenizer` | refused — `missing field 'add_prefix_space'` |
+| the same, inside a `Sequence` | refused, identically |
+| the same, in the `decoder` slot | refused — worded through the untagged enum, same cause |
+| `ByteLevel` omitting `trim_offsets` | refused, both positions |
+| `ByteLevel` omitting `use_regex` | **accepted**, `to_str()` writes `true` back |
+
+So the rule is **per field**: `use_regex` carries a serde default, `add_prefix_space` and `trim_offsets` do
+not. The comment at `TokenizerJsonLoader.cs:741` — "`use_regex` defaults to `true` and stock GPT-2 omits
+it" — is correct and stands. A refusal written from the broader reading, that no `ByteLevel` field has a
+default, would have refused stock GPT-2.
+
+Both of this library's readers are therefore more permissive than the reference. `LoadBpe` will refuse a
+`ByteLevel` block that omits `add_prefix_space`, naming the field, wherever it appears — top-level
+`pre_tokenizer`, a `Sequence` step, or the `decoder`. The `?? true` at `:756` and the `?? false` at `:797`
+both disappear: with the omission refused, neither default can be reached.
+
+`trim_offsets` stays tolerated when omitted, deliberately. This library does not read it — no offsets are
+exposed — so its absence changes nothing that is computed here, and refusing on it would be a rule no
+behavioural test could justify. The asymmetry is the point: the refusal exists where a missing field would
+force this library to **invent** a value that changes its output, and `add_prefix_space` is the only such
+field.
+
+Existing tests or fixtures that build a `ByteLevel` block without `add_prefix_space` encode the old
+permissiveness. They are updated to declare it — a file omitting it is one the reference would not load.
 
 ### D4 — the public `ContinuingSubwordPrefix` property is not touched here
 
@@ -58,19 +85,24 @@ does not carry it, with a comment saying so. Giving it D1's treatment would be s
 twice is worse than leaving it consistent with itself for one release cycle. Recorded here so a reviewer
 asking "why one and not the other" finds the answer instead of the omission.
 
-## The measurement this plan must take before implementing
+## The measurement, and what it returned
 
-Whether `tokenizers` 0.23.1 accepts `end_of_word_suffix: ""`, and what it does with it, is **not known**.
-Three outcomes, and they are not the same change:
+This section was written as an open question — whether `tokenizers` 0.23.1 accepts `end_of_word_suffix: ""`
+and what it does with it — with three outcomes named because they are three different changes. It was
+measured before any code was written, and the answers are recorded here rather than left in a report.
 
-1. **It accepts and ignores it.** D1 is parity. A corpus case proves it and no ADR is needed.
-2. **It accepts and does something with it.** D1 becomes a deliberate divergence, and a divergence is
-   written in `docs/decisions/`, not in a commit message.
-3. **It refuses the file.** No corpus can exist, and the unit tests on the type carry the proof alone —
-   the situation #104 hit when `tokenizers` turned out to refuse a `tokenizer.json` omitting `normalized`.
+- **`end_of_word_suffix: ""`** — accepted at construction, declared back by `to_str()` as the literal `""`
+  rather than as null, survives a `from_str()` round trip unchanged, and encodes **identically** to a
+  model built without it. That is outcome 1: D1 is parity, a corpus case can exist, and no ADR is due.
+- **`continuing_subword_prefix: ""`** and **`dropout: 0.0`** — both accepted, both reproducing the
+  baseline token stream exactly, both round-tripping with the value they were given.
+- **`add_prefix_space` omitted** — the answer nobody expected, and the one that rewrote D3. See D3 above.
 
-Probe first, implement second. The same applies, less sharply, to `continuing_subword_prefix: ""` and
-`dropout: 0.0`: each is asserted to be a no-op, and an oracle is what turns that assertion into a fact.
+The general lesson is worth keeping, because this is the third statement in this issue's lineage that
+measurement has overturned: the `special`/`normalized` rule in #104, `add_prefix_space` here, and — nearly —
+`use_regex`, where an over-broad reading of the measurement would have refused stock GPT-2 had the
+repository's own comment not contradicted it. Probe first, implement second, and check a generalisation
+against the claims already in the tree.
 
 ## Evidence
 
@@ -84,8 +116,10 @@ no-op.
 - **The two no-op values:** an oracle case showing `tokenizers` produces the same tokens with the value
   declared as with the setting absent. That is the assertion that carries the claim; a load test is a
   by-product.
-- **The `add_prefix_space` default:** the proof runs through `Encode`, on text where `true` and `false`
-  produce different tokens. A test asserting the parsed flag would pass even if the flag were never used.
+- **The `add_prefix_space` refusal:** a loader test per position — top-level, `Sequence` step, `decoder` —
+  asserting the exception names the field, plus a test that a block declaring it still loads and encodes as
+  before. The corpus records what `tokenizers` does with each shape, including the refusals, so the parity
+  claim rests on the reference rather than on this spec's word.
 
 New corpora go in `tools/generate_oracles.py`, following `generate_bpe_added_token_flags`'s shape — it
 records `tokenizer.to_str()` in its metadata, so the C# side parses the exact bytes HuggingFace was handed.
@@ -117,8 +151,10 @@ ADR 0017 §3's reason and belongs to no lot.
 
 ## Risks
 
-- **The probe changes the shape of the work.** Outcome 2 turns a fix into a divergence with an ADR; outcome
-  3 removes the corpus this spec assumes. The plan carries all three branches rather than one.
+- **D3 is now a new refusal, not a corrected default.** Files that load today stop loading. No file the
+  reference would accept is affected — that is the whole argument — but hand-written fixtures inside this
+  repository may omit the field, and each one that does has to be fixed rather than exempted. The
+  CHANGELOG must say a refusal was added, in the section a consumer reads for breaking changes.
 - **`Equals` is public behaviour.** D1 makes two vocabularies that compare unequal today compare equal
   tomorrow. Nothing in the repository depends on the old answer, but the CHANGELOG should say so.
 - **None of the four appears in any shipped model or committed corpus**, so no existing corpus can catch a
