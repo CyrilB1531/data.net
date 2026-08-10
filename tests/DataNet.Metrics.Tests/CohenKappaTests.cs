@@ -8,35 +8,43 @@ public sealed class CohenKappaTests
     private static readonly int[] YTrue = [0, 0, 1, 1, 2, 2, 2];
     private static readonly int[] YPred = [0, 1, 1, 1, 2, 0, 2];
 
-    [Theory]
-    [InlineData("kappa", KappaWeighting.None)]
-    [InlineData("kappa_linear", KappaWeighting.Linear)]
-    [InlineData("kappa_quadratic", KappaWeighting.Quadratic)]
-    public void Matches_sklearn_cohen_kappa_score(string key, KappaWeighting weighting)
+    /// <summary>One row per corpus case per weighting, so a failure names both.</summary>
+    public static TheoryData<int, string, KappaWeighting> Rows()
     {
-        foreach (JsonElement c in MetricsCorpus.Cases)
+        var data = new TheoryData<int, string, KappaWeighting>();
+        for (int i = 0; i < MetricsCorpus.Cases.Count; i++)
         {
-            if (!c.TryGetProperty(key, out JsonElement expected))
-            {
-                continue;
-            }
-
-            double actual = CohenKappa.Score(
-                MetricsCorpus.Ints(c, "y_true"),
-                MetricsCorpus.Ints(c, "y_pred"),
-                weighting,
-                sampleWeight: MetricsCorpus.OptionalDoubles(c, "sample_weight"));
-            double want = OracleLoader.Number(expected);
-
-            if (double.IsNaN(want))
-            {
-                Assert.True(double.IsNaN(actual), $"{MetricsCorpus.Describe(c)} {key}: expected NaN, got {actual}");
-                continue;
-            }
-
-            Assert.True(Math.Abs(want - actual) < MetricsCorpus.Tolerance,
-                $"{MetricsCorpus.Describe(c)} {key}: expected {want}, got {actual}");
+            data.Add(i, "kappa", KappaWeighting.None);
+            data.Add(i, "kappa_linear", KappaWeighting.Linear);
+            data.Add(i, "kappa_quadratic", KappaWeighting.Quadratic);
         }
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(Rows))]
+    public void Matches_sklearn_cohen_kappa_score(int index, string key, KappaWeighting weighting)
+    {
+        JsonElement c = MetricsCorpus.Cases[index];
+
+        double actual = CohenKappa.Score(
+            MetricsCorpus.Ints(c, "y_true"),
+            MetricsCorpus.Ints(c, "y_pred"),
+            weighting,
+            sampleWeight: MetricsCorpus.OptionalDoubles(c, "sample_weight"));
+        double want = OracleLoader.Number(c.GetProperty(key));
+
+        // Four corpus fixtures really are nan here — cohen_kappa_score's own
+        // replace_undefined_by default — and NaN is never within Tolerance of
+        // itself, so the comparison has to branch.
+        if (double.IsNaN(want))
+        {
+            Assert.True(double.IsNaN(actual), $"{MetricsCorpus.Describe(c)} {key}: expected NaN, got {actual}");
+            return;
+        }
+
+        Assert.True(Math.Abs(want - actual) < MetricsCorpus.Tolerance,
+            $"{MetricsCorpus.Describe(c)} {key}: expected {want}, got {actual}");
     }
 
     [Fact]
@@ -119,5 +127,69 @@ public sealed class CohenKappaTests
         ConfusionMatrix restricted = ConfusionMatrix.Compute(YTrue, YPred, labels: [1, 2]);
 
         Assert.Equal(1.0, CohenKappa.Score(restricted), 12);
+    }
+
+    [Theory]
+    [InlineData(ZeroDivision.Zero, 0.0)]
+    [InlineData(ZeroDivision.One, 1.0)]
+    [InlineData(ZeroDivision.NaN, double.NaN)]
+    public void A_view_holding_no_weight_reads_the_zero_division_policy(ZeroDivision zeroDivision, double want)
+    {
+        // labels=[0] keeps one class, and every sample was predicted as 1, so the
+        // 1x1 view holds 0.0 — nothing to correct for chance. The expected
+        // agreement is then 0.0 / 0.0 cell by cell, which is NaN, which is never
+        // == 0.0: without a guard on the total the expected == 0.0 test never
+        // fires and the method returns NaN for every policy, silently discarding
+        // this argument. scikit-learn tests the same sum before building its
+        // expected matrix and returns replace_undefined_by.
+        int[] yTrue = [0, 0];
+        int[] yPred = [1, 1];
+
+        double actual = CohenKappa.Score(yTrue, yPred, zeroDivision: zeroDivision, labels: [0]);
+
+        if (double.IsNaN(want))
+        {
+            Assert.True(double.IsNaN(actual), $"expected NaN, got {actual}");
+        }
+        else
+        {
+            Assert.Equal(want, actual);
+        }
+    }
+
+    [Fact]
+    public void A_view_holding_no_weight_can_be_made_to_throw()
+    {
+        int[] yTrue = [0, 0];
+        int[] yPred = [1, 1];
+
+        Assert.Throws<UndefinedMetricException>(
+            () => CohenKappa.Score(yTrue, yPred, zeroDivision: ZeroDivision.Throw, labels: [0]));
+    }
+
+    [Fact]
+    public void An_all_zero_sample_weight_reaches_the_same_guard()
+    {
+        // The other way to a view with no weight, and the one that needs no
+        // labels= at all: a perfectly ordinary two-class target whose every
+        // weight is zero. Kappa is as undefined here as above.
+        int[] yTrue = [0, 1];
+        int[] yPred = [0, 1];
+        double[] weights = [0.0, 0.0];
+
+        Assert.Equal(0.0, CohenKappa.Score(yTrue, yPred, zeroDivision: ZeroDivision.Zero, sampleWeight: weights));
+        Assert.True(double.IsNaN(CohenKappa.Score(yTrue, yPred, sampleWeight: weights)));
+        Assert.Throws<UndefinedMetricException>(
+            () => CohenKappa.Score(yTrue, yPred, zeroDivision: ZeroDivision.Throw, sampleWeight: weights));
+    }
+
+    [Fact]
+    public void An_out_of_range_weighting_is_refused_even_on_an_undefined_input()
+    {
+        // The weighting is validated before the undefined-total shortcut, so the
+        // argument error wins over the policy — scikit-learn validates its
+        // parameters before it looks at the data too.
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => CohenKappa.Score([0, 0], [1, 1], (KappaWeighting)99, labels: [0]));
     }
 }
