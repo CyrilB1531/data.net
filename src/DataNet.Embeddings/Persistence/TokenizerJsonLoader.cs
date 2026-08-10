@@ -4,6 +4,14 @@ using DataNet.Internal.Persistence;
 
 namespace DataNet.Embeddings.Persistence;
 
+// CA1307 (specify StringComparison): the overload it asks for —
+// string.IndexOf(char, StringComparison) / string.Replace(string, string?,
+// StringComparison) — does not exist on netstandard2.0, which this assembly
+// targets. Both calls are ordinal on every runtime that has them, so the
+// suggestion would change nothing but the compilation. Same reason as the CA1845
+// pragmas in DataNet.Embeddings/Tokenization/.
+#pragma warning disable CA1307
+
 /// <summary>
 /// Reads a HuggingFace <c>tokenizer.json</c> — the WordPiece, Unigram or BPE
 /// model it declares, together with the settings that change tokenization.

@@ -166,14 +166,14 @@ internal static class JsonArtifact
         {
             limits.CheckTotalBytes(accumulated.Length + read);
 
-            // SonarLint S6966: the async call in this loop is the ReadAsync above, on
+            // CA1849 / SonarLint S6966: the async call in this loop is the ReadAsync above, on
             // the caller's stream, which may be a file or a socket. The destination is
             // a MemoryStream: its WriteAsync performs no I/O, copies into the same
             // buffer and returns an already-completed task, so awaiting it would add a
             // state machine and allocations without ever yielding.
-#pragma warning disable S6966
+#pragma warning disable S6966, CA1849
             accumulated.Write(buffer, 0, read);
-#pragma warning restore S6966
+#pragma warning restore S6966, CA1849
         }
         return new ReadOnlyMemory<byte>(accumulated.GetBuffer(), 0, (int)accumulated.Length);
     }

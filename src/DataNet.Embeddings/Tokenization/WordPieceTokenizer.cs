@@ -54,6 +54,13 @@ public sealed record TokenizationResult(IReadOnlyList<string> Tokens, IReadOnlyL
     }
 }
 
+// CA1308 (normalize to uppercase): this lowercasing is the `lowercase`
+// constructor option, mirroring HuggingFace's do_lower_case — true for an
+// uncased checkpoint, false for a cased one such as bert-base-cased.
+// ToUpperInvariant would match no vocabulary entry, producing wrong ids rather
+// than differently-cased tokens.
+#pragma warning disable CA1308
+
 /// <summary>
 /// WordPiece tokenizer (used by BERT-family models), reproducing the greedy
 /// longest-match algorithm of HuggingFace <c>tokenizers</c> WordPiece.

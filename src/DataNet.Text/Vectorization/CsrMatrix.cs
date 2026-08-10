@@ -122,6 +122,12 @@ public sealed class CsrMatrix
     public int ColumnCount { get; }
 
     /// <summary>Non-zero values, ordered by row then by the order they were appended.</summary>
+    // CA1819 (properties should not return arrays): Values, ColumnIndices and
+    // RowPointers *are* the compressed-sparse-row format — a consumer indexes
+    // them directly, which is the reason to expose CSR at all. They have been
+    // public since 0.1.0, so wrapping them is a breaking change for a rule about
+    // defensive copies this type deliberately does not make.
+#pragma warning disable CA1819
     public double[] Values { get; }
 
     /// <summary>Column index of each entry in <see cref="Values"/>.</summary>
@@ -134,6 +140,11 @@ public sealed class CsrMatrix
     public int NonZeroCount => Values.Length;
 
     /// <summary>Materializes the matrix as a dense 2-D array.</summary>
+    // CA1814 (prefer jagged arrays): a confusion matrix and a densified CSR
+    // matrix are rectangular by construction, and double[,] is the shape every
+    // consumer expects to interop with. A jagged array would cost one allocation
+    // per row and let a caller build a ragged one.
+#pragma warning disable CA1814
     public double[,] ToDense()
     {
         var dense = new double[RowCount, ColumnCount];

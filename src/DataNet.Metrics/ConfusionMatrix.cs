@@ -125,6 +125,11 @@ public sealed class ConfusionMatrix
 
     /// <summary>Copies the matrix into a two-dimensional array.</summary>
     /// <returns>A fresh <c>[rows, columns]</c> array; the matrix keeps its own storage.</returns>
+    // CA1814 (prefer jagged arrays): a confusion matrix and a densified CSR
+    // matrix are rectangular by construction, and double[,] is the shape every
+    // consumer expects to interop with. A jagged array would cost one allocation
+    // per row and let a caller build a ragged one.
+#pragma warning disable CA1814
     public double[,] ToArray()
     {
         int k = _labels.Length;
