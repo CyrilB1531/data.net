@@ -317,12 +317,12 @@ read as sharing that sentence's conditions — only their own, given here.
 | `cohen_kappa_n1000000_k10` | 10.352 | 174.623 | 16.87x | 10.352 | 174.619 | **16.87×** |
 
 **18/18 at or above 1× on processor time — the gate holds for these three
-metrics too.** The narrowest margin is **16.59×**, on
-`balanced_accuracy_n1000000_k10`; every other row clears 17×. As with the
-original 29, the busier the machine gets, the more conservative (not
-flattering) a ratio above 1× is — and this window's load average was roughly
-5–13× the original run's, so these margins are, if anything, understated
-relative to a quiet machine.
+metrics too.** The two narrowest are `balanced_accuracy_n1000000_k10` at
+**16.59×** and `cohen_kappa_n1000000_k10` at **16.87×**; every other row
+clears 17×. As with the original 29, the busier the machine gets, the more
+conservative (not flattering) a ratio above 1× is — and this window's load
+average was roughly 5–13× the original run's, so these margins are, if
+anything, understated relative to a quiet machine.
 
 ## Multiclass ROC-AUC, sequential against parallel (issue #86)
 
