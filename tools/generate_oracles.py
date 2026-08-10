@@ -2447,6 +2447,214 @@ def generate_bpe_added_tokens() -> dict:
     }
 
 
+# --- Regression metrics (issue #92) ------------------------------------------
+
+REGRESSION_SEED = METRIC_SEED + 2
+
+
+def _regression_fixtures() -> list[dict]:
+    """Fixtures chosen so that each degenerate branch has one case of its own.
+
+    The ordinary ones exist to prove the arithmetic; the degenerate ones exist
+    because every implementation agrees on the ordinary ones.
+    """
+    rng = SeededRandom(REGRESSION_SEED)
+
+    def weights(n: int) -> list[float]:
+        return [round(rng.uniform(0.1, 3.0), 3) for _ in range(n)]
+
+    def noisy(truth: list[float], spread: float) -> list[float]:
+        return [round(t + rng.gauss(0.0, spread), 12) for t in truth]
+
+    fixtures: list[dict] = []
+
+    # Ordinary single output, positive targets: the only shape where the log
+    # family is defined, so it carries msle/rmsle as well as everything else.
+    positive = [round(rng.uniform(0.5, 40.0), 12) for _ in range(200)]
+    fixtures.append({"name": "positive_single", "output_count": 1,
+                     "y_true": positive, "y_pred": noisy(positive, 2.0),
+                     "sample_weight": weights(len(positive))})
+
+    # Targets straddling zero: mape's clamp never fires (no exact zero) but the
+    # values get small, and msle is undefined, so this case proves the split.
+    signed = [round(rng.uniform(-20.0, 20.0), 12) for _ in range(200)]
+    fixtures.append({"name": "signed_single", "output_count": 1,
+                     "y_true": signed, "y_pred": noisy(signed, 3.0),
+                     "sample_weight": weights(len(signed))})
+
+    # Three outputs, deliberately unequal in variance so variance_weighted and
+    # uniform_average cannot coincide.
+    rows_true: list[float] = []
+    rows_pred: list[float] = []
+    for _ in range(150):
+        base = [round(rng.uniform(0.5, 5.0), 12),
+                round(rng.uniform(0.5, 60.0), 12),
+                round(rng.uniform(0.5, 400.0), 12)]
+        rows_true.extend(base)
+        rows_pred.extend(round(b + rng.gauss(0.0, 0.05 * b), 12) for b in base)
+    fixtures.append({"name": "positive_three_outputs", "output_count": 3,
+                     "y_true": rows_true, "y_pred": rows_pred,
+                     "sample_weight": weights(150)})
+
+    # --- the degenerate cases, one fixture each ---
+
+    # A truth with zero variance: force_finite decides, zeroDivision does not.
+    fixtures.append({"name": "constant_truth_perfect", "output_count": 1,
+                     "y_true": [2.0, 2.0, 2.0], "y_pred": [2.0, 2.0, 2.0],
+                     "sample_weight": [1.0, 2.0, 3.0]})
+    fixtures.append({"name": "constant_truth_imperfect", "output_count": 1,
+                     "y_true": [2.0, 2.0, 2.0], "y_pred": [1.0, 2.0, 3.0],
+                     "sample_weight": [1.0, 2.0, 3.0]})
+
+    # One sample: r2 is nan under either force_finite, which is zeroDivision's
+    # territory and nothing else's.
+    fixtures.append({"name": "single_sample", "output_count": 1,
+                     "y_true": [3.0], "y_pred": [5.0], "sample_weight": [2.0]})
+
+    # An exact zero in the truth: mape's epsilon clamp, and nothing else's.
+    fixtures.append({"name": "zero_in_truth", "output_count": 1,
+                     "y_true": [0.0, 4.0, -2.0], "y_pred": [1.0, 5.0, -1.0],
+                     "sample_weight": [1.0, 1.0, 2.0]})
+
+    # An even sample count with a lopsided weight, where the averaged weighted
+    # percentile and a plain median part company.
+    fixtures.append({"name": "lopsided_weights", "output_count": 1,
+                     "y_true": [0.0, 2.0, 4.0, 10.0], "y_pred": [0.0, 0.0, 0.0, 0.0],
+                     "sample_weight": [1.0, 1.0, 1.0, 7.0]})
+
+    return fixtures
+
+
+def _regression_case(fx: dict, weighted: bool) -> dict:
+    sw = fx["sample_weight"] if weighted else None
+    k = fx["output_count"]
+    n = len(fx["y_true"]) // k
+    y_true = np.asarray(fx["y_true"], dtype=float).reshape(n, k)
+    y_pred = np.asarray(fx["y_pred"], dtype=float).reshape(n, k)
+    if k == 1:
+        y_true = y_true.ravel()
+        y_pred = y_pred.ravel()
+
+    values: dict = {}
+
+    def scalar(key: str, fn) -> None:
+        values[key] = _finite_or_name(float(fn()))
+
+    def vector(key: str, fn) -> None:
+        values[key] = [_finite_or_name(float(x)) for x in fn()]
+
+    # Output weights are fixed rather than drawn, so that a reader can check the
+    # reduction by hand: 0.3/0.7 on two outputs, 0.2/0.3/0.5 on three.
+    ow = {1: None, 2: [0.3, 0.7], 3: [0.2, 0.3, 0.5]}[k]
+
+    plain = {
+        "mse": skm.mean_squared_error,
+        "rmse": skm.root_mean_squared_error,
+        "mae": skm.mean_absolute_error,
+        "median_ae": skm.median_absolute_error,
+        "mape": skm.mean_absolute_percentage_error,
+    }
+    for name, fn in plain.items():
+        scalar(f"{name}|uniform", lambda fn=fn: fn(y_true, y_pred, sample_weight=sw))
+        vector(f"{name}|raw",
+               lambda fn=fn: np.atleast_1d(
+                   fn(y_true, y_pred, sample_weight=sw, multioutput="raw_values")))
+        if ow is not None:
+            scalar(f"{name}|weights",
+                   lambda fn=fn: fn(y_true, y_pred, sample_weight=sw, multioutput=ow))
+
+    # The log family is defined only where every target is above -1.
+    if float(np.min(y_true)) > -1.0 and float(np.min(y_pred)) > -1.0:
+        for name, fn in (("msle", skm.mean_squared_log_error),
+                         ("rmsle", skm.root_mean_squared_log_error)):
+            scalar(f"{name}|uniform", lambda fn=fn: fn(y_true, y_pred, sample_weight=sw))
+            vector(f"{name}|raw",
+                   lambda fn=fn: np.atleast_1d(
+                       fn(y_true, y_pred, sample_weight=sw, multioutput="raw_values")))
+            if ow is not None:
+                scalar(f"{name}|weights",
+                       lambda fn=fn: fn(y_true, y_pred, sample_weight=sw, multioutput=ow))
+
+    # max_error takes neither sample_weight nor multioutput, and refuses 2-D
+    # input outright with "Multioutput not supported in max_error".
+    if k == 1 and not weighted:
+        scalar("max_error|uniform", lambda: skm.max_error(y_true, y_pred))
+
+    for alpha in (0.5, 0.9):
+        tag = f"pinball{alpha}"
+        scalar(f"{tag}|uniform",
+               lambda a=alpha: skm.mean_pinball_loss(y_true, y_pred, sample_weight=sw, alpha=a))
+        vector(f"{tag}|raw",
+               lambda a=alpha: np.atleast_1d(skm.mean_pinball_loss(
+                   y_true, y_pred, sample_weight=sw, alpha=a, multioutput="raw_values")))
+        if ow is not None:
+            scalar(f"{tag}|weights",
+                   lambda a=alpha: skm.mean_pinball_loss(
+                       y_true, y_pred, sample_weight=sw, alpha=a, multioutput=ow))
+
+    for name, fn in (("r2", skm.r2_score), ("ev", skm.explained_variance_score)):
+        for ff in (True, False):
+            flag = "force_finite" if ff else "raw_infinity"
+            scalar(f"{name}|uniform|{flag}",
+                   lambda fn=fn, ff=ff: fn(y_true, y_pred, sample_weight=sw, force_finite=ff))
+            vector(f"{name}|raw|{flag}",
+                   lambda fn=fn, ff=ff: np.atleast_1d(fn(
+                       y_true, y_pred, sample_weight=sw, force_finite=ff,
+                       multioutput="raw_values")))
+            scalar(f"{name}|variance_weighted|{flag}",
+                   lambda fn=fn, ff=ff: fn(
+                       y_true, y_pred, sample_weight=sw, force_finite=ff,
+                       multioutput="variance_weighted"))
+            if ow is not None:
+                scalar(f"{name}|weights|{flag}",
+                       lambda fn=fn, ff=ff: fn(
+                           y_true, y_pred, sample_weight=sw, force_finite=ff, multioutput=ow))
+
+    return {
+        "fixture": fx["name"],
+        "weighted": weighted,
+        "output_count": k,
+        "y_true": fx["y_true"],
+        "y_pred": fx["y_pred"],
+        "sample_weight": sw,
+        "values": values,
+    }
+
+
+def generate_regression() -> dict:
+    with warnings.catch_warnings():
+        # scikit-learn warns on every undefined metric; the corpus records the
+        # value it returns, which is the thing under test.
+        warnings.simplefilter("ignore")
+        cases = [
+            _regression_case(fx, weighted)
+            for fx in _regression_fixtures()
+            for weighted in (False, True)
+        ]
+    return {
+        "metadata": {
+            "algorithm": "Regression",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.mean_squared_error",
+                "sklearn.metrics.root_mean_squared_error",
+                "sklearn.metrics.mean_absolute_error",
+                "sklearn.metrics.median_absolute_error",
+                "sklearn.metrics.mean_absolute_percentage_error",
+                "sklearn.metrics.mean_squared_log_error",
+                "sklearn.metrics.root_mean_squared_log_error",
+                "sklearn.metrics.max_error",
+                "sklearn.metrics.r2_score",
+                "sklearn.metrics.explained_variance_score",
+                "sklearn.metrics.mean_pinball_loss",
+            ],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -2486,6 +2694,7 @@ def main() -> None:
         "process.json": generate_process,
         "classification_metrics.json": generate_classification_metrics,
         "roc_auc.json": generate_roc_auc,
+        "regression.json": generate_regression,
         "bpe.json": generate_bpe,
         "orphan_bpe.json": generate_orphan_bpe,
         "bytelevel_bpe.json": generate_bytelevel_bpe,
