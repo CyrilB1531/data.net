@@ -11,7 +11,7 @@
          CA1303 — a harness prints its own results to the console.
          CA1812 — BenchmarkDotNet instantiates its types by reflection, so an
                   "never instantiated" finding is always wrong here.
-       See docs/decisions/0018-the-net-analysers-run-in-the-build-too.md. -->
+       See docs/decisions/0019-the-net-analysers-run-in-the-build-too.md. -->
   <PropertyGroup>
     <NoWarn>$(NoWarn);CA1707;CA1515;CA5394;CA1303;CA1812</NoWarn>
   </PropertyGroup>

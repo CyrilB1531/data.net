@@ -73,6 +73,12 @@ jobs:
       # PackagingGate.cs landed with 0 issues reported, not because it is clean
       # but because no analyser had opened it.
       #
+      # The scanner is no longer the only thing that reads them: since ADR 0019,
+      # samples/Directory.Build.props carries SonarAnalyzer.CSharp and the samples
+      # inherit the repository-wide .NET code-quality settings, so the samples
+      # build below fails on a finding on its own. This window is still what puts
+      # those findings in front of the quality gate.
+      #
       # tools/ is excluded from *coverage* only, not from analysis: those scripts
       # are Python development utilities that generate data for the suite, so no
       # C# test will ever execute a line of them. Left in, they enter the quality

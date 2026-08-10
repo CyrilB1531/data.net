@@ -7,7 +7,7 @@
   <!-- CA1303 (do not pass literals as localized parameters): printing to the
        console is what a sample does, and every string here is written to be read
        by a developer in the guides. See
-       docs/decisions/0018-the-net-analysers-run-in-the-build-too.md. -->
+       docs/decisions/0019-the-net-analysers-run-in-the-build-too.md. -->
   <PropertyGroup>
     <NoWarn>$(NoWarn);CA1303</NoWarn>
   </PropertyGroup>
@@ -18,7 +18,7 @@
        PackageReference because samples/, like bench/, has no Central Package
        Management. samples/NuGet.config maps only DataNet.* to the local feed, so
        this restores from nuget.org as usual. See
-       docs/decisions/0018-the-net-analysers-run-in-the-build-too.md. -->
+       docs/decisions/0019-the-net-analysers-run-in-the-build-too.md. -->
   <ItemGroup>
     <PackageReference Include="SonarAnalyzer.CSharp" Version="$(DataNetSonarAnalyzerVersion)" PrivateAssets="all" />
   </ItemGroup>

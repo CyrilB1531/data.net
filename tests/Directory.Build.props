@@ -14,7 +14,7 @@
                   against SaveAsync; that comparison is what the tests assert.
        None of the five is enabled at the SDK default, so SonarCloud reports none
        of them and turning them off here reopens no gap. See
-       docs/decisions/0018-the-net-analysers-run-in-the-build-too.md. -->
+       docs/decisions/0019-the-net-analysers-run-in-the-build-too.md. -->
   <PropertyGroup>
     <NoWarn>$(NoWarn);CA1707;CA1515;CA5394;CA1062;CA1849</NoWarn>
   </PropertyGroup>

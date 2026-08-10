@@ -54,6 +54,11 @@ recreate the round trip in miniature, for the code that is read most often.
 
 ## Why `samples/` stays out
 
+> **Amended by [0019](0019-the-net-analysers-run-in-the-build-too.md) (2026-08-10).**
+> `samples/` now carries the analyser. The reason given below — that
+> `Generated/` would light up prose — is measured false: Roslyn skips `.g.cs`
+> files as generated code, and SonarAnalyzer honours that.
+
 The samples are analysed by SonarCloud (#77) but do not get the analyzer here.
 They consume the packages from a local feed, so building them requires a `pack`
 first and they are deliberately outside `DataNet.slnx` (ADR 0009) — the
