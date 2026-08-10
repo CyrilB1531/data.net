@@ -41,6 +41,7 @@ public sealed class TfidfTransformer
     /// <summary>Learns the idf vector from a count matrix.</summary>
     public TfidfTransformer Fit(CsrMatrix counts)
     {
+        Guard.NotNull(counts);
         int n = counts.RowCount;
         var df = new int[counts.ColumnCount];
         for (int k = 0; k < counts.NonZeroCount; k++)
@@ -63,6 +64,7 @@ public sealed class TfidfTransformer
     /// <summary>Applies the TF-IDF weighting (and optional normalization) to a count matrix.</summary>
     public CsrMatrix Transform(CsrMatrix counts)
     {
+        Guard.NotNull(counts);
         if (_options.UseIdf && _idf is null)
         {
             throw new InvalidOperationException("The transformer has not been fitted. Call Fit or FitTransform first.");
