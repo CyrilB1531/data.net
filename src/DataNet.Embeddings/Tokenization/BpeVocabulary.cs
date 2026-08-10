@@ -40,13 +40,11 @@ public sealed record BpeVocabulary(
     /// <para>
     /// It is also what <c>skipSpecialTokens</c> drops in
     /// <see cref="BpeTokenizer.Decode(IReadOnlyList{int}, bool)"/>. The
-    /// <c>special</c> flag a <c>tokenizer.json</c> records per entry is not carried
-    /// here, so that flag drops every added token where Python drops only the special
-    /// ones; see <c>docs/equivalence.md</c>.
+    /// <c>special</c> flag a <c>tokenizer.json</c> records per entry is carried on
+    /// <see cref="AddedToken.Special"/>; see <c>docs/equivalence.md</c>.
     /// </para>
     /// </remarks>
-    public IReadOnlyDictionary<string, int> AddedTokens { get; init; } =
-        new Dictionary<string, int>(StringComparer.Ordinal);
+    public IReadOnlyList<AddedToken> AddedTokens { get; init; } = [];
 
     /// <summary>Whether text is mapped through the byte alphabet before merging.</summary>
     public bool ByteLevel { get; init; }
@@ -119,7 +117,14 @@ public sealed record BpeVocabulary(
                 return false;
             }
         }
-        return SameEntries(Vocab, other.Vocab) && SameEntries(AddedTokens, other.AddedTokens);
+        for (int i = 0; i < AddedTokens.Count; i++)
+        {
+            if (!AddedTokens[i].Equals(other.AddedTokens[i]))
+            {
+                return false;
+            }
+        }
+        return SameEntries(Vocab, other.Vocab);
     }
 
     /// <summary>Hashes the scalars and the counts, which is O(1) and consistent with equality.</summary>

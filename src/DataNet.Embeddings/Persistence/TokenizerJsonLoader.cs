@@ -357,7 +357,7 @@ public static class TokenizerJsonLoader
         JsonElement root,
         Dictionary<string, int> vocab,
         in ArtifactLimits limits,
-        Dictionary<string, int>? matchedLiterally = null)
+        List<AddedToken>? matchedLiterally = null)
     {
         if (!root.TryGetProperty(AddedTokensProperty, out JsonElement added) || added.ValueKind != JsonValueKind.Array)
         {
@@ -380,10 +380,7 @@ public static class TokenizerJsonLoader
             string content = contentElement.GetString()!;
             limits.CheckTokenLength(content.Length);
             FoldAddedToken(token, content, id, vocab, limits, matchedLiterally);
-            if (matchedLiterally is not null)
-            {
-                matchedLiterally[content] = id;
-            }
+            matchedLiterally?.Add(new AddedToken(content, id));
         }
     }
 
@@ -394,7 +391,7 @@ public static class TokenizerJsonLoader
         int id,
         Dictionary<string, int> vocab,
         in ArtifactLimits limits,
-        Dictionary<string, int>? matchedLiterally)
+        List<AddedToken>? matchedLiterally)
     {
         if (id < 0)
         {
@@ -550,7 +547,7 @@ public static class TokenizerJsonLoader
         Dictionary<string, int> vocab = ReadBpeVocab(model, limits);
         List<MergePair> merges = ReadBpeMerges(model, limits);
         int skippedMerges = merges.Count(pair => !vocab.ContainsKey(pair.Left) || !vocab.ContainsKey(pair.Right));
-        Dictionary<string, int> addedTokens = ReadBpeAddedTokens(root, vocab, limits);
+        List<AddedToken> addedTokens = ReadBpeAddedTokens(root, vocab, limits);
 
         return new BpeVocabulary(vocab, merges)
         {
@@ -741,10 +738,10 @@ public static class TokenizerJsonLoader
     /// copy is what gives the id-agreement check something to check against.
     /// </para>
     /// </remarks>
-    private static Dictionary<string, int> ReadBpeAddedTokens(JsonElement root, Dictionary<string, int> vocab, in ArtifactLimits limits)
+    private static List<AddedToken> ReadBpeAddedTokens(JsonElement root, Dictionary<string, int> vocab, in ArtifactLimits limits)
     {
         var withAdded = new Dictionary<string, int>(vocab, StringComparer.Ordinal);
-        var added = new Dictionary<string, int>(StringComparer.Ordinal);
+        var added = new List<AddedToken>();
         ReadAddedTokens(root, withAdded, limits, added);
         return added;
     }

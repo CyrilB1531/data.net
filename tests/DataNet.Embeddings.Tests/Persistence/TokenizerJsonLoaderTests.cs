@@ -727,7 +727,7 @@ public sealed class TokenizerJsonLoaderTests
 
         BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
 
-        Assert.Equal(3, vocabulary.AddedTokens["<|eot|>"]);
+        Assert.Contains(vocabulary.AddedTokens, t => t.Content == "<|eot|>" && t.Id == 3);
         // model.vocab is left as the file declared it: the added table is a property
         // of its own, not a fold into the vocabulary.
         Assert.Equal(4, vocabulary.Vocab.Count);

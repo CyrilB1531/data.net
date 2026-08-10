@@ -37,10 +37,12 @@ public sealed class BpeTokenizerTests
         // stages that consult it. "[UNK]" is both a plain vocabulary entry (id 0,
         // in model.vocab above) and a declared added token, so BpeTokenizer.Encode
         // recognizes it as a literal match rather than splitting it letter by letter.
-        var addedTokens = new Dictionary<string, int>(StringComparer.Ordinal);
+        var addedTokens = new List<AddedToken>();
         foreach (JsonElement added in doc.RootElement.GetProperty("added_tokens").EnumerateArray())
         {
-            addedTokens[added.GetProperty("content").GetString()!] = added.GetProperty("id").GetInt32();
+            addedTokens.Add(new AddedToken(
+                added.GetProperty("content").GetString()!,
+                added.GetProperty("id").GetInt32()));
         }
 
         return new BpeVocabulary(vocab, merges)
@@ -115,11 +117,7 @@ public sealed class BpeTokenizerTests
     {
         BpeVocabulary vocab = TinyVocabulary() with
         {
-            AddedTokens = new Dictionary<string, int>(StringComparer.Ordinal)
-            {
-                ["<a>"] = 1000,
-                ["<a>b"] = 1001,
-            },
+            AddedTokens = [new AddedToken("<a>", 1000), new AddedToken("<a>b", 1001)],
         };
         var tokenizer = new BpeTokenizer(vocab);
 
@@ -139,11 +137,7 @@ public sealed class BpeTokenizerTests
     {
         BpeVocabulary vocab = TinyVocabulary() with
         {
-            AddedTokens = new Dictionary<string, int>(StringComparer.Ordinal)
-            {
-                ["<z>"] = 2000,
-                ["<a><a>"] = 2001,
-            },
+            AddedTokens = [new AddedToken("<z>", 2000), new AddedToken("<a><a>", 2001)],
         };
         var tokenizer = new BpeTokenizer(vocab);
 
@@ -164,7 +158,7 @@ public sealed class BpeTokenizerTests
     {
         BpeVocabulary vocab = TinyVocabulary() with
         {
-            AddedTokens = new Dictionary<string, int>(StringComparer.Ordinal) { [string.Empty] = 999 },
+            AddedTokens = [new AddedToken(string.Empty, 999)],
         };
         var tokenizer = new BpeTokenizer(vocab);
 
@@ -195,7 +189,7 @@ public sealed class BpeTokenizerTests
     {
         BpeVocabulary vocab = TinyVocabulary() with
         {
-            AddedTokens = new Dictionary<string, int>(StringComparer.Ordinal) { ["<sep>"] = 3000 },
+            AddedTokens = [new AddedToken("<sep>", 3000)],
         };
         var tokenizer = new BpeTokenizer(vocab);
 
