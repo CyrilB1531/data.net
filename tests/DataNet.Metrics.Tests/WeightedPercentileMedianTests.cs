@@ -46,6 +46,14 @@ public sealed class WeightedPercentileMedianTests
             new double[] { 5.0, 4.0, 3.0, 2.0, 1.0 },
             new double[] { 7.0, 7.0, 7.0, 7.0, 7.0 },
             new double[] { 1.0, 1.0, 1.0, 2.0, 2.0 },
+            // Negative-valued: PerOutput feeds these through Math.Abs(value - 0)
+            // before WeightedPercentile ever sees them, and ReferenceMedian
+            // mirrors that with its own Math.Abs, so these two rows are what
+            // proves the reference actually tracks the abs transform rather
+            // than agreeing with it by accident, the way an all-non-negative
+            // suite would.
+            new double[] { -3.0, -1.0, -2.0 },
+            new double[] { -1.0, 2.0, -3.0, 4.0 },
         })
         {
             data.Add(fixture);
@@ -57,6 +65,11 @@ public sealed class WeightedPercentileMedianTests
         {
             data.Add(RandomArray(rng, n));
         }
+
+        // A larger shape with negative values too, so the abs transform is
+        // exercised past the insertion cutoff and not just on hand-picked
+        // small arrays.
+        data.Add(RandomSignedArray(rng, 257));
 
         // Larger random shapes, with repeats frequent enough that the
         // Lomuto partition sees ties often.
@@ -96,12 +109,20 @@ public sealed class WeightedPercentileMedianTests
     }
 
     /// <summary>
-    /// The reference implementation: sort fully, then apply the exact index
-    /// arithmetic <c>WeightedPercentile.Average</c> uses for uniform weights.
+    /// The reference implementation: take the same absolute value
+    /// <c>MedianAbsoluteError.PerOutput(values, zeros)</c> computes internally
+    /// (<c>Math.Abs(yTrue - yPred)</c> with <c>yPred</c> all zero), sort that
+    /// fully, then apply the exact index arithmetic
+    /// <c>WeightedPercentile.Average</c> uses for uniform weights.
     /// </summary>
     private static double ReferenceMedian(double[] values)
     {
-        double[] sorted = (double[])values.Clone();
+        double[] sorted = new double[values.Length];
+        for (int i = 0; i < values.Length; i++)
+        {
+            sorted[i] = Math.Abs(values[i]);
+        }
+
         Array.Sort(sorted);
 
         int n = sorted.Length;
@@ -118,6 +139,17 @@ public sealed class WeightedPercentileMedianTests
             // A narrow integral range forces frequent duplicates, which is
             // exactly the shape that stresses a Lomuto partition's ties.
             values[i] = rng.Next(0, 20);
+        }
+
+        return values;
+    }
+
+    private static double[] RandomSignedArray(Random rng, int n)
+    {
+        var values = new double[n];
+        for (int i = 0; i < n; i++)
+        {
+            values[i] = rng.Next(-20, 20);
         }
 
         return values;

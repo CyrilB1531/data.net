@@ -41,14 +41,7 @@ internal static class WeightedPercentile
     private static double MedianUnweighted(double[] values)
     {
         int n = values.Length;
-
-        // Average's own loop reduces to exactly these two indices when every
-        // weight is 1: the cumulative count crosses half the total at
-        // (n - 1) / 2, and the last index still at or under half is n / 2.
-        // The differential test in WeightedPercentileMedianTests pins this
-        // equivalence so the two computations cannot drift apart unnoticed.
-        int lower = (n - 1) / 2;
-        int upper = n / 2;
+        MedianIndices(n, out int lower, out int upper);
 
         QuickSelect(values, 0, n - 1, lower);
 
@@ -157,12 +150,16 @@ internal static class WeightedPercentile
             Swap(values, from, to);
         }
 
-        if (values[to] < values[mid])
+        // An earlier version paired an "is values[to] the smaller one" check
+        // with an unconditional swap that followed it unconditionally — two
+        // swaps of the same pair of positions cancel exactly whenever the
+        // check fired, since swapping twice is the identity. This single,
+        // oppositely-phrased check reaches the same result without ever
+        // performing that wasted pair of swaps.
+        if (values[mid] < values[to])
         {
             Swap(values, mid, to);
         }
-
-        Swap(values, mid, to);
 
         double pivot = values[to];
         int storeIndex = from;
@@ -197,39 +194,62 @@ internal static class WeightedPercentile
         (values[i], values[j]) = (values[j], values[i]);
     }
 
+    /// <summary>
+    /// The pair of order-statistic indices the median needs when every weight is
+    /// 1: the cumulative count crosses half the total at <c>(n - 1) / 2</c>, and
+    /// the last index still at or under half is <c>n / 2</c>. This is the single
+    /// place that derives that pair — <see cref="Average"/>'s weighted-cumulative
+    /// loop collapses to exactly these two indices when <c>weights</c> is
+    /// <see langword="null"/>, and <see cref="MedianUnweighted"/> needs the same
+    /// pair before selection to know which ranks to quickselect for. Keeping the
+    /// arithmetic here, rather than in both places, is what stops the weighted
+    /// and unweighted paths from silently drifting apart.
+    /// </summary>
+    private static void MedianIndices(int n, out int lower, out int upper)
+    {
+        lower = (n - 1) / 2;
+        upper = n / 2;
+    }
+
     private static double Average(double[] values, double[]? weights)
     {
+        if (weights is null)
+        {
+            MedianIndices(values.Length, out int lower, out int upper);
+            return (values[lower] + values[upper]) / 2.0;
+        }
+
         double total = 0.0;
         for (int i = 0; i < values.Length; i++)
         {
-            total += weights is null ? 1.0 : weights[i];
+            total += weights[i];
         }
 
         double half = total / 2.0;
-        int lower = values.Length - 1;
-        int upper = 0;
+        int weightedLower = values.Length - 1;
+        int weightedUpper = 0;
         double cumulative = 0.0;
         bool lowerFound = false;
 
         for (int i = 0; i < values.Length; i++)
         {
-            cumulative += weights is null ? 1.0 : weights[i];
+            cumulative += weights[i];
             if (!lowerFound && cumulative >= half)
             {
-                lower = i;
+                weightedLower = i;
                 lowerFound = true;
             }
             if (cumulative <= half)
             {
-                upper = i + 1;
+                weightedUpper = i + 1;
             }
         }
 
-        if (upper >= values.Length)
+        if (weightedUpper >= values.Length)
         {
-            upper = values.Length - 1;
+            weightedUpper = values.Length - 1;
         }
 
-        return (values[lower] + values[upper]) / 2.0;
+        return (values[weightedLower] + values[weightedUpper]) / 2.0;
     }
 }

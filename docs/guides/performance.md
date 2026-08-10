@@ -345,17 +345,20 @@ before the Python side started (five/fifteen-minute: 11.95 / 14.25) and
 7.15 / 11.07). That is well below the 16–23 one-minute load this session saw
 at dispatch and while the code changes were being made, but still noticeably
 busier than the 1.52 one-minute load recorded for the original 29 rows, so
-these 24 rows should be read only under their own conditions, given here.
+these 24 rows should be read only under their own conditions, given here —
+**except the six `median_ae` rows marked †**, which come from a later
+window described below, after `MedianAbsoluteError`'s unweighted path was
+rewritten.
 
 | Operation | DataNet ms | Python ms | wall | DataNet cpu ms | Python cpu ms | **cpu** |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | `mse_n1000_k2` | 0.005 | 0.486 | 104.89x | 0.005 | 0.458 | **98.88x** |
 | `mae_n1000_k2` | 0.005 | 0.358 | 77.79x | 0.005 | 0.358 | **77.70x** |
-| `median_ae_n1000_k2` | 0.038 | 0.386 | 10.23x | 0.038 | 0.385 | **10.23x** |
+| `median_ae_n1000_k2`† | 0.011 | 0.818 | 77.81x | 0.011 | 0.625 | **59.45x** |
 | `r2_n1000_k2` | 0.008 | 0.443 | 57.72x | 0.008 | 0.442 | **57.66x** |
 | `mse_n1000_k10` | 0.005 | 1.003 | 219.23x | 0.005 | 0.646 | **141.17x** |
 | `mae_n1000_k10` | 0.005 | 0.541 | 119.33x | 0.005 | 0.507 | **111.80x** |
-| `median_ae_n1000_k10` | 0.038 | 0.379 | 10.04x | 0.038 | 0.379 | **10.03x** |
+| `median_ae_n1000_k10`† | 0.011 | 0.367 | 34.83x | 0.011 | 0.367 | **34.84x** |
 | `r2_n1000_k10` | 0.008 | 0.447 | 55.95x | 0.008 | 0.447 | **55.86x** |
 | `mse_n100000_k2` | 0.452 | 0.645 | 1.43x | 0.452 | 0.645 | **1.43x** |
 | `mae_n100000_k2` | 0.466 | 1.588 | 3.41x | 0.466 | 1.295 | **2.78x** |
@@ -373,6 +376,10 @@ these 24 rows should be read only under their own conditions, given here.
 | `mae_n1000000_k10` | 5.040 | 5.712 | 1.13x | 5.035 | 5.711 | **1.13x** |
 | `median_ae_n1000000_k10`† | 18.094 | 16.282 | 0.90x | 18.163 | 16.259 | **0.90x** |
 | `r2_n1000000_k10` | 7.807 | 9.687 | 1.24x | 7.807 | 9.686 | **1.24x** |
+
+† All six `median_ae` rows were re-measured after the quickselect rewrite
+described below, in a separate window from the other eighteen rows in this
+table. Every other cell is the original, unrewritten-algorithm measurement.
 
 **20/24 at or above 1× on processor time when this table was first
 measured — `median_ae` was the finding, not a fluke to rerun away.** All four
@@ -400,16 +407,26 @@ weighted branch, which genuinely needs sorted order for its cumulative-weight
 walk, was not touched.
 
 **Re-measured under load deliberately comparable to the original run, not a
-quieter one.** The four `median_ae` rows above marked † were re-measured
-after that rewrite, with the same corpus and harnesses as the rest of this
-section. Re-running on an idle machine would have folded "the machine got
-quieter" into "the algorithm got faster," and a reader could not have told
-the two apart — so the measurement was deliberately taken while the
-one-minute load sat in the same 6–10 band as the original run's 8.05 → 6.05,
-rather than waiting for a quieter machine. `uptime`'s one-minute average was
-**6.62** just before the Python side started (five/fifteen-minute: 15.34 /
-14.79) and **6.52** by the time `compare.py` printed the numbers above
-(five/fifteen-minute: 7.37 / 9.96).
+quieter one.** All six `median_ae` rows above, marked †, were re-measured
+after that rewrite in one pass over the full 24-operation harness, with the
+same corpus and harnesses as the rest of this section — the two n=1 000
+rows were already below the gate's radar (neither the original nor the
+rewritten algorithm is close to failing there), but re-measuring them
+alongside the four that mattered keeps every `median_ae` row honest about
+which implementation it describes, rather than leaving two rows silently
+mixed in with the pre-rewrite ones. Re-running on an idle machine would have
+folded "the machine got quieter" into "the algorithm got faster," and a
+reader could not have told the two apart — so the measurement was
+deliberately taken while the one-minute load sat in the same 6–10 band as
+the original run's 8.05 → 6.05, rather than waiting for a quieter machine.
+`uptime`'s one-minute average was **6.62** just before the Python side
+started (five/fifteen-minute: 15.34 / 14.79) and **6.52** by the time
+`compare.py` printed the numbers above (five/fifteen-minute: 7.37 / 9.96).
+The same fresh run put `mse_n1000000_k10` — untouched by this rewrite,
+recorded above at its original **1.00×** — at **0.99×**: that row sits at
+parity either way, so which side of the gate it lands on is scheduling luck
+between runs, not a change in the code, and the table above keeps its
+original value rather than being edited to match this aside.
 
 **The four rows are faster but still below the gate — that is the finding,
 not a reason to keep iterating on the algorithm.** In absolute terms
