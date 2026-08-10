@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using DataNet.Text.Distances;
 using DataNet.Text.Tests.Oracles;
@@ -127,7 +128,7 @@ public sealed class LevenshteinOracleTests
     {
         if (sb.Length < 4000) // cap the report; first handful is enough to diagnose
         {
-            sb.Append($"  [#{c.Id} {c.Category}] a={Escape(c.A)} b={Escape(c.B)}: {message}\n");
+            sb.Append(CultureInfo.InvariantCulture, $"  [#{c.Id} {c.Category}] a={Escape(c.A)} b={Escape(c.B)}: {message}\n");
         }
     }
 
