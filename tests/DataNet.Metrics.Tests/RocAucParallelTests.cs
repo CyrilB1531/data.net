@@ -3,6 +3,10 @@ using Xunit;
 
 namespace DataNet.Metrics.Tests;
 
+// SonarLint S2245: a seeded Random builds a reproducible six-class score matrix
+// for a bit-identity fixture; no security use.
+#pragma warning disable S2245
+
 /// <summary>
 /// The guarantee issue #86 rests on: parallelising the per-class and per-pair
 /// loops must not move a single bit. Not "within 1e-9" — identically. Every
@@ -191,8 +195,10 @@ public sealed class RocAucParallelTests
         // whichever class a worker happened to reach first.
         //
         // Reports_the_lowest_offending_class_not_the_fastest_worker cannot catch
-        // that, because its lowest failing class is 0 — the index the invoking
-        // thread always begins with, so no cancellation can hide it. Here the
+        // that, because its lowest failing class is 1 — its NaNs are in columns 1
+        // and 2, and column 0 holds none — which is one trivial class into the
+        // range the invoking thread always begins with, so no cancellation can
+        // hide it and the fixture proves nothing about ordering. Here the
         // lowest failing class is 7, six full curves into the first worker's
         // range, while class 8 is the first thing a second worker touches and
         // fails on immediately. Two workers, so the ranges split at 8.
@@ -213,7 +219,13 @@ public sealed class RocAucParallelTests
         ArgumentException parallel = Assert.Throws<ArgumentException>(
             () => RocAuc.MultiClass(yTrue, scores, k, new MultiClassRocOptions { MaxDegreeOfParallelism = 2 }));
 
-        Assert.Equal("yScore[5] is NaN; scores must be numbers. (Parameter 'yScore')", sequential.Message);
+        // The message up to the suffix only: ArgumentException appends
+        // "(Parameter 'yScore')" itself, from a localizable CoreLib resource, so
+        // asserting the composed string fails on a runtime with localized
+        // resources for a reason that has nothing to do with this code.
+        // RocAucBinaryTests documents that convention; ParamName carries the rest.
+        Assert.StartsWith("yScore[5] is NaN; scores must be numbers.", sequential.Message, StringComparison.Ordinal);
+        Assert.Equal("yScore", sequential.ParamName);
         Assert.Equal(sequential.Message, parallel.Message);
         Assert.Equal(sequential.ParamName, parallel.ParamName);
     }
@@ -253,7 +265,11 @@ public sealed class RocAucParallelTests
         // classes' samples before scoring, and the NaN lands at index 2 of
         // pair 4's column and index 1 of pair 5's. Naming the index is what
         // distinguishes "the lowest pair won" from "a pair won".
-        Assert.Equal("yScore[2] is NaN; scores must be numbers. (Parameter 'yScore')", sequential.Message);
+        //
+        // Asserted up to the framework-composed "(Parameter 'yScore')" suffix,
+        // which is localizable — see the note in the sibling class-loop test.
+        Assert.StartsWith("yScore[2] is NaN; scores must be numbers.", sequential.Message, StringComparison.Ordinal);
+        Assert.Equal("yScore", sequential.ParamName);
 
         foreach (int workers in WorkerCounts)
         {

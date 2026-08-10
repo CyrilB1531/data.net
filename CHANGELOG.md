@@ -343,14 +343,16 @@ First release of a fourth package.
   trailing parameters, and adds `MaxDegreeOfParallelism`. One-vs-rest spreads its
   per-class loop and one-vs-one its per-pair loop over that many workers; the
   result is bit-identical, because each class and each pair writes its own slot
-  and the averaging happens afterwards in array order. The default is 1 —
-  sequential, unchanged, copying nothing — because a library that spawns threads
-  a caller did not ask for is hostile inside a server already running one request
-  per core, and scikit-learn does not parallelise `roc_auc_score` either. Above 1
-  the inputs are copied, `samples × classes × 8` bytes for the transposed score
-  matrix, which is why the default does not pay for it. There is no `-1` sentinel
-  and no internal size threshold: the caller writes the number, and it is
-  honoured at every input size.
+  and the averaging happens afterwards in array order. The default is 0, and 0 and
+  1 both mean sequential — reading the caller's spans directly, with no private
+  copy of them — because a library that spawns threads a caller did not ask for
+  is hostile inside a server already running one request per core, and
+  scikit-learn does not parallelise `roc_auc_score` either. Above 1 the inputs are
+  copied, `samples × classes × 8` bytes for the transposed score matrix, which is
+  why the default does not pay for it. Either way the per-curve buffers come from
+  `ArrayPool<T>.Shared` and are reused across every class and pair rather than
+  allocated per curve. There is no `-1` sentinel and no internal size threshold:
+  the caller writes the number, and it is honoured at every input size.
 - **What that parallelism is worth, measured on elapsed time.** At n=100 000 and
   k=10, on four physical cores: one-vs-rest 75.991 / 75.779 ms sequential →
   26.648 / 26.379 at eight workers, and one-vs-one 127.375 / 126.810 →

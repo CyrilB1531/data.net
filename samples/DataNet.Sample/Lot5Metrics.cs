@@ -195,6 +195,14 @@ internal static class Lot5Metrics
         // Opt-in parallelism over the per-class loop. Six samples and three
         // classes is far too small to gain anything — the point here is that the
         // number does not move, which is the guarantee the knob carries.
+        //
+        // Environment.ProcessorCount is spelled out here because it is the honest
+        // way to say "every logical thread", not because it is the right number:
+        // it counts logical threads, and on a hyperthreaded machine asking for all
+        // of them is measurably slower than asking for half on several shapes. Do
+        // not copy this figure into production code without reading
+        // docs/guides/performance.md, which measures both and says which shapes
+        // lose.
         Console.WriteLine($"  MultiClass ovr macro  = "
             + $"{RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }):F3}"
             + "  (parallel, same value)");

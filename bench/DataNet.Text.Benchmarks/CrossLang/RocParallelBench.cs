@@ -3,6 +3,9 @@ using DataNet.Metrics;
 
 namespace DataNet.Text.Benchmarks.CrossLang;
 
+// SonarLint S2245: a seeded Random builds a reproducible benchmark corpus; no security use.
+#pragma warning disable S2245
+
 /// <summary>
 /// The before-and-after for issue #86: multiclass ROC-AUC at several worker
 /// counts, wall and processor time from the same run.
@@ -39,9 +42,17 @@ internal static class RocParallelBench
     private static readonly int[] WorkerCounts = [1, 2, 4, 8];
 
     // One-vs-one at n=100 000, k=10 is 45 pairs and 90 curves — the heaviest cell
-    // in the whole matrix. It is attempted rather than skipped by default; a
-    // single cell running past this is named and skipped rather than left to
-    // stall the rest of the run.
+    // in the whole matrix, and it is measured: about 127 ms for one sequential
+    // call, published in docs/guides/performance.md. So this budget has three
+    // orders of magnitude of slack for every shape in Shapes above, and never
+    // fires for any of them.
+    //
+    // It is kept for the shape that has not been measured yet. Shapes is the one
+    // thing a reader of this file is likely to edit, and one-vs-one is quadratic
+    // in k while each curve is O(n log n): adding n=1 000 000 or k=20 is the case
+    // where a single cell can run long enough to strand every worker count and
+    // shape queued behind it. Past this budget the cell is named and skipped
+    // instead.
     private static readonly TimeSpan OneVsOnePatience = TimeSpan.FromSeconds(60);
 
     public static void Run()
@@ -65,11 +76,13 @@ internal static class RocParallelBench
 
                     if (heaviest)
                     {
-                        // Timed outside Harness.Measure's own auto-scaling repeats: a
-                        // single call here already costs minutes, so patience is
-                        // spent on one call rather than Measure's five best-of-N
-                        // repeats, and a slow cell is named rather than left to stall
-                        // every worker count and shape after it.
+                        // One probe call, timed outside Harness.Measure's own
+                        // auto-scaling repeats, so that the patience budget is spent
+                        // on a single call rather than on Measure's five best-of-N
+                        // ones. At the shapes committed above the probe always
+                        // passes — this cell is about 127 ms — and its only effect is
+                        // to warm the path before the measured repeats. It earns its
+                        // place if Shapes grows: see OneVsOnePatience.
                         var single = Stopwatch.StartNew();
                         double auc = RocAuc.MultiClass(yTrue, scores, k, new MultiClassRocOptions
                         {

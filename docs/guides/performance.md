@@ -305,6 +305,35 @@ an elapsed-time ratio and reading down the page is the easiest available way to
 mislead a reader, so the axes are named at both tables rather than inferred from
 the column headers.
 
+**One pair of numbers is on the same axis, and it is the one to watch.** Issue #61's
+table reports `roc_auc_ovr_macro_n100000_k10` at **88.385 ms wall** (91.396 ms
+processor); the table further down this page reports the same operation at `dop=1`
+as **75.991 / 75.779 ms elapsed**. Both are elapsed milliseconds, so the axis
+warning just given does not cover them — and they are still not the same
+measurement. Three things differ, and all three matter:
+
+- **Different input.** Issue #61 scores the committed corpus file
+  `bench/corpus/metrics/metrics_n100000_k10.json`; this bench generates a seeded
+  separable problem in process (`Random(86)`, rows normalised). How separable the
+  problem is decides how many equal scores `BinaryRoc` groups into one threshold,
+  which changes the work per curve.
+- **Different machine load.** Issue #61's pass was taken at a one-minute load of
+  1.52. These figures were taken between 2.31 and 4.01 — the Conditions section
+  below gives the three readings.
+- **Different code on the sequential path.** The sequential multiclass drivers were
+  rewritten for this issue: the per-curve buffers now come from one pooled
+  `BinaryRoc.Scratch` reused across every class, where Issue #61's build allocated
+  two fresh arrays per class inside `BinaryRoc.Score`. Issue #61's 88.385 ms and
+  this table's 75.991 ms were not produced by the same implementation, and nothing
+  here measures how much of the gap that accounts for.
+
+So the arithmetic a reader is most likely to reach for is the one nobody should
+publish: dividing this table's best `ovr_n100000_k10` cell (26.648 ms elapsed) into
+Issue #61's Python column for that row (250.400 ms wall) yields a tidy-looking
+"9.4× faster than scikit-learn" that no single run measured — two windows, two
+inputs, two builds. A cross-language figure for the parallel path would have to be
+measured as one pass with both sides on the same input, and it has not been.
+
 ### Conditions
 
 Intel i7-4770S, **4 physical cores / 8 logical threads**, Ubuntu 24.04,

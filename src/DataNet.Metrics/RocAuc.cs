@@ -38,6 +38,12 @@ public static class RocAuc
     /// <param name="options">Strategy, averaging, labels, sample weights and worker count. <c>default</c> is scikit-learn's own defaults, on one thread.</param>
     /// <exception cref="ArgumentException">Any of the rules above is broken.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="classCount"/> is below two, or <see cref="MultiClassRocOptions.MaxDegreeOfParallelism"/> is negative.</exception>
+    /// <remarks>
+    /// A <c>catch</c> written for the sequential path keeps working above one
+    /// worker: the parallel path rethrows the original exception instance — same
+    /// type, message and <c>ParamName</c>, from the lowest-numbered class or pair
+    /// that failed — and never lets an <see cref="AggregateException"/> escape.
+    /// </remarks>
     public static double MultiClass(
         ReadOnlySpan<int> yTrue,
         ReadOnlySpan<double> yScore,

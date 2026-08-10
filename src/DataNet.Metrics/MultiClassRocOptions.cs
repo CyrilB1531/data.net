@@ -53,8 +53,8 @@ public readonly ref struct MultiClassRocOptions
 
     /// <summary>
     /// How many workers run the per-class loop (one-vs-rest) or the per-pair loop
-    /// (one-vs-one). 0 and 1 — the default — are sequential, and the sequential
-    /// path is unchanged: it reads the caller's spans in place and copies nothing.
+    /// (one-vs-one). 0 and 1 — the default — are sequential: the sequential path
+    /// reads the caller's spans directly and takes no private copy of them.
     /// </summary>
     /// <remarks>
     /// <para>

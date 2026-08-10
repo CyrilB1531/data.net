@@ -598,7 +598,7 @@ scikit-learn's `_binary_clf_curve` sort-and-accumulate exactly, and
 parsed once outside the timed loop on both sides so neither pays JSON-parsing
 cost inside the measurement.
 
-### Multiclass ROC-AUC, sequential against parallel (issue #86)
+## 6. Multiclass ROC-AUC, sequential against parallel (issue #86)
 
 C# against C#: the same operation at one, two, four and eight workers. Inputs are
 generated in-process from a fixed seed — there is no Python side here, so there is
@@ -612,7 +612,14 @@ The axis is **elapsed time**. Processor time rises with the worker count, which 
 the point of spending cores rather than a fault in the measurement, and both are
 reported side by side.
 
-## 6. Persisting an embedding index (issue #62)
+This is its own section rather than a subsection of section 5 for a reason beyond
+tidiness: its `dop=1` figures look pairable with section 5's `roc_auc_ovr_macro`
+row and are not. Different input, different machine load, and a sequential path
+that was rewritten for this issue — the 24 measured cells and all three reasons
+are in
+[`docs/guides/performance.md`](../docs/guides/performance.md#multiclass-roc-auc-sequential-against-parallel-issue-86).
+
+## 7. Persisting an embedding index (issue #62)
 
 `EmbeddingIndex.Save` and `Load` on 10 000 vectors of 384 dimensions — 15 MB of
 floats, the shape a sentence-transformer corpus actually has. The array is
@@ -686,7 +693,7 @@ write path changed, and it is recorded here as measured rather than attributed.
 **Conditions.** The one-minute load average ran 1.6–1.9 across these four runs and
 1.4–3.2 across the four `main` runs they are compared against, in the same session
 as the cross-language pair below — see that section's measurement-conditions note.
-All of section 4, section 6 and the cross-language pair were taken in this one
+All of section 4, section 7 and the cross-language pair were taken in this one
 session, on one regenerated corpus, and are comparable to each other; none of them
 is comparable to the editions they replace.
 

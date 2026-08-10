@@ -24,9 +24,17 @@ test asserts on. The measurement behind the figures quoted below is in
 ### Parallelism is opt-in, and the default stays sequential
 
 `MultiClassRocOptions.MaxDegreeOfParallelism` defaults to 0, and 0 and 1 both
-mean sequential. The sequential drivers are untouched — they read the caller's
-spans in place and copy nothing — so a caller who upgrades and changes no code
-gets the same allocations, the same core, and the same result as before.
+mean sequential. The sequential drivers still read the caller's spans directly and
+take no private copy of the inputs for workers to share, so a caller who upgrades
+and changes no code gets the same one core and the same result as before — the
+same bits, which `tests/DataNet.Metrics.Tests/RocAucFrozenBitsTests.cs` now pins
+absolutely rather than against a second code path.
+
+What that caller does *not* get is the same allocations. The sequential drivers
+were rewritten on this branch, not left alone: the per-curve buffers moved into a
+pooled `BinaryRoc.Scratch` that every class and every pair reuses. The direction
+is favourable on the multiclass path and mildly unfavourable on the binary one,
+and the Consequences below give both with numbers.
 
 The alternative worth taking seriously is not "always parallel" but "parallel by
 default, with an opt-out". It was rejected because of where this library runs. A
@@ -217,16 +225,41 @@ library with no performance budget to defend.
   agree bit for bit. That is a permanent test obligation rather than a one-time
   check: `tests/DataNet.Metrics.Tests/RocAucParallelTests.cs` compares raw
   IEEE-754 bits across worker counts, and any future change to either path has
-  to keep passing it.
+  to keep passing it. That comparison is *relative*, and on its own it is not
+  enough: it moves with any change to arithmetic the two paths share, so
+  reassociating the division in `Mean` and `WeightedMean` passed the entire suite
+  while moving the last bit of three corpus values. The absolute pin is
+  `RocAucFrozenBitsTests.cs`, which asserts the bits of all twelve multiclass
+  corpus values against constants committed in the file. The frozen oracle cannot
+  do that job: it stores scikit-learn's answers to 12 decimals, so the digits
+  that move are not in it.
 - Callers can make this slower. `dop=8` on a 4-core machine loses to `dop=4` on
   three of the six measured shapes, and the guide says so with numbers. That is
   the accepted cost of honouring the request as given rather than second-guessing
   it, and it is why the option's documentation points at a measurement instead of
   recommending a value.
-- The parallel path allocates from the shared pool where the sequential path
-  allocated nothing. At n=100 000, k=10 that is about 8 MB rented and returned
-  per call. A caller in a tight loop who has not measured should leave the
-  default alone.
+- **The sequential multiclass path allocates far less than it did.** That is an
+  unadvertised win, and it belongs in the record because "the default is
+  unchanged" was written here before it was true. Before this branch, one-vs-rest
+  allocated a fresh `int[n]` and `double[n]` once per call, plus a fresh
+  `double[n]` and `Point[n]` inside `BinaryRoc.Score` *per class* — `2k + 2` new
+  heap arrays for one call — and one-vs-one `4 × pairs + 2`, two curves per pair.
+  Both now take four pooled rentals in total — one `Scratch`, reused across every
+  class and every pair — on top of the small `k`-length or `pairs`-length result
+  arrays that both versions allocate either way. At n=100 000, k=10 that is 22
+  fresh arrays, most of them on the large-object heap at that size, replaced by
+  four rentals from `ArrayPool<T>.Shared`.
+- **The binary entry point pays a small unadvertised cost.** `RocAuc.Score` used
+  to allocate two fresh arrays and now rents four, because it shares
+  `BinaryRoc.Scratch` with the multiclass drivers and two of the four —
+  `Scratch.Binary` and `Scratch.Column`, where a driver compacts one class's
+  samples before scoring — are never read on the binary path. Two idle rentals
+  per call, returned on the way out, against two large-object allocations saved.
+  Worth naming rather than hiding; not worth a second `Scratch` shape to avoid.
+- The parallel path allocates on top of all that, again from the shared pool. At
+  n=100 000, k=10 it is about 8 MB for the transposed score matrix, rented and
+  returned per call. A caller in a tight loop who has not measured should leave
+  the default alone.
 - The published table is a comparison of this code against itself on elapsed
   time. It is not comparable to Issue #61's scikit-learn table, which is
   processor time and was taken at a different machine load. Keeping those two

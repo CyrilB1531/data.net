@@ -345,13 +345,16 @@ internal static class MultiClassRoc
         ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int classCount, ReadOnlySpan<double> sampleWeight)
     {
         int n = yTrue.Length;
-        int[] labels = ArrayPool<int>.Shared.Rent(n);
+        // Named for what it holds — a copy of yTrue, one entry per sample. Not
+        // "labels": MultiClassRocOptions.Labels is the class vocabulary, k entries
+        // long, and the two are the same array only by coincidence of length.
+        int[] yTrueCopy = ArrayPool<int>.Shared.Rent(n);
         double[] columnMajor = ArrayPool<double>.Shared.Rent(n * classCount);
         double[] weights = sampleWeight.IsEmpty
             ? []
             : ArrayPool<double>.Shared.Rent(n);
 
-        yTrue.CopyTo(labels.AsSpan(0, n));
+        yTrue.CopyTo(yTrueCopy.AsSpan(0, n));
         if (!sampleWeight.IsEmpty)
         {
             sampleWeight.CopyTo(weights.AsSpan(0, n));
@@ -366,7 +369,7 @@ internal static class MultiClassRoc
             }
         }
 
-        return (labels, columnMajor, weights);
+        return (yTrueCopy, columnMajor, weights);
     }
 
     private static void ReturnToPool((int[] YTrue, double[] ColumnMajor, double[] Weights) copy)
