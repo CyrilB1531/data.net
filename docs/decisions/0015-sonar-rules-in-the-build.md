@@ -2,6 +2,11 @@
 
 **Status:** accepted · **Date:** 2026-08-06
 
+> **Amended by [0019](0019-the-net-analysers-run-in-the-build-too.md) (2026-08-10).**
+> `samples/` now carries the analyser. The reason given below — that
+> `Generated/` would light up prose — is measured false: Roslyn skips `.g.cs`
+> files as generated code, and SonarAnalyzer honours that.
+
 ## Context
 
 `SonarAnalyzer.CSharp` was referenced nowhere in this repository: not in

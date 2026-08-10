@@ -143,6 +143,7 @@ public sealed class ConfusionMatrix
         }
         return result;
     }
+#pragma warning restore CA1814
 
     /// <summary>
     /// Counts predictions against truth — the equivalent of

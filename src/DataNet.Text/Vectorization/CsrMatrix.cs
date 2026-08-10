@@ -135,6 +135,7 @@ public sealed class CsrMatrix
 
     /// <summary>Start offset of each row into <see cref="Values"/>; length <c>RowCount + 1</c>.</summary>
     public int[] RowPointers { get; }
+#pragma warning restore CA1819
 
     /// <summary>Number of stored (non-zero) entries.</summary>
     public int NonZeroCount => Values.Length;
@@ -157,6 +158,7 @@ public sealed class CsrMatrix
         }
         return dense;
     }
+#pragma warning restore CA1814
 
     /// <summary>Computes the L1 norm (sum of absolute values) of a row.</summary>
     public double RowL1Norm(int row)

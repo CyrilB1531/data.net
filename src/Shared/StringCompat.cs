@@ -5,8 +5,7 @@ namespace DataNet.Internal;
 // string.IndexOf(char, StringComparison) / string.Replace(string, string?,
 // StringComparison) — does not exist on netstandard2.0, which this assembly
 // targets. Both calls are ordinal on every runtime that has them, so the
-// suggestion would change nothing but the compilation. Same reason as the CA1845
-// pragmas in DataNet.Embeddings/Tokenization/.
+// suggestion would change nothing but the compilation.
 #pragma warning disable CA1307
 // CA2249 (use string.Contains instead of IndexOf): circular here — this file IS
 // the netstandard2.0 polyfill for Contains(char), so it cannot call it.

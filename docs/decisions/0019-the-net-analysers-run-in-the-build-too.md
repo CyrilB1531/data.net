@@ -56,7 +56,11 @@ Two readings of that table shape everything below.
 
 **The gap #106 hit is closed by any mode above `Default`.** `AnalysisMode=Minimum`
 already contains CA1845 and CA1859 — the two rules that cost #106 its CI round —
-and its `.globalconfig` contains only `= warning` entries, so it disables nothing.
+and its `.globalconfig` carries **92** `= warning` entries against **one**
+`= none` — CA1516, `dotnet_diagnostic.CA1516.severity = none` — which is `= none`
+in `Default`, `Minimum`, `Recommended` and `All` alike, so switching modes never
+turns it off: it was never on. `Minimum` therefore disables nothing that any mode
+here would otherwise enable.
 `All` is a superset of it. The 655 findings `All` raises across the four areas are
 therefore **not** a backlog of gate failures that had been accumulating: at
 `Minimum`, which already closes the gap, this repository was at zero. `All` is a
@@ -127,7 +131,7 @@ written as a `NoWarn` in that area's `Directory.Build.props`, with a comment
 naming every rule in the list and why it does not apply there — the idiom
 `samples/DataNet.DocSnippets` already used for `CS0219`.
 
-| Rule | n | Off in | Because |
+| Rule | n (every occurrence of the rule, including the `src/` ones the next section handles individually) | Off in | Because |
 | --- | --- | --- | --- |
 | CA1707 | 517 | `tests/`, `bench/` | `Method_Case_Expected` is the xunit and BenchmarkDotNet naming convention |
 | CA1515 | 35 | `tests/`, `bench/` | both frameworks discover only public types |
@@ -149,12 +153,19 @@ entry point genuinely did not guard its arguments — those threw
 `string.CompareOrdinal(a, b) == 0` with `string.Equals(a, b, StringComparison.Ordinal)`.
 The `samples/` CA1305 fixes changed printed output on a French machine, from
 comma decimals to period decimals: that divergence between a contributor's console
-and CI's *was* the defect.
+and CI's *was* the defect. It is not closed. CA1305 fires only on an explicit
+`ToString(string)`; it does not fire on an interpolated hole such as `{value:F3}`,
+and roughly forty of those remain in the same two `samples/` files the nine fixes
+above touched — the analyser will never catch them, at any `AnalysisMode`, because
+the rule does not reach that syntax. Closing that is its own issue, not this one.
 
 The 31 pragmas are dominated by rules that are right in general and wrong about
-this code in particular: `CA1308` on the Snowball, Porter and WordPiece
-implementations, which are *defined* on lowercase input so `ToUpperInvariant`
-would change their results; `CA1814` on the `double[,]`/`long[,]` that are the
+this code in particular: `CA1308` on the Snowball and Porter implementations,
+which are *defined* on lowercase input so `ToUpperInvariant` would change their
+results, and on WordPiece and the vectorizer's `TextAnalyzer`, where lowercasing
+is an option — HuggingFace's `do_lower_case`, scikit-learn's `lowercase=True` —
+and uppercasing would match no vocabulary entry rather than merely recase;
+`CA1814` on the `double[,]`/`long[,]` that are the
 dense-matrix shape; `CA1819` on `CsrMatrix`'s three arrays, which *are* the CSR
 format and have been public API since 0.1.0; `CA1008` on `SentencePieceType`,
 whose values mirror the protobuf's and start at 1 ([0013](0013-sentencepiece-parity-scope.md));
@@ -186,8 +197,9 @@ rule's advice in `src/` would change nothing except whether the code compiles.
   | `bench/` | `ToLowerInvariant` in `DataNet.Text.Benchmarks/VectorizerBenchmarks.cs` | `error CA1308` |
   | `samples/` | `IndexOf("x")` in `DataNet.Sample/Lot1Distances.cs` | `error CA1866` and `error CA1310` |
 
-  None of the rules that fired is on that area's own `NoWarn` list, so the probes
-  also show the lists did not over-reach. The `samples/` row is the one that did
+  None of the rules that fired is on that area's own `NoWarn` list, so each probe
+  is a genuine test of that area's gate, rather than of a rule the list had
+  already removed. The `samples/` row is the one that did
   not exist before: it establishes that the samples build genuinely runs the
   analysers and fails on a real violation, rather than returning a green
   incremental result nothing read. That a probe in *this same file* was silent
