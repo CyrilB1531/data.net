@@ -1835,12 +1835,10 @@ def _finite_or_name(value: float) -> float | str:
     BLAS kernel rather than the metric. The three name strings are returned
     untouched — "NaN" must stay "NaN", not become a rounded number.
     """
-    if value != value:
+    if math.isnan(value):
         return "NaN"
-    if value == float("inf"):
-        return "Infinity"
-    if value == float("-inf"):
-        return "-Infinity"
+    if math.isinf(value):
+        return "Infinity" if value > 0 else "-Infinity"
     return stable(value)
 
 
