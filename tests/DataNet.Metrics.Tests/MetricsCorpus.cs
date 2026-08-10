@@ -40,4 +40,11 @@ internal static class MetricsCorpus
 
     public static double[] OptionalDoubles(JsonElement c, string name) =>
         c.GetProperty(name).ValueKind == JsonValueKind.Null ? [] : Doubles(c, name);
+
+    /// <summary>The case's confusion matrix, built the way every oracle test builds it.</summary>
+    public static ConfusionMatrix Matrix(JsonElement c) => ConfusionMatrix.Compute(
+        Ints(c, "y_true"),
+        Ints(c, "y_pred"),
+        OptionalInts(c, "labels"),
+        OptionalDoubles(c, "sample_weight"));
 }
