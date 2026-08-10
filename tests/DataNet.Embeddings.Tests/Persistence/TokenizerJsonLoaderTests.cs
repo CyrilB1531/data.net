@@ -160,6 +160,24 @@ public sealed class TokenizerJsonLoaderTests
         Assert.Contains("names '[UNK]' as its unknown token but does not define it", error.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The added_tokens table does not satisfy the unknown-token requirement, and
+    /// this is the case that says so: it loaded while WordPiece folded the table
+    /// into its vocabulary. The table is matched as literal text ahead of the model,
+    /// so an unknown token declared only there is one the model can never fall back
+    /// to — an [UNK] emitted for an uncovered word would carry an id nothing defines.
+    /// </summary>
+    [Fact]
+    public void An_unknown_token_defined_only_in_added_tokens_is_rejected()
+    {
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => LoadWordPieceFrom(SyntheticWordPiece(
+                vocab: "{\"alpha\":0}",
+                addedTokens: "[{\"id\":1,\"content\":\"[UNK]\",\"special\":true}]")));
+
+        Assert.Contains("names '[UNK]' as its unknown token but does not define it", error.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void An_empty_vocabulary_is_rejected()
     {
@@ -464,6 +482,26 @@ public sealed class TokenizerJsonLoaderTests
                 addedTokens: "[{\"id\":7,\"content\":\"[UNK]\",\"special\":true}]")));
 
         Assert.Contains("already maps it to 0", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <c>normalized</c> decides which pass an entry matches in, and an absent one
+    /// defaults to <c>!special</c> — what Rust's <c>AddedToken::from</c> does, so
+    /// every table <c>add_tokens</c> or <c>add_special_tokens</c> wrote keeps its
+    /// meaning. The field is read, not inferred: the last case sets it against the
+    /// grain of <c>special</c> and the loader must carry that through.
+    /// </summary>
+    [Theory]
+    [InlineData("\"special\":true", false)]
+    [InlineData("\"special\":false", true)]
+    [InlineData("\"special\":true,\"normalized\":true", true)]
+    [InlineData("\"special\":false,\"normalized\":false", false)]
+    public void An_added_token_defaults_normalized_to_the_opposite_of_special(string flags, bool expected)
+    {
+        WordPieceVocabulary vocabulary = LoadWordPieceFrom(SyntheticWordPiece(
+            addedTokens: $"[{{\"id\":3,\"content\":\"[EXTRA]\",{flags}}}]"));
+
+        Assert.Equal(expected, Assert.Single(vocabulary.AddedTokens).Normalized);
     }
 
     [Fact]

@@ -50,9 +50,41 @@ public sealed record AddedToken(string Content, int Id)
 
     /// <summary>Whether the file marked this entry <c>special</c>.</summary>
     /// <remarks>
-    /// Two consequences, both measured: a special entry is exempt from the
-    /// model's normalizer, where an ordinary one is normalized along with the
-    /// text; and it is the one a decoder drops for <c>skip_special_tokens</c>.
+    /// One consequence, measured: it is the entry a decoder drops for
+    /// <c>skip_special_tokens</c> — see
+    /// <see cref="BpeTokenizer.Decode(IReadOnlyList{int}, bool)"/>. It decides
+    /// nothing about <em>where</em> the entry matches; <see cref="Normalized"/> is
+    /// the field that does, and the two are independent.
     /// </remarks>
     public bool Special { get; init; }
+
+    /// <summary>Whether the model's normalizer applies to this entry, and to the text it is matched against.</summary>
+    /// <remarks>
+    /// <para>
+    /// HuggingFace's own <c>normalized</c> field, and <strong>the</strong>
+    /// discriminator for which pass an entry runs in:
+    /// <see langword="false"/> matches the <em>raw</em> text, ahead of the
+    /// normalizer; <see langword="true"/> normalizes the entry's own
+    /// <see cref="Content"/> and matches it against the normalized text.
+    /// <c>tokenizers</c> keeps one trie for each, and splits on the raw one first.
+    /// </para>
+    /// <para>
+    /// It is not a synonym for <c>!</c><see cref="Special"/>, though every entry
+    /// <c>add_special_tokens</c> and <c>add_tokens</c> produce looks like one:
+    /// those set <c>normalized = !special</c>, and all four combinations are
+    /// representable and round-trip through a <c>tokenizer.json</c>. Measured
+    /// against <c>tokenizers</c> 0.23.1 over a <c>Lowercase</c> normalizer, with
+    /// <c>[CLS]</c> added and the input <c>'a [cls] b'</c>: <c>special=true,
+    /// normalized=true</c> matches and emits <c>[cls]</c>, while <c>special=true,
+    /// normalized=false</c> does not match at all. The <c>special</c> flag is the
+    /// same in both.
+    /// </para>
+    /// <para>
+    /// This changes nothing for <see cref="BpeTokenizer"/>, whose loader refuses
+    /// any normalizer at all: with nothing to normalize, both passes see the same
+    /// text. It is <see cref="WordPieceTokenizer"/>, which reads <c>lowercase</c>
+    /// from the file, where the two differ.
+    /// </para>
+    /// </remarks>
+    public bool Normalized { get; init; }
 }

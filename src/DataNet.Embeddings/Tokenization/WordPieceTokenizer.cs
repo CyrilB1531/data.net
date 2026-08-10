@@ -89,8 +89,8 @@ public sealed class WordPieceTokenizer : ISubwordTokenizer
 
     private readonly IReadOnlyDictionary<string, int> _vocab;
     private readonly AddedToken[] _addedTokens;
-    private readonly AddedTokenScanner _specialScanner;
-    private readonly AddedTokenScanner _ordinaryScanner;
+    private readonly AddedTokenScanner _rawScanner;
+    private readonly AddedTokenScanner _normalizedScanner;
     private readonly string _unkToken;
     private readonly int _unkId;
     private readonly string _continuationPrefix;
@@ -157,32 +157,42 @@ public sealed class WordPieceTokenizer : ISubwordTokenizer
         _lowercase = lowercase;
 
         // Two scanners because the two halves of the table are matched against two
-        // different strings; see Encode.
+        // different strings; AddedToken.Normalized is what puts an entry in one or
+        // the other, and Special has nothing to do with it. See Encode.
         _addedTokens = [.. addedTokens];
-        _specialScanner = new AddedTokenScanner([.. addedTokens.Where(t => t.Special)]);
-        _ordinaryScanner = new AddedTokenScanner(
-            [.. addedTokens.Where(t => !t.Special).Select(t => lowercase ? t with { Content = t.Content.ToLowerInvariant() } : t)]);
+        _rawScanner = new AddedTokenScanner([.. addedTokens.Where(t => !t.Normalized)]);
+        _normalizedScanner = new AddedTokenScanner(
+            [.. addedTokens.Where(t => t.Normalized).Select(t => lowercase ? t with { Content = t.Content.ToLowerInvariant() } : t)]);
     }
 
     /// <summary>Tokenizes <paramref name="text"/> into sub-word tokens and their ids.</summary>
     /// <remarks>
     /// <para>
     /// The <c>added_tokens</c> table is matched first, and the two halves of it are
-    /// not matched against the same string. Measured against <c>tokenizers</c>
-    /// 0.23.1, with a <c>Lowercase</c> normalizer and <c>[CLS]</c> added: as a
-    /// <em>special</em> entry it matches <c>'a [CLS] b'</c> and emits <c>[CLS]</c>,
-    /// while <c>'a [cls] b'</c> does not match it at all and falls through to the
-    /// model; as an <em>ordinary</em> entry both spellings match and both emit
-    /// <c>[cls]</c>. So a special entry is exempt from normalization and is matched
-    /// against the raw text, where an ordinary one is normalized itself and matched
-    /// against the normalized text. "Added tokens are matched before normalization"
-    /// is the natural summary and the wrong one.
+    /// not matched against the same string. <see cref="AddedToken.Normalized"/> is
+    /// what splits them: an entry that is <em>not</em> normalized is matched against
+    /// the <em>raw</em> text and emits the raw slice, while a normalized one has its
+    /// own content normalized and is matched against the normalized text, emitting
+    /// that. Measured against <c>tokenizers</c> 0.23.1 with a <c>Lowercase</c>
+    /// normalizer and <c>[CLS]</c> added: not normalized, it matches
+    /// <c>'a [CLS] b'</c> and emits <c>[CLS]</c> while <c>'a [cls] b'</c> does not
+    /// match at all and falls through to the model; normalized, both spellings match
+    /// and both emit <c>[cls]</c>. "Added tokens are matched before normalization" is
+    /// the natural summary and the wrong one.
     /// </para>
     /// <para>
-    /// The specials are matched in an outer pass, as HuggingFace's
-    /// <c>AddedVocabulary</c> does: what one of them consumes is never offered to the
-    /// ordinary scanner, even where an ordinary entry would have matched further
-    /// left. See <c>docs/decisions/0022-added-token-matching-flags.md</c>.
+    /// <see cref="AddedToken.Special"/> decides none of this, though it looks as if
+    /// it does on every file <c>add_special_tokens</c> wrote, which sets
+    /// <c>normalized = !special</c>. A file may carry either combination, and a
+    /// special-but-normalized entry runs in the normalized pass like any other.
+    /// </para>
+    /// <para>
+    /// The raw half is matched in an outer pass, as HuggingFace's
+    /// <c>AddedVocabulary</c> does — it splits on the raw trie first and runs the
+    /// normalized trie over what is left — so what a raw entry consumes is never
+    /// offered to the normalized scanner, even where a normalized entry would have
+    /// matched further left. See
+    /// <c>docs/decisions/0022-added-token-matching-flags.md</c>.
     /// </para>
     /// </remarks>
     /// <param name="text">The text to tokenize.</param>
@@ -202,7 +212,7 @@ public sealed class WordPieceTokenizer : ISubwordTokenizer
         int pos = 0;
         while (pos < text.Length)
         {
-            if (!_specialScanner.TryNext(text, pos, out int start, out int end, out var special))
+            if (!_rawScanner.TryNext(text, pos, out int start, out int end, out var raw))
             {
                 EncodeGap(normalized, pos, normalized.Length, tokens, ids);
                 break;
@@ -214,7 +224,7 @@ public sealed class WordPieceTokenizer : ISubwordTokenizer
             // The raw slice, not the entry's content: a match that stripped
             // whitespace consumed that whitespace into the token it emits.
             tokens.Add(text.Substring(start, end - start));
-            ids.Add(special.Id);
+            ids.Add(raw.Id);
             pos = end;
         }
         return new TokenizationResult(tokens, ids);
@@ -262,19 +272,20 @@ public sealed class WordPieceTokenizer : ISubwordTokenizer
     }
 
     /// <summary>
-    /// Encodes <c>normalized[from..to]</c> — text no special added token claimed —
-    /// scanning it for ordinary added tokens and handing what is left to the model.
+    /// Encodes <c>normalized[from..to]</c> — text no raw-matched added token claimed
+    /// — scanning it for normalized added tokens and handing what is left to the
+    /// model.
     /// </summary>
     /// <remarks>
     /// The gap is scanned as a string of its own, so a strip cannot reach across the
-    /// special that closed it and a <see cref="AddedToken.SingleWord"/> entry sees
-    /// the gap's edges as word boundaries. That is what HuggingFace's
-    /// <c>AddedVocabulary</c> does, which splits on the specials first and then runs
+    /// entry that closed it and a <see cref="AddedToken.SingleWord"/> entry sees the
+    /// gap's edges as word boundaries. That is what HuggingFace's
+    /// <c>AddedVocabulary</c> does, which splits on the raw trie first and then runs
     /// the normalized trie over each resulting slice.
     /// </remarks>
     private void EncodeGap(string normalized, int from, int to, List<string> tokens, List<int> ids)
     {
-        if (_ordinaryScanner.IsEmpty)
+        if (_normalizedScanner.IsEmpty)
         {
             EncodeSegment(normalized, from, to, tokens, ids);
             return;
@@ -284,7 +295,7 @@ public sealed class WordPieceTokenizer : ISubwordTokenizer
         int pos = 0;
         while (pos < gap.Length)
         {
-            if (!_ordinaryScanner.TryNext(gap, pos, out int start, out int end, out var added))
+            if (!_normalizedScanner.TryNext(gap, pos, out int start, out int end, out var added))
             {
                 EncodeSegment(gap, pos, gap.Length, tokens, ids);
                 break;
@@ -302,8 +313,8 @@ public sealed class WordPieceTokenizer : ISubwordTokenizer
     /// <summary>Pre-tokenizes and models <c>normalized[start..end]</c>, which holds no added token.</summary>
     /// <remarks>
     /// The slice is already normalized: <see cref="Encode"/> lowercases the whole
-    /// input once, before the scan, because the ordinary half of the table is
-    /// matched against normalized text.
+    /// input once, before the scan, because the normalized half of the table is
+    /// matched against that same string.
     /// </remarks>
     private void EncodeSegment(string normalized, int start, int end, List<string> tokens, List<int> ids)
     {
