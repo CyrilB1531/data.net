@@ -105,15 +105,17 @@ public sealed class CohenKappaTests
     [Fact]
     public void A_restricted_label_set_reads_over_the_matrix_it_holds()
     {
-        // scikit-learn's cohen_kappa_score takes no labels argument, so it can
-        // never produce this number: Score(cm) computes over exactly the
-        // classes the matrix holds. This is the same 7-sample, 3-class fixture
+        // Score(cm) reads over exactly the classes the matrix holds, whatever
+        // scikit-learn's own labels= would do with the same inputs - a property
+        // of this package's matrix-consuming overload, not a gap in the
+        // reference. This is the same 7-sample, 3-class fixture
         // Matches_sklearn_cohen_kappa_score's "kappa" row covers, whose
         // unrestricted kappa over all three classes is 0.575757575758.
         // Restricting to labels [1, 2] drops every sample that touches label 0
         // (indices 0, 1 and 5 below), and what is left of the matrix is
         // diagonal - perfect agreement, so the restricted kappa is 1.0, not
-        // 0.575757575758.
+        // 0.575757575758 - which happens to be exactly what
+        // cohen_kappa_score(y_true, y_pred, labels=[1, 2]) also returns.
         ConfusionMatrix restricted = ConfusionMatrix.Compute(YTrue, YPred, labels: [1, 2]);
 
         Assert.Equal(1.0, CohenKappa.Score(restricted), 12);

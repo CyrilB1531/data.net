@@ -60,20 +60,6 @@ public static class CohenKappa
                 // refuses an empty input before a matrix with k == 0 could exist.
                 double weight = Weight(weighting, row, col);
 
-                // SonarLint S1244 warns against comparing floating point for
-                // exact equality, which is right for arithmetic and wrong
-                // here: Weight never produces anything but a small integer
-                // value cast to double — 0, 1, abs(row - col) or its square —
-                // so this is a discrete "is this cell excluded" test, not a
-                // tolerance question, and every one of those integers is
-                // exactly representable.
-#pragma warning disable S1244
-                if (weight == 0.0)
-#pragma warning restore S1244
-                {
-                    continue;
-                }
-
                 observed += weight * cells[(row * stride) + col];
 
                 // scikit-learn's expected matrix is outer(columnSums, rowSums) / n,
