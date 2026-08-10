@@ -16,15 +16,35 @@ already advertises could not be loaded at all.
 
 Implementing the flags meant measuring them, and the measurement contradicted the
 design written from reading the file format. Everything stated here was replayed
-against `tokenizers` 0.23.1; nothing below is inferred. Two corpora carry it:
+against `tokenizers` 0.23.1; nothing below is inferred. Two committed corpora
+carry most of it:
 
 - `tests/oracles/bpe_added_token_flags.json` — 26 cases over byte-level GPT-2
   with `add_prefix_space` off, one added token per flag (`<mask>` `lstrip`,
   `<pad>` `rstrip`, `<m>` `single_word`), recording `tokens`, `ids`, `decoded`
   and `decoded_skip_specials`.
 - `tests/oracles/wordpiece_added_tokens.json` — 29 cases over a WordPiece model
-  under a `Lowercase` normalizer, with eight added tokens spanning every
-  combination of `special` and `normalized`.
+  under a `Lowercase` normalizer, with eight added tokens covering **three** of
+  the four combinations of `special` and `normalized`: three entries
+  `special: true, normalized: false`, four `special: false, normalized: true`,
+  and one `special: true, normalized: true`.
+
+The fourth corner — `special: false, normalized: false`, the other combination
+that runs in the raw pass — is in no committed corpus. It was established by a
+probe run against the same `tokenizers` 0.23.1, on a `Lowercase` WordPiece with
+`AddedToken("[CLS]", special=False, normalized=False)`: the entry matches
+`'a [CLS] b'` and not `'a [cls] b'`, exactly as its `special: true` twin does.
+That probe is working-note material and is **not** committed, which is why the
+claim is attributed here rather than left to look corpus-backed. Three of four
+corners are replayed on every test run; the fourth is not, and §9 says so again
+where it counts.
+
+A handful of other values below come from the same uncommitted probe runs rather
+than from a corpus, and each is labelled where it appears. The measurements
+themselves are written down in this repository, in the issue's design note
+`docs/superpowers/specs/2026-08-10_0104_support-lstrip-on-added-tokens.md`, under
+*Measurements* — a reader can reach the numbers even though the scripts that
+produced them are not tracked.
 
 The second corpus exists because the first cannot show the interesting half:
 `LoadBpe` refuses any normalizer at all, so on the BPE side there is no
@@ -33,7 +53,12 @@ normalized text for an entry to be matched against, and the rule that decides
 
 ## Decision
 
-### 1. What the three matching flags do
+### 1. What the three span-shaping flags do
+
+Four of the five flags decide **where** an entry matches. Three of them shape the
+span a match consumes and are the subject of this section; the fourth,
+`normalized`, decides which *text* the match is looked for in, and has §3 to
+itself. `special`, the fifth, decides nothing about matching at all — §5.
 
 **`lstrip`** absorbs the whitespace immediately to the left of a match into the
 match. All of it, not one character:
@@ -63,21 +88,42 @@ the entry does not match at all, falling through to the model — `1<m>1` comes
 back as `1`, `<`, `m`, `>`, `1`. In .NET this is
 `char.IsLetterOrDigit(c) || c == '_'`, with the divergence recorded in §8.
 
-The emitted surface carries the absorbed span: the token is `' <mask>'`, with
-offsets `(1, 8)`, not `<mask>` with the space dropped. `token_to_id(" <mask>")`
-is `None` in Python, so that surface is a *surface* and never a vocabulary entry.
-This library follows: the tokenizers emit the raw slice the match consumed, not
-the entry's own `Content`.
+The emitted surface carries the absorbed span: the token is `' <mask>'`, not
+`<mask>` with the space dropped, and the corpus records it that way in every
+`lstrip` case above. Two further facts about that surface come from an
+uncommitted probe run and are recorded in the design note's *Measurements*
+section rather than in a corpus, since no corpus here stores offsets or replays a
+`token_to_id` call: HuggingFace gives the token offsets `(1, 8)` — the span
+including the absorbed space — and `token_to_id(" <mask>")` returns `None`. The
+surface is therefore a *surface*, never a vocabulary entry. This library follows:
+the tokenizers emit the raw slice the match consumed, not the entry's own
+`Content`.
 
 ### 2. The id stream loses a piece; no id ever changes
 
-`'a <mask> b'` is `[64, 50257, 275]` under `lstrip` against `[64, 220, 50257,
-275]` without it. Same `<mask>` id, one fewer piece. **The entire effect of a
-strip on the id stream is that the piece the absorbed whitespace would have
-produced disappears** — the `Ġ` on a byte-level model, a pre-token on WordPiece.
-This is worth stating because the flags read like they might renumber something,
-and a reader who assumes they do will look for a second vocabulary that is not
-there.
+On a byte-level model, the piece that disappears is the `Ġ`. Two corpus cases of
+the same shape show it without a counterfactual having to be constructed:
+`'a <mask> b'`, where `lstrip` absorbs the space, is `[64, 50257, 275]`; the
+mirror input `'a <pad> b'`, where `<pad>` carries `rstrip` and so leaves the
+space on its left alone, is `[64, 220, 50258, 65]` — with 220, `Ġ`, standing in
+the stream as its own piece. Same `<mask>` id either way; what the strip costs is
+one piece. The design note records the direct with/without pair from an
+uncommitted probe on a smaller model — `[0, 7, 6, 1]` under `lstrip` against
+`[0, 6, 7, 6, 1]` without it, mask id 7 unchanged.
+
+**On WordPiece the id stream does not change at all.** Its pre-tokenizer is
+`\w+|[^\w\s]+`, which never emits a whitespace piece, so there is no piece for a
+strip to remove. The corpus is explicit: `'the <L> cat'` with `lstrip` is
+`[1, 50, 2]`, the same three-id shape as the flagless `'the <MASK> cat'` at
+`[1, 46, 2]`. What changes there is the emitted token **string** — `' <L>'`
+carries the absorbed space where `<mask>` does not — and nothing else.
+
+So: **a strip never renumbers anything.** On a byte-level model it costs the id
+stream exactly the piece the absorbed whitespace would have produced; on
+WordPiece it costs the id stream nothing and moves a character into a token
+string. This is worth stating because the flags read like they might renumber
+something, and a reader who assumes they do will look for a second vocabulary
+that is not there.
 
 ### 3. `normalized`, not `special`, decides which text an entry is matched against
 
@@ -106,7 +152,11 @@ lowercased text, behaving in every respect as an ordinary token. It matches
 `'the [sep] cat'` too. Change nothing but `normalized`, to `false`, and the
 lowercased spelling stops matching entirely. The `special` flag is the same in
 both. All four combinations of the two are representable and round-trip through
-a `tokenizer.json`; `wordpiece_added_tokens.json` carries them.
+a `tokenizer.json`. `wordpiece_added_tokens.json` replays three of them; the
+fourth, `special: false, normalized: false`, comes from the uncommitted probe
+named in the Context above, and runs in the raw pass exactly as its
+`special: true` twin does. `special` is therefore not merely a poor predictor of
+the pass — it is not a predictor of it at all.
 
 Two summaries are therefore both wrong, and both are the natural guess:
 
@@ -183,12 +233,16 @@ left to be met:
 - `WordPieceVocabulary.Count` now under-counts what `Encode` can emit, because
   the added tokens are no longer members of `Vocab`. `BpeVocabulary` already had
   this property; the two now agree.
-- No committed WordPiece corpus showed the change, because none of them declares
-  an `added_tokens` table — `tokenizer_json.json` carries `"added_tokens": []`
-  and regenerating it produced no diff. The plan expected that diff to be the
-  evidence; it does not exist, which is what makes `wordpiece_added_tokens.json`
-  the sole replayed evidence for the whole WordPiece half rather than a
-  supplement to it.
+- No corpus that predates this branch showed the change, because none of them
+  declares a WordPiece `added_tokens` table:
+  `tokenizer_json.json`'s `wordpiece_tokenizer_json` carries
+  `"added_tokens": []`, and regenerating the file produced no diff. (Its
+  `unigram_tokenizer_json` does carry a non-empty table, which is why the field
+  name matters here — Unigram reads that table only to derive `Control` piece
+  types and never folded anything.) The plan expected the regenerated diff to be
+  the evidence; there is none, which is what makes the new
+  `wordpiece_added_tokens.json` the sole replayed evidence for the whole
+  WordPiece half rather than a supplement to it.
 
 ### 8. `single_word`'s word class is char-based here, code-point-based in HuggingFace
 
@@ -211,11 +265,14 @@ input.
 ### 9. What is measured, and what rests on fixtures built for the purpose
 
 `lstrip` is the flag with a carrier. `roberta-base` declares it on `<mask>`,
-which is the whole reason this issue exists, and Task 7 committed
-`tests/oracles/roberta_shaped_model.json` — a hand-constructed `tokenizer.json`
-carrying `roberta-base`'s exact five-entry added-token table, `<mask>` at id
-50264 with `lstrip: true` among them, over a toy eight-entry vocabulary. It
-proves the table loads, flags intact. It is **not** `roberta-base`'s own file:
+which is the whole reason this issue exists, and commit `d5e9f5c` added
+`tests/oracles/roberta_shaped_model.json` — a `tokenizer.json` generated by
+`build_roberta_shaped()` in `tools/build_tiny_models.py`, carrying
+`roberta-base`'s exact five-entry added-token table, `<mask>` at id 50264 with
+`lstrip: true` among them, over a toy eight-entry vocabulary. Generated rather
+than typed, so the next reader can rebuild it and see what is verbatim and what
+is toy. It proves the table loads, flags intact. It is **not** `roberta-base`'s
+own file:
 no model weights and no pretrained vocabulary are committed to this repository
 (decision [0003](0003-provenance-and-licensing.md)), and nothing here replays a
 `roberta-base` encoding.
@@ -243,15 +300,26 @@ the earlier candidate leftmost already, so no conflict arises. What they measure
 is the adjacent rule — the `while (start > from …)` clamp. An `rstrip` claims the
 shared space first, and the `lstrip` that follows is stopped at `from` instead of
 absorbing the same character twice: `'<pad> <mask>'` gives `'<pad> '`, `<mask>`,
-two tokens over eleven characters with nothing counted twice. Raw-position
+two tokens over twelve characters with nothing counted twice. Raw-position
 comparison with strip-after remains the untested fallback the design calls for,
 and the comment naming it stays until a case changes it.
 
 ### 10. What #105 inherits
 
-Issue #105 covers the five model settings `LoadBpe` still refuses, and the
-per-segment prefix-space rule. Two things are settled here and are not its to
-decide again:
+Issue #105 covers the `model` settings `LoadBpe` still refuses and the
+per-segment prefix-space rule. **Four** settings under `model` are refused by
+name, and this decision leaves every one of them where it found it:
+`byte_fallback` (`EnsureByteFallbackIsOff`), and `continuing_subword_prefix`,
+`fuse_unk` and `dropout` (`EnsureBpeModelSettingsAreReproduced`, whose own
+summary counts the three it owns). The issue's design note says five; the code
+says four, and the code is what a reader can check. What `LoadBpe` refuses
+*outside* `model` — any `normalizer`, `truncation`, `padding`, a
+`post_processor`, a `ByteLevel` with `use_regex` off, any other pre-tokenizer
+shape, and a `decoder` whose byte-level-ness disagrees with the model's — are
+pipeline sections rather than model settings, and `docs/equivalence.md`'s
+`LoadBpe` row enumerates all of them without asserting a count.
+
+Two things are settled here and are not #105's to decide again:
 
 - **The scan-versus-normalization order.** Added tokens are split out first, raw
   entries against raw text and normalized entries against normalized text, and

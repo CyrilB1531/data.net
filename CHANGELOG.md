@@ -143,7 +143,8 @@ and including `0.2.0` predate the split and covered all three at once — see
   `model.vocab`; they now reach both tokenizers instead of tokenizing to the
   unknown token. An entry that contradicts `model.vocab` — the same content at a
   different id — or that carries a negative id, is still refused.
-- **The `added_tokens` matching flags, all four of them, on both tokenizers.**
+- **The `added_tokens` matching flags — the four that decide where an entry
+  matches — on both tokenizers.**
   `AddedToken` is a public record carrying `Content`, `Id` and five flags, shared
   by `BpeVocabulary.AddedTokens` and the new `WordPieceVocabulary.AddedTokens`
   (both `IReadOnlyList<AddedToken>`; the BPE property was an
