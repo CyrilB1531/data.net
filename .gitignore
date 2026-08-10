@@ -38,6 +38,3 @@ tools/__pycache__/
 
 # Guide snippets are extracted from the Markdown on every run (tools/extract_doc_snippets.py)
 samples/DataNet.DocSnippets/Generated/
-
-# Superpowers specs and plans are session scaffolding, not documentation (kept locally, never pushed)
-docs/superpowers/
