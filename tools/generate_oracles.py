@@ -1823,11 +1823,17 @@ REPORT_DIGITS = (2, 3)
 
 
 def _finite_or_name(value: float) -> float | str:
-    """Encode a non-finite oracle value as a string.
+    """Encode a non-finite oracle value as a string, and round a finite one.
 
     JSON has no literal for NaN or infinity, and this repository's loader reads
     strict JSON. Every other oracle value in the corpus is a plain number; these
     are the first that cannot be.
+
+    A finite value goes through stable() for the reason STABLE_DIGITS gives:
+    balanced accuracy, Matthews correlation and Cohen's kappa all come out of
+    np.dot/np.outer/xp.mean reductions, so their last bits describe this host's
+    BLAS kernel rather than the metric. The three name strings are returned
+    untouched — "NaN" must stay "NaN", not become a rounded number.
     """
     if value != value:
         return "NaN"
@@ -1835,7 +1841,7 @@ def _finite_or_name(value: float) -> float | str:
         return "Infinity"
     if value == float("-inf"):
         return "-Infinity"
-    return value
+    return stable(value)
 
 
 def _metric_fixtures() -> list[dict]:
@@ -1976,8 +1982,14 @@ def _metric_case(fx: dict, weighted: bool) -> dict:
     # labels=labels here so every mode's matrix has the same shape and label
     # ordering as case["confusion_matrix"] above, rather than falling back to
     # the full observed label set for labels_subset-style fixtures.
+    #
+    # stable(), not bare float(): normalize= divides by a row, column or grand
+    # sum that numpy reduced, so these carry the same host-dependent last bits
+    # as every other reduced value in the corpus, and the same rounding rule
+    # applies. nan_to_num inside confusion_matrix means none of them is
+    # non-finite, so they need no name encoding.
     case["normalized"] = {
-        mode: [[float(x) for x in row]
+        mode: [[stable(x) for x in row]
                for row in skm.confusion_matrix(
                    y_true, y_pred, labels=labels, sample_weight=sw, normalize=mode)]
         for mode in ("true", "pred", "all")
