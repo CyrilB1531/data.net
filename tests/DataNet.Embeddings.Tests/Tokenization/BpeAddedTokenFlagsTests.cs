@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using DataNet.Embeddings.Persistence;
+using DataNet.Embeddings.Tests.Persistence;
 using DataNet.Embeddings.Tokenization;
 using Xunit;
 
@@ -36,21 +37,7 @@ public sealed class BpeAddedTokenFlagsTests
         using JsonDocument doc = OracleLoader.Load("bpe_added_token_flags.json");
         var tokenizer = new BpeTokenizer(Vocabulary(doc));
 
-        var failures = new List<string>();
-        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
-        {
-            string text = c.GetProperty("text").GetString()!;
-            string[] expectedTokens = c.GetProperty("tokens").EnumerateArray().Select(e => e.GetString()!).ToArray();
-            int[] expectedIds = c.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32()).ToArray();
-
-            TokenizationResult actual = tokenizer.Encode(text);
-            if (!expectedTokens.SequenceEqual(actual.Tokens) || !expectedIds.SequenceEqual(actual.Ids))
-            {
-                failures.Add($"{JsonSerializer.Serialize(text)}\n  exp: [{string.Join(" | ", expectedTokens)}] [{string.Join(", ", expectedIds)}]\n  got: [{string.Join(" | ", actual.Tokens)}] [{string.Join(", ", actual.Ids)}]");
-            }
-        }
-
-        Assert.True(failures.Count == 0, string.Join("\n", failures));
+        OracleReplay.AssertEncodings(doc, tokenizer.Encode, "tokens");
     }
 
     /// <summary>
@@ -65,26 +52,7 @@ public sealed class BpeAddedTokenFlagsTests
         using JsonDocument doc = OracleLoader.Load("bpe_added_token_flags.json");
         var tokenizer = new BpeTokenizer(Vocabulary(doc));
 
-        var failures = new List<string>();
-        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
-        {
-            int[] ids = c.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32()).ToArray();
-            string expected = c.GetProperty("decoded").GetString()!;
-            string expectedSkipping = c.GetProperty("decoded_skip_specials").GetString()!;
-
-            string actual = tokenizer.Decode(ids);
-            string actualSkipping = tokenizer.Decode(ids, skipSpecialTokens: true);
-            if (!string.Equals(expected, actual, StringComparison.Ordinal))
-            {
-                failures.Add($"decode {JsonSerializer.Serialize(expected)} got {JsonSerializer.Serialize(actual)}");
-            }
-            if (!string.Equals(expectedSkipping, actualSkipping, StringComparison.Ordinal))
-            {
-                failures.Add($"decode-skipping {JsonSerializer.Serialize(expectedSkipping)} got {JsonSerializer.Serialize(actualSkipping)}");
-            }
-        }
-
-        Assert.True(failures.Count == 0, string.Join("\n", failures));
+        OracleReplay.AssertDecodes(doc, (ids, skip) => tokenizer.Decode(ids, skipSpecialTokens: skip));
     }
 
     /// <summary>
@@ -121,12 +89,6 @@ public sealed class BpeAddedTokenFlagsTests
     {
         string json = doc.RootElement.GetProperty("metadata").GetProperty("tokenizer_json").GetString()!;
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-        return TokenizerJsonLoader.LoadBpe(stream, new ArtifactLoadOptions
-        {
-            MaxTotalBytes = 8L * 1024 * 1024,
-            MaxVocabularySize = 100_000,
-            MaxArrayLength = 100_000,
-            MaxTokenLength = 512,
-        });
+        return TokenizerJsonLoader.LoadBpe(stream, OracleReplay.BpeBounds());
     }
 }

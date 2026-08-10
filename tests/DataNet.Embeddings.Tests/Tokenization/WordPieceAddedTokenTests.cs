@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using DataNet.Embeddings.Persistence;
+using DataNet.Embeddings.Tests.Persistence;
 using DataNet.Embeddings.Tokenization;
 using Xunit;
 
@@ -38,22 +39,7 @@ public sealed class WordPieceAddedTokenTests
         using JsonDocument doc = OracleLoader.Load("wordpiece_added_tokens.json");
         var tokenizer = new WordPieceTokenizer(Vocabulary(doc));
 
-        var failures = new List<string>();
-        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
-        {
-            string name = c.GetProperty("name").GetString()!;
-            string text = c.GetProperty("text").GetString()!;
-            string[] expectedTokens = c.GetProperty("tokens").EnumerateArray().Select(e => e.GetString()!).ToArray();
-            int[] expectedIds = c.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32()).ToArray();
-
-            TokenizationResult actual = tokenizer.Encode(text);
-            if (!expectedTokens.SequenceEqual(actual.Tokens) || !expectedIds.SequenceEqual(actual.Ids))
-            {
-                failures.Add($"[{name}] {JsonSerializer.Serialize(text)}\n  exp: [{string.Join(" | ", expectedTokens)}] [{string.Join(", ", expectedIds)}]\n  got: [{string.Join(" | ", actual.Tokens)}] [{string.Join(", ", actual.Ids)}]");
-            }
-        }
-
-        Assert.True(failures.Count == 0, string.Join("\n", failures));
+        OracleReplay.AssertEncodings(doc, tokenizer.Encode, "tokens", nameProperty: "name");
     }
 
     /// <summary>

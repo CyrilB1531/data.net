@@ -655,14 +655,6 @@ public sealed class TokenizerJsonLoaderTests
 
     private static MemoryStream Bytes(string json) => new MemoryStream(Encoding.UTF8.GetBytes(json));
 
-    private static ArtifactLoadOptions BpeBounds() => new()
-    {
-        MaxTotalBytes = 8L * 1024 * 1024,
-        MaxVocabularySize = 100_000,
-        MaxArrayLength = 100_000,
-        MaxTokenLength = 512,
-    };
-
     [Fact]
     public void LoadBpe_reproduces_every_frozen_pipeline()
     {
@@ -676,7 +668,7 @@ public sealed class TokenizerJsonLoaderTests
             int[] expected = c.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32()).ToArray();
 
             BpeVocabulary vocab = TokenizerJsonLoader.LoadBpe(
-                Bytes(c.GetProperty("tokenizer_json").GetString()!), BpeBounds());
+                Bytes(c.GetProperty("tokenizer_json").GetString()!), OracleReplay.BpeBounds());
             int[] actual = [.. new BpeTokenizer(vocab).Encode(text).Ids];
 
             if (!expected.SequenceEqual(actual))
@@ -714,7 +706,7 @@ public sealed class TokenizerJsonLoaderTests
         using JsonDocument doc = OracleLoader.Load("bpe_added_tokens.json");
         var tokenizer = new BpeTokenizer(TokenizerJsonLoader.LoadBpe(
             Bytes(doc.RootElement.GetProperty("metadata").GetProperty("tokenizer_json").GetString()!),
-            BpeBounds()));
+            OracleReplay.BpeBounds()));
 
         var failures = new List<string>();
         foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
@@ -745,28 +737,9 @@ public sealed class TokenizerJsonLoaderTests
         using JsonDocument doc = OracleLoader.Load("bpe_added_tokens.json");
         var tokenizer = new BpeTokenizer(TokenizerJsonLoader.LoadBpe(
             Bytes(doc.RootElement.GetProperty("metadata").GetProperty("tokenizer_json").GetString()!),
-            BpeBounds()));
+            OracleReplay.BpeBounds()));
 
-        var failures = new List<string>();
-        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
-        {
-            int[] ids = c.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32()).ToArray();
-            string expected = c.GetProperty("decoded").GetString()!;
-            string expectedSkipping = c.GetProperty("decoded_skip_specials").GetString()!;
-
-            string actual = tokenizer.Decode(ids);
-            string actualSkipping = tokenizer.Decode(ids, skipSpecialTokens: true);
-            if (!string.Equals(expected, actual, StringComparison.Ordinal))
-            {
-                failures.Add($"decode {JsonSerializer.Serialize(expected)} got {JsonSerializer.Serialize(actual)}");
-            }
-            if (!string.Equals(expectedSkipping, actualSkipping, StringComparison.Ordinal))
-            {
-                failures.Add($"decode-skipping {JsonSerializer.Serialize(expectedSkipping)} got {JsonSerializer.Serialize(actualSkipping)}");
-            }
-        }
-
-        Assert.True(failures.Count == 0, string.Join("\n", failures));
+        OracleReplay.AssertDecodes(doc, (ids, skip) => tokenizer.Decode(ids, skipSpecialTokens: skip));
     }
 
     /// <summary>
@@ -792,7 +765,7 @@ public sealed class TokenizerJsonLoaderTests
          "model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2,"<|eot|>":3},"merges":[["a","b"]]}}
         """;
 
-        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
         Assert.Contains(vocabulary.AddedTokens, t => t.Content == "<|eot|>" && t.Id == 3);
         // model.vocab is left as the file declared it: the added table is a property
@@ -829,7 +802,7 @@ public sealed class TokenizerJsonLoaderTests
          "model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2,"<mask>":3},"merges":[["a","b"]]}}
         """;
 
-        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
         AddedToken mask = Assert.Single(vocabulary.AddedTokens, t => t.Content == "<mask>");
         Assert.True(mask.Lstrip);
@@ -857,7 +830,7 @@ public sealed class TokenizerJsonLoaderTests
         }
         """;
 
-        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
         AddedToken mask = Assert.Single(vocabulary.AddedTokens, t => t.Content == "<mask>");
         Assert.True(mask.Lstrip);
@@ -911,7 +884,7 @@ public sealed class TokenizerJsonLoaderTests
         {"model":{"type":"BPE","vocab":{"a":0},"merges":[],"byte_fallback":true}}
         """;
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
         Assert.Contains("byte_fallback", error.Message, StringComparison.Ordinal);
     }
 
@@ -919,7 +892,7 @@ public sealed class TokenizerJsonLoaderTests
     public void LoadBpe_refuses_a_unigram_model()
     {
         const string Json = """{"model":{"type":"Unigram","vocab":[]}}""";
-        Assert.Throws<InvalidDataException>(() => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+        Assert.Throws<InvalidDataException>(() => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
     }
 
     [Fact]
@@ -930,7 +903,7 @@ public sealed class TokenizerJsonLoaderTests
          "pre_tokenizer":{"type":"BertPreTokenizer"}}
         """;
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
         Assert.Contains("BertPreTokenizer", error.Message, StringComparison.Ordinal);
     }
 
@@ -944,8 +917,8 @@ public sealed class TokenizerJsonLoaderTests
         {"model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2},"merges":["a b"]}}
         """;
         Assert.Equal(
-            TokenizerJsonLoader.LoadBpe(Bytes(Pairs), BpeBounds()).Merges,
-            TokenizerJsonLoader.LoadBpe(Bytes(Lines), BpeBounds()).Merges);
+            TokenizerJsonLoader.LoadBpe(Bytes(Pairs), OracleReplay.BpeBounds()).Merges,
+            TokenizerJsonLoader.LoadBpe(Bytes(Lines), OracleReplay.BpeBounds()).Merges);
     }
 
     /// <summary>
@@ -967,7 +940,7 @@ public sealed class TokenizerJsonLoaderTests
         {"model":{"type":"BPE","vocab":{"a":0,"b":1,"c":2},"merges":["a b c"]}}
         """;
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
         Assert.Contains("not two space-separated symbols", error.Message, StringComparison.Ordinal);
     }
 
@@ -977,7 +950,7 @@ public sealed class TokenizerJsonLoaderTests
         const string Json = """
         {"model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2},"merges":["a b"]}}
         """;
-        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
         Assert.Single(vocabulary.Merges);
         Assert.Equal(new MergePair("a", "b"), vocabulary.Merges[0]);
@@ -989,7 +962,7 @@ public sealed class TokenizerJsonLoaderTests
         const string Json = """
         {"model":{"type":"BPE","vocab":{"a":0},"merges":[],"ignore_merges":true}}
         """;
-        Assert.True(TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()).IgnoreMerges);
+        Assert.True(TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()).IgnoreMerges);
     }
 
     /// <summary>
@@ -1008,7 +981,7 @@ public sealed class TokenizerJsonLoaderTests
          "pre_tokenizer":{"type":"ByteLevel","add_prefix_space":false,"use_regex":true}}
         """;
 
-        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
         Assert.True(vocabulary.ByteLevel);
         Assert.Equal(BpePatterns.Gpt2, vocabulary.PreTokenizerPattern);
@@ -1030,7 +1003,7 @@ public sealed class TokenizerJsonLoaderTests
         """;
 
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
 
         Assert.Contains("use_regex", error.Message, StringComparison.Ordinal);
     }
@@ -1053,7 +1026,7 @@ public sealed class TokenizerJsonLoaderTests
          "decoder":{"type":"ByteLevel"}}
         """;
 
-        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds());
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
         Assert.True(vocabulary.ByteLevel);
         Assert.Equal("\\w+", vocabulary.PreTokenizerPattern);
@@ -1076,7 +1049,7 @@ public sealed class TokenizerJsonLoaderTests
         """;
 
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
 
         Assert.Contains("continuing_subword_prefix", error.Message, StringComparison.Ordinal);
     }
@@ -1096,7 +1069,7 @@ public sealed class TokenizerJsonLoaderTests
         """;
 
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
 
         Assert.Contains("fuse_unk", error.Message, StringComparison.Ordinal);
     }
@@ -1114,7 +1087,7 @@ public sealed class TokenizerJsonLoaderTests
         """;
 
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
 
         Assert.Contains("dropout", error.Message, StringComparison.Ordinal);
     }
@@ -1131,7 +1104,7 @@ public sealed class TokenizerJsonLoaderTests
                   "continuing_subword_prefix":null,"fuse_unk":false}}
         """;
 
-        Assert.Single(TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()).Vocab);
+        Assert.Single(TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()).Vocab);
     }
 
     /// <summary>
@@ -1149,7 +1122,7 @@ public sealed class TokenizerJsonLoaderTests
         """;
 
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
 
         Assert.Contains("NFKC", error.Message, StringComparison.Ordinal);
     }
@@ -1169,7 +1142,7 @@ public sealed class TokenizerJsonLoaderTests
         """;
 
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
 
         Assert.Contains("BPEDecoder", error.Message, StringComparison.Ordinal);
     }
@@ -1184,7 +1157,7 @@ public sealed class TokenizerJsonLoaderTests
         """;
 
         InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), BpeBounds()));
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
 
         Assert.Contains("ByteLevel", error.Message, StringComparison.Ordinal);
     }
