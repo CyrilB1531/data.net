@@ -125,10 +125,12 @@ public sealed class ConfusionMatrix
 
     /// <summary>Copies the matrix into a two-dimensional array.</summary>
     /// <returns>A fresh <c>[rows, columns]</c> array; the matrix keeps its own storage.</returns>
-    // CA1814 (prefer jagged arrays): a confusion matrix and a densified CSR
-    // matrix are rectangular by construction, and double[,] is the shape every
-    // consumer expects to interop with. A jagged array would cost one allocation
-    // per row and let a caller build a ragged one.
+    // CA1814 (prefer jagged arrays): applies to both ToArray overloads below — a
+    // confusion matrix and a densified CSR matrix are rectangular by
+    // construction, and double[,] is the shape every consumer expects to
+    // interop with. A jagged array would cost one allocation per row and let a
+    // caller build a ragged one. The normalized projection returns the same
+    // shape as the unnormalized one for the same reason.
 #pragma warning disable CA1814
     public double[,] ToArray()
     {
@@ -143,7 +145,6 @@ public sealed class ConfusionMatrix
         }
         return result;
     }
-#pragma warning restore CA1814
 
     /// <summary>
     /// The cells as a rectangular array, scaled — <c>confusion_matrix(…, normalize=…)</c>.
@@ -206,6 +207,7 @@ public sealed class ConfusionMatrix
 
         return result;
     }
+#pragma warning restore CA1814
 
     /// <summary>
     /// Counts predictions against truth — the equivalent of
