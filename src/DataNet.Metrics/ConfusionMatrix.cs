@@ -125,10 +125,12 @@ public sealed class ConfusionMatrix
 
     /// <summary>Copies the matrix into a two-dimensional array.</summary>
     /// <returns>A fresh <c>[rows, columns]</c> array; the matrix keeps its own storage.</returns>
-    // CA1814 (prefer jagged arrays): a confusion matrix and a densified CSR
-    // matrix are rectangular by construction, and double[,] is the shape every
-    // consumer expects to interop with. A jagged array would cost one allocation
-    // per row and let a caller build a ragged one.
+    // CA1814 (prefer jagged arrays): applies to both ToArray overloads below — a
+    // confusion matrix and a densified CSR matrix are rectangular by
+    // construction, and double[,] is the shape every consumer expects to
+    // interop with. A jagged array would cost one allocation per row and let a
+    // caller build a ragged one. The normalized projection returns the same
+    // shape as the unnormalized one for the same reason.
 #pragma warning disable CA1814
     public double[,] ToArray()
     {
@@ -143,6 +145,68 @@ public sealed class ConfusionMatrix
         }
         return result;
     }
+
+    /// <summary>
+    /// The cells as a rectangular array, scaled — <c>confusion_matrix(…, normalize=…)</c>.
+    /// </summary>
+    /// <param name="normalization">Which sum each cell is divided by.</param>
+    /// <returns>A fresh <c>k × k</c> array; the matrix itself is unchanged.</returns>
+    /// <remarks>
+    /// A row, column or total that counted nothing yields zeros rather than
+    /// <see cref="double.NaN"/>, which is what scikit-learn's <c>nan_to_num</c>
+    /// does to the same division.
+    /// </remarks>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="normalization"/> is not one of the four modes.</exception>
+    public double[,] ToArray(Normalization normalization)
+    {
+        int k = _labels.Length;
+        double[,] result = new double[k, k];
+        double total = 0.0;
+        double[] rowSums = new double[k];
+        double[] colSums = new double[k];
+
+        for (int row = 0; row < k; row++)
+        {
+            for (int col = 0; col < k; col++)
+            {
+                double cell = _cells[(row * _stride) + col];
+                rowSums[row] += cell;
+                colSums[col] += cell;
+                total += cell;
+            }
+        }
+
+        for (int row = 0; row < k; row++)
+        {
+            for (int col = 0; col < k; col++)
+            {
+                double cell = _cells[(row * _stride) + col];
+                double denominator = normalization switch
+                {
+                    Normalization.None => 1.0,
+                    Normalization.True => rowSums[row],
+                    Normalization.Pred => colSums[col],
+                    Normalization.All => total,
+                    _ => throw new ArgumentOutOfRangeException(
+                        nameof(normalization), normalization, "Not one of the four normalize= modes."),
+                };
+
+                // SonarLint S1244 warns against comparing floating point for exact
+                // equality, which is right for arithmetic and wrong here: this asks
+                // whether anything accumulated at all, not whether two computed
+                // quantities are close. scikit-learn passes the divided matrix
+                // through nan_to_num, so a row, column or total that counted
+                // nothing gives zeros rather than NaN. A tolerance would treat a
+                // denominator that is merely small as if it were absent, which
+                // changes the answer for a legitimately tiny weight.
+#pragma warning disable S1244
+                result[row, col] = denominator == 0.0 ? 0.0 : cell / denominator;
+#pragma warning restore S1244
+            }
+        }
+
+        return result;
+    }
 #pragma warning restore CA1814
 
     /// <summary>
@@ -151,7 +215,7 @@ public sealed class ConfusionMatrix
     /// </summary>
     /// <param name="yTrue">The true labels.</param>
     /// <param name="yPred">The predicted labels, same length as <paramref name="yTrue"/>.</param>
-    /// <param name="labels">The label set and its order. Omit for the sorted union of both inputs. In this matrix's public view — <see cref="Labels"/>, the indexer, <see cref="ToArray"/>, <see cref="TotalWeight"/> — a sample whose true or predicted label falls outside this set is not counted, exactly as in scikit-learn's own <c>confusion_matrix(labels=…)</c>.</param>
+    /// <param name="labels">The label set and its order. Omit for the sorted union of both inputs. In this matrix's public view — <see cref="Labels"/>, the indexer, <see cref="ToArray()"/>, <see cref="TotalWeight"/> — a sample whose true or predicted label falls outside this set is not counted, exactly as in scikit-learn's own <c>confusion_matrix(labels=…)</c>.</param>
     /// <param name="sampleWeight">A weight per sample. Omit to weight every sample by 1.</param>
     /// <exception cref="ArgumentException">The inputs disagree in length, are empty, contain duplicate labels, or no supplied label occurs in <paramref name="yTrue"/>.</exception>
     public static ConfusionMatrix Compute(

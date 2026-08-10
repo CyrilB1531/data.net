@@ -1822,6 +1822,26 @@ BETAS = (0.5, 2.0)
 REPORT_DIGITS = (2, 3)
 
 
+def _finite_or_name(value: float) -> float | str:
+    """Encode a non-finite oracle value as a string, and round a finite one.
+
+    JSON has no literal for NaN or infinity, and this repository's loader reads
+    strict JSON. Every other oracle value in the corpus is a plain number; these
+    are the first that cannot be.
+
+    A finite value goes through stable() for the reason STABLE_DIGITS gives:
+    balanced accuracy, Matthews correlation and Cohen's kappa all come out of
+    np.dot/np.outer/xp.mean reductions, so their last bits describe this host's
+    BLAS kernel rather than the metric. The three name strings are returned
+    untouched — "NaN" must stay "NaN", not become a rounded number.
+    """
+    if math.isnan(value):
+        return "NaN"
+    if math.isinf(value):
+        return "Infinity" if value > 0 else "-Infinity"
+    return stable(value)
+
+
 def _metric_fixtures() -> list[dict]:
     rng = SeededRandom(METRIC_SEED)
     fixtures: list[dict] = []
@@ -1875,6 +1895,12 @@ def _metric_fixtures() -> list[dict]:
 
     sparse = [rng.choice([-1, 5, 42]) for _ in range(120)]
     add("non_contiguous_labels", sparse, noisy(sparse, [-1, 5, 42], 0.4), pos_label=5)
+
+    # A class predicted but never true, on a fixture small enough that it moves
+    # balanced accuracy off the naive per-sample average: it is scored only over
+    # the classes present in y_true (0.75), not over every class either array
+    # mentions (0.5), and the adjusted form follows the same restriction.
+    add("class_only_in_pred", [0, 0, 1], [0, 2, 1])
 
     return fixtures
 
@@ -1942,6 +1968,30 @@ def _metric_case(fx: dict, weighted: bool) -> dict:
         case["reports"][str(digits)] = skm.classification_report(
             y_true, y_pred, labels=labels, target_names=fx["target_names"],
             digits=digits, sample_weight=sw, zero_division=0)
+
+    case["balanced_accuracy"] = _finite_or_name(
+        skm.balanced_accuracy_score(y_true, y_pred, sample_weight=sw))
+    case["balanced_accuracy_adjusted"] = _finite_or_name(
+        skm.balanced_accuracy_score(y_true, y_pred, sample_weight=sw, adjusted=True))
+    case["matthews"] = _finite_or_name(skm.matthews_corrcoef(y_true, y_pred, sample_weight=sw))
+    for suffix, w in (("", None), ("_linear", "linear"), ("_quadratic", "quadratic")):
+        case["kappa" + suffix] = _finite_or_name(
+            skm.cohen_kappa_score(y_true, y_pred, weights=w, sample_weight=sw))
+    # labels=labels here so every mode's matrix has the same shape and label
+    # ordering as case["confusion_matrix"] above, rather than falling back to
+    # the full observed label set for labels_subset-style fixtures.
+    #
+    # stable(), not bare float(): normalize= divides by a row, column or grand
+    # sum that numpy reduced, so these carry the same host-dependent last bits
+    # as every other reduced value in the corpus, and the same rounding rule
+    # applies. nan_to_num inside confusion_matrix means none of them is
+    # non-finite, so they need no name encoding.
+    case["normalized"] = {
+        mode: [[stable(x) for x in row]
+               for row in skm.confusion_matrix(
+                   y_true, y_pred, labels=labels, sample_weight=sw, normalize=mode)]
+        for mode in ("true", "pred", "all")
+    }
     return case
 
 
@@ -1963,9 +2013,14 @@ def generate_classification_metrics() -> dict:
             "reference_calls": [
                 "sklearn.metrics.accuracy_score",
                 "sklearn.metrics.confusion_matrix",
+                "sklearn.metrics.confusion_matrix(normalize=...)",
                 "sklearn.metrics.precision_recall_fscore_support",
                 "sklearn.metrics.fbeta_score",
                 "sklearn.metrics.classification_report",
+                "sklearn.metrics.balanced_accuracy_score",
+                "sklearn.metrics.balanced_accuracy_score(adjusted=True)",
+                "sklearn.metrics.matthews_corrcoef",
+                "sklearn.metrics.cohen_kappa_score(weights=None|'linear'|'quadratic')",
             ],
             "count": len(cases),
         },
@@ -2442,7 +2497,12 @@ def main() -> None:
         payload = gen()
         path = ORACLE_DIR / filename
         with path.open("w", encoding="utf-8") as f:
-            json.dump(payload, f, ensure_ascii=False, indent=1)
+            # allow_nan=False: Python would otherwise write a bare NaN or
+            # Infinity, which is not JSON and which System.Text.Json refuses at
+            # load time — a failure that would surface in CI as a broken test run
+            # rather than here as a broken generation. Non-finite oracle values
+            # are encoded deliberately, as the strings below.
+            json.dump(payload, f, ensure_ascii=False, indent=1, allow_nan=False)
             f.write("\n")
         print(f"{filename}: {payload['metadata']['count']} cases -> {path}")
 

@@ -52,6 +52,7 @@ internal static class Lot5Metrics
         Weighted();
         Report(cm);
         Roc();
+        MatrixReaders();
     }
 
     /// <summary>The three multiclass averages, on one matrix, printed together.</summary>
@@ -207,6 +208,25 @@ internal static class Lot5Metrics
         Console.WriteLine($"  MultiClass ovr macro  = "
             + $"{RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }):F3}"
             + "  (parallel, same value)");
+        Console.WriteLine();
+    }
+
+    /// <summary>The metrics that read a matrix rather than the labels.</summary>
+    private static void MatrixReaders()
+    {
+        int[] truth = [0, 0, 1, 1, 2, 2, 2];
+        int[] predicted = [0, 1, 1, 1, 2, 0, 2];
+        ConfusionMatrix cm = ConfusionMatrix.Compute(truth, predicted);
+
+        Console.WriteLine($"  BalancedAccuracy      = {BalancedAccuracy.Score(cm):F3}");
+        Console.WriteLine($"  MatthewsCorrelation   = {MatthewsCorrelation.Score(cm):F3}");
+        Console.WriteLine($"  CohenKappa            = {CohenKappa.Score(cm):F3}");
+        Console.WriteLine($"  CohenKappa (linear)   = {CohenKappa.Score(cm, KappaWeighting.Linear):F3}");
+
+        // normalize= is a projection: the matrix itself never becomes fractions,
+        // so Accuracy.Score(cm) above still means what it says.
+        double[,] rowNormalised = cm.ToArray(Normalization.True);
+        Console.WriteLine($"  row-normalised [0,0]  = {rowNormalised[0, 0]:F3}");
         Console.WriteLine();
     }
 

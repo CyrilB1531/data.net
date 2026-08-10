@@ -1,21 +1,25 @@
 #!/usr/bin/env python3
-"""Time the Python counterparts of the DataNet.Metrics work (issue #61).
+"""Time the Python counterparts of the DataNet.Metrics work (issue #61),
+extended with balanced accuracy, Matthews correlation and Cohen's kappa
+(issue #93).
 
 Methodology is mirrored by the C# harness (bench/DataNet.Text.Benchmarks,
 `compare-metrics` mode) so the two are comparable:
 
   * same corpus files (bench/corpus/metrics/, from generate_metrics.py),
-  * same six operations, in the same order, over the same shapes,
+  * same nine operations, in the same order, over the same shapes,
   * metric: milliseconds per operation,
   * auto-scaling: repeat until a measurement lasts >= MIN_TIME,
   * report the best (minimum) of REPEATS measurements,
   * elapsed time (perf_counter) and processor time (process_time) together.
 
-None of the six calls below passes sample_weight, on either side of the
+None of the nine calls below passes sample_weight, on either side of the
 comparison -- the corpus carries a weight column for potential future use, but
-the six named operations do not read it. roc_auc_binary only runs over the
+the nine named operations do not read it. roc_auc_binary only runs over the
 two-class files; roc_auc_ovr_macro only over the ten-class files whose
 `scores` matrix the generator actually wrote (it stops at 100 000 rows).
+balanced_accuracy, matthews and cohen_kappa run over every shape, unlike the
+two roc_auc rows.
 """
 
 from __future__ import annotations
@@ -113,6 +117,10 @@ def measure_shape(n: int, k: int) -> list[dict]:
             f"roc_auc_ovr_macro_{suffix}",
             lambda: skm.roc_auc_score(y_true, scores, multi_class="ovr", average="macro"),
         ))
+
+    results.append(measure(f"balanced_accuracy_{suffix}", lambda: skm.balanced_accuracy_score(y_true, y_pred)))
+    results.append(measure(f"matthews_{suffix}", lambda: skm.matthews_corrcoef(y_true, y_pred)))
+    results.append(measure(f"cohen_kappa_{suffix}", lambda: skm.cohen_kappa_score(y_true, y_pred)))
 
     return results
 

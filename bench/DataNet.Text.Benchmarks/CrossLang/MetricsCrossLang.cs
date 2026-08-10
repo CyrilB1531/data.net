@@ -13,11 +13,14 @@ namespace DataNet.Text.Benchmarks.CrossLang;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Six operations are named in the design brief: <c>confusion_matrix</c>,
-/// <c>accuracy</c>, <c>precision_recall_f1_macro</c>, <c>classification_report</c>,
-/// <c>roc_auc_binary</c> and <c>roc_auc_ovr_macro</c>. None takes
-/// <c>sample_weight</c> — the Python calls this mirrors do not either — so the
-/// weight column the corpus carries is unused here, on both sides.
+/// Nine operations are named in total: the six from issue #61 —
+/// <c>confusion_matrix</c>, <c>accuracy</c>, <c>precision_recall_f1_macro</c>,
+/// <c>classification_report</c>, <c>roc_auc_binary</c> and
+/// <c>roc_auc_ovr_macro</c> — plus <c>balanced_accuracy</c>, <c>matthews</c> and
+/// <c>cohen_kappa</c> from issue #93, which (unlike the two ROC-AUC rows) run over
+/// every shape. None takes <c>sample_weight</c> — the Python calls this mirrors
+/// do not either — so the weight column the corpus carries is unused here, on
+/// both sides.
 /// </para>
 /// <para>
 /// <c>roc_auc_binary</c> only runs over the two-class files, and
@@ -107,6 +110,10 @@ public static class MetricsCrossLang
             double[] flat = Flatten(scores, k);
             results.Add(Harness.Measure($"roc_auc_ovr_macro_{suffix}", () => RocAuc.MultiClass(yTrue, flat, k)));
         }
+
+        results.Add(Harness.Measure($"balanced_accuracy_{suffix}", () => BalancedAccuracy.Score(yTrue, yPred)));
+        results.Add(Harness.Measure($"matthews_{suffix}", () => MatthewsCorrelation.Score(yTrue, yPred)));
+        results.Add(Harness.Measure($"cohen_kappa_{suffix}", () => CohenKappa.Score(yTrue, yPred)));
 
         return results;
     }

@@ -368,6 +368,14 @@ fourth this branch adds: **processor time is the merge gate**, not a footnote.
 Every row in the cross-language table below must be ≥ 1×, or the branch does
 not merge.
 
+Issue #93 later added `BalancedAccuracy`, `MatthewsCorrelation` and `CohenKappa`
+to the same cross-language harness, taking it from six operations to **nine**.
+They share this section's corpus, harnesses, methodology and gate, so the prose
+below covers them; their 18 measured rows were produced in a separate window with
+its own load average and are published once, in
+[`docs/guides/performance.md`](../docs/guides/performance.md#balanced-accuracy-matthews-correlation-cohens-kappa-issue-93),
+rather than duplicated into the table here.
+
 The corpus is generated rather than committed, like `bench/corpus/vocabs/` —
 six JSON files, about 54 MB total:
 
@@ -377,7 +385,7 @@ python bench/corpus/generate_metrics.py     # writes bench/corpus/metrics/, git-
 
 Six shapes — (1 000, 2), (1 000, 10), (100 000, 2), (100 000, 10),
 (1 000 000, 2), (1 000 000, 10) samples × classes — each with `y_true`,
-`y_pred`, a sample-weight column (generated but unused by the six benchmarked
+`y_pred`, a sample-weight column (generated but unused by the nine benchmarked
 operations, on both sides), and scores for the ROC-AUC rows. The 10-class score
 matrix stops at 100 000 rows: a million rows by ten classes is 200 MB of JSON,
 which would measure the parser rather than the metric.
@@ -390,7 +398,10 @@ dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter
 ```
 
 Default job on both sides. The full matrix — 3 sizes × 2 class counts ×
-5 methods = 30 benchmarks — takes about ten minutes per run.
+`MetricsBenchmarks`' 5 methods = 30 benchmarks — takes about ten minutes per run.
+This tier is not the nine-operation cross-language set: `MetricsBenchmarks` times
+`Matrix`, `MatrixWeighted`, `AccuracyScore`, `F1Macro` and `Report` only, and the
+three issue-#93 metrics have no BenchmarkDotNet method of their own.
 
 **`--inProcess` on the first command is not decoration.** Without it the two
 commands do not measure the same way: `DataNet.NetStandard.Benchmarks` pins
@@ -514,8 +525,14 @@ DataNet on .NET 10.0.10 against scikit-learn 1.9.0 / NumPy 2.5.1 on Python
 | `precision_recall_f1_macro_n1000000_k10` | 10.001 | 173.128 | 17.31x | 10.000 | 173.121 | **17.31x** |
 | `classification_report_n1000000_k10` | 9.865 | 352.364 | 35.72x | 9.864 | 352.349 | **35.72x** |
 
-**Merge gate: 29/29 operations at or above 1× on processor time.** The
-narrowest margin is 2.74× (`roc_auc_ovr_macro` at n=100 000, k=10). The design
+**Merge gate: 29/29 rows at or above 1× on processor time.** Twenty-nine rows,
+not twenty-nine operations: six operations over six shapes, less the seven
+shape/operation pairs the two ROC-AUC rows do not cover. The three issue-#93
+operations add 18 more rows, all of them ≥ 16.5× — published in
+[`docs/guides/performance.md`](../docs/guides/performance.md#balanced-accuracy-matthews-correlation-cohens-kappa-issue-93),
+measured in their own window, and not folded into the table above because they do
+not share its load conditions. The
+narrowest margin here is 2.74× (`roc_auc_ovr_macro` at n=100 000, k=10). The design
 brief named `roc_auc_binary` at a million samples — where the cost is a sort —
 as the likely candidate for falling below 1×, with a radix pass over the
 `double` bit patterns as the fallback if it did. It came in at 3.81×; no row
@@ -571,10 +588,11 @@ inside it. The rows that carry the argument about the underlying computation
 are the ones at n=100 000 and n=1 000 000, where the ratios settle to a still
 decisive but far more modest 2.7×–43×.
 
-None of the six operations passes `sample_weight` on either side — the corpus
-carries that column, but the brief's own six calls do not use it, so this
-comparison does not exercise `ConfusionMatrix`'s weighted path at all; see
-`MetricsBenchmarks.MatrixWeighted` in the intra-C# tier above for that.
+None of the nine operations passes `sample_weight` on either side — the corpus
+carries that column, but neither the brief's own six calls nor the three issue-#93
+ones use it, so this comparison does not exercise `ConfusionMatrix`'s weighted
+path at all; see `MetricsBenchmarks.MatrixWeighted` in the intra-C# tier above for
+that.
 
 `precision_recall_f1_macro` is the one operation where the two sides do not do
 quite the same amount of work, though both compute the same three numbers over
