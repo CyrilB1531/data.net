@@ -798,9 +798,30 @@ Follow `generate_bpe_added_tokens`'s shape exactly — it already carries `token
 
 Record `tokens`, `ids`, `decoded` and `decoded_skip_specials` per case, as the sibling generator does.
 
-- [ ] **Step 2: Add the WordPiece equivalent**
+- [ ] **Step 2: Add the WordPiece equivalent — this one is load-bearing**
 
-A `generate_wordpiece_added_tokens`, with a `Lowercase` normalizer and both a special and an ordinary added token, so the normalization rule is replayed rather than asserted.
+`generate_wordpiece_added_tokens`, with a `Lowercase` normalizer. **No committed WordPiece corpus carries an
+`added_tokens` table at all** — `_wordpiece_tokenizer` never adds a token, so the fixture the plan assumed
+would move under Task 5 does not exist. That makes this corpus the only replayed evidence for everything
+Task 5 built, and it must cover four cases, not one:
+
+1. An entry that runs in the **raw** pass (`normalized: false`) — matched against the un-lowercased text,
+   emitting its own casing.
+2. An entry that runs in the **normalized** pass (`normalized: true`) — matched against lowercased text,
+   emitting the lowercased form.
+3. **`normalized` disagreeing with `!special`** — an entry with `special: true, normalized: true`. This is
+   the case that proves the discriminator is `normalized` and not `special`, and it is the one the natural
+   implementation gets wrong.
+4. **Outer-pass precedence** — a raw entry and a normalized entry that overlap, where the normalized one
+   starts further left. The raw pass runs first and wins, which a single merged leftmost-wins scan would
+   not reproduce.
+
+Plus the `lstrip`/`rstrip`/`single_word` edge cases from Step 1, on this tokenizer too.
+
+Note when writing the generator: `tokenizers` **refuses** a `tokenizer.json` that omits `normalized`, so
+every entry it emits states the field explicitly. That is why the loader's default is a deliberate choice
+rather than a measured behaviour, and the corpus cannot exercise the absent-field path — a C# unit test
+covers that instead.
 
 - [ ] **Step 3: Regenerate and read the diff**
 
