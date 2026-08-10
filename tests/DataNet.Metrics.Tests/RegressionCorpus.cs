@@ -59,9 +59,10 @@ internal static class RegressionCorpus
     /// Scaling by <c>max(1, |expected|)</c> reduces to <c>CONTRIBUTING.md</c>'s
     /// absolute 1e-9 for everything at or below 1 — which is where the values
     /// scikit-learn <em>defines</em> rather than approximates live, 0.0 and 1.0
-    /// among them — and stays meaningful above it. Non-finite expectations are
-    /// compared exactly, because they are defined too, and because <c>==</c> is
-    /// false for <c>NaN</c> against itself.
+    /// among them — and stays meaningful above it. A non-finite expectation is
+    /// matched by predicate rather than by comparison, because it is defined
+    /// rather than approximated, and because <c>==</c> is false for
+    /// <c>NaN</c> against itself.
     /// </remarks>
     public static void AssertClose(double expected, double actual, string because)
     {
@@ -73,7 +74,15 @@ internal static class RegressionCorpus
 
         if (double.IsInfinity(expected))
         {
-            Assert.True(expected.Equals(actual), $"{because}: expected {expected}, got {actual}");
+            // Asked as two predicates rather than as an equality, which S1244
+            // would object to and would be right about: the question is whether
+            // the result is the *same* infinity, and these answer it without
+            // ever comparing two floating-point values.
+            bool matches = double.IsPositiveInfinity(expected)
+                ? double.IsPositiveInfinity(actual)
+                : double.IsNegativeInfinity(actual);
+
+            Assert.True(matches, $"{because}: expected {expected}, got {actual}");
             return;
         }
 
