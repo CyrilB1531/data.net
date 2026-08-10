@@ -224,4 +224,37 @@ public sealed class ValueEqualityTests
         Assert.NotEqual(SampleBpe(), other);
         Assert.NotEqual(SampleBpe().GetHashCode(), other.GetHashCode());
     }
+
+    /// <summary>
+    /// An empty suffix marks nothing, so it means the same as no suffix. The rule lives on the
+    /// type rather than in the loader because <see cref="BpeVocabulary"/> is public and
+    /// constructible: a hand-built vocabulary reaches <c>Decode</c> without the loader ever
+    /// running, and a loader-side rule would make two vocabularies that mean the same thing
+    /// compare unequal. ADR 0022 section 4 records that failure for <c>AddedToken.Normalized</c>.
+    /// </summary>
+    [Fact]
+    public void An_empty_end_of_word_suffix_reads_back_as_absent()
+    {
+        BpeVocabulary empty = new(new Dictionary<string, int> { ["a"] = 0 }, []) { EndOfWordSuffix = "" };
+        BpeVocabulary absent = new(new Dictionary<string, int> { ["a"] = 0 }, []) { EndOfWordSuffix = null };
+
+        Assert.Null(empty.EndOfWordSuffix);
+        Assert.Equal(absent, empty);
+        Assert.Equal(absent.GetHashCode(), empty.GetHashCode());
+    }
+
+    /// <summary>
+    /// The <c>with</c> expression goes through the same <c>init</c> accessor, so a suffix
+    /// emptied by a copy is absent too. #104 learned that a computed member has to be checked
+    /// on this path specifically, not only on construction.
+    /// </summary>
+    [Fact]
+    public void A_with_expression_emptying_the_end_of_word_suffix_reads_back_as_absent()
+    {
+        BpeVocabulary marked = new(new Dictionary<string, int> { ["a"] = 0 }, []) { EndOfWordSuffix = "</w>" };
+
+        BpeVocabulary emptied = marked with { EndOfWordSuffix = "" };
+
+        Assert.Null(emptied.EndOfWordSuffix);
+    }
 }
