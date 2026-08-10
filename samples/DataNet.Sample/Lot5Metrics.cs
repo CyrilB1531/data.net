@@ -1,3 +1,4 @@
+using System.Globalization;
 using DataNet.Metrics;
 
 namespace DataNet.Sample;
@@ -151,7 +152,7 @@ internal static class Lot5Metrics
 
         // Present only when the report is not over the full label set, exactly
         // as scikit-learn prints "micro avg" in place of "accuracy".
-        Console.WriteLine($"    micro avg          = {report.MicroAverage?.F1.ToString("F3") ?? "<absent: every label is covered>"}");
+        Console.WriteLine($"    micro avg          = {report.MicroAverage?.F1.ToString("F3", CultureInfo.InvariantCulture) ?? "<absent: every label is covered>"}");
         Console.WriteLine($"    accuracy           = {report.Accuracy:F3} on {report.TotalSupport:F0} samples");
         Console.WriteLine();
 
@@ -210,5 +211,5 @@ internal static class Lot5Metrics
     }
 
     private static string Format(double[] values) =>
-        "[" + string.Join(", ", values.Select(v => v.ToString("F3"))) + "]";
+        "[" + string.Join(", ", values.Select(v => v.ToString("F3", CultureInfo.InvariantCulture))) + "]";
 }

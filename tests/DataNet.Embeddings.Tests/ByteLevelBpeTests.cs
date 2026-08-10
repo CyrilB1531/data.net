@@ -38,7 +38,7 @@ public sealed class ByteLevelBpeTests
             {
                 continue;
             }
-            int space = line.IndexOf(' ');
+            int space = line.IndexOf(' ', StringComparison.Ordinal);
             merges.Add(new MergePair(line.Substring(0, space), line.Substring(space + 1)));
         }
 

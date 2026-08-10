@@ -4,7 +4,17 @@ namespace DataNet.Text.Stemming;
 
 // SonarLint S3776: cognitive complexity: faithful port of a published rule-engine; decomposing it would break the 1:1 mapping with the reference that makes divergences auditable.
 // SonarLint S3267: the suffix scans early-return and mutate in place, which Where cannot express.
-#pragma warning disable S3776, S3267
+// CA1307 (specify StringComparison): the overload it asks for —
+// string.IndexOf(char, StringComparison) / string.Replace(string, string?,
+// StringComparison) — does not exist on netstandard2.0, which this assembly
+// targets. Both calls are ordinal on every runtime that has them, so the
+// suggestion would change nothing but the compilation.
+// CA1308 (normalize to uppercase): Snowball and Porter are *defined* on
+// lowercase input — the published algorithms, the reference implementations and
+// the oracle corpora this suite is checked against all lowercase first.
+// ToUpperInvariant would return different stems, which is a wrong answer rather
+// than a differently-cased one.
+#pragma warning disable S3776, S3267, CA1307, CA1308
 
 /// <summary>
 /// The German Snowball stemming algorithm.

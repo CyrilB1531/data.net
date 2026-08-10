@@ -73,7 +73,7 @@ A change is not finished until all of these hold:
 
 1. **`dotnet build` is clean.** Warnings are errors repository-wide
    (`TreatWarningsAsErrors` in the root `Directory.Build.props`), covering `src`,
-   `tests` and `bench` alike — so a warning fails the build.
+   `tests`, `bench` and `samples` alike — so a warning fails the build.
 2. **`dotnet test` passes**, and any new algorithm replays a frozen oracle
    corpus. Conformance is *proven*, never assumed — see below.
 3. **Lint is clean**: `dotnet format --verify-no-changes` and markdownlint.
@@ -208,10 +208,12 @@ one.
 
 ### Where the rules run
 
-`SonarAnalyzer.CSharp` is referenced by every project under `src/`, `tests/` and
-`bench/`, so **the rules that gate the pull request also gate `dotnet build`**.
-Warnings are errors here, which means a Sonar finding is a compile error on your
-machine rather than a comment on your pull request:
+`SonarAnalyzer.CSharp` is referenced by every project under `src/`, `tests/`,
+`bench/` and `samples/`, and the .NET code-quality rules are on at
+`AnalysisMode=All` repository-wide, so **the rules that gate the pull request also
+gate `dotnet build`**. Warnings are errors here, which means a Sonar or `CAxxxx`
+finding is a compile error on your machine rather than a comment on your pull
+request:
 
 ```bash
 dotnet build DataNet.slnx -c Release
@@ -221,12 +223,20 @@ It is an analyzer-only reference (`PrivateAssets="all"`), so it reaches no
 published package — `tools/check_nuspec_dependencies.py` asserts that. The
 version is pinned once, as `$(DataNetSonarAnalyzerVersion)` in the root
 `Directory.Build.props`; raising it will usually surface new rules and therefore
-a cleanup, so treat it as its own change. See
-[`0015`](docs/decisions/0015-sonar-rules-in-the-build.md).
+a cleanup, so treat it as its own change. `AnalysisLevel` is pinned to `10.0`
+for the same reason. See
+[`0015`](docs/decisions/0015-sonar-rules-in-the-build.md) and
+[`0019`](docs/decisions/0019-the-net-analysers-run-in-the-build-too.md).
 
-Two things still only SonarCloud sees, so a green local build is not a green
-quality gate: **duplication and coverage**, and the **`samples/`**, which are
-outside `DataNet.slnx` and consume the packages from a local feed.
+The command above does not reach `samples/`: the samples are outside
+`DataNet.slnx` and consume the packages from a local feed, so they are analysed
+only when the samples themselves are built — which needs a `pack` first, and
+happens in three CI jobs: `Sample consumes the packages`, `Guide snippets
+compile`, and the samples build inside `Build and analyze`. Expect a finding
+there from CI rather than from `dotnet build DataNet.slnx`.
+
+One thing still only SonarCloud sees, so a green local build is not a green
+quality gate: **duplication and coverage**.
 
 ### Suppressions
 
@@ -245,6 +255,13 @@ is declared application-scope in the extension manifest, so VS Code silently dro
 it from a workspace file. The pragma works because SonarLint's C# analysis is
 SonarAnalyzer running through Roslyn.
 
+A rule that a whole area trips *by being that area* — xunit's underscored test
+names, BenchmarkDotNet's reflection-instantiated types, a sample printing to the
+console — goes in that area's `Directory.Build.props` as a `NoWarn` entry, with a
+comment naming each rule and why it does not apply there. A rule that one call
+site disagrees with stays a `#pragma warning disable` in the source, with its
+reason above it. Never add either without the reason.
+
 A suppression needs a justification a reviewer can disagree with. "Too noisy" is
 not one.
 
@@ -254,7 +271,8 @@ the rule reappears against the new one. This has already happened twice while
 extracting the shared Snowball framework — `CA1845`, then `S3267`. Both times the
 build stayed green, because nothing in it ran the analyzer; that is no longer
 true for `src/`, `tests/` and `bench/`, where the rule now reappears as a build
-error at the moment of the extraction.
+error at the moment of the extraction — nor for `samples/`, where it reappears
+when the samples are built.
 
 ## Licensing and provenance
 

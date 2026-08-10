@@ -181,7 +181,7 @@ internal static class FeatureVocabularyJson
     /// that breaks that would transform documents into the wrong columns — silently.
     /// </remarks>
     private static InvalidDataException OutOfOrder(string artifact, string previous, string current) =>
-        string.CompareOrdinal(previous, current) == 0
+        string.Equals(previous, current, StringComparison.Ordinal)
             ? JsonArtifact.Inconsistent(artifact, $"'{VocabularyProperty}' contains the duplicate entry '{current}'.")
             : JsonArtifact.Inconsistent(
                 artifact,

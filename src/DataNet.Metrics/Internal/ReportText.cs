@@ -3,6 +3,13 @@ using System.Text;
 
 namespace DataNet.Metrics.Internal;
 
+// CA1307 (specify StringComparison): the overload it asks for —
+// string.IndexOf(char, StringComparison) / string.Replace(string, string?,
+// StringComparison) — does not exist on netstandard2.0, which this assembly
+// targets. Both calls are ordinal on every runtime that has them, so the
+// suggestion would change nothing but the compilation.
+#pragma warning disable CA1307
+
 /// <summary>
 /// Renders a <see cref="ClassificationReport"/> in scikit-learn's own layout,
 /// character for character.

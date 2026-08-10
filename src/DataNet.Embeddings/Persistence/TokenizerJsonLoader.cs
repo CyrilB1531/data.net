@@ -686,6 +686,12 @@ public static class TokenizerJsonLoader
             // errors there where splitting on the first space would silently load
             // them as ("a", "b c") and ("", "a b"). A trailing space is not an error:
             // "a " splits into two fields, the second empty, and Python takes it.
+            // CA1307 (specify StringComparison): the overload it asks for —
+            // string.IndexOf(char, StringComparison) / string.Replace(string, string?,
+            // StringComparison) — does not exist on netstandard2.0, which this assembly
+            // targets. Both calls are ordinal on every runtime that has them, so the
+            // suggestion would change nothing but the compilation.
+#pragma warning disable CA1307
             int space = line.IndexOf(' ');
             if (space < 0)
             {
@@ -697,6 +703,7 @@ public static class TokenizerJsonLoader
                 throw new InvalidDataException(
                     $"The {SourceName} BPE merge at index {index} is not two space-separated symbols: '{line}'.");
             }
+#pragma warning restore CA1307
             return new MergePair(line.Substring(0, space), line.Substring(space + 1));
         }
         if (entry.ValueKind == JsonValueKind.Array
