@@ -53,6 +53,14 @@ public sealed class MeanSquaredErrorTests
             RegressionCorpus.Values(c, "rmse|raw"),
             RootMeanSquaredError.PerOutput(yTrue, yPred, k, sw),
             $"{who} rmse|raw");
+
+        if (RegressionCorpus.Has(c, "rmse|weights"))
+        {
+            RegressionCorpus.AssertClose(
+                RegressionCorpus.Value(c, "rmse|weights"),
+                RootMeanSquaredError.Score(yTrue, yPred, k, sw, RegressionCorpus.OutputWeights(c)),
+                $"{who} rmse|weights");
+        }
     }
 
     [Fact]
