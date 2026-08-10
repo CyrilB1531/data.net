@@ -598,6 +598,20 @@ scikit-learn's `_binary_clf_curve` sort-and-accumulate exactly, and
 parsed once outside the timed loop on both sides so neither pays JSON-parsing
 cost inside the measurement.
 
+### Multiclass ROC-AUC, sequential against parallel (issue #86)
+
+C# against C#: the same operation at one, two, four and eight workers. Inputs are
+generated in-process from a fixed seed — there is no Python side here, so there is
+no shared corpus to keep in step.
+
+```bash
+dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- roc-parallel
+```
+
+The axis is **elapsed time**. Processor time rises with the worker count, which is
+the point of spending cores rather than a fault in the measurement, and both are
+reported side by side.
+
 ## 6. Persisting an embedding index (issue #62)
 
 `EmbeddingIndex.Save` and `Load` on 10 000 vectors of 384 dimensions — 15 MB of
