@@ -149,6 +149,10 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | `zero_division=0/1/np.nan` | scikit-learn | `ZeroDivision.Zero/One/NaN` | Values identical. The `UndefinedMetricWarning` has no equivalent; `ZeroDivision.Throw` is the opt-in replacement. |
 | `roc_auc_score(y_true, y_score)` | scikit-learn | `RocAuc.Score(…)` | Binary. `posLabel` is explicit here (default 1) where scikit-learn infers it. |
 | `roc_auc_score(…, multi_class=…)` | scikit-learn | `RocAuc.MultiClass(…, MultiClassRocOptions)` | `ovr` and `ovo`. Separate method: the overloads would be ambiguous. Strategy, averaging, labels and weights travel in `MultiClassRocOptions`, which also carries `MaxDegreeOfParallelism` — no scikit-learn equivalent, opt-in, sequential by default. `sampleWeight` refused for `ovo`, as in scikit-learn. |
+| `balanced_accuracy_score(…, adjusted=…)` | scikit-learn | `BalancedAccuracy.Score(…)` | Averages over the classes with a true sample, as scikit-learn does; `adjusted` divides by that same kept count. |
+| `matthews_corrcoef(…)` | scikit-learn | `MatthewsCorrelation.Score(…)` | scikit-learn hard-codes `0.0` when the denominator collapses; here it is `ZeroDivision`, defaulting to that value, with `Throw` available. An extension beyond parity, not a divergence in value. |
+| `cohen_kappa_score(…, weights=…)` | scikit-learn | `CohenKappa.Score(…, KappaWeighting…)` | `weights` renamed `weighting`, because `sampleWeight` shares the signature. `replace_undefined_by` maps onto `ZeroDivision`, defaulting to `NaN` — scikit-learn's value. The weighted forms depend on label order. |
+| `confusion_matrix(…, normalize=…)` | scikit-learn | `ConfusionMatrix.ToArray(Normalization)` | A projection, not a parameter on `Compute`: several metrics here read a matrix, and fractions would make them silently wrong ([`decisions/0020`](decisions/0020-normalize-is-a-projection-not-a-parameter.md)). |
 
 ## Conventions
 

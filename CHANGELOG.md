@@ -364,6 +364,41 @@ First release of a fourth package.
   shapes where eight workers lose to four on a 4-core / 8-thread machine. The
   reasoning is in
   [`docs/decisions/0018`](docs/decisions/0018-multiclass-roc-auc-parallelism-is-opt-in.md).
+- **Balanced accuracy, Matthews correlation and Cohen's kappa** —
+  `BalancedAccuracy.Score`, `MatthewsCorrelation.Score` and `CohenKappa.Score`,
+  each in two overloads: from labels, or off a `ConfusionMatrix` already built.
+  Balanced accuracy averages recall over the classes that have a true sample, not
+  over every class, and `adjusted` divides by that same kept count — which is
+  scikit-learn's rule and the whole of the metric's degenerate case. Cohen's kappa
+  takes `KappaWeighting.None`, `Linear` or `Quadratic`. All of it is validated
+  against scikit-learn 1.9.0 through the frozen corpus, including the first
+  non-finite value any oracle here has held: kappa's `nan` on a single-label
+  input, which travels as the string `"NaN"` because JSON has no literal for it.
+- **`confusion_matrix(…, normalize=…)`, as a projection** —
+  `ConfusionMatrix.ToArray(Normalization.None/True/Pred/All)` returns scaled
+  cells; the matrix itself is never normalized and never remembers having been.
+  It is deliberately *not* a parameter on `Compute`: several metrics in this
+  package read a `ConfusionMatrix`, and a normalized one handed to
+  `Accuracy.Score` would return a plausible number that is neither accuracy nor
+  detectably wrong. A `double[,]` cannot be handed to them at all, so the
+  compiler refuses the mistake instead of the library reporting it.
+- **`ZeroDivision` keeps a faithful default per metric, not one across the
+  package** — `Zero` for precision, recall, F1, F-beta and the report; `Zero` for
+  Matthews correlation, matching a value scikit-learn hard-codes rather than
+  exposes; `NaN` for Cohen's kappa, matching `replace_undefined_by=nan`. Each
+  default call returns scikit-learn's own number for its own metric, which is why
+  they disagree with each other. `matthews_corrcoef` has no such keyword at all,
+  so `ZeroDivision` there — `Throw` included — is an extension beyond parity, not
+  a divergence in value. `weights` is spelled `weighting`, because `sampleWeight`
+  sits in the same signature meaning something unrelated. The reasoning for all of
+  it, and for the projection above, is in
+  [`docs/decisions/0020`](docs/decisions/0020-normalize-is-a-projection-not-a-parameter.md).
+- **Measured too, on the same gate.** All 18 new cross-language rows —
+  three operations over six shapes — are at or above 1× on processor time against
+  scikit-learn, narrowest margin 16.59× on `balanced_accuracy` at n=1 000 000,
+  k=10. They were taken in their own window under a much heavier load than the
+  original 29 rows, which is recorded beside them rather than inherited, in
+  [the performance guide](docs/guides/performance.md).
 
 ## [0.2.0] — 2026-08-05
 
