@@ -40,4 +40,18 @@ internal static class MetricsCorpus
 
     public static double[] OptionalDoubles(JsonElement c, string name) =>
         c.GetProperty(name).ValueKind == JsonValueKind.Null ? [] : Doubles(c, name);
+
+    /// <summary>
+    /// The case's confusion matrix, with the case's own <c>labels</c> and weights.
+    /// Not quite how every oracle test builds one: the balanced-accuracy, Matthews
+    /// and kappa tests pass no <c>labels</c>, because their generators pass none
+    /// either — <c>balanced_accuracy_score</c> and <c>matthews_corrcoef</c> have no
+    /// such parameter at all. Callers that need the case's label order (the
+    /// normalization test, whose oracle rows are shaped by it) use this.
+    /// </summary>
+    public static ConfusionMatrix Matrix(JsonElement c) => ConfusionMatrix.Compute(
+        Ints(c, "y_true"),
+        Ints(c, "y_pred"),
+        OptionalInts(c, "labels"),
+        OptionalDoubles(c, "sample_weight"));
 }

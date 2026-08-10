@@ -280,6 +280,50 @@ Full breakdown, including the intra-C# and net10-vs-netstandard2.0 tiers and
 where the two language sides do not do identical work, in
 [`bench/README.md`](../../bench/README.md#5-classification-metrics-issue-61).
 
+### Balanced accuracy, Matthews correlation, Cohen's kappa (issue #93)
+
+Balanced accuracy, Matthews correlation and Cohen's kappa (issue #93, Tasks
+3–5) add three operations — `balanced_accuracy`, `matthews`, `cohen_kappa` —
+run over all six shapes above, unweighted and with default label handling on
+both sides, matching scikit-learn's `balanced_accuracy_score`,
+`matthews_corrcoef` and `cohen_kappa_score`. Same corpus files, same harnesses,
+same methodology as the table above — **but measured in a separate window
+from the original 29 rows, with its own load**: `uptime`'s one-minute average
+was **19.70** just before the Python side started and **7.65** by the time
+`compare.py` printed the numbers below (fifteen-minute average 13.2–14.9
+throughout that window). That is nowhere near the 1.52 one-minute load the
+paragraph above states for the original run, so these 18 rows should not be
+read as sharing that sentence's conditions — only their own, given here.
+
+| Operation | DataNet ms | Python ms | wall | DataNet cpu ms | Python cpu ms | **cpu** |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `balanced_accuracy_n1000_k2` | 0.016 | 1.194 | 76.44x | 0.011 | 1.194 | **105.24x** |
+| `matthews_n1000_k2` | 0.017 | 2.216 | 134.27x | 0.012 | 2.216 | **192.06x** |
+| `cohen_kappa_n1000_k2` | 0.018 | 1.240 | 67.89x | 0.012 | 1.240 | **105.23x** |
+| `balanced_accuracy_n1000_k10` | 0.008 | 1.225 | 152.93x | 0.008 | 1.225 | **152.96x** |
+| `matthews_n1000_k10` | 0.008 | 2.258 | 282.30x | 0.008 | 2.258 | **282.33x** |
+| `cohen_kappa_n1000_k10` | 0.009 | 1.399 | 157.84x | 0.009 | 1.399 | **157.84x** |
+| `balanced_accuracy_n100000_k2` | 0.887 | 17.287 | 19.49x | 0.887 | 17.282 | **19.48x** |
+| `matthews_n100000_k2` | 0.884 | 34.733 | 39.28x | 0.884 | 34.712 | **39.26x** |
+| `cohen_kappa_n100000_k2` | 0.880 | 18.133 | 20.61x | 0.880 | 18.103 | **20.58x** |
+| `balanced_accuracy_n100000_k10` | 1.001 | 17.326 | 17.31x | 1.001 | 17.320 | **17.31x** |
+| `matthews_n100000_k10` | 0.996 | 36.312 | 36.46x | 0.996 | 36.307 | **36.45x** |
+| `cohen_kappa_n100000_k10` | 0.980 | 17.130 | 17.49x | 0.979 | 17.129 | **17.49x** |
+| `balanced_accuracy_n1000000_k2` | 9.087 | 166.698 | 18.35x | 9.085 | 166.690 | **18.35x** |
+| `matthews_n1000000_k2` | 9.003 | 350.953 | 38.98x | 9.003 | 350.762 | **38.96x** |
+| `cohen_kappa_n1000000_k2` | 9.032 | 186.455 | 20.64x | 9.032 | 185.697 | **20.56x** |
+| `balanced_accuracy_n1000000_k10` | 10.103 | 167.552 | 16.58x | 10.102 | 167.550 | **16.59x** |
+| `matthews_n1000000_k10` | 10.262 | 340.992 | 33.23x | 10.261 | 340.854 | **33.22x** |
+| `cohen_kappa_n1000000_k10` | 10.352 | 174.623 | 16.87x | 10.352 | 174.619 | **16.87x** |
+
+**18/18 at or above 1× on processor time — the gate holds for these three
+metrics too.** The two narrowest are `balanced_accuracy_n1000000_k10` at
+**16.59×** and `cohen_kappa_n1000000_k10` at **16.87×**; every other row
+clears 17×. As with the original 29, the busier the machine gets, the more
+conservative (not flattering) a ratio above 1× is — and this window's load
+average was roughly 5–13× the original run's, so these margins are, if
+anything, understated relative to a quiet machine.
+
 ## Multiclass ROC-AUC, sequential against parallel (issue #86)
 
 ```bash
