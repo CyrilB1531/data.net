@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using DataNet.Embeddings.Persistence;
 using DataNet.Embeddings.Pooling;
@@ -181,8 +182,8 @@ internal static class Lot3Embeddings
         float[] pooled = Pooler.MeanPool(tokenEmbeddings, seqLen: 2, dim: 3, attentionMask);
         Pooler.L2Normalize(pooled);
         float[] normalized = Pooler.MeanPoolAndNormalize(tokenEmbeddings, seqLen: 2, dim: 3, attentionMask);
-        Console.WriteLine($"  MeanPool         : [{string.Join(", ", pooled.Select(v => v.ToString("F3")))}]");
-        Console.WriteLine($"  MeanPool+L2      : [{string.Join(", ", normalized.Select(v => v.ToString("F3")))}]");
+        Console.WriteLine($"  MeanPool         : [{string.Join(", ", pooled.Select(v => v.ToString("F3", CultureInfo.InvariantCulture)))}]");
+        Console.WriteLine($"  MeanPool+L2      : [{string.Join(", ", normalized.Select(v => v.ToString("F3", CultureInfo.InvariantCulture)))}]");
         Console.WriteLine($"  VectorMath       : dot={VectorMath.Dot(pooled, normalized):F3}, l2={VectorMath.L2Norm(pooled):F3}");
 
         // The batched form, over the [batch, seq, dim] tensor an encoder returns:
@@ -193,7 +194,7 @@ internal static class Lot3Embeddings
         float[][] batchPooled = Pooler.MeanPoolAndNormalizeBatch(
             batchedEmbeddings, batchSize: 2, seqLen: 2, dim: 3, batchedMask);
         Console.WriteLine($"  MeanPoolBatch    : {batchPooled.Length} vectors, "
-            + string.Join(" | ", batchPooled.Select(v => $"[{string.Join(", ", v.Select(c => c.ToString("F3")))}]")));
+            + string.Join(" | ", batchPooled.Select(v => $"[{string.Join(", ", v.Select(c => c.ToString("F3", CultureInfo.InvariantCulture)))}]")));
 
         // Nearest-neighbour search over those vectors, with the ids a reloaded
         // index is queried by.
