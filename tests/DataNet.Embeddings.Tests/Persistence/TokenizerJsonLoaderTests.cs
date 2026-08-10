@@ -656,11 +656,11 @@ public sealed class TokenizerJsonLoaderTests
     private static MemoryStream Bytes(string json) => new MemoryStream(Encoding.UTF8.GetBytes(json));
 
     /// <summary>
-    /// <c>tests/oracles/roberta_shaped_model.json</c>, read straight off disk the
-    /// way a caller would rather than through <see cref="OracleLoader"/>: that
-    /// helper parses a metadata document wrapping several tokenizer.json strings,
-    /// where this fixture — like <c>orphan_bpe_model.json</c> — is one whole
-    /// tokenizer.json by itself.
+    /// The path to <c>tests/oracles/roberta_shaped_model.json</c>, not its parsed
+    /// content: <see cref="TokenizerJsonLoader.LoadBpe(string, ArtifactLoadOptions?)"/>
+    /// takes a file path, where <see cref="OracleLoader.Load(string)"/> returns an
+    /// already-parsed <see cref="JsonDocument"/> — a type mismatch, not a
+    /// metadata-shape one, so this reads the file straight off disk instead.
     /// </summary>
     private static readonly string RobertaShapedFixturePath =
         Path.Combine(AppContext.BaseDirectory, "oracles", "roberta_shaped_model.json");

@@ -226,8 +226,9 @@ def build_orphan_bpe() -> str:
 # nowhere near contiguous with a tiny vocabulary's handful of ids, on purpose:
 # the loader must not assume added-token ids are contiguous with the rest of
 # the vocabulary just because this fixture's are small numbers.
+ROBERTA_UNK_TOKEN = "<unk>"
 ROBERTA_VOCAB = {
-    "<s>": 0, "<pad>": 1, "</s>": 2, "<unk>": 3, "a": 4, "b": 5, "ab": 6, "<mask>": 50264,
+    "<s>": 0, "<pad>": 1, "</s>": 2, ROBERTA_UNK_TOKEN: 3, "a": 4, "b": 5, "ab": 6, "<mask>": 50264,
 }
 ROBERTA_MERGES = [("a", "b")]
 
@@ -254,14 +255,14 @@ def build_roberta_shaped() -> str:
     from tokenizers.models import BPE  # noqa: PLC0415
     from tokenizers.pre_tokenizers import ByteLevel as ByteLevelPreTokenizer  # noqa: PLC0415
 
-    tokenizer = Tokenizer(BPE(ROBERTA_VOCAB, ROBERTA_MERGES, unk_token="<unk>"))
+    tokenizer = Tokenizer(BPE(ROBERTA_VOCAB, ROBERTA_MERGES, unk_token=ROBERTA_UNK_TOKEN))
     tokenizer.pre_tokenizer = ByteLevelPreTokenizer(add_prefix_space=False)
     tokenizer.decoder = ByteLevelDecoder()
     tokenizer.add_special_tokens([
         AddedToken("<s>", lstrip=False, rstrip=False, single_word=False, normalized=False, special=True),
         AddedToken("<pad>", lstrip=False, rstrip=False, single_word=False, normalized=False, special=True),
         AddedToken("</s>", lstrip=False, rstrip=False, single_word=False, normalized=False, special=True),
-        AddedToken("<unk>", lstrip=False, rstrip=False, single_word=False, normalized=False, special=True),
+        AddedToken(ROBERTA_UNK_TOKEN, lstrip=False, rstrip=False, single_word=False, normalized=False, special=True),
         AddedToken("<mask>", lstrip=True, rstrip=False, single_word=False, normalized=False, special=True),
     ])
     return tokenizer.to_str(pretty=True)

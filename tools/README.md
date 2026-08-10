@@ -94,10 +94,11 @@ training is not guaranteed reproducible across `sentencepiece` versions.
 
 Builds fixtures too small to fit the pipeline the other scripts share: two
 ONNX graphs (`tiny_encoder.onnx`, `tiny_embedder.onnx`), a trained
-character-level BPE (`tiny_bpe.json`), and a hand-constructed BPE holding one
-orphaned vocabulary entry (`orphan_bpe_model.json`) — four fixtures, all
-committed rather than rebuilt by CI. See the module docstring for what each
-one proves.
+character-level BPE (`tiny_bpe.json`), a hand-constructed BPE holding one
+orphaned vocabulary entry (`orphan_bpe_model.json`), and a hand-constructed
+BPE carrying `roberta-base`'s own `added_tokens` table
+(`roberta_shaped_model.json`) — five fixtures, all committed rather than
+rebuilt by CI. See the module docstring for what each one proves.
 
 `tiny_bpe.json`'s trainer is not byte-reproducible across runs: tokens and
 merges that tie in frequency land at different ids each time, because the
