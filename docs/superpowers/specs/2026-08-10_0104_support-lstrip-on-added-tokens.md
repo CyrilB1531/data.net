@@ -68,6 +68,12 @@ more dangerous direction.
 
 ### Normalization — the finding that widened the scope
 
+**Superseded by `docs/decisions/0022-added-token-matching-flags.md` §3**: the
+`special`-based partition drawn from the table below was refuted by later
+measurement — the discriminator is the entry's `normalized` field, not `special`
+— and the ADR carries the corrected rule. The measurements themselves stand and
+are left here as the record; only the conclusion drawn from them changed.
+
 WordPiece with a `Lowercase` normalizer, added token `[CLS]`:
 
 | added as | input `a [CLS] b` | input `a [cls] b` |

@@ -281,7 +281,9 @@ public sealed class WordPieceTokenizer : ISubwordTokenizer
     /// entry that closed it and a <see cref="AddedToken.SingleWord"/> entry sees the
     /// gap's edges as word boundaries. That is what HuggingFace's
     /// <c>AddedVocabulary</c> does, which splits on the raw trie first and then runs
-    /// the normalized trie over each resulting slice.
+    /// the normalized trie over each resulting slice — read from that type's
+    /// structure rather than measured, since no committed case puts a word
+    /// character on a gap edge for a corpus to replay.
     /// </remarks>
     private void EncodeGap(string normalized, int from, int to, List<string> tokens, List<int> ids)
     {

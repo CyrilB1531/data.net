@@ -718,21 +718,7 @@ public sealed class TokenizerJsonLoaderTests
             Bytes(doc.RootElement.GetProperty("metadata").GetProperty("tokenizer_json").GetString()!),
             OracleReplay.BpeBounds()));
 
-        var failures = new List<string>();
-        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
-        {
-            string text = c.GetProperty("text").GetString()!;
-            string[] expectedTokens = c.GetProperty("tokens").EnumerateArray().Select(e => e.GetString()!).ToArray();
-            int[] expectedIds = c.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32()).ToArray();
-
-            TokenizationResult actual = tokenizer.Encode(text);
-            if (!expectedTokens.SequenceEqual(actual.Tokens) || !expectedIds.SequenceEqual(actual.Ids))
-            {
-                failures.Add($"{JsonSerializer.Serialize(text)}\n  exp: [{string.Join(" | ", expectedTokens)}]\n  got: [{string.Join(" | ", actual.Tokens)}]");
-            }
-        }
-
-        Assert.True(failures.Count == 0, string.Join("\n", failures));
+        OracleReplay.AssertEncodings(doc, tokenizer.Encode, "tokens");
     }
 
     /// <summary>

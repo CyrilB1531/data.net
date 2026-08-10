@@ -711,6 +711,8 @@ Extend `Equals` with the count check and the ordered element comparison, exactly
 
 The second assertion is the measured behaviour: a special entry is matched against the **raw** text, so lowercase input does not reach it and falls through to the model. Confirm the fall-through token against the oracle in Task 6 and correct the expectation if it differs.
 
+**Superseded by `docs/decisions/0022-added-token-matching-flags.md` §3**: the pass an entry runs in is decided by its `normalized` field, not by `special`, and later measurement refuted the `special`-based rule this step is written on.
+
 - [ ] **Step 3: Run it and watch it fail**
 
 Expected: compile error on `AddedTokens` if Step 1 was skipped, otherwise a failure showing `[CLS]` lowercased away.
@@ -915,7 +917,7 @@ Follow `0017-bpe-parity-scope.md`'s shape: `# 0022 — …`, `**Status:** accept
 
 - The measured semantics of all four flags, as the spec's tables — including that `lstrip` absorbs *all* contiguous whitespace, that `\t`/`\n`/U+00A0 count and `.` does not, and that `single_word`'s word class is letter/digit/underscore, Unicode-aware.
 - **That the id stream changes only by losing the piece the whitespace would have produced** — the token id itself is unchanged.
-- **The normalization rule**: ordinary added tokens are normalized and matched against normalized text; special ones are exempt and matched against raw text. State plainly that "added tokens are matched before normalization" is the wrong summary, since that is the natural guess.
+- **The normalization rule**: ordinary added tokens are normalized and matched against normalized text; special ones are exempt and matched against raw text. State plainly that "added tokens are matched before normalization" is the wrong summary, since that is the natural guess. **Superseded by `docs/decisions/0022-added-token-matching-flags.md` §3**: the discriminator measured is `normalized`, not `special`, and the `special`-based rule written here was refuted before the ADR was written.
 - **The round-trip loss**: `'a <mask> b'` decodes to `'a<mask> b'` under `lstrip`, in HuggingFace too. Parity, not defect.
 - **That WordPiece's behaviour changed for every file with `added_tokens`**, flags or not, and point at the regenerated `tokenizer_json.json` diff as the evidence.
 - **What #105 inherits**: the scan-versus-normalization order settled here, and the measurement of what `lstrip` does to a segment boundary — with the per-segment `add_prefix_space` rule left untouched for #105 to change.

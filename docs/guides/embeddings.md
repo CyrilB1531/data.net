@@ -190,6 +190,10 @@ different one is **rejected**, with a message naming what was found:
 - a special-token id (`unk_id`, `bos_id`, `eos_id`, `pad_id`) outside the
   vocabulary. `-1` is how the format spells "this model has none".
 
+Refusing every one of these is deliberate. The alternative is a vocabulary that
+loads cleanly and produces embeddings for a model nobody trained, which is the
+failure this whole guide warns about — and it would be silent.
+
 The **whole** `added_tokens` table is carried into `AddedTokens` on the loaded
 vocabulary — `BpeVocabulary.AddedTokens` and `WordPieceVocabulary.AddedTokens`,
 both `IReadOnlyList<AddedToken>` — and folded into neither vocabulary. The
@@ -216,10 +220,6 @@ follow, and both are worth knowing before they surprise you:
   as `'a<mask> b'`. HuggingFace loses it too, so this is parity rather than a
   defect — [decision 0022](../decisions/0022-added-token-matching-flags.md)
   records the measurement, and which of the five flags decides what.
-
-This is deliberate. The alternative is a vocabulary that loads cleanly and
-produces embeddings for a model nobody trained, which is the failure this whole
-guide warns about — and it would be silent.
 
 ## Embed a batch
 

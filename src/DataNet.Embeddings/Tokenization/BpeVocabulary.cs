@@ -83,7 +83,10 @@ public sealed record BpeVocabulary(
     /// <summary>Number of entries in the vocabulary.</summary>
     public int Count => Vocab.Count;
 
-    /// <summary>Compares the flags, then every merge and every token-to-id mapping.</summary>
+    /// <summary>
+    /// Compares the flags, then every merge, every token-to-id mapping and every
+    /// <see cref="AddedTokens"/> entry, in order.
+    /// </summary>
     /// <remarks>
     /// The generated equality compares <see cref="Vocab"/> and <see cref="Merges"/>
     /// by reference, so two vocabularies read from the same file would be

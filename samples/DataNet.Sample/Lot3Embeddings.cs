@@ -63,8 +63,9 @@ internal static class Lot3Embeddings
         // added_tokens rides outside the vocabulary above — matched as literal
         // text before the model ever sees it, the way BERT's own [MASK] is. Its
         // lstrip absorbs the whitespace immediately to its left into the match,
-        // so what Encode emits below carries that space: the model is never
-        // handed a leading space to guess a piece for.
+        // so the token string below carries that space while the ids do not move:
+        // WordPiece's pre-tokenizer emits no whitespace piece for a strip to
+        // remove. Losing one — the Ġ — is the byte-level story, not this one.
         AddedToken maskToken = fromJson.AddedTokens[0];
         Console.WriteLine($"  added token      : '{maskToken.Content}'->{maskToken.Id}, special={maskToken.Special}, "
             + $"lstrip={maskToken.Lstrip}, rstrip={maskToken.Rstrip}, singleWord={maskToken.SingleWord}, normalized={maskToken.Normalized}");

@@ -10,8 +10,8 @@ verifiable claim rather than an assertion about two opaque binaries.
 
 It is deliberately **not** part of ``generate_oracles.py``: building an ONNX
 graph needs the ``onnx`` package, which the oracle lock file does not carry,
-and none of the three outputs here are reference values that must track a
-library version the way ``generate_oracles.py``'s are — all three are frozen
+and none of the five outputs here are reference values that must track a
+library version the way ``generate_oracles.py``'s are — all five are frozen
 fixtures, rebuilt only when one of them has to change:
 
     python -m venv .venv-tiny-models

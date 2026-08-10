@@ -31,7 +31,10 @@ public sealed record WordPieceVocabulary(
     /// <summary>Number of entries in the vocabulary.</summary>
     public int Count => Vocab.Count;
 
-    /// <summary>Compares the settings, then every token-to-id mapping.</summary>
+    /// <summary>
+    /// Compares the settings, then every token-to-id mapping and every
+    /// <see cref="AddedTokens"/> entry, in order.
+    /// </summary>
     /// <remarks>
     /// The generated equality would compare <see cref="Vocab"/> by reference, so two
     /// vocabularies loaded from the same file would be unequal. A record advertises
