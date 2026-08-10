@@ -1,6 +1,7 @@
 """Rebuild the tiny fixtures committed under ``tests/oracles/``: two synthetic
-ONNX encoders, a trained character-level BPE, and a hand-constructed BPE
-holding one orphaned vocabulary entry.
+ONNX encoders, a trained character-level BPE, a hand-constructed BPE holding
+one orphaned vocabulary entry, and a hand-constructed BPE shaped after
+``roberta-base``'s own ``added_tokens`` table.
 
 Model weights are never committed (``CONTRIBUTING.md``), so the ONNX path is
 exercised against models small enough to read: a couple of nodes and a table of
@@ -43,6 +44,13 @@ fixtures, rebuilt only when one of them has to change:
     **constructed, not trained**: every id and every merge is stated directly,
     so it is byte-reproducible across runs and carries none of
     ``tiny_bpe.json``'s caveat above.
+
+``roberta_shaped_model.json``
+    A hand-constructed byte-level BPE carrying ``roberta-base``'s own
+    ``added_tokens`` table, verbatim — see ``build_roberta_shaped()`` for what
+    it proves. Issue #104's own acceptance criterion. Constructed, not
+    trained, so it is byte-reproducible across runs the same way
+    ``orphan_bpe_model.json`` is.
 """
 
 from __future__ import annotations
@@ -211,6 +219,54 @@ def build_orphan_bpe() -> str:
     return tokenizer.to_str(pretty=True)
 
 
+# roberta-base's own added_tokens table, reproduced verbatim: ids 0-3 for <s>,
+# <pad>, </s>, <unk> with every matching flag false, and id 50264 for <mask>
+# with lstrip=True and every other flag false. All five sit in model.vocab at
+# the same ids, which is how roberta-base itself writes them -- and 50264 is
+# nowhere near contiguous with a tiny vocabulary's handful of ids, on purpose:
+# the loader must not assume added-token ids are contiguous with the rest of
+# the vocabulary just because this fixture's are small numbers.
+ROBERTA_VOCAB = {
+    "<s>": 0, "<pad>": 1, "</s>": 2, "<unk>": 3, "a": 4, "b": 5, "ab": 6, "<mask>": 50264,
+}
+ROBERTA_MERGES = [("a", "b")]
+
+
+def build_roberta_shaped() -> str:
+    """A hand-constructed byte-level BPE carrying roberta-base's added_tokens table.
+
+    Issue #104's own acceptance criterion: the library must load the
+    added_tokens table roberta-base actually ships, not a synthetic stand-in
+    for it. ``ROBERTA_VOCAB`` and ``ROBERTA_MERGES`` are stated directly, so
+    -- like ``build_orphan_bpe()`` and unlike ``build_tiny_bpe()`` -- this is
+    byte-reproducible across runs.
+
+    The five entries are added through ``Tokenizer.add_special_tokens`` with
+    every flag stated explicitly, which is what makes ``tokenizers`` itself
+    write ``normalized`` into each entry: its deserializer refuses a
+    tokenizer.json whose added-token entries omit that field, so the loader
+    under test has to read it, not merely tolerate its absence, for a fixture
+    this close to the real file. A bare ``ByteLevel`` pre_tokenizer and
+    decoder, add_prefix_space off, match roberta-base's own pipeline shape.
+    """
+    from tokenizers import AddedToken, Tokenizer  # noqa: PLC0415
+    from tokenizers.decoders import ByteLevel as ByteLevelDecoder  # noqa: PLC0415
+    from tokenizers.models import BPE  # noqa: PLC0415
+    from tokenizers.pre_tokenizers import ByteLevel as ByteLevelPreTokenizer  # noqa: PLC0415
+
+    tokenizer = Tokenizer(BPE(ROBERTA_VOCAB, ROBERTA_MERGES, unk_token="<unk>"))
+    tokenizer.pre_tokenizer = ByteLevelPreTokenizer(add_prefix_space=False)
+    tokenizer.decoder = ByteLevelDecoder()
+    tokenizer.add_special_tokens([
+        AddedToken("<s>", lstrip=False, rstrip=False, single_word=False, normalized=False, special=True),
+        AddedToken("<pad>", lstrip=False, rstrip=False, single_word=False, normalized=False, special=True),
+        AddedToken("</s>", lstrip=False, rstrip=False, single_word=False, normalized=False, special=True),
+        AddedToken("<unk>", lstrip=False, rstrip=False, single_word=False, normalized=False, special=True),
+        AddedToken("<mask>", lstrip=True, rstrip=False, single_word=False, normalized=False, special=True),
+    ])
+    return tokenizer.to_str(pretty=True)
+
+
 def main() -> None:
     for filename, build in (("tiny_encoder.onnx", build_tiny_encoder),
                             ("tiny_embedder.onnx", build_tiny_embedder)):
@@ -227,6 +283,10 @@ def main() -> None:
     path = ORACLE_DIR / "orphan_bpe_model.json"
     path.write_text(build_orphan_bpe() + "\n", encoding="utf-8")
     print(f"orphan_bpe_model.json: {path.stat().st_size} bytes -> {path}")
+
+    path = ORACLE_DIR / "roberta_shaped_model.json"
+    path.write_text(build_roberta_shaped() + "\n", encoding="utf-8")
+    print(f"roberta_shaped_model.json: {path.stat().st_size} bytes -> {path}")
 
 
 if __name__ == "__main__":

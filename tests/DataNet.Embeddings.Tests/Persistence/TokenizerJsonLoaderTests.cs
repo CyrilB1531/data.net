@@ -655,6 +655,16 @@ public sealed class TokenizerJsonLoaderTests
 
     private static MemoryStream Bytes(string json) => new MemoryStream(Encoding.UTF8.GetBytes(json));
 
+    /// <summary>
+    /// <c>tests/oracles/roberta_shaped_model.json</c>, read straight off disk the
+    /// way a caller would rather than through <see cref="OracleLoader"/>: that
+    /// helper parses a metadata document wrapping several tokenizer.json strings,
+    /// where this fixture — like <c>orphan_bpe_model.json</c> — is one whole
+    /// tokenizer.json by itself.
+    /// </summary>
+    private static readonly string RobertaShapedFixturePath =
+        Path.Combine(AppContext.BaseDirectory, "oracles", "roberta_shaped_model.json");
+
     [Fact]
     public void LoadBpe_reproduces_every_frozen_pipeline()
     {
@@ -809,6 +819,34 @@ public sealed class TokenizerJsonLoaderTests
         Assert.False(mask.Rstrip);
         Assert.False(mask.SingleWord);
         Assert.True(mask.Special);
+    }
+
+    /// <summary>
+    /// Issue #104's own acceptance criterion: the <c>added_tokens</c> table
+    /// <c>roberta-base</c> actually ships, loaded from a committed fixture
+    /// rather than asserted by hand against a string built inline.
+    /// <c>tests/oracles/roberta_shaped_model.json</c> is
+    /// <c>tools/build_tiny_models.py</c>'s <c>build_roberta_shaped()</c>,
+    /// reproducing the file's five entries verbatim: ids 0-3 for
+    /// <c>&lt;s&gt;</c>, <c>&lt;pad&gt;</c>, <c>&lt;/s&gt;</c>, <c>&lt;unk&gt;</c>
+    /// with every matching flag <see langword="false"/>, and id 50264 for
+    /// <c>&lt;mask&gt;</c> with <c>lstrip=true</c>. All five also sit in
+    /// <c>model.vocab</c> at the same ids, as <c>roberta-base</c> itself writes
+    /// them — 50264 nowhere near contiguous with the tiny vocabulary's own
+    /// handful of ids, which is deliberate: the loader must not assume an
+    /// added token's id sits next to the rest of the vocabulary just because
+    /// this fixture's does.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_accepts_the_roberta_added_token_table()
+    {
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(RobertaShapedFixturePath);
+
+        Assert.Equal(5, vocabulary.AddedTokens.Count);
+        AddedToken mask = Assert.Single(vocabulary.AddedTokens, t => t.Content == "<mask>");
+        Assert.True(mask.Lstrip);
+        Assert.True(mask.Special);
+        Assert.All(vocabulary.AddedTokens.Where(t => t.Content != "<mask>"), t => Assert.False(t.Lstrip));
     }
 
     /// <summary>
