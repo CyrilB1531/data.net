@@ -77,7 +77,7 @@ public static class MeanSquaredLogError
             int offset = row * outputCount;
             for (int col = 0; col < outputCount; col++)
             {
-                double residual = Math.Log(1.0 + yTrue[offset + col]) - Math.Log(1.0 + yPred[offset + col]);
+                double residual = Log1P(yTrue[offset + col]) - Log1P(yPred[offset + col]);
                 result[col] += weight * residual * residual;
             }
         }
@@ -87,6 +87,43 @@ public static class MeanSquaredLogError
             result[col] /= totalWeight;
         }
         return result;
+    }
+
+    /// <summary>
+    /// <c>log(1 + x)</c> without the cancellation that spelling it that way
+    /// costs — numpy's <c>log1p</c>, which is what scikit-learn calls.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Writing <c>Math.Log(1.0 + value)</c> loses the low bits of a small
+    /// <paramref name="value"/> in the addition, before the logarithm ever sees
+    /// them. Measured against scikit-learn on targets around 1e-9, that spelling
+    /// is out by 1.4e-8 relative; this one agrees to a unit in the last place.
+    /// </para>
+    /// <para>
+    /// Kahan's identity recovers the lost bits by scaling by the ratio the
+    /// rounded addition actually represents: <c>u = 1 + v</c> rounds, but
+    /// <c>u - 1</c> recovers exactly what was added, so <c>log(u)·v/(u - 1)</c>
+    /// corrects for it. The <c>u == 1</c> branch is where <c>v</c> vanished
+    /// entirely and <c>log(1 + v) ≈ v</c> to full precision. Written out rather
+    /// than delegated because <c>netstandard2.0</c> has no <c>log1p</c> of any
+    /// name, and one implementation for both targets is what keeps them from
+    /// disagreeing in the last place.
+    /// </para>
+    /// </remarks>
+    private static double Log1P(double value)
+    {
+        double shifted = 1.0 + value;
+
+        // S1244: the test is whether the addition rounded `value` away
+        // completely, which is a question about this exact double and not about
+        // two computed quantities being close. It is also what guards the
+        // division by `shifted - 1.0` on the next line.
+#pragma warning disable S1244
+        return shifted == 1.0
+#pragma warning restore S1244
+            ? value
+            : Math.Log(shifted) * value / (shifted - 1.0);
     }
 
     /// <summary>

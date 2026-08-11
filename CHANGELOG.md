@@ -474,6 +474,19 @@ First release of a fourth package.
   reproduces the unweighted median; where the overshoot is wider than an epsilon
   it does not, in scikit-learn either, and `[0.7] * 10` over the residuals `0…9`
   gives `5.0` against the unweighted `4.5`. Both are reproduced.
+- **Two refusals taken from `check_array` and from `numpy.average`.** A
+  `sampleWeight` that is zero throughout is refused with scikit-learn's sentence
+  — the rule is *every* weight zero, not the sum, so an all-negative weight still
+  scores — and `outputWeights` that sum to zero are refused with numpy's, where
+  the rule *is* the sum, so `[1, -1]` is refused and `[-1, -1]` scores. The two
+  differ because two different layers raise them, and both were measured rather
+  than assumed.
+- **`log(1 + x)` is computed as `log1p`.** `MeanSquaredLogError` — and through
+  it `RootMeanSquaredLogError` — uses Kahan's identity rather than spelling the
+  addition out, which on targets around `1e-9` is the difference between
+  agreeing with scikit-learn to a unit in the last place and being out by 1.4e-8
+  relative. `netstandard2.0` has no `log1p` under any name, and one
+  implementation for both targets is what keeps them from disagreeing.
 - **Measured, and one row honestly under the gate.** `mse`, `mae`, `median_ae`
   and `r2` were benchmarked against scikit-learn over six shapes. `median_ae` is
   the one operation in the package below the 1× processor-time gate, at

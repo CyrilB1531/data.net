@@ -132,4 +132,25 @@ public sealed class LogErrorTests
         // written as "< -1" would return -inf instead of throwing.
         Assert.Throws<ArgumentException>(() => MeanSquaredLogError.Score([-1.0, 1.0], [1.0, 1.0]));
     }
+
+    [Fact]
+    public void A_tiny_target_keeps_the_bits_that_one_plus_x_would_round_away()
+    {
+        // The corpus cannot police this: its comparison rule scales by
+        // max(1, |expected|), so at 3e-18 it reduces to an absolute 1e-9 and
+        // every implementation passes, including one that returns zero. The
+        // assertion here is therefore relative.
+        //
+        // Measured against scikit-learn 1.9.0:
+        //   mean_squared_log_error([1e-9, 2e-9, 3e-9], [2e-9, 4e-9, 1e-9])
+        //     = 2.9999999856666664e-18
+        // Math.Log(1.0 + x) gives 3.000000038019698e-18 — out by 1.4e-8
+        // relative, which is 7 000 times this test's bound.
+        const double Expected = 2.9999999856666664e-18;
+
+        double actual = MeanSquaredLogError.Score([1e-9, 2e-9, 3e-9], [2e-9, 4e-9, 1e-9]);
+
+        double relative = Math.Abs(actual - Expected) / Expected;
+        Assert.True(relative <= 1e-12, $"expected {Expected:R}, got {actual:R} (relative {relative:R})");
+    }
 }

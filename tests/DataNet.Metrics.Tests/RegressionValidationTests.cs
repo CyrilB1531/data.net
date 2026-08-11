@@ -80,4 +80,65 @@ public sealed class RegressionValidationTests
         Assert.Throws<ArgumentException>(
             () => MeanSquaredError.Score(yTrue, yPred, 2, sampleWeight: [1.0, 2.0, 3.0, 4.0]));
     }
+
+    [Fact]
+    public void A_sample_weight_that_is_zero_throughout_is_refused()
+    {
+        // Measured against scikit-learn 1.9.0: mean_squared_error,
+        // median_absolute_error, r2_score and explained_variance_score all raise
+        // ValueError with this sentence. Returning a value instead is worse than
+        // an exception either way — mse gives NaN and median_ae gives a number,
+        // so a caller cannot even tell which of the two happened.
+        double[] yTrue = [1.0, 2.0, 3.0];
+        double[] yPred = [1.0, 2.0, 4.0];
+
+        ArgumentException error = Assert.Throws<ArgumentException>(
+            () => MeanSquaredError.Score(yTrue, yPred, 1, [0.0, 0.0, 0.0]));
+
+        Assert.Contains(
+            "Sample weights must contain at least one non-zero number.",
+            error.Message,
+            StringComparison.Ordinal);
+
+        Assert.Throws<ArgumentException>(
+            () => MedianAbsoluteError.Score(yTrue, yPred, 1, [0.0, 0.0, 0.0]));
+        Assert.Throws<ArgumentException>(() => R2.Score(yTrue, yPred, 1, [0.0, 0.0, 0.0]));
+    }
+
+    [Fact]
+    public void A_sample_weight_that_merely_sums_to_zero_is_not_this_check_s_business()
+    {
+        // The rule is "every weight is zero", not "the weights sum to zero".
+        // scikit-learn scores an all-negative weight happily, so refusing one
+        // here would be a divergence invented rather than reproduced.
+        double[] yTrue = [1.0, 2.0, 3.0];
+        double[] yPred = [1.0, 2.0, 4.0];
+
+        Assert.Equal(0.5, MeanSquaredError.Score(yTrue, yPred, 1, [-1.0, -2.0, -3.0]), 12);
+
+        // And a single subnormal weight is a non-zero number, which scikit-learn
+        // accepts and scores.
+        Assert.Equal(1.0, MeanSquaredError.Score(yTrue, yPred, 1, [0.0, 0.0, 1e-320]), 12);
+    }
+
+    [Fact]
+    public void Output_weights_that_sum_to_zero_are_refused_with_numpys_words()
+    {
+        // numpy.average is what raises here, and its rule is the sum — so
+        // [1, -1] is refused although it is not all zero, and [-1, -1] is
+        // accepted although every weight is negative. Both measured.
+        double[] yTrue = [1.0, 2.0, 3.0, 4.0, 5.0, 7.0];
+        double[] yPred = [1.0, 3.0, 2.0, 4.0, 5.0, 6.0];
+
+        ArgumentException error = Assert.Throws<ArgumentException>(
+            () => MeanSquaredError.Score(yTrue, yPred, 2, outputWeights: [0.0, 0.0]));
+
+        Assert.Contains(
+            "Weights sum to zero, can't be normalized.", error.Message, StringComparison.Ordinal);
+
+        Assert.Throws<ArgumentException>(
+            () => MeanSquaredError.Score(yTrue, yPred, 2, outputWeights: [1.0, -1.0]));
+
+        Assert.Equal(0.5, MeanSquaredError.Score(yTrue, yPred, 2, outputWeights: [-1.0, -1.0]), 12);
+    }
 }

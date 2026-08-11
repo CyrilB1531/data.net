@@ -46,14 +46,52 @@ internal static class Outputs
                 $"sampleWeight has {sampleWeight.Length} entries but there are {samples} samples.",
                 nameof(sampleWeight));
         }
-        if (!outputWeights.IsEmpty && outputWeights.Length != outputCount)
+        if (!outputWeights.IsEmpty)
         {
-            throw new ArgumentException(
-                $"outputWeights has {outputWeights.Length} entries but there are {outputCount} outputs.",
-                nameof(outputWeights));
+            if (outputWeights.Length != outputCount)
+            {
+                throw new ArgumentException(
+                    $"outputWeights has {outputWeights.Length} entries but there are {outputCount} outputs.",
+                    nameof(outputWeights));
+            }
+
+            RequireNormalizable(outputWeights);
         }
 
         return samples;
+    }
+
+    /// <summary>
+    /// Reproduces <c>numpy.average</c>'s refusal of weights it cannot normalize,
+    /// with its message — the error scikit-learn surfaces for
+    /// <c>multioutput=[0, 0]</c>.
+    /// </summary>
+    /// <remarks>
+    /// The test is the <em>sum</em>, unlike the all-zero test
+    /// <see cref="Inputs.Validate(ReadOnlySpan{double}, ReadOnlySpan{double}, ReadOnlySpan{double})"/>
+    /// applies to the sample weight — the two rules genuinely differ, and both
+    /// were measured. <c>multioutput=[1, -1]</c> is refused here while it is not
+    /// all zero, and <c>multioutput=[-1, -1]</c> is accepted and scores, because
+    /// its sum normalizes perfectly well.
+    /// </remarks>
+    private static void RequireNormalizable(ReadOnlySpan<double> outputWeights)
+    {
+        double total = 0.0;
+        foreach (double weight in outputWeights)
+        {
+            total += weight;
+        }
+
+        // S1244: the question is whether the sum normalizes at all, which is a
+        // division by exactly zero and nothing else. A tolerance would refuse a
+        // legitimately tiny sum that numpy divides by without complaint.
+#pragma warning disable S1244
+        if (total == 0.0)
+#pragma warning restore S1244
+        {
+            throw new ArgumentException(
+                "Weights sum to zero, can't be normalized.", nameof(outputWeights));
+        }
     }
 
     /// <summary>
