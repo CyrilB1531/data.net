@@ -56,7 +56,7 @@ test_all()  { dotnet test -c Release; }
 **Depends on:** nothing.
 **Produces:** the definition of correct that every later task is measured against.
 
-- [ ] **Step 1: Read how French does it**
+- [x] **Step 1: Read how French does it**
 
 ```bash
 grep -n "snowball_fr\|SnowballStemmer" tools/generate_oracles.py
@@ -66,7 +66,7 @@ The Spanish section is the French one with a different language and word list.
 Reuse the existing corpus helper rather than adding a second one — a duplicate
 definition is something Python accepts silently.
 
-- [ ] **Step 2: Add the Spanish section**
+- [x] **Step 2: Add the Spanish section**
 
 `nltk.stem.snowball.SnowballStemmer("spanish")` over a word list chosen to
 exercise every step, not just common words. It must include:
@@ -77,7 +77,7 @@ exercise every step, not just common words. It must include:
 - accented forms that must survive until the final step: `país`, `además`
 - verb endings across steps 2a and 2b
 
-- [ ] **Step 3: Generate, and read the exit code**
+- [x] **Step 3: Generate, and read the exit code**
 
 ```bash
 regen
@@ -88,7 +88,7 @@ Expected: `snowball_es.json` added, **and nothing else listed**. If another corp
 moved, stop — the environment differs from the one that produced the committed
 files, and every number in this branch would be suspect.
 
-- [ ] **Step 4: Sanity-check the corpus by hand**
+- [x] **Step 4: Sanity-check the corpus by hand**
 
 ```bash
 python -c "
@@ -113,13 +113,13 @@ wrong answer later.
 **Depends on:** Task 1.
 **Produces:** the implementation, not yet trusted.
 
-- [ ] **Step 1: Regions**
+- [x] **Step 1: Regions**
 
 `RV`, `R1`, `R2` per the published definitions. Spanish's RV rule is the one with
 three branches on the first two letters — write it as three explicit branches, not
 as a clever combined condition, because it is read far more often than it is run.
 
-- [ ] **Step 2: Step 0 — attached object pronouns**
+- [x] **Step 2: Step 0 — attached object pronouns**
 
 Only after one of the permitted preceding forms. Two sub-cases from D3:
 
@@ -129,21 +129,21 @@ Only after one of the permitted preceding forms. Two sub-cases from D3:
 Write the second as a suffix test on the word, never as a character lookup at a
 computed offset.
 
-- [ ] **Step 3: Step 1 — longest suffix across all groups at once**
+- [x] **Step 3: Step 1 — longest suffix across all groups at once**
 
 One combined longest-match, per D5. If the implementation has a loop over groups,
 it is wrong.
 
-- [ ] **Step 4: Steps 2a, 2b, 3**
+- [x] **Step 4: Steps 2a, 2b, 3**
 
 Per the published description.
 
-- [ ] **Step 5: Remove acute accents — last**
+- [x] **Step 5: Remove acute accents — last**
 
 After every other step. Add a one-line comment saying why the position matters;
 this is the kind of line a later refactor moves "for tidiness".
 
-- [ ] **Step 6: It compiles on both targets**
+- [x] **Step 6: It compiles on both targets**
 
 ```bash
 build_all
@@ -165,11 +165,11 @@ their wording**; a reader comparing the three should find them identical.
 **Depends on:** Task 2.
 **Produces:** the failure list that Task 4 works through.
 
-- [ ] **Step 1: Write the replay test in the shape the French one uses**
+- [x] **Step 1: Write the replay test in the shape the French one uses**
 
 Same loader, same assertion, same naming. Do not invent a second convention.
 
-- [ ] **Step 2: Confirm the test actually runs**
+- [x] **Step 2: Confirm the test actually runs**
 
 ```bash
 test_es 2>&1 | tail -5
@@ -179,7 +179,7 @@ Expected: a non-zero test count. A filter that matches nothing reports success �
 read the count, not the colour. If it says `0 tests`, fix the filter before
 reading anything into the result.
 
-- [ ] **Step 3: Record the failures**
+- [x] **Step 3: Record the failures**
 
 ```bash
 test_es 2>&1 | grep -E "^\s+(Assert|Expected|Actual|Failed)" | head -40
@@ -196,26 +196,26 @@ test_es 2>&1 | grep -E "^\s+(Assert|Expected|Actual|Failed)" | head -40
 **Depends on:** Task 3.
 **Produces:** 127/127, or whatever Task 1 Step 4 recorded.
 
-- [ ] **Step 1: Fix, one failing case at a time**
+- [x] **Step 1: Fix, one failing case at a time**
 
 For each failure, name the step responsible before editing. A fix that makes a
 case pass without identifying which step was wrong is a fix that will break
 another case later.
 
-- [ ] **Step 2: The `uyendo` case, specifically**
+- [x] **Step 2: The `uyendo` case, specifically**
 
 If `construyendolo` stems to `construyendol` rather than `constru`, the step 0
 `yendo` condition was read as "the characters `uy` sit at a fixed offset" instead
 of "the stem ends in `uyendo`". This is the expected failure, it is expected to be
 the *only* one, and it is exactly what an oracle exists to catch.
 
-- [ ] **Step 3: When a case resists, read nltk's source for that case only**
+- [x] **Step 3: When a case resists, read nltk's source for that case only**
 
 Permitted, and different from deriving the implementation from it: the corpus says
 *something* is wrong but not what. Diagnose, then fix against the published
 description.
 
-- [ ] **Step 4: Green**
+- [x] **Step 4: Green**
 
 ```bash
 test_es 2>&1 | tail -3
@@ -229,7 +229,7 @@ Expected: 127/127 (the count from Task 1).
 
 **Depends on:** Task 4.
 
-- [ ] **Step 1: Whole suite, both frameworks**
+- [x] **Step 1: Whole suite, both frameworks**
 
 ```bash
 build_all && test_all 2>&1 | tail -3
@@ -238,7 +238,7 @@ dotnet format --verify-no-changes
 
 Expected: 160/160 (158 + 2 new), 0 warnings, format clean.
 
-- [ ] **Step 2: Prove the corpora did not drift**
+- [x] **Step 2: Prove the corpora did not drift**
 
 ```bash
 regen && git status --porcelain tests/oracles/
@@ -248,7 +248,7 @@ Expected: only `snowball_es.json`, and it must reproduce byte-identically after
 being committed. Determinism is a property this repository claims; check it here
 rather than discover it broken three languages later.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/DataNet.Text/Stemming/SpanishSnowballStemmer.cs \
@@ -264,7 +264,7 @@ from the algorithm and reviews better on its own:
 git commit -am "Suppress CA1845 in the Spanish stemmer, as in English and French"
 ```
 
-- [ ] **Step 4: Open the follow-up D1 promised**
+- [x] **Step 4: Open the follow-up D1 promised**
 
 "Extract the shared Snowball framework from the Romance stemmers." Three copies of
 the region machinery now exist. With two Romance corpora green, the extraction can

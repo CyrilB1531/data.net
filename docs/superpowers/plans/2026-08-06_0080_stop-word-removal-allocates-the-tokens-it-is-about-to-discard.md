@@ -46,7 +46,7 @@ oracles_unchanged() {
 **Depends on:** nothing.
 **Produces:** the baseline; a `perf/` branch without one is an opinion.
 
-- [ ] **Step 1: Benchmark the per-token path with `[MemoryDiagnoser]`**
+- [x] **Step 1: Benchmark the per-token path with `[MemoryDiagnoser]`**
 
 ```bash
 bench_sw 2>&1 | tail -20
@@ -55,7 +55,7 @@ bench_sw 2>&1 | tail -20
 Record allocations per document, not only time. The claim in this branch is
 primarily about allocation.
 
-- [ ] **Step 2: Measure the initialiser cost**
+- [x] **Step 2: Measure the initialiser cost**
 
 ```bash
 # Time and allocation of first touching StopWords.English alone.
@@ -64,7 +64,7 @@ primarily about allocation.
 Expected: the six lists share one static constructor, so `StopWords.English`
 hashes **1 493 words to hand back 318**.
 
-- [ ] **Step 3: Confirm the shipped list is re-hashed by the vectorizer**
+- [x] **Step 3: Confirm the shipped list is re-hashed by the vectorizer**
 
 The third cost: a `CountVectorizer` configured with `StopWords.English` copies a
 set that is already frozen with the right comparer.
@@ -80,21 +80,21 @@ set that is already frozen with the right comparer.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: The net10 path — span lookup, no allocation**
+- [x] **Step 1: The net10 path — span lookup, no allocation**
 
 `s.AsSpan(m.Index, m.Length)` against `FrozenSet<string>` through
 `AlternateLookup<ReadOnlySpan<char>>`. **Only survivors reach `m.Value`.**
 
-- [ ] **Step 2: The `netstandard2.0` path — unchanged**
+- [x] **Step 2: The `netstandard2.0` path — unchanged**
 
 It has neither type. Keep what it always had.
 
-- [ ] **Step 3: One `#if`, here**
+- [x] **Step 3: One `#if`, here**
 
 In the shape of `src/Shared/Guard.cs`. A directive at each call site is how the
 two targets drift.
 
-- [ ] **Step 4: Adopt a shipped list; copy a caller's**
+- [x] **Step 4: Adopt a shipped list; copy a caller's**
 
 `ToFrozenSet(StringComparer.Ordinal)` returns its argument when the set is already
 frozen with that comparer. **Verify that** — including that it *copies* when the
@@ -115,16 +115,16 @@ declared. Write a test for exactly that.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: A nested holder type per language**
+- [x] **Step 1: A nested holder type per language**
 
 So touching `StopWords.English` builds one list, not six.
 
-- [ ] **Step 2: `=> FrenchList.Value`, not `{ get; }`**
+- [x] **Step 2: `=> FrenchList.Value`, not `{ get; }`**
 
 An auto-property puts a static field back on `StopWords` and restores the shared
 initialiser. Comment it, because it looks like a style choice and is not.
 
-- [ ] **Step 3: A laziness test that catches the regression**
+- [x] **Step 3: A laziness test that catches the regression**
 
 Touch one list and assert the others were not built. **This test is what makes the
 decision durable** — without it the next tidy-up silently undoes the work.
@@ -137,7 +137,7 @@ Confirm it fails when the property is written as an auto-property.
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: Corpora and suite**
+- [x] **Step 1: Corpora and suite**
 
 ```bash
 build_all && test_all 2>&1 | tail -3 && oracles_unchanged
@@ -146,7 +146,7 @@ build_all && test_all 2>&1 | tail -3 && oracles_unchanged
 Expected: green on both frameworks, `ORACLES CLEAN`. Which words are removed is
 not part of this change.
 
-- [ ] **Step 2: Re-benchmark, both targets**
+- [x] **Step 2: Re-benchmark, both targets**
 
 ```bash
 bench_sw 2>&1 | tail -20
@@ -154,12 +154,12 @@ bench_sw 2>&1 | tail -20
 
 Report allocations before and after, and name the machine.
 
-- [ ] **Step 3: Update the guide and the changelog**
+- [x] **Step 3: Update the guide and the changelog**
 
 `docs/guides/vectorization.md` describes the stop-word path; the changelog records
 a performance change with no behavioural component.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A

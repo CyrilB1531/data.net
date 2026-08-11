@@ -58,7 +58,7 @@ EOF
 **Produces:** the complete list — the issue names two, and "two" is an assumption
 until checked.
 
-- [ ] **Step 1: Audit every `run:` block in every workflow**
+- [x] **Step 1: Audit every `run:` block in every workflow**
 
 ```bash
 audit_run_blocks
@@ -67,7 +67,7 @@ audit_run_blocks
 Record every hit and classify each: user-controlled (`inputs.*`),
 ref-controlled (`github.ref_name`, `GITHUB_REF_NAME`), secret, or constant.
 
-- [ ] **Step 2: Note which jobs hold dangerous permissions**
+- [x] **Step 2: Note which jobs hold dangerous permissions**
 
 ```bash
 grep -n -B5 "id-token: write" .github/workflows/*.yml
@@ -87,7 +87,7 @@ priority; the rest are still fixed.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Move `inputs.version` into the step environment**
+- [x] **Step 1: Move `inputs.version` into the step environment**
 
 ```yaml
 - name: Pack
@@ -100,13 +100,13 @@ priority; the rest are still fixed.
 Quote the variable in the shell. An unquoted `$VERSION` reintroduces word
 splitting, which is a smaller hole than injection but a hole.
 
-- [ ] **Step 2: Same treatment for `steps.login.outputs.NUGET_API_KEY`**
+- [x] **Step 2: Same treatment for `steps.login.outputs.NUGET_API_KEY`**
 
 Not user-controlled, so not part of the vulnerability — but it keeps the secret
 off the command line and out of process listings. Label it as hygiene in the pull
 request so the threat model stays legible.
 
-- [ ] **Step 3: Parse check**
+- [x] **Step 3: Parse check**
 
 ```bash
 parse_all
@@ -122,14 +122,14 @@ parse_all
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: The same pattern at line 39, from `GITHUB_REF_NAME`**
+- [x] **Step 1: The same pattern at line 39, from `GITHUB_REF_NAME`**
 
 It looks safer and is not. Tag names are attacker-influenceable in the general
 case, and GitHub's own guidance treats `ref_name` as untrusted.
 
-- [ ] **Step 2: `secrets.GITHUB_TOKEN` into `env:` as well**
+- [x] **Step 2: `secrets.GITHUB_TOKEN` into `env:` as well**
 
-- [ ] **Step 3: Why both files must change together**
+- [x] **Step 3: Why both files must change together**
 
 Leaving one unfixed leaves two examples in the repository, one safe and one not.
 The unsafe one is the one that gets copied.
@@ -140,7 +140,7 @@ The unsafe one is the one that gets copied.
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: The audit returns nothing**
+- [x] **Step 1: The audit returns nothing**
 
 ```bash
 audit_run_blocks
@@ -149,13 +149,13 @@ audit_run_blocks
 Expected: **no output** for anything user- or ref-controlled. A remaining hit on a
 constant is fine; note it so the next reader knows it was considered.
 
-- [ ] **Step 2: Every workflow still parses**
+- [x] **Step 2: Every workflow still parses**
 
 ```bash
 parse_all
 ```
 
-- [ ] **Step 3: Confirm the diff changes no behaviour**
+- [x] **Step 3: Confirm the diff changes no behaviour**
 
 ```bash
 git diff main -- .github/workflows/ | grep -E "^[+-]" | grep -vE "^[+-]{3}" | grep -viE "env:|VERSION|NUGET_API_KEY|GITHUB_TOKEN|\\\$\{\{"
@@ -164,12 +164,12 @@ git diff main -- .github/workflows/ | grep -E "^[+-]" | grep -vE "^[+-]{3}" | gr
 Expected: nothing substantive. Same packages, same versions, same publishing
 behaviour.
 
-- [ ] **Step 4: Read SonarQube Cloud on the pushed branch**
+- [x] **Step 4: Read SonarQube Cloud on the pushed branch**
 
 A green build is not a clean Sonar. The injection finding must be gone before this
 is called done.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .github/workflows/

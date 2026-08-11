@@ -42,7 +42,7 @@ bench_load() { dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- 
 **Produces:** the baseline, and the share of each candidate — so no optimisation
 is applied blind.
 
-- [ ] **Step 1: Measure `Load` with `[MemoryDiagnoser]`**
+- [x] **Step 1: Measure `Load` with `[MemoryDiagnoser]`**
 
 ```bash
 bench_load 2>&1 | tail -20
@@ -50,12 +50,12 @@ bench_load 2>&1 | tail -20
 
 Expected: ~90 MB allocated for a 15 MB payload.
 
-- [ ] **Step 2: Attribute the passes**
+- [x] **Step 2: Attribute the passes**
 
 Read → `.ToArray()` → base64 decode → copy into `float[]` → non-finite scan.
 Expected: five.
 
-- [ ] **Step 3: Measure the non-finite scan's share specifically**
+- [x] **Step 3: Measure the non-finite scan's share specifically**
 
 Expected: **18 %** of the load figure. Task 4 exists because of that number; if it
 comes out at 2 %, Task 4 does not happen.
@@ -71,22 +71,22 @@ comes out at 2 %, Task 4 does not happen.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Return `ReadOnlyMemory<byte>` over a buffer sized from the stream**
+- [x] **Step 1: Return `ReadOnlyMemory<byte>` over a buffer sized from the stream**
 
 Instead of accumulating into a growable `MemoryStream` and calling `.ToArray()`.
 
-- [ ] **Step 2: The fallback, which is the correctness argument**
+- [x] **Step 2: The fallback, which is the correctness argument**
 
 A stream that will not say how long it is — **or that says it wrong** — falls back
 to the growable path, **with its position put back first**, so nothing is silently
 truncated.
 
-- [ ] **Step 3: A test for a stream that lies about its length**
+- [x] **Step 3: A test for a stream that lies about its length**
 
 Both directions: reports too short, reports too long. This is the case that
 produces a silently truncated index, which is far worse than a slow one.
 
-- [ ] **Step 4: Confirm nothing public moved**
+- [x] **Step 4: Confirm nothing public moved**
 
 ```bash
 git diff main -- src | grep -E "^[+-]\s*public" | head
@@ -104,16 +104,16 @@ Expected: empty. All ten loaders are `internal`.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Size the array from the token's encoded length**
+- [x] **Step 1: Size the array from the token's encoded length**
 
-- [ ] **Step 2: `Base64.DecodeFromUtf8` straight into it**
+- [x] **Step 2: `Base64.DecodeFromUtf8` straight into it**
 
-- [ ] **Step 3: One `Decode<T>` replacing `ReadBoundedRaw` and `ReadUnboundedRaw`**
+- [x] **Step 3: One `Decode<T>` replacing `ReadBoundedRaw` and `ReadUnboundedRaw`**
 
 Falling through to the old `TryGetBytesFromBase64` path for any token that is
 **not canonical**.
 
-- [ ] **Step 4: Prove the exception surface is unchanged**
+- [x] **Step 4: Prove the exception surface is unchanged**
 
 ```bash
 test_hard 2>&1 | tail -3
@@ -123,7 +123,7 @@ Same types, same messages, on **every** path — the fast one and the fallback.
 Keeping this identical is what makes the change a performance change rather than a
 behavioural one.
 
-- [ ] **Step 5: Confirm the size bound still applies before allocation**
+- [x] **Step 5: Confirm the size bound still applies before allocation**
 
 `MaxTotalBytes` caps the payload before anything is allocated, which is what
 bounds the vector block now that it has no element-count limit (#62).
@@ -141,17 +141,17 @@ has already bounded, rather than from a count discovered after decoding. Say so.
 
 **Depends on:** Task 3, and on Task 1 Step 3 having measured 18 %.
 
-- [ ] **Step 1: A vector pass on `net10.0` that only detects**
+- [x] **Step 1: A vector pass on `net10.0` that only detects**
 
-- [ ] **Step 2: Keep the scalar loop to locate**
+- [x] **Step 2: Keep the scalar loop to locate**
 
 The exception message must still name the **exact item and component**. Speed must
 not cost diagnosability — a "vector contains NaN somewhere" message turns a
 five-minute fix into an afternoon.
 
-- [ ] **Step 3: `netstandard2.0` keeps the scalar path**
+- [x] **Step 3: `netstandard2.0` keeps the scalar path**
 
-- [ ] **Step 4: Both targets, and the hardening suites unmodified**
+- [x] **Step 4: Both targets, and the hardening suites unmodified**
 
 ```bash
 build_all && test_all 2>&1 | tail -3
@@ -169,7 +169,7 @@ git diff --stat main -- tests/   # the hardening suites must not appear
 
 **Depends on:** Task 4.
 
-- [ ] **Step 1: Re-measure, `--inProcess` on both columns**
+- [x] **Step 1: Re-measure, `--inProcess` on both columns**
 
 Per #87 and #88 — otherwise the comparison mixes the framework with the harness.
 
@@ -180,17 +180,17 @@ Expected:
 | Passes | 5 | 3 |
 | Allocated | 90 MB | 35 MB |
 
-- [ ] **Step 2: Compare against the run the old figure came from**
+- [x] **Step 2: Compare against the run the old figure came from**
 
 A ratio against a number taken under a different harness is not a ratio. State
 which run each column comes from.
 
-- [ ] **Step 3: Record it in ADR 0011**
+- [x] **Step 3: Record it in ADR 0011**
 
 The format decision document is where a future reader will look for what the load
 path costs.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git commit -m "Read an artifact into one buffer sized before it is filled"

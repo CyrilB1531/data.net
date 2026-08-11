@@ -44,14 +44,14 @@ described.
 Do not skip this. The end of the branch is a number, and a number is only
 trustworthy if you have seen what the untrustworthy version looks like.
 
-- [ ] **Step 1: Create the second project with `SetTargetFramework` alone**
+- [x] **Step 1: Create the second project with `SetTargetFramework` alone**
 
 A minimal `bench/DataNet.NetStandard.Benchmarks` that links the existing sources
 and references the libraries with
 `SetTargetFramework="TargetFramework=netstandard2.0"`. Default toolchain, no
 assertion.
 
-- [ ] **Step 2: Run both suites and compare**
+- [x] **Step 2: Run both suites and compare**
 
 ```bash
 run_net '*Dot*' 2>&1 | tail -20
@@ -62,7 +62,7 @@ Expected: a difference of a few percent. **That is the bug.** BenchmarkDotNet's
 default toolchain generates its own project, re-resolves the reference and
 restores the net10 build, so both runs measure the same assemblies.
 
-- [ ] **Step 3: Write the wrong number down**
+- [x] **Step 3: Write the wrong number down**
 
 It goes in the pull request body as the thing that was nearly shipped. A 4 %
 result is small, correctly signed, and looks like a JIT difference — nobody
@@ -80,20 +80,20 @@ questions it.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Link the sources, do not copy them**
+- [x] **Step 1: Link the sources, do not copy them**
 
 `<Compile Include="../DataNet.Text.Benchmarks/**/*.cs" Exclude="…/bin/**;…/obj/**" Link="…" />`.
 One suite, two builds — the same device the mirror test projects use. A copy
 drifts; a link cannot.
 
-- [ ] **Step 2: Configure the in-process toolchain**
+- [x] **Step 2: Configure the in-process toolchain**
 
 So no generated project exists to re-resolve anything. This is the actual fix; the
 assertion in Task 3 is what proves it worked.
 
-- [ ] **Step 3: Add both projects to `DataNet.slnx`**
+- [x] **Step 3: Add both projects to `DataNet.slnx`**
 
-- [ ] **Step 4: Build**
+- [x] **Step 4: Build**
 
 ```bash
 build_all
@@ -110,7 +110,7 @@ build_all
 **Depends on:** Task 2.
 **Produces:** the difference between a measurement and a guess.
 
-- [ ] **Step 1: Read `TargetFrameworkAttribute` off the loaded assemblies**
+- [x] **Step 1: Read `TargetFrameworkAttribute` off the loaded assemblies**
 
 Before any benchmark runs, print one line per library under test:
 
@@ -119,12 +119,12 @@ Before any benchmark runs, print one line per library under test:
 // DataNet.Embeddings: .NETStandard,Version=v2.0
 ```
 
-- [ ] **Step 2: Exit non-zero on a mismatch**
+- [x] **Step 2: Exit non-zero on a mismatch**
 
 Not a warning. An isolation failure is invisible in the numbers unless you already
 know what to expect, so the run must stop rather than print a plausible table.
 
-- [ ] **Step 3: Verify the assertion fires**
+- [x] **Step 3: Verify the assertion fires**
 
 ```bash
 # temporarily drop SetTargetFramework from the csproj, then:
@@ -137,7 +137,7 @@ Expected: the assertion reports `.NETCoreApp` and a **non-zero exit**. Restore
 A gate that has never been seen to fail is not known to work — the same argument
 ADR 0015 later makes about the analyzer gate.
 
-- [ ] **Step 4: Confirm the real run prints the right thing**
+- [x] **Step 4: Confirm the real run prints the right thing**
 
 ```bash
 run_ns '*Dot*' 2>&1 | grep "Version=v2.0"
@@ -154,20 +154,20 @@ run_ns '*Dot*' 2>&1 | grep "Version=v2.0"
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: `Dot` and `L2Norm`, at 384 / 768 / 1024**
+- [x] **Step 1: `Dot` and `L2Norm`, at 384 / 768 / 1024**
 
 These are the embedding dimensions that matter, and `Dot` is the one deliberate
 behavioural split from ADR 0001. Benchmarking code that is byte-identical on both
 targets would average the difference away.
 
-- [ ] **Step 2: Run both suites**
+- [x] **Step 2: Run both suites**
 
 ```bash
 run_net '*VectorMath*' 2>&1 | tail -20
 run_ns  '*VectorMath*' 2>&1 | tail -20
 ```
 
-- [ ] **Step 3: Sanity-check the result against physics before believing it**
+- [x] **Step 3: Sanity-check the result against physics before believing it**
 
 Expected shape, on an Intel i7-4770S with .NET 10.0.110:
 
@@ -185,7 +185,7 @@ gave the bug away.
 Do this arithmetic explicitly. It is the check that catches the next isolation
 failure, whatever form it takes.
 
-- [ ] **Step 4: Handle S2245 if it fires**
+- [x] **Step 4: Handle S2245 if it fires**
 
 The new benchmarks seed an RNG to build vectors. Suppress with the reason:
 determinism is the requirement here, not a risk. Separate commit — it is a
@@ -201,15 +201,15 @@ different concern from the measurement.
 
 **Depends on:** Task 4.
 
-- [ ] **Step 1: The numbers, and the machine that produced them**
+- [x] **Step 1: The numbers, and the machine that produced them**
 
-- [ ] **Step 2: How to tell if isolation breaks again**
+- [x] **Step 2: How to tell if isolation breaks again**
 
 The assertion output to expect, and the explicit warning that **a few percent is
 the failure mode, not a result**. A future reader must be able to recognise 4 %
 for what it is.
 
-- [ ] **Step 3: Full gate**
+- [x] **Step 3: Full gate**
 
 ```bash
 build_all && dotnet test -c Release 2>&1 | tail -3
@@ -219,7 +219,7 @@ npx --yes markdownlint-cli2 "**/*.md" "#node_modules"
 
 Expected: clean on both frameworks, 168/168, format and markdownlint clean.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git commit -m "Measure the netstandard2.0 build against the net10 one"

@@ -656,6 +656,14 @@ public sealed class TokenizerJsonLoaderTests
     private static MemoryStream Bytes(string json) => new MemoryStream(Encoding.UTF8.GetBytes(json));
 
     /// <summary>
+    /// A minimal BPE <c>tokenizer.json</c> document with one extra <c>model</c>
+    /// property appended -- e.g. <c>BpeJson(@"""dropout"": 0.0")</c> -- for the
+    /// acceptance/refusal pairs below that vary a single model setting.
+    /// </summary>
+    private static string BpeJson(string extraModelProperty) =>
+        "{\"model\":{\"type\":\"BPE\",\"vocab\":{\"a\":0},\"merges\":[]," + extraModelProperty + "}}";
+
+    /// <summary>
     /// The path to <c>tests/oracles/roberta_shaped_model.json</c>, not its parsed
     /// content: <see cref="TokenizerJsonLoader.LoadBpe(string, ArtifactLoadOptions?)"/>
     /// takes a file path, where <see cref="OracleLoader.Load(string)"/> returns an
@@ -1047,13 +1055,94 @@ public sealed class TokenizerJsonLoaderTests
          "pre_tokenizer":{"type":"Sequence","pretokenizers":[
             {"type":"Split","pattern":{"Regex":"\\w+"},"behavior":"Isolated"},
             {"type":"ByteLevel","add_prefix_space":false,"use_regex":false}]},
-         "decoder":{"type":"ByteLevel"}}
+         "decoder":{"type":"ByteLevel","add_prefix_space":true}}
         """;
 
         BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
         Assert.True(vocabulary.ByteLevel);
         Assert.Equal("\\w+", vocabulary.PreTokenizerPattern);
+    }
+
+    /// <summary>
+    /// `tokenizers` has no default for this field: it refuses the file, in every
+    /// position a ByteLevel block can appear. Accepting it would mean inventing a
+    /// value that changes the token stream. Issue #118.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_refuses_a_top_level_byte_level_without_add_prefix_space()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "pre_tokenizer":{"type":"ByteLevel"}}
+        """;
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
+
+        Assert.Contains("add_prefix_space", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The same rule inside a <c>Sequence</c> of <c>Split</c> then <c>ByteLevel</c>:
+    /// the <c>ByteLevel</c> step is the same struct `tokenizers` deserializes at the
+    /// top level, so it has no default for <c>add_prefix_space</c> there either.
+    /// Issue #118.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_refuses_a_sequence_byte_level_step_without_add_prefix_space()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "pre_tokenizer":{"type":"Sequence","pretokenizers":[
+            {"type":"Split","pattern":{"Regex":"\\w+"},"behavior":"Isolated"},
+            {"type":"ByteLevel","use_regex":true}]}}
+        """;
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
+
+        Assert.Contains("add_prefix_space", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The same rule again in the <c>decoder</c> slot -- worded through an untagged
+    /// enum on the Rust side, but the same field, the same absent default. Issue #118.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_refuses_a_byte_level_decoder_without_add_prefix_space()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "pre_tokenizer":{"type":"ByteLevel","add_prefix_space":true},
+         "decoder":{"type":"ByteLevel"}}
+        """;
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
+
+        Assert.Contains("add_prefix_space", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The regression guard for the three refusals above: a <c>ByteLevel</c> block
+    /// that does declare <c>add_prefix_space</c> still loads and still encodes the way
+    /// it did before this task. The leading <c>Ġ</c> in the token stream is what proves
+    /// the flag was actually read, not merely that no exception was thrown.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_encodes_a_byte_level_block_that_declares_add_prefix_space()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"Ġ":0,"h":1,"i":2},"merges":[]},
+         "pre_tokenizer":{"type":"ByteLevel","add_prefix_space":true,"use_regex":true}}
+        """;
+
+        var tokenizer = new BpeTokenizer(TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
+        TokenizationResult encoded = tokenizer.Encode("hi");
+
+        Assert.Equal(["Ġ", "h", "i"], encoded.Tokens);
+        Assert.Equal([0, 1, 2], encoded.Ids);
     }
 
     /// <summary>
@@ -1131,6 +1220,62 @@ public sealed class TokenizerJsonLoaderTests
         Assert.Single(TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()).Vocab);
     }
 
+    [Fact]
+    public void LoadBpe_accepts_an_empty_continuing_subword_prefix()
+    {
+        // An empty prefix prefixes nothing, so the divergence the refusal guards cannot occur.
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(BpeJson(@"""continuing_subword_prefix"": """"")));
+
+        Assert.NotNull(vocabulary);
+    }
+
+    /// <summary>
+    /// <c>Unsupported</c> throws <see cref="InvalidDataException"/>, the type every
+    /// other refusal in this class asserts against -- not
+    /// <see cref="NotSupportedException"/>, which this loader never throws.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_still_refuses_a_non_empty_continuing_subword_prefix()
+    {
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(BpeJson(@"""continuing_subword_prefix"": ""##"""))));
+
+        Assert.Contains("continuing_subword_prefix", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LoadBpe_accepts_a_zero_dropout()
+    {
+        // At 0.0 no merge is ever skipped, which is the determinism the refusal protects.
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(BpeJson(@"""dropout"": 0.0")));
+
+        Assert.NotNull(vocabulary);
+    }
+
+    [Fact]
+    public void LoadBpe_still_refuses_a_non_zero_dropout()
+    {
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(BpeJson(@"""dropout"": 0.1"))));
+
+        Assert.Contains("dropout", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A <c>dropout</c> that is present, non-null and not a number is malformed
+    /// rather than a reproduced zero -- a JSON string such as <c>"0.0"</c> is not the
+    /// numeric zero <see cref="LoadBpe_accepts_a_zero_dropout"/> pins, so it still
+    /// falls into the refusal rather than being let through.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_still_refuses_a_string_dropout()
+    {
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(BpeJson(@"""dropout"": ""0.0"""))));
+
+        Assert.Contains("dropout", error.Message, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// <c>ReadBpe</c> never looked at the normalizer at all, where the WordPiece and
     /// Unigram readers both do, so a BPE file declaring <c>NFC</c> or <c>NFKC</c>
@@ -1161,7 +1306,7 @@ public sealed class TokenizerJsonLoaderTests
     {
         const string Json = """
         {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
-         "pre_tokenizer":{"type":"ByteLevel"},
+         "pre_tokenizer":{"type":"ByteLevel","add_prefix_space":true},
          "decoder":{"type":"BPEDecoder"}}
         """;
 
@@ -1177,7 +1322,7 @@ public sealed class TokenizerJsonLoaderTests
     {
         const string Json = """
         {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
-         "decoder":{"type":"ByteLevel"}}
+         "decoder":{"type":"ByteLevel","add_prefix_space":true}}
         """;
 
         InvalidDataException error = Assert.Throws<InvalidDataException>(

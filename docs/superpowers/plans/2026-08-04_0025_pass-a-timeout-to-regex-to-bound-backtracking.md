@@ -47,7 +47,7 @@ oracles_unchanged() {
 **Produces:** first-hand knowledge of the failure mode, and the input Task 3's
 test will use.
 
-- [ ] **Step 1: Find both construction sites**
+- [x] **Step 1: Find both construction sites**
 
 ```bash
 grep -rn "new Regex" src --include='*.cs'
@@ -56,7 +56,7 @@ grep -rn "new Regex" src --include='*.cs'
 Expected: `WordPieceTokenizer.cs` and `TextAnalyzer.cs`, neither passing a
 `matchTimeout`.
 
-- [ ] **Step 2: Confirm the pattern is caller-supplied in one of them**
+- [x] **Step 2: Confirm the pattern is caller-supplied in one of them**
 
 ```bash
 grep -n "TokenPattern" src/DataNet.Text/Vectorization/CountVectorizer.cs src/DataNet.Text/Vectorization/TextAnalyzer.cs
@@ -67,7 +67,7 @@ text. An arbitrary pattern over arbitrary text is the textbook ReDoS pair,
 reachable from the public API — which is why Sonar's Minor rating understates it
 here.
 
-- [ ] **Step 3: Demonstrate the hang, with a hard stop**
+- [x] **Step 3: Demonstrate the hang, with a hard stop**
 
 ```bash
 timeout 10 dotnet run --project /tmp/redos-probe   # (a scratch console app)
@@ -91,33 +91,33 @@ something by simply completing.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: `RegexDefaults` in `src/Shared`**
+- [x] **Step 1: `RegexDefaults` in `src/Shared`**
 
 Alongside `Guard` and `StringCompat`, in `DataNet.Internal`, compiled into each
 library by `src/Directory.Build.props`.
 
-- [ ] **Step 2: One second, with the reasoning in the source**
+- [x] **Step 2: One second, with the reasoning in the source**
 
 Generous enough that no realistic document approaches it; small enough that a
 catastrophic pattern fails fast. The number is a judgement — write it down once,
 here, rather than as a literal at two call sites that will drift.
 
-- [ ] **Step 3: Add it to the `Compile Include` list**
+- [x] **Step 3: Add it to the `Compile Include` list**
 
 ```bash
 grep -n "Shared/" src/Directory.Build.props
 ```
 
-- [ ] **Step 4: Both call sites take the timeout**
+- [x] **Step 4: Both call sites take the timeout**
 
-- [ ] **Step 5: Do not swallow the exception**
+- [x] **Step 5: Do not swallow the exception**
 
 `RegexMatchTimeoutException` propagates. Document it on the public API: a
 timed-out tokenization returning "no tokens" would be indistinguishable from a
 legitimately empty document, which is the worse of the two failures because it is
 silent.
 
-- [ ] **Step 6: Both targets build**
+- [x] **Step 6: Both targets build**
 
 ```bash
 build_all
@@ -137,7 +137,7 @@ reason so the suggestion is not re-raised in six months.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: The ReDoS test**
+- [x] **Step 1: The ReDoS test**
 
 ```csharp
 [Fact]
@@ -152,12 +152,12 @@ public void Pathological_pattern_times_out_instead_of_hanging()
 not finish in any reasonable time, so a test that completes has demonstrated the
 timeout fired.
 
-- [ ] **Step 2: A second test pinning ordinary behaviour**
+- [x] **Step 2: A second test pinning ordinary behaviour**
 
 An ordinary document tokenizes exactly as before. Without it, a timeout set
 absurdly low would pass Step 1 and break everything else.
 
-- [ ] **Step 3: Run them, and read the count**
+- [x] **Step 3: Run them, and read the count**
 
 ```bash
 test_rx 2>&1 | tail -5
@@ -171,7 +171,7 @@ Expected: 2 tests, both passing, in well under a second each.
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: Everything, and the corpora**
+- [x] **Step 1: Everything, and the corpora**
 
 ```bash
 build_all && test_all 2>&1 | tail -3
@@ -182,12 +182,12 @@ oracles_unchanged
 Expected: 160/160 (158 + 2 new), 0 warnings on both frameworks, format clean,
 `ORACLES CLEAN`.
 
-- [ ] **Step 2: Record the behavioural change where an upgrader will look**
+- [x] **Step 2: Record the behavioural change where an upgrader will look**
 
 This is a **contract change**: input that previously hung now throws. It belongs
 under *Changed* in the changelog, not filed under *Fixed*.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add -A

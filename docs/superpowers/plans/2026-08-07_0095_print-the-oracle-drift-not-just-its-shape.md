@@ -38,7 +38,7 @@ parse() { python3 -c "import yaml; yaml.safe_load(open('.github/workflows/ci.yml
 
 **Depends on:** nothing.
 
-- [ ] **Step 1: Read one of the three recent failures**
+- [x] **Step 1: Read one of the three recent failures**
 
 ```bash
 gh run list --workflow ci.yml --limit 20 --json databaseId,conclusion,headBranch \
@@ -48,12 +48,12 @@ gh run view <id> --log-failed | grep -A10 "Oracles"
 
 Expected: a three-line `--stat` summary, and nothing about the values.
 
-- [ ] **Step 2: Note that it failed three times in one morning**
+- [x] **Step 2: Note that it failed three times in one morning**
 
 Twice on #94, once on `main` (`0db78d1`), always with the same summary — with **no
 way to tell whether the cause was the same each time**.
 
-- [ ] **Step 3: Read the current step**
+- [x] **Step 3: Read the current step**
 
 ```bash
 grep -n -A20 "Regenerate oracles" .github/workflows/ci.yml
@@ -69,21 +69,21 @@ grep -n -A20 "Regenerate oracles" .github/workflows/ci.yml
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Keep the stat, and add the diff after it**
+- [x] **Step 1: Keep the stat, and add the diff after it**
 
 The stat names the corpus that moved; only the values say why.
 
-- [ ] **Step 2: `-U0`, with the reason in a comment**
+- [x] **Step 2: `-U0`, with the reason in a comment**
 
 The corpora are **one value per line**. Context lines carry nothing and the
 changed values are the whole message.
 
-- [ ] **Step 3: Cap at 400 lines**
+- [x] **Step 3: Cap at 400 lines**
 
 So a wholesale regeneration cannot bury the log. Say in the comment that the
 artefact covers that case.
 
-- [ ] **Step 4: Do not touch the criterion**
+- [x] **Step 4: Do not touch the criterion**
 
 ```bash
 git diff .github/workflows/ci.yml | grep -E "^[+-].*(git diff --quiet|exit 1)"
@@ -101,9 +101,9 @@ The condition that decides pass or fail must be byte-identical.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Upload `tests/oracles/` on failure, 14-day retention**
+- [x] **Step 1: Upload `tests/oracles/` on failure, 14-day retention**
 
-- [ ] **Step 2: Say why in a comment**
+- [x] **Step 2: Say why in a comment**
 
 The runner is thrown away with everything that would let the failure be
 reproduced. **Drift has already turned out to depend on which CPU the job landed
@@ -118,7 +118,7 @@ that matters when the cause is environmental.
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: Drift a corpus on purpose**
+- [x] **Step 1: Drift a corpus on purpose**
 
 ```bash
 python3 - <<'EOF'
@@ -131,29 +131,29 @@ git commit -am "TEMPORARY: drift one value"
 git push
 ```
 
-- [ ] **Step 2: Read the failing run**
+- [x] **Step 2: Read the failing run**
 
 Expected: the `::error::`, the stat, then the changed values under
 `--- first 400 changed lines ---`, and the `oracles-as-regenerated` artefact
 present.
 
-- [ ] **Step 3: Download the artefact and confirm it is usable**
+- [x] **Step 3: Download the artefact and confirm it is usable**
 
 ```bash
 gh run download <id> -n oracles-as-regenerated -D /tmp/drift
 diff -u tests/oracles/classification_metrics.json /tmp/drift/classification_metrics.json | head
 ```
 
-- [ ] **Step 4: Revert the deliberate drift and confirm green**
+- [x] **Step 4: Revert the deliberate drift and confirm green**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .github/workflows/ci.yml
 git commit -m "Print the oracle drift, not just its shape"
 ```
 
-- [ ] **Step 6: Open the follow-up the output now makes possible**
+- [x] **Step 6: Open the follow-up the output now makes possible**
 
 The example values — `413.626` against `413.6259999999999` — are a last-digit
 float difference, not a behavioural change. That is a separate issue, and this

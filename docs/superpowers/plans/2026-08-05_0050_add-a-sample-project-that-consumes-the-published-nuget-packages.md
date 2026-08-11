@@ -53,13 +53,13 @@ run_sample() {
 **Produces:** the reason this is worth a project rather than a paragraph in the
 README.
 
-- [ ] **Step 1: Confirm nothing consumes a package today**
+- [x] **Step 1: Confirm nothing consumes a package today**
 
 ```bash
 grep -rn "PackageReference Include=\"DataNet" --include='*.csproj' . || echo "NOTHING CONSUMES THE PACKAGES"
 ```
 
-- [ ] **Step 2: Confirm packing is the only exercise packaging gets**
+- [x] **Step 2: Confirm packing is the only exercise packaging gets**
 
 ```bash
 grep -rn "dotnet pack" .github/workflows/ci.yml
@@ -80,18 +80,18 @@ ship. None of those fails anything today.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: `NuGet.config` mapping `DataNet.*` to the local folder**
+- [x] **Step 1: `NuGet.config` mapping `DataNet.*` to the local folder**
 
 Everything else to nuget.org. The mapping is what guarantees the sample's restore
 can only succeed from `./artifacts`.
 
-- [ ] **Step 2: Reference the three packages by version, bound to `$(Version)`**
+- [x] **Step 2: Reference the three packages by version, bound to `$(Version)`**
 
 The root `Directory.Build.props` applies to `samples/` too, so the reference
 tracks what `pack` just produced rather than pinning a number that goes stale at
 the next release.
 
-- [ ] **Step 3: Verify the sample is not in the solution**
+- [x] **Step 3: Verify the sample is not in the solution**
 
 ```bash
 grep -c "samples" DataNet.slnx || echo "NOT IN SOLUTION — correct"
@@ -101,7 +101,7 @@ Expected: no entry. Inside the solution, `ProjectReference` resolution would
 quietly satisfy the references and the sample would prove nothing while appearing
 to work.
 
-- [ ] **Step 4: Prove the restore actually comes from the feed**
+- [x] **Step 4: Prove the restore actually comes from the feed**
 
 ```bash
 pack_feed
@@ -125,7 +125,7 @@ whenever the two share a version — and the gate then validates the wrong assem
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Print the resolved target framework first**
+- [x] **Step 1: Print the resolved target framework first**
 
 ```text
 DataNet.Text    : .NETCoreApp,Version=v10.0
@@ -134,7 +134,7 @@ DataNet.Text    : .NETCoreApp,Version=v10.0
 This is what makes a resolution failure visible rather than something to infer
 from a stack trace.
 
-- [ ] **Step 2: The five sections**
+- [x] **Step 2: The five sections**
 
 - distances — `Levenshtein`, `JaroWinkler`
 - vectorization — `TfidfVectorizer` over a few documents, printing the shape and
@@ -143,12 +143,12 @@ from a stack trace.
 - fuzzy — `Process.ExtractOne`
 - embeddings — **tokenizer only**
 
-- [ ] **Step 3: Say why embeddings stop at the tokenizer**
+- [x] **Step 3: Say why embeddings stop at the tokenizer**
 
 The ONNX path needs a model that is deliberately not committed. Print or comment
 the reason; a silently skipped section reads as an oversight.
 
-- [ ] **Step 4: Run it**
+- [x] **Step 4: Run it**
 
 ```bash
 pack_feed && run_sample
@@ -167,18 +167,18 @@ meaningful cannot be reviewed.
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: A `Sample consumes the packages` job — pack, then run**
+- [x] **Step 1: A `Sample consumes the packages` job — pack, then run**
 
 Packing first is the point: the gate tests what is *about* to ship, not what
 already shipped.
 
-- [ ] **Step 2: Separate `NUGET_PACKAGES` for the two steps**
+- [x] **Step 2: Separate `NUGET_PACKAGES` for the two steps**
 
 Packing `DataNet.Fuzzy` restores `DataNet.Text` from nuget.org, and that
 extraction must not be visible to the sample. Separate folders make the two
 restores independent.
 
-- [ ] **Step 3: Build *and* run**
+- [x] **Step 3: Build *and* run**
 
 Building resolves the packages as a consumer would, so a missing dependency group
 or an unreachable public type fails the build. Running proves the code works once
@@ -195,25 +195,25 @@ resolved. Both are needed; neither is sufficient.
 
 **Depends on:** Task 4.
 
-- [ ] **Step 1: ADR 0009**
+- [x] **Step 1: ADR 0009**
 
 The local-feed choice and its trade-off: nuget.org would be more honest as
 documentation and useless as a gate, because it can only fail once a broken
 package is already public. Record the `NUGET_PACKAGES` isolation requirement —
 it is the part that will be forgotten.
 
-- [ ] **Step 2: README links it from getting started**
+- [x] **Step 2: README links it from getting started**
 
 The sample is the runnable version of the quickstart; say so where a reader is
 looking for one.
 
-- [ ] **Step 3: State the limit**
+- [x] **Step 3: State the limit**
 
 The sample covers one thing per lot, **not every public type**. That is a real
 gap; name it and open the follow-up rather than letting the gate look broader than
 it is.
 
-- [ ] **Step 4: Full gate**
+- [x] **Step 4: Full gate**
 
 ```bash
 dotnet build -c Release && dotnet test -c Release 2>&1 | tail -3
@@ -223,7 +223,7 @@ npx --yes markdownlint-cli2 "**/*.md" "#node_modules"
 grep -c "samples" DataNet.slnx || echo "NOT IN SOLUTION — correct"
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add samples/ docs/decisions/0009-sample-consumes-a-local-feed.md \

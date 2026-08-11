@@ -43,13 +43,13 @@ test_all()     { dotnet test -c Release; }
 **Depends on:** nothing.
 **Produces:** the line the extraction must not cross.
 
-- [ ] **Step 1: List every member of the three Romance stemmers**
+- [x] **Step 1: List every member of the three Romance stemmers**
 
 ```bash
 grep -nE "private|protected|internal" src/DataNet.Text/Stemming/{Spanish,Portuguese,French}SnowballStemmer.cs
 ```
 
-- [ ] **Step 2: Classify each**
+- [x] **Step 2: Classify each**
 
 - **Scaffolding** — `Region`, RV, `InRv`/`InR1`/`InR2`, `Ends`, `Delete`,
   `Replace`, `LongestSuffix`, `LongestSuffixInRv`. Identical by construction.
@@ -58,7 +58,7 @@ grep -nE "private|protected|internal" src/DataNet.Text/Stemming/{Spanish,Portugu
 The test: could this member be written without knowing the language? If yes, it is
 scaffolding.
 
-- [ ] **Step 3: Confirm French's RV really is different**
+- [x] **Step 3: Confirm French's RV really is different**
 
 ```bash
 grep -n -A15 "Rv\|RV" src/DataNet.Text/Stemming/FrenchSnowballStemmer.cs | head -30
@@ -68,7 +68,7 @@ Expected: the `par`/`col`/`tap` prefix cases. **French stays out.** Forcing it i
 would make the base carry a language-specific branch, which is how a shared
 framework turns into a bucket of exceptions.
 
-- [ ] **Step 4: Record the baseline**
+- [x] **Step 4: Record the baseline**
 
 ```bash
 test_romance 2>&1 | tail -3
@@ -87,19 +87,19 @@ git rev-parse HEAD:tests/oracles
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Move the scaffolding, verbatim**
+- [x] **Step 1: Move the scaffolding, verbatim**
 
 No improvements on the way past. A pure move is reviewable; a move plus a
 refactor is not.
 
-- [ ] **Step 2: The constructor takes the word already transformed**
+- [x] **Step 2: The constructor takes the word already transformed**
 
 Portuguese expands nasals (`ã` → `a~`) **before** regions are computed. The base
 must accept the transformed string rather than the original — get this wrong and
 `geração` stems differently, which is a word-shaped wrong answer no reviewer would
 catch by eye.
 
-- [ ] **Step 3: Each language supplies its vowel set and its steps**
+- [x] **Step 3: Each language supplies its vowel set and its steps**
 
 ---
 
@@ -112,7 +112,7 @@ catch by eye.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Spanish onto the base**
+- [x] **Step 1: Spanish onto the base**
 
 ```bash
 build_all && dotnet test -c Release --filter "FullyQualifiedName~SpanishSnowball" 2>&1 | tail -3
@@ -121,14 +121,14 @@ build_all && dotnet test -c Release --filter "FullyQualifiedName~SpanishSnowball
 Expected: green, same count. Do not start Portuguese until this passes — two
 languages in flight means a corpus failure has two candidate causes.
 
-- [ ] **Step 2: Portuguese onto the base, with the nasal expansion through the
+- [x] **Step 2: Portuguese onto the base, with the nasal expansion through the
       constructor**
 
 ```bash
 dotnet test -c Release --filter "FullyQualifiedName~PortugueseSnowball" 2>&1 | tail -3
 ```
 
-- [ ] **Step 3: Sanity-check the specific case the transformation order breaks**
+- [x] **Step 3: Sanity-check the specific case the transformation order breaks**
 
 ```bash
 python3 -c "
@@ -140,13 +140,13 @@ print([c for c in d['cases'] if c['input']=='geração'])
 Compare against what the code now produces. If the base computed the regions on
 the untransformed word, this is the case that moves.
 
-- [ ] **Step 4: Merge the two identical branches in Portuguese step 5**
+- [x] **Step 4: Merge the two identical branches in Portuguese step 5**
 
 `S1871`. The published description lists `gu` and `ci` separately, but both drop
 the same single character. A genuine simplification, and it belongs here rather
 than in a second pass over the same file.
 
-- [ ] **Step 5: Confirm the diff is a deletion**
+- [x] **Step 5: Confirm the diff is a deletion**
 
 ```bash
 git diff --stat main -- src/DataNet.Text/Stemming/
@@ -162,7 +162,7 @@ the order of 33 insertions against 192 deletions across the two.
 **Depends on:** Task 3.
 **Produces:** the licence for the whole change.
 
-- [ ] **Step 1: All four corpora**
+- [x] **Step 1: All four corpora**
 
 ```bash
 build_all && test_romance 2>&1 | tail -3
@@ -170,7 +170,7 @@ build_all && test_romance 2>&1 | tail -3
 
 Expected: every Snowball test green, at the counts recorded in Task 1.
 
-- [ ] **Step 2: The corpora themselves untouched**
+- [x] **Step 2: The corpora themselves untouched**
 
 ```bash
 git status --porcelain tests/oracles/
@@ -178,7 +178,7 @@ git status --porcelain tests/oracles/
 
 Expected: empty. This branch does not regenerate anything.
 
-- [ ] **Step 3: Whole suite and format**
+- [x] **Step 3: Whole suite and format**
 
 ```bash
 test_all 2>&1 | tail -3
@@ -187,7 +187,7 @@ dotnet format --verify-no-changes
 
 Expected: 164/164.
 
-- [ ] **Step 4: Read the duplication figure on the pushed branch**
+- [x] **Step 4: Read the duplication figure on the pushed branch**
 
 That is the reason this branch exists, and it is the one number only SonarQube
 Cloud can give. Expect a substantial drop; if it does not move, the extraction did
@@ -199,7 +199,7 @@ not reach the duplicated code.
 
 **Depends on:** Task 4.
 
-- [ ] **Step 1: Check whether any suppression was left behind**
+- [x] **Step 1: Check whether any suppression was left behind**
 
 ```bash
 grep -n "pragma warning disable" src/DataNet.Text/Stemming/*.cs
@@ -214,7 +214,7 @@ If it is visible now, fix it here. If it surfaces on the dashboard after merge, 
 is a follow-up — and worth stating in the pull request that it is a known
 consequence rather than a surprise.
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/DataNet.Text/Stemming/

@@ -44,7 +44,7 @@ for u in d['updates']:
 **Produces:** the argument the pull request needs, which is stronger than
 "ergonomics".
 
-- [ ] **Step 1: Look at what #32 actually contained**
+- [x] **Step 1: Look at what #32 actually contained**
 
 ```bash
 gh pr view 32 --json title,body --jq .body | head -20
@@ -53,7 +53,7 @@ gh pr view 32 --json title,body --jq .body | head -20
 Expected: six **major** jumps in one pull request. It can only be accepted or
 rejected as a block.
 
-- [ ] **Step 2: Find the workflows no pull request ever exercises**
+- [x] **Step 2: Find the workflows no pull request ever exercises**
 
 ```bash
 grep -l -E "on:\s*$" -r .github/workflows/ >/dev/null
@@ -76,7 +76,7 @@ That is the real argument: a major bump to `checkout`, `setup-dotnet` or
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Add `update-types`**
+- [x] **Step 1: Add `update-types`**
 
 ```yaml
 groups:
@@ -85,12 +85,12 @@ groups:
     update-types: [minor, patch]
 ```
 
-- [ ] **Step 2: Comment the reason, naming the two unexercised workflows**
+- [x] **Step 2: Comment the reason, naming the two unexercised workflows**
 
 Otherwise this reads as a preference and someone will regroup it for the quieter
 inbox.
 
-- [ ] **Step 3: Verify the parsed configuration, not the text**
+- [x] **Step 3: Verify the parsed configuration, not the text**
 
 ```bash
 show_group
@@ -106,7 +106,7 @@ behaviour behind a file that looks fixed.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Watch the next scheduled Dependabot run**
+- [x] **Step 1: Watch the next scheduled Dependabot run**
 
 ```bash
 gh pr list --author "app/dependabot"
@@ -116,7 +116,7 @@ Expected: majors as individual pull requests, minor and patch still grouped. If
 majors still arrive grouped, the key did not take effect — re-read the parsed
 output rather than the file.
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add .github/dependabot.yml

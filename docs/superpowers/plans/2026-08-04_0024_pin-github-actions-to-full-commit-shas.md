@@ -50,7 +50,7 @@ parse_all() {
 **Depends on:** nothing.
 **Produces:** the list, and early warning of the two special cases.
 
-- [ ] **Step 1: List every reference**
+- [x] **Step 1: List every reference**
 
 ```bash
 list_uses
@@ -58,7 +58,7 @@ list_uses
 
 Expected: 16 across four workflows.
 
-- [ ] **Step 2: Find the references already pinned**
+- [x] **Step 2: Find the references already pinned**
 
 ```bash
 audit_pins
@@ -67,7 +67,7 @@ audit_pins
 `sonarcloud.yml` already pins `setup-java`, `checkout` and `cache`. Note the
 `checkout` SHA — Task 3 has to reconcile it.
 
-- [ ] **Step 3: Resolve every tag to a commit**
+- [x] **Step 3: Resolve every tag to a commit**
 
 ```bash
 for ref in actions/checkout@v4 actions/setup-dotnet@v4 actions/upload-artifact@v4 NuGet/login@v1; do
@@ -89,7 +89,7 @@ annotated tag and must be dereferenced in Task 2.
 **Produces:** the correct SHA for `NuGet/login@v1`, which is the one most likely
 to be wrong and the one in the job that mints a publishing key.
 
-- [ ] **Step 1: Dereference it**
+- [x] **Step 1: Dereference it**
 
 ```bash
 TAGSHA=$(gh api repos/NuGet/login/git/ref/tags/v1 --jq '.object.sha')
@@ -99,7 +99,7 @@ gh api "repos/NuGet/login/git/tags/$TAGSHA" --jq '.object.type + " " + .object.s
 Expected: `commit <sha>`. **That** is the SHA to pin — not `$TAGSHA`, which is the
 tag object's own hash.
 
-- [ ] **Step 2: Confirm the commit exists on the action repository**
+- [x] **Step 2: Confirm the commit exists on the action repository**
 
 ```bash
 gh api repos/NuGet/login/commits/<sha> --jq '.sha'
@@ -121,7 +121,7 @@ problem.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Replace each tag with its SHA, version in a trailing comment**
+- [x] **Step 1: Replace each tag with its SHA, version in a trailing comment**
 
 ```yaml
 - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -130,13 +130,13 @@ problem.
 The comment is not decoration: it is what makes the file readable and what
 Dependabot rewrites.
 
-- [ ] **Step 2: Reconcile the two `actions/checkout` pins**
+- [x] **Step 2: Reconcile the two `actions/checkout` pins**
 
 `sonarcloud.yml` pins a different SHA than the tag resolves to today. Two answers
 to "which checkout do we run" is the maintenance trap pinning exists to avoid.
 Pick one and use it everywhere.
 
-- [ ] **Step 3: Confirm no reference moved a major version**
+- [x] **Step 3: Confirm no reference moved a major version**
 
 ```bash
 git diff main -- .github/workflows/ | grep -E "^\+.*uses:" | grep -oE "# v[0-9]+" | sort -u
@@ -157,11 +157,11 @@ an upgrade.
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: Dependabot for the `github-actions` ecosystem**
+- [x] **Step 1: Dependabot for the `github-actions` ecosystem**
 
 Weekly, **grouped into one pull request** rather than one per action.
 
-- [ ] **Step 2: Say why in the file**
+- [x] **Step 2: Say why in the file**
 
 A pin that is never updated freezes a known-vulnerable version — a real regression
 against a mutable tag, which at least receives patches. Dependabot understands SHA
@@ -175,7 +175,7 @@ Without this file, the change trades one risk for another and calls it security.
 
 **Depends on:** Task 4.
 
-- [ ] **Step 1: The audit returns nothing**
+- [x] **Step 1: The audit returns nothing**
 
 ```bash
 audit_pins
@@ -184,7 +184,7 @@ audit_pins
 Expected: `ALL PINNED`. Sixteen references across four files is exactly the size
 where reading them all feels sufficient and is not.
 
-- [ ] **Step 2: Everything parses**
+- [x] **Step 2: Everything parses**
 
 ```bash
 parse_all
@@ -192,14 +192,14 @@ parse_all
 
 Expected: five files, all `OK`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add .github/
 git commit -m "Pin GitHub Actions to full commit SHAs"
 ```
 
-- [ ] **Step 4: Watch the first Dependabot run**
+- [x] **Step 4: Watch the first Dependabot run**
 
 If it opens one pull request per action instead of a group, the configuration is
 wrong and the noise will train everyone to ignore it.

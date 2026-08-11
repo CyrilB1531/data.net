@@ -46,20 +46,20 @@ oracles_unchanged() {
 **Depends on:** nothing.
 **Produces:** the three piles, and a baseline the end of the branch is compared to.
 
-- [ ] **Step 1: Record the current findings, per rule and per file**
+- [x] **Step 1: Record the current findings, per rule and per file**
 
 From the SonarLint panel or a solution-wide analysis. Group by rule id. A count
 per rule is what makes Task 4's suppressions defensible — a rule suppressed
 without knowing how often it fires is a rule suppressed on a hunch.
 
-- [ ] **Step 2: Record the baseline test count and the oracle hashes**
+- [x] **Step 2: Record the baseline test count and the oracle hashes**
 
 ```bash
 test_all 2>&1 | tail -3
 git rev-parse HEAD:tests/oracles
 ```
 
-- [ ] **Step 3: Sort every finding into one of three piles**
+- [x] **Step 3: Sort every finding into one of three piles**
 
 - **Defect** — the rule is right and the code is wrong.
 - **Right rule, wrong fix** — obeying the suggestion changes behaviour or costs an
@@ -94,27 +94,27 @@ treatment and mixing them is how a behaviour change gets committed as a cleanup.
 Work **one rule at a time**, and run the corpora after each. A batch of fixes that
 moves an oracle gives you no information about which fix did it.
 
-- [ ] **Step 1: `S3218` — shadowed members**
+- [x] **Step 1: `S3218` — shadowed members**
 
 `Worker.Stem()` shadows the outer static `Stem(string)` in both Snowball stemmers;
 a record property shadows an outer const in a benchmark. Rename the inner ones.
 
-- [ ] **Step 2: `S3241` / `S3626` — return values nobody reads**
+- [x] **Step 2: `S3241` / `S3626` — return values nobody reads**
 
 `Step1`, `Step2a`, `Step2b` return a `bool` no caller reads, which leaves dead
 trailing returns. Make them `void`.
 
-- [ ] **Step 3: `S3358` — nested ternaries in `Nysiis` and `HashingVectorizer`**
+- [x] **Step 3: `S3358` — nested ternaries in `Nysiis` and `HashingVectorizer`**
 
 Straightforward here. The stemmer case is **not**, and is Task 3.
 
-- [ ] **Step 4: `S6608`, `S8969`, `S125`, `S1192`**
+- [x] **Step 4: `S6608`, `S8969`, `S125`, `S1192`**
 
 `results.First()` → indexer; drop the null-forgiving operator `Assert.NotNull`
 already makes redundant; rewrite the two prose comments that parse as code; hoist
 the literals repeated across corpora.
 
-- [ ] **Step 5: Corpora after every rule**
+- [x] **Step 5: Corpora after every rule**
 
 ```bash
 build_all && test_all 2>&1 | tail -3 && oracles_unchanged
@@ -135,7 +135,7 @@ Expected: 158/158, `ORACLES CLEAN`.
 **Depends on:** Task 2.
 **Produces:** the part of this branch a reviewer should read closely.
 
-- [ ] **Step 1: `S2184` in `Jaro` — make the intent explicit, do not cast**
+- [x] **Step 1: `S2184` in `Jaro` — make the intent explicit, do not cast**
 
 The rule sees an `int` division assigned to a `double` and suggests casting an
 operand. **That would be a behaviour change.** The count of mismatched positions
@@ -149,13 +149,13 @@ even by construction. Verify by the corpus, not by reasoning:
 dotnet test -c Release --filter "FullyQualifiedName~Jaro" 2>&1 | tail -3
 ```
 
-- [ ] **Step 2: `S3358` in the stemmer — if/else, not a candidate array**
+- [x] **Step 2: `S3358` in the stemmer — if/else, not a candidate array**
 
 The tidy fix is a loop over an array of candidates. That allocates on every call,
 in a per-token path. Use an if/else chain and say why in a comment; the next
 person to read the rule will otherwise re-apply the tidy version.
 
-- [ ] **Step 3: `S2234` — rename the locals, do not touch the call**
+- [x] **Step 3: `S2234` — rename the locals, do not touch the call**
 
 The symmetry check swaps its arguments **deliberately**. It reads as a mistake
 only because the locals mirror the parameter names `a`/`b`. Rename to `x`/`y`/`z`.
@@ -163,7 +163,7 @@ only because the locals mirror the parameter names `a`/`b`. Rename to `x`/`y`/`z
 If you find yourself editing the call, stop: you are about to delete the assertion
 the test exists for.
 
-- [ ] **Step 4: Corpora**
+- [x] **Step 4: Corpora**
 
 ```bash
 test_all 2>&1 | tail -3 && oracles_unchanged
@@ -181,13 +181,13 @@ test_all 2>&1 | tail -3 && oracles_unchanged
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: `S3776` on the rule-engines**
+- [x] **Step 1: `S3776` on the rule-engines**
 
 Phonetic encoders and stemmers. Reason: decomposing a published rule-engine into
 helpers breaks the 1:1 mapping with the reference, and that mapping is what makes
 a divergence auditable. The complexity belongs to the algorithm.
 
-- [ ] **Step 2: `S3267` on `TextAnalyzer.Tokenize` — verify before suppressing**
+- [x] **Step 2: `S3267` on `TextAnalyzer.Tokenize` — verify before suppressing**
 
 Do not take the spec's word for it. Apply the suggestion and build:
 
@@ -205,18 +205,18 @@ error CS1061: 'MatchCollection' does not contain a definition for 'Select'
 Revert, and put that error text in the suppression comment. A suppression whose
 justification is checkable is worth five that are not.
 
-- [ ] **Step 3: `S4136`, `S127`, `S907`, `S2245`**
+- [x] **Step 3: `S4136`, `S127`, `S907`, `S2245`**
 
 `S907` on the canonical MurmurHash3 tail — written the way the reference is
 written on purpose. `S2245` on the seeded RNG in benchmarks and the generator,
 where determinism is the requirement, not a risk.
 
-- [ ] **Step 4: The Python side uses `# NOSONAR`**
+- [x] **Step 4: The Python side uses `# NOSONAR`**
 
 Python has no pragma. `# NOSONAR` applies only to the line it terminates, so place
 it precisely rather than at the top of a block.
 
-- [ ] **Step 5: Confirm the pragmas do not themselves warn**
+- [x] **Step 5: Confirm the pragmas do not themselves warn**
 
 ```bash
 build_all 2>&1 | grep -c "CS1691"
@@ -232,7 +232,7 @@ the whole branch rests on it.
 
 **Depends on:** Task 4.
 
-- [ ] **Step 1: Everything**
+- [x] **Step 1: Everything**
 
 ```bash
 dotnet clean -c Release && build_all && test_all 2>&1 | tail -3
@@ -243,18 +243,18 @@ oracles_unchanged
 Expected: 0 warnings, 0 errors on both frameworks; 158/158; format clean;
 `ORACLES CLEAN`.
 
-- [ ] **Step 2: Confirm the SonarLint panel is empty or accounted for**
+- [x] **Step 2: Confirm the SonarLint panel is empty or accounted for**
 
 Every remaining finding must map to a suppression added in Task 4. A finding with
 no entry means the inventory in Task 1 was incomplete.
 
-- [ ] **Step 3: Note what needed no work**
+- [x] **Step 3: Note what needed no work**
 
 `S3903` is absent from the list because multi-targeting (#1) already moved the
 shared helpers into `DataNet.Internal`. Say so in the PR body — a reader comparing
 the backlog to the diff will otherwise look for it.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A

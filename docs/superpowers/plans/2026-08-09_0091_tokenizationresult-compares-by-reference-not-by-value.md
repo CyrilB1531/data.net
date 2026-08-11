@@ -45,7 +45,7 @@ oracles_unchanged() {
 **Depends on:** nothing.
 **Produces:** a failing test, before any fix.
 
-- [ ] **Step 1: Write the test that should already pass**
+- [x] **Step 1: Write the test that should already pass**
 
 Two `TokenizationResult` values built from equal-but-distinct lists must compare
 equal.
@@ -57,13 +57,13 @@ test_tok 2>&1 | tail -5
 Expected: **red**. The synthesised `Equals` compares `Tokens` and `Ids` by
 reference.
 
-- [ ] **Step 2: Note where a caller actually hits this**
+- [x] **Step 2: Note where a caller actually hits this**
 
 Asserting an encoding against a result written out by hand — the one place a
 caller has every reason to compare two of these. That is the sentence the XML
 documentation will carry.
 
-- [ ] **Step 3: Sweep for the same shape elsewhere**
+- [x] **Step 3: Sweep for the same shape elsewhere**
 
 ```bash
 grep -rn "record .*IReadOnlyList\|record .*\[\]" src --include='*.cs'
@@ -83,15 +83,15 @@ along.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: `Equals(TokenizationResult? other)`**
+- [x] **Step 1: `Equals(TokenizationResult? other)`**
 
 Reference check, null and count checks, then element by element on both lists.
 
-- [ ] **Step 2: `GetHashCode` over the same elements**
+- [x] **Step 2: `GetHashCode` over the same elements**
 
 Never leave the generated one in place beside a hand-written `Equals`.
 
-- [ ] **Step 3: The reason, in the XML documentation on the member**
+- [x] **Step 3: The reason, in the XML documentation on the member**
 
 The generated equality would compare `Tokens` and `Ids` by reference, so two
 results holding the same tokens would be unequal — in the one place a caller has
@@ -99,7 +99,7 @@ every reason to compare.
 
 **Without that remark the override reads as redundant and gets deleted.**
 
-- [ ] **Step 4: Both targets**
+- [x] **Step 4: Both targets**
 
 ```bash
 build_all
@@ -111,17 +111,17 @@ build_all
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: The equality cases**
+- [x] **Step 1: The equality cases**
 
 Equal contents from distinct lists; differing tokens; differing ids; differing
 lengths; null; same reference.
 
-- [ ] **Step 2: The hash contract**
+- [x] **Step 2: The hash contract**
 
 Equal values produce equal hashes. Add a dictionary round-trip — that is where the
 `Equals`/`GetHashCode` mismatch shows up in real code rather than in an assertion.
 
-- [ ] **Step 3: Nothing else moved**
+- [x] **Step 3: Nothing else moved**
 
 ```bash
 build_all && test_all 2>&1 | tail -3 && oracles_unchanged
@@ -130,7 +130,7 @@ build_all && test_all 2>&1 | tail -3 && oracles_unchanged
 Expected: green on both frameworks, `ORACLES CLEAN`. This changes how results are
 *compared*, never what they *contain*.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/DataNet.Embeddings/Tokenization/WordPieceTokenizer.cs tests/

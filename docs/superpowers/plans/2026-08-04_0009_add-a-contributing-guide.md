@@ -40,7 +40,7 @@ mdl() { npx --yes markdownlint-cli2 "**/*.md" "#node_modules"; }
 **Depends on:** nothing.
 **Produces:** the content, sourced rather than remembered.
 
-- [ ] **Step 1: Branch naming, from what has actually been used**
+- [x] **Step 1: Branch naming, from what has actually been used**
 
 ```bash
 git log --all --format="%D" | grep -oE "(feat|fix|perf|docs|chore|refactor|test|ci|release)/[a-z0-9.-]+" | sort -u
@@ -49,7 +49,7 @@ git log --all --format="%D" | grep -oE "(feat|fix|perf|docs|chore|refactor|test|
 Document the prefixes in use. Do not invent a taxonomy the history does not
 support.
 
-- [ ] **Step 2: The CI job names, exactly**
+- [x] **Step 2: The CI job names, exactly**
 
 ```bash
 grep -n "name:" .github/workflows/ci.yml
@@ -58,13 +58,13 @@ grep -n "name:" .github/workflows/ci.yml
 Required status checks are configured **by name**. A paraphrase here becomes a
 required check that never matches.
 
-- [ ] **Step 3: Confirm warnings-as-errors is where you think it is**
+- [x] **Step 3: Confirm warnings-as-errors is where you think it is**
 
 ```bash
 grep -rn "TreatWarningsAsErrors" --include='*.props' --include='*.csproj' .
 ```
 
-- [ ] **Step 4: Collect the existing suppressions and their shape**
+- [x] **Step 4: Collect the existing suppressions and their shape**
 
 ```bash
 grep -rn "pragma warning disable" src --include='*.cs' | head -20
@@ -82,14 +82,14 @@ The guide describes the convention these follow; read them first.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Branching model**
+- [x] **Step 1: Branching model**
 
 GitHub flow, `main` always releasable, `<type>/<short-kebab-summary>` optionally
 prefixed with the issue number, one concern per branch, `Closes #n` in the pull
 request. Include the four-command example — a contributor copies that, not the
 prose around it.
 
-- [ ] **Step 2: Review with a single maintainer**
+- [x] **Step 2: Review with a single maintainer**
 
 The part that needs the reasoning, not just the rule: **GitHub does not let anyone
 approve their own pull request**, so requiring an approving review would block
@@ -100,13 +100,13 @@ joins.
 Say plainly that self-merging after green checks is the expected flow here, not a
 shortcut. Otherwise the next person to read the settings will "fix" them.
 
-- [ ] **Step 3: Definition of done, as runnable checks**
+- [x] **Step 3: Definition of done, as runnable checks**
 
 Build clean under repository-wide warnings-as-errors; tests pass; a new algorithm
 replays an oracle corpus; `dotnet format` and markdownlint clean; public API
 carries XML documentation naming the Python function it matches.
 
-- [ ] **Step 4: Oracle validation, with the neutral-directory note**
+- [x] **Step 4: Oracle validation, with the neutral-directory note**
 
 The procedure — generator section, regenerate, commit the JSON, replay with a
 `1e-9` tolerance — and the trap, **with its exact error text**:
@@ -122,7 +122,7 @@ for their error message must land here.
 Add the determinism requirement: fixed seed, no wall-clock timestamps, no
 unordered iteration.
 
-- [ ] **Step 5: Analyzer suppressions, with the reason they live in the source**
+- [x] **Step 5: Analyzer suppressions, with the reason they live in the source**
 
 `#pragma warning disable` with a written justification. Then **why**: SonarLint
 ignores `.editorconfig` entirely, and `sonarlint.rules` is application-scope so VS
@@ -133,7 +133,7 @@ file that has no effect.
 State the bar: a justification a reviewer can disagree with. "Too noisy" is not
 one.
 
-- [ ] **Step 6: Licensing and provenance**
+- [x] **Step 6: Licensing and provenance**
 
 Never transcribe GPL-licensed code — implement from the published algorithm
 description, which is *why* the stemmers and phonetic encoders are original
@@ -151,12 +151,12 @@ restating it.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Add `CONTRIBUTING.md` to the markdownlint glob**
+- [x] **Step 1: Add `CONTRIBUTING.md` to the markdownlint glob**
 
 The file is about to be the most-edited document here. Adjacent to the gate is not
 inside it.
 
-- [ ] **Step 2: Link it from `README.md`**
+- [x] **Step 2: Link it from `README.md`**
 
 One sentence, where a contributor looks: the conventions, the definition of done,
 the oracle procedure and the suppression policy.
@@ -169,7 +169,7 @@ the oracle procedure and the suppression policy.
 
 This task is the reason the guide is trustworthy. Do not shorten it.
 
-- [ ] **Step 1: Every link target resolves**
+- [x] **Step 1: Every link target resolves**
 
 ```bash
 grep -oE "\]\(([^)]+)\)" CONTRIBUTING.md | sed -E 's/\]\((.*)\)/\1/' | grep -v "^http" | while read -r p; do
@@ -179,7 +179,7 @@ done
 
 Expected: no output.
 
-- [ ] **Step 2: Every quoted CI job name exists verbatim**
+- [x] **Step 2: Every quoted CI job name exists verbatim**
 
 ```bash
 grep -oE '`[A-Z][^`]+`' CONTRIBUTING.md | tr -d '`' | while read -r n; do
@@ -190,7 +190,7 @@ done
 Check by eye that each job name quoted appears. This is the claim most likely to
 be subtly wrong and most expensive when it is.
 
-- [ ] **Step 3: No forward reference slipped in**
+- [x] **Step 3: No forward reference slipped in**
 
 ```bash
 grep -niE "netstandard|changelog|benchmark" CONTRIBUTING.md
@@ -199,7 +199,7 @@ grep -niE "netstandard|changelog|benchmark" CONTRIBUTING.md
 Expected: nothing describing #1, #8 or #10 as existing. If a hit is a legitimate
 mention of something already in the tree, keep it; otherwise remove it.
 
-- [ ] **Step 4: Lint**
+- [x] **Step 4: Lint**
 
 ```bash
 mdl
@@ -208,7 +208,7 @@ mdl
 Expected: 0 issues across 25 files — the new file included, which is what proves
 Task 3 Step 1 took effect.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add CONTRIBUTING.md README.md .github/workflows/ci.yml

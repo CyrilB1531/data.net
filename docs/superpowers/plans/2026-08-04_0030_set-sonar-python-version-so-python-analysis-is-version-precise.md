@@ -35,7 +35,7 @@ parse() { python3 -c "import yaml; yaml.safe_load(open('.github/workflows/sonarc
 
 **Depends on:** nothing.
 
-- [ ] **Step 1: Read it from the workflow rather than assuming**
+- [x] **Step 1: Read it from the workflow rather than assuming**
 
 ```bash
 grep -n -A2 "setup-python" .github/workflows/ci.yml
@@ -43,7 +43,7 @@ grep -n -A2 "setup-python" .github/workflows/ci.yml
 
 Expected: `python-version: '3.12'` in the `Oracles are reproducible` job.
 
-- [ ] **Step 2: Check no other job installs a different one**
+- [x] **Step 2: Check no other job installs a different one**
 
 ```bash
 grep -rn "python-version" .github/workflows/
@@ -62,19 +62,19 @@ disagreement is the real finding.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Add it to the scanner `begin` step**
+- [x] **Step 1: Add it to the scanner `begin` step**
 
 ```text
 /d:sonar.python.version="3.12"
 ```
 
-- [ ] **Step 2: Comment the coupling**
+- [x] **Step 2: Comment the coupling**
 
 The value tracks `python-version` in `ci.yml`; if that moves, this moves with it.
 Without the comment the two drift silently — and the failure mode is invisible,
 because a version *is* set and the warning stays gone while the analysis is wrong.
 
-- [ ] **Step 3: Parse check**
+- [x] **Step 3: Parse check**
 
 ```bash
 parse
@@ -86,16 +86,16 @@ parse
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Say in the pull request what was verified locally**
+- [x] **Step 1: Say in the pull request what was verified locally**
 
 The YAML parses. That is all that can be checked here.
 
-- [ ] **Step 2: Say what cannot be**
+- [x] **Step 2: Say what cannot be**
 
 **Whether the warning clears only shows on the next analysis.** Do not claim the
 outcome; confirm it on the dashboard once merged.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add .github/workflows/sonarcloud.yml

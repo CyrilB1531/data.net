@@ -43,7 +43,7 @@ mdl()       { npx --yes markdownlint-cli2 "**/*.md" "#node_modules"; }
 **Depends on:** nothing.
 **Produces:** the content of the `0.1.0` section, from evidence rather than memory.
 
-- [ ] **Step 1: Find the tag and what preceded it**
+- [x] **Step 1: Find the tag and what preceded it**
 
 ```bash
 git log --oneline v0.1.0 | tail -40
@@ -53,7 +53,7 @@ git log --oneline v0.1.0..HEAD | wc -l
 Expected: the second number is the count of pull requests to summarise for
 `0.2.0` — 23 at the time of writing.
 
-- [ ] **Step 2: List the public surface at 0.1.0**
+- [x] **Step 2: List the public surface at 0.1.0**
 
 ```bash
 git grep -n "^public " v0.1.0 -- 'src/**/*.cs' | grep -oE "(class|record|enum|struct) \w+" | sort -u
@@ -72,14 +72,14 @@ list.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Header and conventions**
+- [x] **Step 1: Header and conventions**
 
 Keep a Changelog + SemVer, and a line saying one version covers all three
 packages, released together from the single `Version` in
 `Directory.Build.props`. That is true today and stops being true at #64 — say
 what is true now.
 
-- [ ] **Step 2: The `0.2.0` section, from the merged work**
+- [x] **Step 2: The `0.2.0` section, from the merged work**
 
 Grouped `Added` / `Changed` / `Fixed`. The highlights:
 
@@ -92,13 +92,13 @@ Grouped `Added` / `Changed` / `Fixed`. The highlights:
   Python lock
 - `coverlet.collector` was missing, so **coverage was never actually collected**
 
-- [ ] **Step 3: The Regex timeout goes under `Changed`, not `Fixed`**
+- [x] **Step 3: The Regex timeout goes under `Changed`, not `Fixed`**
 
 Input that previously hung the calling thread now raises
 `RegexMatchTimeoutException`. Filing it under *Fixed* hides a behavioural change
 from the one reader who needs it — someone whose input now throws.
 
-- [ ] **Step 4: The Levenshtein number carries its limit, in the same sentence**
+- [x] **Step 4: The Levenshtein number carries its limit, in the same sentence**
 
 20–33× on long strings, **and** that the bit-parallel path needs a Latin-1
 pattern, so CJK and emoji inputs still take the DP. Verify the claim before
@@ -108,7 +108,7 @@ quoting it:
 grep -rn "Latin-1\|latin1\|0xFF" src/DataNet.Text/Distances/Myers.cs | head
 ```
 
-- [ ] **Step 5: Verify every number**
+- [x] **Step 5: Verify every number**
 
 ```bash
 python -c "
@@ -131,9 +131,9 @@ Use what these print. A changelog is the one document nobody re-derives later.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: `Version` to `0.2.0`**
+- [x] **Step 1: `Version` to `0.2.0`**
 
-- [ ] **Step 2: Justify minor rather than major, in the changelog**
+- [x] **Step 2: Justify minor rather than major, in the changelog**
 
 Nothing public removed or renamed; stemmers and the second target are additive;
 the performance work is behaviour-preserving and the corpora prove it. If any of
@@ -146,7 +146,7 @@ git diff v0.1.0..HEAD -- src | grep -E "^-\s*public" | head
 Expected: empty. A removed or renamed public member here means 0.2.0 is the wrong
 number.
 
-- [ ] **Step 3: Pack all three at the new version**
+- [x] **Step 3: Pack all three at the new version**
 
 ```bash
 rm -rf ./artifacts
@@ -172,12 +172,12 @@ Expected: three packages at `0.2.0`, each carrying `lib/net10.0` **and**
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: Correct the attribution**
+- [x] **Step 1: Correct the attribution**
 
 These three go inside every package, so they are read by consumers and almost
 never by the maintainer. Cutting a release is the moment they get looked at.
 
-- [ ] **Step 2: Confirm each third-party entry still matches a real dependency**
+- [x] **Step 2: Confirm each third-party entry still matches a real dependency**
 
 ```bash
 grep -rn "PackageReference\|PackageVersion" src --include='*.props' --include='*.csproj' | grep -oE 'Include="[^"]+"' | sort -u
@@ -186,7 +186,7 @@ grep -rn "PackageReference\|PackageVersion" src --include='*.props' --include='*
 Every runtime dependency needs an entry; a `PrivateAssets="all"` analyzer or
 polyfill does not ship and must not claim to.
 
-- [ ] **Step 3: Separate commit**
+- [x] **Step 3: Separate commit**
 
 Different concern from the changelog, and it reviews better alone.
 
@@ -196,7 +196,7 @@ Different concern from the changelog, and it reviews better alone.
 
 **Depends on:** Task 4.
 
-- [ ] **Step 1: Everything**
+- [x] **Step 1: Everything**
 
 ```bash
 build_all && test_all 2>&1 | tail -3
@@ -207,7 +207,7 @@ mdl
 Expected: clean on both frameworks, 168/168, markdownlint 0 issues across 27
 files.
 
-- [ ] **Step 2: Confirm no tag exists on this branch**
+- [x] **Step 2: Confirm no tag exists on this branch**
 
 ```bash
 git tag --points-at HEAD
@@ -217,12 +217,12 @@ Expected: empty. `v0.2.0` triggers the release workflow and publishes to GitHub
 Packages, and nuget.org publication is irreversible for a given version. The tag
 is the maintainer's call after the merge.
 
-- [ ] **Step 3: Say so in the PR body**
+- [x] **Step 3: Say so in the PR body**
 
 Under a "Not done here" heading, with the reason. A reviewer should not have to
 wonder whether it was forgotten.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git commit -m "Add the changelog and cut version 0.2.0"

@@ -169,7 +169,7 @@ one test per case — **not** a `foreach` inside a single `[Fact]`. Follow that:
 failing case then names itself in the test runner instead of hiding behind one red
 test, and the tests below are written that way.
 
-- [ ] **Step 1: Read what the generator already produces**
+- [x] **Step 1: Read what the generator already produces**
 
 ```bash
 grep -n "def generate_classification_metrics" -A 60 tools/generate_oracles.py
@@ -180,7 +180,7 @@ You need the existing case shape — the fixture names, whether `sample_weight` 
 present, and the `values` key convention — because the new keys must sit beside
 the old ones rather than in a parallel structure.
 
-- [ ] **Step 2: Make the writer refuse an unencoded non-finite**
+- [x] **Step 2: Make the writer refuse an unencoded non-finite**
 
 At `tools/generate_oracles.py:2445`, change
 
@@ -199,7 +199,7 @@ to
             json.dump(payload, f, ensure_ascii=False, indent=1, allow_nan=False)
 ```
 
-- [ ] **Step 3: Add the encoder and the new values to the generator**
+- [x] **Step 3: Add the encoder and the new values to the generator**
 
 Inside `generate_classification_metrics`, add this helper near the top of the
 module's metrics section and use it for every value that can be non-finite:
@@ -255,7 +255,7 @@ no ordinary fixture produces them:
   where `balanced_accuracy` is `0.75` rather than `0.5` and
   `balanced_accuracy_adjusted` is `0.5` rather than `0.625`.
 
-- [ ] **Step 4: Regenerate and confirm the file is strict JSON**
+- [x] **Step 4: Regenerate and confirm the file is strict JSON**
 
 ```bash
 cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net2/.venv-oracles/bin/python \
@@ -274,7 +274,7 @@ Expected: `exit=0`, `strict JSON ok`, and a diff touching
 `classification_metrics.json` only. If `parse_constant` fires, a non-finite got
 through unencoded — find it rather than relaxing the check.
 
-- [ ] **Step 5: Write the failing loader test**
+- [x] **Step 5: Write the failing loader test**
 
 In `tests/DataNet.Metrics.Tests/NormalizationTests.cs`:
 
@@ -302,7 +302,7 @@ public sealed class NormalizationTests
 }
 ```
 
-- [ ] **Step 6: Run it and watch it fail**
+- [x] **Step 6: Run it and watch it fail**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release \
@@ -311,7 +311,7 @@ dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release 
 
 Expected: compile error — `OracleLoader` has no `Number`.
 
-- [ ] **Step 7: Add the decoder and the matrix helper**
+- [x] **Step 7: Add the decoder and the matrix helper**
 
 To `tests/DataNet.Metrics.Tests/MetricsCorpus.cs`, beside its existing helpers:
 
@@ -350,7 +350,7 @@ And to `tests/DataNet.Metrics.Tests/OracleLoader.cs`:
             : element.GetDouble();
 ```
 
-- [ ] **Step 8: Run it, run the suite, commit**
+- [x] **Step 8: Run it, run the suite, commit**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release \
@@ -398,7 +398,7 @@ EOF
 - Produces: `public enum Normalization { None, True, Pred, All }` and
   `public double[,] ConfusionMatrix.ToArray(Normalization normalization)`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `tests/DataNet.Metrics.Tests/NormalizationTests.cs`:
 
@@ -477,7 +477,7 @@ Append to `tests/DataNet.Metrics.Tests/NormalizationTests.cs`:
 `MetricsCorpus.Matrix` is the helper Task 1 adds; `MetricsCorpus.Describe` already
 exists. Both are used as written — do not add a second helper that does either job.
 
-- [ ] **Step 2: Run and watch them fail**
+- [x] **Step 2: Run and watch them fail**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release \
@@ -486,7 +486,7 @@ dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release 
 
 Expected: compile error — no `Normalization` type.
 
-- [ ] **Step 3: Add the enum**
+- [x] **Step 3: Add the enum**
 
 `src/DataNet.Metrics/Normalization.cs`:
 
@@ -523,7 +523,7 @@ public enum Normalization
 }
 ```
 
-- [ ] **Step 4: Add the overload**
+- [x] **Step 4: Add the overload**
 
 In `src/DataNet.Metrics/ConfusionMatrix.cs`, beside the existing `ToArray()`:
 
@@ -594,7 +594,7 @@ the right comparison — the question is whether anything accumulated at all, no
 whether two computed quantities are close — so suppress it with a reason, in the
 style of `src/DataNet.Metrics/Internal/BinaryRoc.cs:110-123`.
 
-- [ ] **Step 5: Run, gate, commit**
+- [x] **Step 5: Run, gate, commit**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release --filter "FullyQualifiedName~NormalizationTests"
@@ -647,7 +647,7 @@ EOF
   `static void Compute(ConfusionMatrix cm, double[] rowSums, double[] colSums, out double trace, out double total)`,
   which Tasks 4 and 5 consume.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/DataNet.Metrics.Tests/BalancedAccuracyTests.cs`:
 
@@ -742,7 +742,7 @@ public sealed class BalancedAccuracyTests
 }
 ```
 
-- [ ] **Step 2: Run and watch them fail**
+- [x] **Step 2: Run and watch them fail**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release \
@@ -751,7 +751,7 @@ dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release 
 
 Expected: compile error — no `BalancedAccuracy`.
 
-- [ ] **Step 3: Add the shared sums helper**
+- [x] **Step 3: Add the shared sums helper**
 
 `src/DataNet.Metrics/Internal/MatrixSums.cs`:
 
@@ -806,7 +806,7 @@ internal static class MatrixSums
 }
 ```
 
-- [ ] **Step 4: Add the metric**
+- [x] **Step 4: Add the metric**
 
 `src/DataNet.Metrics/BalancedAccuracy.cs`:
 
@@ -899,7 +899,7 @@ Then reproduce that value, and add a test naming it. Do not leave the case
 untested because it looks unreachable — a two-sample single-class target is a
 perfectly ordinary thing for a caller to pass by accident.
 
-- [ ] **Step 5: Run, gate, commit**
+- [x] **Step 5: Run, gate, commit**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release --filter "FullyQualifiedName~BalancedAccuracyTests"
@@ -959,7 +959,7 @@ Reproduced to twelve decimals on a 7-sample, 3-class fixture: `0.593750000000`.
 When the denominator is zero the metric is undefined; scikit-learn hard-codes
 `0.0` there and warns.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```csharp
 using System.Text.Json;
@@ -1037,7 +1037,7 @@ public sealed class MatthewsCorrelationTests
 }
 ```
 
-- [ ] **Step 2: Run and watch them fail**
+- [x] **Step 2: Run and watch them fail**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release \
@@ -1046,7 +1046,7 @@ dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release 
 
 Expected: compile error — no `MatthewsCorrelation`.
 
-- [ ] **Step 3: Implement it**
+- [x] **Step 3: Implement it**
 
 `src/DataNet.Metrics/MatthewsCorrelation.cs`, with the `Score(cm, …)` body:
 
@@ -1093,7 +1093,7 @@ its denominator. Pass ZeroDivision.Zero, One or NaN to get a value instead."` Pa
 the metric's display name and nothing else; do not add a second resolver, and do
 not reword that message — every metric in the package shares it.
 
-- [ ] **Step 4: Run, gate, commit**
+- [x] **Step 4: Run, gate, commit**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release --filter "FullyQualifiedName~MatthewsCorrelationTests"
@@ -1162,7 +1162,7 @@ order `[0,1,2]` and `[2,1,0]` both give `Linear = 0.511627906977`, while `[1,0,2
 gives `0.695652173913`. A reversal preserves every `abs(i - j)`; any other
 permutation does not.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```csharp
 using System.Text.Json;
@@ -1271,7 +1271,7 @@ public sealed class CohenKappaTests
 }
 ```
 
-- [ ] **Step 2: Run and watch them fail**
+- [x] **Step 2: Run and watch them fail**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release \
@@ -1280,7 +1280,7 @@ dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release 
 
 Expected: compile error — no `CohenKappa`.
 
-- [ ] **Step 3: Add the enum**
+- [x] **Step 3: Add the enum**
 
 `src/DataNet.Metrics/KappaWeighting.cs`:
 
@@ -1311,7 +1311,7 @@ public enum KappaWeighting
 }
 ```
 
-- [ ] **Step 4: Implement the metric**
+- [x] **Step 4: Implement the metric**
 
 The `Score(cm, …)` body:
 
@@ -1380,7 +1380,7 @@ overload must state that the weighted result depends on `cm.Labels` order; witho
 it, a caller who passed an unsorted explicit label list gets a different number
 from scikit-learn's default and has nothing to go on.
 
-- [ ] **Step 5: Run, gate, commit**
+- [x] **Step 5: Run, gate, commit**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release --filter "FullyQualifiedName~CohenKappaTests"
@@ -1430,7 +1430,7 @@ claim would break that.
   `bench/compare.py` can pair them: `balanced_accuracy_{suffix}`,
   `matthews_{suffix}`, `cohen_kappa_{suffix}`.
 
-- [ ] **Step 1: Read both harnesses so the operation names match exactly**
+- [x] **Step 1: Read both harnesses so the operation names match exactly**
 
 ```bash
 grep -n "measure(\|results.append" bench/python/bench_metrics.py | head -20
@@ -1441,7 +1441,7 @@ grep -n "Harness.Measure" bench/DataNet.Text.Benchmarks/CrossLang/MetricsCrossLa
 silently drops the row rather than failing, so copy the naming convention rather
 than inventing one.
 
-- [ ] **Step 2: Add the three operations to the Python side**
+- [x] **Step 2: Add the three operations to the Python side**
 
 Beside the existing `precision_recall_f1_macro` measurement, mirroring its shape:
 
@@ -1451,7 +1451,7 @@ Beside the existing `precision_recall_f1_macro` measurement, mirroring its shape
         results.append(measure(f"cohen_kappa_{suffix}", lambda: skm.cohen_kappa_score(y_true, y_pred)))
 ```
 
-- [ ] **Step 3: Add them to the C# side**
+- [x] **Step 3: Add them to the C# side**
 
 In `MeasureShape`, beside the existing entries:
 
@@ -1461,7 +1461,7 @@ In `MeasureShape`, beside the existing entries:
             Harness.Measure($"cohen_kappa_{suffix}", () => CohenKappa.Score(yTrue, yPred)),
 ```
 
-- [ ] **Step 4: Generate the corpus if it is absent, then run both sides**
+- [x] **Step 4: Generate the corpus if it is absent, then run both sides**
 
 ```bash
 python bench/corpus/generate_metrics.py
@@ -1476,7 +1476,7 @@ sides and pair up, each at or above 1× on processor time. **If any row is below
 1×, that is the finding** — report it rather than rerunning until it passes, and
 say which row and by how much.
 
-- [ ] **Step 5: Add the rows to the guide and commit**
+- [x] **Step 5: Add the rows to the guide and commit**
 
 Extend the issue-#61 table in `docs/guides/performance.md` with the measured rows,
 and say in one sentence that they were taken in a separate window from the
@@ -1515,7 +1515,7 @@ EOF
 - Consumes: everything from Tasks 2–5.
 - Produces: no code.
 
-- [ ] **Step 1: Exercise the five new public types in the sample**
+- [x] **Step 1: Exercise the five new public types in the sample**
 
 `PackagingGate` requires a **member reference** to each of the three metric types
 and only a **type reference** to the two enums. That is not a guess — the gate
@@ -1563,7 +1563,7 @@ restores `DataNet.Metrics` from `./artifacts`, so it will not compile against th
 new types until `dotnet pack` has produced them — that is ADR 0009's design, not a
 fault.
 
-- [ ] **Step 2: Add the four equivalence rows**
+- [x] **Step 2: Add the four equivalence rows**
 
 In `docs/equivalence.md`, in the metrics section beside the existing
 `roc_auc_score` rows. Each row names the divergence rather than only the mapping:
@@ -1575,7 +1575,7 @@ In `docs/equivalence.md`, in the metrics section beside the existing
 | `cohen_kappa_score(…, weights=…)` | scikit-learn | `CohenKappa.Score(…, KappaWeighting…)` | `weights` renamed `weighting`, because `sampleWeight` shares the signature. `replace_undefined_by` maps onto `ZeroDivision`, defaulting to `NaN` — scikit-learn's value. The weighted forms depend on label order. |
 | `confusion_matrix(…, normalize=…)` | scikit-learn | `ConfusionMatrix.ToArray(Normalization)` | A projection, not a parameter on `Compute`: several metrics here read a matrix, and fractions would make them silently wrong. |
 
-- [ ] **Step 3: Write the ADR**
+- [x] **Step 3: Write the ADR**
 
 ```bash
 ls docs/decisions/ | tail -3
@@ -1608,7 +1608,7 @@ with the alternative it rejects and what that would have cost:
 Also record, in Consequences, that Cohen's kappa's `nan` is the first non-finite
 value in any oracle here, and how it is encoded.
 
-- [ ] **Step 4: The CHANGELOG entry**
+- [x] **Step 4: The CHANGELOG entry**
 
 ```bash
 grep -n "DataNet.Metrics" CHANGELOG.md | head -3
@@ -1620,7 +1620,7 @@ If `0.1.0` is still unreleased, the entry joins the existing
 and say that `ConfusionMatrix` gained a method rather than changing one — nothing
 in this lot alters an existing signature, so it is additive either way.
 
-- [ ] **Step 5: The full gate, then commit**
+- [x] **Step 5: The full gate, then commit**
 
 ```bash
 dotnet build DataNet.slnx -c Release

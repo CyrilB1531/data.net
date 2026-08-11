@@ -47,7 +47,7 @@ test_cov() {
 **Produces:** the finding that would otherwise fail every pull request from day
 one.
 
-- [ ] **Step 1: Run the collection the suite already claims to do**
+- [x] **Step 1: Run the collection the suite already claims to do**
 
 ```bash
 dotnet test -c Release --collect:"XPlat Code Coverage" 2>&1 | grep -i "collector\|coverage"
@@ -61,7 +61,7 @@ Data collector 'XPlat Code Coverage' not found
 
 The step **warns and the job passes** — it has always been a silent no-op.
 
-- [ ] **Step 2: Confirm the package was never referenced**
+- [x] **Step 2: Confirm the package was never referenced**
 
 ```bash
 grep -rn "coverlet" tests/ --include='*.csproj' --include='*.props'
@@ -69,7 +69,7 @@ grep -rn "coverlet" tests/ --include='*.csproj' --include='*.props'
 
 Expected: nothing.
 
-- [ ] **Step 3: Understand why this matters before the workflow exists**
+- [x] **Step 3: Understand why this matters before the workflow exists**
 
 The default quality gate requires coverage on new code. Publishing with no
 coverage fails every pull request from the first run — and the failure would look
@@ -88,17 +88,17 @@ like a code-quality problem rather than a missing package.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Reference `coverlet.collector` in the three test projects**
+- [x] **Step 1: Reference `coverlet.collector` in the three test projects**
 
 With `PrivateAssets="all"` — it is tooling, not a dependency.
 
-- [ ] **Step 2: Collect in OpenCover, not the default**
+- [x] **Step 2: Collect in OpenCover, not the default**
 
 The .NET path of SonarQube Cloud reads **OpenCover**. The default Cobertura output
 is ignored and displays as 0 %, which is indistinguishable from having no tests —
 so a wrong format here produces a confident, wrong number rather than an error.
 
-- [ ] **Step 3: Prove three reports are produced**
+- [x] **Step 3: Prove three reports are produced**
 
 ```bash
 find . -name "coverage.opencover.xml" -newermt "-5 minutes" | sort
@@ -118,30 +118,30 @@ uncovered.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Start from the generated template, then change three things**
+- [x] **Step 1: Start from the generated template, then change three things**
 
-- [ ] **Step 2: Add `actions/setup-dotnet`**
+- [x] **Step 2: Add `actions/setup-dotnet`**
 
 The libraries target `net10.0` and the scanner analyses whatever the build
 compiles. Without the SDK the build fails, or — worse — succeeds having analysed
 nothing.
 
-- [ ] **Step 3: `ubuntu-latest`, with paths and shell adjusted**
+- [x] **Step 3: `ubuntu-latest`, with paths and shell adjusted**
 
 Matching the rest of CI. Two runner families means two sets of path bugs.
 
-- [ ] **Step 4: `begin` → `build` → `end`, in that order**
+- [x] **Step 4: `begin` → `build` → `end`, in that order**
 
 Not the generic scan action. The .NET path works by installing the Roslyn
 analyzers during `begin` and observing the compilation between the two — a scan
 without a build in the middle produces a green job and an empty analysis.
 
-- [ ] **Step 5: Guard fork pull requests**
+- [x] **Step 5: Guard fork pull requests**
 
 They are not given `SONAR_TOKEN`, and would **fail** rather than skip. Skip
 explicitly on a missing secret.
 
-- [ ] **Step 6: Wire the coverage glob**
+- [x] **Step 6: Wire the coverage glob**
 
 `sonar.cs.opencover.reportsPaths` matching the three paths found in Task 2.
 
@@ -153,7 +153,7 @@ explicitly on a missing secret.
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: The YAML parses, and has the steps and triggers you think**
+- [x] **Step 1: The YAML parses, and has the steps and triggers you think**
 
 ```bash
 python3 -c "
@@ -168,7 +168,7 @@ for s in job['steps']: print('  -', s.get('name') or s.get('uses'))
 
 Expected: both triggers, seven steps.
 
-- [ ] **Step 2: Run the workflow's exact build and test commands by hand**
+- [x] **Step 2: Run the workflow's exact build and test commands by hand**
 
 ```bash
 build_all && test_cov 2>&1 | tail -3
@@ -176,7 +176,7 @@ build_all && test_cov 2>&1 | tail -3
 
 Expected: clean on both frameworks, 158/158.
 
-- [ ] **Step 3: Documentation**
+- [x] **Step 3: Documentation**
 
 ```bash
 # CONTRIBUTING.md and README.md gain the job and the badge.
@@ -194,7 +194,7 @@ and a paraphrase becomes a check that never matches.
 
 **Depends on:** Task 4.
 
-- [ ] **Step 1: Write the three unknowns down, with what each would change**
+- [x] **Step 1: Write the three unknowns down, with what each would change**
 
 - **Do the `#pragma warning disable S…` suppressions from #7 carry over?** They
   should — the scanner runs the same SonarAnalyzer rules through Roslyn — but
@@ -205,7 +205,7 @@ and a paraphrase becomes a check that never matches.
 
 Naming an unknown is not hedging: each of these decides what the next branch does.
 
-- [ ] **Step 2: Full gate**
+- [x] **Step 2: Full gate**
 
 ```bash
 build_all && dotnet test -c Release 2>&1 | tail -3
@@ -215,14 +215,14 @@ npx --yes markdownlint-cli2 "**/*.md" "#node_modules"
 
 Expected: clean, 158/158, markdownlint 0 issues across 25 files.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add -A
 git commit -m "Publish analysis to SonarQube Cloud from CI"
 ```
 
-- [ ] **Step 4: Read the first run, and act on it in a follow-up**
+- [x] **Step 4: Read the first run, and act on it in a follow-up**
 
 A green build is not a clean Sonar. Read the published analysis before calling
 this done, and open issues for what it surfaces rather than widening this branch.

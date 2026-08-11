@@ -37,7 +37,7 @@ parse() { python3 -c "import yaml; yaml.safe_load(open('.github/workflows/sonarc
 **Depends on:** nothing.
 **Produces:** certainty about which of three plausible causes it is.
 
-- [ ] **Step 1: Confirm the files are binary**
+- [x] **Step 1: Confirm the files are binary**
 
 ```bash
 file tests/oracles/tiny_sp.model tests/oracles/tiny_encoder.onnx
@@ -45,7 +45,7 @@ file tests/oracles/tiny_sp.model tests/oracles/tiny_encoder.onnx
 
 Expected: `data` for both.
 
-- [ ] **Step 2: Find the first undecodable byte in each**
+- [x] **Step 2: Find the first undecodable byte in each**
 
 ```bash
 python3 -c "
@@ -60,7 +60,7 @@ for f in ('tests/oracles/tiny_sp.model','tests/oracles/tiny_encoder.onnx'):
 
 Expected: 54 and 3.
 
-- [ ] **Step 3: Read the bytes at the reported line**
+- [x] **Step 3: Read the bytes at the reported line**
 
 Expected: `03 e2 96 81 15 4f bf 3b c0 0a`. `e2 96 81` is valid — it is `▁`
 (U+2581), the SentencePiece meta symbol. The `bf` after it is a continuation byte
@@ -69,7 +69,7 @@ with no lead byte.
 **This is not a corrupt fixture and not a wrong `sourceEncoding`.** It is a binary
 file being read as text, and the byte sequence is what proves it.
 
-- [ ] **Step 4: Confirm nothing excludes them from indexing**
+- [x] **Step 4: Confirm nothing excludes them from indexing**
 
 ```bash
 grep -n "sonar\." .github/workflows/sonarcloud.yml
@@ -78,7 +78,7 @@ grep -n "sonar\." .github/workflows/sonarcloud.yml
 Expected: `sonar.coverage.exclusions` present, `sonar.exclusions` **absent**.
 Coverage exclusion does not stop indexing.
 
-- [ ] **Step 5: Establish that it is pre-existing**
+- [x] **Step 5: Establish that it is pre-existing**
 
 ```bash
 git log --oneline --diff-filter=A -- tests/oracles/tiny_sp.model tests/oracles/tiny_encoder.onnx
@@ -97,25 +97,25 @@ happens to surface it.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Both properties**
+- [x] **Step 1: Both properties**
 
 ```text
 /d:sonar.exclusions="tests/oracles/**"
 /d:sonar.test.exclusions="tests/oracles/**"
 ```
 
-- [ ] **Step 2: The whole directory, not the two files**
+- [x] **Step 2: The whole directory, not the two files**
 
 Beyond the binaries it holds megabytes of generated JSON corpora, machine-written
 and reviewed as diffs. Naming two files leaves the next fixture to reintroduce the
 warning.
 
-- [ ] **Step 3: A comment giving the reason, in the style of the adjacent one**
+- [x] **Step 3: A comment giving the reason, in the style of the adjacent one**
 
 An exclusion with no reason gets deleted while tidying, and the warning comes back
 attached to an unrelated change months later.
 
-- [ ] **Step 4: Parse check**
+- [x] **Step 4: Parse check**
 
 ```bash
 parse
@@ -127,7 +127,7 @@ parse
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Read the next analysis log**
+- [x] **Step 1: Read the next analysis log**
 
 Expected: the `Invalid character encountered` warnings gone, and the indexed file
 count down by the size of `tests/oracles/`.
@@ -135,13 +135,13 @@ count down by the size of `tests/oracles/`.
 A `WARN` never fails a job, so this can only be confirmed by reading the log — not
 by a green tick.
 
-- [ ] **Step 2: Note the new dependency, and open the follow-up**
+- [x] **Step 2: Note the new dependency, and open the follow-up**
 
 These patterns are resolved **relative to whatever the scanner decided is the base
 directory**, which is now load-bearing and is not pinned. That becomes its own
 issue immediately.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add .github/workflows/sonarcloud.yml

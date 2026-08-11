@@ -51,7 +51,7 @@
 
 **Produces:** `public sealed record AddedToken(string Content, int Id)` with `bool Lstrip/Rstrip/SingleWord/Special` init properties; `internal sealed class AddedTokenScanner` with `internal AddedTokenScanner(IReadOnlyList<AddedToken> tokens)` and `internal bool TryNext(string text, int from, out int start, out int end, out AddedToken token)`.
 
-- [ ] **Step 1: Measure the one case the spec does not cover**
+- [x] **Step 1: Measure the one case the spec does not cover**
 
 Two added tokens compete, and the one further right carries `Lstrip`. Does the left-strip expansion happen before or after the leftmost-wins comparison? Guessing here would bake in an unmeasured rule.
 
@@ -72,7 +72,7 @@ PY
 
 Record the output in your report. Implement whichever rule it shows; if the output is ambiguous, implement "compare on the raw match position, expand afterwards" and say in the code comment that the tie case is unmeasured.
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 `tests/DataNet.Embeddings.Tests/Tokenization/AddedTokenScannerTests.cs`. Every expected value comes from the spec's measured table. Match the repository's test-naming style — sentence case with underscores, as in `All_ratios_match_rapidfuzz`.
 
@@ -181,7 +181,7 @@ public sealed class AddedTokenScannerTests
 }
 ```
 
-- [ ] **Step 3: Run them and watch them fail for the right reason**
+- [x] **Step 3: Run them and watch them fail for the right reason**
 
 ```bash
 dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedName~AddedTokenScannerTests" 2>&1 | tail -12
@@ -189,7 +189,7 @@ dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedNa
 
 Expected: a compile error naming `AddedToken` / `AddedTokenScanner`. That is the correct RED — the types do not exist. **If it reports `Passed: 0` with no error, the filter matched nothing**; fix the filter before continuing.
 
-- [ ] **Step 4: Write `AddedToken.cs`**
+- [x] **Step 4: Write `AddedToken.cs`**
 
 ```csharp
 namespace DataNet.Embeddings.Tokenization;
@@ -238,7 +238,7 @@ public sealed record AddedToken(string Content, int Id)
 }
 ```
 
-- [ ] **Step 5: Write `AddedTokenScanner.cs`**
+- [x] **Step 5: Write `AddedTokenScanner.cs`**
 
 ```csharp
 using System;
@@ -366,7 +366,7 @@ internal sealed class AddedTokenScanner
 }
 ```
 
-- [ ] **Step 6: Run the tests until they pass**
+- [x] **Step 6: Run the tests until they pass**
 
 ```bash
 dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedName~AddedTokenScannerTests" 2>&1 | tail -8
@@ -374,7 +374,7 @@ dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedNa
 
 Expected: `Passed: 12, Failed: 0`. Read the number. If Step 1's measurement contradicts a test's expectation, **change the test to what was measured** and say so in your report — the oracle wins.
 
-- [ ] **Step 7: Whole solution green, analysers on**
+- [x] **Step 7: Whole solution green, analysers on**
 
 ```bash
 dotnet build DataNet.slnx -c Release --no-incremental 2>&1 | tail -4
@@ -383,7 +383,7 @@ dotnet test DataNet.slnx -c Release 2>&1 | tail -8
 
 Expected: 0 warnings; 1615 + 12 = 1627 passing (the mirror project links the same file, so if it reports 1639 that is the two mirrors and is also correct — read and report the number rather than assuming).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/DataNet.Embeddings/Tokenization/AddedToken.cs \
@@ -408,7 +408,7 @@ git commit -m "Give added-token matching one home, with the flags measured"
 
 **This task changes no behaviour.** The loader still sets every flag to `false` and still refuses the three it refuses today, so every existing oracle must stay green. It is a type migration and nothing more — which is exactly why it is its own commit.
 
-- [ ] **Step 1: Change the property and its equality**
+- [x] **Step 1: Change the property and its equality**
 
 In `BpeVocabulary.cs`, replace the `AddedTokens` property (currently `IReadOnlyDictionary<string, int>`) with:
 
@@ -432,7 +432,7 @@ In `Equals`, replace `AddedTokens.Count != other.AddedTokens.Count` with the sam
 
 `GetHashCode` already hashes `AddedTokens.Count` only; leave it.
 
-- [ ] **Step 2: Rewire `BpeTokenizer`**
+- [x] **Step 2: Rewire `BpeTokenizer`**
 
 In the constructor, replace the two `foreach` blocks over `vocabulary.AddedTokens` and the `_addedTokens`/`_addedIds` initialisation:
 
@@ -476,15 +476,15 @@ Delete `NextAddedToken` entirely and rewrite the `Encode` loop to use the scanne
 
 `text[start..end]` is the emitted surface, which carries any absorbed whitespace — `' <mask>'` — as HuggingFace's does. With every flag `false` it equals `added.Content`, so no existing corpus moves. **`netstandard2.0` has no range indexer**; use `text.Substring(start, end - start)`, which compiles on both targets.
 
-- [ ] **Step 3: Update the loader's construction site**
+- [x] **Step 3: Update the loader's construction site**
 
 `ReadBpeAddedTokens` returns `Dictionary<string, int>` today and its result is assigned to `AddedTokens`. Change its return type to `List<AddedToken>`, have `ReadAddedTokens` append `new AddedToken(content, id)` to it (flags still default), and keep every existing check — the negative-id refusal, the id-conflict refusal, and the three `EnsureAddedTokenFlagIsOff` calls, which Task 4 removes.
 
-- [ ] **Step 4: Update the eight test sites**
+- [x] **Step 4: Update the eight test sites**
 
 Each currently builds `AddedTokens = new Dictionary<string, int>(StringComparer.Ordinal) { ["<x>"] = 1 }`. Replace with `AddedTokens = [new AddedToken("<x>", 1)]`. The empty-content site becomes `AddedTokens = [new AddedToken(string.Empty, 999)]` and must keep asserting what it asserted.
 
-- [ ] **Step 5: Everything green, nothing moved**
+- [x] **Step 5: Everything green, nothing moved**
 
 ```bash
 dotnet build DataNet.slnx -c Release --no-incremental 2>&1 | tail -4
@@ -493,7 +493,7 @@ dotnet test DataNet.slnx -c Release 2>&1 | tail -8
 
 Expected: 0 warnings, and the **same count as Task 1 left**. Any oracle failure here means the migration changed behaviour — find it rather than adjusting the oracle.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/DataNet.Embeddings tests/DataNet.Embeddings.Tests
@@ -523,7 +523,7 @@ commit — the `equivalence.md` row was originally scheduled for Task 8 and is
 pulled forward for exactly that reason. Leaving it behind would ship a public
 API doc contradicting the guide it points at.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `BpeTokenizerTests.cs`, in the file's own style:
 
@@ -548,7 +548,7 @@ Add to `BpeTokenizerTests.cs`, in the file's own style:
     }
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 ```bash
 dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedName~Decode_skipping_specials" 2>&1 | tail -10
@@ -556,11 +556,11 @@ dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedNa
 
 Expected: FAIL — `Decode([1,2], true)` returns `""` today, because `_addedIds` holds every added id. Read the actual-vs-expected line; a `Passed: 0` means the filter matched nothing.
 
-- [ ] **Step 3: Read `special` in the loader**
+- [x] **Step 3: Read `special` in the loader**
 
 In `ReadAddedTokens`, build `new AddedToken(content, id) { Special = OptionalBoolean(token, "special") is true }`.
 
-- [ ] **Step 4: Narrow `_addedIds`**
+- [x] **Step 4: Narrow `_addedIds`**
 
 ```csharp
         _addedIds = [.. vocabulary.AddedTokens.Where(a => a.Special).Select(a => a.Id)];
@@ -568,7 +568,7 @@ In `ReadAddedTokens`, build `new AddedToken(content, id) { Special = OptionalBoo
 
 Rewrite the `skipSpecialTokens` parameter documentation on `Decode`: it now drops exactly what Python's `skip_special_tokens` drops. Delete the sentence about `BpeVocabulary.AddedTokens` not carrying the flag and the "two coincide for every model in scope" caveat — both become false here.
 
-- [ ] **Step 5: Green**
+- [x] **Step 5: Green**
 
 ```bash
 dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedName~Decode_skipping_specials" 2>&1 | tail -6
@@ -577,7 +577,7 @@ dotnet test DataNet.slnx -c Release 2>&1 | tail -8
 
 Expected: the focused test passes; the whole suite passes. The `bpe_added_tokens.json` corpus carries `decoded_skip_specials` for a table whose only added token **is** special, so it must not move.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/DataNet.Embeddings tests/DataNet.Embeddings.Tests
@@ -605,7 +605,7 @@ and that this branch does not touch.
 
 `ReadAddedTokens` is shared by `ReadWordPiece` and `ReadBpeAddedTokens`. Only the BPE caller stops refusing here; WordPiece keeps refusing until Task 5 gives it a scanner. Thread that through with the parameter that already distinguishes them — `matchedLiterally` is non-null only on the BPE path — or add an explicit `bool reproducesFlags`. Prefer the explicit parameter: the existing one distinguishes them by accident.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```csharp
     [Fact]
@@ -633,25 +633,25 @@ and that this branch does not touch.
 
 Use the file's existing helper for writing a temporary `tokenizer.json`; if it is named differently, use that name and say so in your report.
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Expected: `InvalidDataException`, with the message ``it adds token '<mask>' with lstrip on``. That refusal is the thing being removed.
 
-- [ ] **Step 3: Read the flags and lift the BPE refusal**
+- [x] **Step 3: Read the flags and lift the BPE refusal**
 
 Populate `Lstrip`, `Rstrip`, `SingleWord` from `OptionalBoolean` alongside `Special`, and call `EnsureAddedTokenMatchesPlainly` only when the caller does **not** reproduce them. Keep the WordPiece message as it is.
 
-- [ ] **Step 4: Prove the WordPiece refusal still stands**
+- [x] **Step 4: Prove the WordPiece refusal still stands**
 
 Add a test asserting `LoadWordPiece` on the same file still throws, naming `lstrip`. Without it, Task 5 could silently remove the guard.
 
-- [ ] **Step 5: Green, and the flags reach the tokenizer**
+- [x] **Step 5: Green, and the flags reach the tokenizer**
 
 ```bash
 dotnet test DataNet.slnx -c Release 2>&1 | tail -8
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/DataNet.Embeddings tests/DataNet.Embeddings.Tests
@@ -671,7 +671,7 @@ git commit -m "Read the added-token flags a BPE file declares"
 
 **Depends on:** Task 4. **This is the task that changes existing behaviour** — see Step 5.
 
-- [ ] **Step 1: Add `AddedTokens` to the vocabulary**
+- [x] **Step 1: Add `AddedTokens` to the vocabulary**
 
 ```csharp
     /// <summary>The <c>added_tokens</c> table, matched as literal text ahead of the model.</summary>
@@ -685,7 +685,7 @@ git commit -m "Read the added-token flags a BPE file declares"
 
 Extend `Equals` with the count check and the ordered element comparison, exactly as Task 2 did for `BpeVocabulary`, and add `AddedTokens.Count` to `GetHashCode`.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 ```csharp
     [Fact]
@@ -713,11 +713,11 @@ The second assertion is the measured behaviour: a special entry is matched again
 
 **Superseded by `docs/decisions/0022-added-token-matching-flags.md` §3**: the pass an entry runs in is decided by its `normalized` field, not by `special`, and later measurement refuted the `special`-based rule this step is written on.
 
-- [ ] **Step 3: Run it and watch it fail**
+- [x] **Step 3: Run it and watch it fail**
 
 Expected: compile error on `AddedTokens` if Step 1 was skipped, otherwise a failure showing `[CLS]` lowercased away.
 
-- [ ] **Step 4: Scan before normalizing**
+- [x] **Step 4: Scan before normalizing**
 
 Give `WordPieceTokenizer` two scanners — one over the `Special` entries, matched against the raw text, one over the ordinary entries, matched against the lowercased text — or one scanner and two passes. Rewrite `Encode`:
 
@@ -750,7 +750,7 @@ Give `WordPieceTokenizer` two scanners — one over the `Special` entries, match
 
 `EncodeSegment` is today's body: lowercase the slice when `_lowercase`, run `PreTokenPattern` over it, call `TokenizeWord` per match. `TryNextAddedToken` runs the special scanner over `text` and the ordinary scanner over the lowercased `text`, and returns whichever matches leftmost — the ordinary scanner's indices are valid on the original string because `ToLowerInvariant` is length-preserving for the scripts in scope. **Say that assumption in a comment**; it is not true of every culture-sensitive mapping, which is why `ToLowerInvariant` and not `ToLower` is the one used.
 
-- [ ] **Step 5: Stop folding, and read the diff that follows**
+- [x] **Step 5: Stop folding, and read the diff that follows**
 
 In `ReadAddedTokens`, the WordPiece caller now collects `AddedToken` values instead of writing into `vocab`. Keep the id-conflict and negative-id refusals.
 
@@ -760,7 +760,7 @@ dotnet test DataNet.slnx -c Release 2>&1 | tail -12
 
 **Expect failures in the WordPiece oracle**, and do not adjust the oracle to match the code. Record which cases moved and how, in your report.
 
-- [ ] **Step 5b: Regenerate the WordPiece corpus, and read its diff**
+- [x] **Step 5b: Regenerate the WordPiece corpus, and read its diff**
 
 The regenerated file — not the code — is the arbiter. This step is inside this task, not the next one, so that the commit carries the behaviour change and the corpus that proves it together and no commit leaves the suite red.
 
@@ -775,7 +775,7 @@ dotnet test DataNet.slnx -c Release 2>&1 | tail -8
 
 The suite must be green at the end of this step.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/DataNet.Embeddings tests/DataNet.Embeddings.Tests
@@ -794,13 +794,13 @@ git commit -m "Match a WordPiece added token as text, not as a folded vocabulary
 
 **Depends on:** Task 5.
 
-- [ ] **Step 1: Add a flags corpus for BPE**
+- [x] **Step 1: Add a flags corpus for BPE**
 
 Follow `generate_bpe_added_tokens`'s shape exactly — it already carries `tokenizer.to_str()` in the metadata so the C# side parses the same bytes HuggingFace was handed. Add `generate_bpe_added_token_flags`, registered in `main`'s `generators` dict as `bpe_added_token_flags.json`, over a GPT-2 tokenizer with three added tokens: one `lstrip=True`, one `rstrip=True`, one `single_word=True`. Texts must include the measured edge cases: `"a <mask> b"`, `"a<mask>b"`, `"a  <mask>  b"`, `"<mask> a"`, `"a <mask>"`, `"a\t<mask>"`, `"a <mask>"`, `"a. <mask>"`, `".<m>."`, `"-<m>-"`, `"1<m>1"`, `"_<m>_"`, `"é<m>é"`.
 
 Record `tokens`, `ids`, `decoded` and `decoded_skip_specials` per case, as the sibling generator does.
 
-- [ ] **Step 2: Add the WordPiece equivalent — this one is load-bearing**
+- [x] **Step 2: Add the WordPiece equivalent — this one is load-bearing**
 
 `generate_wordpiece_added_tokens`, with a `Lowercase` normalizer. **No committed WordPiece corpus carries an
 `added_tokens` table at all** — `_wordpiece_tokenizer` never adds a token, so the fixture the plan assumed
@@ -825,7 +825,7 @@ every entry it emits states the field explicitly. That is why the loader's defau
 rather than a measured behaviour, and the corpus cannot exercise the absent-field path — a C# unit test
 covers that instead.
 
-- [ ] **Step 3: Regenerate and read the diff**
+- [x] **Step 3: Regenerate and read the diff**
 
 ```bash
 .venv-oracles/bin/python tools/generate_oracles.py
@@ -834,17 +834,17 @@ git diff --stat tests/oracles/
 
 Task 5 already regenerated and committed `tokenizer_json.json`, so the only new files here should be the two flag corpora. **If `tokenizer_json.json` moves again, something in Task 5 was not deterministic** — stop and report it rather than committing the second diff.
 
-- [ ] **Step 4: Replay the new corpora**
+- [x] **Step 4: Replay the new corpora**
 
 Add the test classes that read the two new files, following `ByteLevelBpeTests`'s existing pattern for loading a corpus and asserting per case.
 
-- [ ] **Step 5: Green**
+- [x] **Step 5: Green**
 
 ```bash
 dotnet test DataNet.slnx -c Release 2>&1 | tail -8
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add tools/generate_oracles.py tests/oracles tests/DataNet.Embeddings.Tests
@@ -862,13 +862,13 @@ git commit -m "Replay the four added-token flags against tokenizers 0.23.1"
 
 **Depends on:** Task 6. This is the issue's own acceptance criterion.
 
-- [ ] **Step 1: Build a RoBERTa-shaped `added_tokens` table**
+- [x] **Step 1: Build a RoBERTa-shaped `added_tokens` table**
 
 The issue records `roberta-base`'s five entries verbatim: ids 0-3 `<s>`, `<pad>`, `</s>`, `<unk>` with all three flags `false` and `special=true`, and id 50264 `<mask>` with `lstrip=True`, `rstrip=False`, `single_word=False`, `special=True`. All five are also in `model.vocab` at the same ids.
 
 **Do not fetch from the Hub in a test.** Build a small `tokenizer.json` with that exact table over a tiny byte-level vocabulary, in the style of `build_tiny_models.py`, and commit it.
 
-- [ ] **Step 2: Write the acceptance test**
+- [x] **Step 2: Write the acceptance test**
 
 ```csharp
     [Fact]
@@ -884,7 +884,7 @@ The issue records `roberta-base`'s five entries verbatim: ids 0-3 `<s>`, `<pad>`
     }
 ```
 
-- [ ] **Step 3: Green, and commit**
+- [x] **Step 3: Green, and commit**
 
 ```bash
 dotnet test DataNet.slnx -c Release 2>&1 | tail -8
@@ -903,7 +903,7 @@ git commit -m "Load the added-token table roberta-base actually ships"
 
 **Depends on:** Task 7.
 
-- [ ] **Step 1: Confirm the number is still free**
+- [x] **Step 1: Confirm the number is still free**
 
 ```bash
 ls docs/decisions/
@@ -911,7 +911,7 @@ ls docs/decisions/
 
 The user reserved **0022** because 0020 and 0021 are taken by work in flight. If 0022 has appeared, stop and ask rather than picking another.
 
-- [ ] **Step 2: Write the ADR**
+- [x] **Step 2: Write the ADR**
 
 Follow `0017-bpe-parity-scope.md`'s shape: `# 0022 — …`, `**Status:** accepted · **Date:** 2026-08-10`, Context / Decision / Consequences. It must contain:
 
@@ -923,7 +923,7 @@ Follow `0017-bpe-parity-scope.md`'s shape: `# 0022 — …`, `**Status:** accept
 - **What #105 inherits**: the scan-versus-normalization order settled here, and the measurement of what `lstrip` does to a segment boundary — with the per-segment `add_prefix_space` rule left untouched for #105 to change.
 - **The weaker footing**: `rstrip` and `single_word` have no carrier in any corpus this repository holds and are proven against fixtures built for the purpose, where `lstrip` has `roberta-base`.
 
-- [ ] **Step 3: Update `docs/equivalence.md`**
+- [x] **Step 3: Update `docs/equivalence.md`**
 
 Two rows move here; the third already moved.
 
@@ -932,7 +932,7 @@ Two rows move here; the third already moved.
 - Add the `lstrip` round-trip divergence to the `Decode` row: the absorbed whitespace is not restored, as in Python. **This one is genuinely new here** — no earlier task states it, and it is the divergence the spec insists must be recorded rather than discovered.
 - Add the WordPiece rows this branch changed: it now matches added tokens as text instead of folding them, and honours the four flags.
 
-- [ ] **Step 3b: The CHANGELOG**
+- [x] **Step 3b: The CHANGELOG**
 
 `BpeVocabulary.AddedTokens` changed type, and `WordPieceVocabulary` gained a
 property — a breaking change to public API, on a version that has not shipped.
@@ -943,7 +943,7 @@ and the WordPiece behaviour change for files carrying `added_tokens`.
 Follow the file's existing sectioning and voice; read the entry #59 wrote for
 the BPE loaders as the model.
 
-- [ ] **Step 4: Re-read what this change falsified**
+- [x] **Step 4: Re-read what this change falsified**
 
 ```bash
 grep -rn "added_tokens\|skipSpecialTokens\|single_word\|lstrip" --include=*.md docs README.md CONTRIBUTING.md | grep -v "^docs/decisions/0022"
@@ -951,7 +951,7 @@ grep -rn "added_tokens\|skipSpecialTokens\|single_word\|lstrip" --include=*.md d
 
 Counts, enumerations and "see X" pointers go stale silently. Check the BPE guide as well as `equivalence.md`.
 
-- [ ] **Step 5: Verify the guides still compile**
+- [x] **Step 5: Verify the guides still compile**
 
 ```bash
 SCRATCH=/tmp/claude-49201103/-home-cyril-Documents-devs-data-net/c134d377-25c6-4da3-8dec-8ffcbffa021b/scratchpad
@@ -964,7 +964,7 @@ rm -rf "$SCRATCH/sample-packages"
 NUGET_PACKAGES="$SCRATCH/sample-packages" dotnet build samples/DataNet.DocSnippets -c Release --no-incremental 2>&1 | tail -3
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add docs
@@ -977,7 +977,7 @@ git commit -m "Record how an added token matches, and what it costs the round tr
 
 **Depends on:** Task 8. Nothing is committed here unless a check fails and is fixed.
 
-- [ ] **Step 1: Run every gate, reading real exit codes**
+- [x] **Step 1: Run every gate, reading real exit codes**
 
 ```bash
 cd /home/cyril/Documents/devs/data.net
@@ -991,7 +991,7 @@ dotnet test DataNet.slnx -c Release > "$SCRATCH/t.log" 2>&1;               echo 
 
 All three must be `0`, the build must show 0 warnings, and the test log's counts must be read — the four `*.NetStandard.Tests` mirrors are what prove the `netstandard2.0` assemblies still work.
 
-- [ ] **Step 2: Confirm the oracle is reproducible**
+- [x] **Step 2: Confirm the oracle is reproducible**
 
 ```bash
 .venv-oracles/bin/python tools/generate_oracles.py
@@ -1000,7 +1000,7 @@ git status --porcelain tests/oracles/
 
 Expected: empty. The generator is deterministic, so regenerating what was just committed must produce no diff. A diff here means something non-deterministic reached a corpus.
 
-- [ ] **Step 3: Rebase if `main` moved**
+- [x] **Step 3: Rebase if `main` moved**
 
 ```bash
 git fetch origin
@@ -1009,7 +1009,7 @@ git log --oneline HEAD..origin/main
 
 Anything listed means rebase — a long review is exactly when `main` moves, and #105's sibling work touches the same three files.
 
-- [ ] **Step 4: Stop and report**
+- [x] **Step 4: Stop and report**
 
 Do not push and do not open a pull request. Report the state and let the user decide both.
 
