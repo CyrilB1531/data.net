@@ -16,6 +16,14 @@ Two inputs, both cheap:
 The intersection is written as severity entries. `warning`, not `error`:
 TreatWarningsAsErrors already decides whether a finding stops the build, and one
 lever for that decision is enough.
+
+The tool takes no path or URL on its command line: one job, one repository, and
+an input it cannot be pointed at is an input nobody can point at something else
+(issue #131 -- a SonarCloud taint-analysis scan of this script's four argparse
+values, all of which reached a path or URL sink, produced five findings that
+neither the issues API nor the web UI would name). The SARIF error log, the
+`.globalconfig` output and the SonarCloud API base are now fixed constants
+derived from `ROOT` or declared alongside it; `--check` is the only flag left.
 """
 from __future__ import annotations
 
@@ -41,6 +49,8 @@ EXIT_INPUT_MISSING = 3
 EXIT_TRUNCATED = 4
 
 ROOT = Path(__file__).resolve().parent.parent
+ERROR_LOG = ROOT / "obj" / "sonar-rules.sarif"
+OUTPUT = ROOT / ".globalconfig"
 
 
 def fetch(url: str) -> dict:
@@ -130,30 +140,22 @@ def analyzer_version() -> str:
     return match.group(1)
 
 
-def build(args: argparse.Namespace) -> tuple[str, str]:
-    if args.rules is not None:
-        payload = json.loads(Path(args.rules).read_text(encoding="utf-8"))
-        key = "(fixture)"
-    else:
-        key = profile_key(args.api)
-        payload = fetch(
-            f"{args.api}/rules/search?organization={ORGANIZATION}&qprofile={key}"
-            f"&activation=true&languages={LANGUAGE}&ps=500")
-    rules = delta(active_rules(payload), disabled_rules(Path(args.error_log)))
+def build() -> tuple[str, str]:
+    key = profile_key(DEFAULT_API)
+    payload = fetch(
+        f"{DEFAULT_API}/rules/search?organization={ORGANIZATION}&qprofile={key}"
+        f"&activation=true&languages={LANGUAGE}&ps=500")
+    rules = delta(active_rules(payload), disabled_rules(ERROR_LOG))
     return render(rules, key, analyzer_version()), key
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--error-log", required=True, help="SARIF v2 error log from a build")
-    parser.add_argument("--output", default=str(ROOT / ".globalconfig"))
-    parser.add_argument("--rules", help="a saved rules/search response, instead of calling the API")
-    parser.add_argument("--api", default=DEFAULT_API)
     parser.add_argument("--check", action="store_true", help="compare instead of writing")
     args = parser.parse_args(argv)
 
     try:
-        expected, key = build(args)
+        expected, key = build()
     except TruncatedResponse as error:
         print(str(error), file=sys.stderr)
         return EXIT_TRUNCATED
@@ -167,17 +169,17 @@ def main(argv: list[str] | None = None) -> int:
         # TimeoutError (urlopen does not always wrap one in URLError) are the network,
         # never a local file: the failure that must not look like drift, because the
         # file is fine and the network is not.
-        print(f"could not reach {args.api}: {error}", file=sys.stderr)
+        print(f"could not reach {DEFAULT_API}: {error}", file=sys.stderr)
         return EXIT_UNREACHABLE
     except OSError as error:
-        # Reached only for a local --error-log/--rules problem: missing, unreadable,
-        # whatever strerror says. Never a URLError -- that is caught above -- so this
-        # is genuinely local, and must not read as "the API is down", which would send
+        # Reached only for a local ERROR_LOG problem: missing, unreadable, whatever
+        # strerror says. Never a URLError -- that is caught above -- so this is
+        # genuinely local, and must not read as "the API is down", which would send
         # whoever is debugging it the wrong way.
         print(f"cannot read {error.filename}: {error.strerror}", file=sys.stderr)
         return EXIT_INPUT_MISSING
 
-    target = Path(args.output)
+    target = OUTPUT
     if not args.check:
         target.write_text(expected, encoding="utf-8")
         print(f"{target}: {expected.count('dotnet_diagnostic.')} rules from profile {key}")

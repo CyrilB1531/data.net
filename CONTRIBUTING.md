@@ -163,7 +163,11 @@ the document worse than not writing it:
   fresh local server starts with only the default `Sonar way` gate, and this run
   was evaluated against that one instead;
 - its analyser versions move independently of the server's, so a rule firing
-  (or not) here does not pin down which version fired it on SonarCloud.
+  (or not) here does not pin down which version fired it on SonarCloud;
+- the Community edition carries no taint-analysis engine, so `PythonSecuritySensor`
+  and its injection-class vulnerabilities (SSRF, path traversal, and the like) are
+  invisible to it — a script that reads an argument into `Path.read_text` or hands
+  one to `urlopen` looks clean here and can still fail the real gate (issue #131).
 
 A finding it reports is real, a clean run promises nothing.
 
@@ -294,7 +298,7 @@ that raises exactly the rules the profile activates and the package ships
 disabled, to `warning`. Regenerate it with
 [`tools/generate_sonar_globalconfig.py`](tools/generate_sonar_globalconfig.py) —
 see [`tools/README.md`](tools/README.md#generate_sonar_globalconfigpy) for the
-full command, including the SARIF error log it reads. `dotnet build` picks up
+full command, including where it reads the SARIF error log from. `dotnet build` picks up
 `.globalconfig` at the repository root with no wiring — the SDK's
 `Microsoft.Managed.Core.targets` already globs every ancestor directory of every
 compiled file for a file with exactly that name — so nothing declares it, and

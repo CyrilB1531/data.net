@@ -49,9 +49,10 @@ jobs:
       # so, because a check that goes green on silence proves nothing.
       - name: Sonar globalconfig is current
         run: |
+          mkdir -p obj
           dotnet build src/DataNet.Fuzzy -c Release --no-incremental -f net10.0 \
-            -p:ErrorLog=$RUNNER_TEMP/rules.sarif%2Cversion=2
-          python tools/generate_sonar_globalconfig.py --check --error-log $RUNNER_TEMP/rules.sarif
+            -p:ErrorLog=$GITHUB_WORKSPACE/obj/sonar-rules.sarif%2Cversion=2
+          python tools/generate_sonar_globalconfig.py --check
 
   build-test:
     name: Build, test, pack

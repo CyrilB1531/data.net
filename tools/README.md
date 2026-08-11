@@ -170,27 +170,40 @@ points at, and where a contributor lands after CI prints a diff at them on the
 **`Sonar globalconfig is current`** job.
 
 It needs two inputs: one anonymous SonarCloud call it makes itself, and a SARIF
-v2 error log from a local build, which only the build can produce:
+v2 error log from a local build, which only the build can produce. Both the
+error log's path and the `.globalconfig` it writes are fixed constants in the
+script, not command-line arguments — the tool takes no path or URL of any kind
+(issue #131), so there is nothing to pass beyond `--check`. Run from the
+repository root, so `$(pwd)` is `ROOT`:
 
 ```bash
+mkdir -p obj
 dotnet build src/DataNet.Fuzzy -c Release --no-incremental -f net10.0 \
-  -p:ErrorLog=/tmp/rules.sarif%2Cversion=2
-python tools/generate_sonar_globalconfig.py --error-log /tmp/rules.sarif
+  -p:ErrorLog=$(pwd)/obj/sonar-rules.sarif%2Cversion=2
+python tools/generate_sonar_globalconfig.py
 ```
+
+The path handed to `-p:ErrorLog` must be absolute: MSBuild resolves a relative one
+against the project directory (`src/DataNet.Fuzzy`), not the shell's current
+directory, so a relative `obj/sonar-rules.sarif` here would write to
+`src/DataNet.Fuzzy/obj/` and the script — which always looks under the
+repository's own `obj/` — would report the input missing.
 
 The `%2C` is load-bearing, not decorative — it is the URL-encoded comma MSBuild
 needs between the SARIF path and `version=2`. A bare comma there is parsed as two
 separate properties, and `ErrorLog` falls back to its default SARIF **v1**, which
 carries no `defaultConfiguration.enabled` flag at all; `disabled_rules()` would
 then read an empty rule table and the generated file would enforce nothing, with
-no error to say why.
+no error to say why. `obj/sonar-rules.sarif` is where the script always looks —
+`obj/` is already git-ignored, so the error log never becomes something to commit
+or clean up by hand.
 
 `--check` compares the regenerated file against the committed one instead of
 writing it — no `.globalconfig` in the tree is touched — which is what the `Lint`
 job runs on every pull request:
 
 ```bash
-python tools/generate_sonar_globalconfig.py --check --error-log /tmp/rules.sarif
+python tools/generate_sonar_globalconfig.py --check
 ```
 
 A regenerated file that differs means the SonarCloud profile moved; an
