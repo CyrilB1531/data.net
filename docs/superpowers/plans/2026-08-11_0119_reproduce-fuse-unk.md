@@ -134,7 +134,6 @@ _FUSE_MERGE_MERGES = [(_FUSE_UNK_TOKEN, "a")]
 # trap needs both characters inside one piece.
 _FUSE_COVERED_UNK_VOCAB = {"q": 0, "a": 1}
 
-
 def _fuse_unk_model(vocab, merges, fuse, *, unk=_FUSE_UNK_TOKEN, byte_level=False):
     """One tokenizer, built rather than trained, so the file is byte-stable.
 
@@ -156,7 +155,6 @@ def _fuse_unk_model(vocab, merges, fuse, *, unk=_FUSE_UNK_TOKEN, byte_level=Fals
     tokenizer.pre_tokenizer = (pre_tokenizers.ByteLevel(add_prefix_space=False) if byte_level
                                else pre_tokenizers.Whitespace())
     return tokenizer
-
 
 def _fuse_unk_models() -> list[tuple]:
     """(name, declares, fuse, tokenizer, texts) for every shape the spec decided on."""
@@ -629,7 +627,6 @@ fails, the failure is *not* about `fuse_unk` and is worth reading before going o
 **Write it as one merged `if`, not as a nested one.** SonarAnalyzer `S1066` — "merge this if statement
 with the enclosing one" — is a build error in this repository, so the nested spelling will not compile at
 all. The behaviour under test is identical either way.
-
 
 In `BpeTokenizer.cs`, add the field beside `_hasUnk`:
 
