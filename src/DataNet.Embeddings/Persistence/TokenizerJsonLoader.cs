@@ -71,6 +71,14 @@ public static class TokenizerJsonLoader
 {
     private const string SourceName = "tokenizer.json";
     private const string AddedTokensProperty = "added_tokens";
+
+    /// <summary>
+    /// The property name read in four places: the three positions a <c>ByteLevel</c>
+    /// block can appear in, and <c>Metaspace</c>'s pre-0.14 spelling of
+    /// <c>prepend_scheme</c>. One spelling, so a typo cannot make one reader
+    /// silently stop finding what the others find.
+    /// </summary>
+    private const string AddPrefixSpaceProperty = "add_prefix_space";
     private const string UntypedName = "(untyped)";
     private const string MetaSymbol = "\u2581";
 
@@ -766,7 +774,7 @@ public static class TokenizerJsonLoader
                 "its ByteLevel pre_tokenizer has use_regex off",
                 "HuggingFace then passes the whole text to the model as one piece, where BpeTokenizer would split it on word boundaries and drop the whitespace between them");
         }
-        if (OptionalBoolean(pre, "add_prefix_space") is not bool addPrefixSpace)
+        if (OptionalBoolean(pre, AddPrefixSpaceProperty) is not bool addPrefixSpace)
         {
             throw Unsupported(
                 "its ByteLevel pre_tokenizer declares no add_prefix_space",
@@ -812,7 +820,7 @@ public static class TokenizerJsonLoader
                 "BpeTokenizer reproduces a regex Split pattern only");
         }
 
-        if (OptionalBoolean(byteLevelStep, "add_prefix_space") is not bool addPrefixSpace)
+        if (OptionalBoolean(byteLevelStep, AddPrefixSpaceProperty) is not bool addPrefixSpace)
         {
             throw Unsupported(
                 "its Sequence's ByteLevel step declares no add_prefix_space",
@@ -872,7 +880,7 @@ public static class TokenizerJsonLoader
     /// </remarks>
     private static void EnsureByteLevelDecoderDeclaresAddPrefixSpace(JsonElement decoder, bool decoderIsByteLevel)
     {
-        if (decoderIsByteLevel && OptionalBoolean(decoder, "add_prefix_space") is null)
+        if (decoderIsByteLevel && OptionalBoolean(decoder, AddPrefixSpaceProperty) is null)
         {
             throw new InvalidDataException(
                 $"The {SourceName} decoder is 'ByteLevel' but declares no add_prefix_space, which tokenizers has no default for and refuses too.");
@@ -947,7 +955,7 @@ public static class TokenizerJsonLoader
                 $"its Metaspace prepend_scheme is '{prependScheme}'",
                 "the tokenizer always prepends the meta symbol to the input");
         }
-        if (OptionalBoolean(pre, "add_prefix_space") is false)
+        if (OptionalBoolean(pre, AddPrefixSpaceProperty) is false)
         {
             // The pre-0.14 spelling of prepend_scheme, still found in the wild.
             throw Unsupported(
