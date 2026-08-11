@@ -31,7 +31,7 @@ jobs:
       # tools/tests exercises only generate_sonar_globalconfig.py, which imports
       # nothing beyond the standard library and pytest -- scikit-learn, tokenizers,
       # nltk and the rest of tools/requirements.lock.txt are unused here. Installed
-      # anyway, deliberately: a second, narrower lock for these nine tests would be
+      # anyway, deliberately: a second, narrower lock for this one test file would be
       # a second hashed graph to keep in sync with tools/requirements.txt by hand,
       # which is exactly the kind of drift check_version_floor.py exists to catch
       # elsewhere in this repository -- and --only-binary :all: means the install
