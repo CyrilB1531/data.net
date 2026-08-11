@@ -62,13 +62,6 @@ public static class RootMeanSquaredLogError
         ReadOnlySpan<double> yTrue,
         ReadOnlySpan<double> yPred,
         int outputCount = 1,
-        ReadOnlySpan<double> sampleWeight = default)
-    {
-        double[] squared = MeanSquaredLogError.PerOutput(yTrue, yPred, outputCount, sampleWeight);
-        for (int i = 0; i < squared.Length; i++)
-        {
-            squared[i] = Math.Sqrt(squared[i]);
-        }
-        return squared;
-    }
+        ReadOnlySpan<double> sampleWeight = default) =>
+        Outputs.SquareRoots(MeanSquaredLogError.PerOutput(yTrue, yPred, outputCount, sampleWeight));
 }

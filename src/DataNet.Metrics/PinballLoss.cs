@@ -29,8 +29,7 @@ public static class PinballLoss
         ReadOnlySpan<double> outputWeights = default)
     {
         RequireUnitInterval(alpha);
-        int samples = Outputs.Validate(yTrue, yPred, outputCount, sampleWeight, outputWeights);
-        return Outputs.Reduce(Compute(yTrue, yPred, alpha, outputCount, sampleWeight, samples), outputWeights);
+        return Outputs.Score(yTrue, yPred, outputCount, sampleWeight, outputWeights, new Quantile(alpha));
     }
 
     /// <summary>
@@ -52,53 +51,31 @@ public static class PinballLoss
         ReadOnlySpan<double> sampleWeight = default)
     {
         RequireUnitInterval(alpha);
-        int samples = Outputs.Validate(yTrue, yPred, outputCount, sampleWeight, default);
-        return Compute(yTrue, yPred, alpha, outputCount, sampleWeight, samples);
-    }
-
-    private static double[] Compute(
-        ReadOnlySpan<double> yTrue,
-        ReadOnlySpan<double> yPred,
-        double alpha,
-        int outputCount,
-        ReadOnlySpan<double> sampleWeight,
-        int samples)
-    {
-        double[] result = new double[outputCount];
-        bool weighted = !sampleWeight.IsEmpty;
-        double totalWeight = 0.0;
-
-        for (int row = 0; row < samples; row++)
-        {
-            double weight = weighted ? sampleWeight[row] : 1.0;
-            totalWeight += weight;
-            int offset = row * outputCount;
-            for (int col = 0; col < outputCount; col++)
-            {
-                double residual = yTrue[offset + col] - yPred[offset + col];
-                double under = alpha * residual;
-                double over = (alpha - 1.0) * residual;
-                result[col] += weight * (under > over ? under : over);
-            }
-        }
-
-        for (int col = 0; col < outputCount; col++)
-        {
-            result[col] /= totalWeight;
-        }
-        return result;
+        return Outputs.PerOutput(yTrue, yPred, outputCount, sampleWeight, new Quantile(alpha));
     }
 
     /// <summary>
-    /// Refuses a quantile outside the closed unit interval, <c>NaN</c> included.
+    /// The pinball loss at one quantile: the residual charged <c>alpha</c> when
+    /// the prediction fell short and <c>1 - alpha</c> when it overshot.
     /// </summary>
     /// <remarks>
-    /// Written as <c>!(alpha &gt;= 0.0 &amp;&amp; alpha &lt;= 1.0)</c> rather than
-    /// <c>alpha &lt; 0.0 || alpha &gt; 1.0</c>: every comparison against
-    /// <c>NaN</c> is false, so the negated form is the only one of the two that
-    /// rejects it. scikit-learn's range is closed, so <c>0.0</c> and <c>1.0</c>
-    /// are legal quantiles.
+    /// Written as the larger of two products rather than through
+    /// <c>Math.Sign</c>, which is the same number on both sides of zero and one
+    /// comparison instead of a branch and a multiply. The struct carries
+    /// <c>alpha</c>, which is why this kernel is constructed where the other
+    /// four are <see langword="default"/>.
     /// </remarks>
+    private readonly struct Quantile(double alpha) : IResidualKernel
+    {
+        public double Apply(double truth, double prediction)
+        {
+            double residual = truth - prediction;
+            double under = alpha * residual;
+            double over = (alpha - 1.0) * residual;
+            return under > over ? under : over;
+        }
+    }
+
     private static void RequireUnitInterval(double alpha)
     {
         if (!(alpha >= 0.0 && alpha <= 1.0))

@@ -37,11 +37,8 @@ public static class MeanAbsolutePercentageError
         ReadOnlySpan<double> yPred,
         int outputCount = 1,
         ReadOnlySpan<double> sampleWeight = default,
-        ReadOnlySpan<double> outputWeights = default)
-    {
-        int samples = Outputs.Validate(yTrue, yPred, outputCount, sampleWeight, outputWeights);
-        return Outputs.Reduce(Compute(yTrue, yPred, outputCount, sampleWeight, samples), outputWeights);
-    }
+        ReadOnlySpan<double> outputWeights = default) =>
+        Outputs.Score<ClampedRatio>(yTrue, yPred, outputCount, sampleWeight, outputWeights);
 
     /// <summary>
     /// One number per output — <c>multioutput="raw_values"</c>.
@@ -57,40 +54,21 @@ public static class MeanAbsolutePercentageError
         ReadOnlySpan<double> yTrue,
         ReadOnlySpan<double> yPred,
         int outputCount = 1,
-        ReadOnlySpan<double> sampleWeight = default)
+        ReadOnlySpan<double> sampleWeight = default) =>
+        Outputs.PerOutput<ClampedRatio>(yTrue, yPred, outputCount, sampleWeight);
+
+    /// <summary>
+    /// The absolute residual over the absolute truth, with the denominator
+    /// clamped so that a truth of zero returns a finite number rather than
+    /// infinity.
+    /// </summary>
+    private readonly struct ClampedRatio : IResidualKernel
     {
-        int samples = Outputs.Validate(yTrue, yPred, outputCount, sampleWeight, default);
-        return Compute(yTrue, yPred, outputCount, sampleWeight, samples);
-    }
-
-    private static double[] Compute(
-        ReadOnlySpan<double> yTrue,
-        ReadOnlySpan<double> yPred,
-        int outputCount,
-        ReadOnlySpan<double> sampleWeight,
-        int samples)
-    {
-        double[] result = new double[outputCount];
-        bool weighted = !sampleWeight.IsEmpty;
-        double totalWeight = 0.0;
-
-        for (int row = 0; row < samples; row++)
+        public double Apply(double truth, double prediction)
         {
-            double weight = weighted ? sampleWeight[row] : 1.0;
-            totalWeight += weight;
-            int offset = row * outputCount;
-            for (int col = 0; col < outputCount; col++)
-            {
-                double truth = Math.Abs(yTrue[offset + col]);
-                double denominator = truth > MachineEpsilon ? truth : MachineEpsilon;
-                result[col] += weight * Math.Abs(yTrue[offset + col] - yPred[offset + col]) / denominator;
-            }
+            double magnitude = Math.Abs(truth);
+            double denominator = magnitude > MachineEpsilon ? magnitude : MachineEpsilon;
+            return Math.Abs(truth - prediction) / denominator;
         }
-
-        for (int col = 0; col < outputCount; col++)
-        {
-            result[col] /= totalWeight;
-        }
-        return result;
     }
 }

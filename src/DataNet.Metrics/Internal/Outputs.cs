@@ -1,15 +1,41 @@
 namespace DataNet.Metrics.Internal;
 
 /// <summary>
-/// The two things every regression metric in this package shares: agreeing that
-/// a flat span really is <c>n × outputCount</c>, and reducing a per-output
-/// array to a scalar.
+/// What one metric does to one <c>(truth, prediction)</c> pair, and nothing
+/// else — the only part of a weighted mean that differs between five of the
+/// eleven regression metrics.
 /// </summary>
 /// <remarks>
-/// Nothing else is shared. Each metric owns its own pass over the data, because
-/// what they compute per output has almost nothing in common — a squared mean, a
-/// sorted median, a clamped ratio and a quantile loss are four different loops
-/// wearing the same signature.
+/// An interface implemented by <see langword="struct"/>s rather than a
+/// <see cref="Func{T1, T2, TResult}"/>, and it is the difference between an
+/// abstraction and a cost: a generic method over a value-typed parameter is
+/// specialized by the runtime for each kernel, so
+/// <see cref="Outputs.WeightedMean{TKernel}"/> compiles to the same loop it
+/// would have had inline, with the call resolved statically. A delegate would
+/// have been an indirect call per element — a million of them on the largest
+/// benchmark row.
+/// </remarks>
+internal interface IResidualKernel
+{
+    /// <summary>The metric's own per-pair quantity, before weighting.</summary>
+    /// <param name="truth">One true value.</param>
+    /// <param name="prediction">The prediction for the same sample and output.</param>
+    double Apply(double truth, double prediction);
+}
+
+/// <summary>
+/// What the regression metrics in this package share: agreeing that a flat span
+/// really is <c>n × outputCount</c>, walking it once under a per-pair kernel,
+/// and reducing the per-output array to a scalar.
+/// </summary>
+/// <remarks>
+/// The walk is shared because it genuinely is the same walk. A squared mean, an
+/// absolute mean, a clamped ratio, a log-space squared mean and a quantile loss
+/// differ in one expression each and agree on everything around it — the
+/// weight, the row offset, the column accumulation and the division at the end.
+/// What is <em>not</em> shared is what is not the same: the median sorts, R²
+/// and explained variance need two passes and the variance of the truth, and
+/// <see cref="MaxError"/> takes no weights at all. Those keep their own code.
 /// </remarks>
 internal static class Outputs
 {
@@ -92,6 +118,117 @@ internal static class Outputs
             throw new ArgumentException(
                 "Weights sum to zero, can't be normalized.", nameof(outputWeights));
         }
+    }
+
+    /// <summary>
+    /// The whole of a weighted-mean metric's <c>Score</c>: validate, walk under
+    /// <typeparamref name="TKernel"/>, reduce.
+    /// </summary>
+    /// <typeparam name="TKernel">The per-pair quantity this metric averages.</typeparam>
+    /// <param name="yTrue">The true values, row-major.</param>
+    /// <param name="yPred">The predicted values, same length as <paramref name="yTrue"/>.</param>
+    /// <param name="outputCount">How many outputs each row holds.</param>
+    /// <param name="sampleWeight">A weight per sample, or empty.</param>
+    /// <param name="outputWeights">A weight per output, or empty for a plain mean.</param>
+    /// <param name="kernel">The kernel instance, for a kernel that carries state such as an <c>alpha</c>.</param>
+    public static double Score<TKernel>(
+        ReadOnlySpan<double> yTrue,
+        ReadOnlySpan<double> yPred,
+        int outputCount,
+        ReadOnlySpan<double> sampleWeight,
+        ReadOnlySpan<double> outputWeights,
+        TKernel kernel = default)
+        where TKernel : struct, IResidualKernel
+    {
+        int samples = Validate(yTrue, yPred, outputCount, sampleWeight, outputWeights);
+        return Reduce(WeightedMean(yTrue, yPred, outputCount, sampleWeight, samples, kernel), outputWeights);
+    }
+
+    /// <summary>The same walk without the reduction — <c>multioutput="raw_values"</c>.</summary>
+    /// <typeparam name="TKernel">The per-pair quantity this metric averages.</typeparam>
+    /// <param name="yTrue">The true values, row-major.</param>
+    /// <param name="yPred">The predicted values, same length as <paramref name="yTrue"/>.</param>
+    /// <param name="outputCount">How many outputs each row holds.</param>
+    /// <param name="sampleWeight">A weight per sample, or empty.</param>
+    /// <param name="kernel">The kernel instance, for a kernel that carries state.</param>
+    public static double[] PerOutput<TKernel>(
+        ReadOnlySpan<double> yTrue,
+        ReadOnlySpan<double> yPred,
+        int outputCount,
+        ReadOnlySpan<double> sampleWeight,
+        TKernel kernel = default)
+        where TKernel : struct, IResidualKernel
+    {
+        int samples = Validate(yTrue, yPred, outputCount, sampleWeight, default);
+        return WeightedMean(yTrue, yPred, outputCount, sampleWeight, samples, kernel);
+    }
+
+    /// <summary>
+    /// The weighted mean of <typeparamref name="TKernel"/> over each output
+    /// column, on input already validated.
+    /// </summary>
+    /// <typeparam name="TKernel">The per-pair quantity to average.</typeparam>
+    /// <param name="yTrue">The true values, row-major.</param>
+    /// <param name="yPred">The predicted values, row-major.</param>
+    /// <param name="outputCount">How many outputs each row holds.</param>
+    /// <param name="sampleWeight">A weight per sample, or empty for weight 1 each.</param>
+    /// <param name="samples">The sample count <see cref="Validate"/> returned.</param>
+    /// <param name="kernel">The kernel instance.</param>
+    /// <returns>A fresh array of <paramref name="outputCount"/> entries, in column order.</returns>
+    /// <remarks>
+    /// Separate from <see cref="Score{TKernel}"/> and
+    /// <see cref="PerOutput{TKernel}"/> so that a metric with a validation rule
+    /// of its own — <see cref="MeanSquaredLogError"/> refuses a target at or
+    /// below −1 — can run it between the shared check and the walk, rather than
+    /// paying for a second validation pass to get in front of it.
+    /// </remarks>
+    public static double[] WeightedMean<TKernel>(
+        ReadOnlySpan<double> yTrue,
+        ReadOnlySpan<double> yPred,
+        int outputCount,
+        ReadOnlySpan<double> sampleWeight,
+        int samples,
+        TKernel kernel = default)
+        where TKernel : struct, IResidualKernel
+    {
+        double[] result = new double[outputCount];
+        bool weighted = !sampleWeight.IsEmpty;
+        double totalWeight = 0.0;
+
+        for (int row = 0; row < samples; row++)
+        {
+            double weight = weighted ? sampleWeight[row] : 1.0;
+            totalWeight += weight;
+            int offset = row * outputCount;
+            for (int col = 0; col < outputCount; col++)
+            {
+                result[col] += weight * kernel.Apply(yTrue[offset + col], yPred[offset + col]);
+            }
+        }
+
+        for (int col = 0; col < outputCount; col++)
+        {
+            result[col] /= totalWeight;
+        }
+
+        return result;
+    }
+
+    /// <summary>Roots every entry in place, and hands the same array back.</summary>
+    /// <param name="perOutput">One value per output, replaced by its square root.</param>
+    /// <remarks>
+    /// In place because the caller has just allocated it: the two rooted metrics
+    /// each ask their squared counterpart for a fresh array and own it outright,
+    /// so rooting a copy would allocate a second array for nothing.
+    /// </remarks>
+    public static double[] SquareRoots(double[] perOutput)
+    {
+        for (int i = 0; i < perOutput.Length; i++)
+        {
+            perOutput[i] = Math.Sqrt(perOutput[i]);
+        }
+
+        return perOutput;
     }
 
     /// <summary>

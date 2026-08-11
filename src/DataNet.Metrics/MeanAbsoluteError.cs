@@ -24,11 +24,8 @@ public static class MeanAbsoluteError
         ReadOnlySpan<double> yPred,
         int outputCount = 1,
         ReadOnlySpan<double> sampleWeight = default,
-        ReadOnlySpan<double> outputWeights = default)
-    {
-        int samples = Outputs.Validate(yTrue, yPred, outputCount, sampleWeight, outputWeights);
-        return Outputs.Reduce(Compute(yTrue, yPred, outputCount, sampleWeight, samples), outputWeights);
-    }
+        ReadOnlySpan<double> outputWeights = default) =>
+        Outputs.Score<AbsoluteResidual>(yTrue, yPred, outputCount, sampleWeight, outputWeights);
 
     /// <summary>
     /// One number per output — <c>multioutput="raw_values"</c>.
@@ -44,38 +41,12 @@ public static class MeanAbsoluteError
         ReadOnlySpan<double> yTrue,
         ReadOnlySpan<double> yPred,
         int outputCount = 1,
-        ReadOnlySpan<double> sampleWeight = default)
+        ReadOnlySpan<double> sampleWeight = default) =>
+        Outputs.PerOutput<AbsoluteResidual>(yTrue, yPred, outputCount, sampleWeight);
+
+    /// <summary>The absolute residual, which is what makes this the absolute error.</summary>
+    private readonly struct AbsoluteResidual : IResidualKernel
     {
-        int samples = Outputs.Validate(yTrue, yPred, outputCount, sampleWeight, default);
-        return Compute(yTrue, yPred, outputCount, sampleWeight, samples);
-    }
-
-    private static double[] Compute(
-        ReadOnlySpan<double> yTrue,
-        ReadOnlySpan<double> yPred,
-        int outputCount,
-        ReadOnlySpan<double> sampleWeight,
-        int samples)
-    {
-        double[] result = new double[outputCount];
-        bool weighted = !sampleWeight.IsEmpty;
-        double totalWeight = 0.0;
-
-        for (int row = 0; row < samples; row++)
-        {
-            double weight = weighted ? sampleWeight[row] : 1.0;
-            totalWeight += weight;
-            int offset = row * outputCount;
-            for (int col = 0; col < outputCount; col++)
-            {
-                result[col] += weight * Math.Abs(yTrue[offset + col] - yPred[offset + col]);
-            }
-        }
-
-        for (int col = 0; col < outputCount; col++)
-        {
-            result[col] /= totalWeight;
-        }
-        return result;
+        public double Apply(double truth, double prediction) => Math.Abs(truth - prediction);
     }
 }
