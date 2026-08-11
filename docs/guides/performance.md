@@ -350,6 +350,19 @@ these 24 rows should be read only under their own conditions, given here —
 window described below, after `MedianAbsoluteError`'s unweighted path was
 rewritten.
 
+**Read the `k` suffix as a corpus file name, not as a workload.** The
+regression arrays are drawn from `SeededRandom(SEED + 1_000 + n)`, which
+depends on the sample count and not on the class count, so `metrics_n1000_k2`
+and `metrics_n1000_k10` carry byte-identical `y_true_real`. That is deliberate
+— all four operations here are single-output, and `k` is a property of the
+classification columns those files also hold — but it means the 24 rows below
+are **12 distinct workloads, each measured twice**. The pairs are useful for
+exactly that: they bound the run-to-run spread. At n=1 000 000 the two members
+agree to within 0.04× (`mse` 1.04× / 1.00×), while at n=1 000 the same
+identical array gives 98.88× and 141.17× — a 43 % spread, which is what a
+sub-millisecond `mse` measurement is worth on a machine at this load, and the
+reason no conclusion on this page rests on an n=1 000 row.
+
 | Operation | DataNet ms | Python ms | wall | DataNet cpu ms | Python cpu ms | **cpu** |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | `mse_n1000_k2` | 0.005 | 0.486 | 104.89x | 0.005 | 0.458 | **98.88x** |
@@ -381,9 +394,12 @@ rewritten.
 described below, in a separate window from the other eighteen rows in this
 table. Every other cell is the original, unrewritten-algorithm measurement.
 
-**20/24 at or above 1× on processor time when this table was first
-measured — `median_ae` was the finding, not a fluke to rerun away.** All four
-`median_ae` rows at n=100 000 and n=1 000 000 landed below the gate —
+**20/24 rows at or above 1× on processor time when this table was first
+measured — `median_ae` was the finding, not a fluke to rerun away.** That is
+20 of 24 *rows*, which under the pairing above is 10 of 12 distinct
+workloads; the four that failed were two workloads, each measured twice, and
+they failed both times. All four `median_ae` rows at n=100 000 and
+n=1 000 000 landed below the gate —
 **0.36×**, **0.25×**, **0.19×** and **0.19×** — meaning Python was 3× to over
 5× *faster* there, the only rows on this page where that was true. The cause
 was the algorithm, not the run: scikit-learn's `median_absolute_error` calls
@@ -435,6 +451,12 @@ n=100 000, k=2; 88.792 ms → 18.365 ms at n=1 000 000, k=2), and the
 processor-time ratio against scikit-learn rose from **0.36×** to **0.87×**
 (n=100 000, k=2), **0.25×** to **0.80×** (n=100 000, k=10), **0.19×** to
 **0.87×** (n=1 000 000, k=2) and **0.19×** to **0.90×** (n=1 000 000, k=10).
+Those are four rows over two workloads, not four independent measurements —
+the `k=2` and `k=10` members of each pair run on the same array — so read
+them as two recoveries each confirmed twice: 0.36×/0.25× → 0.87×/0.80× at
+n=100 000, and 0.19×/0.19× → 0.87×/0.90× at n=1 000 000. The agreement
+within each pair is what makes the recovery credible; a 4× swing on one row
+alone would not be.
 NumPy's introselect and this quickselect now do the same order of work —
 `O(n)` expected, `O(n log n)` worst case — so the remaining gap reads as
 constant overhead (managed bounds checks, the Lomuto partition's extra
