@@ -48,7 +48,8 @@ def test_render_declares_a_global_config_and_carries_no_timestamp():
 
     assert text.splitlines()[0] == "is_global = true"
     assert "dotnet_diagnostic.S107.severity = warning" in text
-    assert "P" in text and "1.2.3" in text
+    assert "P" in text
+    assert "1.2.3" in text
     assert gen.render(["S107"], profile_key="P", analyzer_version="1.2.3") == text
 
 
@@ -75,3 +76,36 @@ def test_check_exits_two_when_the_api_cannot_be_reached(tmp_path):
     # editing a file that never changed.
     assert result.returncode == 2
     assert "127.0.0.1:9" in result.stderr
+
+
+def test_check_exits_zero_when_the_file_on_disk_already_matches(tmp_path):
+    target = tmp_path / ".globalconfig"
+    rules = gen.delta(
+        gen.active_rules(json.loads((FIXTURES / "rules_search.json").read_text(encoding="utf-8"))),
+        gen.disabled_rules(FIXTURES / "error_log.sarif"))
+    target.write_text(gen.render(rules, profile_key="(fixture)", analyzer_version=gen.analyzer_version()),
+                       encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--check", "--error-log", str(FIXTURES / "error_log.sarif"),
+         "--rules", str(FIXTURES / "rules_search.json"), "--output", str(target)],
+        capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0
+    assert "matches profile" in result.stdout
+
+
+def test_check_names_the_path_and_does_not_report_the_api_as_unreachable_when_a_local_file_is_missing(tmp_path):
+    missing = tmp_path / "does-not-exist.sarif"
+
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--check", "--error-log", str(missing),
+         "--rules", str(FIXTURES / "rules_search.json"), "--output", str(tmp_path / ".globalconfig")],
+        capture_output=True, text=True, check=False)
+
+    # A local path typo is not a network failure: it must not be reported as
+    # one, and it must not reuse the "API unreachable" exit code.
+    assert result.returncode == gen.EXIT_INPUT_MISSING
+    assert result.returncode != gen.EXIT_UNREACHABLE
+    assert "could not reach" not in result.stderr
+    assert str(missing) in result.stderr

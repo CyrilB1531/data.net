@@ -36,6 +36,7 @@ REPOSITORY = "csharpsquid"
 RULE_ID = re.compile(r"^S\d+$")
 EXIT_DRIFT = 1
 EXIT_UNREACHABLE = 2
+EXIT_INPUT_MISSING = 3
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -137,8 +138,14 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         expected, key = build(args)
+    except FileNotFoundError as error:
+        # A local --error-log/--rules typo, not the network: must not read as
+        # "the API is down", which sends whoever is debugging it the wrong way.
+        print(f"cannot read {error.filename}: {error.strerror}", file=sys.stderr)
+        return EXIT_INPUT_MISSING
     except OSError as error:
         # urllib.error.URLError and TimeoutError are both already OSError subclasses.
+        # FileNotFoundError is caught above first, so this is the network only.
         # The failure that must not look like drift: the file is fine, the network is not.
         print(f"could not reach {args.api}: {error}", file=sys.stderr)
         return EXIT_UNREACHABLE
