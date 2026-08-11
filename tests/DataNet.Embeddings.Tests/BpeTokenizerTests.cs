@@ -233,7 +233,8 @@ public sealed class BpeTokenizerTests
     {
         var vocabulary = new BpeVocabulary(
             new Dictionary<string, int>(StringComparer.Ordinal) { ["a"] = 0, ["b"] = 1 },
-            []) { EndOfWordSuffix = "" };
+            [])
+        { EndOfWordSuffix = "" };
         var tokenizer = new BpeTokenizer(vocabulary);
 
         string decoded = tokenizer.Decode([0, 1]);
