@@ -99,6 +99,46 @@ public sealed class AbsoluteErrorTests
     }
 
     [Theory]
+    // Residuals 0…n-1 against a zero prediction, under a *fractional* uniform
+    // weight — the shape none of the rows above can reach, because 1, 2, 0.5
+    // and 7 are all exactly representable in binary and 0.1 is not. The
+    // cumulative weight then overshoots half the total by units in the last
+    // place, and scikit-learn compares that overshoot against one machine
+    // epsilon rather than against zero. An exact `cumulative <= half` refuses
+    // to average and returns half a unit less at n = 6, 8 and 10.
+    //
+    // The 0.7 rows are here for the opposite reason: their overshoot is larger
+    // than an epsilon, so scikit-learn does *not* average, and they fail any
+    // implementation that reads the tolerance as "a uniform weight always
+    // averages". Rows that already passed before the tolerance landed are kept
+    // as the regression guard.
+    [InlineData(0.1, 4, 1.5)]
+    [InlineData(0.1, 6, 2.5)]
+    [InlineData(0.1, 8, 3.5)]
+    [InlineData(0.1, 10, 4.5)]
+    [InlineData(0.1, 12, 5.5)]
+    [InlineData(0.7, 6, 3.0)]
+    [InlineData(0.7, 8, 4.0)]
+    [InlineData(0.7, 10, 5.0)]
+    [InlineData(1.0 / 3.0, 6, 2.5)]
+    [InlineData(1.0 / 3.0, 8, 3.5)]
+    [InlineData(1.0 / 3.0, 10, 5.0)]
+    public void A_fractional_uniform_weight_averages_within_one_machine_epsilon(
+        double weight, int count, double expected)
+    {
+        double[] residuals = new double[count];
+        double[] zeros = new double[count];
+        double[] weights = new double[count];
+        for (int i = 0; i < count; i++)
+        {
+            residuals[i] = i;
+            weights[i] = weight;
+        }
+
+        Assert.Equal(expected, MedianAbsoluteError.Score(residuals, zeros, 1, weights), 12);
+    }
+
+    [Theory]
     // A shorter, three-value fixture, and the two-value fixture where the
     // weighted percentile collapses to whichever endpoint holds the majority
     // weight — or the plain average when the two are tied.
@@ -126,6 +166,24 @@ public sealed class AbsoluteErrorTests
             MedianAbsoluteError.Score(residuals, zeros),
             MedianAbsoluteError.Score(residuals, zeros, 1, [1.0, 1.0, 1.0, 1.0]),
             12);
+    }
+
+    [Fact]
+    public void A_uniform_weight_is_not_a_promise_of_the_unweighted_median()
+    {
+        // The invariant above holds for a weight of 1, and the spec states it
+        // for uniform weights generally — which is more than scikit-learn does.
+        // Measured against scikit-learn 1.9.0: residuals 0…9 under [0.7] * 10
+        // give 5.0 on the weighted path and 4.5 on the unweighted one, because
+        // there the cumulative weight overshoots half the total by more than a
+        // machine epsilon and the averaging branch does not fire. Reproducing
+        // that disagreement is parity; removing it would not be.
+        double[] residuals = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
+        double[] zeros = new double[10];
+        double[] weights = [0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7];
+
+        Assert.Equal(4.5, MedianAbsoluteError.Score(residuals, zeros), 12);
+        Assert.Equal(5.0, MedianAbsoluteError.Score(residuals, zeros, 1, weights), 12);
     }
 
     [Fact]

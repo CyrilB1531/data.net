@@ -464,6 +464,16 @@ First release of a fourth package.
   `double.Epsilon`, which is 292 orders of magnitude smaller — and
   `MeanSquaredLogError` refuses a target at or below −1, naming which side
   carried it.
+- **The weighted median averages within one machine epsilon, not exactly.**
+  `MedianAbsoluteError` under `sampleWeight` is scikit-learn's averaged weighted
+  percentile, and whether it averages two order statistics or takes one is
+  decided by comparing the overshoot past the halfway point against
+  `np.finfo(float64).eps` — scikit-learn's own test, and load-bearing: on
+  `[0.1] * 10`, which is `np.ones(n) / n`, an exact comparison answers `4.0`
+  where scikit-learn answers `4.5`. It does not follow that a uniform weight
+  reproduces the unweighted median; where the overshoot is wider than an epsilon
+  it does not, in scikit-learn either, and `[0.7] * 10` over the residuals `0…9`
+  gives `5.0` against the unweighted `4.5`. Both are reproduced.
 - **Measured, and one row honestly under the gate.** `mse`, `mae`, `median_ae`
   and `r2` were benchmarked against scikit-learn over six shapes. `median_ae` is
   the one operation in the package below the 1× processor-time gate, at

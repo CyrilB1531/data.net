@@ -244,6 +244,15 @@ def _regression_fixtures() -> list[dict]:
 
 `METRIC_SEED` already exists; `+ 2` because `_roc_fixtures` took `+ 1`.
 
+**A ninth fixture landed in review round 2**, `uniform_fractional_weights`,
+taking the corpus to eighteen cases. Every weighted fixture above is exactly
+representable in binary — 1, 2, 3, 7 — so none of them can tell an exact
+`cumulative <= half` from scikit-learn's `fraction_above > eps`, and the
+weighted percentile shipped without the tolerance for that reason. The lesson
+generalises past this plan and is recorded under *Self-review* below: probing a
+reference implementation's outputs cannot discover a tolerance if every probe
+input is exactly representable.
+
 - [ ] **Step 3: Add the case builder**
 
 ```python
@@ -402,7 +411,9 @@ git status --porcelain tests/oracles/
 
 Run from `/tmp`: `nltk` refuses to import its dependencies when they appear to
 live under the current directory. Check the generator's **own** exit code, never
-a pipeline's. Expected: `exit=0`, `strict JSON ok, 18 cases`, and a diff adding
+a pipeline's. Expected: `exit=0`, `strict JSON ok, 16 cases` — eight fixtures
+times weighted and unweighted; the plan first wrote 18, which was arithmetic
+and not a dropped fixture — and a diff adding
 `regression.json` and touching **nothing else** — if another corpus moved, the
 new section perturbed a shared RNG and that is a bug to fix, not to commit.
 
@@ -571,7 +582,7 @@ git add tools/generate_oracles.py tests/oracles/regression.json tests/DataNet.Me
 git commit -m "$(cat <<'EOF'
 Freeze eleven regression metrics before any of them exists in C#
 
-Eighteen cases against scikit-learn 1.9.0: three ordinary fixtures — one
+Sixteen cases against scikit-learn 1.9.0: three ordinary fixtures — one
 positive single output, one straddling zero, one three-output whose
 variances differ by two orders of magnitude so uniform and
 variance-weighted averaging cannot coincide — and five that exist only
@@ -2916,6 +2927,20 @@ measurement said so and both flagged where they occur:
   defined values live; above it the scaling is what makes `4.5e15` comparable.
   This is stated in `RegressionCorpus.AssertClose`'s own documentation, so a
   reader does not have to rediscover it.
+
+**What the plan's own method could not find.** Task 4 derived the weighted
+median's rule from twelve black-box probes against scikit-learn, and got it
+right except for a tolerance it had no way to see: every weight it probed with —
+1, 2, 3, 7, 0.5 — is exactly representable in binary, so the cumulative sum
+never overshot the halfway point and the `> eps` test never mattered. It took a
+review round and 4 104 differential cases to surface, on `[0.1] × 10`, which is
+`np.ones(n) / n` and about as ordinary an input as exists. **Probing outputs
+cannot discover a tolerance; only reading the reference or fuzzing across
+representability can.** The six remaining metrics inherit this method, so the
+correction belongs here rather than only in the commit that fixed it: choose
+probe inputs that are *not* exactly representable, or read the source for the
+comparison — which ADR 0003 permits, scikit-learn being BSD-3 and diagnosis not
+being derivation.
 
 **Placeholders.** None. Two steps deliberately ask the implementer to *measure*
 rather than trust the plan, each with the command that resolves it: Task 3's

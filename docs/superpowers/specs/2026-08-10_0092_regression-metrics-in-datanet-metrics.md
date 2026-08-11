@@ -136,7 +136,7 @@ Every row below was measured against scikit-learn 1.9.0 in this repository's
 | MSLE / RMSLE with any target ≤ −1 | `ValueError` | `ArgumentException` naming the offending side |
 | `PinballLoss` with `alpha` outside [0, 1] | `InvalidParameterError` | `ArgumentOutOfRangeException` |
 | any non-finite input | `ValueError`, two distinct messages | `ArgumentException`, see below |
-| weighted median absolute error | an *averaged* weighted percentile — it interpolates, rather than taking the value at the 50 % point: the mean of the first value whose cumulative weight reaches half the total and the one just past the last that stays at or below it | reproduce; see the invariant below |
+| weighted median absolute error | an *averaged* weighted percentile — it interpolates, rather than taking the value at the 50 % point: the mean of the first value whose cumulative weight reaches half the total and the one just past the last that comes within one machine epsilon of it | reproduce, tolerance included; see the invariant below |
 
 Concretely: `r2_score([2,2,2], [2,2,2])` is `1.0`, `r2_score([2,2,2], [1,2,3])` is
 `0.0`, and with `force_finite=False` those become `nan` and `-inf`.
@@ -283,9 +283,18 @@ reproducible" CI job regenerates every corpus and compares.
 These constrain the implementation from the inside, where the oracle constrains
 it from the outside:
 
-1. The weighted median absolute error on uniform weights equals the unweighted
-   one — including the average of the two middle values for an even sample count.
-   Measured: both are `3.0` for residuals `[0, 2, 4, 10]`.
+1. The weighted median absolute error on a uniform weight of 1 equals the
+   unweighted one — including the average of the two middle values for an even
+   sample count. Measured: both are `3.0` for residuals `[0, 2, 4, 10]`.
+
+   **Stated for uniform weights generally, this invariant is false, and so is
+   scikit-learn.** Whether the averaging branch fires is decided within one
+   machine epsilon of the halfway point, so a uniform weight whose partial sums
+   overshoot by more than that does not reproduce the unweighted median at all:
+   measured, residuals `0…9` under `[0.7] × 10` give `5.0` weighted against
+   `4.5` unweighted. The invariant to hold to is the one above; the general one
+   was written before the tolerance was known, and correcting it is what
+   `A_uniform_weight_is_not_a_promise_of_the_unweighted_median` exists to pin.
 2. `RootMeanSquaredError` equals the square root of `MeanSquaredError`.
 3. `RootMeanSquaredLogError` equals the square root of `MeanSquaredLogError`.
 4. `PerOutput` at `outputCount = 1` equals `Score`.

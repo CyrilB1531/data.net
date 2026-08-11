@@ -5,15 +5,50 @@ namespace DataNet.Metrics.Internal;
 /// <c>median_absolute_error</c> takes when it is given sample weights.
 /// </summary>
 /// <remarks>
+/// <para>
 /// It is not "the value at the halfway point". On four uniformly weighted
 /// residuals scikit-learn returns the mean of the two middle values, so the
 /// rule averages two percentiles: the first whose cumulative weight reaches
-/// half the total, and the one just past the last that stays at or below it.
-/// Where the two coincide — every odd count, and every lopsided weighting — the
-/// average is that single value, so there is no separate branch for it.
+/// half the total, and the one just past the last that comes <em>within one
+/// machine epsilon</em> of it. Where the two coincide — every odd count, and
+/// every lopsided weighting — the average is that single value, so there is no
+/// separate branch for it.
+/// </para>
+/// <para>
+/// The epsilon is scikit-learn's own: it compares its <c>fraction_above</c>
+/// against <c>np.finfo(np.float64).eps</c> rather than against zero, and that
+/// tolerance is load-bearing. On a uniform fractional weight — <c>[0.1] × 10</c>,
+/// or numpy's own <c>np.ones(n) / n</c> — the cumulative sum overshoots half the
+/// total by a few units in the last place, and an exact test then takes one
+/// order statistic where scikit-learn averages two. Measured, that is the
+/// difference between 4.5 and 4.0 on the residuals <c>0…9</c>.
+/// </para>
+/// <para>
+/// It does <em>not</em> follow that a uniform weight always reproduces the
+/// unweighted median. Where the overshoot is wider than an epsilon it does not,
+/// in scikit-learn either: <c>[0.7] × 10</c> over those same residuals gives
+/// 5.0 on this path against 4.5 on the unweighted one. Both are reproduced,
+/// which is the point — the tolerance is a width, not a licence to average
+/// whenever the weights happen to be equal.
+/// </para>
 /// </remarks>
 internal static class WeightedPercentile
 {
+    /// <summary>
+    /// numpy's machine epsilon, <c>np.finfo(np.float64).eps</c> — the tolerance
+    /// scikit-learn allows the cumulative weight to overshoot the halfway point
+    /// by before it stops averaging.
+    /// </summary>
+    /// <remarks>
+    /// Absolute, not relative, because scikit-learn's is absolute. It is not
+    /// <see cref="double.Epsilon"/>, which is the smallest positive subnormal
+    /// and 292 orders of magnitude smaller; and .NET has no built-in constant
+    /// for machine epsilon, which is why this is written out — the same value,
+    /// for a different reason, as the clamp in
+    /// <see cref="MeanAbsolutePercentageError"/>.
+    /// </remarks>
+    private const double MachineEpsilon = 2.220446049250313e-16;
+
     /// <summary>The median of <paramref name="values"/> under <paramref name="weights"/>.</summary>
     /// <param name="values">The values. Sorted in place; pass a copy if the caller still needs the order.</param>
     /// <param name="weights">One weight per value, or empty for weight 1 each.</param>
@@ -239,7 +274,13 @@ internal static class WeightedPercentile
                 weightedLower = i;
                 lowerFound = true;
             }
-            if (cumulative <= half)
+            // Within one machine epsilon of half, not exactly at or below it.
+            // scikit-learn's test is `fraction_above > eps`, where
+            // fraction_above is cdf[i] - half; anything that fails it averages.
+            // Writing this as `cumulative <= half` instead refuses to average
+            // whenever the cumulative sum overshoots by one unit in the last
+            // place, which is what every uniform fractional weight does.
+            if (cumulative - half <= MachineEpsilon)
             {
                 weightedUpper = i + 1;
             }

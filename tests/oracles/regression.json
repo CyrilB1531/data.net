@@ -16,7 +16,7 @@
    "sklearn.metrics.explained_variance_score",
    "sklearn.metrics.mean_pinball_loss"
   ],
-  "count": 16
+  "count": 18
  },
  "cases": [
   {
@@ -5160,6 +5160,194 @@
      -4.05617977528
     ],
     "r2|variance_weighted|raw_infinity": -4.05617977528,
+    "ev|uniform|force_finite": 0.0,
+    "ev|raw|force_finite": [
+     0.0
+    ],
+    "ev|variance_weighted|force_finite": 0.0,
+    "ev|uniform|raw_infinity": 0.0,
+    "ev|raw|raw_infinity": [
+     0.0
+    ],
+    "ev|variance_weighted|raw_infinity": 0.0
+   }
+  },
+  {
+   "fixture": "uniform_fractional_weights",
+   "weighted": false,
+   "output_count": 1,
+   "y_true": [
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0
+   ],
+   "y_pred": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "sample_weight": null,
+   "values": {
+    "mse|uniform": 28.5,
+    "mse|raw": [
+     28.5
+    ],
+    "rmse|uniform": 5.33853912602,
+    "rmse|raw": [
+     5.33853912602
+    ],
+    "mae|uniform": 4.5,
+    "mae|raw": [
+     4.5
+    ],
+    "median_ae|uniform": 4.5,
+    "median_ae|raw": [
+     4.5
+    ],
+    "mape|uniform": 0.707103174603,
+    "mape|raw": [
+     0.707103174603
+    ],
+    "msle|uniform": 1.39413250123,
+    "msle|raw": [
+     1.39413250123
+    ],
+    "rmsle|uniform": 1.18073388248,
+    "rmsle|raw": [
+     1.18073388248
+    ],
+    "max_error|uniform": 9.0,
+    "pinball0.5|uniform": 2.25,
+    "pinball0.5|raw": [
+     2.25
+    ],
+    "pinball0.9|uniform": 4.05,
+    "pinball0.9|raw": [
+     4.05
+    ],
+    "r2|uniform|force_finite": -2.45454545455,
+    "r2|raw|force_finite": [
+     -2.45454545455
+    ],
+    "r2|variance_weighted|force_finite": -2.45454545455,
+    "r2|uniform|raw_infinity": -2.45454545455,
+    "r2|raw|raw_infinity": [
+     -2.45454545455
+    ],
+    "r2|variance_weighted|raw_infinity": -2.45454545455,
+    "ev|uniform|force_finite": 0.0,
+    "ev|raw|force_finite": [
+     0.0
+    ],
+    "ev|variance_weighted|force_finite": 0.0,
+    "ev|uniform|raw_infinity": 0.0,
+    "ev|raw|raw_infinity": [
+     0.0
+    ],
+    "ev|variance_weighted|raw_infinity": 0.0
+   }
+  },
+  {
+   "fixture": "uniform_fractional_weights",
+   "weighted": true,
+   "output_count": 1,
+   "y_true": [
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0
+   ],
+   "y_pred": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "sample_weight": [
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    0.1,
+    0.1
+   ],
+   "values": {
+    "mse|uniform": 28.5,
+    "mse|raw": [
+     28.5
+    ],
+    "rmse|uniform": 5.33853912602,
+    "rmse|raw": [
+     5.33853912602
+    ],
+    "mae|uniform": 4.5,
+    "mae|raw": [
+     4.5
+    ],
+    "median_ae|uniform": 4.5,
+    "median_ae|raw": [
+     4.5
+    ],
+    "mape|uniform": 0.707103174603,
+    "mape|raw": [
+     0.707103174603
+    ],
+    "msle|uniform": 1.39413250123,
+    "msle|raw": [
+     1.39413250123
+    ],
+    "rmsle|uniform": 1.18073388248,
+    "rmsle|raw": [
+     1.18073388248
+    ],
+    "pinball0.5|uniform": 2.25,
+    "pinball0.5|raw": [
+     2.25
+    ],
+    "pinball0.9|uniform": 4.05,
+    "pinball0.9|raw": [
+     4.05
+    ],
+    "r2|uniform|force_finite": -2.45454545455,
+    "r2|raw|force_finite": [
+     -2.45454545455
+    ],
+    "r2|variance_weighted|force_finite": -2.45454545455,
+    "r2|uniform|raw_infinity": -2.45454545455,
+    "r2|raw|raw_infinity": [
+     -2.45454545455
+    ],
+    "r2|variance_weighted|raw_infinity": -2.45454545455,
     "ev|uniform|force_finite": 0.0,
     "ev|raw|force_finite": [
      0.0

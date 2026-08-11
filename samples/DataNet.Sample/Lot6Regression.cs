@@ -60,9 +60,12 @@ internal static class Lot6Regression
         Console.WriteLine($"  PinballLoss (α=0.9)   = {F3(PinballLoss.Score(Truth, Predicted, alpha: 0.9))}"
             + " — under-prediction now costs nine times more");
 
-        // With sampleWeight the median becomes an averaged weighted percentile.
-        // On uniform weights that is the ordinary median, the average of the two
-        // middle residuals included — which is why these two agree.
+        // With sampleWeight the median becomes an averaged weighted percentile,
+        // and whether it averages is decided within one machine epsilon — so a
+        // uniform weight agrees with the ordinary median here, but a caller
+        // should not read that as a rule. scikit-learn's own weighted median
+        // returns 5.0 on residuals 0…9 weighted [0.7] * 10, where its unweighted
+        // median returns 4.5; DataNet reproduces both.
         double[] uniform = [1.0, 1.0, 1.0, 1.0];
         Console.WriteLine($"  MedianAbsoluteError   = "
             + $"{F3(MedianAbsoluteError.Score(Truth, Predicted, sampleWeight: uniform))} under uniform weights");

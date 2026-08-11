@@ -2525,6 +2525,19 @@ def _regression_fixtures() -> list[dict]:
                      "y_true": [0.0, 2.0, 4.0, 10.0], "y_pred": [0.0, 0.0, 0.0, 0.0],
                      "sample_weight": [1.0, 1.0, 1.0, 7.0]})
 
+    # A uniform *fractional* weight, which is where the weighted percentile's
+    # tolerance shows and nowhere else. 0.1 is not representable in binary, so
+    # the cumulative sum overshoots half the total by units in the last place;
+    # scikit-learn averages anyway (its test is `fraction_above > eps`, not
+    # `> 0`) and returns 4.5 on these residuals, where an exact test returns
+    # 4.0. Every other weighted fixture here is exactly representable — 1, 2,
+    # 3, 7 — so none of them can tell the two rules apart, and the residuals
+    # are distinct so the two averaged order statistics differ.
+    fixtures.append({"name": "uniform_fractional_weights", "output_count": 1,
+                     "y_true": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
+                     "y_pred": [1.0] * 10,
+                     "sample_weight": [0.1] * 10})
+
     return fixtures
 
 
