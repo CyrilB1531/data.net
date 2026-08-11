@@ -848,6 +848,14 @@ therefore never reaches the unknown token.
 Step 3), and it is corrected in the same task at Step 5 — the id comparison is a real trap and watching it
 fail on one model out of six is cheaper than reasoning about why it would.
 
+> **Post-review update:** the whole-branch review of #119 found that D7 was stated but not pinned — every
+> model in `bpe_fuse_unk.json` declared `end_of_word_suffix: null`. A seventh model,
+> `end_of_word_{suffix}`, was added to `_fuse_unk_models()`: a vocabulary covering `a` both bare and
+> suffixed, over `"aYZ"`, `"aZZ"` and `"Za"`. Its `differs` is `True`; `"Za"` gives `['[UNK]','a</w>']`
+> under both flags, confirming the suffixed lookup for a covered last character resolves and does not fuse
+> with the unknown token before it, while `"aYZ"` and `"aZZ"` fuse under the flag exactly as an unsuffixed
+> run would.
+
 **Type consistency.** `BpeVocabulary.FuseUnk` is defined in Task 2 and used with that name in Task 3's
 tests and in `BpeTokenizer`'s constructor. `_fuseUnk` and `previousWasSubstituted` are introduced in Task
 3 and used only there. `MergePair(string, string)` is the existing type, used with its existing
