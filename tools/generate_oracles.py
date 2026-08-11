@@ -3077,7 +3077,8 @@ def generate_wordpiece_added_tokens() -> dict:
 # --- fuse_unk (issue #119) ----------------------------------------------------
 
 # Named rather than repeated: python:S1192 fires at five occurrences of a
-# literal, and this one appears in three vocabularies and two merge tables.
+# literal, and this one appears across two vocabularies, one merge table and
+# one function default.
 _FUSE_UNK_TOKEN = "[UNK]"
 
 # Z is in none of these vocabularies, which is what makes it a run when repeated.
@@ -3115,7 +3116,7 @@ def _fuse_unk_model(vocab, merges, fuse, *, unk=_FUSE_UNK_TOKEN, pre_tokenizer=N
 
 
 def _fuse_unk_models() -> list[tuple]:
-    """(name, declares, tokenizer, texts) for every shape the spec decided on."""
+    """(name, declares, fuse, tokenizer, texts) for every shape the spec decided on."""
     from tokenizers import pre_tokenizers  # noqa: PLC0415
 
     byte_vocab = {c: i for i, c in enumerate(sorted(pre_tokenizers.ByteLevel.alphabet()))}
@@ -3194,7 +3195,7 @@ def generate_bpe_fuse_unk() -> dict:
             "algorithm": "BPE fuse_unk",
             "library": "tokenizers",
             "library_version": version("tokenizers"),
-            "model": "hand-built: four classic BPE shapes and one byte-level, all defined in tools/generate_oracles.py",
+            "model": "hand-built: five classic BPE shapes and one byte-level, all defined in tools/generate_oracles.py",
             "models": {
                 name: {"declares": declares, "fuse_unk": fuse, "tokenizer_json": tokenizer.to_str()}
                 for name, declares, fuse, tokenizer, _ in carried

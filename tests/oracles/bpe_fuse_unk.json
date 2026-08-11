@@ -3,7 +3,7 @@
   "algorithm": "BPE fuse_unk",
   "library": "tokenizers",
   "library_version": "0.23.1",
-  "model": "hand-built: four classic BPE shapes and one byte-level, all defined in tools/generate_oracles.py",
+  "model": "hand-built: five classic BPE shapes and one byte-level, all defined in tools/generate_oracles.py",
   "models": {
    "plain_unfused": {
     "declares": "no pre-tokenizer",
