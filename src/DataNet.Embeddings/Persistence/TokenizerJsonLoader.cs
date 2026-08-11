@@ -71,6 +71,14 @@ public static class TokenizerJsonLoader
 {
     private const string SourceName = "tokenizer.json";
     private const string AddedTokensProperty = "added_tokens";
+
+    /// <summary>
+    /// The property name read in four places: the three positions a <c>ByteLevel</c>
+    /// block can appear in, and <c>Metaspace</c>'s pre-0.14 spelling of
+    /// <c>prepend_scheme</c>. One spelling, so a typo cannot make one reader
+    /// silently stop finding what the others find.
+    /// </summary>
+    private const string AddPrefixSpaceProperty = "add_prefix_space";
     private const string UntypedName = "(untyped)";
     private const string MetaSymbol = "\u2581";
 
@@ -582,7 +590,9 @@ public static class TokenizerJsonLoader
     /// </remarks>
     private static void EnsureBpeModelSettingsAreReproduced(JsonElement model)
     {
-        if (OptionalString(model, "continuing_subword_prefix") is { } prefix)
+        // An empty prefix prefixes no symbol, so the divergence this refusal exists to
+        // guard against cannot occur; only a non-empty prefix is still refused.
+        if (OptionalString(model, "continuing_subword_prefix") is { Length: > 0 } prefix)
         {
             throw Unsupported(
                 $"its model declares continuing_subword_prefix '{prefix}'",
@@ -594,7 +604,18 @@ public static class TokenizerJsonLoader
                 "its model declares fuse_unk",
                 "HuggingFace then collapses a run of uncovered characters into a single unknown token, where BpeTokenizer emits one per code point");
         }
-        if (model.TryGetProperty("dropout", out JsonElement dropout) && dropout.ValueKind != JsonValueKind.Null)
+        // At 0.0 no merge is ever skipped, which is the determinism this refusal
+        // protects, so a numeric zero is exempt. A dropout that is present, non-null
+        // and not a number is malformed rather than a reproduced zero, so it still
+        // falls into the throw below instead of being let through.
+        // SonarLint S1244: the exact value matters here, not a tolerance. 0.0 is what
+        // "no dropout" round-trips to and is exactly representable; a tolerance would
+        // instead accept small non-zero dropouts this loader cannot reproduce.
+#pragma warning disable S1244
+        if (model.TryGetProperty("dropout", out JsonElement dropout)
+            && dropout.ValueKind != JsonValueKind.Null
+            && (dropout.ValueKind != JsonValueKind.Number || dropout.GetDouble() != 0.0))
+#pragma warning restore S1244
         {
             throw Unsupported(
                 "its model declares dropout",
@@ -753,7 +774,12 @@ public static class TokenizerJsonLoader
                 "its ByteLevel pre_tokenizer has use_regex off",
                 "HuggingFace then passes the whole text to the model as one piece, where BpeTokenizer would split it on word boundaries and drop the whitespace between them");
         }
-        bool addPrefixSpace = OptionalBoolean(pre, "add_prefix_space") ?? true;
+        if (OptionalBoolean(pre, AddPrefixSpaceProperty) is not bool addPrefixSpace)
+        {
+            throw Unsupported(
+                "its ByteLevel pre_tokenizer declares no add_prefix_space",
+                "tokenizers 0.23.1 has no default for that field and refuses the file identically, where accepting it here would invent the value that decides whether a leading space is added");
+        }
         return (true, addPrefixSpace, BpePatterns.Gpt2);
     }
 
@@ -794,7 +820,12 @@ public static class TokenizerJsonLoader
                 "BpeTokenizer reproduces a regex Split pattern only");
         }
 
-        bool addPrefixSpace = OptionalBoolean(byteLevelStep, "add_prefix_space") ?? false;
+        if (OptionalBoolean(byteLevelStep, AddPrefixSpaceProperty) is not bool addPrefixSpace)
+        {
+            throw Unsupported(
+                "its Sequence's ByteLevel step declares no add_prefix_space",
+                "tokenizers 0.23.1 has no default for that field and refuses the file identically, where accepting it here would invent the value that decides whether a leading space is added");
+        }
         return (true, addPrefixSpace, regexElement.GetString());
     }
 
@@ -819,6 +850,7 @@ public static class TokenizerJsonLoader
         }
         string type = OptionalString(decoder, "type") ?? UntypedName;
         bool decoderIsByteLevel = string.Equals(type, "ByteLevel", StringComparison.Ordinal);
+        EnsureByteLevelDecoderDeclaresAddPrefixSpace(decoder, decoderIsByteLevel);
         if (decoderIsByteLevel == byteLevel)
         {
             return;
@@ -830,6 +862,29 @@ public static class TokenizerJsonLoader
         // would corrupt -- so this gets its own, accurate message instead.
         throw new InvalidDataException(
             $"The {SourceName} pre_tokenizer describes a {(byteLevel ? "byte-level" : "non-byte-level")} model but its decoder is '{type}', which would not decode the tokens it produces.");
+    }
+
+    /// <summary>
+    /// The decoder-side counterpart of <see cref="ReadByteLevelPreTokenizer"/>'s own
+    /// check: a <c>ByteLevel</c> decoder shares the same struct <c>tokenizers</c>
+    /// deserializes for the pre-tokenizer, so it has no default for
+    /// <c>add_prefix_space</c> either and is refused identically -- worded through an
+    /// untagged enum on the Rust side, but the same field, the same absent default.
+    /// </summary>
+    /// <remarks>
+    /// Not routed through <see cref="Unsupported(string, string)"/>, for the same
+    /// reason as the mismatch check above: <c>DataNet</c> never applies the decoder, so
+    /// its fixed "would produce embeddings that do not match the model" tail would
+    /// misdescribe this refusal too. The reason to refuse is that the reference cannot
+    /// even parse the file, not that this loader would tokenize it differently.
+    /// </remarks>
+    private static void EnsureByteLevelDecoderDeclaresAddPrefixSpace(JsonElement decoder, bool decoderIsByteLevel)
+    {
+        if (decoderIsByteLevel && OptionalBoolean(decoder, AddPrefixSpaceProperty) is null)
+        {
+            throw new InvalidDataException(
+                $"The {SourceName} decoder is 'ByteLevel' but declares no add_prefix_space, which tokenizers has no default for and refuses too.");
+        }
     }
 
     private enum PipelineKind
@@ -900,7 +955,7 @@ public static class TokenizerJsonLoader
                 $"its Metaspace prepend_scheme is '{prependScheme}'",
                 "the tokenizer always prepends the meta symbol to the input");
         }
-        if (OptionalBoolean(pre, "add_prefix_space") is false)
+        if (OptionalBoolean(pre, AddPrefixSpaceProperty) is false)
         {
             // The pre-0.14 spelling of prepend_scheme, still found in the wild.
             throw Unsupported(

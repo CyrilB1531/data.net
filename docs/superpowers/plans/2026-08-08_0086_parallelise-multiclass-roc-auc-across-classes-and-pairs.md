@@ -106,7 +106,7 @@ regression net that Task 3 must not break.
   - `public static double RocAuc.MultiClass(ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int classCount, MultiClassRocOptions options = default)`.
   - `internal static double MultiClassRoc.Score(ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int classCount, MultiClassRocOptions options)`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `tests/DataNet.Metrics.Tests/RocAucMultiClassTests.cs`, before the
 private `Rows` helper:
@@ -167,7 +167,7 @@ The last test is the one that matters most: it pins the `Averaging?` encoding. I
 someone later "simplifies" the property to a non-nullable `Averaging`, `default`
 starts meaning `Binary` and this test fails instead of every caller failing.
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release \
@@ -176,7 +176,7 @@ dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release 
 
 Expected: compile error, `CS0246: The type or namespace name 'MultiClassRocOptions' could not be found`.
 
-- [ ] **Step 3: Create the options type**
+- [x] **Step 3: Create the options type**
 
 `src/DataNet.Metrics/MultiClassRocOptions.cs`:
 
@@ -264,7 +264,7 @@ public readonly ref struct MultiClassRocOptions
 }
 ```
 
-- [ ] **Step 4: Rewrite the public entry point**
+- [x] **Step 4: Rewrite the public entry point**
 
 Replace the `MultiClass` method in `src/DataNet.Metrics/RocAuc.cs` (lines 31-52)
 with:
@@ -288,7 +288,7 @@ with:
         MultiClassRoc.Score(yTrue, yScore, classCount, options);
 ```
 
-- [ ] **Step 5: Thread the options through the internal entry point**
+- [x] **Step 5: Thread the options through the internal entry point**
 
 In `src/DataNet.Metrics/Internal/MultiClassRoc.cs`, replace `Score` and `Validate`
 (lines 13-74) with:
@@ -368,7 +368,7 @@ now name `options`, because that is the parameter the caller actually passes.
 `(Parameter 'average')` — no test asserts on those strings, and the tests below
 assert the exception *type*.
 
-- [ ] **Step 6: Migrate the 11 test call sites**
+- [x] **Step 6: Migrate the 11 test call sites**
 
 In `tests/DataNet.Metrics.Tests/RocAucMultiClassTests.cs`, replace each positional
 call. The corpus test at line 26:
@@ -420,7 +420,7 @@ one inside a lambda body is fine — which is what every `Assert.Throws` above d
 Hoisting `new MultiClassRocOptions { … }` into a local outside the lambda would
 not compile.
 
-- [ ] **Step 7: Run the tests to verify they pass**
+- [x] **Step 7: Run the tests to verify they pass**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release \
@@ -445,7 +445,7 @@ public readonly ref struct MultiClassRocOptions
 #pragma warning restore S3898, CA1815
 ```
 
-- [ ] **Step 8: Migrate the sample, and make `PackagingGate` see the new type**
+- [x] **Step 8: Migrate the sample, and make `PackagingGate` see the new type**
 
 In `samples/DataNet.Sample/Lot5Metrics.cs`, replace lines 188-193:
 
@@ -476,7 +476,7 @@ dotnet run --project samples/DataNet.Sample -c Release
 Expected: the four `MultiClass` lines print, the last two printing the same
 number, and the gate does not fail the run.
 
-- [ ] **Step 9: Migrate the bench call site and the equivalence row**
+- [x] **Step 9: Migrate the bench call site and the equivalence row**
 
 `bench/DataNet.Text.Benchmarks/CrossLang/MetricsCrossLang.cs:108` keeps its
 three-argument form and needs no edit — confirm with a build. In
@@ -486,7 +486,7 @@ three-argument form and needs no edit — confirm with a build. In
 | `roc_auc_score(…, multi_class=…)` | scikit-learn | `RocAuc.MultiClass(…, MultiClassRocOptions)` | `ovr` and `ovo`. Separate method: the overloads would be ambiguous. Strategy, averaging, labels and weights travel in `MultiClassRocOptions`, which also carries `MaxDegreeOfParallelism` — no scikit-learn equivalent, opt-in, sequential by default. `sampleWeight` refused for `ovo`, as in scikit-learn. |
 ```
 
-- [ ] **Step 10: Full gate, then commit**
+- [x] **Step 10: Full gate, then commit**
 
 ```bash
 dotnet build DataNet.slnx -c Release
@@ -547,7 +547,7 @@ serialise the gain this whole plan exists to collect.
   - `private static double MultiClassRoc.ClassScore(ReadOnlySpan<int> yTrue, ReadOnlySpan<double> scores, int offset, int stride, int positiveLabel, ReadOnlySpan<double> sampleWeight, Scratch scratch, out double positiveWeight)`.
   - `private static double MultiClassRoc.PairScore(ReadOnlySpan<int> yTrue, ReadOnlySpan<double> scores, int offset, int stride, int labelA, int labelB, int positiveLabel, Scratch scratch)`.
 
-- [ ] **Step 1: Capture the current output bit-for-bit, before touching anything**
+- [x] **Step 1: Capture the current output bit-for-bit, before touching anything**
 
 This refactor must not move a value, and the committed corpus test only asserts
 1e-9. So take a raw-bits fingerprint of the current code first. Create
@@ -608,7 +608,7 @@ wc -l $SCRATCH/bits-before.txt
 
 Expected: a non-empty file, one line per multiclass case and averaging key.
 
-- [ ] **Step 2: Give `BinaryRoc` a scratch type and a `Score` that takes one**
+- [x] **Step 2: Give `BinaryRoc` a scratch type and a `Score` that takes one**
 
 Replace `src/DataNet.Metrics/Internal/BinaryRoc.cs` lines 13-36 with:
 
@@ -735,7 +735,7 @@ with:
 nothing reads. Delete the two `new double[n]` / `new Point[n]` lines from the old
 `Score` body — they are what this step exists to remove.
 
-- [ ] **Step 3: Verify the binary path is untouched**
+- [x] **Step 3: Verify the binary path is untouched**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release \
@@ -747,7 +747,7 @@ Expected: PASS. The binary corpus replays through the new rented-buffer path;
 over the same values in the same starting order, so the permutation and therefore
 every accumulated value is identical.
 
-- [ ] **Step 4: Extract the `(offset, stride)` kernel**
+- [x] **Step 4: Extract the `(offset, stride)` kernel**
 
 Replace `OneVsRest`, `PairContext`, `OneVsOne` and `PairScore` in
 `src/DataNet.Metrics/Internal/MultiClassRoc.cs` (lines 134-253) with:
@@ -925,7 +925,7 @@ is what lets a worker own a pair entirely. And `PairScore` derives its own lengt
 from `next` instead of taking `size`, which is the same number by construction and
 one fewer thing for a worker to get wrong.
 
-- [ ] **Step 5: Diff the bits against the pre-refactor fingerprint**
+- [x] **Step 5: Diff the bits against the pre-refactor fingerprint**
 
 ```bash
 SCRATCH=/tmp/claude-49201103/-home-cyril-Documents-devs-data-net2/7a731faa-cc89-49bb-ba20-60f8be57968a/scratchpad
@@ -938,7 +938,7 @@ Expected: `IDENTICAL`. A single differing line means the refactor moved a value 
 stop and find it rather than proceeding; the most likely causes are a wrong
 `(offset, stride)` pair, or `Accumulate` reading past `n` into rented garbage.
 
-- [ ] **Step 6: Remove the temporary fingerprint test and run the full suite**
+- [x] **Step 6: Remove the temporary fingerprint test and run the full suite**
 
 ```bash
 rm tests/DataNet.Metrics.Tests/BitsFingerprint.cs
@@ -948,7 +948,7 @@ dotnet test DataNet.slnx -c Release
 Expected: PASS. The fingerprint file is scaffolding for one diff and is not
 committed — the durable guarantee is Task 3's sequential-against-parallel test.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 dotnet build DataNet.slnx -c Release && dotnet format DataNet.slnx --verify-no-changes
@@ -994,7 +994,7 @@ EOF
   - `private static (int[] Labels, double[] ColumnMajor, double[] Weights) MultiClassRoc.CopyForWorkers(ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int classCount, ReadOnlySpan<double> sampleWeight)` — rented arrays, returned by the caller.
   - `private static void MultiClassRoc.RethrowFirst(Exception?[] failures)`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/DataNet.Metrics.Tests/RocAucParallelTests.cs`:
 
@@ -1122,7 +1122,7 @@ public sealed class RocAucParallelTests
 `RocAucParallelTests.cs` needs no `Rows` helper: the score matrices above are
 written flat on purpose, because a NaN in a specific column is the point.
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release \
@@ -1138,7 +1138,7 @@ and pretending otherwise would be worse than saying it: they are written now so
 that Step 4's switch to a real parallel driver is the thing they judge. Record the
 pass, then make the driver real and watch them stay green.
 
-- [ ] **Step 3: Route to the parallel driver**
+- [x] **Step 3: Route to the parallel driver**
 
 In `MultiClassRoc.Score`, replace the return statement:
 
@@ -1168,7 +1168,7 @@ as a one-line delegation that Task 4 replaces:
         OneVsOne(yTrue, yScore, classes, average);
 ```
 
-- [ ] **Step 4: Write the copy, the driver and the rethrow**
+- [x] **Step 4: Write the copy, the driver and the rethrow**
 
 Add to `src/DataNet.Metrics/Internal/MultiClassRoc.cs`:
 
@@ -1332,7 +1332,7 @@ using System.Buffers;
 using System.Runtime.ExceptionServices;
 ```
 
-- [ ] **Step 5: Run the parallel tests**
+- [x] **Step 5: Run the parallel tests**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release \
@@ -1348,7 +1348,7 @@ If `Reports_the_lowest_offending_class_not_the_fastest_worker` fails with an
 `AggregateException`, an exception escaped the `catch (ArgumentException)` — check
 that nothing inside the body throws something else.
 
-- [ ] **Step 6: Run everything, on both target frameworks**
+- [x] **Step 6: Run everything, on both target frameworks**
 
 ```bash
 dotnet test DataNet.slnx -c Release
@@ -1357,7 +1357,7 @@ dotnet test DataNet.slnx -c Release
 Expected: PASS, including `DataNet.Metrics.NetStandard.Tests`, which replays the
 same suite against the netstandard2.0 build.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 dotnet build DataNet.slnx -c Release && dotnet format DataNet.slnx --verify-no-changes
@@ -1408,7 +1408,7 @@ the same shape of change, over a flat pair index.
   `RethrowFirst(…)` from Tasks 2 and 3.
 - Produces: `private static double MultiClassRoc.OneVsOneParallel(ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int[] classes, Averaging average, int workers)` — replacing Task 3's sequential placeholder.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `tests/DataNet.Metrics.Tests/RocAucParallelTests.cs`:
 
@@ -1469,7 +1469,7 @@ The rows are normalised to sum to 1 because `ValidateRowSums` demands it within
 numpy's `allclose` defaults; an un-normalised matrix would throw and the test
 would pass for the wrong reason.
 
-- [ ] **Step 2: Run it to verify it passes for the wrong reason, and note that**
+- [x] **Step 2: Run it to verify it passes for the wrong reason, and note that**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release \
@@ -1479,7 +1479,7 @@ dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release 
 Expected: PASS — Task 3's placeholder makes every worker count sequential. As in
 Task 3, the test's job is to judge Step 3, and it must still pass afterwards.
 
-- [ ] **Step 3: Replace the placeholder with the real driver**
+- [x] **Step 3: Replace the placeholder with the real driver**
 
 Replace the `OneVsOneParallel` placeholder in
 `src/DataNet.Metrics/Internal/MultiClassRoc.cs` with:
@@ -1555,7 +1555,7 @@ Replace the `OneVsOneParallel` placeholder in
 oversight: `Validate` already refuses `SampleWeight` with `OneVsOne`, as
 scikit-learn does.
 
-- [ ] **Step 4: Run the parallel suite**
+- [x] **Step 4: Run the parallel suite**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release \
@@ -1565,7 +1565,7 @@ dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj -c Release 
 Expected: PASS, all five. The corpus theory now exercises the real one-vs-one
 driver on every `ovo|macro` and `ovo|weighted` key it holds.
 
-- [ ] **Step 5: Run everything and commit**
+- [x] **Step 5: Run everything and commit**
 
 ```bash
 dotnet build DataNet.slnx -c Release
@@ -1616,7 +1616,7 @@ BenchmarkDotNet reports elapsed time only, so the vehicle is
 - Produces: `internal static void RocParallelBench.Run()`, writing
   `bench/results/csharp-roc-parallel.json`.
 
-- [ ] **Step 1: Write the harness mode**
+- [x] **Step 1: Write the harness mode**
 
 Create `bench/DataNet.Text.Benchmarks/CrossLang/RocParallelBench.cs`:
 
@@ -1748,7 +1748,7 @@ internal static class RocParallelBench
 hoisting it into a local above the loop would not compile — and the
 `foreach` variables `strategy` and `workers` are captured, which is fine.
 
-- [ ] **Step 2: Route the argument**
+- [x] **Step 2: Route the argument**
 
 In `bench/DataNet.Text.Benchmarks/Program.cs`, add to the header comment after the
 `compare-metrics` line:
@@ -1768,7 +1768,7 @@ if (args.Length > 0 && args[0] == "roc-parallel")
 }
 ```
 
-- [ ] **Step 3: Build the bench project**
+- [x] **Step 3: Build the bench project**
 
 ```bash
 dotnet build bench/DataNet.Text.Benchmarks -c Release
@@ -1776,7 +1776,7 @@ dotnet build bench/DataNet.Text.Benchmarks -c Release
 
 Expected: clean. Warnings are errors here too.
 
-- [ ] **Step 4: Take the measurement, machine as quiet as it can be made**
+- [x] **Step 4: Take the measurement, machine as quiet as it can be made**
 
 ```bash
 uptime          # record the one-minute load average; it goes in the write-up
@@ -1793,7 +1793,7 @@ Record, verbatim, from the output: every row, the load averages either side, and
 `nproc`. The write-up quotes measured numbers only — if a row is missing, it is
 named as missing rather than estimated.
 
-- [ ] **Step 5: Sanity-check the numbers before believing them**
+- [x] **Step 5: Sanity-check the numbers before believing them**
 
 Three things must hold, and if one does not, the finding is the deliverable:
 
@@ -1808,7 +1808,7 @@ Three things must hold, and if one does not, the finding is the deliverable:
   Whatever it says gets published — the decision was to honour the setting at any
   size and report the cost, not to hide it behind a threshold.
 
-- [ ] **Step 6: Document the new mode and commit**
+- [x] **Step 6: Document the new mode and commit**
 
 Add to `bench/README.md`, in the section listing the harness modes:
 
@@ -1867,7 +1867,7 @@ EOF
 - Consumes: the measured table from Task 5, Step 4.
 - Produces: no code.
 
-- [ ] **Step 1: Write the ADR**
+- [x] **Step 1: Write the ADR**
 
 Create `docs/decisions/0017-multiclass-roc-auc-parallelism-is-opt-in.md`, matching
 the house shape of `0016` — `# 0017 — <title>`, then
@@ -1898,7 +1898,7 @@ with sub-headings, `## Consequences`. It must record, each with its reason:
    `ExceptionDispatchInfo`, and the loop does not stop early, because `Stop` could
    cancel an earlier class and report a later one's failure.
 
-- [ ] **Step 2: Write the measured subsection of the performance guide**
+- [x] **Step 2: Write the measured subsection of the performance guide**
 
 Append to `docs/guides/performance.md`, after the #61 metrics section. Use the
 real numbers from Task 5 — every cell measured, none estimated:
@@ -1933,7 +1933,7 @@ five classes cannot use eight threads.
 The `<FILL>` markers are not placeholders left for a reader: they are the two
 numbers Task 5 Step 4 recorded, and this step is not done until they are in.
 
-- [ ] **Step 3: Write the CHANGELOG entry**
+- [x] **Step 3: Write the CHANGELOG entry**
 
 Under the existing `### DataNet.Metrics — 0.1.0` heading in `CHANGELOG.md`, in its
 `#### Added` list — the package has never shipped, so this is an addition to an
@@ -1956,7 +1956,7 @@ unreleased surface, not a change to a released one:
   [`docs/decisions/0017`](docs/decisions/0017-multiclass-roc-auc-parallelism-is-opt-in.md).
 ```
 
-- [ ] **Step 4: Run the full gate**
+- [x] **Step 4: Run the full gate**
 
 ```bash
 dotnet build DataNet.slnx -c Release
@@ -1972,7 +1972,7 @@ Expected: all clean. `git status` should show nothing under
 `samples/DataNet.DocSnippets/Generated` unless the new guide subsection added a
 ```` ```csharp ```` fence — if it did, that generated file is part of the commit.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs CHANGELOG.md samples
@@ -1997,7 +1997,7 @@ EOF
 )"
 ```
 
-- [ ] **Step 6: Push and open the pull request**
+- [x] **Step 6: Push and open the pull request**
 
 ```bash
 git push -u origin perf/86-parallelise-multiclass-roc-auc

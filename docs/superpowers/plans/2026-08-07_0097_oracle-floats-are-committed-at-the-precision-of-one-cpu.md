@@ -48,7 +48,7 @@ regen_with_kernel() {   # $1 = OPENBLAS_CORETYPE
 **Produces:** the arithmetic that makes "twelve" a derivation rather than a
 preference.
 
-- [ ] **Step 1: Regenerate under two different kernels and diff**
+- [x] **Step 1: Regenerate under two different kernels and diff**
 
 ```bash
 regen_with_kernel Haswell && cp -r tests/oracles /tmp/or-haswell
@@ -57,7 +57,7 @@ regen_with_kernel Nehalem && diff -r /tmp/or-haswell tests/oracles | head -20
 git checkout tests/oracles
 ```
 
-- [ ] **Step 2: Characterise the differences**
+- [x] **Step 2: Characterise the differences**
 
 Expected: always the **last bit**, so the absolute spread scales with the value —
 ~1e-13 on `accuracy_count` near 413, ~1e-16 on knn scores near 0.4.
@@ -66,7 +66,7 @@ That is the same sixteenth digit in both. **Only a significant-digit rule catche
 both with one threshold**; a fixed decimal count over-rounds one and under-rounds
 the other.
 
-- [ ] **Step 3: Read the tolerances the tests already use**
+- [x] **Step 3: Read the tolerances the tests already use**
 
 ```bash
 grep -rn "Tolerance" tests/ --include='*.cs' | head
@@ -74,7 +74,7 @@ grep -rn "Tolerance" tests/ --include='*.cs' | head
 
 Expected: `MetricsCorpus.Tolerance = 1e-9`, `EmbeddingIndexTests.Tolerance = 1e-4f`.
 
-- [ ] **Step 4: Do the arithmetic**
+- [x] **Step 4: Do the arithmetic**
 
 Twelve significant digits leaves **four orders above the observed spread** and
 costs at most **5e-13** against a `1e-9` tolerance. The rounding cannot move an
@@ -90,11 +90,11 @@ assertion, and that is a computation rather than a hope.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Add `stable()`**
+- [x] **Step 1: Add `stable()`**
 
 Twelve significant digits, one implementation.
 
-- [ ] **Step 2: Route all twelve bare `float(...)` sites through it**
+- [x] **Step 2: Route all twelve bare `float(...)` sites through it**
 
 ```bash
 grep -n "float(" tools/generate_oracles.py | wc -l
@@ -103,12 +103,12 @@ grep -n "float(" tools/generate_oracles.py | wc -l
 Miss one and the corpus it writes keeps failing, intermittently, on a different
 day.
 
-- [ ] **Step 3: Include `roc_auc.json`, which has not drifted yet**
+- [x] **Step 3: Include `roc_auc.json`, which has not drifted yet**
 
 It is the same scikit-learn reduction written the same way. **Leaving it out is
 choosing the date of the next red rather than avoiding it.**
 
-- [ ] **Step 4: Comment the reasoning at the helper**
+- [x] **Step 4: Comment the reasoning at the helper**
 
 Significant digits and not decimals, and why twelve. Both are the kind of number
 someone will later "tidy".
@@ -123,7 +123,7 @@ someone will later "tidy".
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Regenerate**
+- [x] **Step 1: Regenerate**
 
 ```bash
 regen_with_kernel Haswell
@@ -132,7 +132,7 @@ git diff --stat -- tests/oracles/
 
 Expected: three corpora, a large line count.
 
-- [ ] **Step 2: Confirm the diff is empty in meaning**
+- [x] **Step 2: Confirm the diff is empty in meaning**
 
 ```bash
 git diff -U0 -- tests/oracles/ | grep -E "^[+-]\s+\"" | head -20
@@ -142,7 +142,7 @@ Every changed line must drop digits and nothing else. **A reviewer seeing
 thousands of changed lines in an oracle corpus is right to be alarmed by
 default**, so say this in the pull request and show the sample.
 
-- [ ] **Step 3: The suite still passes**
+- [x] **Step 3: The suite still passes**
 
 ```bash
 dotnet test -c Release 2>&1 | tail -3
@@ -154,7 +154,7 @@ dotnet test -c Release 2>&1 | tail -3
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: Regenerate under three `OPENBLAS_CORETYPE` values**
+- [x] **Step 1: Regenerate under three `OPENBLAS_CORETYPE` values**
 
 ```bash
 for k in Haswell Nehalem Prescott; do
@@ -169,7 +169,7 @@ Expected: byte-identical.
 **The acceptance criterion is stability across kernels, not a single green run** —
 one green run proves only that the current runner agrees with itself.
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add tools/generate_oracles.py tests/oracles/

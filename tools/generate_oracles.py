@@ -2764,6 +2764,172 @@ def generate_bpe_added_token_flags() -> dict:
     }
 
 
+# --- The BPE settings that change nothing, and the one with no default (issue #118) ---
+#
+# `LoadBpe` used to refuse `continuing_subword_prefix: ""` and `dropout: 0.0`, and
+# to crash on `end_of_word_suffix: ""`. Accepting them rests on a claim -- that
+# each of those values is a no-op -- which a load test cannot make: a file that
+# loads without throwing proves only that nothing was thrown. So each setting is
+# recorded here against a baseline built from the same vocabulary and merges with
+# the setting absent, and the equality of the two token streams is the evidence.
+#
+# The models are hand-built rather than vendored: the claim is about a value in
+# the file, not about a particular model, and a 7-entry vocabulary keeps the
+# whole corpus readable where GPT-2's would add two megabytes of noise.
+#
+# `end_of_word_suffix: "</w>"` is here as a contrast, not as a no-op: the same
+# vocabulary tokenizes differently under it, which is what makes the empty case's
+# equality a measurement rather than a property of a model too small to notice.
+
+# 'a</w>', 'b</w>' and 'c</w>' exist so no symbol is ever dropped for want of a
+# vocabulary entry under the `</w>` contrast -- the model declares no unk_token,
+# and a dropped symbol would make the contrast a test of that instead.
+NO_OP_VOCAB = {"a": 0, "b": 1, "c": 2, "ab": 3, "a</w>": 4, "b</w>": 5, "c</w>": 6}
+NO_OP_MERGES = [("a", "b")]
+NO_OP_TEXTS = ["ab", "abc", "ab c", "a b", "c"]
+
+# Byte-level, for `add_prefix_space`: 'Ġ' is the space, and 'ab' is reachable by
+# the one merge, so the flag shows up as a leading 'Ġ' the model has an entry for.
+NO_OP_BYTE_LEVEL_VOCAB = {"a": 0, "b": 1, "Ġ": 2, "ab": 3}
+NO_OP_BYTE_LEVEL_MERGES = [("a", "b")]
+NO_OP_BYTE_LEVEL_TEXTS = ["ab", "a b", " a"]
+
+
+def _no_op_bpe(**settings):
+    """The classic model every no-op case and its baseline are measured on."""
+    from tokenizers import Tokenizer, models, pre_tokenizers  # noqa: PLC0415
+
+    tokenizer = Tokenizer(models.BPE(
+        vocab=dict(NO_OP_VOCAB), merges=list(NO_OP_MERGES), unk_token=None, **settings))
+    tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
+    return tokenizer
+
+
+def _no_op_byte_level_bpe(add_prefix_space: bool):
+    """The byte-level counterpart, whose `add_prefix_space` is declared either way."""
+    from tokenizers import Tokenizer, decoders, models, pre_tokenizers  # noqa: PLC0415
+
+    tokenizer = Tokenizer(models.BPE(
+        vocab=dict(NO_OP_BYTE_LEVEL_VOCAB), merges=list(NO_OP_BYTE_LEVEL_MERGES), unk_token=None))
+    tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=add_prefix_space)
+    tokenizer.decoder = decoders.ByteLevel()
+    return tokenizer
+
+
+def _no_op_models() -> list[tuple[str, str, object, list[str]]]:
+    """Every model the corpus carries: its name, what it declares, and its texts."""
+    return [
+        ("baseline", "no end_of_word_suffix, no continuing_subword_prefix, no dropout",
+         _no_op_bpe(), NO_OP_TEXTS),
+        ("end_of_word_suffix_empty", 'end_of_word_suffix: ""',
+         _no_op_bpe(end_of_word_suffix=""), NO_OP_TEXTS),
+        ("end_of_word_suffix_marker", 'end_of_word_suffix: "</w>"',
+         _no_op_bpe(end_of_word_suffix="</w>"), NO_OP_TEXTS),
+        ("continuing_subword_prefix_empty", 'continuing_subword_prefix: ""',
+         _no_op_bpe(continuing_subword_prefix=""), NO_OP_TEXTS),
+        ("dropout_zero", "dropout: 0.0",
+         _no_op_bpe(dropout=0.0), NO_OP_TEXTS),
+        ("byte_level_add_prefix_space_true", "ByteLevel add_prefix_space: true",
+         _no_op_byte_level_bpe(add_prefix_space=True), NO_OP_BYTE_LEVEL_TEXTS),
+        ("byte_level_add_prefix_space_false", "ByteLevel add_prefix_space: false",
+         _no_op_byte_level_bpe(add_prefix_space=False), NO_OP_BYTE_LEVEL_TEXTS),
+    ]
+
+
+def _byte_level_documents_without_add_prefix_space() -> list[tuple[str, dict]]:
+    """The same byte-level file with `add_prefix_space` removed, once per position.
+
+    The three positions a `ByteLevel` block can appear in: the top-level
+    `pre_tokenizer`, the second step of a `Sequence`, and the `decoder`.
+    """
+    base = json.loads(_no_op_byte_level_bpe(add_prefix_space=True).to_str())
+    stripped = {k: v for k, v in base["pre_tokenizer"].items() if k != "add_prefix_space"}
+
+    top_level = json.loads(json.dumps(base))
+    top_level["pre_tokenizer"] = stripped
+
+    sequence = json.loads(json.dumps(base))
+    sequence["pre_tokenizer"] = {
+        "type": "Sequence",
+        "pretokenizers": [
+            {"type": "Split", "pattern": {"Regex": " "}, "behavior": "Isolated", "invert": False},
+            dict(stripped, use_regex=False),
+        ],
+    }
+
+    decoder = json.loads(json.dumps(base))
+    decoder["decoder"] = {k: v for k, v in base["decoder"].items() if k != "add_prefix_space"}
+
+    return [("pre_tokenizer", top_level), ("sequence_step", sequence), ("decoder", decoder)]
+
+
+def _add_prefix_space_refusals() -> list[dict]:
+    """What `tokenizers` answers when a `ByteLevel` block omits `add_prefix_space`.
+
+    These shapes cannot be cases: the reference refuses to build them, so there is
+    no token stream to record. Recording the refusal instead keeps "the reference
+    refuses this too" a measurement rather than a claim in a commit message.
+    """
+    from tokenizers import Tokenizer  # noqa: PLC0415
+
+    refusals = []
+    for position, doc in _byte_level_documents_without_add_prefix_space():
+        document = json.dumps(doc)
+        try:
+            Tokenizer.from_str(document)
+        except Exception as exc:  # noqa: BLE001 - the refusal IS the measurement
+            refusals.append({"position": position, "document": document, "error": str(exc)})
+        else:
+            raise AssertionError(
+                f"tokenizers accepted a ByteLevel {position} declaring no add_prefix_space; "
+                "issue #118's refusal rests on it refusing one")
+    return refusals
+
+
+def generate_bpe_no_op_settings() -> dict:
+    """Each BPE setting that changes nothing, beside the baseline that proves it."""
+    carried = _no_op_models()
+    cases = []
+    for name, _, tokenizer, texts in carried:
+        for text in texts:
+            enc = tokenizer.encode(text)
+            cases.append({
+                "id": len(cases),
+                "model": name,
+                "text": text,
+                "tokens": enc.tokens,
+                "ids": enc.ids,
+            })
+    return {
+        "metadata": {
+            "algorithm": "BPE model settings that change nothing, and the ByteLevel field with no default",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "hand-built: a 7-entry classic BPE and a 4-entry byte-level BPE, both defined in tools/generate_oracles.py",
+            "models": {
+                name: {"declares": declares, "tokenizer_json": tokenizer.to_str()}
+                for name, declares, tokenizer, _ in carried
+            },
+            # Read as: this model's token streams equal that model's, text for text.
+            "no_op_pairs": [
+                {"case": "end_of_word_suffix_empty", "baseline": "baseline"},
+                {"case": "continuing_subword_prefix_empty", "baseline": "baseline"},
+                {"case": "dropout_zero", "baseline": "baseline"},
+            ],
+            # And as: these two differ somewhere, which is what makes the equalities
+            # above worth asserting.
+            "contrast_pairs": [
+                {"case": "end_of_word_suffix_marker", "baseline": "baseline"},
+                {"case": "byte_level_add_prefix_space_true",
+                 "baseline": "byte_level_add_prefix_space_false"},
+            ],
+            "add_prefix_space_refusals": _add_prefix_space_refusals(),
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 # The same four flags over a WordPiece model that has a normalizer, which is what
 # BPE structurally cannot show: `normalized` decides which of two passes an entry
 # runs in, and only a tokenizer that normalizes anything can tell the passes
@@ -2916,6 +3082,7 @@ def main() -> None:
         "bpe_tokenizer_json.json": generate_bpe_tokenizer_json,
         "bpe_added_tokens.json": generate_bpe_added_tokens,
         "bpe_added_token_flags.json": generate_bpe_added_token_flags,
+        "bpe_no_op_settings.json": generate_bpe_no_op_settings,
         "wordpiece_added_tokens.json": generate_wordpiece_added_tokens,
     }
     for filename, gen in generators.items():

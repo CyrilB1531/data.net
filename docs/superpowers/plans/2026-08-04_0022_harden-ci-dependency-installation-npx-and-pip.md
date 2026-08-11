@@ -51,7 +51,7 @@ oracles_unchanged() {
 **Produces:** the smallest of the three, done first because it cannot break
 anything else.
 
-- [ ] **Step 1: Record what is currently resolved**
+- [x] **Step 1: Record what is currently resolved**
 
 ```bash
 npx --yes markdownlint-cli2 --version
@@ -59,7 +59,7 @@ npx --yes markdownlint-cli2 --version
 
 Pin **this** version, not the latest.
 
-- [ ] **Step 2: Pin, and disable lifecycle scripts**
+- [x] **Step 2: Pin, and disable lifecycle scripts**
 
 ```yaml
 run: >
@@ -70,13 +70,13 @@ run: >
 Both halves matter: the pin fixes *what* runs, `--ignore-scripts` fixes *whether
 code runs at install time*.
 
-- [ ] **Step 3: Comment why, in the workflow**
+- [x] **Step 3: Comment why, in the workflow**
 
 `npx --yes <name>` resolves the latest version on demand and runs its lifecycle
 scripts, so the code executed in CI could change with no commit here. A future
 reader will otherwise drop the flags as noise.
 
-- [ ] **Step 4: Same lint result as before**
+- [x] **Step 4: Same lint result as before**
 
 ```bash
 npx --yes --ignore-scripts markdownlint-cli2@0.23.2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
@@ -97,7 +97,7 @@ breaking it.
 Do this before Task 3 touches the workflow. The flag is the kind of thing copied
 from a checklist that lands red.
 
-- [ ] **Step 1: Clean virtualenv, wheels only**
+- [x] **Step 1: Clean virtualenv, wheels only**
 
 ```bash
 python3 -m venv /tmp/wheelcheck
@@ -108,13 +108,13 @@ echo "exit: $?"
 Expected: success for all eight — `rapidfuzz`, `jellyfish`, `textdistance`,
 `scikit-learn`, `nltk`, `tokenizers`, `numpy`, `sentencepiece`.
 
-- [ ] **Step 2: If any fails, stop and report**
+- [x] **Step 2: If any fails, stop and report**
 
 An sdist-only dependency means the flag cannot be applied as-is, and the decision
 (vendor a wheel, drop the dependency, accept the risk with a reason) belongs to
 the maintainer, not to this branch.
 
-- [ ] **Step 3: Record the resolved versions**
+- [x] **Step 3: Record the resolved versions**
 
 ```bash
 /tmp/wheelcheck/bin/pip freeze | grep -iE "rapidfuzz|jellyfish|textdistance|scikit-learn|nltk|tokenizers|numpy|sentencepiece"
@@ -132,9 +132,9 @@ These are Task 4's pins.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Add `--only-binary :all:`**
+- [x] **Step 1: Add `--only-binary :all:`**
 
-- [ ] **Step 2: Comment what it prevents**
+- [x] **Step 2: Comment what it prevents**
 
 Without it, pip may build a source distribution, which executes `setup.py` from
 the downloaded package.
@@ -151,15 +151,15 @@ the downloaded package.
 **Produces:** an `Oracles are reproducible` job that cannot be moved by someone
 else's release.
 
-- [ ] **Step 1: Replace the ranges with `==`, using Task 2's output**
+- [x] **Step 1: Replace the ranges with `==`, using Task 2's output**
 
-- [ ] **Step 2: State the reasoning in the file itself**
+- [x] **Step 2: State the reasoning in the file itself**
 
 Not general reproducibility: **these libraries' output is committed under
 `tests/oracles/`**, and the drift job diffs it on every pull request. A silent
 minor release would land as an unexplained oracle diff on an unrelated change.
 
-- [ ] **Step 3: Prove the pins change nothing**
+- [x] **Step 3: Prove the pins change nothing**
 
 ```bash
 python3 -m venv /tmp/pinned
@@ -180,19 +180,19 @@ followed by a clean `git status` proves nothing, because nothing was regenerated
 
 **Depends on:** Task 4.
 
-- [ ] **Step 1: Record the known limitation in the pull request**
+- [x] **Step 1: Record the known limitation in the pull request**
 
 **Transitive dependencies remain unpinned.** `nltk` pulls `regex`,
 `scikit-learn` pulls `scipy`, and neither is fixed by this change. Full
 hash-pinning needs `pip-compile` to enumerate the graph, which deserves its own
 review.
 
-- [ ] **Step 2: Open the follow-up**
+- [x] **Step 2: Open the follow-up**
 
 "Lock transitive Python dependencies with a hashed requirements file." A partial
 hardening described as complete stops anyone from finishing it.
 
-- [ ] **Step 3: Full gate**
+- [x] **Step 3: Full gate**
 
 ```bash
 dotnet build -c Release && dotnet test -c Release 2>&1 | tail -3
@@ -203,7 +203,7 @@ for f in .github/workflows/*.yml; do python3 -c "import yaml; yaml.safe_load(ope
 
 Expected: clean, `ORACLES CLEAN`, every workflow parsing.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add .github/workflows/ci.yml tools/requirements.txt

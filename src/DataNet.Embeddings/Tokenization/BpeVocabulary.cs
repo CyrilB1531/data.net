@@ -63,8 +63,20 @@ public sealed record BpeVocabulary(
     /// </remarks>
     public int SkippedMerges { get; init; }
 
+    private readonly string? _endOfWordSuffix;
+
     /// <summary>The marker closing a word, e.g. <c>&lt;/w&gt;</c>; <see langword="null"/> for byte-level models.</summary>
-    public string? EndOfWordSuffix { get; init; }
+    /// <remarks>
+    /// An empty marker marks nothing, so it reads back as <see langword="null"/>: a
+    /// <c>tokenizer.json</c> may declare <c>"end_of_word_suffix": ""</c>, and the two spellings
+    /// have to mean one thing on a public, constructible type — otherwise a loaded vocabulary and
+    /// a hand-built one compare unequal while behaving identically.
+    /// </remarks>
+    public string? EndOfWordSuffix
+    {
+        get => _endOfWordSuffix;
+        init => _endOfWordSuffix = string.IsNullOrEmpty(value) ? null : value;
+    }
 
     /// <summary>The marker opening a non-initial piece; <see langword="null"/> when there is none.</summary>
     public string? ContinuingSubwordPrefix { get; init; }

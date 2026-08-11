@@ -169,12 +169,22 @@ different one is **rejected**, with a message naming what was found:
   `decoder` whose byte-level-ness disagrees with the model's own, which would
   not decode what it encodes;
 - for BPE, any `normalizer` at all (`BpeTokenizer` normalizes nothing), a
-  `continuing_subword_prefix`, `fuse_unk`, `dropout`, and a bare `ByteLevel`
-  with `use_regex` off — each of those changes what Python produces and none of
-  them is applied here. `use_regex` off on the `ByteLevel` step of a
-  `Split`-then-`ByteLevel` `Sequence` is a different thing, and is accepted: the
-  `Split` step carries the pattern there, which is how Llama-3 and Qwen2 are
-  written;
+  **non-empty** `continuing_subword_prefix`, `fuse_unk`, a **non-zero**
+  `dropout`, and a bare `ByteLevel` with `use_regex` off — each of those changes
+  what Python produces and none of them is applied here. `use_regex` off on the
+  `ByteLevel` step of a `Split`-then-`ByteLevel` `Sequence` is a different thing,
+  and is accepted: the `Split` step carries the pattern there, which is how
+  Llama-3 and Qwen2 are written. An empty prefix, a `dropout` of `0.0` and an
+  `end_of_word_suffix` of `""` are accepted, because each provably changes
+  nothing — the empty suffix reads back as absent on `BpeVocabulary`, an empty
+  marker marking nothing;
+- for BPE, a `ByteLevel` block that declares no `add_prefix_space`, wherever it
+  appears — as the pre-tokenizer, as the second step of a `Sequence`, or as the
+  `decoder`. `tokenizers` has no default for that field and refuses such a file
+  itself, so accepting it here would mean inventing the value that decides
+  whether a leading space is added. An omitted `use_regex` is fine (the
+  reference defaults it to `true`, and stock GPT-2 leaves it out) and so is an
+  omitted `trim_offsets`, which nothing here reads;
 - a `post_processor` — the wrapping lives in `EncodingOptions.Template`
   ([Embed a batch](#embed-a-batch)), and a `post_processor` in the file would be
   a second source of truth for it, free to disagree with the first;

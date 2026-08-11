@@ -47,7 +47,7 @@ pack_check() {
 **Depends on:** nothing.
 **Produces:** the decision the issue asked to be made deliberately.
 
-- [ ] **Step 1: Add the analyzer temporarily and count, per area**
+- [x] **Step 1: Add the analyzer temporarily and count, per area**
 
 ```bash
 # With the reference added to one area at a time:
@@ -62,7 +62,7 @@ Expected:
 | `tests/` | 4 |
 | `bench/` | 0 |
 
-- [ ] **Step 2: Read the numbers rather than debating the principle**
+- [x] **Step 2: Read the numbers rather than debating the principle**
 
 **Four findings is not an arbitration**, and `bench/` was already clean. The root
 props has said "warnings are errors everywhere: src, tests and bench alike" since
@@ -71,7 +71,7 @@ the beginning, and SonarCloud already reports on all three.
 Scoping the local build *more narrowly than the remote gate* would recreate the
 round trip in miniature, for the code that is read most often.
 
-- [ ] **Step 3: Write down why `samples/` stays out**
+- [x] **Step 3: Write down why `samples/` stays out**
 
 Outside `DataNet.slnx`; restores from a local feed so a `pack` must come first;
 `DocSnippets/Generated/` already excluded from SonarCloud's analysis.
@@ -92,15 +92,15 @@ hides its own weakness cannot be revisited later.
 **Depends on:** Task 1.
 **Produces:** a tree that is already clean when the switch is thrown.
 
-- [ ] **Step 1: Work them with the analyzer applied as a command-line override**
+- [x] **Step 1: Work them with the analyzer applied as a command-line override**
 
 So no commit leaves the build red for anyone else.
 
-- [ ] **Step 2: Fix where the rule is right; suppress with a reason where it is not**
+- [x] **Step 2: Fix where the rule is right; suppress with a reason where it is not**
 
 Same discipline as #7 and #27. "Too noisy" is not a reason.
 
-- [ ] **Step 3: Confirm zero findings under the override**
+- [x] **Step 3: Confirm zero findings under the override**
 
 ```bash
 build_all 2>&1 | grep -c "warning S"
@@ -120,19 +120,19 @@ Expected: `0`.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: `$(DataNetSonarAnalyzerVersion)` in the root props**
+- [x] **Step 1: `$(DataNetSonarAnalyzerVersion)` in the root props**
 
 One number. Comment that raising it usually surfaces new rules and is therefore
 its own change.
 
-- [ ] **Step 2: Reference it from the three areas**
+- [x] **Step 2: Reference it from the three areas**
 
 `src/` and `tests/` through Central Package Management; **`bench/` has none**, so
 it names the version on the `PackageReference` itself — from the same property.
 
-- [ ] **Step 3: `PrivateAssets="all"` everywhere**
+- [x] **Step 3: `PrivateAssets="all"` everywhere**
 
-- [ ] **Step 4: Confirm it reaches no package**
+- [x] **Step 4: Confirm it reaches no package**
 
 ```bash
 pack_check
@@ -147,7 +147,7 @@ defect.
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: Introduce a deliberate violation in each of the three areas**
+- [x] **Step 1: Introduce a deliberate violation in each of the three areas**
 
 ```bash
 # e.g. append commented-out code (S125) to one file per area
@@ -156,7 +156,7 @@ build_all 2>&1 | grep -E "error S125"
 
 Expected: a build **error** in each area, and a non-zero exit.
 
-- [ ] **Step 2: Remove them and confirm green**
+- [x] **Step 2: Remove them and confirm green**
 
 ```bash
 build_all && test_all 2>&1 | tail -3
@@ -175,22 +175,22 @@ A gate nobody has seen fail is not known to work — the standard #10 and #17 se
 
 **Depends on:** Task 4.
 
-- [ ] **Step 1: ADR 0015**
+- [x] **Step 1: ADR 0015**
 
 The scope measurement, the single pin and why, the `samples/` exclusion and its
 three reasons, and the demonstration.
 
-- [ ] **Step 2: `CONTRIBUTING.md` — the rule that changes**
+- [x] **Step 2: `CONTRIBUTING.md` — the rule that changes**
 
 **Sonar findings are cleared before a commit, not after.** This changes what "the
 build is green" means, so it belongs where contributors read.
 
-- [ ] **Step 3: State what the local build still cannot see**
+- [x] **Step 3: State what the local build still cannot see**
 
 Duplication and coverage need the server. **A green local build is not a green
 quality gate** — say it, or the new gate will be over-trusted.
 
-- [ ] **Step 4: Full gate**
+- [x] **Step 4: Full gate**
 
 ```bash
 build_all && test_all 2>&1 | tail -3
@@ -198,7 +198,7 @@ dotnet format --verify-no-changes
 pack_check
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A

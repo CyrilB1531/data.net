@@ -225,6 +225,24 @@ public sealed class BpeTokenizerTests
     }
 
     /// <summary>
+    /// <c>StringBuilder.Replace("", " ")</c> throws, so an empty suffix used to crash the classic
+    /// lineage's <c>Decode</c> after the file had loaded cleanly. Issue #118.
+    /// </summary>
+    [Fact]
+    public void Decode_does_not_throw_when_the_end_of_word_suffix_is_empty()
+    {
+        var vocabulary = new BpeVocabulary(
+            new Dictionary<string, int>(StringComparer.Ordinal) { ["a"] = 0, ["b"] = 1 },
+            [])
+        { EndOfWordSuffix = "" };
+        var tokenizer = new BpeTokenizer(vocabulary);
+
+        string decoded = tokenizer.Decode([0, 1]);
+
+        Assert.Equal("ab", decoded);
+    }
+
+    /// <summary>
     /// A hand-built vocabulary: <paramref name="tokens"/> in id order, and
     /// <paramref name="merges"/> in rank order, each written as "left right".
     /// Small enough that the merge order it produces can be worked out by hand,

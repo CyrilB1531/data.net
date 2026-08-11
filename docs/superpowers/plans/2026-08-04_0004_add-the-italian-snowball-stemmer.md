@@ -59,7 +59,7 @@ Do this **before** writing any Italian. A table validated by three green corpora
 is a foundation; a table validated by nothing while a fourth language is being
 debugged is a second variable.
 
-- [ ] **Step 1: Read the three step-1 implementations side by side**
+- [x] **Step 1: Read the three step-1 implementations side by side**
 
 ```bash
 grep -n "Step1\|step 1" src/DataNet.Text/Stemming/{French,Spanish,Portuguese}SnowballStemmer.cs
@@ -68,17 +68,17 @@ grep -n "Step1\|step 1" src/DataNet.Text/Stemming/{French,Spanish,Portuguese}Sno
 They are the same shape three times: a suffix, a region condition, a replacement
 or a deletion, longest match first.
 
-- [ ] **Step 2: Add the table to `RomanceSnowballWorker`**
+- [x] **Step 2: Add the table to `RomanceSnowballWorker`**
 
 A rule is `(suffix, region, action)`. The worker takes an ordered set and applies
 longest-match-across-all-groups, which is the semantics #2 established in its D5 —
 per-group scanning gives the wrong answer when the groups overlap.
 
-- [ ] **Step 3: Convert Spanish and Portuguese onto it**
+- [x] **Step 3: Convert Spanish and Portuguese onto it**
 
 One language at a time, running that language's corpus after each.
 
-- [ ] **Step 4: Prove the conversion changed nothing**
+- [x] **Step 4: Prove the conversion changed nothing**
 
 ```bash
 test_romance 2>&1 | tail -3
@@ -88,7 +88,7 @@ Expected: every existing Snowball test green, same counts as before the branch.
 This is the whole justification for doing the refactor here; if it is not clean,
 revert and write Italian as a fourth chain instead.
 
-- [ ] **Step 5: Handle S3267 if it fires**
+- [x] **Step 5: Handle S3267 if it fires**
 
 The table-driven loop may trip S3267 (loop should be simplified with LINQ). Suppress
 it in the worker with a reason: the loop carries an early exit on longest match and
@@ -108,7 +108,7 @@ path of every stem. Reason in the source, per `CONTRIBUTING.md`.
 **Produces:** the definition of correct — and, per D5, the only thing that will
 reveal the divergence between the published description and nltk.
 
-- [ ] **Step 1: Add the Italian section**
+- [x] **Step 1: Add the Italian section**
 
 `nltk.stem.snowball.SnowballStemmer("italian")`. The word list **must include
 `enza`/`enze` words whose suffix falls inside R2**, or the divergence D5 describes
@@ -125,7 +125,7 @@ The four "agreeing" words are in the corpus on purpose. They document that the
 divergence is narrow, which is the reason it survived being written from the
 prose.
 
-- [ ] **Step 2: Generate, read the exit code, check for drift**
+- [x] **Step 2: Generate, read the exit code, check for drift**
 
 ```bash
 regen
@@ -134,7 +134,7 @@ git status --porcelain tests/oracles/
 
 Expected: `snowball_it.json` added, nothing else moved.
 
-- [ ] **Step 3: Record what nltk says about `esistenza`**
+- [x] **Step 3: Record what nltk says about `esistenza`**
 
 ```bash
 python -c "
@@ -157,26 +157,26 @@ temptation will be to assume the corpus is wrong.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Fold acute accents to grave, first**
+- [x] **Step 1: Fold acute accents to grave, first**
 
 Before regions, before anything.
 
-- [ ] **Step 2: Upper-case `u` after `q`, and `u`/`i` between vowels**
+- [x] **Step 2: Upper-case `u` after `q`, and `u`/`i` between vowels**
 
 So the regions treat them as consonants. Lower-case them again as the last act.
 Comment that this is the same device Portuguese uses for nasals — a temporary
 re-spelling to make region computation correct.
 
-- [ ] **Step 3: Step 0 — attached pronouns, restoring the infinitive `e`**
+- [x] **Step 3: Step 0 — attached pronouns, restoring the infinitive `e`**
 
 `mandarci` → `mandare`. **Not** the Spanish behaviour. If this file was written
 with the Spanish one open, this is the line that will be wrong.
 
-- [ ] **Step 4: Steps 1, 2, 3a, 3b through the rule table**
+- [x] **Step 4: Steps 1, 2, 3a, 3b through the rule table**
 
 3b replaces `ch` with `c` and `gh` with `g` inside RV.
 
-- [ ] **Step 5: Run the corpus and expect exactly two failures**
+- [x] **Step 5: Run the corpus and expect exactly two failures**
 
 ```bash
 test_it 2>&1 | grep -E "Expected|Actual" | head -20
@@ -186,7 +186,7 @@ Expected: `esistenza` and one more `enza`-in-R2 word, and **nothing else**. If
 other cases fail, fix those first — they are ordinary bugs and they will confuse
 the diagnosis in Step 6.
 
-- [ ] **Step 6: Diagnose the two, by reading nltk's source for that rule**
+- [x] **Step 6: Diagnose the two, by reading nltk's source for that rule**
 
 The published description says `enza`/`enze` → `ente` if in R2. Find what nltk
 actually does:
@@ -205,7 +205,7 @@ Expected: a `suffix_replace(word, suffix, \"te\")` — `te`, not `ente`.
 Implement nltk's behaviour. This is a deliberate divergence from the published
 prose, and Task 5 records it.
 
-- [ ] **Step 7: Green**
+- [x] **Step 7: Green**
 
 ```bash
 test_it 2>&1 | tail -3
@@ -223,8 +223,8 @@ Expected: 96/96.
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: Same shape as the Spanish and Portuguese replay tests**
-- [ ] **Step 2: Confirm the test count is non-zero before reading the colour**
+- [x] **Step 1: Same shape as the Spanish and Portuguese replay tests**
+- [x] **Step 2: Confirm the test count is non-zero before reading the colour**
 
 ---
 
@@ -239,7 +239,7 @@ Expected: 96/96.
 **Depends on:** Task 4.
 **Produces:** the record, plus the repair of a rule that has now been missed twice.
 
-- [ ] **Step 1: ADR 0008**
+- [x] **Step 1: ADR 0008**
 
 The published rule, what nltk does instead, the resulting stems under both
 readings, and **why nltk wins**: the corpora are frozen from it and
@@ -251,18 +251,18 @@ R2, and that four common words agree under either reading. That is the part a
 future reader needs in order to trust the corpus over their own reading of the
 prose.
 
-- [ ] **Step 2: `equivalence.md` — three rows, not one**
+- [x] **Step 2: `equivalence.md` — three rows, not one**
 
 Italian, **and the Spanish and Portuguese rows #42 and #43 omitted**. The Italian
 row names the divergence and links ADR 0008.
 
-- [ ] **Step 3: `CONTRIBUTING.md`**
+- [x] **Step 3: `CONTRIBUTING.md`**
 
 The rule was broken twice in a row, so restate it where the next contributor will
 read it: an `equivalence.md` row lands in the same commit as the function it
 describes, never afterwards.
 
-- [ ] **Step 4: Documentation self-check**
+- [x] **Step 4: Documentation self-check**
 
 Anything counting or enumerating languages, ADRs or corpora goes stale silently.
 Re-read `README.md`, `docs/equivalence.md` and `CONTRIBUTING.md` for counts and
@@ -274,7 +274,7 @@ Re-read `README.md`, `docs/equivalence.md` and `CONTRIBUTING.md` for counts and
 
 **Depends on:** Task 5.
 
-- [ ] **Step 1: Everything**
+- [x] **Step 1: Everything**
 
 ```bash
 build_all && test_all 2>&1 | tail -3
@@ -284,7 +284,7 @@ npx --yes markdownlint-cli2 "**/*.md" "#node_modules"
 
 Expected: 166/166, 0 warnings, format clean, markdownlint 0 issues across 26 files.
 
-- [ ] **Step 2: No drift**
+- [x] **Step 2: No drift**
 
 ```bash
 regen && git status --porcelain tests/oracles/
@@ -292,7 +292,7 @@ regen && git status --porcelain tests/oracles/
 
 Expected: `snowball_it.json` only.
 
-- [ ] **Step 3: Commit as three concerns, in the order they were done**
+- [x] **Step 3: Commit as three concerns, in the order they were done**
 
 ```bash
 git commit -m "Add the Italian Snowball stemmer"

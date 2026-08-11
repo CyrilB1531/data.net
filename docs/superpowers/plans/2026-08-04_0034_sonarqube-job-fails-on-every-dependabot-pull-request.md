@@ -38,7 +38,7 @@ show_if() { grep -n -A4 "if:" .github/workflows/sonarcloud.yml; }
 **Produces:** certainty that this is a secrets-availability problem and not a
 misconfigured token.
 
-- [ ] **Step 1: Read the failing run on #32**
+- [x] **Step 1: Read the failing run on #32**
 
 ```bash
 gh run list --workflow sonarcloud.yml --limit 10
@@ -54,7 +54,7 @@ The format of the analysis property sonar.token= is invalid
 An **empty** token, not a wrong one. That distinction decides the fix: a wrong
 token would mean rotating a secret.
 
-- [ ] **Step 2: Confirm the existing guard passes for Dependabot**
+- [x] **Step 2: Confirm the existing guard passes for Dependabot**
 
 ```bash
 show_if
@@ -64,7 +64,7 @@ The guard tests whether the head repository is this one. **Dependabot branches
 live in this repository**, so it passes — the guard was written for forks and
 Dependabot is a different case with the same symptom.
 
-- [ ] **Step 3: Note the consequence, because it shapes the urgency**
+- [x] **Step 3: Note the consequence, because it shapes the urgency**
 
 Issue #24 added Dependabot so the action SHA pins stay maintained. Every one of those
 pull requests now fails a check, and once the Sonar gate becomes required (#12)
@@ -81,7 +81,7 @@ the analysis added two pull requests earlier.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Add the actor clause**
+- [x] **Step 1: Add the actor clause**
 
 ```yaml
 if: >-
@@ -90,7 +90,7 @@ if: >-
    github.actor != 'dependabot[bot]')
 ```
 
-- [ ] **Step 2: Comment why analysis is skipped rather than enabled**
+- [x] **Step 2: Comment why analysis is skipped rather than enabled**
 
 A dependency bump changes no source, so there is nothing for the analysis to say.
 Record the rejected alternative too — adding `SONAR_TOKEN` to the repository's
@@ -100,7 +100,7 @@ bumps is genuinely wanted.
 The fix looks like avoidance. Writing down that it is a choice lets someone
 reverse it knowingly.
 
-- [ ] **Step 3: Parse check**
+- [x] **Step 3: Parse check**
 
 ```bash
 parse && show_if
@@ -112,9 +112,9 @@ parse && show_if
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Push to a branch and open an ordinary pull request — analysis runs**
+- [x] **Step 1: Push to a branch and open an ordinary pull request — analysis runs**
 
-- [ ] **Step 2: Confirm the next Dependabot pull request skips, and is not left
+- [x] **Step 2: Confirm the next Dependabot pull request skips, and is not left
       pending**
 
 ```bash
@@ -126,7 +126,7 @@ Expected: `Build and analyze` **skipped**, and the pull request mergeable. GitHu
 counts a skipped check as satisfied — which is the property that makes this safe
 once #12 lands.
 
-- [ ] **Step 3: Confirm the fork clause survived**
+- [x] **Step 3: Confirm the fork clause survived**
 
 ```bash
 show_if
@@ -135,7 +135,7 @@ show_if
 Both conditions present. Replacing rather than extending is the likely mistake
 here and it is silent until a fork pull request arrives.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add .github/workflows/sonarcloud.yml

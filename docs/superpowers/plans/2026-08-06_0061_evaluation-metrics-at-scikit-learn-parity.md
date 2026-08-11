@@ -120,7 +120,7 @@ samples/DataNet.Sample/Lot5Metrics.cs        the metrics lot + reachability gate
   UndefinedMetricException : InvalidOperationException`; test helper
   `internal static class OracleLoader { static JsonDocument Load(string) }`.
 
-- [ ] **Step 1: Create the library project**
+- [x] **Step 1: Create the library project**
 
 `src/DataNet.Metrics/DataNet.Metrics.csproj`:
 
@@ -163,7 +163,7 @@ samples/DataNet.Sample/Lot5Metrics.cs        the metrics lot + reachability gate
 </Project>
 ```
 
-- [ ] **Step 2: Write the enums and the exception**
+- [x] **Step 2: Write the enums and the exception**
 
 `src/DataNet.Metrics/Averaging.cs`:
 
@@ -279,7 +279,7 @@ public sealed class UndefinedMetricException : InvalidOperationException
 }
 ```
 
-- [ ] **Step 3: Create the net10 test project**
+- [x] **Step 3: Create the net10 test project**
 
 `tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj`:
 
@@ -335,7 +335,7 @@ internal static class OracleLoader
 }
 ```
 
-- [ ] **Step 4: Create the netstandard2.0 mirror, deliberately mis-wired**
+- [x] **Step 4: Create the netstandard2.0 mirror, deliberately mis-wired**
 
 `tests/DataNet.Metrics.NetStandard.Tests/DataNet.Metrics.NetStandard.Tests.csproj`
 — copy the header comment and shape from
@@ -423,7 +423,7 @@ public sealed class NetStandardAssemblyGuardTests
 }
 ```
 
-- [ ] **Step 5: Add the three projects to the solution**
+- [x] **Step 5: Add the three projects to the solution**
 
 Add to `DataNet.slnx`, in the existing `/src/` and `/tests/` folders:
 
@@ -436,7 +436,7 @@ Add to `DataNet.slnx`, in the existing `/src/` and `/tests/` folders:
     <Project Path="tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj" />
 ```
 
-- [ ] **Step 6: Run the guard test and watch it fail**
+- [x] **Step 6: Run the guard test and watch it fail**
 
 ```bash
 dotnet test tests/DataNet.Metrics.NetStandard.Tests -c Release
@@ -446,7 +446,7 @@ Expected: FAIL — `Assert.Equal() Failure … Expected: ".NETStandard,Version=v
 Actual: ".NETCoreApp,Version=v10.0"`. That is the mis-wiring the guard exists to
 catch, reproduced on purpose.
 
-- [ ] **Step 7: Pin the reference to the netstandard2.0 build**
+- [x] **Step 7: Pin the reference to the netstandard2.0 build**
 
 In `tests/DataNet.Metrics.NetStandard.Tests/DataNet.Metrics.NetStandard.Tests.csproj`,
 replace the `ProjectReference` item group with:
@@ -459,7 +459,7 @@ replace the `ProjectReference` item group with:
   </ItemGroup>
 ```
 
-- [ ] **Step 8: Run the whole solution green**
+- [x] **Step 8: Run the whole solution green**
 
 ```bash
 dotnet build DataNet.slnx -c Release
@@ -469,7 +469,7 @@ dotnet test DataNet.slnx -c Release
 Expected: build clean (warnings are errors), guard test PASSES, and the existing
 suites still pass. Confirm the executed-test count went **up** by exactly one.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add src/DataNet.Metrics tests/DataNet.Metrics.Tests tests/DataNet.Metrics.NetStandard.Tests DataNet.slnx
@@ -507,7 +507,7 @@ EOF
   `artifacts/DataNet.Metrics.0.1.0.nupkg`, accepted by
   `check_nuspec_dependencies.py --require-all`.
 
-- [ ] **Step 1: Add the expected dependency set to the nuspec checker**
+- [x] **Step 1: Add the expected dependency set to the nuspec checker**
 
 In `tools/check_nuspec_dependencies.py`, add the constant next to the others
 (line 35) and the `EXPECTED` entry (line 86):
@@ -526,7 +526,7 @@ METRICS = "DataNet.Metrics"
     },
 ```
 
-- [ ] **Step 2: Run the checker and watch it fail**
+- [x] **Step 2: Run the checker and watch it fail**
 
 ```bash
 rm -rf ./artifacts
@@ -538,7 +538,7 @@ echo "exit=$?"
 Expected: non-zero exit naming `DataNet.Metrics` as missing from `./artifacts`.
 That proves `--require-all` now knows about the package.
 
-- [ ] **Step 3: Pack the new package and watch the checker pass**
+- [x] **Step 3: Pack the new package and watch the checker pass**
 
 ```bash
 dotnet pack src/DataNet.Metrics -c Release -o ./artifacts
@@ -548,7 +548,7 @@ echo "exit=$?"
 
 Expected: `exit=0`.
 
-- [ ] **Step 4: Add the package to the three CI loops**
+- [x] **Step 4: Add the package to the three CI loops**
 
 In `.github/workflows/ci.yml`, every occurrence of
 
@@ -571,7 +571,7 @@ grep -n "for proj in" .github/workflows/ci.yml
 
 Expected: three lines, each ending in `src/DataNet.Metrics; do`.
 
-- [ ] **Step 5: Add the package to both release allowlists**
+- [x] **Step 5: Add the package to both release allowlists**
 
 In `.github/workflows/release.yml` and `.github/workflows/release-nuget-org.yml`:
 
@@ -587,7 +587,7 @@ grep -n "DataNet.Metrics)" .github/workflows/release.yml .github/workflows/relea
 
 Expected: one hit in each file.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add .github/workflows tools/check_nuspec_dependencies.py
@@ -629,7 +629,7 @@ EOF
   `{fixture, kind, y_true[], scores[], class_count, sample_weight[]|null,
   binary{...}|multiclass{"<strategy>|<average>": value}}`.
 
-- [ ] **Step 1: Recreate the oracle virtualenv**
+- [x] **Step 1: Recreate the oracle virtualenv**
 
 It is git-ignored and absent from a fresh clone:
 
@@ -642,7 +642,7 @@ python3 -m venv .venv-oracles
 Expected: `1.9.0 2.5.1`. Any other version and the corpora will not match what CI
 regenerates.
 
-- [ ] **Step 2: Add the two imports the new sections need**
+- [x] **Step 2: Add the two imports the new sections need**
 
 In `tools/generate_oracles.py`, alongside the existing imports:
 
@@ -654,7 +654,7 @@ import numpy as np
 from sklearn import metrics as skm
 ```
 
-- [ ] **Step 3: Add the classification-metrics generator**
+- [x] **Step 3: Add the classification-metrics generator**
 
 Append these sections before `main()`:
 
@@ -825,7 +825,7 @@ def generate_classification_metrics() -> dict:
     }
 ```
 
-- [ ] **Step 4: Add the ROC-AUC generator**
+- [x] **Step 4: Add the ROC-AUC generator**
 
 ```python
 # --- ROC-AUC (issue #61) ------------------------------------------------------
@@ -929,7 +929,7 @@ def generate_roc_auc() -> dict:
     }
 ```
 
-- [ ] **Step 5: Register both in `main()`**
+- [x] **Step 5: Register both in `main()`**
 
 Add to the `generators` dict, after `"process.json": generate_process,`:
 
@@ -938,7 +938,7 @@ Add to the `generators` dict, after `"process.json": generate_process,`:
         "roc_auc.json": generate_roc_auc,
 ```
 
-- [ ] **Step 6: Generate, checking the generator's own exit code**
+- [x] **Step 6: Generate, checking the generator's own exit code**
 
 ```bash
 cd /tmp && PYTHONSAFEPATH=1 "$OLDPWD/.venv-oracles/bin/python" "$OLDPWD/tools/generate_oracles.py"
@@ -951,7 +951,7 @@ unweighted) and `roc_auc.json: 10 cases -> …` (five fixtures, likewise).
 Do **not** pipe this through `tail` or `grep`: the shell would report the
 filter's status and a failed generation would look successful.
 
-- [ ] **Step 7: Prove the corpora are byte-reproducible**
+- [x] **Step 7: Prove the corpora are byte-reproducible**
 
 ```bash
 cd /home/cyril/Documents/devs/data.net-58 && git status --short tests/oracles/
@@ -970,7 +970,7 @@ cd /home/cyril/Documents/devs/data.net-58 && git diff --stat tests/oracles/
 
 Expected: empty output — the `Oracles are reproducible` job will do exactly this.
 
-- [ ] **Step 8: Eyeball one frozen report, because Task 7 must reproduce it exactly**
+- [x] **Step 8: Eyeball one frozen report, because Task 7 must reproduce it exactly**
 
 ```bash
 python3 -c "
@@ -984,7 +984,7 @@ print(c['reports']['2'])
 Expected: the familiar sklearn table with `negative` / `positive` rows, an
 `accuracy` row, then `macro avg` and `weighted avg`. Keep it in view for Task 7.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add tools/generate_oracles.py tests/oracles/classification_metrics.json tests/oracles/roc_auc.json
@@ -1037,7 +1037,7 @@ EOF
   - internal `LabelIndex.Create(...) -> LabelIndex` with `Count`, `Labels`,
     `Explicit`, `IndexOf(int) -> int` (`-1` when absent)
 
-- [ ] **Step 1: Write the corpus helper the next six tasks all use**
+- [x] **Step 1: Write the corpus helper the next six tasks all use**
 
 `tests/DataNet.Metrics.Tests/MetricsCorpus.cs`:
 
@@ -1087,7 +1087,7 @@ internal static class MetricsCorpus
 }
 ```
 
-- [ ] **Step 2: Write the failing confusion-matrix replay test**
+- [x] **Step 2: Write the failing confusion-matrix replay test**
 
 `tests/DataNet.Metrics.Tests/ConfusionMatrixTests.cs`:
 
@@ -1199,7 +1199,7 @@ public sealed class ConfusionMatrixTests
 }
 ```
 
-- [ ] **Step 3: Run it and watch it fail to compile**
+- [x] **Step 3: Run it and watch it fail to compile**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests -c Release
@@ -1208,7 +1208,7 @@ dotnet test tests/DataNet.Metrics.Tests -c Release
 Expected: FAIL — `CS0103: The name 'ConfusionMatrix' does not exist`. That is the
 red state; do not write implementation before seeing it.
 
-- [ ] **Step 4: Implement label resolution**
+- [x] **Step 4: Implement label resolution**
 
 `src/DataNet.Metrics/Internal/LabelIndex.cs`:
 
@@ -1383,7 +1383,7 @@ If SonarAnalyzer flags `S3776` (cognitive complexity) on the constructor or
 `SortedUnion`, add the pragma **in this file** with a reason, per
 `CONTRIBUTING.md`. Do not reach for `.editorconfig`.
 
-- [ ] **Step 5: Implement the matrix**
+- [x] **Step 5: Implement the matrix**
 
 `src/DataNet.Metrics/ConfusionMatrix.cs`:
 
@@ -1541,7 +1541,7 @@ public sealed class ConfusionMatrix
 }
 ```
 
-- [ ] **Step 6: Run the matrix tests green**
+- [x] **Step 6: Run the matrix tests green**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~ConfusionMatrixTests"
@@ -1551,7 +1551,7 @@ Expected: PASS, **31 tests** — 24 corpus rows plus the 7 hand-written ones. If
 the count is lower, `MemberData` is not enumerating the corpus and the replay is
 not happening.
 
-- [ ] **Step 7: Write the failing accuracy tests**
+- [x] **Step 7: Write the failing accuracy tests**
 
 `tests/DataNet.Metrics.Tests/AccuracyTests.cs`:
 
@@ -1593,7 +1593,7 @@ public sealed class AccuracyTests
 }
 ```
 
-- [ ] **Step 8: Run it and watch it fail**
+- [x] **Step 8: Run it and watch it fail**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~AccuracyTests"
@@ -1601,7 +1601,7 @@ dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~
 
 Expected: FAIL — `CS0103: The name 'Accuracy' does not exist`.
 
-- [ ] **Step 9: Implement accuracy**
+- [x] **Step 9: Implement accuracy**
 
 `src/DataNet.Metrics/Accuracy.cs`:
 
@@ -1691,7 +1691,7 @@ public static class Accuracy
 }
 ```
 
-- [ ] **Step 10: Run the whole suite green**
+- [x] **Step 10: Run the whole suite green**
 
 ```bash
 dotnet build DataNet.slnx -c Release
@@ -1701,7 +1701,7 @@ dotnet test DataNet.slnx -c Release
 Expected: clean build, and both new suites pass on **both** the net10 and the
 netstandard2.0 mirror, which links the same sources and so runs the same suite.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add src/DataNet.Metrics tests/DataNet.Metrics.Tests
@@ -1758,7 +1758,7 @@ EOF
   `Prf.Aggregate(ConfusionMatrix, PrfMetric, double beta, Averaging, int posLabel,
   ZeroDivision) -> double`, `Prf.Support(ConfusionMatrix) -> double[]`.
 
-- [ ] **Step 1: Write the failing replay test**
+- [x] **Step 1: Write the failing replay test**
 
 `tests/DataNet.Metrics.Tests/PrfOracleTests.cs`:
 
@@ -1945,7 +1945,7 @@ public sealed class PrfValidationTests
 }
 ```
 
-- [ ] **Step 2: Run both and watch them fail**
+- [x] **Step 2: Run both and watch them fail**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~Prf"
@@ -1953,7 +1953,7 @@ dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~
 
 Expected: FAIL — `CS0103: The name 'Precision' does not exist`.
 
-- [ ] **Step 3: Implement the shared core**
+- [x] **Step 3: Implement the shared core**
 
 `src/DataNet.Metrics/Internal/Prf.cs`:
 
@@ -2191,7 +2191,7 @@ internal static class Prf
 }
 ```
 
-- [ ] **Step 4: Implement the four public facades**
+- [x] **Step 4: Implement the four public facades**
 
 `src/DataNet.Metrics/Precision.cs`:
 
@@ -2361,7 +2361,7 @@ public static class FBeta
 }
 ```
 
-- [ ] **Step 5: Run the replay green**
+- [x] **Step 5: Run the replay green**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~Prf"
@@ -2372,7 +2372,7 @@ fails names its fixture and the exact key — read the key before changing code:
 `macro|1` failing while `macro|0` passes means the zero-division path is wrong,
 not the averaging.
 
-- [ ] **Step 6: Run everything and commit**
+- [x] **Step 6: Run everything and commit**
 
 ```bash
 dotnet build DataNet.slnx -c Release && dotnet test DataNet.slnx -c Release
@@ -2434,7 +2434,7 @@ must reproduce, both worth carrying into the structured type:
     `MicroAverage -> AverageRow?`, `TotalSupport -> double`
   - internal `IsWeighted -> bool`, `Digits`-free (Task 7 adds `ToText`)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/DataNet.Metrics.Tests/ClassificationReportTests.cs`:
 
@@ -2537,7 +2537,7 @@ public sealed class ClassificationReportTests
 }
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~ClassificationReportTests"
@@ -2545,7 +2545,7 @@ dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~
 
 Expected: FAIL — `CS0103: The name 'ClassificationReport' does not exist`.
 
-- [ ] **Step 3: Implement the rows**
+- [x] **Step 3: Implement the rows**
 
 `src/DataNet.Metrics/ClassRow.cs`:
 
@@ -2572,7 +2572,7 @@ public sealed record AverageRow(
     string Name, double Precision, double Recall, double F1, double Support);
 ```
 
-- [ ] **Step 4: Implement the report**
+- [x] **Step 4: Implement the report**
 
 `src/DataNet.Metrics/ClassificationReport.cs`:
 
@@ -2723,7 +2723,7 @@ public sealed class ClassificationReport
 }
 ```
 
-- [ ] **Step 5: Run green and commit**
+- [x] **Step 5: Run green and commit**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~ClassificationReportTests"
@@ -2792,7 +2792,7 @@ Two details the frozen strings will punish you for:
   .NET would write `4`. Branch on `IsWeighted`, and append `.0` when the
   round-tripped text has no `.`, `e` or `E`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/DataNet.Metrics.Tests/ReportTextTests.cs`:
 
@@ -2857,7 +2857,7 @@ public sealed class ReportTextTests
 }
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~ReportTextTests"
@@ -2865,7 +2865,7 @@ dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~
 
 Expected: FAIL — `'ClassificationReport' does not contain a definition for 'ToText'`.
 
-- [ ] **Step 3: Implement the renderer**
+- [x] **Step 3: Implement the renderer**
 
 `src/DataNet.Metrics/Internal/ReportText.cs`:
 
@@ -2988,7 +2988,7 @@ internal static class ReportText
 }
 ```
 
-- [ ] **Step 4: Wire it into the report**
+- [x] **Step 4: Wire it into the report**
 
 Add to `src/DataNet.Metrics/ClassificationReport.cs`:
 
@@ -3015,7 +3015,7 @@ Add to `src/DataNet.Metrics/ClassificationReport.cs`:
     public override string ToString() => ToText();
 ```
 
-- [ ] **Step 5: Iterate against the frozen strings**
+- [x] **Step 5: Iterate against the frozen strings**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~ReportTextTests"
@@ -3027,7 +3027,7 @@ space, `4` where `4.0` was wanted is the weighted-support branch, and a last-dig
 difference is the rounding mode. Expected when done: PASS, 26 tests (24 corpus
 rows + 2 facts).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 dotnet build DataNet.slnx -c Release && dotnet test DataNet.slnx -c Release
@@ -3069,7 +3069,7 @@ EOF
   internal `BinaryRoc.Score(ReadOnlySpan<int>, ReadOnlySpan<double>, int,
   ReadOnlySpan<double>) -> double`.
 
-- [ ] **Step 1: Write the corpus helper and the failing test**
+- [x] **Step 1: Write the corpus helper and the failing test**
 
 `tests/DataNet.Metrics.Tests/RocCorpus.cs`:
 
@@ -3200,7 +3200,7 @@ public sealed class RocAucBinaryTests
 }
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~RocAucBinaryTests"
@@ -3208,7 +3208,7 @@ dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~
 
 Expected: FAIL — `CS0103: The name 'RocAuc' does not exist`.
 
-- [ ] **Step 3: Implement the curve**
+- [x] **Step 3: Implement the curve**
 
 `src/DataNet.Metrics/Internal/BinaryRoc.cs`:
 
@@ -3309,7 +3309,7 @@ internal static class BinaryRoc
 }
 ```
 
-- [ ] **Step 4: Implement the public entry point**
+- [x] **Step 4: Implement the public entry point**
 
 `src/DataNet.Metrics/RocAuc.cs`:
 
@@ -3346,7 +3346,7 @@ public static class RocAuc
 }
 ```
 
-- [ ] **Step 5: Run green and commit**
+- [x] **Step 5: Run green and commit**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~RocAucBinaryTests"
@@ -3399,7 +3399,7 @@ EOF
 - `OneVsOne` + `Weighted` is Hand & Till's weighted variant: each pair is
   weighted by the share of samples belonging to that pair.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/DataNet.Metrics.Tests/RocAucMultiClassTests.cs`:
 
@@ -3492,7 +3492,7 @@ public sealed class RocAucMultiClassTests
 }
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~RocAucMultiClassTests"
@@ -3500,7 +3500,7 @@ dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~
 
 Expected: FAIL — `'RocAuc' does not contain a definition for 'MultiClass'`.
 
-- [ ] **Step 3: Implement both strategies**
+- [x] **Step 3: Implement both strategies**
 
 `src/DataNet.Metrics/Internal/MultiClassRoc.cs`:
 
@@ -3755,7 +3755,7 @@ internal static class MultiClassRoc
 }
 ```
 
-- [ ] **Step 4: Add the public entry point**
+- [x] **Step 4: Add the public entry point**
 
 Add to `src/DataNet.Metrics/RocAuc.cs`:
 
@@ -3784,7 +3784,7 @@ Add to `src/DataNet.Metrics/RocAuc.cs`:
         MultiClassRoc.Score(yTrue, yScore, classCount, strategy, average, labels, sampleWeight);
 ```
 
-- [ ] **Step 5: Run green and commit**
+- [x] **Step 5: Run green and commit**
 
 ```bash
 dotnet test tests/DataNet.Metrics.Tests -c Release --filter "FullyQualifiedName~RocAucMultiClassTests"
@@ -3834,7 +3834,7 @@ EOF
 `accuracy`, `precision_recall_f1_macro`, `classification_report`,
 `roc_auc_binary`, `roc_auc_ovr_macro`.
 
-- [ ] **Step 1: Read the two harnesses this one must mirror**
+- [x] **Step 1: Read the two harnesses this one must mirror**
 
 ```bash
 sed -n '1,200p' bench/DataNet.Text.Benchmarks/CrossLang/PersistenceCrossLang.cs
@@ -3848,7 +3848,7 @@ the timing loop from `PersistenceCrossLang` into
 `bench/DataNet.Text.Benchmarks/CrossLang/Harness.cs` and have both call it rather
 than writing a second one that drifts.
 
-- [ ] **Step 2: Write the corpus generator**
+- [x] **Step 2: Write the corpus generator**
 
 `bench/corpus/generate_metrics.py`:
 
@@ -3928,7 +3928,7 @@ Add to `.gitignore`:
 bench/corpus/metrics/
 ```
 
-- [ ] **Step 3: Generate it, and check the size before committing to it**
+- [x] **Step 3: Generate it, and check the size before committing to it**
 
 ```bash
 python3 bench/corpus/generate_metrics.py
@@ -3939,7 +3939,7 @@ Expected: six files, well under 500 MB in total. If the 10-class 100 000-row fil
 alone is over 100 MB, lower `SCORE_LIMIT` to 50 000 and regenerate — the
 comparison is about the metric, not the parser.
 
-- [ ] **Step 4: Write the intra-C# benchmarks**
+- [x] **Step 4: Write the intra-C# benchmarks**
 
 `bench/DataNet.Text.Benchmarks/MetricsBenchmarks.cs`:
 
@@ -4000,7 +4000,7 @@ public class MetricsBenchmarks
 }
 ```
 
-- [ ] **Step 5: Run the intra-C# suite on both targets**
+- [x] **Step 5: Run the intra-C# suite on both targets**
 
 ```bash
 dotnet run -c Release --project bench/DataNet.Text.Benchmarks        -- --filter '*Metrics*'
@@ -4012,7 +4012,7 @@ Confirm the header prints `// DataNet.Metrics: .NETStandard,Version=v2.0` for th
 second run — if it says `.NETCoreApp`, the isolation broke and the numbers are
 about the wrong assembly.
 
-- [ ] **Step 6: Write the two cross-language harnesses**
+- [x] **Step 6: Write the two cross-language harnesses**
 
 `bench/DataNet.Text.Benchmarks/CrossLang/MetricsCrossLang.cs` measures the six
 operations named above over each corpus file, writing
@@ -4034,7 +4034,7 @@ Each side records elapsed **and** processor time per operation — on the C# sid
 side `time.perf_counter` plus `time.process_time`, exactly as
 `bench_persistence.py` already does.
 
-- [ ] **Step 7: Run both sides back to back on an idle machine**
+- [x] **Step 7: Run both sides back to back on an idle machine**
 
 ```bash
 dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- compare-metrics
@@ -4045,7 +4045,7 @@ python bench/compare.py metrics
 Both sides in one sitting, not the best figure of each across several runs —
 picking per-row winners from different runs flatters whichever was measured last.
 
-- [ ] **Step 8: Apply the gate**
+- [x] **Step 8: Apply the gate**
 
 Read the **cpu** column. The merge gate is `≥ 1×` on every operation at every
 size. For any row below 1×:
@@ -4058,7 +4058,7 @@ size. For any row below 1×:
    spec names ROC-AUC as the piece whose removal leaves a coherent whole; that
    decision is the maintainer's, not this plan's.
 
-- [ ] **Step 9: Capture the numbers and commit**
+- [x] **Step 9: Capture the numbers and commit**
 
 Add the cross-language table to `docs/guides/performance.md` and a fifth section
 to `bench/README.md` naming the corpus generator, the two commands, and the
@@ -4111,7 +4111,7 @@ gate and leave `DataNet.Metrics` the only package whose surface nothing checks.
 - Produces: a sample run that exits 0, and a gate that accounts for every
   exported type.
 
-- [ ] **Step 1: Read what the gate demands before writing anything**
+- [x] **Step 1: Read what the gate demands before writing anything**
 
 ```bash
 sed -n '1,200p' samples/DataNet.Sample/PackagingGate.cs
@@ -4128,7 +4128,7 @@ Two details of the gate decide whether your lot passes:
   compile-time constant and emits no member reference. Naming one is all a
   consumer can do, and all the gate asks.
 
-- [ ] **Step 2: Wire the package into the sample**
+- [x] **Step 2: Wire the package into the sample**
 
 Mirror how the other three packages are referenced: import
 `../../src/DataNet.Metrics/Version.props` and add
@@ -4136,7 +4136,7 @@ Mirror how the other three packages are referenced: import
 The sample restores from `../artifacts` through `samples/NuGet.config`, which
 already maps `DataNet.*` to the local feed, so nothing else is needed.
 
-- [ ] **Step 3: Write `Lot5Metrics.cs`**
+- [x] **Step 3: Write `Lot5Metrics.cs`**
 
 Follow the shape of the existing lot files (a `static class` with a method
 `Program.cs` calls, printing a heading then its lines). It must exercise, in this
@@ -4154,7 +4154,7 @@ must receive a real call: `ConfusionMatrix`, `Accuracy`, `Precision`, `Recall`,
 `UndefinedMetricException` (name it in a `catch`), and the three enums
 `Averaging`, `ZeroDivision`, `MultiClassStrategy` (naming a member suffices).
 
-- [ ] **Step 4: Add the assembly to the gate**
+- [x] **Step 4: Add the assembly to the gate**
 
 In `PackagingGate.Verify()`, add the `DataNet.Metrics` assembly to the `packaged`
 array, reached through a type the sample genuinely uses (for example
@@ -4162,7 +4162,7 @@ array, reached through a type the sample genuinely uses (for example
 type is exercisable, and an exclusion needs a reason a reviewer can disagree
 with.
 
-- [ ] **Step 5: Prove it, against the packages rather than the projects**
+- [x] **Step 5: Prove it, against the packages rather than the projects**
 
 ```bash
 rm -rf ./artifacts
@@ -4183,7 +4183,7 @@ Then make the gate prove it can still fail: comment out one call in
 unreachable. Put the call back. A gate nobody has watched fail is
 indistinguishable from one that cannot.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 `ci.yml` needs no change: the sample job already runs `samples/DataNet.Sample`,
 and the pack loops already include `src/DataNet.Metrics`.
@@ -4221,7 +4221,7 @@ EOF
 - Modify: `README.md` (package table), `CHANGELOG.md` (a `DataNet.Metrics 0.1.0`
   heading)
 
-- [ ] **Step 1: Write decision 0016**
+- [x] **Step 1: Write decision 0016**
 
 Follow the shape of `docs/decisions/0011-persistence-format.md`. It must answer:
 why a separate package rather than `DataNet.Text` (metrics are not textual;
@@ -4230,7 +4230,7 @@ who want several metrics should count once, and the type is in the issue's scope
 anyway); why `sample_weight` is supported from the start even though it forces
 `double` counts; and why `Averaging.None` became `PerClass`.
 
-- [ ] **Step 2: Add the equivalence rows**
+- [x] **Step 2: Add the equivalence rows**
 
 Append to `docs/equivalence.md`, matching the existing table style:
 
@@ -4251,7 +4251,7 @@ Append to `docs/equivalence.md`, matching the existing table style:
 | `roc_auc_score(…, multi_class=…)` | scikit-learn | `RocAuc.MultiClass(…)` | `ovr` and `ovo`. Separate method: the overloads would be ambiguous. `sampleWeight` refused for `ovo`, as in scikit-learn. |
 ```
 
-- [ ] **Step 3: Rewrite the metrics pitfall in the migration guide**
+- [x] **Step 3: Rewrite the metrics pitfall in the migration guide**
 
 Replace the two-line bullet at `docs/migration/sklearn.md:34-35` with a section
 that explains macro, micro and weighted **once, properly**, and carries a worked
@@ -4260,7 +4260,7 @@ samples of class 0, 10 of class 1) and print the three numbers from the sample.
 Then point at `DataNet.Metrics` and at the equivalence table. Verify the numbers
 you quote by running them; do not write plausible ones.
 
-- [ ] **Step 4: Move the inventory row**
+- [x] **Step 4: Move the inventory row**
 
 In `docs/migration/README.md`, the scikit-learn row's verdict becomes
 `✅ **Use** *except* text vectorization → **DataNet.Text** and classification
@@ -4268,7 +4268,7 @@ metrics → **DataNet.Metrics**`, and the "What DataNet writes natively" list ga
 a fifth entry: **Classification metrics** — sklearn-parity precision, recall, F1,
 confusion matrix, report and ROC-AUC. *(done)*
 
-- [ ] **Step 5: Lint and commit**
+- [x] **Step 5: Lint and commit**
 
 ```bash
 npx markdownlint-cli2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
@@ -4293,7 +4293,7 @@ EOF
 
 ### Task 13: Follow-ups, and the pull request
 
-- [ ] **Step 1: Run everything one last time**
+- [x] **Step 1: Run everything one last time**
 
 ```bash
 dotnet build DataNet.slnx -c Release
@@ -4307,7 +4307,7 @@ Expected: build clean, all tests pass, version floor fine, markdown clean, and a
 **empty** oracle diff. Do not run `dotnet format` — it crashes on this machine;
 the `Lint` job decides.
 
-- [ ] **Step 2: Open the follow-up issues**
+- [x] **Step 2: Open the follow-up issues**
 
 ```bash
 gh issue create --title "TokenizationResult compares by reference, not by value" --body "$(cat <<'EOF'
@@ -4329,7 +4329,7 @@ gh issue create --title "Regression metrics in DataNet.Metrics" --body "MSE, MAE
 gh issue create --title "The remaining sklearn classification metrics" --body "balanced_accuracy_score, matthews_corrcoef, cohen_kappa_score, and normalize= on confusion_matrix. Left out of #61 as out of scope."
 ```
 
-- [ ] **Step 3: Push and open the pull request**
+- [x] **Step 3: Push and open the pull request**
 
 ```bash
 git push -u origin feat/61-classification-metrics
@@ -4373,7 +4373,7 @@ EOF
 )"
 ```
 
-- [ ] **Step 4: Report, do not merge**
+- [x] **Step 4: Report, do not merge**
 
 The maintainer merges. Report the PR URL, the performance table, and anything the
 gate forced a decision on.

@@ -185,10 +185,24 @@ and including `0.2.0` predate the split and covered all three at once — see
   `TokenizerJsonLoader.LoadBpe` **refuses `byte_fallback` by name** — Llama-2
   and Mistral v0.1 are SentencePiece BPE with `Metaspace` and `byte_fallback`,
   a third pipeline this package does not implement — rather than tokenizing
-  them to a plausible-looking wrong answer. It refuses `continuing_subword_prefix`,
-  `fuse_unk`, `dropout`, any `normalizer`, and a `ByteLevel` pre-tokenizer with
-  `use_regex` off by name too — each of those changes what HuggingFace produces
-  and none of them is applied here. `BpeFilesLoader` has no such check
+  them to a plausible-looking wrong answer. It refuses `fuse_unk`, any
+  `normalizer`, a `ByteLevel` pre-tokenizer with `use_regex` off, a **non-empty**
+  `continuing_subword_prefix` and a **non-zero** `dropout` by name too — each of
+  those changes what HuggingFace produces and none of them is applied here. The
+  values that change nothing are accepted rather than refused with them: an empty
+  prefix prefixes no symbol, a zero dropout skips no merge, and an
+  `end_of_word_suffix` declared as `""` reads back as absent on
+  `BpeVocabulary`, since an empty marker marks nothing — it used to load cleanly
+  and then throw out of `Decode`. `tests/oracles/bpe_no_op_settings.json` records
+  `tokenizers` 0.23.1 producing the same tokens with each of those three declared
+  as with it absent; a file that loads is not evidence that a value is a no-op.
+  A `ByteLevel` block declaring no `add_prefix_space` **is** refused, wherever it
+  appears — top-level `pre_tokenizer`, a `Sequence` step, or the `decoder`:
+  `tokenizers` has no default for that field and refuses such a file itself, so
+  accepting it here would mean inventing the value that decides whether a leading
+  space is added. An omitted `use_regex` stays accepted, and an omitted
+  `trim_offsets` too — the first has a default in the reference, the second is
+  never read here. `BpeFilesLoader` has no such check
   to make: its `vocab.json`/`merges.txt` pair carries no pipeline flags at all.
   [Decision 0017](docs/decisions/0017-bpe-parity-scope.md) records the scope,
   including a known split divergence from HuggingFace on letters and digits

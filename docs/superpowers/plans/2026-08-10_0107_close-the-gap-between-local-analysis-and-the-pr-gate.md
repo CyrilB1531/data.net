@@ -67,7 +67,7 @@ build_samples() {   # extra args are passed through to dotnet build
 
 This task adds **SonarAnalyzer only** — not the `AnalysisMode` switch, which lands in Task 8.
 
-- [ ] **Step 1: Prove the gap exists before closing it**
+- [x] **Step 1: Prove the gap exists before closing it**
 
 ```bash
 cd /home/cyril/Documents/devs/data.net
@@ -84,7 +84,7 @@ build_samples 2>&1 | grep -c "S125"
 
 Expected: `0`. Commented-out code, and nothing reports it. That is the bug.
 
-- [ ] **Step 2: Create `samples/Directory.Build.props`**
+- [x] **Step 2: Create `samples/Directory.Build.props`**
 
 ```xml
 <Project>
@@ -107,7 +107,7 @@ Expected: `0`. Commented-out code, and nothing reports it. That is the bug.
 </Project>
 ```
 
-- [ ] **Step 3: Run the probe again — it must now fail the build**
+- [x] **Step 3: Run the probe again — it must now fail the build**
 
 ```bash
 build_samples 2>&1 | grep -E "error S125"
@@ -115,7 +115,7 @@ build_samples 2>&1 | grep -E "error S125"
 
 Expected: `error S125: Remove this commented out code.` in `Lot1Distances.cs`, and a non-zero exit. `TreatWarningsAsErrors` from the root props is what turns it into an error — its presence proves the `Import` on line 5 works.
 
-- [ ] **Step 4: Prove `Generated/*.g.cs` stays exempt**
+- [x] **Step 4: Prove `Generated/*.g.cs` stays exempt**
 
 ```bash
 git checkout samples/DataNet.Sample/Lot1Distances.cs
@@ -131,7 +131,7 @@ build_samples 2>&1 | tail -3
 
 Expected: build succeeds, 0 warnings. Roslyn's generated-code detection keys on the `.g.cs` suffix, which SonarAnalyzer honours — so the local build matches `sonar.exclusions` with no configuration. Record the exact output; ADR 0019 cites it.
 
-- [ ] **Step 5: Restore the tree and confirm it is clean**
+- [x] **Step 5: Restore the tree and confirm it is clean**
 
 ```bash
 python3 tools/extract_doc_snippets.py   # rewrites Generated/ from the Markdown
@@ -141,7 +141,7 @@ git status --porcelain
 
 Expected: build green; `git status` shows only `samples/Directory.Build.props` as untracked.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add samples/Directory.Build.props
@@ -161,7 +161,7 @@ git commit -m "Run the Sonar rules over samples/, the one area a feature must to
 **Depends on:** Task 1.
 **Produces:** the `NoWarn` lists Task 8 relies on. They are **inert until Task 8**, because none of these rules is enabled at the SDK default — so this commit changes no build outcome.
 
-- [ ] **Step 1: Add the `tests/` list**
+- [x] **Step 1: Add the `tests/` list**
 
 Insert this `PropertyGroup` into `tests/Directory.Build.props`, after the `Import` and before the `ItemGroup`:
 
@@ -182,7 +182,7 @@ Insert this `PropertyGroup` into `tests/Directory.Build.props`, after the `Impor
   </PropertyGroup>
 ```
 
-- [ ] **Step 2: Add the `bench/` list**
+- [x] **Step 2: Add the `bench/` list**
 
 Insert into `bench/Directory.Build.props`, after the `Import`:
 
@@ -200,7 +200,7 @@ Insert into `bench/Directory.Build.props`, after the `Import`:
   </PropertyGroup>
 ```
 
-- [ ] **Step 3: Add the `samples/` line**
+- [x] **Step 3: Add the `samples/` line**
 
 Insert into `samples/Directory.Build.props`, after the `Import` and before the `ItemGroup` added in Task 1:
 
@@ -214,7 +214,7 @@ Insert into `samples/Directory.Build.props`, after the `Import` and before the `
   </PropertyGroup>
 ```
 
-- [ ] **Step 4: Verify nothing changed**
+- [x] **Step 4: Verify nothing changed**
 
 ```bash
 dotnet build DataNet.slnx -c Release 2>&1 | tail -3
@@ -222,7 +222,7 @@ dotnet build DataNet.slnx -c Release 2>&1 | tail -3
 
 Expected: green, 0 warnings — a `NoWarn` for a rule that is not enabled is a no-op.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tests/Directory.Build.props bench/Directory.Build.props samples/Directory.Build.props
@@ -241,7 +241,7 @@ git commit -m "Say per area which code-quality rules an area trips by being itse
 
 `CA1001` says `BatchEmbeddingBenchmarks` holds a disposable `_embedder` without being `IDisposable`. It disposes it from `[GlobalCleanup]` at line 92-93 — BenchmarkDotNet owns the lifecycle, and making the class `IDisposable` would hand ownership to a caller that does not exist.
 
-- [ ] **Step 1: See the finding**
+- [x] **Step 1: See the finding**
 
 ```bash
 dotnet build bench/DataNet.Text.Benchmarks -c Release -p:TreatWarningsAsErrors=false $ANALYSIS 2>&1 | grep CA1001
@@ -249,7 +249,7 @@ dotnet build bench/DataNet.Text.Benchmarks -c Release -p:TreatWarningsAsErrors=f
 
 Expected: one `warning CA1001` on `BatchEmbeddingBenchmarks`.
 
-- [ ] **Step 2: Add the pragma with its reason**
+- [x] **Step 2: Add the pragma with its reason**
 
 Above `[MemoryDiagnoser]` (currently line 33):
 
@@ -261,7 +261,7 @@ Above `[MemoryDiagnoser]` (currently line 33):
 [MemoryDiagnoser]
 ```
 
-- [ ] **Step 3: Verify `bench/` is clean under the switch**
+- [x] **Step 3: Verify `bench/` is clean under the switch**
 
 ```bash
 dotnet build bench/DataNet.Text.Benchmarks bench/DataNet.NetStandard.Benchmarks -c Release $ANALYSIS 2>&1 | tail -3
@@ -269,7 +269,7 @@ dotnet build bench/DataNet.Text.Benchmarks bench/DataNet.NetStandard.Benchmarks 
 
 Expected: green, 0 warnings, with `TreatWarningsAsErrors` left on.
 
-- [ ] **Step 4: Verify the committed build is still green**
+- [x] **Step 4: Verify the committed build is still green**
 
 ```bash
 dotnet build DataNet.slnx -c Release 2>&1 | tail -3
@@ -277,7 +277,7 @@ dotnet build DataNet.slnx -c Release 2>&1 | tail -3
 
 Expected: green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add bench/DataNet.Text.Benchmarks/BatchEmbeddingBenchmarks.cs
@@ -297,7 +297,7 @@ git commit -m "Say why the batch-embedding benchmark is not IDisposable"
 
 `CA1305` wants an `IFormatProvider` on `ToString("F3")`. A reader should see the correct form, and a sample that prints `0,123` on a French machine and `0.123` on an English one is a sample that lies about what the library produced.
 
-- [ ] **Step 1: See the five**
+- [x] **Step 1: See the five**
 
 ```bash
 pack_feed
@@ -306,7 +306,7 @@ build_samples -p:TreatWarningsAsErrors=false $ANALYSIS 2>&1 | grep CA1305
 
 Expected: 5 warnings, at `Lot3Embeddings.cs:184,185,196` and `Lot5Metrics.cs:154,198`.
 
-- [ ] **Step 2: Add the using to both files**
+- [x] **Step 2: Add the using to both files**
 
 `Lot3Embeddings.cs` line 1 becomes:
 
@@ -322,7 +322,7 @@ using System.Globalization;
 using DataNet.Metrics;
 ```
 
-- [ ] **Step 3: Make the five calls invariant**
+- [x] **Step 3: Make the five calls invariant**
 
 `Lot3Embeddings.cs:184-185`:
 
@@ -349,7 +349,7 @@ using DataNet.Metrics;
         "[" + string.Join(", ", values.Select(v => v.ToString("F3", CultureInfo.InvariantCulture))) + "]";
 ```
 
-- [ ] **Step 4: Verify `samples/` is clean under the switch**
+- [x] **Step 4: Verify `samples/` is clean under the switch**
 
 ```bash
 build_samples $ANALYSIS 2>&1 | tail -3
@@ -357,7 +357,7 @@ build_samples $ANALYSIS 2>&1 | tail -3
 
 Expected: both projects green, 0 warnings.
 
-- [ ] **Step 5: Verify the sample still runs and still prints the same numbers**
+- [x] **Step 5: Verify the sample still runs and still prints the same numbers**
 
 ```bash
 rm -rf "$SCRATCH/sample-packages"
@@ -366,7 +366,7 @@ NUGET_PACKAGES="$SCRATCH/sample-packages" dotnet run --project samples/DataNet.S
 
 Expected: exit 0, and the `MeanPool` / `micro avg` lines print `0.123`-style values. `InvariantCulture` is what the machine already produced, so no number changes.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add samples/DataNet.Sample/Lot3Embeddings.cs samples/DataNet.Sample/Lot5Metrics.cs
@@ -388,7 +388,7 @@ git commit -m "Format the sample's numbers invariantly, so it prints what it mea
 
 Both test projects and both `*.NetStandard.Tests` mirrors target `net10.0`, so the `StringComparison` overload **is** available here — unlike `src/`. `StopWordsTests.cs:51` asserts that a stop word *is* lowercase, so `ToLowerInvariant` is the assertion itself.
 
-- [ ] **Step 1: See the six**
+- [x] **Step 1: See the six**
 
 ```bash
 dotnet build DataNet.slnx -c Release -p:TreatWarningsAsErrors=false $ANALYSIS 2>&1 | grep -E "CA1305|CA1307|CA1308" | grep tests/
@@ -396,7 +396,7 @@ dotnet build DataNet.slnx -c Release -p:TreatWarningsAsErrors=false $ANALYSIS 2>
 
 Expected: 4 × CA1305, 1 × CA1307, 1 × CA1308.
 
-- [ ] **Step 2: Make the four `StringBuilder` appends invariant**
+- [x] **Step 2: Make the four `StringBuilder` appends invariant**
 
 Add `using System.Globalization;` as the first using of `OracleAsserts.cs` and of `LevenshteinOracleTests.cs`, then:
 
@@ -420,7 +420,7 @@ Add `using System.Globalization;` as the first using of `OracleAsserts.cs` and o
             sb.Append(CultureInfo.InvariantCulture, $"  [#{c.Id} {c.Category}] a={Escape(c.A)} b={Escape(c.B)}: {message}\n");
 ```
 
-- [ ] **Step 3: Make the `IndexOf` explicit**
+- [x] **Step 3: Make the `IndexOf` explicit**
 
 `ByteLevelBpeTests.cs:41`:
 
@@ -430,7 +430,7 @@ Add `using System.Globalization;` as the first using of `OracleAsserts.cs` and o
 
 Add `using System;` only if the file lacks it — `ImplicitUsings` is on repo-wide, so it almost certainly does not need one.
 
-- [ ] **Step 4: Say why the assertion lowercases**
+- [x] **Step 4: Say why the assertion lowercases**
 
 `StopWordsTests.cs:51` — the line reads `Assert.Equal(word.ToLowerInvariant(), word);`. Put a file-scoped pragma above the class, matching the idiom in `src/DataNet.Text/Stemming/`:
 
@@ -441,7 +441,7 @@ Add `using System;` only if the file lacks it — `ImplicitUsings` is on repo-wi
 #pragma warning disable CA1308
 ```
 
-- [ ] **Step 5: Verify `tests/` is clean under the switch and still passes**
+- [x] **Step 5: Verify `tests/` is clean under the switch and still passes**
 
 ```bash
 dotnet build DataNet.slnx -c Release $ANALYSIS 2>&1 | grep -E "tests/.*(warning|error)" ; echo "---"
@@ -450,7 +450,7 @@ dotnet test DataNet.slnx -c Release 2>&1 | tail -8
 
 Expected: no `tests/` diagnostics (the `src/` ones remain until Tasks 6-7); the whole suite passes. **Read the pass/fail counts, not just the exit code** — a suite that ran 0 tests is not a green suite.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add tests/
@@ -471,7 +471,7 @@ git commit -m "Pin the culture and the comparison the oracle assertions already 
 
 Five genuine defects. `Ratio`, `PartialRatio` and `WRatio` in `Fuzz.cs` all guard both arguments; the four `Token*Ratio` methods do not, so `TokenSortRatio(null, "x")` throws `NullReferenceException` from `string.Split` instead of `ArgumentNullException`. `Guard` is in `DataNet.Internal` and reaches every `src/` file through `src/Shared/GlobalUsings.cs` — `Fuzz.cs` already calls it unqualified.
 
-- [ ] **Step 1: See the five**
+- [x] **Step 1: See the five**
 
 ```bash
 dotnet build DataNet.slnx -c Release -p:TreatWarningsAsErrors=false $ANALYSIS 2>&1 | grep -E "CA1062|CA2251" | grep src/
@@ -479,7 +479,7 @@ dotnet build DataNet.slnx -c Release -p:TreatWarningsAsErrors=false $ANALYSIS 2>
 
 Expected: 4 × CA1062 (`Fuzz.cs:93`, `:105`, `TfidfTransformer.cs:44`, `:70`), 1 × CA2251 (`FeatureVocabularyJson.cs:184`).
 
-- [ ] **Step 2: Guard the two flagged `Fuzz` methods**
+- [x] **Step 2: Guard the two flagged `Fuzz` methods**
 
 ```csharp
     /// <summary><see cref="Ratio"/> after splitting, sorting and rejoining the tokens of each string.</summary>
@@ -503,7 +503,7 @@ Expected: 4 × CA1062 (`Fuzz.cs:93`, `:105`, `TfidfTransformer.cs:44`, `:70`), 1
 
 Then read `TokenSet` (called by `TokenSetRatio` and `PartialTokenSetRatio`, the two siblings the analyser did **not** flag). If it already guards, nothing to do. If it does not, **do not widen this task** — note it for the PR body as a pre-existing inconsistency the analyser did not catch.
 
-- [ ] **Step 3: Guard the two `TfidfTransformer` entry points**
+- [x] **Step 3: Guard the two `TfidfTransformer` entry points**
 
 ```csharp
     public TfidfTransformer Fit(CsrMatrix counts)
@@ -521,7 +521,7 @@ Then read `TokenSet` (called by `TokenSetRatio` and `PartialTokenSetRatio`, the 
 
 `FitTransform` at line 112 delegates to both, so it needs nothing.
 
-- [ ] **Step 4: Replace the `CompareOrdinal == 0`**
+- [x] **Step 4: Replace the `CompareOrdinal == 0`**
 
 `FeatureVocabularyJson.cs:184` currently reads `string.CompareOrdinal(previous, current) == 0`. Replace with:
 
@@ -531,7 +531,7 @@ Then read `TokenSet` (called by `TokenSetRatio` and `PartialTokenSetRatio`, the 
 
 Leave line 92's `string.CompareOrdinal(previous, name) >= 0` alone — it is an ordering test, and CA2251 does not flag it.
 
-- [ ] **Step 5: Verify the five are gone and nothing regressed**
+- [x] **Step 5: Verify the five are gone and nothing regressed**
 
 ```bash
 dotnet build DataNet.slnx -c Release -p:TreatWarningsAsErrors=false $ANALYSIS 2>&1 | grep -E "CA1062|CA2251"
@@ -540,7 +540,7 @@ dotnet test DataNet.slnx -c Release 2>&1 | tail -8
 
 Expected: no output from the first command; the suite green with its counts read.
 
-- [ ] **Step 6: Write the test that pins the new behaviour**
+- [x] **Step 6: Write the test that pins the new behaviour**
 
 `TokenSortRatio(null!, "x")` now throws `ArgumentNullException` where it threw `NullReferenceException`. That is a behaviour change and needs a test. Add to `tests/DataNet.Fuzzy.Tests/FuzzTests.cs` (match the file's existing naming and `[Fact]` style):
 
@@ -560,7 +560,7 @@ Expected: no output from the first command; the suite green with its counts read
     }
 ```
 
-- [ ] **Step 7: Run those two tests and confirm they exercise the new guards**
+- [x] **Step 7: Run those two tests and confirm they exercise the new guards**
 
 ```bash
 dotnet test tests/DataNet.Fuzzy.Tests -c Release --filter "FullyQualifiedName~TokenSortRatio_Null|FullyQualifiedName~PartialTokenSortRatio_Null" 2>&1 | tail -6
@@ -568,7 +568,7 @@ dotnet test tests/DataNet.Fuzzy.Tests -c Release --filter "FullyQualifiedName~To
 
 Expected: `Passed! - Failed: 0, Passed: 2`. **If it reports `Passed: 0`, the filter matched nothing and nothing was verified** — fix the filter before believing the result.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/DataNet.Fuzzy/Fuzz.cs src/DataNet.Text/Vectorization/TfidfTransformer.cs \
@@ -592,7 +592,7 @@ git commit -m "Throw ArgumentNullException where the token ratios threw NullRefe
 
 29 reasoned suppressions. Use **file-scoped** pragmas near the top of the file, without `restore`, which is the idiom these very files already use (`SpanishSnowballStemmer.cs:9-10`, `Lcs.cs:7`). Use a `disable`/`restore` pair only where an existing pair is already in place.
 
-- [ ] **Step 1: See all 26**
+- [x] **Step 1: See all 26**
 
 ```bash
 dotnet build DataNet.slnx -c Release -p:TreatWarningsAsErrors=false $ANALYSIS 2>&1 \
@@ -601,7 +601,7 @@ dotnet build DataNet.slnx -c Release -p:TreatWarningsAsErrors=false $ANALYSIS 2>
 
 Expected: CA1307 ×8, CA1308 ×10, CA1814 ×4, CA1819 ×3, CA1849 ×2, CA1008 ×1, CA1720 ×1 — note CA1814 and CA1819 report at more than one line per member.
 
-- [ ] **Step 2: CA1307 ×8 — the overload does not exist on netstandard2.0**
+- [x] **Step 2: CA1307 ×8 — the overload does not exist on netstandard2.0**
 
 Files: `StringCompat.cs`, `TokenizerJsonLoader.cs`, `ReportText.cs`, `GermanSnowballStemmer.cs`, `PortugueseSnowballStemmer.cs`. Add near the top of each, above the type:
 
@@ -617,7 +617,7 @@ Files: `StringCompat.cs`, `TokenizerJsonLoader.cs`, `ReportText.cs`, `GermanSnow
 
 `PortugueseSnowballStemmer.cs` and `GermanSnowballStemmer.cs` already carry pragma lines at the top; add `CA1307` to that block rather than opening a new one.
 
-- [ ] **Step 3: CA1308 ×10 — lowercase is the algorithm**
+- [x] **Step 3: CA1308 ×10 — lowercase is the algorithm**
 
 Files: `WordPieceTokenizer.cs`, `EnglishSnowballStemmer.cs`, `FrenchSnowballStemmer.cs`, `GermanSnowballStemmer.cs`, `ItalianSnowballStemmer.cs`, `PorterStemmer.cs` (2 sites), `PortugueseSnowballStemmer.cs`, `SpanishSnowballStemmer.cs`, `TextAnalyzer.cs`. Add to each file's pragma block:
 
@@ -632,7 +632,7 @@ Files: `WordPieceTokenizer.cs`, `EnglishSnowballStemmer.cs`, `FrenchSnowballStem
 
 Where a file already has a pragma line, extend it (e.g. `SpanishSnowballStemmer.cs:10` becomes `#pragma warning disable S3776, S3267, CA1308`) and put the comment above it.
 
-- [ ] **Step 4: CA1814 ×4 — the dense form is the point**
+- [x] **Step 4: CA1814 ×4 — the dense form is the point**
 
 `ConfusionMatrix.cs` above `ToArray` (line 128) and `CsrMatrix.cs` above `ToDense` (line 137):
 
@@ -644,7 +644,7 @@ Where a file already has a pragma line, extend it (e.g. `SpanishSnowballStemmer.
 #pragma warning disable CA1814
 ```
 
-- [ ] **Step 5: CA1819 ×3 — the three arrays are the format**
+- [x] **Step 5: CA1819 ×3 — the three arrays are the format**
 
 `CsrMatrix.cs` above `Values` (line 125):
 
@@ -657,7 +657,7 @@ Where a file already has a pragma line, extend it (e.g. `SpanishSnowballStemmer.
 #pragma warning disable CA1819
 ```
 
-- [ ] **Step 6: CA1849 ×2 — extend the pragmas already there**
+- [x] **Step 6: CA1849 ×2 — extend the pragmas already there**
 
 `ArtifactIo.cs:44` and `JsonArtifact.cs:172` already read `#pragma warning disable S6966` with a comment explaining that the destination is a `MemoryStream` whose async path performs no I/O. CA1849 says the same thing S6966 says, so extend both lines and their matching `restore`:
 
@@ -671,7 +671,7 @@ Where a file already has a pragma line, extend it (e.g. `SpanishSnowballStemmer.
 
 Prefix the existing comment's `SonarLint S6966:` with `CA1849 /` so the reason names both rules.
 
-- [ ] **Step 7: CA1008 ×1 and CA1720 ×1**
+- [x] **Step 7: CA1008 ×1 and CA1720 ×1**
 
 `SentencePieceVocabulary.cs` above `public enum SentencePieceType` (line 13):
 
@@ -692,7 +692,7 @@ Prefix the existing comment's `SonarLint S6966:` with `CA1849 /` so the reason n
 #pragma warning disable CA1720
 ```
 
-- [ ] **Step 8: The whole solution is now clean under the switch**
+- [x] **Step 8: The whole solution is now clean under the switch**
 
 ```bash
 dotnet build DataNet.slnx -c Release $ANALYSIS 2>&1 | tail -3
@@ -700,7 +700,7 @@ dotnet build DataNet.slnx -c Release $ANALYSIS 2>&1 | tail -3
 
 Expected: green, **0 warnings**, with `TreatWarningsAsErrors` on. This is the moment the sweep is finished.
 
-- [ ] **Step 9: The suite still passes, and the netstandard2.0 leg still compiles**
+- [x] **Step 9: The suite still passes, and the netstandard2.0 leg still compiles**
 
 ```bash
 dotnet test DataNet.slnx -c Release 2>&1 | tail -8
@@ -708,7 +708,7 @@ dotnet test DataNet.slnx -c Release 2>&1 | tail -8
 
 Expected: green, counts read. The `*.NetStandard.Tests` projects are what prove the `netstandard2.0` assemblies still work — if their counts are 0, nothing was verified.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add src/
@@ -725,7 +725,7 @@ git commit -m "Say in each file why the code-quality rule is wrong about it"
 
 **Depends on:** Task 7. Everything the switch would report is already fixed, so this commit is green from the first build.
 
-- [ ] **Step 1: Add the three properties**
+- [x] **Step 1: Add the three properties**
 
 In the root `Directory.Build.props`, immediately after the `TreatWarningsAsErrors` line and before the `DataNetSonarAnalyzerVersion` block:
 
@@ -755,7 +755,7 @@ In the root `Directory.Build.props`, immediately after the `TreatWarningsAsError
     <AnalysisMode>All</AnalysisMode>
 ```
 
-- [ ] **Step 2: The plain build — no overrides — is green**
+- [x] **Step 2: The plain build — no overrides — is green**
 
 ```bash
 dotnet build DataNet.slnx -c Release 2>&1 | tail -3
@@ -763,7 +763,7 @@ dotnet build DataNet.slnx -c Release 2>&1 | tail -3
 
 Expected: green, 0 warnings. This is the command a contributor runs, and it now enforces what the gate enforces.
 
-- [ ] **Step 3: The samples build is green too**
+- [x] **Step 3: The samples build is green too**
 
 ```bash
 pack_feed
@@ -772,7 +772,7 @@ build_samples 2>&1 | tail -3
 
 Expected: both projects green. The properties reach `samples/` through the `Import` added in Task 1 — which is the half of this issue that did not exist before.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add Directory.Build.props
@@ -787,7 +787,7 @@ git commit -m "Enforce the .NET code-quality rules the pull-request gate counts"
 
 **Depends on:** Task 8. ADR 0015 proved its gate by making it fail on purpose; this reproduces that for the wider rule set and for the area that had no gate at all.
 
-- [ ] **Step 1: `src/`**
+- [x] **Step 1: `src/`**
 
 ```bash
 printf '\ninternal static class Probe107 { public static string Up(string s) => s.ToLowerInvariant(); }\n' >> src/DataNet.Text/Distances/Hamming.cs
@@ -797,7 +797,7 @@ git checkout src/DataNet.Text/Distances/Hamming.cs
 
 Expected: `error CA1308`. Record the exact line for the ADR.
 
-- [ ] **Step 2: `tests/`**
+- [x] **Step 2: `tests/`**
 
 ```bash
 printf '\ninternal static class Probe107 { public static int Find(string s) => s.IndexOf("x"); }\n' >> tests/DataNet.Text.Tests/Distances/LevenshteinOracleTests.cs
@@ -807,7 +807,7 @@ git checkout tests/DataNet.Text.Tests/Distances/LevenshteinOracleTests.cs
 
 Expected: `error CA1307`. CA1307 is *not* in the `tests/` `NoWarn` list, which is what this checks.
 
-- [ ] **Step 3: `bench/`**
+- [x] **Step 3: `bench/`**
 
 ```bash
 printf '\ninternal static class Probe107 { public static string Low(string s) => s.ToLowerInvariant(); }\n' >> bench/DataNet.Text.Benchmarks/VectorizerBenchmarks.cs
@@ -817,7 +817,7 @@ git checkout bench/DataNet.Text.Benchmarks/VectorizerBenchmarks.cs
 
 Expected: `error CA1308`.
 
-- [ ] **Step 4: `samples/` — the one that is new**
+- [x] **Step 4: `samples/` — the one that is new**
 
 ```bash
 printf '\ninternal static class Probe107 { public static int Find(string s) => s.IndexOf("x"); }\n' >> samples/DataNet.Sample/Lot1Distances.cs
@@ -827,7 +827,7 @@ git checkout samples/DataNet.Sample/Lot1Distances.cs
 
 Expected: an `error`. Before this branch, the same line produced nothing at all.
 
-- [ ] **Step 5: Confirm the tree is clean and green again**
+- [x] **Step 5: Confirm the tree is clean and green again**
 
 ```bash
 git status --porcelain
@@ -849,7 +849,7 @@ Expected: `git status` empty; build green. **Nothing is committed in this task**
 
 **Depends on:** Task 9 — the ADR quotes its output.
 
-- [ ] **Step 0: Fix the four dead ADR references**
+- [x] **Step 0: Fix the four dead ADR references**
 
 `main` moved while this branch was in flight: pull request #108 landed
 `docs/decisions/0018-multiclass-roc-auc-parallelism-is-opt-in.md`, so **0018 is
@@ -866,7 +866,7 @@ to `0019-the-net-analysers-run-in-the-build-too.md`. Do this in **this** commit,
 so the reference and the file it points at land together and the branch never
 contains a live pointer to a missing ADR.
 
-- [ ] **Step 1: Write ADR 0019**
+- [x] **Step 1: Write ADR 0019**
 
 Follow the shape of `0015`: `# 0019 — …`, `**Status:** accepted · **Date:** 2026-08-10`, then Context / Decision / Consequences. It must contain:
 
@@ -878,7 +878,7 @@ Follow the shape of `0015`: `# 0019 — …`, `**Status:** accepted · **Date:**
 - The Task 9 demonstration, one line per area.
 - The honest limitation: `samples/` builds only after a `pack`, so its gate lives in the two samples CI jobs, not in `dotnet build DataNet.slnx`.
 
-- [ ] **Step 2: Point ADR 0015 at it**
+- [x] **Step 2: Point ADR 0015 at it**
 
 In `0015`, at the top of "Why `samples/` stays out", add:
 
@@ -891,7 +891,7 @@ In `0015`, at the top of "Why `samples/` stays out", add:
 
 Leave the original text intact below it. An ADR records what was decided when.
 
-- [ ] **Step 3: Write the suppression policy into `CONTRIBUTING.md`**
+- [x] **Step 3: Write the suppression policy into `CONTRIBUTING.md`**
 
 Find the section that already describes `#pragma warning disable` with a reason and add the area-wide half:
 
@@ -904,7 +904,7 @@ site disagrees with stays a `#pragma warning disable` in the source, with its
 reason above it. Never add either without the reason.
 ```
 
-- [ ] **Step 4: Re-read what the new ADR falsifies**
+- [x] **Step 4: Re-read what the new ADR falsifies**
 
 ```bash
 grep -rn "0015\|0017\|decisions/" --include=*.md docs README.md CONTRIBUTING.md | grep -v "^docs/decisions/0019"
@@ -913,7 +913,7 @@ ls docs/decisions/
 
 Counts, enumerations and "see X" pointers go stale silently. Check any place that lists the ADRs or states how many there are, and any statement that `samples/` is not analysed.
 
-- [ ] **Step 5: Verify the guides still compile**
+- [x] **Step 5: Verify the guides still compile**
 
 ```bash
 pack_feed
@@ -922,7 +922,7 @@ build_samples 2>&1 | tail -3
 
 Expected: green — `CONTRIBUTING.md` has no C# fences, but `tools/extract_doc_snippets.py` reads the guides and this is the cheap way to be sure nothing was disturbed.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add docs/decisions/0019-the-net-analysers-run-in-the-build-too.md \
@@ -936,7 +936,7 @@ git commit -m "Record why the code-quality analysers run here, and what each are
 
 **Depends on:** Task 10.
 
-- [ ] **Step 1: Final local verification, all of it**
+- [x] **Step 1: Final local verification, all of it**
 
 ```bash
 git status --porcelain                                  # must be empty
@@ -948,7 +948,7 @@ env -u DOTNET_ROOT dotnet format DataNet.slnx --verify-no-changes ; echo "format
 
 `format exit=0` is the only thing that means formatting is verified. If it times out on a `NamedPipeClientStream`, check `DOTNET_ROOT` against `which dotnet` before anything else.
 
-- [ ] **Step 2: Rebase onto `main` if it moved**
+- [x] **Step 2: Rebase onto `main` if it moved**
 
 ```bash
 git fetch origin
@@ -957,13 +957,13 @@ git log --oneline HEAD..origin/main
 
 If anything is listed, rebase — a long review is exactly when `main` moves, and the silent conflicts cost more than the reported ones.
 
-- [ ] **Step 3: Push**
+- [x] **Step 3: Push**
 
 ```bash
 git push -u origin chore/107-analysis-parity
 ```
 
-- [ ] **Step 4: Wait for CI, then read SonarCloud — a green build is not a clean Sonar**
+- [x] **Step 4: Wait for CI, then read SonarCloud — a green build is not a clean Sonar**
 
 ```bash
 gh run list --branch chore/107-analysis-parity --limit 5
@@ -971,7 +971,7 @@ gh run list --branch chore/107-analysis-parity --limit 5
 
 Then read the findings SonarCloud raised on this branch, passing `resolved=false` — without it the count never drops, because the API returns closed issues too. The oracle-drift gate is flaky: if it is the only red one, re-run it before believing it.
 
-- [ ] **Step 5: Open the pull request**
+- [x] **Step 5: Open the pull request**
 
 ```bash
 gh pr create --base main --title "Close the gap between the local build's analysis and the PR gate" --body "$(cat <<'EOF'

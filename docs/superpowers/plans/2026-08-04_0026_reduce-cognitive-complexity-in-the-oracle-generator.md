@@ -56,7 +56,7 @@ rest of the plan assumes refutation, because that is what the code shows.
 
 An issue is a hypothesis, including one you wrote yourself.
 
-- [ ] **Step 1: Read it**
+- [x] **Step 1: Read it**
 
 ```bash
 sed -n '250,300p' tools/generate_oracles.py
@@ -65,7 +65,7 @@ sed -n '250,300p' tools/generate_oracles.py
 Expected: `_jaro_reference` — a transcription of the published Jaro algorithm:
 match window, then transposition count. **Not glue code.**
 
-- [ ] **Step 2: Find its C# counterpart and how the same rule was answered there**
+- [x] **Step 2: Find its C# counterpart and how the same rule was answered there**
 
 ```bash
 grep -n -B4 "S3776" src/DataNet.Text/Distances/Jaro.cs
@@ -78,7 +78,7 @@ reference that makes a divergence auditable.
 The issue claimed that defence "does not apply" here. It is the same algorithm, in
 the other language.
 
-- [ ] **Step 3: Establish why the argument is *stronger* on this side**
+- [x] **Step 3: Establish why the argument is *stronger* on this side**
 
 This function **generates the reference data every other component is validated
 against**. So "the tests still pass" is circular — the tests compare against
@@ -88,7 +88,7 @@ invisible to the suite designed to catch such changes.
 Code that produces the oracle cannot be validated by the oracle. Write that down;
 it is the finding.
 
-- [ ] **Step 4: Check whether any other `S3776` in this file *is* glue code**
+- [x] **Step 4: Check whether any other `S3776` in this file *is* glue code**
 
 ```bash
 grep -n "^def \|^    def " tools/generate_oracles.py | head -40
@@ -107,19 +107,19 @@ here.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: `# NOSONAR` on the right line**
+- [x] **Step 1: `# NOSONAR` on the right line**
 
 Python has no pragma. `# NOSONAR` applies **only to the line it terminates**, so
 it goes on the `def` line — not at the top of the block, where it would silently
 cover nothing.
 
-- [ ] **Step 2: The reasoning in the docstring, not the commit message**
+- [x] **Step 2: The reasoning in the docstring, not the commit message**
 
 Name the algorithm, name the C# counterpart and its suppression, and state the
 circularity argument from Task 1 Step 3. A commit message is not where the next
 reader of this function looks.
 
-- [ ] **Step 3: Nothing else changed**
+- [x] **Step 3: Nothing else changed**
 
 ```bash
 git diff --stat tools/generate_oracles.py
@@ -134,7 +134,7 @@ diff is out of scope.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Regenerate**
+- [x] **Step 1: Regenerate**
 
 ```bash
 regen && oracles_unchanged
@@ -142,7 +142,7 @@ regen && oracles_unchanged
 
 Expected: `generator exit: 0` then `ORACLES CLEAN`.
 
-- [ ] **Step 2: If the generator fails, do not read anything into a clean diff**
+- [x] **Step 2: If the generator fails, do not read anything into a clean diff**
 
 The likely failure, hit while verifying this very change:
 
@@ -158,20 +158,20 @@ A green-looking "no drift" after a failed generator run proves nothing — nothi
 was regenerated. This is why the exit code is read directly rather than through a
 pipe.
 
-- [ ] **Step 3: Full gate**
+- [x] **Step 3: Full gate**
 
 ```bash
 dotnet build -c Release && dotnet test -c Release 2>&1 | tail -3
 oracles_unchanged
 ```
 
-- [ ] **Step 4: Correct the record in the pull request**
+- [x] **Step 4: Correct the record in the pull request**
 
 State plainly that the issue asked for the wrong thing and why. Quietly doing
 something different from what an issue asked leaves the issue's reasoning
 standing, and the next person applies it again.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tools/generate_oracles.py
