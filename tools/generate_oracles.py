@@ -3074,6 +3074,128 @@ def generate_wordpiece_added_tokens() -> dict:
     }
 
 
+# --- fuse_unk (issue #119) ----------------------------------------------------
+
+# Z is in none of these vocabularies, which is what makes it a run when repeated.
+_FUSE_VOCAB = {"[UNK]": 0, "a": 1, "b": 2, "ab": 3}
+_FUSE_MERGES = [("a", "b")]
+
+# A merge whose LEFT side is the unknown token. Training never produces this;
+# it is stated so that "does fusing happen before or after merging" has an
+# answer a test can read. Fused, "ZZa" merges to [UNK]a; unfused it cannot,
+# because the second [UNK] sits between the first and the a.
+_FUSE_MERGE_VOCAB = {"[UNK]": 0, "a": 1, "[UNK]a": 2}
+_FUSE_MERGE_MERGES = [("[UNK]", "a")]
+
+# The unknown token is ALSO a covered single character. This is the only shape
+# that tells "the previous symbol was substituted" from "the previous id equals
+# the unknown id", and the two disagree: "?Z" does not fuse, "ZZ" does.
+_FUSE_COVERED_UNK_VOCAB = {"?": 0, "a": 1}
+
+
+def _fuse_unk_model(vocab, merges, fuse, *, unk="[UNK]", pre_tokenizer=None, byte_level=False):
+    """One tokenizer, built rather than trained, so the file is byte-stable."""
+    from tokenizers import Tokenizer, models, pre_tokenizers  # noqa: PLC0415
+
+    # tokenizers 0.23.1 raises TypeError on unk_token=None; the keyword has to
+    # be omitted rather than passed empty.
+    kwargs = {"fuse_unk": fuse}
+    if unk is not None:
+        kwargs["unk_token"] = unk
+    tokenizer = Tokenizer(models.BPE(dict(vocab), list(merges), **kwargs))
+    if byte_level:
+        tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
+    elif pre_tokenizer == "whitespace":
+        tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
+    return tokenizer
+
+
+def _fuse_unk_models() -> list[tuple]:
+    """(name, declares, tokenizer, texts) for every shape the spec decided on."""
+    from tokenizers import pre_tokenizers  # noqa: PLC0415
+
+    byte_vocab = {c: i for i, c in enumerate(sorted(pre_tokenizers.ByteLevel.alphabet()))}
+
+    # A run in the middle, at each end, the whole text, a single unknown (where
+    # the two flags must agree), two runs split by a covered character, an
+    # alternation (no run at all), and an astral run.
+    plain_texts = ["aZZZa", "ZZa", "aZZ", "ZZZ", "aZa", "ZZaZZ", "ZaZaZ", "a\U0001F600\U0001F601a"]
+    # Without a pre-tokenizer the space is itself uncovered, so "aZ Za" is one
+    # run of three; with Whitespace it is two pieces and must not fuse across.
+    split_texts = ["aZ Za", "Z a Z"]
+
+    models_out = []
+    for fuse in (False, True):
+        suffix = "fused" if fuse else "unfused"
+        models_out.append((
+            f"plain_{suffix}", "no pre-tokenizer", fuse,
+            _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse), plain_texts + split_texts))
+        models_out.append((
+            f"whitespace_{suffix}", "Whitespace pre-tokenizer", fuse,
+            _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse, pre_tokenizer="whitespace"),
+            split_texts + plain_texts))
+        models_out.append((
+            f"unk_merge_{suffix}", "a merge whose left side is the unknown token", fuse,
+            _fuse_unk_model(_FUSE_MERGE_VOCAB, _FUSE_MERGE_MERGES, fuse), ["ZZa", "Za", "ZZZa"]))
+        models_out.append((
+            f"covered_unk_{suffix}", "an unknown token that is also a covered character", fuse,
+            _fuse_unk_model(_FUSE_COVERED_UNK_VOCAB, [], fuse, unk="?"),
+            ["?Z", "Z?", "??", "ZZ", "?Za", "a?Z"]))
+        models_out.append((
+            f"no_unk_{suffix}", "fuse_unk with no unknown token declared", fuse,
+            _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse, unk=None), ["aZZa", "ZZZ"]))
+        models_out.append((
+            f"byte_level_{suffix}", "byte-level, where no character is uncovered", fuse,
+            _fuse_unk_model(byte_vocab, [], fuse, unk=None, byte_level=True),
+            ["a\U0001F600b", "ab"]))
+    return models_out
+
+
+def generate_bpe_fuse_unk() -> dict:
+    """Every fuse_unk shape, each recorded with the flag off and on."""
+    carried = _fuse_unk_models()
+    cases = []
+    for name, _, _, tokenizer, texts in carried:
+        for text in texts:
+            enc = tokenizer.encode(text)
+            cases.append({
+                "id": len(cases),
+                "model": name,
+                "text": text,
+                "tokens": enc.tokens,
+                "ids": enc.ids,
+            })
+
+    # Read as: turning the flag on changes this model's stream, or does not.
+    # The `differs` column is measured below rather than asserted here.
+    streams = {}
+    for case in cases:
+        streams.setdefault(case["model"], {})[case["text"]] = case["tokens"]
+    pairs = []
+    for name, _, fuse, _, _ in carried:
+        if not fuse:
+            continue
+        unfused = name.replace("_fused", "_unfused")
+        differs = any(streams[name][t] != streams[unfused][t] for t in streams[name])
+        pairs.append({"fused": name, "unfused": unfused, "differs": differs})
+
+    return {
+        "metadata": {
+            "algorithm": "BPE fuse_unk",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "hand-built: four classic BPE shapes and one byte-level, all defined in tools/generate_oracles.py",
+            "models": {
+                name: {"declares": declares, "fuse_unk": fuse, "tokenizer_json": tokenizer.to_str()}
+                for name, declares, fuse, tokenizer, _ in carried
+            },
+            "fuse_pairs": pairs,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -3122,6 +3244,7 @@ def main() -> None:
         "bpe_added_tokens.json": generate_bpe_added_tokens,
         "bpe_added_token_flags.json": generate_bpe_added_token_flags,
         "bpe_no_op_settings.json": generate_bpe_no_op_settings,
+        "bpe_fuse_unk.json": generate_bpe_fuse_unk,
         "wordpiece_added_tokens.json": generate_wordpiece_added_tokens,
     }
     for filename, gen in generators.items():
