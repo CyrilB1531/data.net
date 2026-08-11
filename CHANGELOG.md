@@ -440,6 +440,76 @@ First release of a fourth package.
   k=10. They were taken in their own window under a much heavier load than the
   original 29 rows, which is recorded beside them rather than inherited, in
   [the performance guide](docs/guides/performance.md).
+- **Regression metrics at scikit-learn parity** — `MeanSquaredError`,
+  `RootMeanSquaredError`, `MeanAbsoluteError`, `MedianAbsoluteError`,
+  `MeanAbsolutePercentageError`, `MeanSquaredLogError`,
+  `RootMeanSquaredLogError`, `MaxError`, `R2`, `ExplainedVariance` and
+  `PinballLoss`, each replaying a frozen corpus generated from scikit-learn
+  rather than hand-written expectations, and each with a row in
+  [`docs/equivalence.md`](docs/equivalence.md) naming its sklearn call and its
+  deliberate divergences. `RootMeanSquaredError` and `RootMeanSquaredLogError`
+  are types of their own rather than a `squared: false` flag, because
+  scikit-learn removed `mean_squared_error(squared=False)` in 1.6 — and the root
+  is taken per output, before the reduction, as it is there. The six remaining
+  functions (the three D² scores and the three deviances) are deliberately a
+  second change, and why is in
+  [`docs/decisions/0021`](docs/decisions/0021-multioutput-is-a-method-not-an-enum.md).
+- **`multioutput=` is spelled by choosing a method.** `Score(…)` is
+  `uniform_average`, and takes an optional `outputWeights` span for
+  `multioutput=[…]`; `PerOutput(…)` is `raw_values`; `VarianceWeighted(…)` is
+  `variance_weighted`, and exists on `R2` and `ExplainedVariance` alone because
+  those are the only two scikit-learn accepts it for. It is not an enum for
+  three separate reasons — `raw_values` changes the return type, which
+  [`docs/decisions/0016`](docs/decisions/0016-metrics-package-placement.md)
+  already ruled out for `average=None`; `variance_weighted` would be a member
+  nine of the eleven metrics reject at run time; and an array of weights is data
+  an enum member cannot carry. The result is that every call that compiles is a
+  call that runs. Two-dimensional targets arrive row-major with an
+  `outputCount`, since a span cannot carry a rectangular array.
+- **The undefined cases are two knobs, not one.** `forceFinite` answers a truth
+  of zero variance over two or more samples — scikit-learn's `force_finite`, `1`
+  when the prediction was perfect and `0` otherwise, or the unclamped `nan` and
+  `-inf`. `R2` additionally takes `ZeroDivision`, defaulting to `NaN`, for the
+  unrelated case of fewer than two samples, which scikit-learn answers `nan`
+  under either setting of `force_finite`. `ExplainedVariance` takes no
+  `ZeroDivision` at all, because it has no such case:
+  `explained_variance_score([3], [5])` is `1.0`. `MeanAbsolutePercentageError`
+  clamps its denominator at numpy's machine epsilon, `2**-52` — not
+  `double.Epsilon`, which is 292 orders of magnitude smaller — and
+  `MeanSquaredLogError` refuses a target at or below −1, naming which side
+  carried it.
+- **The weighted median averages within one machine epsilon, not exactly.**
+  `MedianAbsoluteError` under `sampleWeight` is scikit-learn's averaged weighted
+  percentile, and whether it averages two order statistics or takes one is
+  decided by comparing the overshoot past the halfway point against
+  `np.finfo(float64).eps` — scikit-learn's own test, and load-bearing: on
+  `[0.1] * 10`, which is `np.ones(n) / n`, an exact comparison answers `4.0`
+  where scikit-learn answers `4.5`. It does not follow that a uniform weight
+  reproduces the unweighted median; where the overshoot is wider than an epsilon
+  it does not, in scikit-learn either, and `[0.7] * 10` over the residuals `0…9`
+  gives `5.0` against the unweighted `4.5`. Both are reproduced.
+- **Two refusals taken from `check_array` and from `numpy.average`.** A
+  `sampleWeight` that is zero throughout is refused with scikit-learn's sentence
+  — the rule is *every* weight zero, not the sum, so an all-negative weight still
+  scores — and `outputWeights` that sum to zero are refused with numpy's, where
+  the rule *is* the sum, so `[1, -1]` is refused and `[-1, -1]` scores. The two
+  differ because two different layers raise them, and both were measured rather
+  than assumed.
+- **`log(1 + x)` is computed as `log1p`.** `MeanSquaredLogError` — and through
+  it `RootMeanSquaredLogError` — uses Kahan's identity rather than spelling the
+  addition out, which on targets around `1e-9` is the difference between
+  agreeing with scikit-learn to a unit in the last place and being out by 1.4e-8
+  relative. `netstandard2.0` has no `log1p` under any name, and one
+  implementation for both targets is what keeps them from disagreeing.
+- **Measured, and one row honestly under the gate.** `mse`, `mae`, `median_ae`
+  and `r2` were benchmarked against scikit-learn over six shapes. `median_ae` is
+  the one operation in the package below the 1× processor-time gate, at
+  0.80–0.90× at n=100 000 and n=1 000 000 — after a rewrite that took it from
+  0.19×, by selecting the one or two order statistics the median needs with an
+  introselect-bounded quickselect instead of sorting the whole residual array.
+  The remaining gap is reported rather than rounded away; every row, both
+  passes, and the load the machine was under are in
+  [the performance guide](docs/guides/performance.md).
 
 ## [0.2.0] — 2026-08-05
 
