@@ -102,6 +102,67 @@ with `--check-feed`, which additionally proves the dependency floor is published
 running `python3 tools/check_nuspec_dependencies.py ./artifacts --require-all`
 closes the loop.
 
+## Before pushing: the half the build cannot see
+
+`dotnet build` enforces the Sonar rules that live in `.globalconfig` (see
+[Analyzers](#analyzers) below), but it has no view of three things the quality
+gate on the pull request still judges: the Python rules over `tools/`,
+duplication, and coverage. `tools/sonarqube-local/compose.yaml` runs a disposable
+SonarQube Community server that covers all three, for whoever wants that answer
+before pushing rather than after.
+
+```bash
+cd tools/sonarqube-local && podman compose up -d
+# Wait for the server rather than sleeping blind:
+until curl -s http://localhost:9000/api/system/status | grep -q '"status":"UP"'; do sleep 5; done
+```
+
+Then, from the repository root, with a token created in the local server's UI
+(*My Account → Security*, `local` is a fine name) exported as `SONAR_TOKEN`:
+
+```bash
+dotnet tool install --global dotnet-sonarscanner   # once, if absent
+dotnet sonarscanner begin /k:"datanet-local" \
+  /d:sonar.host.url="http://localhost:9000" /d:sonar.token="$SONAR_TOKEN" \
+  /d:sonar.python.version="3.12" \
+  /d:sonar.exclusions="tests/oracles/**,samples/DataNet.DocSnippets/Generated/**"
+dotnet build DataNet.slnx -c Release --no-incremental
+dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+```
+
+The command is `podman compose`, not `docker compose`: on this machine `docker`
+is a thin shim that execs `podman`, and `docker compose` has no built-in
+provider — it works only because `podman-compose` is also installed and picked
+up as an external provider. Either invocation ends up running the same
+`podman-compose`; the documented one is the one actually run to produce the
+numbers below.
+
+Measured on this machine: the image (`sonarqube:community`, pinned by digest in
+the compose file) is **≈1.4 GB** and took **38 s** to pull. Bringing the
+container up is near-instant (2 s to launch), but the server itself takes
+roughly **56 s** from launch to answering `"status":"UP"`. The three scanner
+commands — `begin`, `dotnet build --no-incremental`, `end` — took **5 s**,
+**39 s** and **31 s** respectively (75 s total) against this repository's
+current size (17 192 lines of code: 13 361 C#, 3 815 Python, 16 XML). The server
+reported **0 findings for C# and 0 for Python** on that run — a clean tree, not
+a light one: duplication and coverage sensors both ran (2.0% duplicated lines,
+28 duplicated blocks; coverage reads 0.0% because this run's commands, matching
+the ones above, do not feed it a coverage report — CI's job does).
+
+This is not a rehearsal of `Build and analyze`, and saying otherwise would make
+the document worse than not writing it:
+
+- the Community edition has no branch or pull-request analysis, so the verdict
+  is over the whole project and never over the diff — which is the axis the
+  real gate judges on;
+- the custom `No new issue` gate and its seven conditions are not there — a
+  fresh local server starts with only the default `Sonar way` gate, and this run
+  was evaluated against that one instead;
+- its analyser versions move independently of the server's, so a rule firing
+  (or not) here does not pin down which version fired it on SonarCloud.
+
+A finding it reports is real, a clean run promises nothing.
+
 ## Working across two packages
 
 The three libraries version and release independently, and `DataNet.Fuzzy`
@@ -249,11 +310,17 @@ comment giving the reason:
 #pragma warning disable S3776
 ```
 
-Do not reach for `.editorconfig` or `.vscode/settings.json` for SonarLint rules.
-SonarLint reads neither: it ignores `.editorconfig` entirely, and `sonarlint.rules`
-is declared application-scope in the extension manifest, so VS Code silently drops
-it from a workspace file. The pragma works because SonarLint's C# analysis is
-SonarAnalyzer running through Roslyn.
+Do not reach for `.editorconfig` or `.vscode/settings.json` **to change what
+SonarLint reports**. SonarLint reads neither: it ignores `.editorconfig`
+entirely, and `sonarlint.rules` is declared application-scope in the extension
+manifest, so VS Code silently drops it from a workspace file. The pragma works
+because SonarLint's C# analysis is SonarAnalyzer running through Roslyn.
+
+The **build** is a different tool: its Roslyn pass does read analyzer
+configuration files, which is how `.globalconfig` raises the rules
+SonarAnalyzer ships disabled (see [Analyzers](#analyzers) above). That file is
+generated from the server's profile — change the profile, or the generator,
+never the file.
 
 A rule that a whole area trips *by being that area* — xunit's underscored test
 names, BenchmarkDotNet's reflection-instantiated types, a sample printing to the

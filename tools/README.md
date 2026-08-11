@@ -8,9 +8,15 @@ verifies what it downloaded before writing anything; `fetch_xlmr_vocab.py` and
 `build_tiny_models.py` builds fixtures too small for that pipeline to bother
 with — two ONNX graphs, a trained BPE, and a hand-constructed BPE — and
 commits them directly;
-`check_nuspec_dependencies.py` verifies what the packages *declare*; and
+`check_nuspec_dependencies.py` verifies what the packages *declare*;
 `check_version_floor.py` verifies that the version numbers the source tree keeps
-in three places still agree.
+in three places still agree; `generate_sonar_globalconfig.py` writes the
+`.globalconfig` that raises the Sonar rules `SonarAnalyzer.CSharp` ships
+disabled, from the SonarCloud quality profile that gates the pull request; and
+`sonarqube-local/` holds the compose file for a disposable local SonarQube
+server, covering the Python rules, duplication and coverage that no local
+`dotnet build` reaches — see
+[`../CONTRIBUTING.md`](../CONTRIBUTING.md#before-pushing-the-half-the-build-cannot-see).
 
 ## `generate_oracles.py`
 
