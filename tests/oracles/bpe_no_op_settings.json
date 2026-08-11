@@ -1,0 +1,473 @@
+{
+ "metadata": {
+  "algorithm": "BPE model settings that change nothing, and the ByteLevel field with no default",
+  "library": "tokenizers",
+  "library_version": "0.23.1",
+  "model": "hand-built: a 7-entry classic BPE and a 4-entry byte-level BPE, both defined in tools/generate_oracles.py",
+  "models": {
+   "baseline": {
+    "declares": "no end_of_word_suffix, no continuing_subword_prefix, no dropout",
+    "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":null,\"continuing_subword_prefix\":null,\"end_of_word_suffix\":null,\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"b\":1,\"c\":2,\"ab\":3,\"a</w>\":4,\"b</w>\":5,\"c</w>\":6},\"merges\":[[\"a\",\"b\"]]}}"
+   },
+   "end_of_word_suffix_empty": {
+    "declares": "end_of_word_suffix: \"\"",
+    "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":null,\"continuing_subword_prefix\":null,\"end_of_word_suffix\":\"\",\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"b\":1,\"c\":2,\"ab\":3,\"a</w>\":4,\"b</w>\":5,\"c</w>\":6},\"merges\":[[\"a\",\"b\"]]}}"
+   },
+   "end_of_word_suffix_marker": {
+    "declares": "end_of_word_suffix: \"</w>\"",
+    "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":null,\"continuing_subword_prefix\":null,\"end_of_word_suffix\":\"</w>\",\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"b\":1,\"c\":2,\"ab\":3,\"a</w>\":4,\"b</w>\":5,\"c</w>\":6},\"merges\":[[\"a\",\"b\"]]}}"
+   },
+   "continuing_subword_prefix_empty": {
+    "declares": "continuing_subword_prefix: \"\"",
+    "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":null,\"continuing_subword_prefix\":\"\",\"end_of_word_suffix\":null,\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"b\":1,\"c\":2,\"ab\":3,\"a</w>\":4,\"b</w>\":5,\"c</w>\":6},\"merges\":[[\"a\",\"b\"]]}}"
+   },
+   "dropout_zero": {
+    "declares": "dropout: 0.0",
+    "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":0.0,\"unk_token\":null,\"continuing_subword_prefix\":null,\"end_of_word_suffix\":null,\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"b\":1,\"c\":2,\"ab\":3,\"a</w>\":4,\"b</w>\":5,\"c</w>\":6},\"merges\":[[\"a\",\"b\"]]}}"
+   },
+   "byte_level_add_prefix_space_true": {
+    "declares": "ByteLevel add_prefix_space: true",
+    "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"ByteLevel\",\"add_prefix_space\":true,\"trim_offsets\":true,\"use_regex\":true},\"post_processor\":null,\"decoder\":{\"type\":\"ByteLevel\",\"add_prefix_space\":true,\"trim_offsets\":true,\"use_regex\":true},\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":null,\"continuing_subword_prefix\":null,\"end_of_word_suffix\":null,\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"b\":1,\"Ġ\":2,\"ab\":3},\"merges\":[[\"a\",\"b\"]]}}"
+   },
+   "byte_level_add_prefix_space_false": {
+    "declares": "ByteLevel add_prefix_space: false",
+    "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"ByteLevel\",\"add_prefix_space\":false,\"trim_offsets\":true,\"use_regex\":true},\"post_processor\":null,\"decoder\":{\"type\":\"ByteLevel\",\"add_prefix_space\":true,\"trim_offsets\":true,\"use_regex\":true},\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":null,\"continuing_subword_prefix\":null,\"end_of_word_suffix\":null,\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"b\":1,\"Ġ\":2,\"ab\":3},\"merges\":[[\"a\",\"b\"]]}}"
+   }
+  },
+  "no_op_pairs": [
+   {
+    "case": "end_of_word_suffix_empty",
+    "baseline": "baseline"
+   },
+   {
+    "case": "continuing_subword_prefix_empty",
+    "baseline": "baseline"
+   },
+   {
+    "case": "dropout_zero",
+    "baseline": "baseline"
+   }
+  ],
+  "contrast_pairs": [
+   {
+    "case": "end_of_word_suffix_marker",
+    "baseline": "baseline"
+   },
+   {
+    "case": "byte_level_add_prefix_space_true",
+    "baseline": "byte_level_add_prefix_space_false"
+   }
+  ],
+  "add_prefix_space_refusals": [
+   {
+    "position": "pre_tokenizer",
+    "document": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [], \"normalizer\": null, \"pre_tokenizer\": {\"type\": \"ByteLevel\", \"trim_offsets\": true, \"use_regex\": true}, \"post_processor\": null, \"decoder\": {\"type\": \"ByteLevel\", \"add_prefix_space\": true, \"trim_offsets\": true, \"use_regex\": true}, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": null, \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"b\": 1, \"\\u0120\": 2, \"ab\": 3}, \"merges\": [[\"a\", \"b\"]]}}",
+    "error": "missing field `add_prefix_space` at line 1 column 175"
+   },
+   {
+    "position": "sequence_step",
+    "document": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [], \"normalizer\": null, \"pre_tokenizer\": {\"type\": \"Sequence\", \"pretokenizers\": [{\"type\": \"Split\", \"pattern\": {\"Regex\": \" \"}, \"behavior\": \"Isolated\", \"invert\": false}, {\"type\": \"ByteLevel\", \"trim_offsets\": true, \"use_regex\": false}]}, \"post_processor\": null, \"decoder\": {\"type\": \"ByteLevel\", \"add_prefix_space\": true, \"trim_offsets\": true, \"use_regex\": true}, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": null, \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"b\": 1, \"\\u0120\": 2, \"ab\": 3}, \"merges\": [[\"a\", \"b\"]]}}",
+    "error": "missing field `add_prefix_space` at line 1 column 304"
+   },
+   {
+    "position": "decoder",
+    "document": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [], \"normalizer\": null, \"pre_tokenizer\": {\"type\": \"ByteLevel\", \"add_prefix_space\": true, \"trim_offsets\": true, \"use_regex\": true}, \"post_processor\": null, \"decoder\": {\"type\": \"ByteLevel\", \"trim_offsets\": true, \"use_regex\": true}, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": null, \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"b\": 1, \"\\u0120\": 2, \"ab\": 3}, \"merges\": [[\"a\", \"b\"]]}}",
+    "error": "data did not match any variant of untagged enum PyDecoderWrapper at line 1 column 300"
+   }
+  ],
+  "count": 31
+ },
+ "cases": [
+  {
+   "id": 0,
+   "model": "baseline",
+   "text": "ab",
+   "tokens": [
+    "ab"
+   ],
+   "ids": [
+    3
+   ]
+  },
+  {
+   "id": 1,
+   "model": "baseline",
+   "text": "abc",
+   "tokens": [
+    "ab",
+    "c"
+   ],
+   "ids": [
+    3,
+    2
+   ]
+  },
+  {
+   "id": 2,
+   "model": "baseline",
+   "text": "ab c",
+   "tokens": [
+    "ab",
+    "c"
+   ],
+   "ids": [
+    3,
+    2
+   ]
+  },
+  {
+   "id": 3,
+   "model": "baseline",
+   "text": "a b",
+   "tokens": [
+    "a",
+    "b"
+   ],
+   "ids": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": 4,
+   "model": "baseline",
+   "text": "c",
+   "tokens": [
+    "c"
+   ],
+   "ids": [
+    2
+   ]
+  },
+  {
+   "id": 5,
+   "model": "end_of_word_suffix_empty",
+   "text": "ab",
+   "tokens": [
+    "ab"
+   ],
+   "ids": [
+    3
+   ]
+  },
+  {
+   "id": 6,
+   "model": "end_of_word_suffix_empty",
+   "text": "abc",
+   "tokens": [
+    "ab",
+    "c"
+   ],
+   "ids": [
+    3,
+    2
+   ]
+  },
+  {
+   "id": 7,
+   "model": "end_of_word_suffix_empty",
+   "text": "ab c",
+   "tokens": [
+    "ab",
+    "c"
+   ],
+   "ids": [
+    3,
+    2
+   ]
+  },
+  {
+   "id": 8,
+   "model": "end_of_word_suffix_empty",
+   "text": "a b",
+   "tokens": [
+    "a",
+    "b"
+   ],
+   "ids": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": 9,
+   "model": "end_of_word_suffix_empty",
+   "text": "c",
+   "tokens": [
+    "c"
+   ],
+   "ids": [
+    2
+   ]
+  },
+  {
+   "id": 10,
+   "model": "end_of_word_suffix_marker",
+   "text": "ab",
+   "tokens": [
+    "a",
+    "b</w>"
+   ],
+   "ids": [
+    0,
+    5
+   ]
+  },
+  {
+   "id": 11,
+   "model": "end_of_word_suffix_marker",
+   "text": "abc",
+   "tokens": [
+    "ab",
+    "c</w>"
+   ],
+   "ids": [
+    3,
+    6
+   ]
+  },
+  {
+   "id": 12,
+   "model": "end_of_word_suffix_marker",
+   "text": "ab c",
+   "tokens": [
+    "a",
+    "b</w>",
+    "c</w>"
+   ],
+   "ids": [
+    0,
+    5,
+    6
+   ]
+  },
+  {
+   "id": 13,
+   "model": "end_of_word_suffix_marker",
+   "text": "a b",
+   "tokens": [
+    "a</w>",
+    "b</w>"
+   ],
+   "ids": [
+    4,
+    5
+   ]
+  },
+  {
+   "id": 14,
+   "model": "end_of_word_suffix_marker",
+   "text": "c",
+   "tokens": [
+    "c</w>"
+   ],
+   "ids": [
+    6
+   ]
+  },
+  {
+   "id": 15,
+   "model": "continuing_subword_prefix_empty",
+   "text": "ab",
+   "tokens": [
+    "ab"
+   ],
+   "ids": [
+    3
+   ]
+  },
+  {
+   "id": 16,
+   "model": "continuing_subword_prefix_empty",
+   "text": "abc",
+   "tokens": [
+    "ab",
+    "c"
+   ],
+   "ids": [
+    3,
+    2
+   ]
+  },
+  {
+   "id": 17,
+   "model": "continuing_subword_prefix_empty",
+   "text": "ab c",
+   "tokens": [
+    "ab",
+    "c"
+   ],
+   "ids": [
+    3,
+    2
+   ]
+  },
+  {
+   "id": 18,
+   "model": "continuing_subword_prefix_empty",
+   "text": "a b",
+   "tokens": [
+    "a",
+    "b"
+   ],
+   "ids": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": 19,
+   "model": "continuing_subword_prefix_empty",
+   "text": "c",
+   "tokens": [
+    "c"
+   ],
+   "ids": [
+    2
+   ]
+  },
+  {
+   "id": 20,
+   "model": "dropout_zero",
+   "text": "ab",
+   "tokens": [
+    "ab"
+   ],
+   "ids": [
+    3
+   ]
+  },
+  {
+   "id": 21,
+   "model": "dropout_zero",
+   "text": "abc",
+   "tokens": [
+    "ab",
+    "c"
+   ],
+   "ids": [
+    3,
+    2
+   ]
+  },
+  {
+   "id": 22,
+   "model": "dropout_zero",
+   "text": "ab c",
+   "tokens": [
+    "ab",
+    "c"
+   ],
+   "ids": [
+    3,
+    2
+   ]
+  },
+  {
+   "id": 23,
+   "model": "dropout_zero",
+   "text": "a b",
+   "tokens": [
+    "a",
+    "b"
+   ],
+   "ids": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": 24,
+   "model": "dropout_zero",
+   "text": "c",
+   "tokens": [
+    "c"
+   ],
+   "ids": [
+    2
+   ]
+  },
+  {
+   "id": 25,
+   "model": "byte_level_add_prefix_space_true",
+   "text": "ab",
+   "tokens": [
+    "Ġ",
+    "ab"
+   ],
+   "ids": [
+    2,
+    3
+   ]
+  },
+  {
+   "id": 26,
+   "model": "byte_level_add_prefix_space_true",
+   "text": "a b",
+   "tokens": [
+    "Ġ",
+    "a",
+    "Ġ",
+    "b"
+   ],
+   "ids": [
+    2,
+    0,
+    2,
+    1
+   ]
+  },
+  {
+   "id": 27,
+   "model": "byte_level_add_prefix_space_true",
+   "text": " a",
+   "tokens": [
+    "Ġ",
+    "a"
+   ],
+   "ids": [
+    2,
+    0
+   ]
+  },
+  {
+   "id": 28,
+   "model": "byte_level_add_prefix_space_false",
+   "text": "ab",
+   "tokens": [
+    "ab"
+   ],
+   "ids": [
+    3
+   ]
+  },
+  {
+   "id": 29,
+   "model": "byte_level_add_prefix_space_false",
+   "text": "a b",
+   "tokens": [
+    "a",
+    "Ġ",
+    "b"
+   ],
+   "ids": [
+    0,
+    2,
+    1
+   ]
+  },
+  {
+   "id": 30,
+   "model": "byte_level_add_prefix_space_false",
+   "text": " a",
+   "tokens": [
+    "Ġ",
+    "a"
+   ],
+   "ids": [
+    2,
+    0
+   ]
+  }
+ ]
+}
