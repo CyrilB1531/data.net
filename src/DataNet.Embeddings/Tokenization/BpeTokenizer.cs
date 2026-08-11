@@ -62,6 +62,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private readonly bool _hasUnk;
     private readonly bool _byteLevel;
     private readonly bool _ignoreMerges;
+    private readonly bool _fuseUnk;
 
     /// <summary>Creates a tokenizer from a loaded BPE model.</summary>
     /// <param name="vocabulary">A vocabulary from <see cref="Persistence.BpeFilesLoader"/> or <see cref="Persistence.TokenizerJsonLoader"/>.</param>
@@ -73,6 +74,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         _endOfWord = vocabulary.EndOfWordSuffix;
         _byteLevel = vocabulary.ByteLevel;
         _ignoreMerges = vocabulary.IgnoreMerges;
+        _fuseUnk = vocabulary.FuseUnk;
 
         _vocab = new Dictionary<string, int>(vocabulary.Vocab.Count, StringComparer.Ordinal);
         int maxId = -1;
@@ -304,6 +306,13 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     {
         int count = 0;
         int i = 0;
+        // Whether the previous code point was SUBSTITUTED, which is not the same
+        // question as whether the previous symbol's id is _unkId: an unknown
+        // token that is itself a covered character produces that id without
+        // having been substituted, and HuggingFace does not fuse across it.
+        // Measured with unk_token "q" over a vocabulary containing "q":
+        // "qZ" gives two tokens, "ZZ" gives one.
+        bool previousWasSubstituted = false;
         while (i < piece.Length)
         {
             int width = char.IsHighSurrogate(piece[i])
@@ -325,10 +334,19 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             if (_vocab.TryGetValue(symbol, out int id))
             {
                 symbols[count++] = id;
+                previousWasSubstituted = false;
             }
             else if (_hasUnk)
             {
-                symbols[count++] = _unkId;
+                // fuse_unk: a run of uncovered code points is one unknown token,
+                // not one each. This happens before Merge runs, which is why a
+                // fused symbol can itself take part in a merge — as HuggingFace's
+                // does.
+                if (!_fuseUnk || !previousWasSubstituted)
+                {
+                    symbols[count++] = _unkId;
+                }
+                previousWasSubstituted = true;
             }
             i += width;
         }
