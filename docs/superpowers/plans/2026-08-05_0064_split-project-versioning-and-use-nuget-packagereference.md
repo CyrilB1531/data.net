@@ -49,24 +49,24 @@ resolved_project_refs() {
 
 **Depends on:** nothing.
 
-- [ ] **Step 1: Remove the solution-wide `<Version>`**
+- [x] **Step 1: Remove the solution-wide `<Version>`**
 
 Keep everything genuinely shared in the root props. `<Version>` is not shared —
 that is the whole issue.
 
-- [ ] **Step 2: A named property per package, not a bare `<Version>`**
+- [x] **Step 2: A named property per package, not a bare `<Version>`**
 
 Three places need the number for three different reasons: the csproj (identity),
 `src/Directory.Packages.props` (the floor `DataNet.Fuzzy` depends on), and the
 sample (the version just packed). One source of truth, no tooling.
 
-- [ ] **Step 3: Record why no version tool was adopted**
+- [x] **Step 3: Record why no version tool was adopted**
 
 Nerdbank.GitVersioning, MinVer and GitVersion all **derive** a version from git
 topology. Nothing here wants a derived version: the number is a deliberate
 semantic statement. Put this in ADR 0012 — otherwise it gets proposed again.
 
-- [ ] **Step 4: Comment the trap in the file itself**
+- [x] **Step 4: Comment the trap in the file itself**
 
 Never leave a declared version equal to one already on the feed. A package's
 identity is id+version, so a collision makes two different assemblies answer to
@@ -84,24 +84,24 @@ absorbed by the feed while the job reports success.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: `PackageReference` on a published floor, written out in full**
+- [x] **Step 1: `PackageReference` on a published floor, written out in full**
 
 Not tracking `$(DataNetTextVersion)`. It answers a different question — the
 minimum a consumer must take — and naming an already-published release is what
 keeps a fresh clone buildable with no pack step.
 
-- [ ] **Step 2: The opt-in dev loop**
+- [x] **Step 2: The opt-in dev loop**
 
 `DataNetUseProjectRefs=true` flips the reference back, through a conditional
 `ItemGroup`. MSBuild reads environment variables as properties, so one `export`
 covers `build`, `test` and the IDE.
 
-- [ ] **Step 3: Print a high-importance message when it is on**
+- [x] **Step 3: Print a high-importance message when it is on**
 
 A build silently using a graph that will never ship is how a benchmark or a
 packaging check ends up describing nothing real.
 
-- [ ] **Step 4: Prove a clean clone builds**
+- [x] **Step 4: Prove a clean clone builds**
 
 ```bash
 git clone . /tmp/cleanclone && cd /tmp/cleanclone && dotnet build DataNet.slnx -c Release
@@ -119,14 +119,14 @@ git clone . /tmp/cleanclone && cd /tmp/cleanclone && dotnet build DataNet.slnx -
 **Depends on:** Task 2.
 **Produces:** a gate that discriminates, rather than one that matches text.
 
-- [ ] **Step 1: Reject the grep the issue asked for, and say why**
+- [x] **Step 1: Reject the grep the issue asked for, and say why**
 
 `git grep '<ProjectReference' -- 'src/**/*.csproj'` **contradicts the issue's own
 §3**: the prescribed conditional `ItemGroup` contains that literal text, so the
 grep fails on the sanctioned solution — and it cannot tell the shipped path from
 the dev loop either way.
 
-- [ ] **Step 2: Ask MSBuild what was resolved**
+- [x] **Step 2: Ask MSBuild what was resolved**
 
 ```bash
 resolved_project_refs src/DataNet.Fuzzy
@@ -137,13 +137,13 @@ Expected: `[]` by default, `['../DataNet.Text/DataNet.Text.csproj']` with the
 property set. **Verify it discriminates** — a check that returns the same answer
 both ways is not a check.
 
-- [ ] **Step 3: Note what the `.nuspec` check does *not* prove**
+- [x] **Step 3: Note what the `.nuspec` check does *not* prove**
 
 Both paths emit the same `<dependency>`, so it cannot tell you which was taken. It
 guards an unexpected or vanished dependency instead. Say so, or it will be cited
 for the wrong guarantee.
 
-- [ ] **Step 4: Split it into parse, check and report**
+- [x] **Step 4: Split it into parse, check and report**
 
 ---
 
@@ -156,7 +156,7 @@ for the wrong guarantee.
 **Depends on:** Task 2.
 **Produces:** the fix for the silent regression this migration introduced.
 
-- [ ] **Step 1: Check what the mirror actually resolved**
+- [x] **Step 1: Check what the mirror actually resolved**
 
 NuGet resolves package assets against the **consuming** project's framework, and
 `SetTargetFramework` does **not** cross a `PackageReference`.
@@ -167,15 +167,15 @@ a mirror, every test green, because the guard only inspected `DataNet.Fuzzy`.
 
 This is exactly the false confidence that guard exists to prevent.
 
-- [ ] **Step 2: Pin `DataNet.Text` in the mirror, and widen the guard to cover it**
+- [x] **Step 2: Pin `DataNet.Text` in the mirror, and widen the guard to cover it**
 
-- [ ] **Step 3: Verify by removing the pin**
+- [x] **Step 3: Verify by removing the pin**
 
 ```text
 Expected ".NETStandard,Version=v2.0" / Actual ".NETCoreApp,Version=v10.0"
 ```
 
-- [ ] **Step 4: Record why the benchmark mirror still works**
+- [x] **Step 4: Record why the benchmark mirror still works**
 
 **A direct `ProjectReference` silently outranks a `PackageReference` of the same
 id**, with no warning. That is the only reason
@@ -194,12 +194,12 @@ Load-bearing in two places now — write it down.
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: Remove `-p:Version` from every workflow**
+- [x] **Step 1: Remove `-p:Version` from every workflow**
 
 Further than the issue asked. The tag chooses *which* release to cut; it does not
 set the number.
 
-- [ ] **Step 2: Compare the tag against `Version.props` and refuse a mismatch**
+- [x] **Step 2: Compare the tag against `Version.props` and refuse a mismatch**
 
 ```bash
 # Guard check: a bogus tag against the declared version must fail the job.
@@ -207,11 +207,11 @@ set the number.
 
 Expected: `9.9.9` refused against a declared `0.2.1`.
 
-- [ ] **Step 3: Per-package tags; retire the umbrella `v*`**
+- [x] **Step 3: Per-package tags; retire the umbrella `v*`**
 
 `DataNet.Fuzzy/v0.2.1`.
 
-- [ ] **Step 4: `check_version_floor.py`**
+- [x] **Step 4: `check_version_floor.py`**
 
 Three files hold a `DataNet.Text` version number for three different reasons, and
 **MSBuild is happy when they disagree**. Offline and instant; CI adds
@@ -230,25 +230,25 @@ Three files hold a `DataNet.Text` version number for three different reasons, an
 
 **Depends on:** Task 5.
 
-- [ ] **Step 1: Ship a genuine mix**
+- [x] **Step 1: Ship a genuine mix**
 
 `DataNet.Fuzzy 0.2.1`, `DataNet.Text 0.2.0`, `DataNet.Embeddings 0.2.0` — and the
 sample builds and runs against it. A capability never used is a capability that
 does not work.
 
-- [ ] **Step 2: The sample references the versions just packed**
+- [x] **Step 2: The sample references the versions just packed**
 
 Through the named properties, so it tracks `pack` rather than pinning numbers that
 go stale.
 
-- [ ] **Step 3: ADR 0012, and an amendment note on ADR 0009**
+- [x] **Step 3: ADR 0012, and an amendment note on ADR 0009**
 
-- [ ] **Step 4: `CONTRIBUTING.md` — the two-package working loop**
+- [x] **Step 4: `CONTRIBUTING.md` — the two-package working loop**
 
 Including the two things to keep straight: it is a local loop and not a merge
 strategy, and it must be unset before measuring anything.
 
-- [ ] **Step 5: Full gate**
+- [x] **Step 5: Full gate**
 
 ```bash
 build_all && test_all 2>&1 | tail -3

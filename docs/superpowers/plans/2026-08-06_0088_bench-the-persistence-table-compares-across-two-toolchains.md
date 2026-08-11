@@ -39,17 +39,17 @@ ns_in()  { dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks 
 **Produces:** the list of claims to re-check, so "the numbers moved a bit" cannot
 substitute for an answer.
 
-- [ ] **Step 1: Read section 4 and write down its conclusion**
+- [x] **Step 1: Read section 4 and write down its conclusion**
 
 Expected: the section rests on `SpieceModel` at **2.4×** and **1.95 MB** of extra
 allocation; the other five rows are read as noise.
 
-- [ ] **Step 2: Split the conclusion into a counted part and a sampled part**
+- [x] **Step 2: Split the conclusion into a counted part and a sampled part**
 
 - **Allocation is counted**, not sampled — not at risk from the toolchain.
 - **Time is sampled** — at risk.
 
-- [ ] **Step 3: Note why the "noise" rows are the fragile ones**
+- [x] **Step 3: Note why the "noise" rows are the fragile ones**
 
 The differences being dismissed as noise are **the same size as the harness
 difference**. They are more likely to move than the headline row.
@@ -60,23 +60,23 @@ difference**. They are more likely to move than the headline row.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Run both**
+- [x] **Step 1: Run both**
 
 ```bash
 net_in
 ns_in
 ```
 
-- [ ] **Step 2: Repeat in fresh processes, at least three times per side**
+- [x] **Step 2: Repeat in fresh processes, at least three times per side**
 
 BenchmarkDotNet's `±` describes dispersion within one process. #61 saw a 2.64×
 move between two runs of the same binary with tight intervals on both.
 
-- [ ] **Step 3: Record the across-process spread per row**
+- [x] **Step 3: Record the across-process spread per row**
 
 That spread is what says whether a row is noise, not the `±` inside one run.
 
-- [ ] **Step 4: Confirm the allocation figures are unchanged**
+- [x] **Step 4: Confirm the allocation figures are unchanged**
 
 They are counted. If they moved, something other than the toolchain changed and
 that needs explaining before anything else is published.
@@ -91,20 +91,20 @@ that needs explaining before anything else is published.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Replace all six rows**
+- [x] **Step 1: Replace all six rows**
 
-- [ ] **Step 2: Say what happened to the conclusion**
+- [x] **Step 2: Say what happened to the conclusion**
 
 Explicitly: does `SpieceModel`'s 2.4× survive, and do any of the five "noise" rows
 turn out to be real? Both answers are useful; neither is available without this
 branch.
 
-- [ ] **Step 3: Distinguish counted from sampled in the text**
+- [x] **Step 3: Distinguish counted from sampled in the text**
 
 Allocation is counted and survives; time is sampled. Presenting both in the same
 voice invites equal trust in unequal claims.
 
-- [ ] **Step 4: `--inProcess` in the documented command itself**
+- [x] **Step 4: `--inProcess` in the documented command itself**
 
 Not in prose beside it.
 
@@ -118,25 +118,25 @@ Not in prose beside it.
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: Section 5's `--inProcess` paragraph**
+- [x] **Step 1: Section 5's `--inProcess` paragraph**
 
 It says section 4 still carries this defect.
 
-- [ ] **Step 2: The closing note of section 2**
+- [x] **Step 2: The closing note of section 2**
 
 Same statement.
 
 **A stale cross-reference is how a fixed problem gets re-reported.** Both must
 stop saying it in the same commit that makes them false.
 
-- [ ] **Step 3: Gate**
+- [x] **Step 3: Gate**
 
 ```bash
 npx --yes --ignore-scripts markdownlint-cli2@0.23.2 "bench/README.md" "docs/**/*.md"
 git diff --stat -- src/   # must be empty
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add bench/README.md

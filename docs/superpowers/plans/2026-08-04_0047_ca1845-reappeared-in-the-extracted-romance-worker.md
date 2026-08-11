@@ -36,7 +36,7 @@ test_all()  { dotnet test -c Release; }
 
 **Depends on:** nothing.
 
-- [ ] **Step 1: Find the finding's exact site**
+- [x] **Step 1: Find the finding's exact site**
 
 ```bash
 grep -n "Substring" src/DataNet.Text/Stemming/RomanceSnowballWorker.cs
@@ -44,7 +44,7 @@ grep -n "Substring" src/DataNet.Text/Stemming/RomanceSnowballWorker.cs
 
 Expected: `Replace`, and `Delete` beside it — the two members #45 moved.
 
-- [ ] **Step 2: Find where the suppression still sits**
+- [x] **Step 2: Find where the suppression still sits**
 
 ```bash
 grep -n -B3 "CA1845" src/DataNet.Text/Stemming/*.cs
@@ -53,7 +53,7 @@ grep -n -B3 "CA1845" src/DataNet.Text/Stemming/*.cs
 Expected: the `#pragma` still in the four language files, and **absent** from the
 new one. The code moved; the suppression did not.
 
-- [ ] **Step 3: Note that the build never complained**
+- [x] **Step 3: Note that the build never complained**
 
 ```bash
 build_all 2>&1 | grep -c "CA1845"
@@ -73,7 +73,7 @@ after merge.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Copy the justification from a language stemmer verbatim**
+- [x] **Step 1: Copy the justification from a language stemmer verbatim**
 
 ```bash
 grep -n -B4 -A1 "CA1845" src/DataNet.Text/Stemming/SpanishSnowballStemmer.cs
@@ -85,12 +85,12 @@ makes the file compile for `netstandard2.0`.
 **Copy it.** A paraphrase invites a reader to wonder whether the five reasons
 differ.
 
-- [ ] **Step 2: Scope it to the two members, not the file**
+- [x] **Step 2: Scope it to the two members, not the file**
 
 A file-wide suppression would also hide a future, genuine `CA1845` elsewhere in
 the worker.
 
-- [ ] **Step 3: Build and test**
+- [x] **Step 3: Build and test**
 
 ```bash
 build_all && test_all 2>&1 | tail -3
@@ -109,7 +109,7 @@ Expected: both frameworks 0/0, 164/164, format clean.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: The general rule**
+- [x] **Step 1: The general rule**
 
 **When code carrying a justified suppression moves to a new file, the suppression
 does not move with it.** Nothing enforces this. It has now happened once, on the
@@ -117,14 +117,14 @@ first extraction this repository performed.
 
 A commit message is not where the next person doing an extraction looks.
 
-- [ ] **Step 2: Note that the extraction itself worked**
+- [x] **Step 2: Note that the extraction itself worked**
 
 Duplication on `main` went 5.9 % → 4.1 %. This is the tail of a change that did
 what it was meant to, not evidence against it — say so in the pull request, or a
 reader will draw the wrong conclusion from a fix that immediately follows a
 refactor.
 
-- [ ] **Step 3: Confirm the gate on `main` after merge**
+- [x] **Step 3: Confirm the gate on `main` after merge**
 
 ```bash
 # Read the dashboard, not the build.
@@ -133,7 +133,7 @@ refactor.
 The quality gate is the only thing that reported this and the only thing that can
 confirm it is gone.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/DataNet.Text/Stemming/RomanceSnowballWorker.cs CONTRIBUTING.md

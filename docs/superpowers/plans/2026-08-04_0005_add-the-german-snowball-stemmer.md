@@ -54,7 +54,7 @@ test_all()     { dotnet test -c Release; }
 **Produces:** a base class German can derive from, and four green corpora proving
 the move changed nothing.
 
-- [ ] **Step 1: Record the baseline before touching anything**
+- [x] **Step 1: Record the baseline before touching anything**
 
 ```bash
 test_romance 2>&1 | tail -3
@@ -63,7 +63,7 @@ test_romance 2>&1 | tail -3
 Write down the count. "Unchanged" is only meaningful against a number recorded
 before the change.
 
-- [ ] **Step 2: Sort every member of `RomanceSnowballWorker` into one of two piles**
+- [x] **Step 2: Sort every member of `RomanceSnowballWorker` into one of two piles**
 
 ```bash
 grep -nE "protected|private|internal" src/DataNet.Text/Stemming/RomanceSnowballWorker.cs
@@ -77,12 +77,12 @@ grep -nE "protected|private|internal" src/DataNet.Text/Stemming/RomanceSnowballW
 The test for a member is whether it mentions RV, directly or through a helper. If
 it does, it stays.
 
-- [ ] **Step 3: Move the base pile into `SnowballWorkerBase`**
+- [x] **Step 3: Move the base pile into `SnowballWorkerBase`**
 
 `RomanceSnowballWorker` derives from it. No behaviour edited in this step — a pure
 move. Resist the urge to improve anything on the way past.
 
-- [ ] **Step 4: Prove the split is inert**
+- [x] **Step 4: Prove the split is inert**
 
 ```bash
 build_all && test_romance 2>&1 | tail -3
@@ -106,7 +106,7 @@ with a red corpus.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Add the German section**
+- [x] **Step 1: Add the German section**
 
 `nltk.stem.snowball.SnowballStemmer("german")`. The word list must exercise the
 three conditions from D3 head-on, because they are the ones that pass a casual
@@ -119,7 +119,7 @@ reading:
 - umlauts that get stripped at the end: `häuser`, `bücher`
 - `u`/`y` between vowels
 
-- [ ] **Step 2: Generate, read the exit code, check for drift**
+- [x] **Step 2: Generate, read the exit code, check for drift**
 
 ```bash
 regen
@@ -128,7 +128,7 @@ git status --porcelain tests/oracles/
 
 Expected: `snowball_de.json` added, nothing else moved.
 
-- [ ] **Step 3: Record the count and the sentinel answers**
+- [x] **Step 3: Record the count and the sentinel answers**
 
 ```bash
 python -c "
@@ -148,37 +148,37 @@ print([c for c in d['cases'] if c['input'] in ('ist','weiß','häuser')])
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Entry re-spelling**
+- [x] **Step 1: Entry re-spelling**
 
 `ß` → `ss`; upper-case `u` and `y` between vowels. Same device as Italian's `qu`
 handling and Portuguese's nasals.
 
-- [ ] **Step 2: R1 and R2, with R1 floored at 3**
+- [x] **Step 2: R1 and R2, with R1 floored at 3**
 
 The floor is the German-specific part and belongs in this file, not in the base —
 the base computes R1/R2, German constrains where R1 may start.
 
-- [ ] **Step 3: Step 1 — `em ern er`, `e en es`, and the bare `s`**
+- [x] **Step 3: Step 1 — `em ern er`, `e en es`, and the bare `s`**
 
 The `s` rule per D3: only after a valid s-ending, and **that letter need not be in
 R1**. Write the condition so this is visible; a reader who sees a region test on
 the wrong character will "fix" it.
 
-- [ ] **Step 4: Step 2 — `en er est`, and `st`**
+- [x] **Step 4: Step 2 — `en er est`, and `st`**
 
 `st` requires a valid st-ending with at least three letters before it. Add a
 comment naming `ist` as the word this protects.
 
-- [ ] **Step 5: Step 3 — derived suffixes**
+- [x] **Step 5: Step 3 — derived suffixes**
 
 `end ung ig ik isch lich heit keit`. `ig`, `ik` and `isch` are **never** removed
 straight after an `e`.
 
-- [ ] **Step 6: Exit — strip umlauts, restore case**
+- [x] **Step 6: Exit — strip umlauts, restore case**
 
 Remove the umlaut from `a o u`, lower-case `U`/`Y`.
 
-- [ ] **Step 7: Both targets compile**
+- [x] **Step 7: Both targets compile**
 
 ```bash
 build_all
@@ -194,9 +194,9 @@ build_all
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: Same shape as the other five replay tests**
+- [x] **Step 1: Same shape as the other five replay tests**
 
-- [ ] **Step 2: Confirm the test count is non-zero, then read the result**
+- [x] **Step 2: Confirm the test count is non-zero, then read the result**
 
 ```bash
 test_de 2>&1 | tail -5
@@ -229,12 +229,12 @@ have done.
 
 **Depends on:** Task 4.
 
-- [ ] **Step 1: The German row, in the same commit as the code**
+- [x] **Step 1: The German row, in the same commit as the code**
 
 The rule #48 had to restate in `CONTRIBUTING.md`. Six languages now: English,
 French, Spanish, Portuguese, Italian, German.
 
-- [ ] **Step 2: Re-read anything that counts**
+- [x] **Step 2: Re-read anything that counts**
 
 `README.md` and `docs/equivalence.md` both state language counts and a total word
 count. Recompute the total rather than incrementing it:
@@ -253,7 +253,7 @@ print('total', t)
 Expected: 758 across the Snowball corpora. Use the number this prints, not the
 number a previous document claims.
 
-- [ ] **Step 3: Everything**
+- [x] **Step 3: Everything**
 
 ```bash
 build_all && test_all 2>&1 | tail -3
@@ -263,7 +263,7 @@ npx --yes markdownlint-cli2 "**/*.md" "#node_modules"
 
 Expected: 168/168, 0 warnings, format clean, markdownlint 0 issues.
 
-- [ ] **Step 4: No drift**
+- [x] **Step 4: No drift**
 
 ```bash
 regen && git status --porcelain tests/oracles/
@@ -271,7 +271,7 @@ regen && git status --porcelain tests/oracles/
 
 Expected: `snowball_de.json` only.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A

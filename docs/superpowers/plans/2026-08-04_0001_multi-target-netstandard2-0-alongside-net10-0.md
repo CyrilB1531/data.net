@@ -57,7 +57,7 @@ test_all()  { dotnet test -c Release; }
 
 Do not fix anything in this task. The point is to measure before deciding.
 
-- [ ] **Step 1: Add the second target framework**
+- [x] **Step 1: Add the second target framework**
 
 In each of the three `.csproj`, replace `<TargetFramework>net10.0</TargetFramework>` with:
 
@@ -65,7 +65,7 @@ In each of the three `.csproj`, replace `<TargetFramework>net10.0</TargetFramewo
 <TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks>
 ```
 
-- [ ] **Step 2: Record the failure list**
+- [x] **Step 2: Record the failure list**
 
 ```bash
 dotnet build -c Release -f netstandard2.0 2>&1 | grep -E "error CS" | sed 's/.*error /error /' | sort | uniq -c | sort -rn
@@ -79,7 +79,7 @@ operators, `string.Join(char)`, `MathF`, `Array.Fill`, `CollectionsMarshal`,
 Keep this list. Task 5 is finished when it is empty, and no other measure of
 "done" is accepted.
 
-- [ ] **Step 3: Confirm net10 is untouched**
+- [x] **Step 3: Confirm net10 is untouched**
 
 ```bash
 build_net && test_all
@@ -103,7 +103,7 @@ one; if it does, stop and find out why before continuing.
 **Depends on:** Task 1.
 **Produces:** the mechanism that keeps `#if` out of every other file in the repository.
 
-- [ ] **Step 1: `src/Directory.Packages.props`**
+- [x] **Step 1: `src/Directory.Packages.props`**
 
 Central package management for the shipped libraries, pinning the three packages
 this change introduces:
@@ -121,7 +121,7 @@ this change introduces:
 </Project>
 ```
 
-- [ ] **Step 2: `src/Directory.Build.props`**
+- [x] **Step 2: `src/Directory.Build.props`**
 
 It must **import the repository root explicitly**. MSBuild stops at the nearest
 `Directory.Build.props`, so without the import the libraries silently lose
@@ -156,24 +156,24 @@ warnings-as-errors and their package identity — a failure that shows up as a
 </Project>
 ```
 
-- [ ] **Step 3: `Guard.NotNull`, one `#if` for the whole repository**
+- [x] **Step 3: `Guard.NotNull`, one `#if` for the whole repository**
 
 `namespace DataNet.Internal`, `internal static class Guard`. On net10 it delegates
 to `ArgumentNullException.ThrowIfNull`; on netstandard2.0 it throws by hand. The
 delegation is not decoration — it is what keeps CA1510 quiet on the net10 leg,
 where the analyser insists on the built-in.
 
-- [ ] **Step 4: `StringCompat`, the char overloads**
+- [x] **Step 4: `StringCompat`, the char overloads**
 
 `StartsWith(char)`, `EndsWith(char)`, `Contains(char)` as extension-shaped statics
 in `DataNet.Internal`. These are the three that appear across the stemmers and
 tokenizers.
 
-- [ ] **Step 5: `GlobalUsings.cs`**
+- [x] **Step 5: `GlobalUsings.cs`**
 
 `global using DataNet.Internal;` so no call site needs a directive.
 
-- [ ] **Step 6: Prove the helpers are reachable from all three libraries**
+- [x] **Step 6: Prove the helpers are reachable from all three libraries**
 
 ```bash
 build_ns 2>&1 | grep -cE "error CS0103.*Guard|error CS0103.*StringCompat"
@@ -195,19 +195,19 @@ project.
 **Depends on:** Task 2.
 **Produces:** the largest single class of error from Task 1's list, gone.
 
-- [ ] **Step 1: Find every call site**
+- [x] **Step 1: Find every call site**
 
 ```bash
 grep -rn "ArgumentNullException.ThrowIfNull" src --include='*.cs' | wc -l
 ```
 
-- [ ] **Step 2: Replace with `Guard.NotNull`, mechanically**
+- [x] **Step 2: Replace with `Guard.NotNull`, mechanically**
 
 Same argument, same parameter name, same exception type and message. This is a
 substitution, not a redesign — argument validation semantics do not change on
 either target.
 
-- [ ] **Step 3: Verify both legs**
+- [x] **Step 3: Verify both legs**
 
 ```bash
 build_net && build_ns 2>&1 | grep -c "ThrowIfNull"
@@ -237,20 +237,20 @@ Expected: net10 green; `0` remaining references.
 Work one library at a time — `DataNet.Text`, then `DataNet.Embeddings`, then
 `DataNet.Fuzzy` — and rebuild after each. A portable equivalent per construct:
 
-- [ ] **Step 1: Range and index operators** → explicit `Substring` / index
+- [x] **Step 1: Range and index operators** → explicit `Substring` / index
       arithmetic. Note that `s[^1]` inside an interpolation is easy to miss;
       the compiler finds them all, so trust the error list rather than a grep.
-- [ ] **Step 2: `string.Join(char, …)`** → `string.Join(separator.ToString(), …)`.
-- [ ] **Step 3: `MathF.*`** → `(float)Math.*`, keeping the cast explicit so the
+- [x] **Step 2: `string.Join(char, …)`** → `string.Join(separator.ToString(), …)`.
+- [x] **Step 3: `MathF.*`** → `(float)Math.*`, keeping the cast explicit so the
       float arithmetic is visible to a reader.
-- [ ] **Step 4: `Array.Fill`** → an explicit loop.
-- [ ] **Step 5: `CollectionsMarshal.GetValueRefOrAddDefault`** → `TryGetValue` +
+- [x] **Step 4: `Array.Fill`** → an explicit loop.
+- [x] **Step 5: `CollectionsMarshal.GetValueRefOrAddDefault`** → `TryGetValue` +
       assignment. This costs a second hash lookup on the netstandard leg only;
       the net10 path keeps the marshal under `#if`.
-- [ ] **Step 6: `KeyValuePair` deconstruction** → `.Key` / `.Value`.
-- [ ] **Step 7: `.Order()`** → `.OrderBy(x => x)`.
+- [x] **Step 6: `KeyValuePair` deconstruction** → `.Key` / `.Value`.
+- [x] **Step 7: `.Order()`** → `.OrderBy(x => x)`.
 
-- [ ] **Step 8: The error list must now be empty**
+- [x] **Step 8: The error list must now be empty**
 
 ```bash
 build_ns 2>&1 | grep -c "error CS"
@@ -269,7 +269,7 @@ Expected: `0`.
 **Depends on:** Task 4.
 **Produces:** the behavioural difference the ADR has to declare.
 
-- [ ] **Step 1: Guard the SIMD path**
+- [x] **Step 1: Guard the SIMD path**
 
 Wrap the `Vector<T>` loop in `#if NET5_0_OR_GREATER` and add a scalar loop for the
 other leg. The span-based `Vector<T>` constructor is net-only; `System.Numerics.Vectors`
@@ -277,12 +277,12 @@ supplies the type but not that constructor, which is exactly the trap here — t
 reference resolves, so the failure is a compile error at the *constructor*, not a
 missing type.
 
-- [ ] **Step 2: Comment why, in the source**
+- [x] **Step 2: Comment why, in the source**
 
 One sentence naming the constructor. A future reader will otherwise try to delete
 the `#if`.
 
-- [ ] **Step 3: Both legs build; net10 results unchanged**
+- [x] **Step 3: Both legs build; net10 results unchanged**
 
 ```bash
 build_all && test_all
@@ -299,7 +299,7 @@ Expected: green, 158/158, and `git diff --stat tests/oracles/` empty.
 **Depends on:** Task 5.
 **Produces:** evidence for the claim the README will make.
 
-- [ ] **Step 1: Pack**
+- [x] **Step 1: Pack**
 
 ```bash
 rm -rf ./artifacts
@@ -308,7 +308,7 @@ for p in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy; do
 done
 ```
 
-- [ ] **Step 2: Read what was actually produced**
+- [x] **Step 2: Read what was actually produced**
 
 ```bash
 cd /tmp && rm -rf nuspec-check && mkdir nuspec-check && cd nuspec-check
@@ -326,7 +326,7 @@ Expected, and each point is a separate pass/fail:
 4. **No `PolySharp` dependency anywhere.** If it appears, `PrivateAssets="all"`
    did not take effect and consumers would inherit it.
 
-- [ ] **Step 3: Repeat for `DataNet.Embeddings` and `DataNet.Fuzzy`**
+- [x] **Step 3: Repeat for `DataNet.Embeddings` and `DataNet.Fuzzy`**
 
 `DataNet.Embeddings` additionally carries `Microsoft.ML.OnnxRuntime` in **both**
 groups — it is a real runtime dependency, not a polyfill.
@@ -343,19 +343,19 @@ groups — it is a real runtime dependency, not a polyfill.
 **Depends on:** Task 6.
 **Produces:** the honest version of the reach claim.
 
-- [ ] **Step 1: ADR 0001**
+- [x] **Step 1: ADR 0001**
 
 Context, the order of preference from D2, the `Dot` split, and — in its own
 section — **the verification gap**: the suite targets `net10.0`, so the
 `netstandard2.0` assemblies are compile-verified only. Say plainly that "158 tests
 pass" does not cover both targets.
 
-- [ ] **Step 2: README**
+- [x] **Step 2: README**
 
 The targets, the single-package claim, and a pointer to ADR 0001. Do not write a
 sentence the tests do not support.
 
-- [ ] **Step 3: Open the follow-up issue**
+- [x] **Step 3: Open the follow-up issue**
 
 "Run the test suite against the netstandard2.0 build" — the work D6 defers. Link
 it from the ADR so the gap has an owner rather than a paragraph.
@@ -366,7 +366,7 @@ it from the ADR so the gap has an owner rather than a paragraph.
 
 **Depends on:** Task 7.
 
-- [ ] **Step 1: Everything, from clean**
+- [x] **Step 1: Everything, from clean**
 
 ```bash
 dotnet clean -c Release && build_all && test_all
@@ -377,7 +377,7 @@ npx --yes markdownlint-cli2 "**/*.md" "#node_modules"
 Expected: both frameworks with 0 warnings and 0 errors under warnings-as-errors;
 158/158; `dotnet format` clean; markdownlint 0 issues.
 
-- [ ] **Step 2: Prove the branch stayed in its lane**
+- [x] **Step 2: Prove the branch stayed in its lane**
 
 ```bash
 git diff main --stat -- tests/oracles/          # must be empty
@@ -387,7 +387,7 @@ git diff main -- src | grep -c "pragma warning disable S"   # must be 0
 The second check is what keeps #7's Sonar cleanup out of this diff. An empty
 oracle diff is what proves no fallback changed behaviour.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add -A

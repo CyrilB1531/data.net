@@ -42,17 +42,17 @@ test_batch(){ dotnet test -c Release --filter "FullyQualifiedName~Batch"; }
 **Depends on:** nothing.
 **Produces:** models whose *layout* can catch a hardcoded id.
 
-- [ ] **Step 1: Say how the tiny models are built**
+- [x] **Step 1: Say how the tiny models are built**
 
 They are committed fixtures with no generation story written down, which makes
 them unreproducible. Fix that first.
 
-- [ ] **Step 2: Build a second model, for the multi-output case**
+- [x] **Step 2: Build a second model, for the multi-output case**
 
 Task 4 fixes a defect that only shows on a model with more than one output. A
 defect with no fixture is a defect that comes back.
 
-- [ ] **Step 3: Place the special tokens at unusual ids**
+- [x] **Step 3: Place the special tokens at unusual ids**
 
 `[CLS]` at 45, `[SEP]` at 46, `[PAD]` at 47.
 
@@ -72,13 +72,13 @@ well-known id then fails every row of every case**. Building the fixture so it
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: `Bert`, `Roberta`, `T5`, `None`, and a user-written template**
+- [x] **Step 1: `Bert`, `Roberta`, `T5`, `None`, and a user-written template**
 
-- [ ] **Step 2: Resolve ids through `ISubwordTokenizer.TryGetId`**
+- [x] **Step 2: Resolve ids through `ISubwordTokenizer.TryGetId`**
 
 Named, never numbered. A vocabulary that places `[CLS]` anywhere works.
 
-- [ ] **Step 3: Throw at construction when a required token is missing**
+- [x] **Step 3: Throw at construction when a required token is missing**
 
 Not at encode time, and never a fallback id. A plausible wrong id produces a
 plausible wrong vector, which is the failure this whole branch exists to prevent.
@@ -93,21 +93,21 @@ plausible wrong vector, which is the failure this whole branch exists to prevent
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Count `MaxLength` the way HuggingFace counts it**
+- [x] **Step 1: Count `MaxLength` the way HuggingFace counts it**
 
 Special tokens **inside** the budget. This is the detail most likely to be off by
 two, and the corpus is what will catch it.
 
-- [ ] **Step 2: `TruncationStrategy.None` refuses rather than truncates**
+- [x] **Step 2: `TruncationStrategy.None` refuses rather than truncates**
 
 Silently dropping a document's tail is the behaviour that produces a wrong
 embedding with no symptom.
 
-- [ ] **Step 3: Pad each sub-batch to its own longest row**
+- [x] **Step 3: Pad each sub-batch to its own longest row**
 
 Never to `MaxLength`. Padding to the maximum wastes the whole point of batching.
 
-- [ ] **Step 4: Build the mask here, with padding zeroed**
+- [x] **Step 4: Build the mask here, with padding zeroed**
 
 ---
 
@@ -120,21 +120,21 @@ Never to `MaxLength`. Padding to the maximum wastes the whole point of batching.
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: The default output is a coin toss — fix it**
+- [x] **Step 1: The default output is a coin toss — fix it**
 
 `OutputMetadata.Keys.First()` on a multi-output model. Task 1's second fixture is
 what makes this testable.
 
-- [ ] **Step 2: Rank was validated only for `== 2`**
+- [x] **Step 2: Rank was validated only for `== 2`**
 
 Rank 1 or 4 gave an out-of-range access or a **silently wrong result**. Validate
 the shape and say what is supported.
 
-- [ ] **Step 3: Stop taking input names on trust**
+- [x] **Step 3: Stop taking input names on trust**
 
-- [ ] **Step 4: Remove the three allocations per call**
+- [x] **Step 4: Remove the three allocations per call**
 
-- [ ] **Step 5: Pool a whole batch in one call**
+- [x] **Step 5: Pool a whole batch in one call**
 
 And add the components in parallel where it measures.
 
@@ -148,11 +148,11 @@ And add the components in parallel where it measures.
 
 **Depends on:** Task 4.
 
-- [ ] **Step 1: The equivalent of `SentenceTransformer.encode(...)`**
+- [x] **Step 1: The equivalent of `SentenceTransformer.encode(...)`**
 
 `batch_size`, `normalize_embeddings`, optional length bucketing.
 
-- [ ] **Step 2: `CancellationToken` on every entry point**
+- [x] **Step 2: `CancellationToken` on every entry point**
 
 `src/` had none anywhere. A batch embedding call is the first operation here long
 enough to need one.
@@ -170,43 +170,43 @@ enough to need one.
 **Depends on:** Task 5.
 **Produces:** the part of the branch a reviewer should read first.
 
-- [ ] **Step 1: Freeze what HuggingFace makes of a batch, before asserting anything**
+- [x] **Step 1: Freeze what HuggingFace makes of a batch, before asserting anything**
 
 Six batches from `tokenizers.encode_batch`. Corpus first, then the C#.
 
-- [ ] **Step 2: Replay by equality, not tolerance**
+- [x] **Step 2: Replay by equality, not tolerance**
 
 Ids and masks are integers. A tolerance here would be meaningless and would hide a
 one-off.
 
-- [ ] **Step 3: Check the replay can fail**
+- [x] **Step 3: Check the replay can fail**
 
 Mutate the encoder — drop a special token — and confirm the replay goes red. #63
 was filed because a test could not fail; do not add another.
 
-- [ ] **Step 4: Prove padding never reaches a vector, without a reference**
+- [x] **Step 4: Prove padding never reaches a vector, without a reference**
 
 A batched vector must equal the single-sequence vector for the same text, **bit
 for bit**. This needs no Python at all: it is an invariant of our own output, so
 no fixture gap can undermine it.
 
-- [ ] **Step 5: The four edges, and a generator that refuses to lie**
+- [x] **Step 5: The four edges, and a generator that refuses to lie**
 
 Nothing / one token / exactly the limit / one over it. Then make the **generator
 fail** if those cases stop straddling `MaxLength` — otherwise a later change turns
 four edge cases into four ordinary ones, silently.
 
-- [ ] **Step 6: Batching and bucketing are invisible**
+- [x] **Step 6: Batching and bucketing are invisible**
 
 Six `BatchSize` × `SortByLength` combinations, exact equality against the
 reference run.
 
-- [ ] **Step 7: The two builds agree**
+- [x] **Step 7: The two builds agree**
 
 Vectorized and scalar pooling both compared to a scalar reference with `float`
 equality, run in both test projects.
 
-- [ ] **Step 8: Close the loop between the corpus and the model**
+- [x] **Step 8: Close the loop between the corpus and the model**
 
 All 64 rows of the embedding table compared **through the ONNX model**. The two
 Python scripts each prove half; this is what joins them.
@@ -225,21 +225,21 @@ Python scripts each prove half; this is what joins them.
 
 **Depends on:** Task 6.
 
-- [ ] **Step 1: The sample uses the batch API**
+- [x] **Step 1: The sample uses the batch API**
 
 The packaging gate is what proves a public type actually ships (ADR 0009).
 
-- [ ] **Step 2: Measure the batch path, and say what the measurement cannot see**
+- [x] **Step 2: Measure the batch path, and say what the measurement cannot see**
 
 A tiny synthetic model does not predict a real encoder's throughput. State that
 next to the numbers rather than letting them be read as a model-agnostic claim.
 
-- [ ] **Step 3: Delete both placeholders from the guide**
+- [x] **Step 3: Delete both placeholders from the guide**
 
 `/* with [CLS]/[SEP] if the model expects them */` and the mask comment. They were
 the issue's opening exhibit.
 
-- [ ] **Step 4: Full gate, then read SonarCloud**
+- [x] **Step 4: Full gate, then read SonarCloud**
 
 ```bash
 build_all && test_all 2>&1 | tail -3

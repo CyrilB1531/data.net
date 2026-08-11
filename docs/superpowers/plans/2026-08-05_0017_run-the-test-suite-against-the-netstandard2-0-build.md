@@ -49,7 +49,7 @@ test_ns()   { dotnet test -c Release --filter "FullyQualifiedName~NetStandard"; 
 **Produces:** the pattern the other two copy — and the guard proven to work before
 it is trusted three times.
 
-- [ ] **Step 1: The project file**
+- [x] **Step 1: The project file**
 
 `TargetFramework=net10.0`, `IsPackable=false`, its own `AssemblyName`, and
 `RootNamespace=DataNet.Text.Tests` so the linked sources compile unchanged.
@@ -70,13 +70,13 @@ Link the sources and the oracle corpora:
 <None Include="../oracles/**/*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
 ```
 
-- [ ] **Step 2: Comment the arrangement in the project file itself**
+- [x] **Step 2: Comment the arrangement in the project file itself**
 
 `netstandard2.0` is a contract, not a runtime — the tests run on net10.0, an
 identical host, and only the assembly under test changes. Without that comment the
 setup reads as a mistake, and someone will "fix" it.
 
-- [ ] **Step 3: `InternalsVisibleTo` for the new assembly name**
+- [x] **Step 3: `InternalsVisibleTo` for the new assembly name**
 
 ```bash
 grep -n "InternalsVisibleTo" src/DataNet.Text/DataNet.Text.csproj
@@ -85,12 +85,12 @@ grep -n "InternalsVisibleTo" src/DataNet.Text/DataNet.Text.csproj
 The mirror has its own name, so it needs its own entry. This will surface as a
 wall of accessibility errors if forgotten.
 
-- [ ] **Step 4: The guard test**
+- [x] **Step 4: The guard test**
 
 Assert the `TargetFrameworkAttribute` of the assembly under test equals
 `.NETStandard,Version=v2.0`.
 
-- [ ] **Step 5: Prove the guard fails when isolation breaks**
+- [x] **Step 5: Prove the guard fails when isolation breaks**
 
 ```bash
 # temporarily remove SetTargetFramework from the ProjectReference, then:
@@ -109,7 +109,7 @@ Restore `SetTargetFramework` afterwards and confirm it passes. #10 already shipp
 plausible numbers from the wrong build; the identical failure here would leave
 every test green while proving nothing.
 
-- [ ] **Step 6: Run the mirror in full**
+- [x] **Step 6: Run the mirror in full**
 
 ```bash
 dotnet test tests/DataNet.Text.NetStandard.Tests -c Release 2>&1 | tail -3
@@ -131,18 +131,18 @@ what this branch exists to find, and it is a separate fix.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Same shape, three times**
+- [x] **Step 1: Same shape, three times**
 
 Copy the pattern exactly. Divergence between the three mirrors is pure cost.
 
-- [ ] **Step 2: Add both to `DataNet.slnx`**
+- [x] **Step 2: Add both to `DataNet.slnx`**
 
-- [ ] **Step 3: Verify each guard the same way**
+- [x] **Step 3: Verify each guard the same way**
 
 Do not skip this for mirrors two and three on the grounds that the first one
 worked. `SetTargetFramework` is easy to typo and the symptom is a green suite.
 
-- [ ] **Step 4: Full solution**
+- [x] **Step 4: Full solution**
 
 ```bash
 build_all && test_all 2>&1 | tail -5
@@ -157,7 +157,7 @@ Expected:
 | Fuzzy | 10 | 11 |
 | **Total** | **168** | **171** |
 
-- [ ] **Step 5: Confirm the scalar `Dot` path is genuinely exercised**
+- [x] **Step 5: Confirm the scalar `Dot` path is genuinely exercised**
 
 ```bash
 dotnet test -c Release --filter "FullyQualifiedName~NetStandard&FullyQualifiedName~Vector" 2>&1 | tail -3
@@ -177,19 +177,19 @@ suite that does not reach it has not tested the thing most likely to be wrong.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: ADR 0001**
+- [x] **Step 1: ADR 0001**
 
 It says the `netstandard2.0` build is compile-verified but not behaviour-verified.
 That is no longer true. Amend the section rather than deleting it — the history of
 the gap is worth keeping, and an ADR that silently changes its own claim is not a
 record.
 
-- [ ] **Step 2: `CHANGELOG.md`**
+- [x] **Step 2: `CHANGELOG.md`**
 
 Same correction. A stale limitation is worse than none: it tells a reader to
 distrust something now proven.
 
-- [ ] **Step 3: Confirm no workflow change is needed**
+- [x] **Step 3: Confirm no workflow change is needed**
 
 ```bash
 grep -n "dotnet test" .github/workflows/ci.yml
@@ -199,7 +199,7 @@ Expected: `dotnet test` against the solution, which now includes the mirrors. If
 job names projects individually, that is where the change would be — check rather
 than assume.
 
-- [ ] **Step 4: Full gate**
+- [x] **Step 4: Full gate**
 
 ```bash
 build_all && test_all 2>&1 | tail -3
@@ -207,7 +207,7 @@ dotnet format --verify-no-changes
 npx --yes markdownlint-cli2 "**/*.md" "#node_modules"
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A

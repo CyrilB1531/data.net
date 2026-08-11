@@ -53,24 +53,24 @@ build_snippets() {
 **Produces:** the argument, because the issue left the form open and the wrong
 choice is plausible.
 
-- [ ] **Step 1: Count what is at stake**
+- [x] **Step 1: Count what is at stake**
 
 ```bash
 grep -rc '```csharp' README.md docs/guides/*.md
 ```
 
-- [ ] **Step 2: Write down why a `docs-samples` project loses**
+- [x] **Step 2: Write down why a `docs-samples` project loses**
 
 It holds a **second copy** of each snippet. Nothing forces the two to agree, so it
 converts "documentation that lies" into "documentation that lies while a project
 compiles nearby".
 
-- [ ] **Step 3: Why marker-based inclusion loses**
+- [x] **Step 3: Why marker-based inclusion loses**
 
 It needs a sync tool **and** a drift check, and moves the text a reader edits out
 of the file they are reading.
 
-- [ ] **Step 4: Extraction, chosen because drift becomes impossible**
+- [x] **Step 4: Extraction, chosen because drift becomes impossible**
 
 Not merely detected. And it adds no syntax to files that are plain Markdown today.
 
@@ -85,24 +85,24 @@ Not merely detected. And it adds no syntax to files that are plain Markdown toda
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Read every ` ```csharp ` fence in `README.md` and `docs/guides/`**
+- [x] **Step 1: Read every ` ```csharp ` fence in `README.md` and `docs/guides/`**
 
-- [ ] **Step 2: One method per fence**
+- [x] **Step 2: One method per fence**
 
 This is what lets `vectorization.md` declare `cv` twice on the same page without
 colliding. A guide is prose; re-introducing a variable further down is normal.
 
-- [ ] **Step 3: Hoist `using` lines to the compilation unit**
+- [x] **Step 3: Hoist `using` lines to the compilation unit**
 
 So a fence inherits what a reader would already have in scope from earlier on the
 page.
 
-- [ ] **Step 4: Support an opt-out with a reason**
+- [x] **Step 4: Support an opt-out with a reason**
 
 `<!-- docs-compile: skip - reason -->` on the line above the fence. The reason has
 to be one a reviewer can disagree with — same bar as an analyzer suppression.
 
-- [ ] **Step 5: `Generated/` is git-ignored**
+- [x] **Step 5: `Generated/` is git-ignored**
 
 Rebuilt on every run; never hand-edited. A generated tree in git is a second copy
 by another name.
@@ -118,20 +118,20 @@ by another name.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Reference the packed packages, through `samples/NuGet.config`**
+- [x] **Step 1: Reference the packed packages, through `samples/NuGet.config`**
 
-- [ ] **Step 2: `SnippetContext.cs` for what the prose introduces without showing**
+- [x] **Step 2: `SnippetContext.cs` for what the prose introduces without showing**
 
 Guides legitimately say "given a corpus…" with no declaration. Write that context
 once, by hand, rather than forcing every page into a compilable program.
 
-- [ ] **Step 3: Build**
+- [x] **Step 3: Build**
 
 ```bash
 pack_feed && build_snippets
 ```
 
-- [ ] **Step 4: Fix the guides where they fail — do not weaken the extractor**
+- [x] **Step 4: Fix the guides where they fail — do not weaken the extractor**
 
 Expected: several fences will not compile. Each is a real defect in the
 documentation, which is the whole point of the exercise.
@@ -142,7 +142,7 @@ documentation, which is the whole point of the exercise.
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: Rename a public method and confirm the snippet build fails**
+- [x] **Step 1: Rename a public method and confirm the snippet build fails**
 
 ```bash
 # Temporarily rename a method used in docs/guides/quickstart.md, then:
@@ -153,7 +153,7 @@ Expected: non-zero, naming the generated file and — through it — the page. R
 
 A gate never seen to fail is not known to work.
 
-- [ ] **Step 2: Confirm the opt-out works and is visible**
+- [x] **Step 2: Confirm the opt-out works and is visible**
 
 ```bash
 grep -rn "docs-compile: skip" README.md docs/guides/
@@ -172,21 +172,21 @@ Each with a reason.
 
 **Depends on:** Task 4.
 
-- [ ] **Step 1: A `Guide snippets compile` job — pack, extract, build**
+- [x] **Step 1: A `Guide snippets compile` job — pack, extract, build**
 
 Same `NUGET_PACKAGES` separation as the sample job, and for the same reason
 (ADR 0009): otherwise it judges the published packages.
 
-- [ ] **Step 2: Add it to `CONTRIBUTING.md`'s definition of done**
+- [x] **Step 2: Add it to `CONTRIBUTING.md`'s definition of done**
 
 A gate not listed where contributors read is a gate they discover by failing.
 
-- [ ] **Step 3: Answer the SonarQube findings on the extractor**
+- [x] **Step 3: Answer the SonarQube findings on the extractor**
 
 A new Python file will raise some. Fix or suppress with a reason, before the pull
 request rather than after — a green build is not a clean Sonar.
 
-- [ ] **Step 4: Full gate**
+- [x] **Step 4: Full gate**
 
 ```bash
 dotnet build DataNet.slnx -c Release && dotnet test DataNet.slnx -c Release 2>&1 | tail -3
@@ -194,7 +194,7 @@ pack_feed && build_snippets
 npx --yes --ignore-scripts markdownlint-cli2@0.23.2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git commit -m "Compile the guides' C#, from the guides themselves"

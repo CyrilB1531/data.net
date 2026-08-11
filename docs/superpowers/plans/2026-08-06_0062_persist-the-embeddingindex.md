@@ -51,7 +51,7 @@ This task changes no behaviour. The existing suite is its test: it must be green
   - `Base64Numbers.WriteSingles(Utf8JsonWriter writer, string propertyName, ReadOnlySpan<float> values)`
   - `Base64Numbers.ReadSingles(ref Utf8JsonReader reader, string artifact, string propertyName, in ArtifactLimits limits) -> float[]`
 
-- [ ] **Step 1: Confirm the suite is green before touching anything**
+- [x] **Step 1: Confirm the suite is green before touching anything**
 
 ```bash
 dotnet test DataNet.slnx -c Release
@@ -59,7 +59,7 @@ dotnet test DataNet.slnx -c Release
 
 Expected: PASS. If it is not green here, stop — this task's only proof is that the same suite is still green afterwards.
 
-- [ ] **Step 2: Move `ArtifactIo` to the shared folder**
+- [x] **Step 2: Move `ArtifactIo` to the shared folder**
 
 ```bash
 git mv src/DataNet.Text/Persistence/ArtifactIo.cs src/Shared/Persistence/ArtifactIo.cs
@@ -75,7 +75,7 @@ namespace DataNet.Internal.Persistence;
 
 Nothing else in the file changes. The three call sites — `TfidfVectorizer.Persistence.cs`, `CountVectorizer.Persistence.cs`, `HashingVectorizer.Persistence.cs` — already carry `using DataNet.Internal.Persistence;`, so they need no edit.
 
-- [ ] **Step 3: Compile it into both packages**
+- [x] **Step 3: Compile it into both packages**
 
 In `src/Directory.Build.props`, add one line to the item group guarded by `'$(DataNetIncludesPersistence)' == 'true'`, after the `JsonArtifact.cs` line:
 
@@ -84,7 +84,7 @@ In `src/Directory.Build.props`, add one line to the item group guarded by `'$(Da
     <Compile Include="$(MSBuildThisFileDirectory)Shared/Persistence/Base64Numbers.cs" Link="Internal/Persistence/Base64Numbers.cs" />
 ```
 
-- [ ] **Step 4: Write `Base64Numbers`**
+- [x] **Step 4: Write `Base64Numbers`**
 
 Create `src/Shared/Persistence/Base64Numbers.cs`:
 
@@ -231,7 +231,7 @@ internal static class Base64Numbers
 }
 ```
 
-- [ ] **Step 5: Delegate from `FeatureVocabularyJson`**
+- [x] **Step 5: Delegate from `FeatureVocabularyJson`**
 
 In `src/DataNet.Text/Persistence/FeatureVocabularyJson.cs`, keep both methods, their XML docs and their non-finite checks — those are idf semantics and stay here — and replace only the encoding halves.
 
@@ -280,7 +280,7 @@ In `src/DataNet.Text/Persistence/FeatureVocabularyJson.cs`, keep both methods, t
 
 Remove the now-unused `using System.Buffers.Binary;` from the top of the file if nothing else in it needs it.
 
-- [ ] **Step 6: Verify nothing moved but the code**
+- [x] **Step 6: Verify nothing moved but the code**
 
 ```bash
 dotnet build DataNet.slnx -c Release && dotnet test DataNet.slnx -c Release
@@ -288,7 +288,7 @@ dotnet build DataNet.slnx -c Release && dotnet test DataNet.slnx -c Release
 
 Expected: PASS, same test count as Step 1. `ArtifactHardeningTests` asserts the messages `"is not valid base64"` and `"does not hold a whole number of 64-bit values"` — both are preserved verbatim by `ReadRaw` for `sizeof(double)`, so a failure there means the message string drifted.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A && git commit -m "$(cat <<'EOF'
@@ -325,7 +325,7 @@ A persisted index whose items are anonymous integers is unusable: the caller's p
   - `public bool HasIds { get; }`
   - `private string? IdAt(int index)` and `private string?[]? _ids` — used by Tasks 3 and 4.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `tests/DataNet.Embeddings.Tests/EmbeddingIndexTests.cs`, inside the existing test class:
 
@@ -398,7 +398,7 @@ Append to `tests/DataNet.Embeddings.Tests/EmbeddingIndexTests.cs`, inside the ex
     }
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 ```bash
 dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedName~EmbeddingIndexTests"
@@ -406,7 +406,7 @@ dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedNa
 
 Expected: FAIL to compile — `Add` has no two-argument overload, and neither `GetId` nor `HasIds` exists.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 In `src/DataNet.Embeddings/Search/EmbeddingIndex.cs`, make the class partial and add the id state. The declaration becomes:
 
@@ -487,7 +487,7 @@ Add after the existing `Add`:
         _ids is not null && index < _ids.Length ? _ids[index] : null;
 ```
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 ```bash
 dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedName~EmbeddingIndexTests"
@@ -495,7 +495,7 @@ dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedNa
 
 Expected: PASS, including the six new ones.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "$(cat <<'EOF'
@@ -530,7 +530,7 @@ EOF
   - `public void Save(Stream destination)`, `public void Save(string path)`, `public Task SaveAsync(Stream destination, CancellationToken cancellationToken = default)`
   - The artifact constants Task 4 reads back: `ArtifactName = "embedding-index"`, `ArtifactVersion = 1`, and the property names `"dimension"`, `"normalize"`, `"count"`, `"ids"`, `"vectors"`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/DataNet.Embeddings.Tests/Persistence/EmbeddingIndexPersistenceTests.cs`:
 
@@ -680,7 +680,7 @@ public sealed class EmbeddingIndexPersistenceTests
 }
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 ```bash
 dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedName~EmbeddingIndexPersistenceTests"
@@ -688,7 +688,7 @@ dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedNa
 
 Expected: FAIL to compile — `Save` does not exist.
 
-- [ ] **Step 3: Implement the writer**
+- [x] **Step 3: Implement the writer**
 
 Create `src/DataNet.Embeddings/Search/EmbeddingIndex.Persistence.cs`:
 
@@ -802,7 +802,7 @@ public sealed partial class EmbeddingIndex
 
 `ArtifactLoadOptions` lives in `DataNet.Embeddings.Persistence`, but nothing here uses it yet — its `using` arrives with `Load` in Task 4. Adding it now fails the build, because `TreatWarningsAsErrors` promotes the unused-using warning.
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 ```bash
 dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedName~EmbeddingIndexPersistenceTests"
@@ -810,7 +810,7 @@ dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedNa
 
 Expected: PASS, all ten.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "$(cat <<'EOF'
@@ -843,7 +843,7 @@ EOF
 - Consumes: everything Task 3 produced, plus `ArtifactHeader`, `ArtifactIo.CreateReader`, `ArtifactIo.EnsureEndOfDocument`, `ArtifactIo.Malformed`, `JsonArtifact.ReadAllBytes`, `JsonArtifact.ReadAllBytesAsync`, `JsonArtifact.OpenRead`, `Base64Numbers.ReadSingles`, `ArtifactLoadOptions.LimitsOf`.
 - Produces: `public static EmbeddingIndex Load(Stream, ArtifactLoadOptions?)`, `public static EmbeddingIndex Load(string, ArtifactLoadOptions?)`, `public static Task<EmbeddingIndex> LoadAsync(Stream, ArtifactLoadOptions?, CancellationToken)`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `tests/DataNet.Embeddings.Tests/Persistence/EmbeddingIndexPersistenceTests.cs`:
 
@@ -1016,7 +1016,7 @@ Append to `tests/DataNet.Embeddings.Tests/Persistence/EmbeddingIndexPersistenceT
     }
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 ```bash
 dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedName~EmbeddingIndexPersistenceTests"
@@ -1024,7 +1024,7 @@ dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedNa
 
 Expected: FAIL to compile — `EmbeddingIndex.Load` does not exist.
 
-- [ ] **Step 3: Implement the reader**
+- [x] **Step 3: Implement the reader**
 
 Add `using DataNet.Embeddings.Persistence;` to the top of `src/DataNet.Embeddings/Search/EmbeddingIndex.Persistence.cs` — `ArtifactLoadOptions` lives there — and append:
 
@@ -1268,7 +1268,7 @@ Then refactor `EnsureFinite` from Task 3 so both sides share one loop and one me
 
 The read side calls `EnsureFinite(vectors, dim)`, which reaches the same message — a file whose bits decode to `NaN` is refused exactly as writing one is.
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 ```bash
 dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedName~EmbeddingIndexPersistenceTests"
@@ -1276,7 +1276,7 @@ dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedNa
 
 Expected: PASS, all twenty-one.
 
-- [ ] **Step 5: Check both targets still build**
+- [x] **Step 5: Check both targets still build**
 
 ```bash
 dotnet build DataNet.slnx -c Release
@@ -1284,7 +1284,7 @@ dotnet build DataNet.slnx -c Release
 
 Expected: clean. `netstandard2.0` is where `MemoryMarshal` and the absent `SingleToInt32Bits` would show up.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A && git commit -m "$(cat <<'EOF'
@@ -1319,7 +1319,7 @@ A persisted index is a file, and a file can come from anywhere. Every case here 
 - Consumes: `EmbeddingIndex.Save`, `EmbeddingIndex.Load`, `ArtifactLoadOptions` (Tasks 3 and 4).
 - Produces: nothing consumed by later tasks.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/DataNet.Embeddings.Tests/Persistence/EmbeddingIndexHardeningTests.cs`:
 
@@ -1577,7 +1577,7 @@ public sealed class EmbeddingIndexHardeningTests
 }
 ```
 
-- [ ] **Step 2: Run them and read every failure**
+- [x] **Step 2: Run them and read every failure**
 
 ```bash
 dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedName~EmbeddingIndexHardeningTests"
@@ -1588,7 +1588,7 @@ Expected: most pass on Task 4's code. Any that fail are a real gap — fix `Embe
 - `A_vector_block_over_the_array_limit_is_rejected_before_it_is_decoded` — `MaxArrayLength = 2` must trip in `Base64Numbers.ReadRaw` on the *encoded* length, before `TryGetBytesFromBase64` allocates. If it only trips after, the bound is in the wrong place.
 - `An_ids_entry_of_the_wrong_type_is_rejected` — a number inside `ids` ends the `while` loop, leaving the reader on a token that is not `EndArray`, which is what the explicit check after the loop is for.
 
-- [ ] **Step 3: Re-run until green**
+- [x] **Step 3: Re-run until green**
 
 ```bash
 dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedName~EmbeddingIndexHardeningTests"
@@ -1596,7 +1596,7 @@ dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedNa
 
 Expected: PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A && git commit -m "$(cat <<'EOF'
@@ -1631,7 +1631,7 @@ EOF
 - Consumes: the public API of Tasks 2–4.
 - Produces: nothing consumed by later tasks.
 
-- [ ] **Step 1: Add the guide snippet**
+- [x] **Step 1: Add the guide snippet**
 
 In `docs/guides/embeddings.md`, after the existing fence in *Index a corpus and query it* and before the paragraph beginning "The search is an **exhaustive SIMD-vectorized**", insert:
 
@@ -1658,7 +1658,7 @@ bounds every count it reads against `ArtifactLoadOptions` before that count size
 a buffer.
 ````
 
-- [ ] **Step 2: Give the snippet its scaffolding**
+- [x] **Step 2: Give the snippet its scaffolding**
 
 Every C# fence in the guide is extracted and compiled. Add the two symbols the new fence uses to the `Embeddings` partial in `samples/DataNet.DocSnippets/SnippetContext.cs`, beside the existing `corpusVectors`:
 
@@ -1667,7 +1667,7 @@ Every C# fence in the guide is extracted and compiled. Add the two symbols the n
     public readonly (float[] Vector, string Id)[] corpusWithIds = [(new float[384], "doc-1")];
 ```
 
-- [ ] **Step 3: Verify the snippet actually compiles**
+- [x] **Step 3: Verify the snippet actually compiles**
 
 ```bash
 python3 tools/extract_doc_snippets.py && dotnet build samples/DataNet.DocSnippets -c Release
@@ -1675,7 +1675,7 @@ python3 tools/extract_doc_snippets.py && dotnet build samples/DataNet.DocSnippet
 
 Expected: clean build. A failure here is a snippet that would not have compiled for a reader either.
 
-- [ ] **Step 4: Add the equivalence rows**
+- [x] **Step 4: Add the equivalence rows**
 
 In `docs/equivalence.md`, insert a section after the *vocabulary loaders* table (before `## DataNet.Fuzzy — applied fuzzy matching`):
 
@@ -1690,7 +1690,7 @@ In `docs/equivalence.md`, insert a section after the *vocabulary loaders* table 
 | — (a parallel `list[str]` the caller keeps) | — | `index.Add(vector, id)` / `index.GetId(i)` | Deliberate addition: without ids in the file, a reloaded index is a wall of anonymous integers. |
 ```
 
-- [ ] **Step 5: Add the changelog entry**
+- [x] **Step 5: Add the changelog entry**
 
 In `CHANGELOG.md`, under `### DataNet.Embeddings — 0.3.0` → `#### Added`, append:
 
@@ -1709,7 +1709,7 @@ In `CHANGELOG.md`, under `### DataNet.Embeddings — 0.3.0` → `#### Added`, ap
   bytes per hit and free of references for the collector to chase.
 ```
 
-- [ ] **Step 6: Exercise the round trip from the sample**
+- [x] **Step 6: Exercise the round trip from the sample**
 
 In `samples/DataNet.Sample/Lot3Embeddings.cs`, replace the block that builds and queries the index with one that also persists it:
 
@@ -1738,7 +1738,7 @@ In `samples/DataNet.Sample/Lot3Embeddings.cs`, replace the block that builds and
         Console.WriteLine();
 ```
 
-- [ ] **Step 7: Run the full definition of done**
+- [x] **Step 7: Run the full definition of done**
 
 ```bash
 dotnet build DataNet.slnx -c Release && dotnet test DataNet.slnx -c Release && dotnet format DataNet.slnx --verify-no-changes
@@ -1746,7 +1746,7 @@ dotnet build DataNet.slnx -c Release && dotnet test DataNet.slnx -c Release && d
 
 Expected: all three clean. `dotnet format` works locally — trust its exit code.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add -A && git commit -m "$(cat <<'EOF'
@@ -1784,7 +1784,7 @@ The design chose JSON + base64 over a dedicated binary format knowing it costs 3
 - Consumes: `EmbeddingIndex.Save`, `EmbeddingIndex.Load` (Tasks 3 and 4).
 - Produces: nothing consumed by later tasks.
 
-- [ ] **Step 1: Add the BenchmarkDotNet pair**
+- [x] **Step 1: Add the BenchmarkDotNet pair**
 
 In `bench/DataNet.Text.Benchmarks/PersistenceBenchmarks.cs`, add `using DataNet.Embeddings.Search;` at the top, then the fields, the setup and the two benchmarks:
 
@@ -1853,7 +1853,7 @@ Then, after the existing benchmarks:
     }
 ```
 
-- [ ] **Step 2: Run it on both targets**
+- [x] **Step 2: Run it on both targets**
 
 ```bash
 dotnet run -c Release --project bench/DataNet.Text.Benchmarks        -- --filter '*EmbeddingIndex*'
@@ -1862,7 +1862,7 @@ dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter
 
 Expected: four rows with time and allocation figures. `PersistenceBenchmarks.cs` is already linked into the netstandard project, so nothing needs adding there. Record the numbers — they go into the README in Step 6.
 
-- [ ] **Step 3: Add the cross-language C# side**
+- [x] **Step 3: Add the cross-language C# side**
 
 In `bench/DataNet.Text.Benchmarks/CrossLang/PersistenceCrossLang.cs`, add `using DataNet.Embeddings.Search;`, then inside `Run()` before the `results` list:
 
@@ -1892,7 +1892,7 @@ and two entries at the end of the `results` list:
             }),
 ```
 
-- [ ] **Step 4: Add the Python side**
+- [x] **Step 4: Add the Python side**
 
 In `bench/python/bench_persistence.py`, add `import io` and `import numpy as np` to the imports, then before `results`:
 
@@ -1940,7 +1940,7 @@ def build_vectors() -> "np.ndarray":
 
 Also add `"numpy": version("numpy")` to the `libraries` dictionary in the metadata payload.
 
-- [ ] **Step 5: Run both sides back to back**
+- [x] **Step 5: Run both sides back to back**
 
 ```bash
 dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- compare-persistence
@@ -1952,7 +1952,7 @@ Expected: a table with the two new rows. Run them on an idle machine, back to ba
 
 If the Python generator is too slow to sit in the harness, precompute it once and cache it in `bench/corpus/vectors_10k_384.npy` — but only if measured, and say so in the README.
 
-- [ ] **Step 6: Write §5 of `bench/README.md`**
+- [x] **Step 6: Write §5 of `bench/README.md`**
 
 Add a section after §4, following its conventions — the exact machine and runtime versions, both the wall and cpu columns, and a paragraph reading the numbers. The skeleton, with the figures from Steps 2 and 5 filled in:
 
@@ -2001,7 +2001,7 @@ whether the cost is what the design predicted — and if it is not, say that
 instead.]
 ````
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A && git commit -m "$(cat <<'EOF'
@@ -2022,7 +2022,7 @@ EOF
 
 ### Task 8: Open the pull request
 
-- [ ] **Step 1: Run the definition of done one last time**
+- [x] **Step 1: Run the definition of done one last time**
 
 ```bash
 dotnet build DataNet.slnx -c Release && dotnet test DataNet.slnx -c Release && dotnet format DataNet.slnx --verify-no-changes
@@ -2030,7 +2030,7 @@ dotnet build DataNet.slnx -c Release && dotnet test DataNet.slnx -c Release && d
 
 Expected: all three clean.
 
-- [ ] **Step 2: Confirm the dependency edges did not move**
+- [x] **Step 2: Confirm the dependency edges did not move**
 
 ```bash
 python3 tools/check_nuspec_dependencies.py
@@ -2038,7 +2038,7 @@ python3 tools/check_nuspec_dependencies.py
 
 Expected: PASS. This work adds no package reference; a failure means one crept in.
 
-- [ ] **Step 3: Push and open the PR**
+- [x] **Step 3: Push and open the PR**
 
 ```bash
 git push -u origin feat/62-embedding-index-persistence

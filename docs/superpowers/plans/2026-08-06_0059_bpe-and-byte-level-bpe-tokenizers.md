@@ -91,11 +91,11 @@
 - Consumes: nothing.
 - Produces: `tests/oracles/gpt2_vocab.json` (a JSON object, token → id, 50 257 entries) and `tests/oracles/gpt2_merges.txt` (`#version: 0.2` then one space-separated pair per line, in rank order). Every later task reads these two files.
 
-- [ ] **Step 1: Read the model to copy**
+- [x] **Step 1: Read the model to copy**
 
 Read `tools/fetch_stopwords.py` end to end. It is the script this one mirrors: pinned SHA-256, a `--check` mode, and a module docstring explaining the licence and why the file is redistributed. Match its structure and its tone.
 
-- [ ] **Step 2: Write `tools/fetch_gpt2_bpe.py`**
+- [x] **Step 2: Write `tools/fetch_gpt2_bpe.py`**
 
 ```python
 #!/usr/bin/env python3
@@ -167,14 +167,14 @@ if __name__ == "__main__":
     raise SystemExit(main())
 ```
 
-- [ ] **Step 3: Run it once to learn the digests, then pin them**
+- [x] **Step 3: Run it once to learn the digests, then pin them**
 
 Run: `python3 tools/fetch_gpt2_bpe.py`
 Expected: FAIL, printing `expected sha256 PASTE_ME` and the real digest for each file.
 
 Copy each real digest into `FILES` in place of `PASTE_ME`. Do **not** invent these values — they are whatever the run prints.
 
-- [ ] **Step 4: Vendor the files and check them**
+- [x] **Step 4: Vendor the files and check them**
 
 Run: `python3 tools/fetch_gpt2_bpe.py && python3 tools/fetch_gpt2_bpe.py --check && echo OK`
 Expected: two byte counts printed, then `OK`.
@@ -187,7 +187,7 @@ head -c 120 tests/oracles/gpt2_merges.txt && echo && python3 -c "import json;pri
 
 Expected: the first line is `#version: 0.2`, and the vocabulary has `50257` entries.
 
-- [ ] **Step 5: Make the test projects copy `*.txt`**
+- [x] **Step 5: Make the test projects copy `*.txt`**
 
 Both `.csproj` files copy `tests/oracles/**` filtered to `*.json`, `*.onnx` and `*.model`. `merges.txt` matches none of them. In **both** files, after the `*.model` line, add:
 
@@ -196,12 +196,12 @@ Both `.csproj` files copy `tests/oracles/**` filtered to `*.json`, `*.onnx` and 
     <None Include="../oracles/**/*.txt" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
 ```
 
-- [ ] **Step 6: Prove the copy actually happens**
+- [x] **Step 6: Prove the copy actually happens**
 
 Run: `dotnet build tests/DataNet.Embeddings.NetStandard.Tests --configuration Release && ls tests/DataNet.Embeddings.NetStandard.Tests/bin/Release/net10.0/oracles/gpt2_merges.txt`
 Expected: the path is listed. If it is not, the glob is wrong — fix it now rather than discovering it in Task 8.
 
-- [ ] **Step 7: Wire `--check` into CI**
+- [x] **Step 7: Wire `--check` into CI**
 
 In `.github/workflows/ci.yml`, find the step running `python tools/fetch_stopwords.py --check` (around line 185) and add a sibling step immediately after it:
 
@@ -210,13 +210,13 @@ In `.github/workflows/ci.yml`, find the step running `python tools/fetch_stopwor
         run: python tools/fetch_gpt2_bpe.py --check
 ```
 
-- [ ] **Step 8: Record the attribution**
+- [x] **Step 8: Record the attribution**
 
 `THIRD-PARTY-NOTICES.md` only — **not** `NOTICE`. The two files split by what ships: `NOTICE` carries what is compiled into an assembly, and `THIRD-PARTY-NOTICES.md` has a "Redistributed test fixtures (not shipped)" section where the XLM-R vocabulary already lives. A test fixture in `tests/oracles/` belongs there, and adding it to `NOTICE` would break the one distinction that file exists to make.
 
 Add a GPT-2 row to that table and the prose block that follows it, in the shape of the XLM-R pair: what is vendored, from where, under which licence, that `tools/fetch_gpt2_bpe.py` pins and verifies it, and that the weights are never redistributed.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add tools/fetch_gpt2_bpe.py tests/oracles/gpt2_vocab.json tests/oracles/gpt2_merges.txt tests/DataNet.Embeddings.Tests/DataNet.Embeddings.Tests.csproj tests/DataNet.Embeddings.NetStandard.Tests/DataNet.Embeddings.NetStandard.Tests.csproj .github/workflows/ci.yml NOTICE THIRD-PARTY-NOTICES.md
@@ -248,7 +248,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 - Consumes: nothing.
 - Produces: `tests/oracles/tiny_bpe.json` — a HuggingFace `tokenizer.json` whose `model.type` is `"BPE"`, with `end_of_word_suffix: "</w>"`, `unk_token: "[UNK]"`, and a `Whitespace` pre-tokenizer. Task 3 and Task 7 read it.
 
-- [ ] **Step 1: Add the builder**
+- [x] **Step 1: Add the builder**
 
 In `tools/build_tiny_models.py`, above `main()`:
 
@@ -291,7 +291,7 @@ def build_tiny_bpe() -> str:
     return tokenizer.to_str(pretty=True)
 ```
 
-- [ ] **Step 2: Register it in `main()`**
+- [x] **Step 2: Register it in `main()`**
 
 `main()` currently loops over ONNX builders and calls `SerializeToString()`. The BPE model is text, so write it separately — append to the body of `main()`:
 
@@ -301,7 +301,7 @@ def build_tiny_bpe() -> str:
     print(f"tiny_bpe.json: {path.stat().st_size} bytes -> {path}")
 ```
 
-- [ ] **Step 3: Build it and check the shape**
+- [x] **Step 3: Build it and check the shape**
 
 Run: `cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python /home/cyril/Documents/devs/data.net/tools/build_tiny_models.py`
 Expected: `tiny_bpe.json: … bytes -> …/tests/oracles/tiny_bpe.json`
@@ -314,7 +314,7 @@ python3 -c "import json;m=json.load(open('tests/oracles/tiny_bpe.json'))['model'
 
 Expected: `BPE </w>` followed by a vocabulary size and a merge count, both non-zero. If the merge count is 0 the trainer found nothing to merge — raise `vocab_size` or extend `BPE_CORPUS` until it does not.
 
-- [ ] **Step 4: Check reproducibility — and expect it to fail**
+- [x] **Step 4: Check reproducibility — and expect it to fail**
 
 Run the builder a second time and diff:
 
@@ -334,7 +334,7 @@ Chasing the ties by editing `BPE_CORPUS` is rejected: flattening the ties you ca
 
 Record it where a reader will hit it: a paragraph in the `build_tiny_bpe()` docstring, and one or two sentences beside the `build_tiny_models.py` entry in `tools/README.md`, both saying that the committed fixture is authoritative rather than the script, and that a diff there must not be committed without regenerating `bpe.json` in the same commit.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tools/build_tiny_models.py tests/oracles/tiny_bpe.json
@@ -366,7 +366,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
   - `bpe_pretokenize.json` — `{"metadata": {"patterns": {"gpt2": "...", "llama3": "...", "qwen2": "..."}}, "cases": [{"id", "pattern", "text", "pieces"}]}`, where `pieces` is the *split* output before merging.
   - `bpe_tokenizer_json.json` — `{"cases": [{"id", "name", "tokenizer_json", "text", "tokens", "ids"}]}`.
 
-- [ ] **Step 1: Add the shared text corpus**
+- [x] **Step 1: Add the shared text corpus**
 
 The cases the spec requires. Add near the other fixture constants at the top of `tools/generate_oracles.py`:
 
@@ -401,7 +401,7 @@ BPE_TEXTS = [
 ]
 ```
 
-- [ ] **Step 2: Add the byte-level generator**
+- [x] **Step 2: Add the byte-level generator**
 
 ```python
 GPT2_VOCAB = "gpt2_vocab.json"
@@ -468,7 +468,7 @@ def generate_bytelevel_bpe() -> dict:
     }
 ```
 
-- [ ] **Step 3: Replace the placeholder alphabet with the real table**
+- [x] **Step 3: Replace the placeholder alphabet with the real table**
 
 `ByteLevel.alphabet()` returns an unordered set, so `sorted()` above is **wrong** — it does not tell you which byte maps to which character. Derive the table from the published rule instead, and replace the `table` construction in `generate_bytelevel_bpe` with:
 
@@ -489,7 +489,7 @@ def generate_bytelevel_bpe() -> dict:
 
 The `assert` is the point: the table is derived from the rule, and `tokenizers` confirms the derivation. Delete the `zip(...)` placeholder line and the now-unused `sorted`.
 
-- [ ] **Step 4: Add the classic-BPE and split-pattern generators**
+- [x] **Step 4: Add the classic-BPE and split-pattern generators**
 
 ```python
 def generate_bpe() -> dict:
@@ -552,7 +552,7 @@ def generate_bpe_pretokenize() -> dict:
     }
 ```
 
-- [ ] **Step 5: Transcribe the two remaining patterns**
+- [x] **Step 5: Transcribe the two remaining patterns**
 
 Fetch each model's `tokenizer.json` and read the `Split` pattern out of it — do not write these from memory:
 
@@ -582,7 +582,7 @@ Both also report `model.ignore_merges = true` and a 128 000-entry vocabulary. Th
 
 They differ in exactly one place — `\p{N}{1,3}` against `\p{N}`. A transcription that differs anywhere else is a typo. Record both mirror URLs in a comment above `BPE_PATTERNS`: a literal whose provenance is not written down is what the licensing rule is about.
 
-- [ ] **Step 6: Add the loader corpus**
+- [x] **Step 6: Add the loader corpus**
 
 ```python
 def generate_bpe_tokenizer_json() -> dict:
@@ -622,7 +622,7 @@ def generate_bpe_tokenizer_json() -> dict:
 
 `ignore_merges` is exercised in Task 10 rather than here: `tokenizers` sets it from the model, and forcing it on requires editing the serialized JSON, which Task 10 does where the behaviour it proves lives.
 
-- [ ] **Step 7: Register the four generators**
+- [x] **Step 7: Register the four generators**
 
 In `main()`, add to the **end** of the `generators` dict, after the last existing entry:
 
@@ -637,12 +637,12 @@ In `main()`, add to the **end** of the `generators` dict, after the last existin
 
 That branch also adds `tools/seeded_random.py`, a seeded RNG wrapper. It does not apply here: none of the four generators above draw a random number, they iterate `BPE_TEXTS`. If you find yourself reaching for `random`, stop — that is a sign the corpus is being generated rather than enumerated, which is not what these four do.
 
-- [ ] **Step 8: Generate, and check the exit code**
+- [x] **Step 8: Generate, and check the exit code**
 
 Run: `cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python /home/cyril/Documents/devs/data.net/tools/generate_oracles.py; echo "exit=$?"`
 Expected: `exit=0`, and four new `… cases -> …` lines. Do not pipe this into anything.
 
-- [ ] **Step 9: Check the corpora say something**
+- [x] **Step 9: Check the corpora say something**
 
 ```bash
 python3 -c "
@@ -655,7 +655,7 @@ for c in d['cases'][:8]: print(repr(c['text']), c['tokens'], c['decoded']==c['te
 
 Expected: `alphabet 256 Ġ Ċ` — byte 0x20 maps to U+0120 and byte 0x0A to U+010A — and `True` on every round-trip line. A `False` means the fixture itself is wrong; stop and diagnose before writing any C#.
 
-- [ ] **Step 10: Confirm the drift job would pass**
+- [x] **Step 10: Confirm the drift job would pass**
 
 Run the generator a second time, then: `git diff --stat -- tests/oracles`
 Expected: empty. The `Oracles are reproducible` CI job runs exactly this.
@@ -666,7 +666,7 @@ None of that reaches these four corpora — they carry tokens, ids and strings, 
 
 Do not confuse a red with Task 2's finding either. The BPE *trainer* is non-deterministic, but `tiny_bpe.json` is committed and CI never retrains it — `generate_oracles.py` only reads it. A red on `bpe.json` is a real bug in this task's generator; it cannot be the trainer.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add tools/generate_oracles.py tests/oracles/bpe.json tests/oracles/bytelevel_bpe.json tests/oracles/bpe_pretokenize.json tests/oracles/bpe_tokenizer_json.json
@@ -697,7 +697,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 - Consumes: `tests/oracles/bytelevel_bpe.json` → `metadata.alphabet`.
 - Produces: `internal static class ByteLevelAlphabet` with `static char ToChar(byte b)`, `static bool TryToByte(char c, out byte b)`, and `static ReadOnlySpan<char> Table` (256 entries, index = byte).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/DataNet.Embeddings.Tests/Tokenization/ByteLevelAlphabetTests.cs`:
 
@@ -758,12 +758,12 @@ public sealed class ByteLevelAlphabetTests
 
 `InternalsVisibleTo` already exposes the library's internals to the test assembly — check `Directory.Build.props` or the `.csproj`; if it does not, add it there rather than making the type public.
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `dotnet test tests/DataNet.Embeddings.Tests --filter "FullyQualifiedName~ByteLevelAlphabetTests"`
 Expected: FAIL — `ByteLevelAlphabet` does not exist, so this is a compile error.
 
-- [ ] **Step 3: Implement it**
+- [x] **Step 3: Implement it**
 
 `src/DataNet.Embeddings/Tokenization/ByteLevelAlphabet.cs`:
 
@@ -862,12 +862,12 @@ internal static class ByteLevelAlphabet
 }
 ```
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 Run: `dotnet test tests/DataNet.Embeddings.Tests --filter "FullyQualifiedName~ByteLevelAlphabetTests"`
 Expected: 4 passed. If `Table_matches_the_frozen_alphabet` fails at a specific byte, the range boundaries are off by one — `0xAD` (soft hyphen) is the hole between the two Latin-1 ranges.
 
-- [ ] **Step 5: Format, build both targets, commit**
+- [x] **Step 5: Format, build both targets, commit**
 
 ```bash
 dotnet format DataNet.slnx && dotnet build DataNet.slnx --configuration Release
@@ -921,11 +921,11 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 
   Tasks 7–12 all construct or consume this.
 
-- [ ] **Step 1: Read the record this one mirrors**
+- [x] **Step 1: Read the record this one mirrors**
 
 Read `src/DataNet.Embeddings/Tokenization/WordPieceVocabulary.cs` in full. It hand-writes `Equals` and `GetHashCode` because the generated ones compare `Vocab` by reference — two vocabularies loaded from the same file would be unequal. `BpeVocabulary` has the same problem twice over (`Vocab` and `Merges`) and needs the same treatment, including the O(1) hash over counts and scalars.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Append to `tests/DataNet.Embeddings.Tests/Tokenization/ValueEqualityTests.cs`, inside the existing class:
 
@@ -967,12 +967,12 @@ Append to `tests/DataNet.Embeddings.Tests/Tokenization/ValueEqualityTests.cs`, i
     }
 ```
 
-- [ ] **Step 3: Run it to verify it fails**
+- [x] **Step 3: Run it to verify it fails**
 
 Run: `dotnet test tests/DataNet.Embeddings.Tests --filter "FullyQualifiedName~ValueEqualityTests"`
 Expected: FAIL — `BpeVocabulary`, `MergePair` and `BpePatterns` do not exist.
 
-- [ ] **Step 4: Write `BpePatterns`**
+- [x] **Step 4: Write `BpePatterns`**
 
 `src/DataNet.Embeddings/Tokenization/BpePatterns.cs`. The three literals below are already the ones Task 3 transcribed and froze in `tools/generate_oracles.py`; that dict remains the reference, so diff against it rather than retyping. Task 6 has a test asserting the shipped constants equal the ones the corpus was generated with, so any drift between the two is caught.
 
@@ -1014,7 +1014,7 @@ public static class BpePatterns
 }
 ```
 
-- [ ] **Step 5: Write `BpeVocabulary`**
+- [x] **Step 5: Write `BpeVocabulary`**
 
 `src/DataNet.Embeddings/Tokenization/BpeVocabulary.cs`:
 
@@ -1153,12 +1153,12 @@ public sealed record BpeVocabulary(
 }
 ```
 
-- [ ] **Step 6: Run the tests**
+- [x] **Step 6: Run the tests**
 
 Run: `dotnet test tests/DataNet.Embeddings.Tests --filter "FullyQualifiedName~ValueEqualityTests"`
 Expected: PASS, including the tests that were already there.
 
-- [ ] **Step 7: Format, build, commit**
+- [x] **Step 7: Format, build, commit**
 
 ```bash
 dotnet format DataNet.slnx && dotnet build DataNet.slnx --configuration Release
@@ -1194,7 +1194,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 - Consumes: `BpePatterns`, `tests/oracles/bpe_pretokenize.json`.
 - Produces: `internal sealed class BpePreTokenizer` with `BpePreTokenizer(string? pattern)` and `void Split(string text, List<string> pieces)`. `pattern: null` means split on whitespace, the classic-BPE path.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```csharp
 using System.Text.Json;
@@ -1266,12 +1266,12 @@ Add `using System.Text.RegularExpressions;` at the top for the last test.
 
 `The_patterns_shipped_are_the_patterns_proven` is the one that stops `BpePatterns` from drifting away from the corpus that proves it.
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `dotnet test tests/DataNet.Embeddings.Tests --filter "FullyQualifiedName~BpePreTokenizeTests"`
 Expected: FAIL — `BpePreTokenizer` does not exist.
 
-- [ ] **Step 3: Implement it**
+- [x] **Step 3: Implement it**
 
 ```csharp
 using System.Text.RegularExpressions;
@@ -1323,14 +1323,14 @@ internal sealed class BpePreTokenizer
 
 `RegexOptions.Compiled` is deliberately **not** used for the caller-supplied pattern: compiling costs milliseconds per distinct pattern and a tokenizer is built once per model, so it would be paid on a path that runs once. Revisit only if the benchmark says otherwise.
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 Run: `dotnet test tests/DataNet.Embeddings.Tests --filter "FullyQualifiedName~BpePreTokenizeTests"`
 Expected: PASS.
 
 If `Split_matches_tokenizers_for_every_pattern` fails only on whitespace-heavy cases, the cause is almost certainly `\s`: HuggingFace's Rust regex reads it as the Unicode `White_Space` property, .NET as `[\f\n\r\t\v\x85\p{Z}]`. Report the diverging case to the user with both outputs before substituting an explicit character class — a silent rewrite of a model's own pattern is exactly the kind of change that must be visible in review.
 
-- [ ] **Step 5: Format, build, commit**
+- [x] **Step 5: Format, build, commit**
 
 ```bash
 dotnet format DataNet.slnx && dotnet build DataNet.slnx --configuration Release
@@ -1363,7 +1363,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 - Consumes: `BpeVocabulary`, `BpePreTokenizer`, `tests/oracles/bpe.json`, `tests/oracles/tiny_bpe.json`.
 - Produces: `public sealed class BpeTokenizer : ISubwordTokenizer` with `BpeTokenizer(BpeVocabulary)`, `TokenizationResult Encode(string)`, `bool TryGetId(string, out int)`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/DataNet.Embeddings.Tests/BpeTokenizerTests.cs`. It reads the tiny model straight from `tiny_bpe.json` with `System.Text.Json` rather than through the loader, because the loader is Task 12 — the merge loop is what is under test here.
 
@@ -1463,12 +1463,12 @@ public sealed class BpeTokenizerTests
 }
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `dotnet test tests/DataNet.Embeddings.Tests --filter "FullyQualifiedName~BpeTokenizerTests"`
 Expected: FAIL — `BpeTokenizer` does not exist.
 
-- [ ] **Step 3: Implement it**
+- [x] **Step 3: Implement it**
 
 ```csharp
 using System.Buffers;
@@ -1691,7 +1691,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 }
 ```
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 Run: `dotnet test tests/DataNet.Embeddings.Tests --filter "FullyQualifiedName~BpeTokenizerTests"`
 Expected: PASS.
@@ -1704,7 +1704,7 @@ Expected: PASS.
 
 If `Encode_matches_tokenizers` fails on a piece containing an uncovered character, check what HuggingFace does with it in `bpe.json`. Do not adjust the corpus to fit the code.
 
-- [ ] **Step 5: Format, build both targets, commit**
+- [x] **Step 5: Format, build both targets, commit**
 
 ```bash
 dotnet format DataNet.slnx && dotnet build DataNet.slnx --configuration Release && dotnet test DataNet.slnx --configuration Release --no-build
@@ -1740,7 +1740,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 - Consumes: `ByteLevelAlphabet`, `tests/oracles/bytelevel_bpe.json`, `gpt2_vocab.json`, `gpt2_merges.txt`.
 - Produces: `BpeTokenizer` honouring `BpeVocabulary.ByteLevel`. Adds `internal static BpeVocabulary Gpt2Vocabulary()` to the test class, reused by Tasks 9 and 13.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```csharp
 using System.Text.Json;
@@ -1827,12 +1827,12 @@ public sealed class ByteLevelBpeTests
 }
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `dotnet test tests/DataNet.Embeddings.Tests --filter "FullyQualifiedName~ByteLevelBpeTests"`
 Expected: FAIL — the byte-level path is not implemented, so tokens come back wrong (or the piece is refused as unknown).
 
-- [ ] **Step 3: Implement the byte-level symbol construction**
+- [x] **Step 3: Implement the byte-level symbol construction**
 
 In `BpeTokenizer`, add a field set from the vocabulary:
 
@@ -1917,7 +1917,7 @@ Add `using DataNet.Internal.Persistence;` for `JsonArtifact.Utf8NoBom` — the r
 
 The byte-to-string allocation in `ByteLevelSymbols` is one small string per byte and it is the first thing Task 13's benchmark will show. Leave it as written until there are numbers: a `FrozenDictionary` with `GetAlternateLookup<ReadOnlySpan<char>>` under `#if NET9_0_OR_GREATER`, keyed off a one-character span of a reused buffer, is the fix, and it belongs in the commit that shows it was needed.
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 Run: `dotnet test tests/DataNet.Embeddings.Tests --filter "FullyQualifiedName~ByteLevelBpeTests"`
 Expected: PASS on all 20 cases.
@@ -1929,7 +1929,7 @@ Diagnosis order if it fails:
 - Wrong only on **CJK/emoji** → the UTF-8 encoding step, most likely a surrogate pair handled per-`char` rather than per-byte.
 - Wrong only on **long** inputs → the merge order, i.e. the scan in `Merge` picking a later rank.
 
-- [ ] **Step 5: Format, build, run the whole suite, commit**
+- [x] **Step 5: Format, build, run the whole suite, commit**
 
 ```bash
 dotnet format DataNet.slnx && dotnet build DataNet.slnx --configuration Release && dotnet test DataNet.slnx --configuration Release --no-build
@@ -1964,7 +1964,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 - Consumes: `bytelevel_bpe.json` fields `decoded` and `decoded_skip_specials`.
 - Produces: `public string Decode(IReadOnlyList<int> ids, bool skipSpecialTokens = false)` and `public string Decode(ReadOnlySpan<int> ids, bool skipSpecialTokens = false)`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `ByteLevelBpeTests`:
 
@@ -2044,12 +2044,12 @@ Append to `BpeTokenizerTests`:
     }
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run: `dotnet test tests/DataNet.Embeddings.Tests --filter "FullyQualifiedName~ByteLevelBpeTests|FullyQualifiedName~BpeTokenizerTests"`
 Expected: FAIL — `Decode` does not exist.
 
-- [ ] **Step 3: Implement it**
+- [x] **Step 3: Implement it**
 
 Add to `BpeTokenizer` a set of added-token ids, populated in the constructor:
 
@@ -2150,14 +2150,14 @@ Then:
 
 Add `using System.Text;`.
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 Run: `dotnet test tests/DataNet.Embeddings.Tests --filter "FullyQualifiedName~ByteLevelBpeTests|FullyQualifiedName~BpeTokenizerTests"`
 Expected: PASS.
 
 If `Decode_of_Encode_is_the_input` fails only on the trailing-space case, the classic `TrimEnd` in `Finish` has leaked into the byte-level path — it must not. If it fails on emoji, `TryToByte` is rejecting a character it should map; re-run Task 4's tests first.
 
-- [ ] **Step 5: Format, build, commit**
+- [x] **Step 5: Format, build, commit**
 
 ```bash
 dotnet format DataNet.slnx && dotnet build DataNet.slnx --configuration Release && dotnet test DataNet.slnx --configuration Release --no-build
@@ -2194,7 +2194,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 - Consumes: `BpeVocabulary.IgnoreMerges`.
 - Produces: `Encode` short-circuiting a whole piece present in the vocabulary. New oracle field: `cases[].tokens_ignore_merges` and `cases[].ids_ignore_merges` in `bytelevel_bpe.json`.
 
-- [ ] **Step 1: Extend the oracle**
+- [x] **Step 1: Extend the oracle**
 
 In `generate_bytelevel_bpe`, build a second tokenizer with the flag on and add two fields per case. `tokenizers` reads `ignore_merges` from the model, so set it on the deserialized JSON:
 
@@ -2215,7 +2215,7 @@ and inside the case loop:
         cases[-1]["ids_ignore_merges"] = enc_ignoring.ids
 ```
 
-- [ ] **Step 2: Regenerate and confirm the flag changes something**
+- [x] **Step 2: Regenerate and confirm the flag changes something**
 
 Run: `cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python /home/cyril/Documents/devs/data.net/tools/generate_oracles.py; echo "exit=$?"`
 
@@ -2230,7 +2230,7 @@ print(len(diff),'cases differ:',diff[:5])
 
 Expected: at least one case differs. If **zero** differ, the corpus cannot tell the two code paths apart and the test below would pass without the feature existing. Add a text to `BPE_TEXTS` that GPT-2's vocabulary contains as a single entry but would merge differently — try `" indivisible"` or `" tokenization"` — and regenerate until the count is non-zero. Report the chosen text to the user.
 
-- [ ] **Step 3: Write the failing test**
+- [x] **Step 3: Write the failing test**
 
 Append to `ByteLevelBpeTests`:
 
@@ -2262,12 +2262,12 @@ Append to `ByteLevelBpeTests`:
     }
 ```
 
-- [ ] **Step 4: Run it to verify it fails**
+- [x] **Step 4: Run it to verify it fails**
 
 Run: `dotnet test tests/DataNet.Embeddings.Tests --filter "FullyQualifiedName~IgnoreMerges"`
 Expected: FAIL on the cases identified in Step 2.
 
-- [ ] **Step 5: Implement it**
+- [x] **Step 5: Implement it**
 
 Add the field and set it in the constructor:
 
@@ -2313,12 +2313,12 @@ and a helper:
     }
 ```
 
-- [ ] **Step 6: Run the tests**
+- [x] **Step 6: Run the tests**
 
 Run: `dotnet test tests/DataNet.Embeddings.Tests --filter "FullyQualifiedName~ByteLevelBpeTests"`
 Expected: PASS, including `Encode_matches_tokenizers_over_the_gpt2_vocabulary` — the flag is off there and must stay behaviour-neutral.
 
-- [ ] **Step 7: Format, build, commit**
+- [x] **Step 7: Format, build, commit**
 
 ```bash
 dotnet format DataNet.slnx && dotnet build DataNet.slnx --configuration Release && dotnet test DataNet.slnx --configuration Release --no-build
@@ -2353,11 +2353,11 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 - Consumes: `BpeVocabulary`, `ArtifactLoadOptions`, `JsonArtifact`, `tests/oracles/gpt2_vocab.json`, `gpt2_merges.txt`.
 - Produces: `public static class BpeFilesLoader` with `Load(Stream, Stream, ArtifactLoadOptions?, bool)`, `Load(string, string, ArtifactLoadOptions?, bool)`, `LoadAsync(Stream, Stream, ArtifactLoadOptions?, bool, CancellationToken)`.
 
-- [ ] **Step 1: Read the loader this one mirrors**
+- [x] **Step 1: Read the loader this one mirrors**
 
 Read `src/DataNet.Embeddings/Persistence/VocabTxtLoader.cs` in full: the three-overload shape (`Stream`, `path`, `Async`), `ArtifactLoadOptions.LimitsOf`, `JsonArtifact.ReadAllBytes`/`OpenRead`, the `SourceName` constant used in every message, and the BOM handling. Follow it exactly, including calling the limits *before* allocating from the input.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 ```csharp
 using System.Text;
@@ -2464,12 +2464,12 @@ public sealed class BpeFilesLoaderTests
 }
 ```
 
-- [ ] **Step 3: Run it to verify it fails**
+- [x] **Step 3: Run it to verify it fails**
 
 Run: `dotnet test tests/DataNet.Embeddings.Tests --filter "FullyQualifiedName~BpeFilesLoaderTests"`
 Expected: FAIL — `BpeFilesLoader` does not exist.
 
-- [ ] **Step 4: Implement it**
+- [x] **Step 4: Implement it**
 
 ```csharp
 using System.Text.Json;
@@ -2656,12 +2656,12 @@ public static class BpeFilesLoader
 
 Check the exact names on `JsonArtifact` (`Parse`, `ReadAllBytes`, `ReadAllBytesAsync`, `OpenRead`, `Utf8NoBom`) and on `ArtifactLimits` (`CheckTokenLength`, `CheckVocabularySize`, `CheckArrayLength`) against `src/Shared/Persistence/JsonArtifact.cs` before assuming the signatures above compile; adapt to what is actually there.
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 Run: `dotnet test tests/DataNet.Embeddings.Tests --filter "FullyQualifiedName~BpeFilesLoaderTests"`
 Expected: PASS.
 
-- [ ] **Step 6: Format, build, commit**
+- [x] **Step 6: Format, build, commit**
 
 ```bash
 dotnet format DataNet.slnx && dotnet build DataNet.slnx --configuration Release && dotnet test DataNet.slnx --configuration Release --no-build
@@ -2693,11 +2693,11 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 - Consumes: `tests/oracles/bpe_tokenizer_json.json`.
 - Produces: `LoadBpe(Stream, ArtifactLoadOptions?)`, `LoadBpe(string, ArtifactLoadOptions?)`, `LoadBpeAsync(Stream, ArtifactLoadOptions?, CancellationToken)`.
 
-- [ ] **Step 1: Read the loader's existing shape**
+- [x] **Step 1: Read the loader's existing shape**
 
 Read `src/DataNet.Embeddings/Persistence/TokenizerJsonLoader.cs` end to end — it is 710 lines and every convention matters: `EnsureModelType`, `EnsureByteFallbackIsOff`, the pre-tokenizer and normalizer validation with `UntypedName`, `RequireObject`/`RequireString`/`OptionalString`/`OptionalBoolean`, the added-token handling, and the message style used when refusing a pipeline. `LoadBpe` is a third sibling of `LoadWordPiece` and `LoadUnigram`, not a new design.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Append to `tests/DataNet.Embeddings.Tests/Persistence/TokenizerJsonLoaderTests.cs`:
 
@@ -2798,12 +2798,12 @@ Append to `tests/DataNet.Embeddings.Tests/Persistence/TokenizerJsonLoaderTests.c
 
 Add `using System.Text;` and `using DataNet.Embeddings.Tokenization;` if the file does not already have them.
 
-- [ ] **Step 3: Run it to verify it fails**
+- [x] **Step 3: Run it to verify it fails**
 
 Run: `dotnet test tests/DataNet.Embeddings.Tests --filter "FullyQualifiedName~TokenizerJsonLoaderTests"`
 Expected: FAIL — `LoadBpe` does not exist.
 
-- [ ] **Step 4: Implement it**
+- [x] **Step 4: Implement it**
 
 Add the three public overloads directly after `LoadUnigramAsync`, copying the XML-doc shape of their siblings verbatim and substituting "BPE" for "Unigram". Then add the parsing method beside `ParseUnigram`. It must:
 
@@ -2823,12 +2823,12 @@ Add the three public overloads directly after `LoadUnigramAsync`, copying the XM
 
 Keep the method under the cognitive-complexity threshold by extracting the pre-tokenizer validation into its own private method. If SonarAnalyzer still flags it, suppress with a comment in the style of the one at the top of `SentencePieceTokenizer.cs` — a faithful reproduction of a published pipeline whose 1:1 shape is what makes divergences auditable — and not otherwise.
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 Run: `dotnet test tests/DataNet.Embeddings.Tests --filter "FullyQualifiedName~TokenizerJsonLoaderTests"`
 Expected: PASS, the pre-existing WordPiece and Unigram tests included.
 
-- [ ] **Step 6: Format, build, run everything, commit**
+- [x] **Step 6: Format, build, run everything, commit**
 
 ```bash
 dotnet format DataNet.slnx && dotnet build DataNet.slnx --configuration Release && dotnet test DataNet.slnx --configuration Release --no-build
@@ -2863,18 +2863,18 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 - Consumes: `BpeTokenizer`, `BpeFilesLoader`, `SentencePieceTokenizer`.
 - Produces: measured figures for the PR description. No API.
 
-- [ ] **Step 1: Add a 30k BPE tokenizer to the benchmark corpus**
+- [x] **Step 1: Add a 30k BPE tokenizer to the benchmark corpus**
 
 Read `bench/corpus/generate_vocabs.py`. It already trains a 30 000-entry WordPiece, Unigram and SentencePiece over the same documents. Add a byte-level BPE beside them, written to `tokenizer_30k_bpe.json`, trained on the same corpus with the same vocabulary size — the comparison is only meaningful if both tokenizers saw the same text.
 
 Then add `"tokenizer_30k_bpe.json"` to `BenchCorpus.RequiredFiles` in `bench/DataNet.Text.Benchmarks/BenchCorpus.cs`, so a run without it fails rather than silently skipping.
 
-- [ ] **Step 2: Generate the corpus**
+- [x] **Step 2: Generate the corpus**
 
 Run: `cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python /home/cyril/Documents/devs/data.net/bench/corpus/generate_vocabs.py`
 Expected: `tokenizer_30k_bpe.json` written alongside the existing files.
 
-- [ ] **Step 3: Write the benchmark**
+- [x] **Step 3: Write the benchmark**
 
 ```csharp
 using System.Text.Json;
@@ -2942,12 +2942,12 @@ public class BpeBenchmarks
 }
 ```
 
-- [ ] **Step 4: Run it**
+- [x] **Step 4: Run it**
 
 Run: `dotnet run --project bench/DataNet.Text.Benchmarks --configuration Release -- --filter "*BpeBenchmarks*"`
 Expected: a table with `Unigram`, `Bpe` and `BpeOnOnePathologicalToken`, with `Allocated` per operation.
 
-- [ ] **Step 5: Read the numbers and act on them**
+- [x] **Step 5: Read the numbers and act on them**
 
 Record the machine (`lscpu | head -20`, the .NET SDK version) and the table. Then:
 
@@ -2957,7 +2957,7 @@ Record the machine (`lscpu | head -20`, the .NET SDK version) and the table. The
 
 Do not skip this step and do not report figures you did not run.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add bench/DataNet.Text.Benchmarks/BpeBenchmarks.cs bench/DataNet.Text.Benchmarks/BenchCorpus.cs bench/corpus/generate_vocabs.py
@@ -2985,11 +2985,11 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 - Consumes: all five new public types.
 - Produces: nothing. This task exists so CI passes.
 
-- [ ] **Step 1: Understand what the gate checks**
+- [x] **Step 1: Understand what the gate checks**
 
 Read `samples/DataNet.Sample/PackagingGate.cs`. It reads the exported types from the **packaged** assemblies NuGet resolved, and matches them against the `MemberReference` entries in the sample's own metadata. `typeof(T)` emits a `TypeReference` and does not count. A `const` never emits a member reference at all — which is why `BpePatterns` exposes properties.
 
-- [ ] **Step 2: Add the section**
+- [x] **Step 2: Add the section**
 
 In `Lot3Embeddings.Run()`, after the SentencePiece section and before the batch-encoding one:
 
@@ -3025,14 +3025,14 @@ In `Lot3Embeddings.Run()`, after the SentencePiece section and before the batch-
 
 `bpeModel.Merges[0].Left` and `.Right` are what give `MergePair` its member references; `BpePatterns.Gpt2`, `BpeVocabulary.SkippedMerges`, `BpeTokenizer.Decode` and `BpeFilesLoader.Load` cover the rest.
 
-- [ ] **Step 3: Run the sample**
+- [x] **Step 3: Run the sample**
 
 Run: `dotnet run --project samples/DataNet.Sample --configuration Release`
 Expected: the new lines appear, the round trip prints `"token"`, and the gate does not fail.
 
 If the gate reports an unreferenced type, it names it. Add a member reference for that type — reading a property is enough, `typeof` is not.
 
-- [ ] **Step 4: Format, build, commit**
+- [x] **Step 4: Format, build, commit**
 
 ```bash
 dotnet format DataNet.slnx && dotnet build DataNet.slnx --configuration Release
@@ -3064,7 +3064,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 - Consumes: the measured figures from Task 13.
 - Produces: nothing.
 
-- [ ] **Step 1: Write ADR 0017**
+- [x] **Step 1: Write ADR 0017**
 
 Read `docs/decisions/0013-sentencepiece-parity-scope.md` first and follow its structure exactly (Status / Context / Decision / Consequences). The three limits to record:
 
@@ -3076,7 +3076,7 @@ Read `docs/decisions/0013-sentencepiece-parity-scope.md` first and follow its st
 
 Record the measured benchmark outcome in *Consequences*, including whether the priority-queue arm was needed.
 
-- [ ] **Step 2: Add the equivalence rows**
+- [x] **Step 2: Add the equivalence rows**
 
 Read the existing tokenizer rows in `docs/equivalence.md` — they name the Python call, the library, the C# call, and what is and is not reproduced. Add one row each for:
 
@@ -3087,7 +3087,7 @@ Read the existing tokenizer rows in `docs/equivalence.md` — they name the Pyth
 
 State the corpus each row is proven over, as the SentencePiece rows do.
 
-- [ ] **Step 3: Write the guide section**
+- [x] **Step 3: Write the guide section**
 
 In `docs/guides/embeddings.md`, add **"Which tokenizer for which model family"** — the question a user actually arrives with. A table mapping family to class:
 
@@ -3103,18 +3103,18 @@ Then a short paragraph on the last row: those models are SentencePiece BPE with 
 
 Include a compiling code sample — `tools/extract_doc_snippets.py` compiles the snippets in this file in CI, so a sample that does not build fails the run.
 
-- [ ] **Step 4: Update `README.md` and `CHANGELOG.md`**
+- [x] **Step 4: Update `README.md` and `CHANGELOG.md`**
 
 `README.md`: the Lot 3 section claims tokenizer coverage; add BPE and byte-level BPE, and the model families they cover.
 
 `CHANGELOG.md`: under `## [Unreleased]`, in a `### DataNet.Embeddings — 0.3.0` group (create it if the release does not have one yet), an `#### Added` entry in the style of the existing ones — what landed, which model families it covers, what it refuses and why, and the corpus proving it.
 
-- [ ] **Step 5: Verify the documentation builds**
+- [x] **Step 5: Verify the documentation builds**
 
 Run: `python3 tools/extract_doc_snippets.py && dotnet build samples/DataNet.DocSnippets --configuration Release`
 Expected: the extracted snippets compile.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add docs/decisions/0017-bpe-parity-scope.md docs/equivalence.md docs/guides/embeddings.md README.md CHANGELOG.md
@@ -3137,7 +3137,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 
 **Files:** none.
 
-- [ ] **Step 1: Run everything CI runs**
+- [x] **Step 1: Run everything CI runs**
 
 ```bash
 dotnet format DataNet.slnx --verify-no-changes && dotnet build DataNet.slnx --configuration Release && dotnet test DataNet.slnx --configuration Release --no-build && dotnet run --project samples/DataNet.Sample --configuration Release && python3 tools/fetch_gpt2_bpe.py --check
@@ -3145,12 +3145,12 @@ dotnet format DataNet.slnx --verify-no-changes && dotnet build DataNet.slnx --co
 
 Expected: every one passes. Report the actual output; do not summarise a run you did not make.
 
-- [ ] **Step 2: Confirm the oracles do not drift**
+- [x] **Step 2: Confirm the oracles do not drift**
 
 Run: `cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python /home/cyril/Documents/devs/data.net/tools/generate_oracles.py; echo "exit=$?"` then `git diff --stat -- tests/oracles`
 Expected: `exit=0` and an empty diff.
 
-- [ ] **Step 3: Confirm the netstandard suite really ran the new tests**
+- [x] **Step 3: Confirm the netstandard suite really ran the new tests**
 
 ```bash
 dotnet test tests/DataNet.Embeddings.NetStandard.Tests --configuration Release --no-build --filter "FullyQualifiedName~Bpe|FullyQualifiedName~ByteLevel" -v n | tail -30
@@ -3158,7 +3158,7 @@ dotnet test tests/DataNet.Embeddings.NetStandard.Tests --configuration Release -
 
 Expected: a non-zero passed count. A green suite that ran **zero** BPE tests is the failure mode this step exists to catch — check the number, not the colour.
 
-- [ ] **Step 4: Push and open the PR**
+- [x] **Step 4: Push and open the PR**
 
 ```bash
 git push -u origin feat/59-bpe-tokenizers
@@ -3179,6 +3179,6 @@ End with:
 
 Do **not** merge. The repository owner merges.
 
-- [ ] **Step 5: Wait for SonarCloud**
+- [x] **Step 5: Wait for SonarCloud**
 
 Findings arrive after the push, not before — SonarAnalyzer in the local build catches many but not all of them. Read the PR's SonarCloud report and fix what it raises, passing `resolved=false` when querying the API or the count will never drop.

@@ -78,7 +78,7 @@ the empty suffix at all, and whether Task 5 writes an ADR.
 The spec records three possible outcomes for an empty `end_of_word_suffix`, and they are three different
 changes. Guessing here would bake an unmeasured rule into a public type.
 
-- [ ] **Step 1: Write the probe**
+- [x] **Step 1: Write the probe**
 
 ```python
 import json
@@ -117,7 +117,7 @@ for label, kwargs in [
         print(f"{label}: ROUND TRIP REFUSED -> {type(exc).__name__}: {exc}")
 ```
 
-- [ ] **Step 2: Run it from a neutral directory and record every line**
+- [x] **Step 2: Run it from a neutral directory and record every line**
 
 ```bash
 cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python /tmp/probe_118.py
@@ -132,7 +132,7 @@ Copy the whole output into your report verbatim. Three questions must be answere
    before any code is written.
 3. Do `continuing_subword_prefix=""` and `dropout=0.0` produce baseline tokens?
 
-- [ ] **Step 3: Probe the `Sequence` default separately**
+- [x] **Step 3: Probe the `Sequence` default separately**
 
 The `add_prefix_space` default cannot be measured through the Python constructor — it is a
 `tokenizer.json` parsing question. Build the JSON by hand, omitting the flag inside the `Sequence`'s
@@ -164,7 +164,7 @@ Then set `"add_prefix_space": True` and `False` explicitly in that `ByteLevel` s
 omitted case must match one of them; record which. If it matches `False`, **stop and report** — D3's
 premise is wrong.
 
-- [ ] **Step 4: Report, do not commit**
+- [x] **Step 4: Report, do not commit**
 
 Nothing is committed by this task. Write the measurements into your report file; Tasks 2-5 cite them.
 
@@ -184,7 +184,7 @@ Nothing is committed by this task. Write the measurements into your report file;
 
 - Produces: `BpeVocabulary.EndOfWordSuffix` reads back `null` when set to `""`. No signature changes.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `ValueEqualityTests.cs`, add to the existing class:
 
@@ -252,7 +252,7 @@ Read a neighbouring test in the same file first and match how it builds a classi
 vocabulary; the shape above is indicative, the file's own idiom wins. If `Decode`'s expected output is not
 obviously `"ab"`, derive it from an equivalent test rather than asserting a guess.
 
-- [ ] **Step 2: Run them and watch them fail**
+- [x] **Step 2: Run them and watch them fail**
 
 ```bash
 dotnet test DataNet.slnx -c Release --filter "FullyQualifiedName~end_of_word_suffix" > /tmp/118-red.log 2>&1
@@ -264,7 +264,7 @@ Expected: the two equality tests fail on `Assert.Null`, and the decode test fail
 `ArgumentException`. **Read the count** — three tests per project, six in total across the mirrors. A run
 of 0 tests is not a red run.
 
-- [ ] **Step 3: Put the rule on the type**
+- [x] **Step 3: Put the rule on the type**
 
 Replace `BpeVocabulary.cs:66-67` with:
 
@@ -285,7 +285,7 @@ Replace `BpeVocabulary.cs:66-67` with:
     }
 ```
 
-- [ ] **Step 4: Run them and watch them pass**
+- [x] **Step 4: Run them and watch them pass**
 
 ```bash
 dotnet build DataNet.slnx -c Release --no-incremental > /tmp/118-build.log 2>&1
@@ -299,7 +299,7 @@ tail -12 /tmp/118-green.log
 Expected: 0 warnings, and **2243 passing** (2237 + 3 new tests × 2 mirrors). If the total differs, account
 for it before moving on.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/DataNet.Embeddings/Tokenization/BpeVocabulary.cs \
@@ -325,7 +325,7 @@ git commit -m "Read an empty end-of-word suffix as the absent one it means"
 - Produces: `LoadBpe` accepts `"continuing_subword_prefix": ""` and `"dropout": 0.0`; every other value of
   either stays refused with the message it has today.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `TokenizerJsonLoaderTests.cs` already builds `tokenizer.json` documents through a `Bytes(json)`
 `MemoryStream` helper — read the file and use its existing idiom rather than inventing one. Add four tests:
@@ -372,7 +372,7 @@ git commit -m "Read an empty end-of-word suffix as the absent one it means"
 extra model property. If no such helper exists, write one in the test file and use it for all four — do not
 paste the same JSON literal four times.
 
-- [ ] **Step 2: Run them and watch the two acceptance tests fail**
+- [x] **Step 2: Run them and watch the two acceptance tests fail**
 
 ```bash
 dotnet test DataNet.slnx -c Release --filter "FullyQualifiedName~LoadBpe_accepts_an_empty|FullyQualifiedName~LoadBpe_accepts_a_zero" > /tmp/118-t3-red.log 2>&1
@@ -383,7 +383,7 @@ tail -20 /tmp/118-t3-red.log
 Expected: both fail with `NotSupportedException`. The two refusal tests already pass — that is the point:
 they pin what must not change.
 
-- [ ] **Step 3: Make the conditions conditional**
+- [x] **Step 3: Make the conditions conditional**
 
 In `EnsureBpeModelSettingsAreReproduced`, `TokenizerJsonLoader.cs:585`:
 
@@ -407,7 +407,7 @@ Note the `ValueKind` narrowing: a `dropout` that is neither null nor a number is
 condition would now let it through. Decide deliberately — either keep refusing it (an `else` naming it) or
 say in the comment why a malformed value is someone else's problem. Do not leave it unaddressed.
 
-- [ ] **Step 4: Run the whole suite**
+- [x] **Step 4: Run the whole suite**
 
 ```bash
 dotnet build DataNet.slnx -c Release --no-incremental > /tmp/118-t3-build.log 2>&1
@@ -420,7 +420,7 @@ tail -12 /tmp/118-t3-green.log
 
 Expected: 0 warnings, **2251 passing** (2243 + 4 × 2).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/DataNet.Embeddings/Persistence/TokenizerJsonLoader.cs \
@@ -453,7 +453,7 @@ tolerating an omitted `use_regex` — the comment at `:741` is right, and stock 
 keeps tolerating an omitted `trim_offsets`, which it never reads. It refuses only the field whose absence
 would force it to invent a value that changes its output.
 
-- [ ] **Step 1: Find every ByteLevel parse site before writing anything**
+- [x] **Step 1: Find every ByteLevel parse site before writing anything**
 
 ```bash
 grep -n "add_prefix_space\|ByteLevel" src/DataNet.Embeddings/Persistence/TokenizerJsonLoader.cs
@@ -463,7 +463,7 @@ The plan names three sites from a reading of the file. Confirm that count yourse
 in your report. If there is a fourth, it gets the same treatment; if one of the three does not actually
 parse a `ByteLevel` block, say so rather than editing it to fit the plan.
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Four tests, using the file's own JSON-building idiom — read a neighbouring test first:
 
@@ -487,7 +487,7 @@ Then the same shape for the `Sequence` step and for the `decoder`, and a fourth 
 **declaring** the field still loads and encodes as it did before — that one is the regression guard, and it
 must assert a token stream, not just that no exception was thrown.
 
-- [ ] **Step 3: Run them and watch the three refusal tests fail**
+- [x] **Step 3: Run them and watch the three refusal tests fail**
 
 ```bash
 dotnet test DataNet.slnx -c Release --filter "FullyQualifiedName~without_add_prefix_space" > /tmp/118-t4-red.log 2>&1
@@ -497,7 +497,7 @@ tail -20 /tmp/118-t4-red.log
 
 Expected: three failures, each because the file loaded instead of throwing. Read the count.
 
-- [ ] **Step 4: Make the read required**
+- [x] **Step 4: Make the read required**
 
 At each site, replace the defaulting read with one that throws when the property is absent, naming the
 field and saying the reference refuses it too. Follow `Unsupported(...)`'s existing two-argument shape —
@@ -506,7 +506,7 @@ what the file declares, and why it cannot be reproduced — so the message reads
 Both defaults disappear: `?? true` at `:756` and `?? false` at `:797` become unreachable once the omission
 throws, and leaving them would suggest a fallback that can never run.
 
-- [ ] **Step 5: Green, and fix what encoded the old permissiveness**
+- [x] **Step 5: Green, and fix what encoded the old permissiveness**
 
 ```bash
 dotnet build DataNet.slnx -c Release --no-incremental > /tmp/118-t4-build.log 2>&1
@@ -522,7 +522,7 @@ encodes the permissiveness this task removes: declare the field in the fixture r
 site, and say in your report how many you had to touch. A fixture under `tests/oracles/` must **not** be
 edited by hand — if one fails, stop and report it, because that is corpus drift and not a test to fix.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/DataNet.Embeddings/Persistence/TokenizerJsonLoader.cs \
@@ -550,7 +550,7 @@ git commit -m "Refuse a byte-level block missing the field that decides its outp
 Tasks 3 and 4 asserted that these values change nothing. That assertion is what this task turns into a
 measured fact — until now, a load test only proved nothing was thrown.
 
-- [ ] **Step 1: Add the generator**
+- [x] **Step 1: Add the generator**
 
 Follow `generate_bpe_added_token_flags`'s shape exactly (`tools/generate_oracles.py:2507`): same metadata
 keys, `tokenizer.to_str()` recorded in the metadata so the C# side parses the exact bytes HuggingFace was
@@ -576,7 +576,7 @@ Cases, each paired with a baseline built from the same vocabulary and merges wit
 
 Register it in `main`'s generators dict as `bpe_no_op_settings.json`.
 
-- [ ] **Step 2: Generate, and read the generator's own exit code**
+- [x] **Step 2: Generate, and read the generator's own exit code**
 
 ```bash
 cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python \
@@ -589,7 +589,7 @@ cd /home/cyril/Documents/devs/data.net && git status --porcelain tests/oracles/
 Expected: exit 0, and **exactly one new file**. If any other corpus moved, stop and report it — that is a
 determinism failure in something else, not a result of this change.
 
-- [ ] **Step 3: Replay it**
+- [x] **Step 3: Replay it**
 
 Create `BpeNoOpSettingsTests.cs` following `BpeAddedTokenFlagsTests.cs`. Use
 `OracleReplay.AssertEncodings(doc, tokenizer.Encode, "tokens")` — **do not hand-roll the loop**. The helper
@@ -614,7 +614,7 @@ the claim and per-case replay alone does not state it:
 Fill that body in against the corpus's actual shape — the comment is the specification, not a placeholder
 to leave behind.
 
-- [ ] **Step 4: Green**
+- [x] **Step 4: Green**
 
 ```bash
 dotnet test DataNet.slnx -c Release > /tmp/118-t5-green.log 2>&1
@@ -626,7 +626,7 @@ Read the count and state it. Then prove the replay **discriminates**: empty the 
 **output-directory copy** of the corpus (`tests/DataNet.Embeddings.Tests/bin/Release/net10.0/oracles/`,
 never the committed source file), confirm the test now fails, and restore it. Report the failure message.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tools/generate_oracles.py tests/oracles/bpe_no_op_settings.json \
@@ -647,7 +647,7 @@ git commit -m "Replay what tokenizers does with the settings that change nothing
 
 **Depends on:** Tasks 2-5.
 
-- [ ] **Step 1: Find what this branch falsified**
+- [x] **Step 1: Find what this branch falsified**
 
 ```bash
 cd /home/cyril/Documents/devs/data.net
@@ -659,13 +659,13 @@ wc -l /tmp/118-doc-hits.txt
 Read every hit. Counts, enumerations and "see X" pointers go stale silently; this repository has been
 bitten by that twice on #104.
 
-- [ ] **Step 2: The equivalence row**
+- [x] **Step 2: The equivalence row**
 
 `docs/equivalence.md:111` enumerates eleven refusals in prose, each verified against the code during #104.
 Two become conditional: a **non-empty** `continuing_subword_prefix`, a **non-zero** `dropout`. Change only
 those two clauses; the other nine are still exact.
 
-- [ ] **Step 3: The CHANGELOG, after establishing which section it belongs in**
+- [x] **Step 3: The CHANGELOG, after establishing which section it belongs in**
 
 ```bash
 git tag --list 'DataNet.Embeddings/*'
@@ -679,7 +679,7 @@ Establish which before writing the sentence; do not guess from the version numbe
 
 Add the entry under `[Unreleased]`, in the file's existing sectioning and voice.
 
-- [ ] **Step 4: The ADR, only if Task 1 returned outcome 2**
+- [x] **Step 4: The ADR, only if Task 1 returned outcome 2**
 
 If `tokenizers` does something with an empty `end_of_word_suffix` other than ignoring it, then reading it
 as absent is a deliberate divergence and belongs in `docs/decisions/`. Take the next free number — check
@@ -687,7 +687,7 @@ as absent is a deliberate divergence and belongs in `docs/decisions/`. Take the 
 follow `0022-added-token-matching-flags.md`'s shape. On outcomes 1 and 3, write no ADR and say why in your
 report.
 
-- [ ] **Step 5: Lint and commit**
+- [x] **Step 5: Lint and commit**
 
 ```bash
 npx --yes --ignore-scripts markdownlint-cli2@0.23.2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" \
@@ -704,7 +704,7 @@ git commit -m "Record which values the BPE loader refuses, and which it stopped 
 
 **Depends on:** Task 6. Nothing is committed here unless a gate fails and is fixed.
 
-- [ ] **Step 1: Every gate, with real exit codes**
+- [x] **Step 1: Every gate, with real exit codes**
 
 ```bash
 cd /home/cyril/Documents/devs/data.net
@@ -718,7 +718,7 @@ python3 tools/check_version_floor.py > /tmp/118-fv-v.log 2>&1;             echo 
 All must be 0, the build must show 0 warnings, and the test log's per-assembly counts must be read — all
 eight, the four `*.NetStandard.Tests` mirrors included.
 
-- [ ] **Step 2: The oracle drift gate**
+- [x] **Step 2: The oracle drift gate**
 
 ```bash
 cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python \
@@ -730,7 +730,7 @@ cd /home/cyril/Documents/devs/data.net && git status --porcelain tests/oracles/
 Expected: empty. This gate is known to be flaky on this repository — if a corpus moves, regenerate once
 more and compare before reporting drift.
 
-- [ ] **Step 3: The two gates outside the solution**
+- [x] **Step 3: The two gates outside the solution**
 
 ```bash
 SCRATCH=/tmp/claude-49201103/-home-cyril-Documents-devs-data-net/dc8f8ded-9994-4ad8-969c-b4d66b7527f8/scratchpad
@@ -747,7 +747,7 @@ NUGET_PACKAGES="$SCRATCH/sample-packages" dotnet build samples/DataNet.DocSnippe
 compiles it. This branch adds no public type, so the packaging gate should pass unchanged — but #104's
 final verification failed here precisely because nobody expected it to.
 
-- [ ] **Step 4: Stop and report**
+- [x] **Step 4: Stop and report**
 
 Do not push and do not open a pull request. Report the state and let the user decide both.
 

@@ -45,7 +45,7 @@ bench_lev() { dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- -
 **Produces:** the evidence that the gap is algorithmic — which is what licenses the
 rest of the branch.
 
-- [ ] **Step 1: Reproduce the gap**
+- [x] **Step 1: Reproduce the gap**
 
 ```bash
 python3 bench/compare.py 2>&1 | tail -20
@@ -53,7 +53,7 @@ python3 bench/compare.py 2>&1 | tail -20
 
 Expected: roughly 13× behind at 128, 31× at 512.
 
-- [ ] **Step 2: Try to fix it *without* changing the algorithm**
+- [x] **Step 2: Try to fix it *without* changing the algorithm**
 
 A char-specialised DP with bounds checks elided through refs. Measure ns/cell.
 
@@ -66,7 +66,7 @@ char-specialised  : 3.97 ns/cell
 
 **Slower.** A scalar rolling-row DP is already at its floor.
 
-- [ ] **Step 3: Do the arithmetic that settles it**
+- [x] **Step 3: Do the arithmetic that settles it**
 
 rapidfuzz's effective 0.08 ns/cell is unreachable without computing 64 cells per
 word operation. The gap is algorithmic, never micro-architectural.
@@ -85,23 +85,23 @@ experiment in six months.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Remove the 64-character cap**
+- [x] **Step 1: Remove the 64-character cap**
 
 ```bash
 grep -n "MyersMaxPatternLength\|MyersMinPatternLength" src/DataNet.Text/Distances/*.cs
 ```
 
-- [ ] **Step 2: Bit vectors spanning `⌈m/64⌉` words**
+- [x] **Step 2: Bit vectors spanning `⌈m/64⌉` words**
 
 Horizontal deltas carried word to word, per the published pseudo-code.
 
-- [ ] **Step 3: Comment the one subtlety a reader will trip on**
+- [x] **Step 3: Comment the one subtlety a reader will trip on**
 
 Only the last word's bit at `(m-1) mod 64` moves the score. Bits above it are
 never read, so leaving them set is harmless — carries propagate upward only. This
 looks like a bug on first reading and will be "fixed" without the comment.
 
-- [ ] **Step 4: Both targets build**
+- [x] **Step 4: Both targets build**
 
 ```bash
 build_all
@@ -116,7 +116,7 @@ algorithms use — and as a separate commit.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Run everything**
+- [x] **Step 1: Run everything**
 
 ```bash
 test_all 2>&1 | tail -3
@@ -124,7 +124,7 @@ test_all 2>&1 | tail -3
 
 Expected: 168/168 green.
 
-- [ ] **Step 2: Do not proceed on that basis**
+- [x] **Step 2: Do not proceed on that basis**
 
 Green here means the existing cases still pass. It says nothing about whether the
 code written in Task 2 ran even once. Task 4 is what answers that.
@@ -138,7 +138,7 @@ code written in Task 2 ran even once. Task 4 is what answers that.
 **Depends on:** Task 3.
 **Produces:** the finding that makes this branch trustworthy.
 
-- [ ] **Step 1: Count what the corpus actually contains**
+- [x] **Step 1: Count what the corpus actually contains**
 
 ```bash
 python3 -c "
@@ -165,7 +165,7 @@ pattern > 64: 85
 contains CJK, fails the Latin-1 check, and falls back to the DP. The new path was
 never executed, and the suite was green throughout.
 
-- [ ] **Step 2: Confirm it independently, not only by arithmetic**
+- [x] **Step 2: Confirm it independently, not only by arithmetic**
 
 Add a temporary counter or breakpoint in the blocked path and run the suite. It
 must never be hit. Then remove it — the corpus fix in Task 5 is the permanent
@@ -183,12 +183,12 @@ answer, not instrumentation.
 
 **Depends on:** Task 4.
 
-- [ ] **Step 1: Append `long_ascii` and `long_latin` families to `build_pairs`**
+- [x] **Step 1: Append `long_ascii` and `long_latin` families to `build_pairs`**
 
 **Append, never insert.** Appending leaves the RNG stream intact; inserting
 renumbers every subsequent case and makes the diff unreadable.
 
-- [ ] **Step 2: Regenerate**
+- [x] **Step 2: Regenerate**
 
 ```bash
 cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python \
@@ -197,7 +197,7 @@ echo "generator exit: $?"
 cd /home/cyril/Documents/devs/data.net
 ```
 
-- [ ] **Step 3: Prove the pre-existing cases did not move**
+- [x] **Step 3: Prove the pre-existing cases did not move**
 
 ```bash
 python3 -c "
@@ -213,7 +213,7 @@ print('prefix identical:', o == n[:len(o)])
 Expected: `prefix identical: True`. **All 1 241 keep their id and value**, so the
 added cases are the entire corpus diff.
 
-- [ ] **Step 4: Re-count coverage**
+- [x] **Step 4: Re-count coverage**
 
 ```bash
 # Task 4 Step 1's command again.
@@ -221,7 +221,7 @@ added cases are the entire corpus diff.
 
 Expected: **89 cases** now genuinely reaching blocked Myers.
 
-- [ ] **Step 5: They agree with rapidfuzz**
+- [x] **Step 5: They agree with rapidfuzz**
 
 ```bash
 test_lev 2>&1 | tail -3
@@ -238,7 +238,7 @@ test_lev 2>&1 | tail -3
 
 **Depends on:** Task 5.
 
-- [ ] **Step 1: Re-run the cross-language comparison**
+- [x] **Step 1: Re-run the cross-language comparison**
 
 ```bash
 python3 bench/compare.py 2>&1 | tail -20
@@ -254,25 +254,25 @@ Expected shape:
 | 128 | 2 693 ns | 36 178 ns | 1 777 ns | **20×**, now 1.5× C# faster |
 | 512 | 21 688 ns | 683 581 ns | 20 555 ns | **33×**, now 1.06× C# faster |
 
-- [ ] **Step 2: Record the Latin-1 limit with the numbers, not below them**
+- [x] **Step 2: Record the Latin-1 limit with the numbers, not below them**
 
 The equality table is 256 entries, so **CJK and emoji patterns still take the DP
 and these figures do not describe them**. A speedup quoted without this is
 accurate and misleading at the same time.
 
-- [ ] **Step 3: Record the length-32 bucket honestly**
+- [x] **Step 3: Record the length-32 bucket honestly**
 
 Still 1.4× behind on the single-word path. Different cause; wants its own
 measurement rather than a guess.
 
-- [ ] **Step 4: Full gate**
+- [x] **Step 4: Full gate**
 
 ```bash
 build_all && test_all 2>&1 | tail -3
 dotnet format --verify-no-changes
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git commit -m "Add blocked Myers so long strings stop losing to rapidfuzz"

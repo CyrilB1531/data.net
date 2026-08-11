@@ -40,7 +40,7 @@ test_all()  { dotnet test -c Release; }
 **Produces:** the finding this branch exists for — and the reason not to trust a
 green suite here.
 
-- [ ] **Step 1: Read the test**
+- [x] **Step 1: Read the test**
 
 ```bash
 grep -n -A12 "Controls_outside_the_first_three_ids" tests/DataNet.Embeddings.Tests/SentencePieceTokenizerTests.cs
@@ -48,13 +48,13 @@ grep -n -A12 "Controls_outside_the_first_three_ids" tests/DataNet.Embeddings.Tes
 
 It encodes `"as"` and asserts `"<s>"` is not among the tokens.
 
-- [ ] **Step 2: See why it cannot fail**
+- [x] **Step 2: See why it cannot fail**
 
 A SentencePiece piece matches only where its literal characters occur. `"as"`
 preprocesses to `"▁as"`, which **contains no `<`**. The marker could not be
 emitted either way.
 
-- [ ] **Step 3: Prove it by mutation, not by reading**
+- [x] **Step 3: Prove it by mutation, not by reading**
 
 ```bash
 # Temporarily force IsMatchable to return true — remove the exclusion entirely.
@@ -68,7 +68,7 @@ end-to-end property.
 
 Revert the mutation.
 
-- [ ] **Step 4: Name what is uncovered**
+- [x] **Step 4: Name what is uncovered**
 
 *`Encode` never emits a control piece.* Nothing asserts it.
 
@@ -80,7 +80,7 @@ Revert the mutation.
 
 **Depends on:** Task 1.
 
-- [ ] **Step 1: Inspect the fixture the parity claim rests on**
+- [x] **Step 1: Inspect the fixture the parity claim rests on**
 
 ```bash
 ls -l tests/oracles/tiny_sp.model
@@ -94,7 +94,7 @@ print([(i, sp.id_to_piece(i)) for i in range(5)])
 Expected: 984 bytes, self-trained, `<unk>`/`<s>`/`</s>` at 0/1/2 — **exactly the
 layout the id guess got right**.
 
-- [ ] **Step 2: State the consequence**
+- [x] **Step 2: State the consequence**
 
 "Exact parity" in `docs/equivalence.md` is asserted over a fixture **unable to
 contradict it**. That is the same class of problem as Task 1, one level up.
@@ -109,20 +109,20 @@ contradict it**. That is the same class of problem as Task 1, one level up.
 
 **Depends on:** Task 2.
 
-- [ ] **Step 1: Feed it an input containing the marker**
+- [x] **Step 1: Feed it an input containing the marker**
 
 `"a<s>s"` rather than `"as"`, so the marker's own string is present.
 
-- [ ] **Step 2: Assert on `Ids` as well as on tokens**
+- [x] **Step 2: Assert on `Ids` as well as on tokens**
 
 The control id must be absent from `Ids`.
 
-- [ ] **Step 3: Add the same guarantee for the unknown piece**
+- [x] **Step 3: Add the same guarantee for the unknown piece**
 
 `The_unknown_piece_is_never_matched_as_text` — where matching as text would let a
 document name its own unknown token.
 
-- [ ] **Step 4: Mutate again, and confirm both now fail**
+- [x] **Step 4: Mutate again, and confirm both now fail**
 
 ```bash
 # IsMatchable => true
@@ -142,7 +142,7 @@ work. Revert.
 
 **Depends on:** Task 3.
 
-- [ ] **Step 1: `A_fairseq_layout_matches_none_of_its_five_markers`**
+- [x] **Step 1: `A_fairseq_layout_matches_none_of_its_five_markers`**
 
 18 pieces, microseconds. Markers scored **0 — the best score in the vocabulary** —
 and every input character covered by a normal piece.
@@ -150,7 +150,7 @@ and every input character covered by a normal piece.
 That construction is what makes the assertion sharp: an id from the marker set in
 the output means the marker was matched as text, and nothing else.
 
-- [ ] **Step 2: State it separately from the corpus replay**
+- [x] **Step 2: State it separately from the corpus replay**
 
 So it survives a regenerated corpus. A property that only exists inside a
 generated fixture disappears the day the fixture changes.
@@ -167,7 +167,7 @@ generated fixture disappears the day the fixture changes.
 
 **Depends on:** Task 4.
 
-- [ ] **Step 1: Understand why the stock file will not do — two reasons, neither cosmetic**
+- [x] **Step 1: Understand why the stock file will not do — two reasons, neither cosmetic**
 
 ```bash
 python3 -c "
@@ -184,22 +184,22 @@ print([(i, sp.id_to_piece(i)) for i in range(4)])
 - It is trained with **`nmt_nfkc`**, which `SentencePieceModelLoader` refuses on
   purpose. Left alone it would not load at all.
 
-- [ ] **Step 2: Re-emit the vocabulary**
+- [x] **Step 2: Re-emit the vocabulary**
 
 Same 250 000 pieces, scores and types, at the ids HuggingFace gives them
 (`<s>`=0, `<pad>`=1, `</s>`=2, `<unk>`=3, `<mask>`=250001), normalizer `identity`.
 
-- [ ] **Step 3: Generate the reference from that same file**
+- [x] **Step 3: Generate the reference from that same file**
 
 Both sides then normalize identically, so the comparison isolates the thing under
 test rather than the normalizer.
 
-- [ ] **Step 4: Include inputs that can fail**
+- [x] **Step 4: Include inputs that can fail**
 
 `un texte avec <s>, </s>, <pad>, <unk> et <mask> dedans`, plus Latin, Cyrillic and
 Japanese. An input without a marker in it tests nothing here.
 
-- [ ] **Step 5: Pin, attribute, and state the cost**
+- [x] **Step 5: Pin, attribute, and state the cost**
 
 SHA-256 pin; `--check` mode; MIT attribution in `THIRD-PARTY-NOTICES.md`.
 
@@ -217,23 +217,23 @@ Say so in the pull request. A fixture that size is a decision, not a detail.
 
 **Depends on:** Task 5.
 
-- [ ] **Step 1: ADR 0013 — parity over the XLM-R *vocabulary*, not the *pipeline***
+- [x] **Step 1: ADR 0013 — parity over the XLM-R *vocabulary*, not the *pipeline***
 
 The stock pipeline's `nmt_nfkc` normalizer is refused by the loader, so the claim
 cannot cover it. State the boundary rather than letting "exact parity" imply more.
 
-- [ ] **Step 2: Update the `equivalence.md` rows**
+- [x] **Step 2: Update the `equivalence.md` rows**
 
 They currently claim unqualified exact parity. Replace with what the oracle
 actually backs.
 
-- [ ] **Step 3: Retract the `minScore` criterion in the open**
+- [x] **Step 3: Retract the `minScore` criterion in the open**
 
 The issue asked for `minScore` to be initialised to `double.MaxValue`. It is
 wrong; say so with the reasoning. An acceptance criterion quietly dropped gets
 re-raised by the next reader.
 
-- [ ] **Step 4: Full gate**
+- [x] **Step 4: Full gate**
 
 ```bash
 build_all && test_all 2>&1 | tail -3
@@ -241,7 +241,7 @@ dotnet format --verify-no-changes
 git diff --stat -- src/   # must be empty: no production change
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git commit -m "Make the control-piece test able to fail"
