@@ -1,0 +1,19 @@
+{
+ "p": 1,
+ "ps": 500,
+ "rules": [
+  {
+   "key": "csharpsquid:S1192"
+  },
+  {
+   "key": "csharpsquid:S107"
+  },
+  {
+   "key": "csharpsquid:S2245"
+  },
+  {
+   "key": "csharpsquid:S3776"
+  }
+ ],
+ "total": 5
+}
