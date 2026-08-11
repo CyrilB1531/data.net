@@ -1,7 +1,7 @@
 # Design — #84: fail on a Sonar finding before the push instead of after it
 
 **Date:** 2026-08-06 · **Issue:** #84 · **Branch:** `chore/84-sonaranalyzer-in-build` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

@@ -1,7 +1,7 @@
 # Design — #44: extract the Snowball framework shared by the Romance stemmers
 
 **Date:** 2026-08-04 · **Issue:** #44 · **Branch:** `refactor/44-shared-romance-framework` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

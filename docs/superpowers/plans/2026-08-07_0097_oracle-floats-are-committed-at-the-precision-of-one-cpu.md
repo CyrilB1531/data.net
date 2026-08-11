@@ -24,15 +24,15 @@
 ### Reusable verification commands
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 
 regen_with_kernel() {   # $1 = OPENBLAS_CORETYPE
   cd /tmp
   OPENBLAS_CORETYPE="$1" PYTHONSAFEPATH=1 \
-    /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python \
-    /home/cyril/Documents/devs/data.net/tools/generate_oracles.py
+    <repo>/.venv-oracles/bin/python \
+    <repo>/tools/generate_oracles.py
   local rc=$?
-  cd /home/cyril/Documents/devs/data.net
+  cd <repo>
   echo "kernel=$1 generator exit: $rc"
   return $rc
 }

@@ -25,7 +25,7 @@ MSBuild's own `.globalconfig` discovery, SonarAnalyzer.CSharp 10.20.0.135146, So
 
 - Everything in English — code, comments, commit messages, PR body. Commit messages carry no
   `feat:`/`fix:` prefix and no process prefix such as `Fix round 1:`.
-- Branch `chore/109-sonar-rule-parity` in `/home/cyril/Documents/devs/data.net`, based on `main` at
+- Branch `chore/109-sonar-rule-parity` in `<repo>`, based on `main` at
   `92f9f4d`. Never commit to `main`. Do not push or open a pull request without asking.
 - Warnings are errors repository-wide. Every task's build must end `0 Avertissement(s) 0 Erreur(s)`, and
   **`dotnet build` is incremental — without `--no-incremental` no analyzer diagnostic is produced at all**.
@@ -96,7 +96,7 @@ a plan that guessed which would bake the wrong criterion into a test.
 - [ ] **Step 1: Force the rule and see whether it can fire at all**
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 printf '[*.cs]\ndotnet_diagnostic.S2245.severity = warning\n' > .editorconfig
 dotnet build tests/DataNet.Text.Tests -c Release --no-incremental -p:TreatWarningsAsErrors=false > /tmp/109-t1-s2245.log 2>&1
 echo "build=$?"
@@ -578,7 +578,7 @@ git commit -m "Derive the rules the build is missing from the profile that gates
 - [ ] **Step 1: Produce an error log and generate the file**
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 dotnet build src/DataNet.Fuzzy -c Release --no-incremental -f net10.0 \
   -p:ErrorLog=/tmp/109-t3.sarif%2Cversion=2 > /tmp/109-t3-sarif.log 2>&1
 echo "build=$?"
@@ -783,7 +783,7 @@ your report which one you used, because the documented command must be the one t
 - [ ] **Step 3: Run one analysis end to end, and time it**
 
 ```bash
-cd /home/cyril/Documents/devs/data.net/tools/sonarqube-local && docker compose up -d
+cd <repo>/tools/sonarqube-local && docker compose up -d
 # Wait for the server rather than sleeping blind:
 until curl -s http://localhost:9000/api/system/status | grep -q '"status":"UP"'; do sleep 5; done
 ```
@@ -856,7 +856,7 @@ git commit -m "Document the local run that covers Python, duplication and covera
 - [ ] **Step 1: Every gate, with real exit codes**
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 git status --porcelain                                                    # empty
 dotnet build DataNet.slnx -c Release --no-incremental > /tmp/109-fv-b.log 2>&1; echo "build=$?"; tail -3 /tmp/109-fv-b.log
 dotnet format DataNet.slnx --verify-no-changes > /tmp/109-fv-f.log 2>&1;   echo "format=$?"

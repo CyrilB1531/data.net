@@ -1,7 +1,7 @@
 # 0109 — The build enforces only the Sonar rules the analyzer enables by default
 
 **Issue:** [#109](https://github.com/CyrilB1531/data.net/issues/109) · **Date:** 2026-08-11 ·
-**Branch:** `chore/109-sonar-rule-parity` · **Checkout:** `/home/cyril/Documents/devs/data.net`
+**Branch:** `chore/109-sonar-rule-parity` · **Checkout:** `<repo>`
 
 ## Context
 

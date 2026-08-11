@@ -23,7 +23,7 @@
 - **Oracle rule:** correctness is proven by replaying values captured from HuggingFace `tokenizers`, never by a test written alongside the implementation. Regenerate from a neutral working directory:
 
   ```bash
-  cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python /home/cyril/Documents/devs/data.net/tools/generate_oracles.py
+  cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python <repo>/tools/generate_oracles.py
   ```
 
   Check the generator's own exit code. Never pipe it into `tail` — that reports `tail`'s status and a failed generation then looks successful.
@@ -303,7 +303,7 @@ def build_tiny_bpe() -> str:
 
 - [x] **Step 3: Build it and check the shape**
 
-Run: `cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python /home/cyril/Documents/devs/data.net/tools/build_tiny_models.py`
+Run: `cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python <repo>/tools/build_tiny_models.py`
 Expected: `tiny_bpe.json: … bytes -> …/tests/oracles/tiny_bpe.json`
 
 Then:
@@ -639,7 +639,7 @@ That branch also adds `tools/seeded_random.py`, a seeded RNG wrapper. It does no
 
 - [x] **Step 8: Generate, and check the exit code**
 
-Run: `cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python /home/cyril/Documents/devs/data.net/tools/generate_oracles.py; echo "exit=$?"`
+Run: `cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python <repo>/tools/generate_oracles.py; echo "exit=$?"`
 Expected: `exit=0`, and four new `… cases -> …` lines. Do not pipe this into anything.
 
 - [x] **Step 9: Check the corpora say something**
@@ -2217,7 +2217,7 @@ and inside the case loop:
 
 - [x] **Step 2: Regenerate and confirm the flag changes something**
 
-Run: `cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python /home/cyril/Documents/devs/data.net/tools/generate_oracles.py; echo "exit=$?"`
+Run: `cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python <repo>/tools/generate_oracles.py; echo "exit=$?"`
 
 ```bash
 python3 -c "
@@ -2871,7 +2871,7 @@ Then add `"tokenizer_30k_bpe.json"` to `BenchCorpus.RequiredFiles` in `bench/Dat
 
 - [x] **Step 2: Generate the corpus**
 
-Run: `cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python /home/cyril/Documents/devs/data.net/bench/corpus/generate_vocabs.py`
+Run: `cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python <repo>/bench/corpus/generate_vocabs.py`
 Expected: `tokenizer_30k_bpe.json` written alongside the existing files.
 
 - [x] **Step 3: Write the benchmark**
@@ -3147,7 +3147,7 @@ Expected: every one passes. Report the actual output; do not summarise a run you
 
 - [x] **Step 2: Confirm the oracles do not drift**
 
-Run: `cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python /home/cyril/Documents/devs/data.net/tools/generate_oracles.py; echo "exit=$?"` then `git diff --stat -- tests/oracles`
+Run: `cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python <repo>/tools/generate_oracles.py; echo "exit=$?"` then `git diff --stat -- tests/oracles`
 Expected: `exit=0` and an empty diff.
 
 - [x] **Step 3: Confirm the netstandard suite really ran the new tests**

@@ -1,7 +1,7 @@
 # Design — #70: anchor the Sonar exclusions to an explicit base directory
 
 **Date:** 2026-08-06 · **Issue:** #70 · **Branch:** `chore/70-pin-sonar-project-base-dir` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

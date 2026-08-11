@@ -23,7 +23,7 @@
 ### Reusable verification commands
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 
 parse() { python3 -c "import yaml; yaml.safe_load(open('.github/workflows/sonarcloud.yml'))" && echo OK; }
 ```

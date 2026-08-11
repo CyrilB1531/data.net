@@ -24,7 +24,7 @@
 ### Reusable verification commands
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 
 # Every uses: reference and how it is pinned.
 list_uses() { grep -rn "uses:" .github/workflows/ | sed 's/^\s*//'; }

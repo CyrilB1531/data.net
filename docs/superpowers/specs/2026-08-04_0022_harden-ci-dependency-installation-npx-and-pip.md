@@ -1,7 +1,7 @@
 # Design — #22: harden CI dependency installation
 
 **Date:** 2026-08-04 · **Issue:** #22 · **Branch:** `chore/22-harden-ci-dependencies` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

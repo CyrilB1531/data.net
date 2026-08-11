@@ -1,7 +1,7 @@
 # Design — #91: `TokenizationResult` compares by reference
 
 **Date:** 2026-08-09 · **Issue:** #91 · **Branch:** landed without its own pull request ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

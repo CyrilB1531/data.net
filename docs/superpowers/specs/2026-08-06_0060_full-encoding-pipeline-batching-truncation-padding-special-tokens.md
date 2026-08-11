@@ -1,7 +1,7 @@
 # Design — #60: the full encoding pipeline
 
 **Date:** 2026-08-06 · **Issue:** #60 · **Branch:** `feat/60-batch-encoding-pipeline` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

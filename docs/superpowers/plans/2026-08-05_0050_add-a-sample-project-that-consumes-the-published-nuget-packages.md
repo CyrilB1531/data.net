@@ -26,7 +26,7 @@
 ### Reusable verification commands
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 SCRATCH=/tmp/sample-gate
 
 pack_feed() {

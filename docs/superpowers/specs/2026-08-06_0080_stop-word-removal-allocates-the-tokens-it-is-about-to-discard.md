@@ -1,7 +1,7 @@
 # Design — #80: discard a stop word without allocating it first
 
 **Date:** 2026-08-06 · **Issue:** #80 · **Branch:** `perf/80-stop-word-lookup` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

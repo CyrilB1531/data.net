@@ -25,15 +25,15 @@
 ### Reusable verification commands
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 
 # Exit code read directly. `python … | tail` reports tail's status, and a failed
 # generation then reads as success.
 regen_with() {   # $1 = python interpreter
   cd /tmp
-  PYTHONSAFEPATH=1 "$1" /home/cyril/Documents/devs/data.net/tools/generate_oracles.py
+  PYTHONSAFEPATH=1 "$1" <repo>/tools/generate_oracles.py
   local rc=$?
-  cd /home/cyril/Documents/devs/data.net
+  cd <repo>
   echo "generator exit: $rc"
   return $rc
 }

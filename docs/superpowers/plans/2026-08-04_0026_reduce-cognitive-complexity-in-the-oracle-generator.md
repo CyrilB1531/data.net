@@ -26,15 +26,15 @@
 ### Reusable verification commands
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 
 # Neutral working directory, and the exit code read directly — not through a pipe.
 regen() {
   cd /tmp
-  PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python \
-    /home/cyril/Documents/devs/data.net/tools/generate_oracles.py
+  PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python \
+    <repo>/tools/generate_oracles.py
   local rc=$?
-  cd /home/cyril/Documents/devs/data.net
+  cd <repo>
   echo "generator exit: $rc"
   return $rc
 }
@@ -151,7 +151,7 @@ ImportError: Blocked import of regex from current working directory for security
 ```
 
 `nltk` refuses to import its dependencies when they appear to live under the
-current directory. Running from `/home/cyril` fails **even with `PYTHONSAFEPATH`
+current directory. Running from `<home>` fails **even with `PYTHONSAFEPATH`
 set**; running from `/tmp` with the virtualenv inside the repository works.
 
 A green-looking "no drift" after a failed generator run proves nothing — nothing

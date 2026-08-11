@@ -28,7 +28,7 @@
 ### Reusable verification commands
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 
 # Oracle regeneration. The venv and a neutral working directory both matter:
 # nltk resolves its data relative to cwd, and the generator's exit code is the

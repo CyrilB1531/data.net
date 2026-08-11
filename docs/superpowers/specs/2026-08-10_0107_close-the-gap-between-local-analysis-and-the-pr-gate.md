@@ -1,7 +1,7 @@
 # Design — #107: close the gap between the local build's analysis and the PR gate
 
 **Date:** 2026-08-10 · **Issue:** #107 · **Branch:** `chore/107-analysis-parity` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

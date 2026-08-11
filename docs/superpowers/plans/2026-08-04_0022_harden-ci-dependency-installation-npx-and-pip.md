@@ -25,13 +25,13 @@
 ### Reusable verification commands
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 
 regen() {
-  cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python \
-    /home/cyril/Documents/devs/data.net/tools/generate_oracles.py
+  cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python \
+    <repo>/tools/generate_oracles.py
   echo "generator exit: $?"
-  cd /home/cyril/Documents/devs/data.net
+  cd <repo>
 }
 
 oracles_unchanged() {
@@ -164,9 +164,9 @@ minor release would land as an unexplained oracle diff on an unrelated change.
 ```bash
 python3 -m venv /tmp/pinned
 /tmp/pinned/bin/pip install --only-binary :all: -r tools/requirements.txt
-cd /tmp && PYTHONSAFEPATH=1 /tmp/pinned/bin/python /home/cyril/Documents/devs/data.net/tools/generate_oracles.py
+cd /tmp && PYTHONSAFEPATH=1 /tmp/pinned/bin/python <repo>/tools/generate_oracles.py
 echo "generator exit: $?"
-cd /home/cyril/Documents/devs/data.net && oracles_unchanged
+cd <repo> && oracles_unchanged
 ```
 
 Expected: `generator exit: 0` and `ORACLES CLEAN`.

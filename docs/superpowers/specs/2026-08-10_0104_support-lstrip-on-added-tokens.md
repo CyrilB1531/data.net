@@ -1,7 +1,7 @@
 # Design — #104: added-token matching flags, for BPE and WordPiece
 
 **Date:** 2026-08-10 · **Issue:** #104 · **Branch:** `feat/104-added-token-lstrip` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net` · **Base:** `c09b95f` (main, with #110 merged)
+**Checkout:** `<repo>` · **Base:** `c09b95f` (main, with #110 merged)
 
 ## Problem
 
