@@ -37,6 +37,7 @@ RULE_ID = re.compile(r"^S\d+$")
 EXIT_DRIFT = 1
 EXIT_UNREACHABLE = 2
 EXIT_INPUT_MISSING = 3
+EXIT_TRUNCATED = 4
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -56,11 +57,25 @@ def profile_key(api: str) -> str:
     raise LookupError(f"no {LANGUAGE} quality profile is associated with {PROJECT}")
 
 
+class TruncatedResponse(RuntimeError):
+    """rules/search reported more rules than the page it sent back."""
+
+
 def active_rules(payload: dict) -> set[str]:
     """The rule ids the profile activates, without the repository prefix."""
+    total, rules = payload["total"], payload["rules"]
+    if total > len(rules):
+        raise TruncatedResponse(
+            f"rules/search reports total={total} but this response carries only "
+            f"{len(rules)} rules: the page (ps={payload.get('ps', '?')}) is smaller than "
+            "the profile. Raise ps past the profile size or paginate with p=2, 3, ... "
+            "-- the intersection below would otherwise silently drop the rules that fell "
+            "off the page, and a build enforcing less than the quality gate is exactly "
+            "the failure this generator exists to prevent."
+        )
     return {
         key.split(":", 1)[1]
-        for key in (rule["key"] for rule in payload["rules"])
+        for key in (rule["key"] for rule in rules)
         if key.startswith(f"{REPOSITORY}:")
     }
 
@@ -138,14 +153,19 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         expected, key = build(args)
-    except FileNotFoundError as error:
-        # A local --error-log/--rules typo, not the network: must not read as
-        # "the API is down", which sends whoever is debugging it the wrong way.
-        print(f"cannot read {error.filename}: {error.strerror}", file=sys.stderr)
-        return EXIT_INPUT_MISSING
+    except TruncatedResponse as error:
+        print(str(error), file=sys.stderr)
+        return EXIT_TRUNCATED
     except OSError as error:
-        # urllib.error.URLError and TimeoutError are both already OSError subclasses.
-        # FileNotFoundError is caught above first, so this is the network only.
+        if error.filename is not None:
+            # A local --error-log/--rules problem -- missing, unreadable, whatever
+            # strerror says -- carries the path that failed. Route every one of them
+            # here, not the network: must not read as "the API is down", which sends
+            # whoever is debugging it the wrong way.
+            print(f"cannot read {error.filename}: {error.strerror}", file=sys.stderr)
+            return EXIT_INPUT_MISSING
+        # urllib.error.URLError and TimeoutError are both already OSError subclasses,
+        # and neither carries a filename: this is the network, not a local file.
         # The failure that must not look like drift: the file is fine, the network is not.
         print(f"could not reach {args.api}: {error}", file=sys.stderr)
         return EXIT_UNREACHABLE

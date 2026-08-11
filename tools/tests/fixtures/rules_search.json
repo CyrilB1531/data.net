@@ -13,6 +13,9 @@
   },
   {
    "key": "csharpsquid:S3776"
+  },
+  {
+   "key": "csharpsecurity:S2076"
   }
  ],
  "total": 5

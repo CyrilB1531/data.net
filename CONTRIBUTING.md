@@ -118,15 +118,8 @@ cd tools/sonarqube-local && docker compose up -d
 until curl -s http://localhost:9000/api/system/status | grep -q '"status":"UP"'; do sleep 5; done
 ```
 
-`docker compose up -d` is the command a Docker Engine install expects; `podman
-compose up -d` is the Podman-native equivalent for a rootless setup, and is what
-actually produced the numbers below — on the machine they were measured on,
-`docker` was itself a thin shim that execs `podman`, and `docker compose` has no
-built-in provider there, so it only worked at all because `podman-compose` was
-also installed and picked up as an external provider. Either spelling ends up
-running the same `podman-compose` in that situation; a plain Docker Engine
-install runs its own native compose instead, and the rest of this section
-behaves the same either way.
+The figures below were measured with Podman on one machine, which is what makes
+them traceable rather than asserted.
 
 SonarQube Community bundles Elasticsearch, which wants `vm.max_map_count >= 262144`.
 `SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true` in the compose file suppresses the startup
@@ -290,6 +283,36 @@ request:
 ```bash
 dotnet build DataNet.slnx -c Release
 ```
+
+That claim needs two mechanisms, not one. `AnalysisMode=All` covers the .NET
+code-quality rules on its own. SonarAnalyzer's own rules do not: the package
+ships a large share of them **disabled**, the SonarCloud quality profile enables
+some of those, and nothing in `AnalysisMode` closes that gap — a finding there
+used to surface only at the quality gate, three minutes after a push (issue #109).
+The root **`.globalconfig`** closes it: a generated file, not a hand-written one,
+that raises exactly the rules the profile activates and the package ships
+disabled, to `warning`. Regenerate it with
+[`tools/generate_sonar_globalconfig.py`](tools/generate_sonar_globalconfig.py) —
+see [`tools/README.md`](tools/README.md#generate_sonar_globalconfigpy) for the
+full command, including the SARIF error log it reads. `dotnet build` picks up
+`.globalconfig` at the repository root with no wiring — the SDK's
+`Microsoft.Managed.Core.targets` already globs every ancestor directory of every
+compiled file for a file with exactly that name — so nothing declares it, and
+nothing should.
+
+CI's `Lint` job runs the same generator with `--check` on every pull request,
+comparing against the committed file without writing it. A red **`Sonar
+globalconfig is current`** step means the SonarCloud profile has moved since the
+file was last generated: regenerate with the command above and commit the
+result, the same as any other generated file here.
+
+Regenerating is required, not optional, whenever `AnalysisLevel` is raised past
+`10.0` or `$(DataNetSonarAnalyzerVersion)` is bumped — either can change which
+rules the package ships disabled, which changes the delta the file encodes. This
+applies whether the bump is a deliberate edit or an automated dependency update
+(a Dependabot pull request, should one ever be wired for this pin): skip the
+regeneration and the `Sonar globalconfig is current` job goes red with a diff and
+no explanation of why, on a pull request that touched no C#.
 
 It is an analyzer-only reference (`PrivateAssets="all"`), so it reaches no
 published package — `tools/check_nuspec_dependencies.py` asserts that. The

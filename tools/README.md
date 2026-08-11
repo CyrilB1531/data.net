@@ -160,6 +160,43 @@ naming an unpublished version still builds for whoever raised it, whose cache is
 warm, and fails for everyone else; `--check-feed` is what turns that into a CI
 failure rather than a contributor's bug report.
 
+## `generate_sonar_globalconfig.py`
+
+Writes the root `.globalconfig`: the rules SonarCloud's quality profile activates
+for this project and that `SonarAnalyzer.CSharp` ships disabled, raised to
+`warning` so `dotnet build` enforces them instead of the quality gate three
+minutes after a push. This is the file [`../CONTRIBUTING.md`](../CONTRIBUTING.md#analyzers)
+points at, and where a contributor lands after CI prints a diff at them on the
+**`Sonar globalconfig is current`** job.
+
+It needs two inputs: one anonymous SonarCloud call it makes itself, and a SARIF
+v2 error log from a local build, which only the build can produce:
+
+```bash
+dotnet build src/DataNet.Fuzzy -c Release --no-incremental -f net10.0 \
+  -p:ErrorLog=/tmp/rules.sarif%2Cversion=2
+python tools/generate_sonar_globalconfig.py --error-log /tmp/rules.sarif
+```
+
+The `%2C` is load-bearing, not decorative — it is the URL-encoded comma MSBuild
+needs between the SARIF path and `version=2`. A bare comma there is parsed as two
+separate properties, and `ErrorLog` falls back to its default SARIF **v1**, which
+carries no `defaultConfiguration.enabled` flag at all; `disabled_rules()` would
+then read an empty rule table and the generated file would enforce nothing, with
+no error to say why.
+
+`--check` compares the regenerated file against the committed one instead of
+writing it — no `.globalconfig` in the tree is touched — which is what the `Lint`
+job runs on every pull request:
+
+```bash
+python tools/generate_sonar_globalconfig.py --check --error-log /tmp/rules.sarif
+```
+
+A regenerated file that differs means the SonarCloud profile moved; an
+unreachable API is reported separately and never as drift, so a network hiccup
+cannot make the check pass on a stale file.
+
 ## Rules
 
 - **Code-point semantics.** rapidfuzz/jellyfish iterate over code points; the C#

@@ -1,9 +1,13 @@
 """The generator is the one thing here a drift check cannot judge: it proves the file
 stable, never right. These run offline, against fixtures trimmed from real responses."""
 import json
+import os
+import re
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -28,6 +32,9 @@ def test_active_rules_keeps_only_csharpsquid_ids():
     # S100 is deliberately absent: it is disabled-but-not-active (see the fixture
     # generation note in the implementation plan), so it never reaches the profile's
     # activation=true response and must not appear here either.
+    # csharpsecurity:S2076 is present in the fixture and deliberately absent here:
+    # it exercises the REPOSITORY filter, which the other four rules -- all
+    # csharpsquid: -- never did on their own.
     assert active == {"S107", "S1192", "S2245", "S3776"}
 
 
@@ -43,14 +50,62 @@ def test_the_delta_is_ordered_by_rule_number_not_alphabetically():
     assert gen.delta({"S107", "S1192"}, {"S107", "S1192"}) == ["S107", "S1192"]
 
 
-def test_render_declares_a_global_config_and_carries_no_timestamp():
+def test_render_declares_a_global_config():
     text = gen.render(["S107"], profile_key="P", analyzer_version="1.2.3")
 
     assert text.splitlines()[0] == "is_global = true"
     assert "dotnet_diagnostic.S107.severity = warning" in text
     assert "P" in text
     assert "1.2.3" in text
-    assert gen.render(["S107"], profile_key="P", analyzer_version="1.2.3") == text
+
+
+def test_render_carries_no_timestamp():
+    # Asserted directly, on the text itself: calling render() twice in the same
+    # process and comparing would pass even if a second-granularity timestamp were
+    # embedded, since both calls would land in the same second. A file that changes
+    # every day cannot be drift-checked (D3 of the 0109 spec), so what matters is
+    # that no date or time ever appears, not that two nearly-simultaneous calls agree.
+    text = gen.render(["S107"], profile_key="P", analyzer_version="1.2.3")
+
+    assert not re.search(r"\d{4}-\d{2}-\d{2}", text)
+    assert not re.search(r"\d{1,2}:\d{2}:\d{2}", text)
+
+
+def test_render_is_a_pure_function_of_its_arguments():
+    first = gen.render(["S107"], profile_key="P", analyzer_version="1.2.3")
+    second = gen.render(["S107"], profile_key="P", analyzer_version="1.2.3")
+
+    assert first == second
+
+
+def test_active_rules_raises_when_rules_search_is_truncated():
+    # ps=500 against a profile with more than 500 active rules would silently drop
+    # the overflow from the intersection: --check would then regenerate the same
+    # truncated file and report a match, and the build would enforce less than the
+    # quality gate with every gate staying green. total > len(rules) is the one
+    # signal available to catch that from the response alone.
+    payload = {"p": 1, "ps": 4, "total": 500, "rules": [{"key": "csharpsquid:S107"}]}
+
+    with pytest.raises(gen.TruncatedResponse, match="total=500"):
+        gen.active_rules(payload)
+
+
+def test_check_exits_with_a_dedicated_code_when_rules_search_is_truncated(tmp_path):
+    truncated = tmp_path / "rules_search_truncated.json"
+    truncated.write_text(
+        json.dumps({"p": 1, "ps": 4, "total": 500, "rules": [{"key": "csharpsquid:S107"}]}),
+        encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--check", "--error-log", str(FIXTURES / "error_log.sarif"),
+         "--rules", str(truncated), "--output", str(tmp_path / ".globalconfig")],
+        capture_output=True, text=True, check=False)
+
+    # Neither the drift code nor the unreachable-API code: a truncated response is
+    # its own failure and must not be mistaken for either.
+    assert result.returncode == gen.EXIT_TRUNCATED
+    assert result.returncode not in (gen.EXIT_DRIFT, gen.EXIT_UNREACHABLE)
+    assert "total=500" in result.stderr
 
 
 def test_check_exits_one_and_prints_a_diff_when_the_file_drifted(tmp_path):
@@ -109,3 +164,39 @@ def test_check_names_the_path_and_does_not_report_the_api_as_unreachable_when_a_
     assert result.returncode != gen.EXIT_UNREACHABLE
     assert "could not reach" not in result.stderr
     assert str(missing) in result.stderr
+
+
+def test_check_reports_an_unreadable_local_file_as_a_local_failure_not_the_network(tmp_path):
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        pytest.skip("root ignores POSIX permission bits, so chmod 000 would not fail")
+
+    unreadable = tmp_path / "unreadable.sarif"
+    unreadable.write_text("{}", encoding="utf-8")
+    unreadable.chmod(0o000)
+    try:
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), "--check", "--error-log", str(unreadable),
+             "--rules", str(FIXTURES / "rules_search.json"), "--output", str(tmp_path / ".globalconfig")],
+            capture_output=True, text=True, check=False)
+    finally:
+        unreadable.chmod(0o644)
+
+    # No network call happens at all here -- --rules bypasses the API entirely --
+    # yet a PermissionError on a local file used to be reported as "could not reach
+    # https://sonarcloud.io/api", because the OSError branch treated everything that
+    # was not a bare FileNotFoundError as the network. It must be reported as the
+    # local failure it is.
+    assert result.returncode == gen.EXIT_INPUT_MISSING
+    assert result.returncode != gen.EXIT_UNREACHABLE
+    assert "could not reach" not in result.stderr
+    assert str(unreadable) in result.stderr
+
+
+def test_committed_globalconfig_raises_s107():
+    # The permanent half of D6 in the 0109 spec: every other test here runs against
+    # trimmed fixtures, so none of them would notice a regenerated file that lost a
+    # rule the issue's acceptance criteria named. This one reads the file the build
+    # actually uses.
+    text = (Path(__file__).resolve().parents[2] / ".globalconfig").read_text(encoding="utf-8")
+
+    assert "dotnet_diagnostic.S107.severity = warning" in text
