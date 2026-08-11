@@ -64,6 +64,22 @@ def main() -> None:
                 rows.append([round(v, 9) for v in softmax(logits)])
             payload["scores"] = rows
 
+        # A separate SeededRandom, not more draws from `rng`: inserting into that
+        # sequence would change every classification array after this point, and
+        # the #61 and #93 benchmark rows were measured on the current ones.
+        #
+        # Seeded by `n` alone, deliberately: all four regression operations are
+        # single-output, so `k` is a property of the classification columns and
+        # of nothing here. The consequence is that metrics_n1000_k2 and
+        # metrics_n1000_k10 carry identical arrays, and the two benchmark rows
+        # that read them are one workload measured twice — docs/guides/
+        # performance.md says so where it prints them, and uses the pair as a
+        # bound on run-to-run spread rather than as an effect of k.
+        real_rng = SeededRandom(SEED + 1_000 + n)
+        truth = [round(real_rng.uniform(0.5, 100.0), 9) for _ in range(n)]
+        payload["y_true_real"] = truth
+        payload["y_pred_real"] = [round(t + real_rng.gauss(0.0, 5.0), 9) for t in truth]
+
         path = OUT / f"metrics_n{n}_k{k}.json"
         with path.open("w", encoding="utf-8") as f:
             json.dump(payload, f)

@@ -2450,6 +2450,266 @@ def generate_bpe_added_tokens() -> dict:
     }
 
 
+# --- Regression metrics (issue #92) ------------------------------------------
+
+REGRESSION_SEED = METRIC_SEED + 2
+
+
+def _regression_fixtures() -> list[dict]:
+    """Fixtures chosen so that each degenerate branch has one case of its own.
+
+    The ordinary ones exist to prove the arithmetic; the degenerate ones exist
+    because every implementation agrees on the ordinary ones.
+    """
+    rng = SeededRandom(REGRESSION_SEED)
+
+    def weights(n: int) -> list[float]:
+        return [round(rng.uniform(0.1, 3.0), 3) for _ in range(n)]
+
+    def noisy(truth: list[float], spread: float) -> list[float]:
+        return [round(t + rng.gauss(0.0, spread), 12) for t in truth]
+
+    fixtures: list[dict] = []
+
+    # Ordinary single output, positive targets: the only shape where the log
+    # family is defined, so it carries msle/rmsle as well as everything else.
+    positive = [round(rng.uniform(0.5, 40.0), 12) for _ in range(200)]
+    fixtures.append({"name": "positive_single", "output_count": 1,
+                     "y_true": positive, "y_pred": noisy(positive, 2.0),
+                     "sample_weight": weights(len(positive))})
+
+    # Targets straddling zero: mape's clamp never fires (no exact zero) but the
+    # values get small, and msle is undefined, so this case proves the split.
+    signed = [round(rng.uniform(-20.0, 20.0), 12) for _ in range(200)]
+    fixtures.append({"name": "signed_single", "output_count": 1,
+                     "y_true": signed, "y_pred": noisy(signed, 3.0),
+                     "sample_weight": weights(len(signed))})
+
+    # Three outputs, deliberately unequal in variance so variance_weighted and
+    # uniform_average cannot coincide.
+    rows_true: list[float] = []
+    rows_pred: list[float] = []
+    for _ in range(150):
+        base = [round(rng.uniform(0.5, 5.0), 12),
+                round(rng.uniform(0.5, 60.0), 12),
+                round(rng.uniform(0.5, 400.0), 12)]
+        rows_true.extend(base)
+        rows_pred.extend(round(b + rng.gauss(0.0, 0.05 * b), 12) for b in base)
+    fixtures.append({"name": "positive_three_outputs", "output_count": 3,
+                     "y_true": rows_true, "y_pred": rows_pred,
+                     "sample_weight": weights(150)})
+
+    # --- the degenerate cases, one fixture each ---
+
+    # A truth with zero variance: force_finite decides, zeroDivision does not.
+    fixtures.append({"name": "constant_truth_perfect", "output_count": 1,
+                     "y_true": [2.0, 2.0, 2.0], "y_pred": [2.0, 2.0, 2.0],
+                     "sample_weight": [1.0, 2.0, 3.0]})
+    fixtures.append({"name": "constant_truth_imperfect", "output_count": 1,
+                     "y_true": [2.0, 2.0, 2.0], "y_pred": [1.0, 2.0, 3.0],
+                     "sample_weight": [1.0, 2.0, 3.0]})
+
+    # One sample: r2 is nan under either force_finite, which is zeroDivision's
+    # territory and nothing else's.
+    fixtures.append({"name": "single_sample", "output_count": 1,
+                     "y_true": [3.0], "y_pred": [5.0], "sample_weight": [2.0]})
+
+    # An exact zero in the truth: mape's epsilon clamp, and nothing else's.
+    fixtures.append({"name": "zero_in_truth", "output_count": 1,
+                     "y_true": [0.0, 4.0, -2.0], "y_pred": [1.0, 5.0, -1.0],
+                     "sample_weight": [1.0, 1.0, 2.0]})
+
+    # An even sample count with a lopsided weight, where the averaged weighted
+    # percentile and a plain median part company.
+    fixtures.append({"name": "lopsided_weights", "output_count": 1,
+                     "y_true": [0.0, 2.0, 4.0, 10.0], "y_pred": [0.0, 0.0, 0.0, 0.0],
+                     "sample_weight": [1.0, 1.0, 1.0, 7.0]})
+
+    # A uniform *fractional* weight, which is where the weighted percentile's
+    # tolerance shows and nowhere else. 0.1 is not representable in binary, so
+    # the cumulative sum overshoots half the total by units in the last place;
+    # scikit-learn averages anyway (its test is `fraction_above > eps`, not
+    # `> 0`) and returns 4.5 on these residuals, where an exact test returns
+    # 4.0. Every other weighted fixture here is exactly representable — 1, 2,
+    # 3, 7 — so none of them can tell the two rules apart, and the residuals
+    # are distinct so the two averaged order statistics differ.
+    fixtures.append({"name": "uniform_fractional_weights", "output_count": 1,
+                     "y_true": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
+                     "y_pred": [1.0] * 10,
+                     "sample_weight": [0.1] * 10})
+
+    return fixtures
+
+
+def _regression_call(fn, y_true, y_pred, sw, **fixed):
+    """Binds one scikit-learn metric to this case, leaving `multioutput` free.
+
+    `multioutput=None` means "do not pass it", which is what uniform_average is
+    on every one of these functions. `fixed` carries whatever else the metric
+    takes for the whole case — `alpha` for the pinball loss, `force_finite` for
+    R2 and explained variance — so that one binder serves all three families.
+    """
+    def call(mo):
+        kw = dict(fixed)
+        if mo is not None:
+            kw["multioutput"] = mo
+        return fn(y_true, y_pred, sample_weight=sw, **kw)
+    return call
+
+
+def _regression_emit(values: dict, key: str, call, mo, is_vector: bool) -> None:
+    result = call(mo)
+    if is_vector:
+        # raw_values on a 1-D input returns a 0-d array in some paths and a
+        # 1-element one in others, so it is widened before being walked.
+        values[key] = [_finite_or_name(float(x)) for x in np.atleast_1d(result)]
+    else:
+        values[key] = _finite_or_name(float(result))
+
+
+def _regression_shapes(values: dict, key: str, call, ow,
+                       suffix: str = "", variance_weighted: bool = False) -> None:
+    """Records one metric under every multioutput shape scikit-learn allows it.
+
+    Writing the four shapes here rather than four times per family is what keeps
+    `_regression_case` under S3776's limit: each copy carried its own
+    `if ow is not None` guard, and four guarded copies in four loops is most of
+    what the rule was counting.
+
+    `suffix` exists because R2 and explained variance key on `metric|shape|flag`
+    while everything else keys on `metric|shape`, and the flag trails the shape.
+    """
+    shapes = [("uniform", None, False), ("raw", "raw_values", True)]
+    if variance_weighted:
+        shapes.append(("variance_weighted", "variance_weighted", False))
+    if ow is not None:
+        shapes.append(("weights", ow, False))
+
+    for shape, mo, is_vector in shapes:
+        _regression_emit(values, f"{key}|{shape}{suffix}", call, mo, is_vector)
+
+
+_REGRESSION_PLAIN = {
+    "mse": skm.mean_squared_error,
+    "rmse": skm.root_mean_squared_error,
+    "mae": skm.mean_absolute_error,
+    "median_ae": skm.median_absolute_error,
+    "mape": skm.mean_absolute_percentage_error,
+}
+
+# Defined only where every target is above -1, which is why they are their own
+# list rather than more entries above.
+_REGRESSION_LOG = (
+    ("msle", skm.mean_squared_log_error),
+    ("rmsle", skm.root_mean_squared_log_error),
+)
+
+# The two that take force_finite, and the only two scikit-learn accepts
+# variance_weighted for.
+_REGRESSION_SCORED = (
+    ("r2", skm.r2_score),
+    ("ev", skm.explained_variance_score),
+)
+
+
+def _regression_arrays(fx: dict, k: int):
+    """The fixture's flat lists as scikit-learn wants to see them.
+
+    Single-output targets are handed over 1-D rather than as an n x 1 matrix,
+    because that is the shape a caller writes and the shape `max_error` accepts.
+    """
+    n = len(fx["y_true"]) // k
+    y_true = np.asarray(fx["y_true"], dtype=float).reshape(n, k)
+    y_pred = np.asarray(fx["y_pred"], dtype=float).reshape(n, k)
+    return (y_true.ravel(), y_pred.ravel()) if k == 1 else (y_true, y_pred)
+
+
+def _regression_log_defined(y_true, y_pred) -> bool:
+    """Whether the log family is defined here: every target strictly above -1."""
+    return float(np.min(y_true)) > -1.0 and float(np.min(y_pred)) > -1.0
+
+
+def _regression_case(fx: dict, weighted: bool) -> dict:
+    sw = fx["sample_weight"] if weighted else None
+    k = fx["output_count"]
+    y_true, y_pred = _regression_arrays(fx, k)
+
+    values: dict = {}
+
+    # Output weights are fixed rather than drawn, so that a reader can check the
+    # reduction by hand: 0.3/0.7 on two outputs, 0.2/0.3/0.5 on three.
+    ow = {1: None, 2: [0.3, 0.7], 3: [0.2, 0.3, 0.5]}[k]
+
+    for name, fn in _REGRESSION_PLAIN.items():
+        _regression_shapes(values, name, _regression_call(fn, y_true, y_pred, sw), ow)
+
+    if _regression_log_defined(y_true, y_pred):
+        for name, fn in _REGRESSION_LOG:
+            _regression_shapes(values, name, _regression_call(fn, y_true, y_pred, sw), ow)
+
+    # max_error takes neither sample_weight nor multioutput, and refuses 2-D
+    # input outright with "Multioutput not supported in max_error".
+    if k == 1 and not weighted:
+        values["max_error|uniform"] = _finite_or_name(float(skm.max_error(y_true, y_pred)))
+
+    for alpha in (0.5, 0.9):
+        _regression_shapes(
+            values, f"pinball{alpha}",
+            _regression_call(skm.mean_pinball_loss, y_true, y_pred, sw, alpha=alpha), ow)
+
+    for name, fn in _REGRESSION_SCORED:
+        for ff in (True, False):
+            _regression_shapes(
+                values, name,
+                _regression_call(fn, y_true, y_pred, sw, force_finite=ff), ow,
+                suffix="|force_finite" if ff else "|raw_infinity",
+                variance_weighted=True)
+
+    return {
+        "fixture": fx["name"],
+        "weighted": weighted,
+        "output_count": k,
+        "y_true": fx["y_true"],
+        "y_pred": fx["y_pred"],
+        "sample_weight": sw,
+        "values": values,
+    }
+
+
+def generate_regression() -> dict:
+    with warnings.catch_warnings():
+        # scikit-learn warns on every undefined metric; the corpus records the
+        # value it returns, which is the thing under test.
+        warnings.simplefilter("ignore")
+        cases = [
+            _regression_case(fx, weighted)
+            for fx in _regression_fixtures()
+            for weighted in (False, True)
+        ]
+    return {
+        "metadata": {
+            "algorithm": "Regression",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.mean_squared_error",
+                "sklearn.metrics.root_mean_squared_error",
+                "sklearn.metrics.mean_absolute_error",
+                "sklearn.metrics.median_absolute_error",
+                "sklearn.metrics.mean_absolute_percentage_error",
+                "sklearn.metrics.mean_squared_log_error",
+                "sklearn.metrics.root_mean_squared_log_error",
+                "sklearn.metrics.max_error",
+                "sklearn.metrics.r2_score",
+                "sklearn.metrics.explained_variance_score",
+                "sklearn.metrics.mean_pinball_loss",
+            ],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 # The four matching flags an added_tokens entry carries beyond its content and
 # id, over a byte-level model (issue #104). One token per flag, because a flag
 # only shows in the pieces around the match: lstrip and rstrip make the space
@@ -2853,6 +3113,7 @@ def main() -> None:
         "process.json": generate_process,
         "classification_metrics.json": generate_classification_metrics,
         "roc_auc.json": generate_roc_auc,
+        "regression.json": generate_regression,
         "bpe.json": generate_bpe,
         "orphan_bpe.json": generate_orphan_bpe,
         "bytelevel_bpe.json": generate_bytelevel_bpe,

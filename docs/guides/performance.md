@@ -324,6 +324,145 @@ conservative (not flattering) a ratio above 1× is — and this window's load
 average was roughly 5–13× the original run's, so these margins are, if
 anything, understated relative to a quiet machine.
 
+### Regression metrics — mse, mae, median_ae, r2 (issue #92)
+
+The eleven regression metrics landed for issue #92 add four benchmark
+operations — `mse`, `mae`, `median_ae`, `r2` — covering the four distinct cost
+shapes among them: a squared mean, an absolute mean, a sort, and a two-pass
+centred sum. The other seven metrics are one of those four with a different
+arithmetic kernel and are not separately timed. They run over
+`y_true_real`/`y_pred_real`, continuous targets drawn by a separate seeded
+random generator and attached to each of the six existing corpus shapes,
+independent of the classification columns those shapes already carry — the
+generator inserting these draws would otherwise have shifted every
+classification array after the insertion point, invalidating the 29 and 18
+rows above; a before/after comparison of `y_true[:10]` on the regenerated
+corpus confirmed it did not. Same corpus files, same harnesses, same
+methodology as the tables above — **but measured in yet another separate
+window, with its own load**: `uptime`'s one-minute average was **8.05** just
+before the Python side started (five/fifteen-minute: 11.95 / 14.25) and
+**6.05** by the time `compare.py` printed the numbers below (five/fifteen-minute:
+7.15 / 11.07). That is well below the 16–23 one-minute load this session saw
+at dispatch and while the code changes were being made, but still noticeably
+busier than the 1.52 one-minute load recorded for the original 29 rows, so
+these 24 rows should be read only under their own conditions, given here —
+**except the six `median_ae` rows marked †**, which come from a later
+window described below, after `MedianAbsoluteError`'s unweighted path was
+rewritten.
+
+**Read the `k` suffix as a corpus file name, not as a workload.** The
+regression arrays are drawn from `SeededRandom(SEED + 1_000 + n)`, which
+depends on the sample count and not on the class count, so `metrics_n1000_k2`
+and `metrics_n1000_k10` carry byte-identical `y_true_real`. That is deliberate
+— all four operations here are single-output, and `k` is a property of the
+classification columns those files also hold — but it means the 24 rows below
+are **12 distinct workloads, each measured twice**. The pairs are useful for
+exactly that: they bound the run-to-run spread. At n=1 000 000 the two members
+agree to within 0.04× (`mse` 1.04× / 1.00×), while at n=1 000 the same
+identical array gives 98.88× and 141.17× — a 43 % spread, which is what a
+sub-millisecond `mse` measurement is worth on a machine at this load, and the
+reason no conclusion on this page rests on an n=1 000 row.
+
+| Operation | DataNet ms | Python ms | wall | DataNet cpu ms | Python cpu ms | **cpu** |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `mse_n1000_k2` | 0.005 | 0.486 | 104.89x | 0.005 | 0.458 | **98.88x** |
+| `mae_n1000_k2` | 0.005 | 0.358 | 77.79x | 0.005 | 0.358 | **77.70x** |
+| `median_ae_n1000_k2`† | 0.011 | 0.818 | 77.81x | 0.011 | 0.625 | **59.45x** |
+| `r2_n1000_k2` | 0.008 | 0.443 | 57.72x | 0.008 | 0.442 | **57.66x** |
+| `mse_n1000_k10` | 0.005 | 1.003 | 219.23x | 0.005 | 0.646 | **141.17x** |
+| `mae_n1000_k10` | 0.005 | 0.541 | 119.33x | 0.005 | 0.507 | **111.80x** |
+| `median_ae_n1000_k10`† | 0.011 | 0.367 | 34.83x | 0.011 | 0.367 | **34.84x** |
+| `r2_n1000_k10` | 0.008 | 0.447 | 55.95x | 0.008 | 0.447 | **55.86x** |
+| `mse_n100000_k2` | 0.452 | 0.645 | 1.43x | 0.452 | 0.645 | **1.43x** |
+| `mae_n100000_k2` | 0.466 | 1.588 | 3.41x | 0.466 | 1.295 | **2.78x** |
+| `median_ae_n100000_k2`† | 1.967 | 1.781 | 0.91x | 2.045 | 1.781 | **0.87x** |
+| `r2_n100000_k2` | 0.759 | 0.991 | 1.31x | 0.759 | 0.991 | **1.31x** |
+| `mse_n100000_k10` | 0.455 | 0.628 | 1.38x | 0.454 | 0.628 | **1.38x** |
+| `mae_n100000_k10` | 0.458 | 0.673 | 1.47x | 0.458 | 0.672 | **1.47x** |
+| `median_ae_n100000_k10`† | 2.142 | 1.796 | 0.84x | 2.241 | 1.795 | **0.80x** |
+| `r2_n100000_k10` | 0.743 | 0.950 | 1.28x | 0.743 | 0.950 | **1.28x** |
+| `mse_n1000000_k2` | 5.013 | 5.226 | 1.04x | 5.008 | 5.220 | **1.04x** |
+| `mae_n1000000_k2` | 5.054 | 5.635 | 1.12x | 5.036 | 5.633 | **1.12x** |
+| `median_ae_n1000000_k2`† | 18.365 | 16.375 | 0.89x | 18.708 | 16.360 | **0.87x** |
+| `r2_n1000000_k2` | 8.093 | 9.205 | 1.14x | 8.083 | 9.204 | **1.14x** |
+| `mse_n1000000_k10` | 4.983 | 4.989 | 1.00x | 4.982 | 4.983 | **1.00x** |
+| `mae_n1000000_k10` | 5.040 | 5.712 | 1.13x | 5.035 | 5.711 | **1.13x** |
+| `median_ae_n1000000_k10`† | 18.094 | 16.282 | 0.90x | 18.163 | 16.259 | **0.90x** |
+| `r2_n1000000_k10` | 7.807 | 9.687 | 1.24x | 7.807 | 9.686 | **1.24x** |
+
+† All six `median_ae` rows were re-measured after the quickselect rewrite
+described below, in a separate window from the other eighteen rows in this
+table. Every other cell is the original, unrewritten-algorithm measurement.
+
+**20/24 rows at or above 1× on processor time when this table was first
+measured — `median_ae` was the finding, not a fluke to rerun away.** That is
+20 of 24 *rows*, which under the pairing above is 10 of 12 distinct
+workloads; the four that failed were two workloads, each measured twice, and
+they failed both times. All four `median_ae` rows at n=100 000 and
+n=1 000 000 landed below the gate —
+**0.36×**, **0.25×**, **0.19×** and **0.19×** — meaning Python was 3× to over
+5× *faster* there, the only rows on this page where that was true. The cause
+was the algorithm, not the run: scikit-learn's `median_absolute_error` calls
+NumPy's `median`, which selects via introselect/quickselect in expected
+`O(n)`; DataNet's `MedianAbsoluteError` sorted the whole residual array,
+which is `O(n log n)`, and the gap widened with `n` exactly as that
+complexity difference predicted (0.36× at 100 000 rows, 0.19× at
+1 000 000). `mse_n1000000_k10` was the narrowest *passing* row at **1.00×**
+— a squared mean over a million rows, near enough to parity that a busier or
+quieter machine could tip it either way; every other passing row cleared
+1.12×.
+
+**What changed.** `WeightedPercentile`'s unweighted branch (the follow-up
+this branch was created for) no longer sorts the whole array: it selects the
+one or two order statistics the median needs with a median-of-three
+quickselect, falling back to `Array.Sort` on the remaining range once
+partitioning has run more than a budget proportional to `log2(n)` — the same
+introselect guarantee NumPy's own `median` relies on, so the worst case
+stays `O(n log n)` instead of degrading to `O(n²)` on adversarial input. The
+weighted branch, which genuinely needs sorted order for its cumulative-weight
+walk, was not touched.
+
+**Re-measured under load deliberately comparable to the original run, not a
+quieter one.** All six `median_ae` rows above, marked †, were re-measured
+after that rewrite in one pass over the full 24-operation harness, with the
+same corpus and harnesses as the rest of this section — the two n=1 000
+rows were already below the gate's radar (neither the original nor the
+rewritten algorithm is close to failing there), but re-measuring them
+alongside the four that mattered keeps every `median_ae` row honest about
+which implementation it describes, rather than leaving two rows silently
+mixed in with the pre-rewrite ones. Re-running on an idle machine would have
+folded "the machine got quieter" into "the algorithm got faster," and a
+reader could not have told the two apart — so the measurement was
+deliberately taken while the one-minute load sat in the same 6–10 band as
+the original run's 8.05 → 6.05, rather than waiting for a quieter machine.
+`uptime`'s one-minute average was **6.62** just before the Python side
+started (five/fifteen-minute: 15.34 / 14.79) and **6.52** by the time
+`compare.py` printed the numbers above (five/fifteen-minute: 7.37 / 9.96).
+The same fresh run put `mse_n1000000_k10` — untouched by this rewrite,
+recorded above at its original **1.00×** — at **0.99×**: that row sits at
+parity either way, so which side of the gate it lands on is scheduling luck
+between runs, not a change in the code, and the table above keeps its
+original value rather than being edited to match this aside.
+
+**The four rows are faster but still below the gate — that is the finding,
+not a reason to keep iterating on the algorithm.** In absolute terms
+DataNet's own time dropped by roughly 4×–4.8× (7.358 ms → 1.967 ms at
+n=100 000, k=2; 88.792 ms → 18.365 ms at n=1 000 000, k=2), and the
+processor-time ratio against scikit-learn rose from **0.36×** to **0.87×**
+(n=100 000, k=2), **0.25×** to **0.80×** (n=100 000, k=10), **0.19×** to
+**0.87×** (n=1 000 000, k=2) and **0.19×** to **0.90×** (n=1 000 000, k=10).
+Those are four rows over two workloads, not four independent measurements —
+the `k=2` and `k=10` members of each pair run on the same array — so read
+them as two recoveries each confirmed twice: 0.36×/0.25× → 0.87×/0.80× at
+n=100 000, and 0.19×/0.19× → 0.87×/0.90× at n=1 000 000. The agreement
+within each pair is what makes the recovery credible; a 4× swing on one row
+alone would not be.
+NumPy's introselect and this quickselect now do the same order of work —
+`O(n)` expected, `O(n log n)` worst case — so the remaining gap reads as
+constant overhead (managed bounds checks, the Lomuto partition's extra
+writes, no SIMD-accelerated comparison loop) rather than an algorithmic
+difference, and is recorded here as measured rather than chased further.
+
 ## Multiclass ROC-AUC, sequential against parallel (issue #86)
 
 ```bash
