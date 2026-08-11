@@ -112,10 +112,28 @@ SonarQube Community server that covers all three, for whoever wants that answer
 before pushing rather than after.
 
 ```bash
-cd tools/sonarqube-local && podman compose up -d
+cd tools/sonarqube-local && docker compose up -d
+# Podman instead of Docker Engine: podman compose up -d
 # Wait for the server rather than sleeping blind:
 until curl -s http://localhost:9000/api/system/status | grep -q '"status":"UP"'; do sleep 5; done
 ```
+
+`docker compose up -d` is the command a Docker Engine install expects; `podman
+compose up -d` is the Podman-native equivalent for a rootless setup, and is what
+actually produced the numbers below — on the machine they were measured on,
+`docker` was itself a thin shim that execs `podman`, and `docker compose` has no
+built-in provider there, so it only worked at all because `podman-compose` was
+also installed and picked up as an external provider. Either spelling ends up
+running the same `podman-compose` in that situation; a plain Docker Engine
+install runs its own native compose instead, and the rest of this section
+behaves the same either way.
+
+SonarQube Community bundles Elasticsearch, which wants `vm.max_map_count >= 262144`.
+`SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true` in the compose file suppresses the startup
+check, not the underlying requirement, so a container that exits immediately on a
+machine at a lower distribution default (many ship `65530`) needs that raised —
+`sudo sysctl -w vm.max_map_count=262144`, or the persistent form in
+`/etc/sysctl.conf` — before trying again.
 
 Then, from the repository root, with a token created in the local server's UI
 (*My Account → Security*, `local` is a fine name) exported as `SONAR_TOKEN`:
@@ -129,13 +147,6 @@ dotnet sonarscanner begin /k:"datanet-local" \
 dotnet build DataNet.slnx -c Release --no-incremental
 dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
 ```
-
-The command is `podman compose`, not `docker compose`: on this machine `docker`
-is a thin shim that execs `podman`, and `docker compose` has no built-in
-provider — it works only because `podman-compose` is also installed and picked
-up as an external provider. Either invocation ends up running the same
-`podman-compose`; the documented one is the one actually run to produce the
-numbers below.
 
 Measured on this machine: the image (`sonarqube:community`, pinned by digest in
 the compose file) is **≈1.4 GB** and took **38 s** to pull. Bringing the
