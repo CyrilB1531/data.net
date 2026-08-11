@@ -3101,16 +3101,20 @@ _FUSE_MERGE_MERGES = [(_FUSE_UNK_TOKEN, "a")]
 # trap needs both characters inside one piece.
 _FUSE_COVERED_UNK_VOCAB = {"q": 0, "a": 1}
 
-# D7: the end-of-word suffix is appended to a piece's last code point before
-# the vocabulary lookup, so a suffixed uncovered character is still uncovered
-# and still substituted — the suffix never reaches the unknown token itself.
-# "a" is covered both bare (the form looked up everywhere but the last
-# position) and suffixed (the form looked up at the last position), so a run
-# ending on a covered character still resolves and does not fuse; Y and Z are
-# covered in neither form, so a run they form stays uncovered regardless of
-# which form the last position looks up.
+# D7: the end-of-word suffix is appended to a piece's last code point BEFORE
+# the vocabulary lookup, and only at the last position — there is no fallback
+# to the bare form there. "a" is covered both bare (the form looked up
+# everywhere but the last position) and suffixed (the form looked up at the
+# last position), so a run ending on a covered character still resolves and
+# does not fuse. "Z" is the distinguishing case: covered bare, but "Z</w>" is
+# deliberately absent, so a "Z" in last position is uncovered and substituted
+# even though the same character is a real token everywhere else in the
+# piece — an implementation that fell back to the bare lookup at the last
+# position would resolve it instead and never show the difference. Y is
+# covered in neither form, so a run it starts still extends across a "Z" the
+# suffix turns uncovered.
 _FUSE_EOW_SUFFIX = "</w>"
-_FUSE_EOW_VOCAB = {_FUSE_UNK_TOKEN: 0, "a": 1, "a" + _FUSE_EOW_SUFFIX: 2}
+_FUSE_EOW_VOCAB = {_FUSE_UNK_TOKEN: 0, "a": 1, "a" + _FUSE_EOW_SUFFIX: 2, "Z": 3}
 
 
 def _fuse_unk_model(vocab, merges, fuse, *, unk=_FUSE_UNK_TOKEN, byte_level=False, eow=None):
@@ -3184,9 +3188,10 @@ def _fuse_unk_models() -> list[tuple]:
             ["a\U0001F600b", "ab"]))
         models_out.append((
             f"end_of_word_{suffix}",
-            "an end-of-word suffix reaching an uncovered run's last code point (D7)", fuse,
+            "a character covered bare but not suffixed, where the end-of-word suffix decides"
+            " the last-position lookup rather than the character's own coverage (D7)", fuse,
             _fuse_unk_model(_FUSE_EOW_VOCAB, [], fuse, eow=_FUSE_EOW_SUFFIX),
-            ["aYZ", "aZZ", "Za"]))
+            ["aYZ", "aZZ", "Za", "aZ"]))
     return models_out
 
 

@@ -850,11 +850,19 @@ fail on one model out of six is cheaper than reasoning about why it would.
 
 > **Post-review update:** the whole-branch review of #119 found that D7 was stated but not pinned — every
 > model in `bpe_fuse_unk.json` declared `end_of_word_suffix: null`. A seventh model,
-> `end_of_word_{suffix}`, was added to `_fuse_unk_models()`: a vocabulary covering `a` both bare and
-> suffixed, over `"aYZ"`, `"aZZ"` and `"Za"`. Its `differs` is `True`; `"Za"` gives `['[UNK]','a</w>']`
-> under both flags, confirming the suffixed lookup for a covered last character resolves and does not fuse
-> with the unknown token before it, while `"aYZ"` and `"aZZ"` fuse under the flag exactly as an unsuffixed
-> run would.
+> `end_of_word_{suffix}`, was added to `_fuse_unk_models()`, over a vocabulary covering `a` both bare and
+> suffixed, over `"aYZ"`, `"aZZ"` and `"Za"`.
+>
+> A second round of review found that first vocabulary could not produce the signal D7 is about: with `Y`
+> and `Z` both uncovered in either form, an implementation that looked the last position up bare — ignoring
+> the suffix entirely — would pass every case. The vocabulary was corrected to also cover `Z` bare but not
+> suffixed (`Z</w>` deliberately absent), and `"aZ"` was added to the texts. Regenerated against
+> `tokenizers` 0.23.1: `"aZ"` gives `['a','[UNK]']` under both flags — `Z` substitutes in last position
+> despite being a real token everywhere else, because only the suffixed lookup is tried there. `"aZZ"` gives
+> `['a','Z','[UNK]']` and `"Za"` gives `['Z','a</w>']`, both under both flags. `"aYZ"` is where the flag
+> still bites: `Y` is uncovered in both forms, so the run it starts extends across the last-position `Z` the
+> suffix turns uncovered — `['a','[UNK]']` fused, `['a','[UNK]','[UNK]']` unfused. `differs` for the pair is
+> unchanged at `True`.
 
 **Type consistency.** `BpeVocabulary.FuseUnk` is defined in Task 2 and used with that name in Task 3's
 tests and in `BpeTokenizer`'s constructor. `_fuseUnk` and `previousWasSubstituted` are introduced in Task

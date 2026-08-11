@@ -92,10 +92,19 @@ there. Confirmed: identical output under both flags. `ByteLevelSymbols` gains no
 `"aZZ"` with `end_of_word_suffix: "</w>"` gives `['a','[UNK]']`, not `['a','[UNK]</w>']` — the suffix is
 appended to the raw character *before* the lookup, so a suffixed uncovered character is still uncovered and
 still substituted. This already matches `InitialSymbols`, and the `end_of_word_{suffix}` model in
-`bpe_fuse_unk.json` pins it: a vocabulary covering `a` both bare and suffixed, over `"aYZ"`, `"aZZ"` and
-`"Za"`, where `Y` and `Z` are uncovered in either form. `"Za"` gives `['[UNK]','a</w>']` under both flags —
-the suffixed lookup for the covered last character succeeds and does not fuse with the unknown token before
-it — while `"aYZ"` and `"aZZ"` fuse under the flag exactly as an unsuffixed run would.
+`bpe_fuse_unk.json` pins it. The point is not merely that an uncovered character stays uncovered once
+suffixed — a model that resolved the last position by falling back to the bare form when the suffixed form
+is missing would pass that case too. The distinguishing shape is a character covered **bare but not
+suffixed**: `Z` is a real token everywhere but the last position, and `Z</w>` is deliberately absent, so the
+suffix — not the character's own coverage — decides whether the last position resolves.
+
+Measured against `tokenizers` 0.23.1 over `{[UNK], a, a</w>, Z}`: `"aZ"` gives `['a','[UNK]']` under both
+flags — `Z` in last position is substituted despite being covered bare, because only the suffixed lookup is
+tried there and no fallback exists. `"aZZ"` gives `['a','Z','[UNK]']` under both flags: the non-last `Z`
+resolves to its own token, only the last one substitutes. `"Za"` gives `['Z','a</w>']` under both flags: `Z`
+resolves bare in non-last position, `a` resolves suffixed in last position, nothing is substituted at all.
+`"aYZ"` is where the flag bites — `Y` is uncovered in both forms, so the run it starts extends across the
+last-position `Z` the suffix turns uncovered: `['a','[UNK]']` fused, `['a','[UNK]','[UNK]']` unfused.
 
 ## Design
 
