@@ -40,7 +40,7 @@ once per piece.
   dotnet build DataNet.slnx -c Release
   dotnet test DataNet.slnx -c Release
   dotnet format DataNet.slnx --verify-no-changes
-  npx markdownlint-cli2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "#docs/superpowers/**" "tools/README.md" "bench/README.md"
+  npx markdownlint-cli2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
   ```
 
 ## Two traps, each with a task that exists to catch it
@@ -805,7 +805,7 @@ Under `## [Unreleased]` → `### DataNet.Embeddings`, in `#### Added`:
 dotnet build DataNet.slnx -c Release
 dotnet test DataNet.slnx -c Release
 dotnet format DataNet.slnx --verify-no-changes
-npx markdownlint-cli2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "#docs/superpowers/**" "tools/README.md" "bench/README.md"
+npx markdownlint-cli2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
 python3 tools/extract_doc_snippets.py && dotnet build samples/DataNet.DocSnippets -c Release
 git status --porcelain
 ```
