@@ -3094,12 +3094,24 @@ _FUSE_MERGE_MERGES = [(_FUSE_UNK_TOKEN, "a")]
 
 # The unknown token is ALSO a covered single character. This is the only shape
 # that tells "the previous symbol was substituted" from "the previous id equals
-# the unknown id", and the two disagree: "?Z" does not fuse, "ZZ" does.
-_FUSE_COVERED_UNK_VOCAB = {"?": 0, "a": 1}
+# the unknown id", and the two disagree: "qZ" does not fuse, "ZZ" does.
+#
+# A letter, not punctuation: the pre-tokenizer isolates punctuation from
+# letters, so "?" and "Z" would land in different pieces and never meet. The
+# trap needs both characters inside one piece.
+_FUSE_COVERED_UNK_VOCAB = {"q": 0, "a": 1}
 
 
-def _fuse_unk_model(vocab, merges, fuse, *, unk=_FUSE_UNK_TOKEN, pre_tokenizer=None, byte_level=False):
-    """One tokenizer, built rather than trained, so the file is byte-stable."""
+def _fuse_unk_model(vocab, merges, fuse, *, unk=_FUSE_UNK_TOKEN, byte_level=False):
+    """One tokenizer, built rather than trained, so the file is byte-stable.
+
+    Every classic model declares Whitespace. A model declaring no pre-tokenizer
+    at all is a shape DataNet cannot currently express — `PreTokenizerPattern =
+    null` means "Whitespace" there by decision, while HuggingFace's absent
+    pre-tokenizer does not split at all, and the two disagree on any text with
+    a space. That gap is issue #129 and is not this lot's to close; declaring
+    the pre-tokenizer explicitly keeps this corpus about fuse_unk.
+    """
     from tokenizers import Tokenizer, models, pre_tokenizers  # noqa: PLC0415
 
     # tokenizers 0.23.1 raises TypeError on unk_token=None; the keyword has to
@@ -3108,10 +3120,8 @@ def _fuse_unk_model(vocab, merges, fuse, *, unk=_FUSE_UNK_TOKEN, pre_tokenizer=N
     if unk is not None:
         kwargs["unk_token"] = unk
     tokenizer = Tokenizer(models.BPE(dict(vocab), list(merges), **kwargs))
-    if byte_level:
-        tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
-    elif pre_tokenizer == "whitespace":
-        tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
+    tokenizer.pre_tokenizer = (pre_tokenizers.ByteLevel(add_prefix_space=False) if byte_level
+                               else pre_tokenizers.Whitespace())
     return tokenizer
 
 
@@ -3133,8 +3143,8 @@ def _fuse_unk_models() -> list[tuple]:
     for fuse in (False, True):
         suffix = "fused" if fuse else "unfused"
         models_out.append((
-            f"plain_{suffix}", "no pre-tokenizer", fuse,
-            _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse), plain_texts + split_texts))
+            f"in_piece_{suffix}", "a run inside a single piece", fuse,
+            _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse), plain_texts))
         # Only the texts that HAVE a boundary. Handing this model the plain
         # texts as well would make it report `differs=True` for a reason that
         # has nothing to do with boundaries — none of them contains a space, so
@@ -3142,16 +3152,15 @@ def _fuse_unk_models() -> list[tuple]:
         # exactly as it does with no pre-tokenizer. The model exists to show a
         # run *not* crossing a split, so it gets only texts that have one.
         models_out.append((
-            f"whitespace_{suffix}", "Whitespace pre-tokenizer", fuse,
-            _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse, pre_tokenizer="whitespace"),
-            split_texts))
+            f"across_split_{suffix}", "a run interrupted by a piece boundary", fuse,
+            _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse), split_texts))
         models_out.append((
             f"unk_merge_{suffix}", "a merge whose left side is the unknown token", fuse,
             _fuse_unk_model(_FUSE_MERGE_VOCAB, _FUSE_MERGE_MERGES, fuse), ["ZZa", "Za", "ZZZa"]))
         models_out.append((
             f"covered_unk_{suffix}", "an unknown token that is also a covered character", fuse,
-            _fuse_unk_model(_FUSE_COVERED_UNK_VOCAB, [], fuse, unk="?"),
-            ["?Z", "Z?", "??", "ZZ", "?Za", "a?Z"]))
+            _fuse_unk_model(_FUSE_COVERED_UNK_VOCAB, [], fuse, unk="q"),
+            ["qZ", "Zq", "qq", "ZZ", "qZa", "aqZ"]))
         models_out.append((
             f"no_unk_{suffix}", "fuse_unk with no unknown token declared", fuse,
             _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse, unk=None), ["aZZa", "ZZZ"]))
