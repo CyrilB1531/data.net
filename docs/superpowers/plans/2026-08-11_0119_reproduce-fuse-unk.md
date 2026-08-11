@@ -47,8 +47,8 @@ once per piece.
 
 **1. The natural implementation compares ids, and is wrong.** `InitialSymbols` deals in ids, so the obvious
 test for "was the previous symbol unknown" is `symbols[count - 1] == _unkId`. Measured against
-`tokenizers` 0.23.1 with `unk_token: "?"` where `?` is *also* a covered vocabulary entry: `"?Z"` gives
-`['?', '?']` — it does **not** fuse — while `"ZZ"` gives `['?']`. The rule is *this character was
+`tokenizers` 0.23.1 with `unk_token: "q"` where `q` is *also* a covered vocabulary entry: `"qZ"` gives
+`['q', 'q']` — it does **not** fuse — while `"ZZ"` gives `['q']`. The rule is *this character was
 substituted*, carried as a local flag. Task 3 writes the id comparison first, watches the corpus reject it,
 and then fixes it.
 
@@ -110,7 +110,8 @@ Insert before `def main():` in `tools/generate_oracles.py`:
 # --- fuse_unk (issue #119) ----------------------------------------------------
 
 # Named rather than repeated: python:S1192 fires at five occurrences of a
-# literal, and this one appears in three vocabularies and two merge tables.
+# literal, and this one appears across two vocabularies, one merge table and
+# one function default.
 _FUSE_UNK_TOKEN = "[UNK]"
 
 # Z is in none of these vocabularies, which is what makes it a run when repeated.
@@ -126,12 +127,24 @@ _FUSE_MERGE_MERGES = [(_FUSE_UNK_TOKEN, "a")]
 
 # The unknown token is ALSO a covered single character. This is the only shape
 # that tells "the previous symbol was substituted" from "the previous id equals
-# the unknown id", and the two disagree: "?Z" does not fuse, "ZZ" does.
-_FUSE_COVERED_UNK_VOCAB = {"?": 0, "a": 1}
+# the unknown id", and the two disagree: "qZ" does not fuse, "ZZ" does.
+#
+# A letter, not punctuation: the pre-tokenizer isolates punctuation from
+# letters, so "?" and "Z" would land in different pieces and never meet. The
+# trap needs both characters inside one piece.
+_FUSE_COVERED_UNK_VOCAB = {"q": 0, "a": 1}
 
 
-def _fuse_unk_model(vocab, merges, fuse, *, unk=_FUSE_UNK_TOKEN, pre_tokenizer=None, byte_level=False):
-    """One tokenizer, built rather than trained, so the file is byte-stable."""
+def _fuse_unk_model(vocab, merges, fuse, *, unk=_FUSE_UNK_TOKEN, byte_level=False):
+    """One tokenizer, built rather than trained, so the file is byte-stable.
+
+    Every classic model declares Whitespace. A model declaring no pre-tokenizer
+    at all is a shape DataNet cannot currently express — `PreTokenizerPattern =
+    null` means "Whitespace" there by decision, while HuggingFace's absent
+    pre-tokenizer does not split at all, and the two disagree on any text with
+    a space. That gap is issue #129 and is not this lot's to close; declaring
+    the pre-tokenizer explicitly keeps this corpus about fuse_unk.
+    """
     from tokenizers import Tokenizer, models, pre_tokenizers  # noqa: PLC0415
 
     # tokenizers 0.23.1 raises TypeError on unk_token=None; the keyword has to
@@ -140,10 +153,8 @@ def _fuse_unk_model(vocab, merges, fuse, *, unk=_FUSE_UNK_TOKEN, pre_tokenizer=N
     if unk is not None:
         kwargs["unk_token"] = unk
     tokenizer = Tokenizer(models.BPE(dict(vocab), list(merges), **kwargs))
-    if byte_level:
-        tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
-    elif pre_tokenizer == "whitespace":
-        tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
+    tokenizer.pre_tokenizer = (pre_tokenizers.ByteLevel(add_prefix_space=False) if byte_level
+                               else pre_tokenizers.Whitespace())
     return tokenizer
 
 
@@ -165,8 +176,8 @@ def _fuse_unk_models() -> list[tuple]:
     for fuse in (False, True):
         suffix = "fused" if fuse else "unfused"
         models_out.append((
-            f"plain_{suffix}", "no pre-tokenizer", fuse,
-            _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse), plain_texts + split_texts))
+            f"in_piece_{suffix}", "a run inside a single piece", fuse,
+            _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse), plain_texts))
         # Only the texts that HAVE a boundary. Handing this model the plain
         # texts as well would make it report `differs=True` for a reason that
         # has nothing to do with boundaries — none of them contains a space, so
@@ -174,16 +185,15 @@ def _fuse_unk_models() -> list[tuple]:
         # exactly as it does with no pre-tokenizer. The model exists to show a
         # run *not* crossing a split, so it gets only texts that have one.
         models_out.append((
-            f"whitespace_{suffix}", "Whitespace pre-tokenizer", fuse,
-            _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse, pre_tokenizer="whitespace"),
-            split_texts))
+            f"across_split_{suffix}", "a run interrupted by a piece boundary", fuse,
+            _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse), split_texts))
         models_out.append((
             f"unk_merge_{suffix}", "a merge whose left side is the unknown token", fuse,
             _fuse_unk_model(_FUSE_MERGE_VOCAB, _FUSE_MERGE_MERGES, fuse), ["ZZa", "Za", "ZZZa"]))
         models_out.append((
             f"covered_unk_{suffix}", "an unknown token that is also a covered character", fuse,
-            _fuse_unk_model(_FUSE_COVERED_UNK_VOCAB, [], fuse, unk="?"),
-            ["?Z", "Z?", "??", "ZZ", "?Za", "a?Z"]))
+            _fuse_unk_model(_FUSE_COVERED_UNK_VOCAB, [], fuse, unk="q"),
+            ["qZ", "Zq", "qq", "ZZ", "qZa", "aqZ"]))
         models_out.append((
             f"no_unk_{suffix}", "fuse_unk with no unknown token declared", fuse,
             _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse, unk=None), ["aZZa", "ZZZ"]))
@@ -275,8 +285,8 @@ for p in d['metadata']['fuse_pairs']:
 PY
 ```
 
-Expected: `differs=True` for `plain`, `unk_merge` and `covered_unk`; `differs=False` for `whitespace`,
-`no_unk` and `byte_level`. **If `unk_merge` or `covered_unk` reports `False`, stop** — the two traps are
+Expected: `differs=True` for `in_piece`, `unk_merge` and `covered_unk`; `differs=False` for
+`across_split`, `no_unk` and `byte_level`. **If `unk_merge` or `covered_unk` reports `False`, stop** — the two traps are
 then invisible to this corpus and Task 3 would pass without exercising either.
 
 - [ ] **Step 7: Commit**
@@ -538,10 +548,10 @@ public sealed class BpeFuseUnkTests
     /// the flag to matter and the replay above would still pass.
     /// </summary>
     [Theory]
-    [InlineData("plain_fused", true)]
+    [InlineData("in_piece_fused", true)]
     [InlineData("unk_merge_fused", true)]
     [InlineData("covered_unk_fused", true)]
-    [InlineData("whitespace_fused", false)]
+    [InlineData("across_split_fused", false)]
     [InlineData("no_unk_fused", false)]
     [InlineData("byte_level_fused", false)]
     public void The_flag_changes_exactly_the_models_it_should(string fused, bool expected)
@@ -576,14 +586,16 @@ public sealed class BpeFuseUnkTests
     /// the unknown id. They differ whenever the unknown token is itself covered.
     /// </summary>
     [Theory]
-    [InlineData("?Z", new[] { "?", "?" })]
-    [InlineData("Z?", new[] { "?", "?" })]
-    [InlineData("??", new[] { "?", "?" })]
-    [InlineData("ZZ", new[] { "?" })]
+    [InlineData("qZ", new[] { "q", "q" })]
+    [InlineData("Zq", new[] { "q", "q" })]
+    [InlineData("qq", new[] { "q", "q" })]
+    [InlineData("ZZ", new[] { "q" })]
     public void A_covered_unknown_token_does_not_fuse_with_a_substitution(string text, string[] expected)
     {
+        // A letter rather than punctuation: the pre-tokenizer isolates
+        // punctuation from letters, so "?" and "Z" would never share a piece.
         BpeVocabulary vocabulary = Build(
-            new Dictionary<string, int> { ["?"] = 0, ["a"] = 1 }, [], unk: "?", fuse: true);
+            new Dictionary<string, int> { ["q"] = 0, ["a"] = 1 }, [], unk: "q", fuse: true);
 
         Assert.Equal(expected, new BpeTokenizer(vocabulary).Encode(text).Tokens);
     }
@@ -613,6 +625,11 @@ code point. `whitespace_fused`, `no_unk_fused` and `byte_level_fused` should alr
 fails, the failure is *not* about `fuse_unk` and is worth reading before going on.
 
 - [ ] **Step 3: Write the id comparison first, on purpose**
+
+**Write it as one merged `if`, not as a nested one.** SonarAnalyzer `S1066` — "merge this if statement
+with the enclosing one" — is a build error in this repository, so the nested spelling will not compile at
+all. The behaviour under test is identical either way.
+
 
 In `BpeTokenizer.cs`, add the field beside `_hasUnk`:
 
@@ -660,8 +677,8 @@ five models out of six, and only a vocabulary whose unknown token is itself cove
         // question as whether the previous symbol's id is _unkId: an unknown
         // token that is itself a covered character produces that id without
         // having been substituted, and HuggingFace does not fuse across it.
-        // Measured with unk_token "?" over a vocabulary containing "?":
-        // "?Z" gives two tokens, "ZZ" gives one.
+        // Measured with unk_token "q" over a vocabulary containing "q":
+        // "qZ" gives two tokens, "ZZ" gives one.
         bool previousWasSubstituted = false;
         while (i < piece.Length)
         {
@@ -724,7 +741,7 @@ a local, and not that the previous symbol's id equals the unknown id. The
 id comparison is what this file invites — it deals in ids and nothing else
 — and it is wrong: an unknown token that is also a covered character
 produces that id without having been substituted. Measured with unk_token
-"?" over a vocabulary containing "?", tokenizers gives two tokens for "?Z"
+"q" over a vocabulary containing "q", tokenizers gives two tokens for "qZ"
 and one for "ZZ". Five of the corpus's six models cannot tell the two
 implementations apart; the sixth exists for this.
 
