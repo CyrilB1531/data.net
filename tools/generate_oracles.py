@@ -2541,90 +2541,129 @@ def _regression_fixtures() -> list[dict]:
     return fixtures
 
 
-def _regression_case(fx: dict, weighted: bool) -> dict:
-    sw = fx["sample_weight"] if weighted else None
-    k = fx["output_count"]
+def _regression_call(fn, y_true, y_pred, sw, **fixed):
+    """Binds one scikit-learn metric to this case, leaving `multioutput` free.
+
+    `multioutput=None` means "do not pass it", which is what uniform_average is
+    on every one of these functions. `fixed` carries whatever else the metric
+    takes for the whole case — `alpha` for the pinball loss, `force_finite` for
+    R2 and explained variance — so that one binder serves all three families.
+    """
+    def call(mo):
+        kw = dict(fixed)
+        if mo is not None:
+            kw["multioutput"] = mo
+        return fn(y_true, y_pred, sample_weight=sw, **kw)
+    return call
+
+
+def _regression_emit(values: dict, key: str, call, mo, is_vector: bool) -> None:
+    result = call(mo)
+    if is_vector:
+        # raw_values on a 1-D input returns a 0-d array in some paths and a
+        # 1-element one in others, so it is widened before being walked.
+        values[key] = [_finite_or_name(float(x)) for x in np.atleast_1d(result)]
+    else:
+        values[key] = _finite_or_name(float(result))
+
+
+def _regression_shapes(values: dict, key: str, call, ow,
+                       suffix: str = "", variance_weighted: bool = False) -> None:
+    """Records one metric under every multioutput shape scikit-learn allows it.
+
+    Writing the four shapes here rather than four times per family is what keeps
+    `_regression_case` under S3776's limit: each copy carried its own
+    `if ow is not None` guard, and four guarded copies in four loops is most of
+    what the rule was counting.
+
+    `suffix` exists because R2 and explained variance key on `metric|shape|flag`
+    while everything else keys on `metric|shape`, and the flag trails the shape.
+    """
+    shapes = [("uniform", None, False), ("raw", "raw_values", True)]
+    if variance_weighted:
+        shapes.append(("variance_weighted", "variance_weighted", False))
+    if ow is not None:
+        shapes.append(("weights", ow, False))
+
+    for shape, mo, is_vector in shapes:
+        _regression_emit(values, f"{key}|{shape}{suffix}", call, mo, is_vector)
+
+
+_REGRESSION_PLAIN = {
+    "mse": skm.mean_squared_error,
+    "rmse": skm.root_mean_squared_error,
+    "mae": skm.mean_absolute_error,
+    "median_ae": skm.median_absolute_error,
+    "mape": skm.mean_absolute_percentage_error,
+}
+
+# Defined only where every target is above -1, which is why they are their own
+# list rather than more entries above.
+_REGRESSION_LOG = (
+    ("msle", skm.mean_squared_log_error),
+    ("rmsle", skm.root_mean_squared_log_error),
+)
+
+# The two that take force_finite, and the only two scikit-learn accepts
+# variance_weighted for.
+_REGRESSION_SCORED = (
+    ("r2", skm.r2_score),
+    ("ev", skm.explained_variance_score),
+)
+
+
+def _regression_arrays(fx: dict, k: int):
+    """The fixture's flat lists as scikit-learn wants to see them.
+
+    Single-output targets are handed over 1-D rather than as an n x 1 matrix,
+    because that is the shape a caller writes and the shape `max_error` accepts.
+    """
     n = len(fx["y_true"]) // k
     y_true = np.asarray(fx["y_true"], dtype=float).reshape(n, k)
     y_pred = np.asarray(fx["y_pred"], dtype=float).reshape(n, k)
-    if k == 1:
-        y_true = y_true.ravel()
-        y_pred = y_pred.ravel()
+    return (y_true.ravel(), y_pred.ravel()) if k == 1 else (y_true, y_pred)
+
+
+def _regression_log_defined(y_true, y_pred) -> bool:
+    """Whether the log family is defined here: every target strictly above -1."""
+    return float(np.min(y_true)) > -1.0 and float(np.min(y_pred)) > -1.0
+
+
+def _regression_case(fx: dict, weighted: bool) -> dict:
+    sw = fx["sample_weight"] if weighted else None
+    k = fx["output_count"]
+    y_true, y_pred = _regression_arrays(fx, k)
 
     values: dict = {}
-
-    def scalar(key: str, fn) -> None:
-        values[key] = _finite_or_name(float(fn()))
-
-    def vector(key: str, fn) -> None:
-        values[key] = [_finite_or_name(float(x)) for x in fn()]
 
     # Output weights are fixed rather than drawn, so that a reader can check the
     # reduction by hand: 0.3/0.7 on two outputs, 0.2/0.3/0.5 on three.
     ow = {1: None, 2: [0.3, 0.7], 3: [0.2, 0.3, 0.5]}[k]
 
-    plain = {
-        "mse": skm.mean_squared_error,
-        "rmse": skm.root_mean_squared_error,
-        "mae": skm.mean_absolute_error,
-        "median_ae": skm.median_absolute_error,
-        "mape": skm.mean_absolute_percentage_error,
-    }
-    for name, fn in plain.items():
-        scalar(f"{name}|uniform", lambda fn=fn: fn(y_true, y_pred, sample_weight=sw))
-        vector(f"{name}|raw",
-               lambda fn=fn: np.atleast_1d(
-                   fn(y_true, y_pred, sample_weight=sw, multioutput="raw_values")))
-        if ow is not None:
-            scalar(f"{name}|weights",
-                   lambda fn=fn: fn(y_true, y_pred, sample_weight=sw, multioutput=ow))
+    for name, fn in _REGRESSION_PLAIN.items():
+        _regression_shapes(values, name, _regression_call(fn, y_true, y_pred, sw), ow)
 
-    # The log family is defined only where every target is above -1.
-    if float(np.min(y_true)) > -1.0 and float(np.min(y_pred)) > -1.0:
-        for name, fn in (("msle", skm.mean_squared_log_error),
-                         ("rmsle", skm.root_mean_squared_log_error)):
-            scalar(f"{name}|uniform", lambda fn=fn: fn(y_true, y_pred, sample_weight=sw))
-            vector(f"{name}|raw",
-                   lambda fn=fn: np.atleast_1d(
-                       fn(y_true, y_pred, sample_weight=sw, multioutput="raw_values")))
-            if ow is not None:
-                scalar(f"{name}|weights",
-                       lambda fn=fn: fn(y_true, y_pred, sample_weight=sw, multioutput=ow))
+    if _regression_log_defined(y_true, y_pred):
+        for name, fn in _REGRESSION_LOG:
+            _regression_shapes(values, name, _regression_call(fn, y_true, y_pred, sw), ow)
 
     # max_error takes neither sample_weight nor multioutput, and refuses 2-D
     # input outright with "Multioutput not supported in max_error".
     if k == 1 and not weighted:
-        scalar("max_error|uniform", lambda: skm.max_error(y_true, y_pred))
+        values["max_error|uniform"] = _finite_or_name(float(skm.max_error(y_true, y_pred)))
 
     for alpha in (0.5, 0.9):
-        tag = f"pinball{alpha}"
-        scalar(f"{tag}|uniform",
-               lambda a=alpha: skm.mean_pinball_loss(y_true, y_pred, sample_weight=sw, alpha=a))
-        vector(f"{tag}|raw",
-               lambda a=alpha: np.atleast_1d(skm.mean_pinball_loss(
-                   y_true, y_pred, sample_weight=sw, alpha=a, multioutput="raw_values")))
-        if ow is not None:
-            scalar(f"{tag}|weights",
-                   lambda a=alpha: skm.mean_pinball_loss(
-                       y_true, y_pred, sample_weight=sw, alpha=a, multioutput=ow))
+        _regression_shapes(
+            values, f"pinball{alpha}",
+            _regression_call(skm.mean_pinball_loss, y_true, y_pred, sw, alpha=alpha), ow)
 
-    for name, fn in (("r2", skm.r2_score), ("ev", skm.explained_variance_score)):
+    for name, fn in _REGRESSION_SCORED:
         for ff in (True, False):
-            flag = "force_finite" if ff else "raw_infinity"
-            scalar(f"{name}|uniform|{flag}",
-                   lambda fn=fn, ff=ff: fn(y_true, y_pred, sample_weight=sw, force_finite=ff))
-            vector(f"{name}|raw|{flag}",
-                   lambda fn=fn, ff=ff: np.atleast_1d(fn(
-                       y_true, y_pred, sample_weight=sw, force_finite=ff,
-                       multioutput="raw_values")))
-            scalar(f"{name}|variance_weighted|{flag}",
-                   lambda fn=fn, ff=ff: fn(
-                       y_true, y_pred, sample_weight=sw, force_finite=ff,
-                       multioutput="variance_weighted"))
-            if ow is not None:
-                scalar(f"{name}|weights|{flag}",
-                       lambda fn=fn, ff=ff: fn(
-                           y_true, y_pred, sample_weight=sw, force_finite=ff, multioutput=ow))
+            _regression_shapes(
+                values, name,
+                _regression_call(fn, y_true, y_pred, sw, force_finite=ff), ow,
+                suffix="|force_finite" if ff else "|raw_infinity",
+                variance_weighted=True)
 
     return {
         "fixture": fx["name"],
