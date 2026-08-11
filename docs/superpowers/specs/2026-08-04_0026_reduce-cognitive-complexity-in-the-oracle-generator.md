@@ -1,7 +1,7 @@
 # Design — #26: the complexity finding on the oracle generator
 
 **Date:** 2026-08-04 · **Issue:** #26 · **Branch:** `chore/26-suppress-jaro-reference-complexity` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## The issue asked for the wrong thing
 
@@ -55,7 +55,7 @@ same intuition that produced the wrong issue.
 ### D4 — Record the operational trap encountered while verifying
 
 The generator must run from a neutral working directory, as `CONTRIBUTING.md`
-says. Running it from `/home/cyril` instead of `/tmp` fails **even with
+says. Running it from `<home>` instead of `/tmp` fails **even with
 `PYTHONSAFEPATH` set**:
 
 ```text

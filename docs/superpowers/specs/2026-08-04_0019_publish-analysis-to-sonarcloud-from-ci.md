@@ -1,7 +1,7 @@
 # Design — #19: publish analysis to SonarQube Cloud from CI
 
 **Date:** 2026-08-04 · **Issue:** #19 · **Branch:** `ci/19-sonarcloud-analysis` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

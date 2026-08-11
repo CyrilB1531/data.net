@@ -4,7 +4,7 @@ using DataNet.Metrics;
 namespace DataNet.Text.Benchmarks.CrossLang;
 
 // SonarLint S2245: a seeded Random builds a reproducible benchmark corpus; no security use.
-#pragma warning disable S2245
+#pragma warning disable S2245, CA5394
 
 /// <summary>
 /// The before-and-after for issue #86: multiclass ROC-AUC at several worker

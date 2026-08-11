@@ -25,7 +25,7 @@
 ### Reusable verification commands
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 
 build_all() { dotnet build -c Release; }
 test_sw()   { dotnet test -c Release --filter "FullyQualifiedName~StopWords"; }

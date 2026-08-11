@@ -1,7 +1,7 @@
 # Design — #97: commit the metric, not the machine that computed it
 
 **Date:** 2026-08-07 · **Issue:** #97 · **Branch:** `fix/97-round-oracle-floats` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

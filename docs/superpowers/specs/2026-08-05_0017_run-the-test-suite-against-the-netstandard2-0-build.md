@@ -1,7 +1,7 @@
 # Design — #17: run the test suite against the `netstandard2.0` build
 
 **Date:** 2026-08-05 · **Issue:** #17 · **Branch:** `test/17-netstandard-runtime-validation` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

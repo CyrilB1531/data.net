@@ -1,7 +1,7 @@
 # Design — #47: `CA1845` reappeared in the extracted Romance worker
 
 **Date:** 2026-08-04 · **Issue:** #47 · **Branch:** `fix/romance-base-ca1845` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

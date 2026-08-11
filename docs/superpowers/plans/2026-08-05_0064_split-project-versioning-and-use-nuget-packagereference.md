@@ -25,7 +25,7 @@
 ### Reusable verification commands
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 
 build_all() { dotnet build DataNet.slnx -c Release; }
 test_all()  { dotnet test DataNet.slnx -c Release; }

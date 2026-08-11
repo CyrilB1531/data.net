@@ -1,7 +1,7 @@
 # Design — #3: the Portuguese Snowball stemmer
 
 **Date:** 2026-08-04 · **Issue:** #3 · **Branch:** `feat/3-portuguese-snowball-stemmer` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

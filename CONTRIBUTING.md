@@ -102,6 +102,75 @@ with `--check-feed`, which additionally proves the dependency floor is published
 running `python3 tools/check_nuspec_dependencies.py ./artifacts --require-all`
 closes the loop.
 
+## Before pushing: the half the build cannot see
+
+`dotnet build` enforces the Sonar rules that live in `.globalconfig` (see
+[Analyzers](#analyzers) below), but it has no view of three things the quality
+gate on the pull request still judges: the Python rules over `tools/`,
+duplication, and coverage. `tools/sonarqube-local/compose.yaml` runs a disposable
+SonarQube Community server that covers all three, for whoever wants that answer
+before pushing rather than after.
+
+```bash
+cd tools/sonarqube-local && docker compose up -d
+# Podman instead of Docker Engine: podman compose up -d
+# Wait for the server rather than sleeping blind:
+until curl -s http://localhost:9000/api/system/status | grep -q '"status":"UP"'; do sleep 5; done
+```
+
+The figures below were measured with Podman on one machine, which is what makes
+them traceable rather than asserted.
+
+SonarQube Community bundles Elasticsearch, which wants `vm.max_map_count >= 262144`.
+`SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true` in the compose file suppresses the startup
+check, not the underlying requirement, so a container that exits immediately on a
+machine at a lower distribution default (many ship `65530`) needs that raised —
+`sudo sysctl -w vm.max_map_count=262144`, or the persistent form in
+`/etc/sysctl.conf` — before trying again.
+
+Then, from the repository root, with a token created in the local server's UI
+(*My Account → Security*, `local` is a fine name) exported as `SONAR_TOKEN`:
+
+```bash
+dotnet tool install --global dotnet-sonarscanner   # once, if absent
+dotnet sonarscanner begin /k:"datanet-local" \
+  /d:sonar.host.url="http://localhost:9000" /d:sonar.token="$SONAR_TOKEN" \
+  /d:sonar.python.version="3.12" \
+  /d:sonar.exclusions="tests/oracles/**,samples/DataNet.DocSnippets/Generated/**"
+dotnet build DataNet.slnx -c Release --no-incremental
+dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+```
+
+Measured on this machine: the image (`sonarqube:community`, pinned by digest in
+the compose file) is **≈1.4 GB** and took **38 s** to pull. Bringing the
+container up is near-instant (2 s to launch), but the server itself takes
+roughly **56 s** from launch to answering `"status":"UP"`. The three scanner
+commands — `begin`, `dotnet build --no-incremental`, `end` — took **5 s**,
+**39 s** and **31 s** respectively (75 s total) against this repository's
+current size (17 192 lines of code: 13 361 C#, 3 815 Python, 16 XML). The server
+reported **0 findings for C# and 0 for Python** on that run — a clean tree, not
+a light one: duplication and coverage sensors both ran (2.0% duplicated lines,
+28 duplicated blocks; coverage reads 0.0% because this run's commands, matching
+the ones above, do not feed it a coverage report — CI's job does).
+
+This is not a rehearsal of `Build and analyze`, and saying otherwise would make
+the document worse than not writing it:
+
+- the Community edition has no branch or pull-request analysis, so the verdict
+  is over the whole project and never over the diff — which is the axis the
+  real gate judges on;
+- the custom `No new issue` gate and its seven conditions are not there — a
+  fresh local server starts with only the default `Sonar way` gate, and this run
+  was evaluated against that one instead;
+- its analyser versions move independently of the server's, so a rule firing
+  (or not) here does not pin down which version fired it on SonarCloud;
+- the Community edition carries no taint-analysis engine, so `PythonSecuritySensor`
+  and its injection-class vulnerabilities (SSRF, path traversal, and the like) are
+  invisible to it — a script that reads an argument into `Path.read_text` or hands
+  one to `urlopen` looks clean here and can still fail the real gate (issue #131).
+
+A finding it reports is real, a clean run promises nothing.
+
 ## Working across two packages
 
 The three libraries version and release independently, and `DataNet.Fuzzy`
@@ -219,6 +288,36 @@ request:
 dotnet build DataNet.slnx -c Release
 ```
 
+That claim needs two mechanisms, not one. `AnalysisMode=All` covers the .NET
+code-quality rules on its own. SonarAnalyzer's own rules do not: the package
+ships a large share of them **disabled**, the SonarCloud quality profile enables
+some of those, and nothing in `AnalysisMode` closes that gap — a finding there
+used to surface only at the quality gate, three minutes after a push (issue #109).
+The root **`.globalconfig`** closes it: a generated file, not a hand-written one,
+that raises exactly the rules the profile activates and the package ships
+disabled, to `warning`. Regenerate it with
+[`tools/generate_sonar_globalconfig.py`](tools/generate_sonar_globalconfig.py) —
+see [`tools/README.md`](tools/README.md#generate_sonar_globalconfigpy) for the
+full command, including where it reads the SARIF error log from. `dotnet build` picks up
+`.globalconfig` at the repository root with no wiring — the SDK's
+`Microsoft.Managed.Core.targets` already globs every ancestor directory of every
+compiled file for a file with exactly that name — so nothing declares it, and
+nothing should.
+
+CI's `Lint` job runs the same generator with `--check` on every pull request,
+comparing against the committed file without writing it. A red **`Sonar
+globalconfig is current`** step means the SonarCloud profile has moved since the
+file was last generated: regenerate with the command above and commit the
+result, the same as any other generated file here.
+
+Regenerating is required, not optional, whenever `AnalysisLevel` is raised past
+`10.0` or `$(DataNetSonarAnalyzerVersion)` is bumped — either can change which
+rules the package ships disabled, which changes the delta the file encodes. This
+applies whether the bump is a deliberate edit or an automated dependency update
+(a Dependabot pull request, should one ever be wired for this pin): skip the
+regeneration and the `Sonar globalconfig is current` job goes red with a diff and
+no explanation of why, on a pull request that touched no C#.
+
 It is an analyzer-only reference (`PrivateAssets="all"`), so it reaches no
 published package — `tools/check_nuspec_dependencies.py` asserts that. The
 version is pinned once, as `$(DataNetSonarAnalyzerVersion)` in the root
@@ -249,11 +348,17 @@ comment giving the reason:
 #pragma warning disable S3776
 ```
 
-Do not reach for `.editorconfig` or `.vscode/settings.json` for SonarLint rules.
-SonarLint reads neither: it ignores `.editorconfig` entirely, and `sonarlint.rules`
-is declared application-scope in the extension manifest, so VS Code silently drops
-it from a workspace file. The pragma works because SonarLint's C# analysis is
-SonarAnalyzer running through Roslyn.
+Do not reach for `.editorconfig` or `.vscode/settings.json` **to change what
+SonarLint reports**. SonarLint reads neither: it ignores `.editorconfig`
+entirely, and `sonarlint.rules` is declared application-scope in the extension
+manifest, so VS Code silently drops it from a workspace file. The pragma works
+because SonarLint's C# analysis is SonarAnalyzer running through Roslyn.
+
+The **build** is a different tool: its Roslyn pass does read analyzer
+configuration files, which is how `.globalconfig` raises the rules
+SonarAnalyzer ships disabled (see [Analyzers](#analyzers) above). That file is
+generated from the server's profile — change the profile, or the generator,
+never the file.
 
 A rule that a whole area trips *by being that area* — xunit's underscored test
 names, BenchmarkDotNet's reflection-instantiated types, a sample printing to the

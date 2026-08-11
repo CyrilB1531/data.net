@@ -8,7 +8,6 @@
        off for this area only, and for a reason that does not apply to src/:
          CA1707 — Method_Case_Expected is the xunit naming convention.
          CA1515 — xunit requires a public test class to discover it.
-         CA5394 — Random builds corpora here; there is nothing to keep secret.
          CA1062 — a test helper's arguments come from the suite, not a caller.
          CA1849 — the suite calls the synchronous Save on purpose, to compare it
                   against SaveAsync; that comparison is what the tests assert.
@@ -19,7 +18,7 @@
                   OutputType=Exe and CA2007 skips executables there.
        See docs/decisions/0019-the-net-analysers-run-in-the-build-too.md. -->
   <PropertyGroup>
-    <NoWarn>$(NoWarn);CA1707;CA1515;CA5394;CA1062;CA1849;CA2007</NoWarn>
+    <NoWarn>$(NoWarn);CA1707;CA1515;CA1062;CA1849;CA2007</NoWarn>
   </PropertyGroup>
 
   <!-- Test code is held to the same rules as the code it tests: a test is read

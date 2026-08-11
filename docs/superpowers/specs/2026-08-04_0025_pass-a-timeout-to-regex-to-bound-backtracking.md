@@ -1,7 +1,7 @@
 # Design — #25: bound Regex backtracking with a match timeout
 
 **Date:** 2026-08-04 · **Issue:** #25 · **Branch:** `fix/25-regex-timeouts` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

@@ -14,7 +14,7 @@
 
 - **Everything in English** — code comments, ADR, `CONTRIBUTING.md`, commit messages, PR body.
 - **Do not commit until the user asks.** Do not merge. Do not tag.
-- Branch `chore/107-analysis-parity` in `/home/cyril/Documents/devs/data.net`. Never commit to `main`.
+- Branch `chore/107-analysis-parity` in `<repo>`. Never commit to `main`.
 - `TreatWarningsAsErrors=true` is set repo-wide and must stay. Never verify with `-p:TreatWarningsAsErrors=false` in a final check — only while diagnosing.
 - `src/` multi-targets **`netstandard2.0` and `net10.0`**. Every `src/` edit must compile on both. The test projects and `samples/` target `net10.0` only.
 - The single analyzer version pin is `$(DataNetSonarAnalyzerVersion)` in the root `Directory.Build.props`. Do not duplicate the number.
@@ -30,7 +30,7 @@ Revised counts: **15 real fixes** (CA1305 ×9, CA1062 ×4, CA2251 ×1, CA1307 ×
 ### Reusable verification commands
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 SCRATCH=/tmp/claude-49201103/-home-cyril-Documents-devs-data-net/c134d377-25c6-4da3-8dec-8ffcbffa021b/scratchpad
 
 # The switch, as a command-line override. Used in Tasks 3-7, before it is committed.
@@ -70,7 +70,7 @@ This task adds **SonarAnalyzer only** — not the `AnalysisMode` switch, which l
 - [x] **Step 1: Prove the gap exists before closing it**
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 cat >> samples/DataNet.Sample/Lot1Distances.cs <<'EOF'
 
 internal static class Probe

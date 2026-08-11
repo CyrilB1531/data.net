@@ -3,9 +3,9 @@ using Xunit;
 
 namespace DataNet.Metrics.Tests;
 
-// SonarLint S2245: a seeded Random builds a reproducible six-class score matrix
-// for a bit-identity fixture; no security use.
-#pragma warning disable S2245
+// SonarLint S2245 / CA5394: a seeded Random builds a reproducible six-class score
+// matrix for a bit-identity fixture; no security use.
+#pragma warning disable S2245, CA5394
 
 /// <summary>
 /// The guarantee issue #86 rests on: parallelising the per-class and per-pair

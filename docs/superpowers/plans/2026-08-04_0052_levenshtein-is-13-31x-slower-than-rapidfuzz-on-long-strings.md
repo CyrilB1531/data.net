@@ -26,7 +26,7 @@
 ### Reusable verification commands
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 
 build_all() { dotnet build -c Release; }
 test_all()  { dotnet test -c Release; }
@@ -191,10 +191,10 @@ renumbers every subsequent case and makes the diff unreadable.
 - [x] **Step 2: Regenerate**
 
 ```bash
-cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python \
-  /home/cyril/Documents/devs/data.net/tools/generate_oracles.py
+cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python \
+  <repo>/tools/generate_oracles.py
 echo "generator exit: $?"
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 ```
 
 - [x] **Step 3: Prove the pre-existing cases did not move**

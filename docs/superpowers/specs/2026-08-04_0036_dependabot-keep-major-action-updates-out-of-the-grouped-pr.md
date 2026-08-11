@@ -1,7 +1,7 @@
 # Design — #36: keep major action updates out of the grouped Dependabot PR
 
 **Date:** 2026-08-04 · **Issue:** #36 · **Branch:** `chore/36-dependabot-major-updates` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

@@ -27,7 +27,7 @@ nothing was thrown.
 
 - Everything in English — code, comments, commit messages, PR body. Commit messages carry no
   `feat:`/`fix:` prefix and no process prefix such as `Fix round 1:`.
-- Branch `fix/118-bpe-values-refused-for-nothing` in `/home/cyril/Documents/devs/data.net`, based on `main`
+- Branch `fix/118-bpe-values-refused-for-nothing` in `<repo>`, based on `main`
   at 38813b0. Never commit to `main`. Do not push or open a PR without asking.
 - `src/` multi-targets **`netstandard2.0` and `net10.0`**. Every `src/` edit must compile on both. Test
   projects and `samples/` are `net10.0` only, and every test file is linked into the mirrored
@@ -120,7 +120,7 @@ for label, kwargs in [
 - [x] **Step 2: Run it from a neutral directory and record every line**
 
 ```bash
-cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python /tmp/probe_118.py
+cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python /tmp/probe_118.py
 ```
 
 Copy the whole output into your report verbatim. Three questions must be answered explicitly:
@@ -579,11 +579,11 @@ Register it in `main`'s generators dict as `bpe_no_op_settings.json`.
 - [x] **Step 2: Generate, and read the generator's own exit code**
 
 ```bash
-cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python \
-  /home/cyril/Documents/devs/data.net/tools/generate_oracles.py > /tmp/118-gen.log 2>&1
+cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python \
+  <repo>/tools/generate_oracles.py > /tmp/118-gen.log 2>&1
 echo "generate=$?"
 tail -5 /tmp/118-gen.log
-cd /home/cyril/Documents/devs/data.net && git status --porcelain tests/oracles/
+cd <repo> && git status --porcelain tests/oracles/
 ```
 
 Expected: exit 0, and **exactly one new file**. If any other corpus moved, stop and report it — that is a
@@ -650,7 +650,7 @@ git commit -m "Replay what tokenizers does with the settings that change nothing
 - [x] **Step 1: Find what this branch falsified**
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 grep -rn "continuing_subword_prefix\|end_of_word_suffix\|dropout\|add_prefix_space" \
   --include=*.md docs README.md CONTRIBUTING.md > /tmp/118-doc-hits.txt
 wc -l /tmp/118-doc-hits.txt
@@ -707,7 +707,7 @@ git commit -m "Record which values the BPE loader refuses, and which it stopped 
 - [x] **Step 1: Every gate, with real exit codes**
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 git status --porcelain                                                    # empty
 dotnet build DataNet.slnx -c Release --no-incremental > /tmp/118-fv-b.log 2>&1; echo "build=$?"; tail -3 /tmp/118-fv-b.log
 dotnet format DataNet.slnx --verify-no-changes > /tmp/118-fv-f.log 2>&1;   echo "format=$?"
@@ -721,10 +721,10 @@ eight, the four `*.NetStandard.Tests` mirrors included.
 - [x] **Step 2: The oracle drift gate**
 
 ```bash
-cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net/.venv-oracles/bin/python \
-  /home/cyril/Documents/devs/data.net/tools/generate_oracles.py > /tmp/118-fv-gen.log 2>&1
+cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python \
+  <repo>/tools/generate_oracles.py > /tmp/118-fv-gen.log 2>&1
 echo "generate=$?"
-cd /home/cyril/Documents/devs/data.net && git status --porcelain tests/oracles/
+cd <repo> && git status --porcelain tests/oracles/
 ```
 
 Expected: empty. This gate is known to be flaky on this repository — if a corpus moves, regenerate once
