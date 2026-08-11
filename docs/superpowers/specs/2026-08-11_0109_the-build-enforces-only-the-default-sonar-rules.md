@@ -52,24 +52,31 @@ delta is therefore an offline read of a build artefact intersected with one anon
 
 ## Decisions
 
-### D1 — a generated `.globalconfig`, wired once, not an `.editorconfig`
+### D1 — a generated `.globalconfig`, declared by nothing, not an `.editorconfig`
 
 The probe above used an `.editorconfig` because it was the fastest thing to throw away. The committed
-mechanism is a `.globalconfig` at the repository root, referenced once in the root `Directory.Build.props`:
+mechanism is a `.globalconfig` at the repository root.
 
-```xml
-<ItemGroup>
-  <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory).globalconfig" />
-</ItemGroup>
-```
-
-Two reasons for the global config over the editor config. It can carry **only** analyzer severities, so it
+The reason for the global config over the editor config: it can carry **only** analyzer severities, so it
 cannot be confused with the formatting conventions `dotnet format` enforces — and `CONTRIBUTING.md` already
-warns readers away from `.editorconfig`, for SonarLint reasons that remain true. And a `.globalconfig` is
-only picked up automatically when it sits in the *project* directory, so a root one has to be named
-explicitly, which is a line a reader can find rather than a file that acts at a distance.
+warns readers away from `.editorconfig`, for SonarLint reasons that remain true.
 
-`samples/` is covered: `samples/Directory.Build.props` imports the root file, so the item lands there too.
+**Amended after Task 3, 2026-08-12.** This decision originally added a
+`<GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory).globalconfig" />` item to the root
+`Directory.Build.props`, on the premise that a `.globalconfig` is picked up automatically only from the
+project's own directory. That premise is false for this SDK, and the item it justified **breaks the
+feature**. Measured twice, independently, on SDK 10.0.110: `Microsoft.Managed.Core.targets` globs every
+*ancestor* directory of every compiled file for a file literally named `.globalconfig` whenever
+`DiscoverGlobalAnalyzerConfigFiles` is not `false` — which nothing here sets — so the repository root is
+already in scope for every project, `samples/` included, with no wiring at all. Registering the same path a
+second time makes MSBuild log `MultipleGlobalAnalyzerKeys` and **drop the severity of every rule in the
+file**: the `S107` canary that failed the build under discovery alone went quiet the moment the explicit
+item was added.
+
+So nothing declares the file. What sits in `Directory.Build.props` is a comment saying that, saying why an
+`Include` must not be added back, and saying what whoever disables discovery would have to write instead.
+The lesson is the same one the measurement section already carries: a mechanism that is asserted rather
+than demonstrated can be exactly backwards, and only the canary tells the difference.
 
 ### D2 — the file carries the delta only, at `warning`
 
