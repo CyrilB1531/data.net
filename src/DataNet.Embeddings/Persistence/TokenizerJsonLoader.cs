@@ -555,7 +555,7 @@ public static class TokenizerJsonLoader
             ByteLevel = byteLevel,
             AddPrefixSpace = addPrefixSpace,
             IgnoreMerges = OptionalBoolean(model, "ignore_merges") ?? false,
-            FuseUnk = OptionalBoolean(model, "fuse_unk") is true,
+            FuseUnk = OptionalBoolean(model, "fuse_unk") ?? false,
             SkippedMerges = skippedMerges,
             EndOfWordSuffix = OptionalString(model, "end_of_word_suffix"),
             // ContinuingSubwordPrefix is deliberately not carried across: a non-null one

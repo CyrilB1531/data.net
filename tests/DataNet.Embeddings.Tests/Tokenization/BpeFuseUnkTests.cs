@@ -8,7 +8,7 @@ using Xunit;
 namespace DataNet.Embeddings.Tests;
 
 /// <summary>
-/// Replays <c>bpe_fuse_unk.json</c>: six hand-built models, each recorded with
+/// Replays <c>bpe_fuse_unk.json</c>: seven hand-built models, each recorded with
 /// <c>fuse_unk</c> off and on.
 /// </summary>
 public sealed class BpeFuseUnkTests
@@ -33,8 +33,11 @@ public sealed class BpeFuseUnkTests
 
     /// <summary>
     /// The corpus's own claim about itself: which models the flag changes and
-    /// which it cannot. Without this, every model could be a shape too small for
-    /// the flag to matter and the replay above would still pass.
+    /// which it cannot. Recomputed from <c>cases</c> rather than trusted from
+    /// <c>metadata.fuse_pairs[].differs</c> — the value the generator computed —
+    /// which is strictly stronger: it also catches a <c>cases</c>/<c>metadata</c>
+    /// disagreement, following
+    /// <see cref="BpeNoOpSettingsTests.Each_no_op_setting_encodes_exactly_like_its_baseline"/>.
     /// </summary>
     [Theory]
     [InlineData("in_piece_fused", true)]
@@ -43,14 +46,19 @@ public sealed class BpeFuseUnkTests
     [InlineData("across_split_fused", false)]
     [InlineData("no_unk_fused", false)]
     [InlineData("byte_level_fused", false)]
+    [InlineData("end_of_word_fused", true)]
     public void The_flag_changes_exactly_the_models_it_should(string fused, bool expected)
     {
         using JsonDocument doc = OracleLoader.Load(Corpus);
+        Dictionary<string, Dictionary<string, string>> streams = StreamsByModel(doc);
 
-        JsonElement pair = doc.RootElement.GetProperty("metadata").GetProperty("fuse_pairs")
-            .EnumerateArray().Single(p => p.GetProperty("fused").GetString() == fused);
+        string unfused = doc.RootElement.GetProperty("metadata").GetProperty("fuse_pairs")
+            .EnumerateArray().Single(p => p.GetProperty("fused").GetString() == fused)
+            .GetProperty("unfused").GetString()!;
 
-        Assert.Equal(expected, pair.GetProperty("differs").GetBoolean());
+        List<string> divergences = Divergences(streams, fused, unfused);
+
+        Assert.Equal(expected, divergences.Count > 0);
     }
 
     /// <summary>
@@ -99,7 +107,49 @@ public sealed class BpeFuseUnkTests
         Dictionary<string, int> vocab, IReadOnlyList<MergePair> merges, string? unk, bool fuse) =>
         new(vocab, merges) { UnkToken = unk, FuseUnk = fuse };
 
-    private static BpeVocabulary Vocabulary(JsonElement model) =>
-        TokenizerJsonLoader.LoadBpe(
-            new MemoryStream(Encoding.UTF8.GetBytes(model.GetProperty("tokenizer_json").GetString()!)));
+    private static BpeVocabulary Vocabulary(JsonElement model)
+    {
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(model.GetProperty("tokenizer_json").GetString()!));
+        return TokenizerJsonLoader.LoadBpe(stream, OracleReplay.BpeBounds());
+    }
+
+    /// <summary>
+    /// The recorded token stream of every case, keyed by model then by text, so a pair
+    /// is compared text for text rather than by position in the cases array. Mirrors
+    /// <see cref="BpeNoOpSettingsTests.StreamsByModel"/>.
+    /// </summary>
+    private static Dictionary<string, Dictionary<string, string>> StreamsByModel(JsonDocument doc)
+    {
+        var streams = new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
+        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
+        {
+            string model = c.GetProperty("model").GetString()!;
+            if (!streams.TryGetValue(model, out Dictionary<string, string>? texts))
+            {
+                texts = new Dictionary<string, string>(StringComparer.Ordinal);
+                streams[model] = texts;
+            }
+            string tokens = string.Join(" ", c.GetProperty("tokens").EnumerateArray().Select(e => e.GetString()));
+            texts[c.GetProperty("text").GetString()!] = tokens;
+        }
+        return streams;
+    }
+
+    /// <summary>
+    /// Where the fused model's recorded token streams differ from the unfused
+    /// model's, text for text.
+    /// </summary>
+    private static List<string> Divergences(
+        Dictionary<string, Dictionary<string, string>> streams, string fused, string unfused)
+    {
+        Assert.True(streams.TryGetValue(fused, out Dictionary<string, string>? withFusing), $"{Corpus} carries no case for model '{fused}'.");
+        Assert.True(streams.TryGetValue(unfused, out Dictionary<string, string>? without), $"{Corpus} carries no case for model '{unfused}'.");
+
+        Assert.Equal(
+            without.Keys.OrderBy(k => k, StringComparer.Ordinal),
+            withFusing.Keys.OrderBy(k => k, StringComparer.Ordinal));
+        return [.. withFusing
+            .Where(encoded => !string.Equals(encoded.Value, without[encoded.Key], StringComparison.Ordinal))
+            .Select(encoded => $"{fused} \"{encoded.Key}\": {encoded.Value}, where {unfused} gives {without[encoded.Key]}")];
+    }
 }

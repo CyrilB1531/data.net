@@ -3101,8 +3101,19 @@ _FUSE_MERGE_MERGES = [(_FUSE_UNK_TOKEN, "a")]
 # trap needs both characters inside one piece.
 _FUSE_COVERED_UNK_VOCAB = {"q": 0, "a": 1}
 
+# D7: the end-of-word suffix is appended to a piece's last code point before
+# the vocabulary lookup, so a suffixed uncovered character is still uncovered
+# and still substituted — the suffix never reaches the unknown token itself.
+# "a" is covered both bare (the form looked up everywhere but the last
+# position) and suffixed (the form looked up at the last position), so a run
+# ending on a covered character still resolves and does not fuse; Y and Z are
+# covered in neither form, so a run they form stays uncovered regardless of
+# which form the last position looks up.
+_FUSE_EOW_SUFFIX = "</w>"
+_FUSE_EOW_VOCAB = {_FUSE_UNK_TOKEN: 0, "a": 1, "a" + _FUSE_EOW_SUFFIX: 2}
 
-def _fuse_unk_model(vocab, merges, fuse, *, unk=_FUSE_UNK_TOKEN, byte_level=False):
+
+def _fuse_unk_model(vocab, merges, fuse, *, unk=_FUSE_UNK_TOKEN, byte_level=False, eow=None):
     """One tokenizer, built rather than trained, so the file is byte-stable.
 
     Every classic model declares Whitespace. A model declaring no pre-tokenizer
@@ -3114,11 +3125,14 @@ def _fuse_unk_model(vocab, merges, fuse, *, unk=_FUSE_UNK_TOKEN, byte_level=Fals
     """
     from tokenizers import Tokenizer, models, pre_tokenizers  # noqa: PLC0415
 
-    # tokenizers 0.23.1 raises TypeError on unk_token=None; the keyword has to
-    # be omitted rather than passed empty.
+    # tokenizers 0.23.1 raises TypeError on unk_token=None and on
+    # end_of_word_suffix=None alike; both keywords have to be omitted rather
+    # than passed empty.
     kwargs = {"fuse_unk": fuse}
     if unk is not None:
         kwargs["unk_token"] = unk
+    if eow is not None:
+        kwargs["end_of_word_suffix"] = eow
     tokenizer = Tokenizer(models.BPE(dict(vocab), list(merges), **kwargs))
     tokenizer.pre_tokenizer = (pre_tokenizers.ByteLevel(add_prefix_space=False) if byte_level
                                else pre_tokenizers.Whitespace())
@@ -3168,6 +3182,11 @@ def _fuse_unk_models() -> list[tuple]:
             f"byte_level_{suffix}", "byte-level, where no character is uncovered", fuse,
             _fuse_unk_model(byte_vocab, [], fuse, unk=None, byte_level=True),
             ["a\U0001F600b", "ab"]))
+        models_out.append((
+            f"end_of_word_{suffix}",
+            "an end-of-word suffix reaching an uncovered run's last code point (D7)", fuse,
+            _fuse_unk_model(_FUSE_EOW_VOCAB, [], fuse, eow=_FUSE_EOW_SUFFIX),
+            ["aYZ", "aZZ", "Za"]))
     return models_out
 
 
@@ -3204,7 +3223,7 @@ def generate_bpe_fuse_unk() -> dict:
             "algorithm": "BPE fuse_unk",
             "library": "tokenizers",
             "library_version": version("tokenizers"),
-            "model": "hand-built: five classic BPE shapes and one byte-level, all defined in tools/generate_oracles.py",
+            "model": "hand-built: six classic BPE shapes and one byte-level, all defined in tools/generate_oracles.py",
             "models": {
                 name: {"declares": declares, "fuse_unk": fuse, "tokenizer_json": tokenizer.to_str()}
                 for name, declares, fuse, tokenizer, _ in carried

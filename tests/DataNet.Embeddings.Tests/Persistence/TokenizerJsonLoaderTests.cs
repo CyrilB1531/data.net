@@ -1314,12 +1314,12 @@ public sealed class TokenizerJsonLoaderTests
     [Fact]
     public void A_model_declaring_fuse_unk_loads_and_carries_the_flag()
     {
-        string document = """
+        const string Json = """
         {"model":{"type":"BPE","vocab":{"[UNK]":0,"a":1,"b":2,"ab":3},"merges":[["a","b"]],
          "unk_token":"[UNK]","fuse_unk":true}}
         """;
 
-        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(new MemoryStream(Encoding.UTF8.GetBytes(document)));
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
         Assert.True(vocabulary.FuseUnk);
     }
@@ -1330,11 +1330,11 @@ public sealed class TokenizerJsonLoaderTests
         // The default has to be false rather than "unset": every corpus this
         // repository committed before issue #119 was generated without the
         // field, and they are the regression proof for the untouched path.
-        string document = """
+        const string Json = """
         {"model":{"type":"BPE","vocab":{"[UNK]":0,"a":1},"merges":[],"unk_token":"[UNK]"}}
         """;
 
-        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(new MemoryStream(Encoding.UTF8.GetBytes(document)));
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
         Assert.False(vocabulary.FuseUnk);
     }
@@ -1345,11 +1345,11 @@ public sealed class TokenizerJsonLoaderTests
         // Measured: tokenizers accepts {'unk_token': None, 'fuse_unk': True},
         // serializes it, and the flag then has no observable effect. Refusing it
         // here would be a divergence invented rather than reproduced.
-        string document = """
+        const string Json = """
         {"model":{"type":"BPE","vocab":{"a":1},"merges":[],"fuse_unk":true}}
         """;
 
-        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(new MemoryStream(Encoding.UTF8.GetBytes(document)));
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
         Assert.True(vocabulary.FuseUnk);
         Assert.Null(vocabulary.UnkToken);
