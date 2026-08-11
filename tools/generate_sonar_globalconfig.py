@@ -24,6 +24,7 @@ import difflib
 import json
 import re
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -156,19 +157,25 @@ def main(argv: list[str] | None = None) -> int:
     except TruncatedResponse as error:
         print(str(error), file=sys.stderr)
         return EXIT_TRUNCATED
-    except OSError as error:
-        if error.filename is not None:
-            # A local --error-log/--rules problem -- missing, unreadable, whatever
-            # strerror says -- carries the path that failed. Route every one of them
-            # here, not the network: must not read as "the API is down", which sends
-            # whoever is debugging it the wrong way.
-            print(f"cannot read {error.filename}: {error.strerror}", file=sys.stderr)
-            return EXIT_INPUT_MISSING
-        # urllib.error.URLError and TimeoutError are both already OSError subclasses,
-        # and neither carries a filename: this is the network, not a local file.
-        # The failure that must not look like drift: the file is fine, the network is not.
+    except (urllib.error.URLError, TimeoutError) as error:
+        # Caught ahead of the generic OSError below, on purpose: urllib.error.HTTPError
+        # -- raised for a SonarCloud 5xx or 404 -- is itself a URLError subclass, and it
+        # sets .filename to the request URL with .strerror left None. Checking .filename
+        # there would route a status error into "cannot read <url>: None", the exact
+        # network-reported-as-local-file confusion this branch exists to avoid, only
+        # pointing the other way. Every URLError, HTTPError included, and a bare
+        # TimeoutError (urlopen does not always wrap one in URLError) are the network,
+        # never a local file: the failure that must not look like drift, because the
+        # file is fine and the network is not.
         print(f"could not reach {args.api}: {error}", file=sys.stderr)
         return EXIT_UNREACHABLE
+    except OSError as error:
+        # Reached only for a local --error-log/--rules problem: missing, unreadable,
+        # whatever strerror says. Never a URLError -- that is caught above -- so this
+        # is genuinely local, and must not read as "the API is down", which would send
+        # whoever is debugging it the wrong way.
+        print(f"cannot read {error.filename}: {error.strerror}", file=sys.stderr)
+        return EXIT_INPUT_MISSING
 
     target = Path(args.output)
     if not args.check:

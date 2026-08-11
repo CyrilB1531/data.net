@@ -1,10 +1,12 @@
 """The generator is the one thing here a drift check cannot judge: it proves the file
 stable, never right. These run offline, against fixtures trimmed from real responses."""
+import http.server
 import json
 import os
 import re
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 import pytest
@@ -131,6 +133,43 @@ def test_check_exits_two_when_the_api_cannot_be_reached(tmp_path):
     # editing a file that never changed.
     assert result.returncode == 2
     assert "127.0.0.1:9" in result.stderr
+
+
+class _ServiceUnavailableHandler(http.server.BaseHTTPRequestHandler):
+    """Answers every request with 503, so fetch() raises urllib.error.HTTPError."""
+
+    def do_GET(self):  # noqa: N802 - BaseHTTPRequestHandler's own naming
+        self.send_response(503)
+        self.end_headers()
+
+    def log_message(self, format_, *args):  # noqa: A002 - keep pytest output quiet
+        pass
+
+
+def test_check_exits_two_not_three_on_an_http_status_error(tmp_path):
+    # urllib.error.HTTPError -- raised here by a real 503 response, not a stub --
+    # is a urllib.error.URLError subclass, and it sets .filename to the request URL
+    # with .strerror left None. Before the fix, checking .filename alone routed it
+    # into the local-file branch and printed "cannot read <url>: None" at exit 3: a
+    # SonarCloud outage reported as an unreadable file. It must stay a network
+    # failure, exit 2, same as a refused connection.
+    server = http.server.HTTPServer(("127.0.0.1", 0), _ServiceUnavailableHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        api = f"http://127.0.0.1:{server.server_address[1]}"
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), "--check", "--error-log", str(FIXTURES / "error_log.sarif"),
+             "--api", api, "--output", str(tmp_path / ".globalconfig")],
+            capture_output=True, text=True, check=False)
+    finally:
+        server.shutdown()
+        thread.join()
+
+    assert result.returncode == gen.EXIT_UNREACHABLE
+    assert result.returncode != gen.EXIT_INPUT_MISSING
+    assert "cannot read" not in result.stderr
+    assert "could not reach" in result.stderr
 
 
 def test_check_exits_zero_when_the_file_on_disk_already_matches(tmp_path):
