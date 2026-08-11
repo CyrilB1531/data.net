@@ -1,0 +1,23 @@
+# A local SonarQube Community server, for the half of the quality gate no .NET build
+# can reach: the Python rules over tools/, duplication, and coverage. Issue #109.
+#
+# Pinned by digest rather than by tag: `community` moves, and a scanner run whose
+# analyser versions changed underneath it explains a finding that was not there
+# yesterday as a code change.
+services:
+  sonarqube:
+    image: sonarqube:community@sha256:9dfc19385a3b7647e7585013d8c94ae2322228c6b217a1c641199f07f86b12ab
+    ports:
+      - "9000:9000"
+    environment:
+      # Single-node Elasticsearch in a container that is thrown away after the run.
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+
+volumes:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:

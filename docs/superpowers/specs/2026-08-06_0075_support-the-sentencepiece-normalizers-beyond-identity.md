@@ -1,7 +1,7 @@
 # Design — #75: read the precompiled normalizer instead of refusing it
 
 **Date:** 2026-08-06 · **Issue:** #75 · **Branch:** `feat/75-precompiled-normalizer` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## The premise, measured before any design
 

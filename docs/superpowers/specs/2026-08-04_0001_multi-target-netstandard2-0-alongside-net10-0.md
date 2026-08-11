@@ -1,7 +1,7 @@
 # Design — #1: multi-target `netstandard2.0` alongside `net10.0`
 
 **Date:** 2026-08-04 · **Issue:** #1 · **Branch:** `feat/1-netstandard2.0-multitarget` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

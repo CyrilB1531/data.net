@@ -1,7 +1,7 @@
 # Design — #52: blocked Myers, so long strings stop losing to rapidfuzz
 
 **Date:** 2026-08-04 · **Issue:** #52 · **Branch:** `perf/52-blocked-myers` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

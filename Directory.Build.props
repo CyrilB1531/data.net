@@ -70,6 +70,31 @@
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
+  <!-- The rules the server's quality profile enables and SonarAnalyzer.CSharp ships
+       disabled, generated into .globalconfig at the repository root by
+       tools/generate_sonar_globalconfig.py; the Lint job regenerates and diffs it on
+       every pull request, so a profile change is caught here rather than three
+       minutes after a push. Hand edits to it are lost on the next run.
+
+       No <GlobalAnalyzerConfigFiles> item declares that file, and none should be
+       added: the SDK's own Microsoft.Managed.Core.targets
+       (DiscoverGlobalAnalyzerConfigFiles, on by default, and nothing in this
+       repository ever turns it off) already globs every ancestor directory of every
+       compiled source file for one literally named .globalconfig, and the repository
+       root is an ancestor of every project here, samples included — so the file is
+       already applied with no wiring at all. Registering the same path a second time
+       does not add coverage; MSBuild logs 'MultipleGlobalAnalyzerKeys' for the clash
+       and drops the severity for every rule in the file, silently turning the whole
+       mechanism off — measured directly: an S107 canary that failed the build with
+       the discovery alone went quiet the moment an explicit Include was added back.
+
+       If DiscoverGlobalAnalyzerConfigFiles is ever set to false somewhere in this
+       repository, this file stops being picked up, and whoever made that change is
+       the one who needs to add
+       `<ItemGroup><GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory).globalconfig" /></ItemGroup>`
+       back — deliberately, next to the property that disabled discovery, not here.
+       See issue #109. -->
+
   <!-- Ship the repository README inside every published package (NuGet renders it). -->
   <ItemGroup Condition="'$(IsPackable)' != 'false'">
     <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" Visible="false" />

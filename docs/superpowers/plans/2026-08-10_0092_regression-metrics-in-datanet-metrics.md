@@ -402,9 +402,9 @@ In `main()`'s `generators` dict, beside `"roc_auc.json": generate_roc_auc,`:
 - [ ] **Step 5: Generate, and read the generator's own exit code**
 
 ```bash
-cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net2/.venv-oracles/bin/python \
-  /home/cyril/Documents/devs/data.net2/tools/generate_oracles.py; echo "exit=$?"
-cd /home/cyril/Documents/devs/data.net2
+cd /tmp && PYTHONSAFEPATH=1 <worktree>/.venv-oracles/bin/python \
+  <worktree>/tools/generate_oracles.py; echo "exit=$?"
+cd <worktree>
 python3 -c "import json;d=json.load(open('tests/oracles/regression.json'),parse_constant=lambda c:(_ for _ in ()).throw(ValueError(f'bare {c}')));print('strict JSON ok,', d['metadata']['count'], 'cases')"
 git status --porcelain tests/oracles/
 ```

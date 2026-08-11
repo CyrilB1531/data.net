@@ -1,7 +1,7 @@
 # Design — #95: print the oracle drift, not just its shape
 
 **Date:** 2026-08-07 · **Issue:** #95 · **Branch:** `fix/95-print-oracle-drift` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

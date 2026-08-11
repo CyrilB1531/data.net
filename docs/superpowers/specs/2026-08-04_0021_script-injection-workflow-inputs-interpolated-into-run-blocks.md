@@ -1,7 +1,7 @@
 # Design — #21: script injection in the release workflows
 
 **Date:** 2026-08-04 · **Issue:** #21 · **Branch:** `fix/21-workflow-script-injection` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

@@ -954,7 +954,7 @@ filter's status and a failed generation would look successful.
 - [x] **Step 7: Prove the corpora are byte-reproducible**
 
 ```bash
-cd /home/cyril/Documents/devs/data.net-58 && git status --short tests/oracles/
+cd <worktree> && git status --short tests/oracles/
 ```
 
 Expected: only the two new files. If any *pre-existing* corpus shows as modified,
@@ -965,7 +965,7 @@ Then regenerate a second time and confirm nothing moves:
 
 ```bash
 cd /tmp && PYTHONSAFEPATH=1 "$OLDPWD/.venv-oracles/bin/python" "$OLDPWD/tools/generate_oracles.py" >/dev/null
-cd /home/cyril/Documents/devs/data.net-58 && git diff --stat tests/oracles/
+cd <worktree> && git diff --stat tests/oracles/
 ```
 
 Expected: empty output — the `Oracles are reproducible` job will do exactly this.

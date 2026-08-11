@@ -134,6 +134,17 @@ jobs:
       # The gate is Sonar's own "Clean as You Code" definition, on *new* code, so
       # what it blocks is what this pull request introduced — not the backlog it
       # inherited.
+      #
+      # tools/tests/** is excluded rather than declared. SonarPython reads a
+      # Python file it cannot see as test code as production code and says so:
+      # "detected files that look like test code but 'sonar.tests' is not
+      # configured". The property it asks for cannot be set here — SonarScanner
+      # for .NET 9 and later derives sonar.sources and sonar.tests from the
+      # MSBuild projects it wraps and ignores both if you pass them, and this
+      # job installs the scanner with `dotnet tool update`, unpinned. So the
+      # choice is between a permanent warning and not analysing the file. What
+      # is lost is small and named: tools/tests holds one file, whose own
+      # correctness is proven by running it in the Lint job, not by reading it.
       - name: Begin analysis
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -148,7 +159,7 @@ jobs:
             /d:sonar.python.version="3.12" \
             /d:sonar.projectBaseDir="$GITHUB_WORKSPACE" \
             /d:sonar.coverage.exclusions="tools/**,bench/**,samples/**" \
-            /d:sonar.exclusions="tests/oracles/**,samples/DataNet.DocSnippets/Generated/**" \
+            /d:sonar.exclusions="tests/oracles/**,samples/DataNet.DocSnippets/Generated/**,tools/tests/**" \
             /d:sonar.test.exclusions="tests/oracles/**"
 
       - name: Build the solution

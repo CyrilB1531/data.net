@@ -1,7 +1,7 @@
 # Design — #88: the persistence table compares two harnesses
 
 **Date:** 2026-08-06 · **Issue:** #88 · **Branch:** `fix/88-persistence-toolchain-parity` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

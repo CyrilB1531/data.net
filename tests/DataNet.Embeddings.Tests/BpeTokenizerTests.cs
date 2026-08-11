@@ -4,6 +4,10 @@ using Xunit;
 
 namespace DataNet.Embeddings.Tests;
 
+// SonarLint S2245 / CA5394: a seeded Random builds a reproducible corpus for this
+// test; the sequence is fixed by the seed and nothing here is a security decision.
+#pragma warning disable S2245, CA5394
+
 public sealed class BpeTokenizerTests
 {
     /// <summary>Reads tiny_bpe.json directly: this suite tests merging, not loading.</summary>

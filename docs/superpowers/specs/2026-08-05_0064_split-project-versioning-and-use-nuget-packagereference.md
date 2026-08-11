@@ -1,7 +1,7 @@
 # Design — #64: per-package versioning, and package references inside `src/`
 
 **Date:** 2026-08-05 · **Issue:** #64 · **Branch:** `feat/64-split-versioning-nuget-refs` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

@@ -1,7 +1,7 @@
 # Design — #100: loading an index copies the vector block five times
 
 **Date:** 2026-08-07 · **Issue:** #100 · **Branch:** `perf/100-index-load-copies` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

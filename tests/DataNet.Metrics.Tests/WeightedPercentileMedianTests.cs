@@ -2,9 +2,10 @@ using Xunit;
 
 namespace DataNet.Metrics.Tests;
 
-// SonarLint S2245: a seeded Random builds reproducible arrays for a
-// differential test against a full-sort reference; no security use.
-#pragma warning disable S2245
+// SonarLint S2245 / CA5394: RandomArray and RandomSignedArray draw from the
+// same seeded generator to build reproducible arrays for a differential test
+// against a full-sort reference; no security use.
+#pragma warning disable S2245, CA5394
 
 /// <summary>
 /// The unweighted median resolves through a partial quickselect instead of a

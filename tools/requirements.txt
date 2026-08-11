@@ -26,3 +26,8 @@ sentencepiece==0.2.2
 protobuf==7.35.1
 # onnx is only needed to (re)build the tiny synthetic test model, not for
 # generate_oracles.py: onnx==1.16.0
+
+# pytest — the only test runner in tools/. tools/generate_sonar_globalconfig.py
+# parses two foreign formats and writes a file the build reads; a drift check
+# proves that generator stable, never that it is right.
+pytest==8.4.2

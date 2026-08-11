@@ -1,7 +1,7 @@
 # Design — #38: lock the resolved Python dependency graph with hashes
 
 **Date:** 2026-08-04 · **Issue:** #38 · **Branch:** `chore/38-hashed-python-lock` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

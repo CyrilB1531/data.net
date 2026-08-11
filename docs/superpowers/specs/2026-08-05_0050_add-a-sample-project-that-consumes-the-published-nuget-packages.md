@@ -1,7 +1,7 @@
 # Design — #50: a sample that consumes the published packages
 
 **Date:** 2026-08-05 · **Issue:** #50 · **Branch:** `feat/50-package-sample` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

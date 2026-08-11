@@ -3,6 +3,10 @@ using Xunit;
 
 namespace DataNet.Text.Tests.Distances;
 
+// SonarLint S2245 / CA5394: a seeded Random builds a reproducible corpus for this
+// test; the sequence is fixed by the seed and nothing here is a security decision.
+#pragma warning disable S2245, CA5394
+
 /// <summary>
 /// Metric-property tests (§4). Levenshtein with unit costs is a true metric, so
 /// it must satisfy non-negativity, identity of indiscernibles, symmetry and the

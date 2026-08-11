@@ -1,7 +1,7 @@
 # Design — #58: persist fitted models, load pretrained vocabularies
 
 **Date:** 2026-08-05 · **Issue:** #58 · **Branch:** `feat/58-persistence-loaders` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 
