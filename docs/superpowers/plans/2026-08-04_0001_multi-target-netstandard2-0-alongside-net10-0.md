@@ -29,7 +29,7 @@
 ### Reusable verification commands
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 
 # Both frameworks, warnings as errors.
 build_all() { dotnet build -c Release; }
@@ -312,8 +312,8 @@ done
 
 ```bash
 cd /tmp && rm -rf nuspec-check && mkdir nuspec-check && cd nuspec-check
-unzip -o /home/cyril/Documents/devs/data.net/artifacts/DataNet.Text.*.nupkg > /dev/null
-unzip -l /home/cyril/Documents/devs/data.net/artifacts/DataNet.Text.*.nupkg | grep "lib/"
+unzip -o <repo>/artifacts/DataNet.Text.*.nupkg > /dev/null
+unzip -l <repo>/artifacts/DataNet.Text.*.nupkg | grep "lib/"
 cat DataNet.Text.nuspec | sed -n '/<dependencies>/,/<\/dependencies>/p'
 ```
 

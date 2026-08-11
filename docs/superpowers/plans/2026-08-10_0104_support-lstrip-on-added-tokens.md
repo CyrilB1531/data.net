@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - **Everything in English** — code, comments, ADR, commit messages, PR body.
-- Branch `feat/104-added-token-lstrip` in `/home/cyril/Documents/devs/data.net`, based on `c09b95f`. Never commit to `main`. Do not push or open a PR without asking.
+- Branch `feat/104-added-token-lstrip` in `<repo>`, based on `c09b95f`. Never commit to `main`. Do not push or open a PR without asking.
 - `src/` multi-targets **`netstandard2.0` and `net10.0`**. Every `src/` edit must compile on both. Test projects and `samples/` are `net10.0` only.
 - **The analysers are on repo-wide at `AnalysisMode=All`** since #107. A finding is a build error. Every suppression carries a reason in the source; area-wide `NoWarn` lives in that area's `Directory.Build.props`. Ordinal string comparison everywhere: `StringComparison.Ordinal`, `StringComparer.Ordinal`.
 - `dotnet build` is incremental — **without `--no-incremental` no analyzer diagnostic is produced at all**. Use it on any build meant to show a finding.
@@ -56,7 +56,7 @@
 Two added tokens compete, and the one further right carries `Lstrip`. Does the left-strip expansion happen before or after the leftmost-wins comparison? Guessing here would bake in an unmeasured rule.
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 cat > /tmp/probe_tie.py <<'PY'
 from tokenizers import Tokenizer, models, pre_tokenizers, decoders, AddedToken
 base = ["a","b","Ġa","Ġb","Ġ","<x>","<y>"]
@@ -980,7 +980,7 @@ git commit -m "Record how an added token matches, and what it costs the round tr
 - [x] **Step 1: Run every gate, reading real exit codes**
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 SCRATCH=/tmp/claude-49201103/-home-cyril-Documents-devs-data-net/c134d377-25c6-4da3-8dec-8ffcbffa021b/scratchpad
 
 git status --porcelain                                                   # empty

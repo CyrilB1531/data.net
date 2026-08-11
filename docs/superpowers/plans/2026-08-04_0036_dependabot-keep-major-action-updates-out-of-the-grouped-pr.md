@@ -22,7 +22,7 @@
 ### Reusable verification commands
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 
 show_group() {
   python3 -c "

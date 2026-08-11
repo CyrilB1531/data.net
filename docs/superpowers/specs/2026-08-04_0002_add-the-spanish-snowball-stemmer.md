@@ -1,7 +1,7 @@
 # Design — #2: the Spanish Snowball stemmer
 
 **Date:** 2026-08-04 · **Issue:** #2 · **Branch:** `feat/2-spanish-snowball-stemmer` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

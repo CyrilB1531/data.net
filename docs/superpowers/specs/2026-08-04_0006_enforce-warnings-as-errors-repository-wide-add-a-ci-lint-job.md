@@ -1,7 +1,7 @@
 # Design — #6: warnings-as-errors repository-wide, and a CI lint job
 
 **Date:** 2026-08-04 · **Issue:** #6 · **Branch:** `chore/6-warnings-as-errors-and-lint` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

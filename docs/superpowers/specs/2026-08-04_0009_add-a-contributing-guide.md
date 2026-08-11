@@ -1,7 +1,7 @@
 # Design — #9: a CONTRIBUTING guide
 
 **Date:** 2026-08-04 · **Issue:** #9 · **Branch:** `docs/9-contributing-guide` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

@@ -1,0 +1,42 @@
+{
+ "runs": [
+  {
+   "tool": {
+    "driver": {
+     "name": "trimmed for tests",
+     "rules": [
+      {
+       "defaultConfiguration": {
+        "enabled": false
+       },
+       "id": "S100"
+      },
+      {
+       "defaultConfiguration": {
+        "enabled": false
+       },
+       "id": "S107"
+      },
+      {
+       "defaultConfiguration": {
+        "enabled": false
+       },
+       "id": "S1192"
+      },
+      {
+       "defaultConfiguration": {},
+       "id": "S2245"
+      },
+      {
+       "defaultConfiguration": {
+        "enabled": false
+       },
+       "id": "S3776"
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "version": "2.1.0"
+}

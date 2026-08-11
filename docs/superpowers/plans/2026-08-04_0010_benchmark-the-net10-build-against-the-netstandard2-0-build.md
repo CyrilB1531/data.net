@@ -24,7 +24,7 @@
 ### Reusable verification commands
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 
 build_all() { dotnet build -c Release; }
 run_net()   { dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter "$1"; }

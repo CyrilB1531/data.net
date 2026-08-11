@@ -1,7 +1,7 @@
 # Design — #8: a changelog, and cutting 0.2.0
 
 **Date:** 2026-08-05 · **Issue:** #8 · **Branch:** `release/8-changelog-0.2.0` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 

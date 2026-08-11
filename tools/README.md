@@ -8,9 +8,15 @@ verifies what it downloaded before writing anything; `fetch_xlmr_vocab.py` and
 `build_tiny_models.py` builds fixtures too small for that pipeline to bother
 with — two ONNX graphs, a trained BPE, and a hand-constructed BPE — and
 commits them directly;
-`check_nuspec_dependencies.py` verifies what the packages *declare*; and
+`check_nuspec_dependencies.py` verifies what the packages *declare*;
 `check_version_floor.py` verifies that the version numbers the source tree keeps
-in three places still agree.
+in three places still agree; `generate_sonar_globalconfig.py` writes the
+`.globalconfig` that raises the Sonar rules `SonarAnalyzer.CSharp` ships
+disabled, from the SonarCloud quality profile that gates the pull request; and
+`sonarqube-local/` holds the compose file for a disposable local SonarQube
+server, covering the Python rules, duplication and coverage that no local
+`dotnet build` reaches — see
+[`../CONTRIBUTING.md`](../CONTRIBUTING.md#before-pushing-the-half-the-build-cannot-see).
 
 ## `generate_oracles.py`
 
@@ -153,6 +159,56 @@ The floor must not exceed the declared version, and must already be on nuget.org
 naming an unpublished version still builds for whoever raised it, whose cache is
 warm, and fails for everyone else; `--check-feed` is what turns that into a CI
 failure rather than a contributor's bug report.
+
+## `generate_sonar_globalconfig.py`
+
+Writes the root `.globalconfig`: the rules SonarCloud's quality profile activates
+for this project and that `SonarAnalyzer.CSharp` ships disabled, raised to
+`warning` so `dotnet build` enforces them instead of the quality gate three
+minutes after a push. This is the file [`../CONTRIBUTING.md`](../CONTRIBUTING.md#analyzers)
+points at, and where a contributor lands after CI prints a diff at them on the
+**`Sonar globalconfig is current`** job.
+
+It needs two inputs: one anonymous SonarCloud call it makes itself, and a SARIF
+v2 error log from a local build, which only the build can produce. Both the
+error log's path and the `.globalconfig` it writes are fixed constants in the
+script, not command-line arguments — the tool takes no path or URL of any kind
+(issue #131), so there is nothing to pass beyond `--check`. Run from the
+repository root, so `$(pwd)` is `ROOT`:
+
+```bash
+mkdir -p obj
+dotnet build src/DataNet.Fuzzy -c Release --no-incremental -f net10.0 \
+  -p:ErrorLog=$(pwd)/obj/sonar-rules.sarif%2Cversion=2
+python tools/generate_sonar_globalconfig.py
+```
+
+The path handed to `-p:ErrorLog` must be absolute: MSBuild resolves a relative one
+against the project directory (`src/DataNet.Fuzzy`), not the shell's current
+directory, so a relative `obj/sonar-rules.sarif` here would write to
+`src/DataNet.Fuzzy/obj/` and the script — which always looks under the
+repository's own `obj/` — would report the input missing.
+
+The `%2C` is load-bearing, not decorative — it is the URL-encoded comma MSBuild
+needs between the SARIF path and `version=2`. A bare comma there is parsed as two
+separate properties, and `ErrorLog` falls back to its default SARIF **v1**, which
+carries no `defaultConfiguration.enabled` flag at all; `disabled_rules()` would
+then read an empty rule table and the generated file would enforce nothing, with
+no error to say why. `obj/sonar-rules.sarif` is where the script always looks —
+`obj/` is already git-ignored, so the error log never becomes something to commit
+or clean up by hand.
+
+`--check` compares the regenerated file against the committed one instead of
+writing it — no `.globalconfig` in the tree is touched — which is what the `Lint`
+job runs on every pull request:
+
+```bash
+python tools/generate_sonar_globalconfig.py --check
+```
+
+A regenerated file that differs means the SonarCloud profile moved; an
+unreachable API is reported separately and never as drift, so a network hiccup
+cannot make the check pass on a stale file.
 
 ## Rules
 

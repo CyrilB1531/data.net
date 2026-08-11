@@ -258,9 +258,9 @@ no ordinary fixture produces them:
 - [x] **Step 4: Regenerate and confirm the file is strict JSON**
 
 ```bash
-cd /tmp && PYTHONSAFEPATH=1 /home/cyril/Documents/devs/data.net2/.venv-oracles/bin/python \
-  /home/cyril/Documents/devs/data.net2/tools/generate_oracles.py; echo "exit=$?"
-cd /home/cyril/Documents/devs/data.net2
+cd /tmp && PYTHONSAFEPATH=1 <worktree>/.venv-oracles/bin/python \
+  <worktree>/tools/generate_oracles.py; echo "exit=$?"
+cd <worktree>
 python3 -c "import json;json.load(open('tests/oracles/classification_metrics.json'),parse_constant=lambda c:(_ for _ in ()).throw(ValueError(f'bare {c}')));print('strict JSON ok')"
 git diff --stat tests/oracles/
 ```

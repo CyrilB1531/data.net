@@ -26,7 +26,7 @@
 ### Reusable verification commands
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 
 mdl() { npx --yes markdownlint-cli2 "**/*.md" "#node_modules"; }
 ```

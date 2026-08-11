@@ -27,7 +27,7 @@
 ### Reusable verification commands
 
 ```bash
-cd /home/cyril/Documents/devs/data.net
+cd <repo>
 
 regen() {
   . .venv-oracles/bin/activate

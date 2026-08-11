@@ -1,7 +1,7 @@
 # Design — #10: benchmark the net10 build against the netstandard2.0 build
 
 **Date:** 2026-08-04 · **Issue:** #10 · **Branch:** `feat/10-netstandard-benchmark` ·
-**Checkout:** `/home/cyril/Documents/devs/data.net`
+**Checkout:** `<repo>`
 
 ## Problem
 
