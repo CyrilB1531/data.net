@@ -1168,26 +1168,6 @@ public sealed class TokenizerJsonLoaderTests
     }
 
     /// <summary>
-    /// <c>fuse_unk</c> collapses a run of uncovered characters into one unknown token;
-    /// <c>InitialSymbols</c> always emits one per code point. Verified over
-    /// <c>tokenizers</c> 0.23.1: on, "azza" gives <c>['a', '[UNK]', 'a']</c>; off, it
-    /// gives <c>['a', '[UNK]', '[UNK]', 'a']</c>.
-    /// </summary>
-    [Fact]
-    public void LoadBpe_refuses_fuse_unk()
-    {
-        const string Json = """
-        {"model":{"type":"BPE","vocab":{"[UNK]":0,"a":1},"merges":[],
-                  "unk_token":"[UNK]","fuse_unk":true}}
-        """;
-
-        InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
-
-        Assert.Contains("fuse_unk", error.Message, StringComparison.Ordinal);
-    }
-
-    /// <summary>
     /// <c>dropout</c> drops merges at random, so a file declaring it does not have one
     /// tokenization to match. Rare in shipped files and read by nothing here, which is
     /// exactly why it went unrejected.
@@ -1329,5 +1309,49 @@ public sealed class TokenizerJsonLoaderTests
             () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
 
         Assert.Contains("ByteLevel", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_model_declaring_fuse_unk_loads_and_carries_the_flag()
+    {
+        string document = """
+        {"model":{"type":"BPE","vocab":{"[UNK]":0,"a":1,"b":2,"ab":3},"merges":[["a","b"]],
+         "unk_token":"[UNK]","fuse_unk":true}}
+        """;
+
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(new MemoryStream(Encoding.UTF8.GetBytes(document)));
+
+        Assert.True(vocabulary.FuseUnk);
+    }
+
+    [Fact]
+    public void A_model_that_is_silent_about_fuse_unk_does_not_fuse()
+    {
+        // The default has to be false rather than "unset": every corpus this
+        // repository committed before issue #119 was generated without the
+        // field, and they are the regression proof for the untouched path.
+        string document = """
+        {"model":{"type":"BPE","vocab":{"[UNK]":0,"a":1},"merges":[],"unk_token":"[UNK]"}}
+        """;
+
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(new MemoryStream(Encoding.UTF8.GetBytes(document)));
+
+        Assert.False(vocabulary.FuseUnk);
+    }
+
+    [Fact]
+    public void Fuse_unk_without_an_unk_token_is_accepted_rather_than_refused()
+    {
+        // Measured: tokenizers accepts {'unk_token': None, 'fuse_unk': True},
+        // serializes it, and the flag then has no observable effect. Refusing it
+        // here would be a divergence invented rather than reproduced.
+        string document = """
+        {"model":{"type":"BPE","vocab":{"a":1},"merges":[],"fuse_unk":true}}
+        """;
+
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(new MemoryStream(Encoding.UTF8.GetBytes(document)));
+
+        Assert.True(vocabulary.FuseUnk);
+        Assert.Null(vocabulary.UnkToken);
     }
 }
