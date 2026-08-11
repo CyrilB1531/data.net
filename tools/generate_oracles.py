@@ -3076,16 +3076,20 @@ def generate_wordpiece_added_tokens() -> dict:
 
 # --- fuse_unk (issue #119) ----------------------------------------------------
 
+# Named rather than repeated: python:S1192 fires at five occurrences of a
+# literal, and this one appears in three vocabularies and two merge tables.
+_FUSE_UNK_TOKEN = "[UNK]"
+
 # Z is in none of these vocabularies, which is what makes it a run when repeated.
-_FUSE_VOCAB = {"[UNK]": 0, "a": 1, "b": 2, "ab": 3}
+_FUSE_VOCAB = {_FUSE_UNK_TOKEN: 0, "a": 1, "b": 2, "ab": 3}
 _FUSE_MERGES = [("a", "b")]
 
 # A merge whose LEFT side is the unknown token. Training never produces this;
 # it is stated so that "does fusing happen before or after merging" has an
 # answer a test can read. Fused, "ZZa" merges to [UNK]a; unfused it cannot,
 # because the second [UNK] sits between the first and the a.
-_FUSE_MERGE_VOCAB = {"[UNK]": 0, "a": 1, "[UNK]a": 2}
-_FUSE_MERGE_MERGES = [("[UNK]", "a")]
+_FUSE_MERGE_VOCAB = {_FUSE_UNK_TOKEN: 0, "a": 1, _FUSE_UNK_TOKEN + "a": 2}
+_FUSE_MERGE_MERGES = [(_FUSE_UNK_TOKEN, "a")]
 
 # The unknown token is ALSO a covered single character. This is the only shape
 # that tells "the previous symbol was substituted" from "the previous id equals
@@ -3093,7 +3097,7 @@ _FUSE_MERGE_MERGES = [("[UNK]", "a")]
 _FUSE_COVERED_UNK_VOCAB = {"?": 0, "a": 1}
 
 
-def _fuse_unk_model(vocab, merges, fuse, *, unk="[UNK]", pre_tokenizer=None, byte_level=False):
+def _fuse_unk_model(vocab, merges, fuse, *, unk=_FUSE_UNK_TOKEN, pre_tokenizer=None, byte_level=False):
     """One tokenizer, built rather than trained, so the file is byte-stable."""
     from tokenizers import Tokenizer, models, pre_tokenizers  # noqa: PLC0415
 
@@ -3130,10 +3134,16 @@ def _fuse_unk_models() -> list[tuple]:
         models_out.append((
             f"plain_{suffix}", "no pre-tokenizer", fuse,
             _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse), plain_texts + split_texts))
+        # Only the texts that HAVE a boundary. Handing this model the plain
+        # texts as well would make it report `differs=True` for a reason that
+        # has nothing to do with boundaries — none of them contains a space, so
+        # Whitespace makes each one a single piece and the run fuses inside it
+        # exactly as it does with no pre-tokenizer. The model exists to show a
+        # run *not* crossing a split, so it gets only texts that have one.
         models_out.append((
             f"whitespace_{suffix}", "Whitespace pre-tokenizer", fuse,
             _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse, pre_tokenizer="whitespace"),
-            split_texts + plain_texts))
+            split_texts))
         models_out.append((
             f"unk_merge_{suffix}", "a merge whose left side is the unknown token", fuse,
             _fuse_unk_model(_FUSE_MERGE_VOCAB, _FUSE_MERGE_MERGES, fuse), ["ZZa", "Za", "ZZZa"]))

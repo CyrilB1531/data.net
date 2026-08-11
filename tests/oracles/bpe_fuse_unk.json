@@ -75,7 +75,7 @@
    {
     "fused": "whitespace_fused",
     "unfused": "whitespace_unfused",
-    "differs": true
+    "differs": false
    },
    {
     "fused": "unk_merge_fused",
@@ -98,7 +98,7 @@
     "differs": false
    }
   ],
-  "count": 66
+  "count": 50
  },
  "cases": [
   {
@@ -307,140 +307,6 @@
   },
   {
    "id": 12,
-   "model": "whitespace_unfused",
-   "text": "aZZZa",
-   "tokens": [
-    "a",
-    "[UNK]",
-    "[UNK]",
-    "[UNK]",
-    "a"
-   ],
-   "ids": [
-    1,
-    0,
-    0,
-    0,
-    1
-   ]
-  },
-  {
-   "id": 13,
-   "model": "whitespace_unfused",
-   "text": "ZZa",
-   "tokens": [
-    "[UNK]",
-    "[UNK]",
-    "a"
-   ],
-   "ids": [
-    0,
-    0,
-    1
-   ]
-  },
-  {
-   "id": 14,
-   "model": "whitespace_unfused",
-   "text": "aZZ",
-   "tokens": [
-    "a",
-    "[UNK]",
-    "[UNK]"
-   ],
-   "ids": [
-    1,
-    0,
-    0
-   ]
-  },
-  {
-   "id": 15,
-   "model": "whitespace_unfused",
-   "text": "ZZZ",
-   "tokens": [
-    "[UNK]",
-    "[UNK]",
-    "[UNK]"
-   ],
-   "ids": [
-    0,
-    0,
-    0
-   ]
-  },
-  {
-   "id": 16,
-   "model": "whitespace_unfused",
-   "text": "aZa",
-   "tokens": [
-    "a",
-    "[UNK]",
-    "a"
-   ],
-   "ids": [
-    1,
-    0,
-    1
-   ]
-  },
-  {
-   "id": 17,
-   "model": "whitespace_unfused",
-   "text": "ZZaZZ",
-   "tokens": [
-    "[UNK]",
-    "[UNK]",
-    "a",
-    "[UNK]",
-    "[UNK]"
-   ],
-   "ids": [
-    0,
-    0,
-    1,
-    0,
-    0
-   ]
-  },
-  {
-   "id": 18,
-   "model": "whitespace_unfused",
-   "text": "ZaZaZ",
-   "tokens": [
-    "[UNK]",
-    "a",
-    "[UNK]",
-    "a",
-    "[UNK]"
-   ],
-   "ids": [
-    0,
-    1,
-    0,
-    1,
-    0
-   ]
-  },
-  {
-   "id": 19,
-   "model": "whitespace_unfused",
-   "text": "a😀😁a",
-   "tokens": [
-    "a",
-    "[UNK]",
-    "[UNK]",
-    "a"
-   ],
-   "ids": [
-    1,
-    0,
-    0,
-    1
-   ]
-  },
-  {
-   "id": 20,
    "model": "unk_merge_unfused",
    "text": "ZZa",
    "tokens": [
@@ -453,7 +319,7 @@
    ]
   },
   {
-   "id": 21,
+   "id": 13,
    "model": "unk_merge_unfused",
    "text": "Za",
    "tokens": [
@@ -464,7 +330,7 @@
    ]
   },
   {
-   "id": 22,
+   "id": 14,
    "model": "unk_merge_unfused",
    "text": "ZZZa",
    "tokens": [
@@ -479,7 +345,7 @@
    ]
   },
   {
-   "id": 23,
+   "id": 15,
    "model": "covered_unk_unfused",
    "text": "?Z",
    "tokens": [
@@ -492,7 +358,7 @@
    ]
   },
   {
-   "id": 24,
+   "id": 16,
    "model": "covered_unk_unfused",
    "text": "Z?",
    "tokens": [
@@ -505,7 +371,7 @@
    ]
   },
   {
-   "id": 25,
+   "id": 17,
    "model": "covered_unk_unfused",
    "text": "??",
    "tokens": [
@@ -518,7 +384,7 @@
    ]
   },
   {
-   "id": 26,
+   "id": 18,
    "model": "covered_unk_unfused",
    "text": "ZZ",
    "tokens": [
@@ -531,7 +397,7 @@
    ]
   },
   {
-   "id": 27,
+   "id": 19,
    "model": "covered_unk_unfused",
    "text": "?Za",
    "tokens": [
@@ -546,7 +412,7 @@
    ]
   },
   {
-   "id": 28,
+   "id": 20,
    "model": "covered_unk_unfused",
    "text": "a?Z",
    "tokens": [
@@ -561,7 +427,7 @@
    ]
   },
   {
-   "id": 29,
+   "id": 21,
    "model": "no_unk_unfused",
    "text": "aZZa",
    "tokens": [
@@ -574,14 +440,14 @@
    ]
   },
   {
-   "id": 30,
+   "id": 22,
    "model": "no_unk_unfused",
    "text": "ZZZ",
    "tokens": [],
    "ids": []
   },
   {
-   "id": 31,
+   "id": 23,
    "model": "byte_level_unfused",
    "text": "a😀b",
    "tokens": [
@@ -602,7 +468,7 @@
    ]
   },
   {
-   "id": 32,
+   "id": 24,
    "model": "byte_level_unfused",
    "text": "ab",
    "tokens": [
@@ -615,9 +481,125 @@
    ]
   },
   {
-   "id": 33,
+   "id": 25,
    "model": "plain_fused",
    "text": "aZZZa",
+   "tokens": [
+    "a",
+    "[UNK]",
+    "a"
+   ],
+   "ids": [
+    1,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 26,
+   "model": "plain_fused",
+   "text": "ZZa",
+   "tokens": [
+    "[UNK]",
+    "a"
+   ],
+   "ids": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": 27,
+   "model": "plain_fused",
+   "text": "aZZ",
+   "tokens": [
+    "a",
+    "[UNK]"
+   ],
+   "ids": [
+    1,
+    0
+   ]
+  },
+  {
+   "id": 28,
+   "model": "plain_fused",
+   "text": "ZZZ",
+   "tokens": [
+    "[UNK]"
+   ],
+   "ids": [
+    0
+   ]
+  },
+  {
+   "id": 29,
+   "model": "plain_fused",
+   "text": "aZa",
+   "tokens": [
+    "a",
+    "[UNK]",
+    "a"
+   ],
+   "ids": [
+    1,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 30,
+   "model": "plain_fused",
+   "text": "ZZaZZ",
+   "tokens": [
+    "[UNK]",
+    "a",
+    "[UNK]"
+   ],
+   "ids": [
+    0,
+    1,
+    0
+   ]
+  },
+  {
+   "id": 31,
+   "model": "plain_fused",
+   "text": "ZaZaZ",
+   "tokens": [
+    "[UNK]",
+    "a",
+    "[UNK]",
+    "a",
+    "[UNK]"
+   ],
+   "ids": [
+    0,
+    1,
+    0,
+    1,
+    0
+   ]
+  },
+  {
+   "id": 32,
+   "model": "plain_fused",
+   "text": "a😀😁a",
+   "tokens": [
+    "a",
+    "[UNK]",
+    "a"
+   ],
+   "ids": [
+    1,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 33,
+   "model": "plain_fused",
+   "text": "aZ Za",
    "tokens": [
     "a",
     "[UNK]",
@@ -632,284 +614,52 @@
   {
    "id": 34,
    "model": "plain_fused",
-   "text": "ZZa",
+   "text": "Z a Z",
    "tokens": [
     "[UNK]",
-    "a"
-   ],
-   "ids": [
-    0,
-    1
-   ]
-  },
-  {
-   "id": 35,
-   "model": "plain_fused",
-   "text": "aZZ",
-   "tokens": [
     "a",
     "[UNK]"
    ],
    "ids": [
+    0,
     1,
     0
    ]
   },
   {
-   "id": 36,
-   "model": "plain_fused",
-   "text": "ZZZ",
+   "id": 35,
+   "model": "whitespace_fused",
+   "text": "aZ Za",
    "tokens": [
+    "a",
+    "[UNK]",
+    "[UNK]",
+    "a"
+   ],
+   "ids": [
+    1,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": 36,
+   "model": "whitespace_fused",
+   "text": "Z a Z",
+   "tokens": [
+    "[UNK]",
+    "a",
     "[UNK]"
    ],
    "ids": [
+    0,
+    1,
     0
    ]
   },
   {
    "id": 37,
-   "model": "plain_fused",
-   "text": "aZa",
-   "tokens": [
-    "a",
-    "[UNK]",
-    "a"
-   ],
-   "ids": [
-    1,
-    0,
-    1
-   ]
-  },
-  {
-   "id": 38,
-   "model": "plain_fused",
-   "text": "ZZaZZ",
-   "tokens": [
-    "[UNK]",
-    "a",
-    "[UNK]"
-   ],
-   "ids": [
-    0,
-    1,
-    0
-   ]
-  },
-  {
-   "id": 39,
-   "model": "plain_fused",
-   "text": "ZaZaZ",
-   "tokens": [
-    "[UNK]",
-    "a",
-    "[UNK]",
-    "a",
-    "[UNK]"
-   ],
-   "ids": [
-    0,
-    1,
-    0,
-    1,
-    0
-   ]
-  },
-  {
-   "id": 40,
-   "model": "plain_fused",
-   "text": "a😀😁a",
-   "tokens": [
-    "a",
-    "[UNK]",
-    "a"
-   ],
-   "ids": [
-    1,
-    0,
-    1
-   ]
-  },
-  {
-   "id": 41,
-   "model": "plain_fused",
-   "text": "aZ Za",
-   "tokens": [
-    "a",
-    "[UNK]",
-    "a"
-   ],
-   "ids": [
-    1,
-    0,
-    1
-   ]
-  },
-  {
-   "id": 42,
-   "model": "plain_fused",
-   "text": "Z a Z",
-   "tokens": [
-    "[UNK]",
-    "a",
-    "[UNK]"
-   ],
-   "ids": [
-    0,
-    1,
-    0
-   ]
-  },
-  {
-   "id": 43,
-   "model": "whitespace_fused",
-   "text": "aZ Za",
-   "tokens": [
-    "a",
-    "[UNK]",
-    "[UNK]",
-    "a"
-   ],
-   "ids": [
-    1,
-    0,
-    0,
-    1
-   ]
-  },
-  {
-   "id": 44,
-   "model": "whitespace_fused",
-   "text": "Z a Z",
-   "tokens": [
-    "[UNK]",
-    "a",
-    "[UNK]"
-   ],
-   "ids": [
-    0,
-    1,
-    0
-   ]
-  },
-  {
-   "id": 45,
-   "model": "whitespace_fused",
-   "text": "aZZZa",
-   "tokens": [
-    "a",
-    "[UNK]",
-    "a"
-   ],
-   "ids": [
-    1,
-    0,
-    1
-   ]
-  },
-  {
-   "id": 46,
-   "model": "whitespace_fused",
-   "text": "ZZa",
-   "tokens": [
-    "[UNK]",
-    "a"
-   ],
-   "ids": [
-    0,
-    1
-   ]
-  },
-  {
-   "id": 47,
-   "model": "whitespace_fused",
-   "text": "aZZ",
-   "tokens": [
-    "a",
-    "[UNK]"
-   ],
-   "ids": [
-    1,
-    0
-   ]
-  },
-  {
-   "id": 48,
-   "model": "whitespace_fused",
-   "text": "ZZZ",
-   "tokens": [
-    "[UNK]"
-   ],
-   "ids": [
-    0
-   ]
-  },
-  {
-   "id": 49,
-   "model": "whitespace_fused",
-   "text": "aZa",
-   "tokens": [
-    "a",
-    "[UNK]",
-    "a"
-   ],
-   "ids": [
-    1,
-    0,
-    1
-   ]
-  },
-  {
-   "id": 50,
-   "model": "whitespace_fused",
-   "text": "ZZaZZ",
-   "tokens": [
-    "[UNK]",
-    "a",
-    "[UNK]"
-   ],
-   "ids": [
-    0,
-    1,
-    0
-   ]
-  },
-  {
-   "id": 51,
-   "model": "whitespace_fused",
-   "text": "ZaZaZ",
-   "tokens": [
-    "[UNK]",
-    "a",
-    "[UNK]",
-    "a",
-    "[UNK]"
-   ],
-   "ids": [
-    0,
-    1,
-    0,
-    1,
-    0
-   ]
-  },
-  {
-   "id": 52,
-   "model": "whitespace_fused",
-   "text": "a😀😁a",
-   "tokens": [
-    "a",
-    "[UNK]",
-    "a"
-   ],
-   "ids": [
-    1,
-    0,
-    1
-   ]
-  },
-  {
-   "id": 53,
    "model": "unk_merge_fused",
    "text": "ZZa",
    "tokens": [
@@ -920,7 +670,7 @@
    ]
   },
   {
-   "id": 54,
+   "id": 38,
    "model": "unk_merge_fused",
    "text": "Za",
    "tokens": [
@@ -931,7 +681,7 @@
    ]
   },
   {
-   "id": 55,
+   "id": 39,
    "model": "unk_merge_fused",
    "text": "ZZZa",
    "tokens": [
@@ -942,7 +692,7 @@
    ]
   },
   {
-   "id": 56,
+   "id": 40,
    "model": "covered_unk_fused",
    "text": "?Z",
    "tokens": [
@@ -955,7 +705,7 @@
    ]
   },
   {
-   "id": 57,
+   "id": 41,
    "model": "covered_unk_fused",
    "text": "Z?",
    "tokens": [
@@ -968,7 +718,7 @@
    ]
   },
   {
-   "id": 58,
+   "id": 42,
    "model": "covered_unk_fused",
    "text": "??",
    "tokens": [
@@ -981,7 +731,7 @@
    ]
   },
   {
-   "id": 59,
+   "id": 43,
    "model": "covered_unk_fused",
    "text": "ZZ",
    "tokens": [
@@ -992,7 +742,7 @@
    ]
   },
   {
-   "id": 60,
+   "id": 44,
    "model": "covered_unk_fused",
    "text": "?Za",
    "tokens": [
@@ -1007,7 +757,7 @@
    ]
   },
   {
-   "id": 61,
+   "id": 45,
    "model": "covered_unk_fused",
    "text": "a?Z",
    "tokens": [
@@ -1022,7 +772,7 @@
    ]
   },
   {
-   "id": 62,
+   "id": 46,
    "model": "no_unk_fused",
    "text": "aZZa",
    "tokens": [
@@ -1035,14 +785,14 @@
    ]
   },
   {
-   "id": 63,
+   "id": 47,
    "model": "no_unk_fused",
    "text": "ZZZ",
    "tokens": [],
    "ids": []
   },
   {
-   "id": 64,
+   "id": 48,
    "model": "byte_level_fused",
    "text": "a😀b",
    "tokens": [
@@ -1063,7 +813,7 @@
    ]
   },
   {
-   "id": 65,
+   "id": 49,
    "model": "byte_level_fused",
    "text": "ab",
    "tokens": [
