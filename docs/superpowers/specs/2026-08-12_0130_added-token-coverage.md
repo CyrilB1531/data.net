@@ -39,10 +39,30 @@ sides. That case is this change's own regression proof.
 `token_to_id('Q')` is `4`, `id_to_token(4)` is `'Q'`, and `decode([4])` is `'Q'`. `TryGetId` documents
 itself as matching `token_to_id`, and `Decode` reads the id → text table. **Both keep the folded view.**
 
-### D2 — `unk_token` resolves against `model.vocab` alone
+### D2 — `unk_token` resolves against `model.vocab` alone, and the reference defers the check
 
-A file declaring its unknown token only in `added_tokens` does not build:
-``Unk token `<unk>` not found in the vocabulary``. DataNet resolves `_unkId` through the fold and accepts it.
+A `tokenizer.json` whose unknown token appears only in `added_tokens` **loads**. `token_to_id` answers,
+and encoding text the model covers succeeds. The failure comes later, from `encode`, and only when a
+character actually needs substituting:
+
+```text
+Tokenizer.from_str(document)   ->  OK
+encode("ab")                   ->  ['a', 'b']
+encode("aZb")                  ->  Exception: Unk token `<unk>` not found in the vocabulary
+```
+
+An earlier draft of this spec said the reference refuses at construction. It does not; that measurement
+came from a probe that called `encode` and attributed its exception to the constructor.
+
+DataNet today is worse than either: the fold makes `<unk>` resolvable, so `_unkId` is the added token's id
+and an uncovered character is silently substituted with it — a token stream where the reference raises.
+
+**DataNet refuses at construction**, which is earlier than the reference and is a deliberate divergence in
+*timing*, never in outcome: every file this refuses would have thrown from the reference on its first
+input needing substitution. Failing at load rather than on some later input is the invariant this package
+already documents — what it cannot reproduce fails at load with a message naming it — and a deferred
+failure that depends on which text a caller happens to pass is the shape that invariant exists to avoid.
+`docs/equivalence.md` records it as a divergence rather than as parity.
 
 ### D3 — merges resolve against `model.vocab` alone
 

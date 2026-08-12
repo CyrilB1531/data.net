@@ -84,7 +84,7 @@ once with the flag and once without, and why the without half is this change's o
 - Consumes: `version()` from `importlib.metadata`, already imported at module scope.
 - Produces, for Tasks 2 and 3:
   - `metadata.models` — `{name: {"declares": str, "single_word": bool, "tokenizer_json": str}}`
-  - `metadata.refusals` — `[{"shape": str, "document": str, "error": str}]`
+  - `metadata.refusals` — `[{"shape": str, "document": str, "raised_by": "load"|"encode", "text": str|null, "error": str}]`
   - `cases` — `[{"id": int, "model": str, "text": str, "tokens": [str], "ids": [int]}]`
 
 - [ ] **Step 1: Read the two generators you are modelling on**
@@ -168,38 +168,63 @@ def _added_coverage_refusals() -> list[dict]:
     added_q = [{"id": 2, "content": "Q", "single_word": True, "lstrip": False,
                 "rstrip": False, "normalized": False, "special": False}]
 
+    # (shape, document, the text that provokes the failure if loading did not)
     shapes = [
-        # The unknown token exists only in added_tokens.
+        # The unknown token exists only in added_tokens. This one LOADS: the
+        # reference defers the check to encode, and raises only on text that
+        # needs a substitution. "ab" encodes fine; "aZb" does not.
         ("unk_only_in_added_tokens",
          document({"a": 0, "b": 1}, [], "<unk>",
                   [{"id": 2, "content": "<unk>", "single_word": False, "lstrip": False,
-                    "rstrip": False, "normalized": False, "special": True}])),
-        # A merge names a token that only added_tokens declares.
+                    "rstrip": False, "normalized": False, "special": True}]),
+         "aZb"),
+        # A merge names a token that only added_tokens declares. Refused while
+        # the document is read.
         ("merge_names_an_added_token",
-         document({_COVERAGE_UNK: 0, "a": 1, "Qa": 3}, [["Q", "a"]], _COVERAGE_UNK, added_q)),
+         document({_COVERAGE_UNK: 0, "a": 1, "Qa": 3}, [["Q", "a"]], _COVERAGE_UNK, added_q),
+         "Qa"),
         # A merge whose two sides are present but whose result is not. The
-        # reference PANICS here rather than raising; the panic is recorded as
-        # what it is, and DataNet refuses with a message of its own (D6).
+        # reference PANICS while reading rather than raising; the panic is
+        # recorded as what it is, and DataNet refuses in its own words (D6).
         ("merge_result_missing",
-         document({"a": 0, "b": 1}, [["a", "b"]], None, [])),
+         document({"a": 0, "b": 1}, [["a", "b"]], None, []),
+         "ab"),
     ]
 
+    # The reference does not refuse all three at the same moment, and the corpus
+    # records which. Two fail while the document is being read; the first loads
+    # and fails from encode, and only on text that needs a substitution — which
+    # is why each shape carries the text that provokes it.
     refusals = []
-    for shape, doc in shapes:
+    for shape, doc, provoking_text in shapes:
         try:
-            Tokenizer.from_str(doc)
+            tokenizer = Tokenizer.from_str(doc)
         except BaseException as exc:  # noqa: BLE001 - the refusal IS the measurement
-            refusals.append({"shape": shape, "document": doc,
-                             "error": f"{type(exc).__name__}: {exc}"})
+            refusals.append({"shape": shape, "document": doc, "raised_by": "load",
+                             "text": None, "error": f"{type(exc).__name__}: {exc}"})
+            continue
+        try:
+            tokenizer.encode(provoking_text)
+        except BaseException as exc:  # noqa: BLE001
+            refusals.append({"shape": shape, "document": doc, "raised_by": "encode",
+                             "text": provoking_text, "error": f"{type(exc).__name__}: {exc}"})
         else:
             raise AssertionError(
-                f"tokenizers accepted {shape}; issue #130's refusal rests on it refusing one")
+                f"tokenizers accepted {shape} and encoded {provoking_text!r} without complaint; "
+                "issue #130's refusal rests on it refusing one")
     return refusals
 ```
 
 `BaseException` rather than `Exception` is deliberate: the third shape surfaces a Rust panic as
 `pyo3_runtime.PanicException`, which does not inherit from `Exception` in every pyo3 version, and a
 narrower catch would let it escape and fail the whole generation.
+
+**The three do not fail at the same moment**, which is why the helper tries `encode` after a successful
+load rather than treating a load as acceptance. Measured: `merge_names_an_added_token` and
+`merge_result_missing` fail while the document is read; `unk_only_in_added_tokens` loads, answers
+`token_to_id`, encodes `"ab"` happily, and raises only on `"aZb"` — text that actually needs a
+substitution. DataNet refuses that one at construction instead, which is earlier than the reference and is
+recorded in the spec as a deliberate divergence in timing rather than in outcome.
 
 - [ ] **Step 4: Add the generator and register it**
 
@@ -268,7 +293,7 @@ PY
 
 Expected: `aQa`, `ZQZ`, `QQ` and `aQ` **DIFFER** between the two models — those are the texts where the
 scanner declines under `single_word` — while `Q` and `a Q a` agree. Three refusals, each with a non-empty
-error.
+error, and `raised_by` reading `encode` for `unk_only_in_added_tokens` and `load` for the other two.
 
 **If `aQa` does not differ, stop.** The corpus then cannot see the bug, and Tasks 2 and 3 would go green
 without testing anything.
