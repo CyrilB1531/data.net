@@ -3277,11 +3277,14 @@ def _added_coverage_models() -> list[tuple]:
 
 
 def _added_coverage_refusals() -> list[dict]:
-    """Three shapes the reference refuses to build, recorded with what it said.
+    """Three shapes the reference refuses, recorded with what it said and when.
 
-    These cannot be cases: there is no token stream to record, because the
-    reference never produces a tokenizer. Recording the refusal is what makes
-    "the reference refuses this too" a measurement.
+    Two never produce a tokenizer at all — they fail while the document is
+    read. The third produces a working one that answers token_to_id and
+    encodes covered text, and refuses only an input needing a substitution.
+    None of the three can be an ordinary case, because two have no token
+    stream and the third's is beside the point; recording the refusal is what
+    makes "the reference refuses this too" a measurement rather than a claim.
     """
     from tokenizers import Tokenizer  # noqa: PLC0415
 
