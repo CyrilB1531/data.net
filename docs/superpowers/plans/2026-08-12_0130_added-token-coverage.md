@@ -315,7 +315,8 @@ both sides already agree. The divergence lives only where the scanner
 correctly declines, which is why the permissive half is this change's own
 regression proof rather than a second fixture.
 
-Three shapes the reference refuses to build are recorded beside the cases,
+Three shapes the reference refuses are recorded beside the cases — two while the document is read, one
+only from `encode` —
 with the document handed to it and the error it answered. The third is a
 panic rather than an error — a merge whose result is missing from the
 vocabulary walks off the end of a slice in the reference's Rust — so it is
@@ -583,7 +584,7 @@ Append to `BpeAddedTokenCoverageTests.cs`:
 
 ```csharp
     /// <summary>
-    /// The three shapes the reference refuses to build, cited against the
+    /// The three shapes the reference refuses, cited against the
     /// reference rather than against this repository's word: the corpus carries
     /// the exact document it was handed and the error it answered with.
     /// </summary>
@@ -735,7 +736,7 @@ Find the `LoadBpe` row and the `BpeTokenizer` rows. Add, in the shape the neighb
 
 ```markdown
 | `tokenizer.add_tokens([...])` | tokenizers | `BpeVocabulary.AddedTokens` | An added token is matched as literal text and carries an id, but it is **not** a model vocabulary entry: a character it spells that `model.vocab` does not declare is still substituted with the unknown token. Measured, `aQa` with `Q` an added token absent from `model.vocab` and `single_word` on is `['a', '[UNK]', 'a']`. `TryGetId` and `Decode` still see it, matching `token_to_id` and `decode`. |
-| — (refused) | tokenizers | `new BpeTokenizer(…)` throws `ArgumentException` | Three shapes the reference also refuses to build: an `unk_token` absent from `model.vocab`, and a merge naming a token it does not declare. A merge whose *result* is absent is refused too, with a message of DataNet's own — the reference panics there rather than raising, and a panic is not behaviour to reproduce. |
+| — (refused) | tokenizers | `new BpeTokenizer(…)` throws `ArgumentException` | Three shapes, and they are not symmetric. A merge naming a token `model.vocab` does not declare is refused by the reference too, while the document is read. A merge whose *result* is absent makes the reference **panic** rather than raise, so DataNet's message there is its own. An `unk_token` present only in `added_tokens` is refused **earlier** than the reference: that file loads in Python, answers `token_to_id`, encodes covered text, and raises only from `encode` on text needing a substitution — a divergence in timing rather than in outcome. Write the row from what you measure, not from this sentence. |
 ```
 
 - [ ] **Step 2: The CHANGELOG entry**
