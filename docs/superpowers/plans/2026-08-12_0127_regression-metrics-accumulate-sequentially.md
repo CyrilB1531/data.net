@@ -37,7 +37,8 @@ sample arrays rebuilt on both sides from one closed form, probes compared bit fo
   area's `Directory.Build.props` for a whole area. "Too noisy" is not a reason.
 - `dotnet format DataNet.slnx --verify-no-changes` must exit 0. Run it **bare**, no `env -u DOTNET_ROOT`.
 - Read the pass/fail **counts** of every test run. A `--filter` that matches nothing exits zero and reports
-  success. Baseline on this branch: **2915 passing, 0 failed**, across eight assemblies.
+  success. Baseline on this branch: **2947 passing, 0 failed**, across eight assemblies — taken after
+  `origin/main` was merged in on 2026-08-12, bringing issue #119's `fuse_unk` and its 16 tests.
 - **Never write `echo "exit=$?"` after a pipeline** — it reports the last command's status. Redirect to a
   file and check separately.
 - Oracle generation runs from a neutral working directory (`cd /tmp` first) or `nltk` refuses to import,
@@ -440,7 +441,7 @@ dotnet build DataNet.slnx -c Release --no-incremental > /tmp/127-t2-b.log 2>&1; 
 dotnet test DataNet.slnx -c Release > /tmp/127-t2-green.log 2>&1; echo "test=$?"; grep -E "^Réussi!|^Échoué!" /tmp/127-t2-green.log
 ```
 
-Expected: 0 warnings, and **2919 passing** (2915 + 2 new tests × 2 mirrors). The 18 existing regression
+Expected: 0 warnings, and **2951 passing** (2947 + 2 new tests × 2 mirrors). The 18 existing regression
 corpus cases must still pass: compensation moves their last bits and they compare at `1e-9`, so a failure
 there is a result to understand and report, not to accommodate.
 
@@ -553,7 +554,7 @@ dotnet build DataNet.slnx -c Release --no-incremental > /tmp/127-t3-b.log 2>&1; 
 dotnet test DataNet.slnx -c Release > /tmp/127-t3-green.log 2>&1; echo "test=$?"; grep -E "^Réussi!|^Échoué!" /tmp/127-t3-green.log
 ```
 
-Expected: 0 warnings, **2921 passing** (2919 + 1 × 2).
+Expected: 0 warnings, **2953 passing** (2951 + 1 × 2).
 
 - [ ] **Step 5: Commit**
 
