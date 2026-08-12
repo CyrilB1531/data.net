@@ -1021,6 +1021,17 @@ rather than reporting a run of zero benchmarks as a result.
 
 Compute the cost as the ratio of medians, after over before, for `mse` at n = 1 000 000. Then:
 
+**Amended after Task 4's review, 2026-08-12.** The exemption's second condition is already answered, and the
+answer is no. Task 1 measured the uncompensated kernel sum at exactly `0.0` — but only on its own fixture,
+where the offset cancels before the first addition because residuals are differences. Task 4's reviewer
+built the counter-payload: **one residual of `1e10` among 999 999 residuals of `100`**, a single badly
+predicted sample and no offset anywhere. There the naive sum is `1.0000000001638398e20` against a
+compensated `1.0000000000999999e20`, overshooting the small-magnitude mass — `9 999 990 000`, which the
+compensated sum reproduces exactly — by `6.38e9`, about **64% relative**. So the uncompensated error does
+not stay below `1e-12` for this metric family; it stays below it for one shape. The exemption cannot fire,
+and **the compensation stays whatever the benchmark says**. What this task still owes is the cost, measured
+and published — a change to a hot loop without a number is not something this repository accepts.
+
 - **cost ≤ 10%**, or Task 1's kernel-sum error at or above `1e-12` → the compensation stays. Say both
   numbers.
 - **cost > 10% and error < 1e-12** → revert Task 4's change to `Outputs.WeightedMean` only
