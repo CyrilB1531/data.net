@@ -376,23 +376,33 @@ reason no conclusion on this page rests on an n=1 000 row.
 | `mse_n100000_k2` | 0.452 | 0.645 | 1.43x | 0.452 | 0.645 | **1.43x** |
 | `mae_n100000_k2` | 0.466 | 1.588 | 3.41x | 0.466 | 1.295 | **2.78x** |
 | `median_ae_n100000_k2`† | 1.967 | 1.781 | 0.91x | 2.045 | 1.781 | **0.87x** |
-| `r2_n100000_k2` | 0.759 | 0.991 | 1.31x | 0.759 | 0.991 | **1.31x** |
+| `r2_n100000_k2`‡ | 0.759 | 0.991 | 1.31x | 0.759 | 0.991 | **1.31x** |
 | `mse_n100000_k10` | 0.455 | 0.628 | 1.38x | 0.454 | 0.628 | **1.38x** |
 | `mae_n100000_k10` | 0.458 | 0.673 | 1.47x | 0.458 | 0.672 | **1.47x** |
 | `median_ae_n100000_k10`† | 2.142 | 1.796 | 0.84x | 2.241 | 1.795 | **0.80x** |
-| `r2_n100000_k10` | 0.743 | 0.950 | 1.28x | 0.743 | 0.950 | **1.28x** |
+| `r2_n100000_k10`‡ | 0.743 | 0.950 | 1.28x | 0.743 | 0.950 | **1.28x** |
 | `mse_n1000000_k2` | 5.013 | 5.226 | 1.04x | 5.008 | 5.220 | **1.04x** |
 | `mae_n1000000_k2` | 5.054 | 5.635 | 1.12x | 5.036 | 5.633 | **1.12x** |
 | `median_ae_n1000000_k2`† | 18.365 | 16.375 | 0.89x | 18.708 | 16.360 | **0.87x** |
-| `r2_n1000000_k2` | 8.093 | 9.205 | 1.14x | 8.083 | 9.204 | **1.14x** |
+| `r2_n1000000_k2`‡ | 8.093 | 9.205 | 1.14x | 8.083 | 9.204 | **1.14x** |
 | `mse_n1000000_k10` | 4.983 | 4.989 | 1.00x | 4.982 | 4.983 | **1.00x** |
 | `mae_n1000000_k10` | 5.040 | 5.712 | 1.13x | 5.035 | 5.711 | **1.13x** |
 | `median_ae_n1000000_k10`† | 18.094 | 16.282 | 0.90x | 18.163 | 16.259 | **0.90x** |
-| `r2_n1000000_k10` | 7.807 | 9.687 | 1.24x | 7.807 | 9.686 | **1.24x** |
+| `r2_n1000000_k10`‡ | 7.807 | 9.687 | 1.24x | 7.807 | 9.686 | **1.24x** |
 
 † All six `median_ae` rows were re-measured after the quickselect rewrite
 described below, in a separate window from the other eighteen rows in this
 table. Every other cell is the original, unrewritten-algorithm measurement.
+
+‡ These four `r2` rows predate issue #127: they measure the original
+sequential-sum `R2`, not the Neumaier-compensated one this package ships
+today, and are stale for that reason — kept here only so the pairing this
+table relies on (each workload measured twice, at `k=2` and `k=10`) stays
+intact. The compensated-and-optimised numbers are in
+"Compensated summation (issue #127)" below, in the same window as its own
+`numpy` column, which is not directly comparable to the `Python ms` column
+here. `mse` and `mae` are not marked: that section's own numbers show them
+within this page's noise band of the figures printed above.
 
 **20/24 rows at or above 1× on processor time when this table was first
 measured — `median_ae` was the finding, not a fluke to rerun away.** That is
@@ -462,6 +472,80 @@ NumPy's introselect and this quickselect now do the same order of work —
 constant overhead (managed bounds checks, the Lomuto partition's extra
 writes, no SIMD-accelerated comparison loop) rather than an algorithmic
 difference, and is recorded here as measured rather than chased further.
+
+#### Compensated summation (issue #127)
+
+An ill-conditioned target — a large offset over a small spread — showed that
+`R2`, `ExplainedVariance` and the shared kernel walk behind `mse`/`mae` and
+friends were accumulating with a plain sequential sum, where numpy sums
+pairwise. On such a target the two round differently: `R2`'s two passes
+landed **357× outside** the oracle's `1e-9` tolerance (issue #127's fixture:
+`offset = 1e9`, `spread = 1e-2`, n = 200 000). Three sites now sum with
+Neumaier compensation instead — `R2`'s two passes, `ExplainedVariance`'s five
+accumulations, and `Outputs.WeightedMean`, which `MeanSquaredError`,
+`RootMeanSquaredError`, `MeanAbsoluteError`, `MeanAbsolutePercentageError`,
+`MeanSquaredLogError`, `RootMeanSquaredLogError` and `PinballLoss` all walk
+through. `median_ae` (which sorts) and `max_error` (which never sums) are
+untouched and stand in as this round's control.
+
+**The naive fix was not free, and was not accepted at its first cost.**
+Measured before any recovery work, compensating cost 1.38×–1.46× the
+uncompensated loop on `mse`/`mae` and 1.56×–1.63× on `r2` — which pays the
+compensated sum twice per row, once per pass — against a `median_ae` control
+that moved at most 1.04×. Two changes recovered it: an unweighted fast path
+that skips the weight multiply and the weight sum at all three sites when no
+`sampleWeight` is supplied (a sum of *n* ones is exactly *n* below 2^53, no
+compensation needed), and a `Vector<double>` reduction — one Neumaier partial
+sum per SIMD lane — for `R2` and `ExplainedVariance`'s single-output
+unweighted case on `net10.0` (the scalar loop is unchanged on
+`netstandard2.0` and for multi-output; see
+[`docs/decisions/0001`](../decisions/0001-target-framework.md)). A third
+lever, a branchless 2Sum in place of Neumaier's magnitude-compared branch,
+was measured and **reverted**: on this machine the branch predicts well
+enough on this workload that removing it cost more than it saved.
+
+**Before (the original sequential sum) against after (compensated and
+optimised) — same corpus, same harness as the table above, `k=2` shape
+only:**
+
+| Operation | before (ms) | after (ms) | cost vs before | numpy (ms) |
+| --- | ---: | ---: | ---: | ---: |
+| `mse_n100000_k2` | 0.445 | 0.478 | 1.07x | 0.568 |
+| `mse_n1000000_k2` | 4.757 | 5.042 | 1.06x | 4.743 |
+| `mae_n100000_k2` | 0.449 | 0.491 | 1.09x | 0.579 |
+| `mae_n1000000_k2` | 4.769 | 5.146 | 1.08x | 5.330 |
+| `r2_n100000_k2` | 0.740 | 0.358 | **0.48x** | 0.867 |
+| `r2_n1000000_k2` | 7.820 | 4.280 | **0.55x** | 9.193 |
+| `median_ae_n100000_k2` *(control)* | 1.681 | 1.672 | 0.99x | 1.716 |
+| `median_ae_n1000000_k2` *(control)* | 15.718 | 15.994 | 1.02x | 15.696 |
+
+`r2` is this round's confirmed result: **faster than the uncompensated loop
+it replaced**, not merely recovered back to it, and 2.15× faster than numpy
+at n = 1 000 000 — the SIMD lane-wise reduction pays for the compensation and
+then some, an asymmetry only available here because the uncompensated
+baseline was itself a scalar loop with room to vectorize.
+`Outputs.WeightedMean` could not take the same route: it calls a kernel
+through a generic interface per element, so a lane-wise accumulator around a
+scalar-called kernel would buy nothing without vectorizing all five kernels
+in their own right, which was assessed and left out of scope.
+
+Load: `uptime`'s one-minute average was 9.8 at the start of this round (just
+under the wait threshold this project measures against), settling to
+4.9–5.5 for the rest of it; read via `uptime` before each run, and none
+exceeded 10 once the wait loop cleared.
+
+**`mse` and `mae`'s 1.06×–1.09× are not a second confirmed result — they are
+inside this round's own noise.** The control (`median_ae`, untouched by any
+of this) moved 1.8% at n = 1 000 000 in this same round — within the band
+this page accepts, but at the top of it. `r2`'s 45–52% swing survives that
+easily; `mse` and `mae`'s cost is only three to four times the control's own
+drift, which is not enough separation from the noise floor to publish as a
+settled number. Read them as "roughly unchanged by the optimisation, within
+this round's noise" rather than as a precise cost. A cleaner window that
+measured the unweighted fast path alone, before the SIMD lever, put both
+nearer 1.02×–1.07× with the control moving at most 1.4% — closer to the true
+cost of that lever, but not this round's number, and not what is published
+above as the current state.
 
 ## Multiclass ROC-AUC, sequential against parallel (issue #86)
 
