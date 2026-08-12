@@ -97,3 +97,45 @@ def test_the_guard_exempts_only_itself_and_its_tests():
         "tools/check_machine_paths.py",
         "tools/tests/test_check_machine_paths.py",
     })
+
+
+# The scratchpad path as it appeared in four plans, with the name redacted the
+# way the spec redacts it -- the shape is what matters, and a whole one here
+# would put a home directory back into a tracked file.
+SCRATCH = "/tmp/claude-" + "49201103/" + "-home-" + "someone-Documents-devs-data-net2/x/scratchpad"
+
+
+def test_the_named_shapes_alone_miss_the_dashed_form():
+    # The finding that shaped this guard: the scratchpad encodes the home
+    # directory with dashes, so nothing searching for a slash-separated one
+    # sees it. Only the /tmp/claude- prefix catches this string by shape.
+    dashed_only = "-home-" + "someone-Documents-devs-data-net2"
+
+    assert not guard.scan_text(dashed_only, guard.NAMED_SHAPES)
+
+
+def test_an_environment_probe_catches_the_dashed_form():
+    probes = guard.environment_probes("/home/" + "someone")
+    dashed_only = "-home-" + "someone-Documents-devs-data-net2"
+
+    assert guard.scan_text(dashed_only, probes)
+
+
+def test_an_environment_probe_catches_the_home_path_itself():
+    probes = guard.environment_probes("/home/" + "someone")
+
+    assert guard.scan_text(POSIX_HOME, probes)
+
+
+def test_an_environment_probe_needs_a_boundary_around_the_name():
+    # A username that appears inside an unrelated word is not a path, and a
+    # guard that said otherwise would fire on prose for any contributor
+    # unlucky enough to be called something ordinary.
+    probes = guard.environment_probes("/home/" + "ed")
+
+    assert not guard.scan_text("the edited plan", probes)
+    assert guard.scan_text("/home/" + "ed/src", probes)
+
+
+def test_no_home_means_no_environment_probes():
+    assert guard.environment_probes(None) == ()

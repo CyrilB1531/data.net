@@ -23,6 +23,7 @@ Exit:   0 clean, 1 findings printed, 2 bad usage
 
 from __future__ import annotations
 
+import os
 import pathlib
 import re
 import subprocess
@@ -61,6 +62,46 @@ EXEMPT = frozenset({
 })
 
 
+# S8495 flags the empty-tuple returns below as inconsistent with the 3-tuple
+# case -- the rule is about a function whose callers positionally unpack a
+# fixed-arity result, where a shorter tuple raises a ValueError. The return
+# type here is tuple[tuple[str, re.Pattern[str]], ...]: a variable-length
+# sequence of probes, and every call site (scan_text's `for _, pattern in
+# probes`, main's `probes += environment_probes(...)`, the `== ()` checks in
+# the tests) iterates or concatenates the result rather than unpacking it by
+# length.
+def environment_probes(home: str | None) -> tuple[tuple[str, re.Pattern[str]], ...]:  # NOSONAR S8495
+    """Probes for *this* machine's home directory, in the forms it gets written.
+
+    The named shapes above are a list, and a list is never complete. These are
+    derived instead, so they catch shapes nobody enumerated -- on the machine
+    where the string is created, and on CI, where $HOME is the runner's own
+    home and one of the two paths this guard exists because of had that shape.
+
+    Three forms, because a home directory reaches a file in three ways: the
+    path itself; the account name inside some longer path; and the path with
+    its separators replaced by dashes, which is what a session scratch
+    directory is named after. The dashed form is the one the named shapes
+    miss, and it carried eight of the ten paths that occurred.
+
+    The account name is matched only when a separator or a dash bounds it, so
+    a contributor called `ed` does not turn every "edited" into a finding.
+    """
+    if not home:
+        return ()
+
+    account = home.rsplit("/", 1)[-1]
+    if not account:
+        return ()
+
+    return (
+        ("this machine's home directory", re.compile(re.escape(home) + r"[/\\]")),
+        ("this machine's account name", re.compile(r"[/\\-]" + re.escape(account) + r"[/\\-]")),
+        ("this machine's home directory, dash-separated",
+         re.compile(re.escape(home.replace("/", "-")) + r"[-/\\]")),
+    )
+
+
 def scan_text(text: str, probes) -> list[tuple[int, str]]:
     """Every (1-based line number, matched text) `probes` finds in `text`."""
     findings = []
@@ -84,6 +125,8 @@ def main(argv: list[str]) -> int:
             return 2
 
     probes = NAMED_SHAPES
+    if "--no-environment" not in argv[1:]:
+        probes += environment_probes(os.environ.get("HOME"))
     findings = 0
     for path in tracked_files():
         if path in EXEMPT:
