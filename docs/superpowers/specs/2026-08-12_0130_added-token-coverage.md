@@ -64,6 +64,22 @@ one DataNet reproduces — HuggingFace raises ``Token `x` out of vocabulary``. I
 `BpeVocabulary.SkippedMerges` therefore counts a case the reference makes impossible, and reads `0` on
 every BPE fixture committed to this repository.
 
+### D6 — a merge whose *result* is absent is refused too, and not the way the reference does it
+
+D3 and D5 are about a merge naming an absent left or right side, which is what
+``Token `x` out of vocabulary`` reports. A merge whose two sides are present but whose *concatenation* is
+not in the vocabulary is a third shape, and there the reference does not raise: it panics —
+`range end index 2 out of range for slice of length 1`, from `models/bpe/model.rs`, surfacing in Python as
+`pyo3_runtime.PanicException`.
+
+A panic is a bug in the reference, not behaviour to reproduce. DataNet refuses it, with a message of its
+own naming the merge and saying the result is missing rather than pretending to quote HuggingFace. This is
+the one refusal here that is not a transcription, and it is recorded as such in `docs/equivalence.md`.
+
+Both loaders already compute their skipped count against the model vocabulary alone and check only the two
+sides, never the result — so this shape reaches `BpeTokenizer`'s constructor today and is silently dropped
+there.
+
 ## Design
 
 ### Two views of the vocabulary
