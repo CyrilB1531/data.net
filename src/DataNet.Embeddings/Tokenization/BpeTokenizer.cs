@@ -79,7 +79,11 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
     /// <summary>Creates a tokenizer from a loaded BPE model.</summary>
     /// <param name="vocabulary">A vocabulary from <see cref="Persistence.BpeFilesLoader"/> or <see cref="Persistence.TokenizerJsonLoader"/>.</param>
-    /// <exception cref="ArgumentException">The declared unknown token is not in the vocabulary.</exception>
+    /// <exception cref="ArgumentException">
+    /// The declared unknown token is not in the vocabulary; or a merge names a
+    /// token the vocabulary does not declare; or a merge's result is not itself
+    /// a vocabulary entry.
+    /// </exception>
     public BpeTokenizer(BpeVocabulary vocabulary)
     {
         Guard.NotNull(vocabulary);

@@ -4,9 +4,9 @@
 
 ## Context
 
-`BpeTokenizer`'s constructor folds `AddedTokens` into `_vocab` (`BpeTokenizer.cs:86-90`), and six call
+`BpeTokenizer`'s constructor folds `AddedTokens` into `_vocab` (`BpeTokenizer.cs:86-90`), and seven call
 sites then read that one map. They do not all want the same thing. Two ask *what id does this text carry*,
-where the fold is right. Four ask *does the model cover this symbol*, where it is wrong: an added token
+where the fold is right. Five ask *does the model cover this symbol*, where it is wrong: an added token
 that `model.vocab` does not declare makes a character look covered, so it is never substituted with the
 unknown token.
 
@@ -71,8 +71,17 @@ A merge naming a token only `added_tokens` declares does not build:
 
 ### D4 — `ignore_merges` consults the model, not the added tokens
 
-With `ignore_merges` on and `QQ` an added token absent from `model.vocab`, `aQQa` is
-`['a', '[UNK]', '[UNK]', 'a']`. The whole-piece shortcut does not fire on an added token.
+Vocabulary `{[UNK]: 0, a: 1, !: 2}`, added token `!!` at id 3 with `single_word: true`, `ignore_merges` on.
+`Whitespace` splits `a!!` into `a` / `!!`; `single_word` declines the scanner on `a`, a word character, so
+`!!` reaches the whole-piece shortcut while being an added token's exact content rather than a
+`model.vocab` entry. Measured: `a!!` is `['a', '!', '!']` — the shortcut does not fire, and the piece falls
+through to ordinary per-character encoding. The control, with `!!` carried in `model.vocab` too, gives
+`['a', '!!']`: the shortcut fires once the model itself declares the entry.
+
+An earlier version of this evidence cited `aQQa` with `ignore_merges` on, `['a', '[UNK]', '[UNK]', 'a']`.
+That case does not discriminate: the same text with `ignore_merges` off gives the identical stream, so the
+output was explained entirely by the `InitialSymbols` fix (the issue) and said nothing about which map the
+shortcut itself consults.
 
 ### D5 — the comment justifying `SkippedMerges` is false
 

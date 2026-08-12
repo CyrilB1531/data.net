@@ -109,15 +109,19 @@ public sealed class BpeAddedTokenCoverageTests
     }
 
     /// <summary>
-    /// The three shapes the reference refuses to build, cited against the
-    /// reference rather than against this repository's word: the corpus carries
-    /// the exact document it was handed and the error it answered with.
+    /// Three shapes the reference refuses, cited against the reference rather
+    /// than against this repository's word: the corpus carries the exact
+    /// document it was handed and the error it answered with. Two are refused
+    /// while the document is read; the third — an <c>unk_token</c> declared
+    /// only in <c>added_tokens</c> — is refused only from <c>encode</c>, which
+    /// is why DataNet's refusal of that one, at construction, is earlier than
+    /// the reference's own.
     /// </summary>
     [Theory]
-    [InlineData("unk_only_in_added_tokens")]
-    [InlineData("merge_names_an_added_token")]
-    [InlineData("merge_result_missing")]
-    public void The_reference_refuses_it_too_and_so_do_we(string shape)
+    [InlineData("unk_only_in_added_tokens", "encode")]
+    [InlineData("merge_names_an_added_token", "load")]
+    [InlineData("merge_result_missing", "load")]
+    public void The_reference_refuses_it_too_and_so_do_we(string shape, string raisedBy)
     {
         using JsonDocument doc = OracleLoader.Load(Corpus);
 
@@ -125,6 +129,7 @@ public sealed class BpeAddedTokenCoverageTests
             .EnumerateArray().Single(r => r.GetProperty("shape").GetString() == shape);
 
         Assert.NotEmpty(refusal.GetProperty("error").GetString()!);
+        Assert.Equal(raisedBy, refusal.GetProperty("raised_by").GetString());
 
         using var stream = new MemoryStream(
             Encoding.UTF8.GetBytes(refusal.GetProperty("document").GetString()!));
@@ -146,6 +151,9 @@ public sealed class BpeAddedTokenCoverageTests
 
         ArgumentException error = Assert.Throws<ArgumentException>(() => new BpeTokenizer(vocabulary));
 
-        Assert.Contains("x", error.Message, StringComparison.Ordinal);
+        Assert.Contains(
+            "The merge at rank 1 names 'x' and 'y', and the vocabulary does not contain both.",
+            error.Message,
+            StringComparison.Ordinal);
     }
 }
