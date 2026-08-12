@@ -143,24 +143,26 @@ public static class R2
     {
         double[] scores = new double[outputCount];
         double[] denominators = new double[outputCount];
-        double[] numerators = new double[outputCount];
+        CompensatedSum[] numerators = new CompensatedSum[outputCount];
+        CompensatedSum[] centredSquares = new CompensatedSum[outputCount];
+        CompensatedSum[] meanSums = new CompensatedSum[outputCount];
         double[] means = new double[outputCount];
         bool weighted = !sampleWeight.IsEmpty;
-        double totalWeight = 0.0;
+        CompensatedSum totalWeight = default;
 
         for (int row = 0; row < samples; row++)
         {
             double weight = weighted ? sampleWeight[row] : 1.0;
-            totalWeight += weight;
+            totalWeight.Add(weight);
             int offset = row * outputCount;
             for (int col = 0; col < outputCount; col++)
             {
-                means[col] += weight * yTrue[offset + col];
+                meanSums[col].Add(weight * yTrue[offset + col]);
             }
         }
         for (int col = 0; col < outputCount; col++)
         {
-            means[col] /= totalWeight;
+            means[col] = meanSums[col].Value / totalWeight.Value;
         }
 
         for (int row = 0; row < samples; row++)
@@ -171,14 +173,15 @@ public static class R2
             {
                 double residual = yTrue[offset + col] - yPred[offset + col];
                 double centred = yTrue[offset + col] - means[col];
-                numerators[col] += weight * residual * residual;
-                denominators[col] += weight * centred * centred;
+                numerators[col].Add(weight * residual * residual);
+                centredSquares[col].Add(weight * centred * centred);
             }
         }
 
         for (int col = 0; col < outputCount; col++)
         {
-            scores[col] = Resolve(numerators[col], denominators[col], samples, forceFinite, zeroDivision);
+            denominators[col] = centredSquares[col].Value;
+            scores[col] = Resolve(numerators[col].Value, denominators[col], samples, forceFinite, zeroDivision);
         }
         return (scores, denominators);
     }
