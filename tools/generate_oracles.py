@@ -3240,6 +3240,143 @@ def generate_bpe_fuse_unk() -> dict:
     }
 
 
+# --- added tokens are not vocabulary entries (issue #130) ---------------------
+
+_COVERAGE_UNK = "[UNK]"
+
+# Q is the added token and is deliberately absent from this vocabulary; Z is
+# absent from everything, so it is uncovered in every model here.
+_COVERAGE_VOCAB = {_COVERAGE_UNK: 0, "a": 1, "b": 2, "ab": 3}
+_COVERAGE_MERGES = [("a", "b")]
+
+
+def _added_coverage_model(single_word):
+    """One tokenizer whose added token is not in model.vocab."""
+    from tokenizers import AddedToken, Tokenizer, models, pre_tokenizers  # noqa: PLC0415
+
+    tokenizer = Tokenizer(models.BPE(
+        dict(_COVERAGE_VOCAB), list(_COVERAGE_MERGES), unk_token=_COVERAGE_UNK))
+    tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
+    tokenizer.add_tokens([AddedToken("Q", single_word=single_word, normalized=False)])
+    return tokenizer
+
+
+def _added_coverage_models() -> list[tuple]:
+    """(name, declares, single_word, tokenizer, texts)."""
+    # aQa and ZQZ put the added token inside a word, where single_word decides
+    # whether the scanner may match it. Q and "a Q a" put it on its own, where
+    # the scanner matches under either flag and both sides already agree. aQ
+    # ends a piece with it, and QQ doubles it.
+    texts = ["aQa", "ZQZ", "QQ", "Q", "a Q a", "aQ"]
+    return [
+        ("single_word", "an added token absent from model.vocab, matched only on its own",
+         True, _added_coverage_model(True), texts),
+        ("any_position", "the same added token, matchable inside a word",
+         False, _added_coverage_model(False), texts),
+    ]
+
+
+def _added_coverage_refusals() -> list[dict]:
+    """Three shapes the reference refuses to build, recorded with what it said.
+
+    These cannot be cases: there is no token stream to record, because the
+    reference never produces a tokenizer. Recording the refusal is what makes
+    "the reference refuses this too" a measurement.
+    """
+    from tokenizers import Tokenizer  # noqa: PLC0415
+
+    def document(vocab, merges, unk, added):
+        return json.dumps({
+            "version": "1.0", "truncation": None, "padding": None,
+            "added_tokens": added,
+            "normalizer": None, "pre_tokenizer": {"type": "Whitespace"},
+            "post_processor": None, "decoder": None,
+            "model": {
+                "type": "BPE", "dropout": None, "unk_token": unk,
+                "continuing_subword_prefix": None, "end_of_word_suffix": None,
+                "fuse_unk": False, "byte_fallback": False, "ignore_merges": False,
+                "vocab": vocab, "merges": merges,
+            },
+        })
+
+    added_q = [{"id": 2, "content": "Q", "single_word": True, "lstrip": False,
+                "rstrip": False, "normalized": False, "special": False}]
+
+    # (shape, document, the text that provokes the failure if loading did not)
+    shapes = [
+        # The unknown token exists only in added_tokens. This one LOADS: the
+        # reference defers the check to encode, and raises only on text that
+        # needs a substitution. "ab" encodes fine; "aZb" does not.
+        ("unk_only_in_added_tokens",
+         document({"a": 0, "b": 1}, [], "<unk>",
+                  [{"id": 2, "content": "<unk>", "single_word": False, "lstrip": False,
+                    "rstrip": False, "normalized": False, "special": True}]),
+         "aZb"),
+        # A merge names a token that only added_tokens declares. Refused while
+        # the document is read.
+        ("merge_names_an_added_token",
+         document({_COVERAGE_UNK: 0, "a": 1, "Qa": 3}, [["Q", "a"]], _COVERAGE_UNK, added_q),
+         "Qa"),
+        # A merge whose two sides are present but whose result is not. The
+        # reference PANICS while reading rather than raising; the panic is
+        # recorded as what it is, and DataNet refuses in its own words (D6).
+        ("merge_result_missing",
+         document({"a": 0, "b": 1}, [["a", "b"]], None, []),
+         "ab"),
+    ]
+
+    # The reference does not refuse all three at the same moment, and the corpus
+    # records which. Two fail while the document is being read; the first loads
+    # and fails from encode, and only on text that needs a substitution — which
+    # is why each shape carries the text that provokes it.
+    refusals = []
+    for shape, doc, provoking_text in shapes:
+        try:
+            tokenizer = Tokenizer.from_str(doc)
+        except BaseException as exc:  # noqa: BLE001 - the refusal IS the measurement
+            refusals.append({"shape": shape, "document": doc, "raised_by": "load",
+                             "text": None, "error": f"{type(exc).__name__}: {exc}"})
+            continue
+        try:
+            tokenizer.encode(provoking_text)
+        except BaseException as exc:  # noqa: BLE001
+            refusals.append({"shape": shape, "document": doc, "raised_by": "encode",
+                             "text": provoking_text, "error": f"{type(exc).__name__}: {exc}"})
+        else:
+            raise AssertionError(
+                f"tokenizers accepted {shape} and encoded {provoking_text!r} without complaint; "
+                "issue #130's refusal rests on it refusing one")
+    return refusals
+
+
+def generate_bpe_added_token_coverage() -> dict:
+    """An added token absent from model.vocab, with the scanner allowed and denied."""
+    carried = _added_coverage_models()
+    cases = []
+    for name, _, _, tokenizer, texts in carried:
+        for text in texts:
+            enc = tokenizer.encode(text)
+            cases.append({"id": len(cases), "model": name, "text": text,
+                          "tokens": enc.tokens, "ids": enc.ids})
+
+    return {
+        "metadata": {
+            "algorithm": "BPE added-token coverage",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "hand-built: one 4-entry classic BPE, twice, defined in tools/generate_oracles.py",
+            "models": {
+                name: {"declares": declares, "single_word": single_word,
+                       "tokenizer_json": tokenizer.to_str()}
+                for name, declares, single_word, tokenizer, _ in carried
+            },
+            "refusals": _added_coverage_refusals(),
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -3289,6 +3426,7 @@ def main() -> None:
         "bpe_added_token_flags.json": generate_bpe_added_token_flags,
         "bpe_no_op_settings.json": generate_bpe_no_op_settings,
         "bpe_fuse_unk.json": generate_bpe_fuse_unk,
+        "bpe_added_token_coverage.json": generate_bpe_added_token_coverage,
         "wordpiece_added_tokens.json": generate_wordpiece_added_tokens,
     }
     for filename, gen in generators.items():
