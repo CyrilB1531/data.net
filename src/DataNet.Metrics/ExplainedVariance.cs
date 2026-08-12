@@ -121,27 +121,30 @@ public static class ExplainedVariance
     {
         double[] scores = new double[outputCount];
         double[] denominators = new double[outputCount];
-        double[] numerators = new double[outputCount];
+        CompensatedSum[] numerators = new CompensatedSum[outputCount];
+        CompensatedSum[] centredSquares = new CompensatedSum[outputCount];
+        CompensatedSum[] meanSums = new CompensatedSum[outputCount];
+        CompensatedSum[] meanResidualSums = new CompensatedSum[outputCount];
         double[] means = new double[outputCount];
         double[] meanResiduals = new double[outputCount];
         bool weighted = !sampleWeight.IsEmpty;
-        double totalWeight = 0.0;
+        CompensatedSum totalWeight = default;
 
         for (int row = 0; row < samples; row++)
         {
             double weight = weighted ? sampleWeight[row] : 1.0;
-            totalWeight += weight;
+            totalWeight.Add(weight);
             int offset = row * outputCount;
             for (int col = 0; col < outputCount; col++)
             {
-                means[col] += weight * yTrue[offset + col];
-                meanResiduals[col] += weight * (yTrue[offset + col] - yPred[offset + col]);
+                meanSums[col].Add(weight * yTrue[offset + col]);
+                meanResidualSums[col].Add(weight * (yTrue[offset + col] - yPred[offset + col]));
             }
         }
         for (int col = 0; col < outputCount; col++)
         {
-            means[col] /= totalWeight;
-            meanResiduals[col] /= totalWeight;
+            means[col] = meanSums[col].Value / totalWeight.Value;
+            meanResiduals[col] = meanResidualSums[col].Value / totalWeight.Value;
         }
 
         for (int row = 0; row < samples; row++)
@@ -156,14 +159,14 @@ public static class ExplainedVariance
                 // prediction scores lower on R².
                 double residual = yTrue[offset + col] - yPred[offset + col] - meanResiduals[col];
                 double centred = yTrue[offset + col] - means[col];
-                numerators[col] += weight * residual * residual;
-                denominators[col] += weight * centred * centred;
+                numerators[col].Add(weight * residual * residual);
+                centredSquares[col].Add(weight * centred * centred);
             }
         }
-
         for (int col = 0; col < outputCount; col++)
         {
-            scores[col] = Resolve(numerators[col], denominators[col], forceFinite);
+            denominators[col] = centredSquares[col].Value;
+            scores[col] = Resolve(numerators[col].Value, denominators[col], forceFinite);
         }
         return (scores, denominators);
     }

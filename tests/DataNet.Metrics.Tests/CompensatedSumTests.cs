@@ -146,4 +146,52 @@ public sealed class CompensatedSumTests
         }
         return 1.0 - (numerator / denominator);
     }
+
+    /// <summary>
+    /// Explained variance subtracts the mean residual before squaring, so it carries a
+    /// second accumulation R² does not have. Same shape, same decimal reference.
+    /// </summary>
+    [Fact]
+    public void ExplainedVariance_matches_a_decimal_reference_on_an_ill_conditioned_target()
+    {
+        (double[] yTrue, double[] yPred) = IllConditioned();
+
+        double expected = (double)ExactExplainedVariance(yTrue, yPred);
+        double actual = ExplainedVariance.Score(yTrue, yPred);
+
+        Assert.Equal(expected, actual, 10);
+    }
+
+    /// <summary>
+    /// Explained variance in <see cref="decimal"/>: 1 − Var(y − ŷ) ⁄ Var(y), computed
+    /// on <c>value - Offset</c> for the same reason <see cref="ExactR2"/> is: explained
+    /// variance is shift-invariant on the same grounds R² is — its numerator and
+    /// denominator are both differences a common shift cancels out of before the
+    /// square ever sees it — so the shifted array's score is the unshifted one's,
+    /// exactly, and <c>value - Offset</c> stays exact by the same Sterbenz's-lemma
+    /// argument <see cref="ExactR2"/> documents.
+    /// </summary>
+    private static decimal ExactExplainedVariance(double[] yTrue, double[] yPred)
+    {
+        decimal mean = 0m;
+        decimal meanResidual = 0m;
+        for (int i = 0; i < yTrue.Length; i++)
+        {
+            mean += (decimal)(yTrue[i] - Offset);
+            meanResidual += (decimal)(yTrue[i] - Offset) - (decimal)(yPred[i] - Offset);
+        }
+        mean /= yTrue.Length;
+        meanResidual /= yTrue.Length;
+
+        decimal numerator = 0m;
+        decimal denominator = 0m;
+        for (int i = 0; i < yTrue.Length; i++)
+        {
+            decimal residual = (decimal)(yTrue[i] - Offset) - (decimal)(yPred[i] - Offset) - meanResidual;
+            decimal centred = (decimal)(yTrue[i] - Offset) - mean;
+            numerator += residual * residual;
+            denominator += centred * centred;
+        }
+        return 1m - (numerator / denominator);
+    }
 }
