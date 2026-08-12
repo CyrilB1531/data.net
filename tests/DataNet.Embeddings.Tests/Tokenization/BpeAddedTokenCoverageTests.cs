@@ -107,4 +107,45 @@ public sealed class BpeAddedTokenCoverageTests
             Encoding.UTF8.GetBytes(model.GetProperty("tokenizer_json").GetString()!));
         return TokenizerJsonLoader.LoadBpe(stream, OracleReplay.BpeBounds());
     }
+
+    /// <summary>
+    /// The three shapes the reference refuses to build, cited against the
+    /// reference rather than against this repository's word: the corpus carries
+    /// the exact document it was handed and the error it answered with.
+    /// </summary>
+    [Theory]
+    [InlineData("unk_only_in_added_tokens")]
+    [InlineData("merge_names_an_added_token")]
+    [InlineData("merge_result_missing")]
+    public void The_reference_refuses_it_too_and_so_do_we(string shape)
+    {
+        using JsonDocument doc = OracleLoader.Load(Corpus);
+
+        JsonElement refusal = doc.RootElement.GetProperty("metadata").GetProperty("refusals")
+            .EnumerateArray().Single(r => r.GetProperty("shape").GetString() == shape);
+
+        Assert.NotEmpty(refusal.GetProperty("error").GetString()!);
+
+        using var stream = new MemoryStream(
+            Encoding.UTF8.GetBytes(refusal.GetProperty("document").GetString()!));
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(stream, OracleReplay.BpeBounds());
+
+        Assert.ThrowsAny<ArgumentException>(() => new BpeTokenizer(vocabulary));
+    }
+
+    /// <summary>
+    /// A merge naming a token the model does not declare names it in the message,
+    /// because a file with three hundred merges needs to know which one.
+    /// </summary>
+    [Fact]
+    public void An_orphan_merge_names_itself()
+    {
+        var vocabulary = new BpeVocabulary(
+            new Dictionary<string, int> { ["a"] = 0, ["b"] = 1, ["ab"] = 2 },
+            [new MergePair("a", "b"), new MergePair("x", "y")]);
+
+        ArgumentException error = Assert.Throws<ArgumentException>(() => new BpeTokenizer(vocabulary));
+
+        Assert.Contains("x", error.Message, StringComparison.Ordinal);
+    }
 }

@@ -99,12 +99,10 @@ public static class BpeFilesLoader
     {
         Dictionary<string, int> vocab = ParseVocab(vocabPayload, limits);
         List<MergePair> merges = ParseMerges(mergesPayload, limits);
-        int skipped = merges.Count(pair => !vocab.ContainsKey(pair.Left) || !vocab.ContainsKey(pair.Right));
 
         return new BpeVocabulary(vocab, merges)
         {
             ByteLevel = byteLevel,
-            SkippedMerges = skipped,
             PreTokenizerPattern = byteLevel ? BpePatterns.Gpt2 : null,
         };
     }

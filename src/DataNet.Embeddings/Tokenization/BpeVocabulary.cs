@@ -67,14 +67,6 @@ public sealed record BpeVocabulary(
     /// </remarks>
     public bool FuseUnk { get; init; }
 
-    /// <summary>How many merge pairs named a token the vocabulary does not contain.</summary>
-    /// <remarks>
-    /// Such a pair cannot apply, so it is dropped rather than thrown on —
-    /// HuggingFace tolerates it and refusing the file would be a divergence.
-    /// Dropping it in silence would be worse, so it is counted here.
-    /// </remarks>
-    public int SkippedMerges { get; init; }
-
     private readonly string? _endOfWordSuffix;
 
     /// <summary>The marker closing a word, e.g. <c>&lt;/w&gt;</c>; <see langword="null"/> for byte-level models.</summary>
@@ -127,7 +119,6 @@ public sealed record BpeVocabulary(
             || AddPrefixSpace != other.AddPrefixSpace
             || IgnoreMerges != other.IgnoreMerges
             || FuseUnk != other.FuseUnk
-            || SkippedMerges != other.SkippedMerges
             || !string.Equals(EndOfWordSuffix, other.EndOfWordSuffix, StringComparison.Ordinal)
             || !string.Equals(ContinuingSubwordPrefix, other.ContinuingSubwordPrefix, StringComparison.Ordinal)
             || !string.Equals(UnkToken, other.UnkToken, StringComparison.Ordinal)
@@ -167,7 +158,6 @@ public sealed record BpeVocabulary(
             hash = (hash * 31) + (AddPrefixSpace ? 1 : 0);
             hash = (hash * 31) + (IgnoreMerges ? 1 : 0);
             hash = (hash * 31) + (FuseUnk ? 1 : 0);
-            hash = (hash * 31) + SkippedMerges;
             hash = (hash * 31) + (EndOfWordSuffix is null ? 0 : StringComparer.Ordinal.GetHashCode(EndOfWordSuffix));
             hash = (hash * 31) + (ContinuingSubwordPrefix is null ? 0 : StringComparer.Ordinal.GetHashCode(ContinuingSubwordPrefix));
             hash = (hash * 31) + (UnkToken is null ? 0 : StringComparer.Ordinal.GetHashCode(UnkToken));

@@ -134,15 +134,26 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         for (int rank = 0; rank < vocabulary.Merges.Count; rank++)
         {
             MergePair pair = vocabulary.Merges[rank];
-            // A pair naming a token the vocabulary does not contain cannot apply.
-            // HuggingFace tolerates it, so refusing the file would be a divergence.
-            // BpeVocabulary.SkippedMerges is where the count is reported.
-            if (!_vocab.TryGetValue(pair.Left, out int left)
-                || !_vocab.TryGetValue(pair.Right, out int right)
-                || !_vocab.TryGetValue(pair.Left + pair.Right, out int result))
+            // Against the model's vocabulary, not the folded one, and refused
+            // rather than skipped. An earlier comment here said HuggingFace
+            // tolerates a merge naming an absent token; measured on both the
+            // constructor and the tokenizer.json load path, it raises
+            // "Token `x` out of vocabulary". It does not tolerate it.
+            if (!_modelVocab.TryGetValue(pair.Left, out int left)
+                || !_modelVocab.TryGetValue(pair.Right, out int right))
             {
-                _merged[rank] = -1;
-                continue;
+                throw new ArgumentException(
+                    $"The merge at rank {rank} names '{pair.Left}' and '{pair.Right}', "
+                    + "and the vocabulary does not contain both.", nameof(vocabulary));
+            }
+            // The result is a third shape, and the reference does not raise on it
+            // — it panics, walking off the end of a slice. A panic is a bug, not
+            // behaviour to reproduce, so this message is DataNet's own.
+            if (!_modelVocab.TryGetValue(pair.Left + pair.Right, out int result))
+            {
+                throw new ArgumentException(
+                    $"The merge at rank {rank} produces '{pair.Left + pair.Right}', "
+                    + "which the vocabulary does not contain.", nameof(vocabulary));
             }
             // If a pair is listed twice, the first (lowest) rank is kept rather than
             // the last write winning. Neither tokenizer.json nor merges.txt defines

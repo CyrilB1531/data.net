@@ -97,16 +97,12 @@ public sealed class BpeTokenizerTests
     }
 
     [Fact]
-    public void A_merge_naming_a_missing_token_is_dropped()
+    public void A_merge_naming_a_missing_token_is_refused()
     {
         BpeVocabulary vocab = TinyVocabulary();
         var merges = new List<MergePair>(vocab.Merges) { new("zzz", "qqq") };
-        var tokenizer = new BpeTokenizer(vocab with { Merges = merges });
 
-        // The pair cannot apply, so tokenization is unchanged.
-        Assert.Equal(
-            new BpeTokenizer(vocab).Encode("the quick brown fox").Ids,
-            tokenizer.Encode("the quick brown fox").Ids);
+        Assert.Throws<ArgumentException>(() => new BpeTokenizer(vocab with { Merges = merges }));
     }
 
     /// <summary>
