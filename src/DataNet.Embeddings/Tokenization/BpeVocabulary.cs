@@ -55,6 +55,18 @@ public sealed record BpeVocabulary(
     /// <summary>Whether a whole pre-tokenized piece present in the vocabulary skips merging.</summary>
     public bool IgnoreMerges { get; init; }
 
+    /// <summary>
+    /// Whether a run of consecutive characters the vocabulary does not cover
+    /// collapses into a single unknown token — HuggingFace's <c>fuse_unk</c>.
+    /// </summary>
+    /// <remarks>
+    /// A run stops at a pre-tokenizer boundary, and has no effect at all
+    /// without an <see cref="UnkToken"/> — an uncovered character is dropped
+    /// then, so there is nothing to fuse. Both are what
+    /// <c>tokenizers</c> 0.23.1 does, measured.
+    /// </remarks>
+    public bool FuseUnk { get; init; }
+
     /// <summary>How many merge pairs named a token the vocabulary does not contain.</summary>
     /// <remarks>
     /// Such a pair cannot apply, so it is dropped rather than thrown on —
@@ -114,6 +126,7 @@ public sealed record BpeVocabulary(
             || ByteLevel != other.ByteLevel
             || AddPrefixSpace != other.AddPrefixSpace
             || IgnoreMerges != other.IgnoreMerges
+            || FuseUnk != other.FuseUnk
             || SkippedMerges != other.SkippedMerges
             || !string.Equals(EndOfWordSuffix, other.EndOfWordSuffix, StringComparison.Ordinal)
             || !string.Equals(ContinuingSubwordPrefix, other.ContinuingSubwordPrefix, StringComparison.Ordinal)
@@ -153,6 +166,7 @@ public sealed record BpeVocabulary(
             hash = (hash * 31) + (ByteLevel ? 1 : 0);
             hash = (hash * 31) + (AddPrefixSpace ? 1 : 0);
             hash = (hash * 31) + (IgnoreMerges ? 1 : 0);
+            hash = (hash * 31) + (FuseUnk ? 1 : 0);
             hash = (hash * 31) + SkippedMerges;
             hash = (hash * 31) + (EndOfWordSuffix is null ? 0 : StringComparer.Ordinal.GetHashCode(EndOfWordSuffix));
             hash = (hash * 31) + (ContinuingSubwordPrefix is null ? 0 : StringComparer.Ordinal.GetHashCode(ContinuingSubwordPrefix));

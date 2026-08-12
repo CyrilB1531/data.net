@@ -185,7 +185,7 @@ and including `0.2.0` predate the split and covered all three at once — see
   `TokenizerJsonLoader.LoadBpe` **refuses `byte_fallback` by name** — Llama-2
   and Mistral v0.1 are SentencePiece BPE with `Metaspace` and `byte_fallback`,
   a third pipeline this package does not implement — rather than tokenizing
-  them to a plausible-looking wrong answer. It refuses `fuse_unk`, any
+  them to a plausible-looking wrong answer. It refuses any
   `normalizer`, a `ByteLevel` pre-tokenizer with `use_regex` off, a **non-empty**
   `continuing_subword_prefix` and a **non-zero** `dropout` by name too — each of
   those changes what HuggingFace produces and none of them is applied here. The
@@ -207,6 +207,13 @@ and including `0.2.0` predate the split and covered all three at once — see
   [Decision 0017](docs/decisions/0017-bpe-parity-scope.md) records the scope,
   including a known split divergence from HuggingFace on letters and digits
   above the Basic Multilingual Plane.
+- **`fuse_unk`** — a `tokenizer.json` declaring it loads instead of being
+  refused, and a run of consecutive characters the vocabulary does not cover
+  becomes one unknown token rather than one each. The run stops at a
+  pre-tokenizer boundary, and fusing happens before merging, so a fused symbol
+  can itself take part in a merge. The flag has no effect without an unknown
+  token, or on a byte-level model where every character is covered — both
+  measured against `tokenizers` 0.23.1 rather than assumed.
 - **The merge loop threads symbols on a doubly-linked list and a hand-rolled
   priority queue**, after a benchmark measured the rescan-and-shift loop it
   replaced as quadratic on a token with no split point — cost roughly

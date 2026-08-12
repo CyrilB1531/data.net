@@ -257,4 +257,18 @@ public sealed class ValueEqualityTests
 
         Assert.Null(emptied.EndOfWordSuffix);
     }
+
+    [Fact]
+    public void BpeVocabulary_compares_and_hashes_FuseUnk()
+    {
+        // BpeVocabulary is a positional record: Vocab and Merges are
+        // constructor parameters, and only the rest are object-initializer
+        // properties. `new BpeVocabulary { Vocab = … }` does not compile.
+        Dictionary<string, int> vocab = new() { ["a"] = 0 };
+        var fused = new BpeVocabulary(vocab, []) { FuseUnk = true };
+        var plain = new BpeVocabulary(vocab, []);
+
+        Assert.NotEqual(fused, plain);
+        Assert.NotEqual(fused.GetHashCode(), plain.GetHashCode());
+    }
 }
