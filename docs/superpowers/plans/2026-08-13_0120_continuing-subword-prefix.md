@@ -197,6 +197,12 @@ def _prefix_refusals() -> list[dict]:
     try:
         Tokenizer.from_str(document)
     except BaseException as exc:  # noqa: BLE001 - the refusal IS the measurement
+        # Same reasoning as _added_coverage_refusals: BaseException because a
+        # Rust panic surfaces as pyo3_runtime.PanicException, which does not
+        # inherit from Exception. Ctrl-C and a SystemExit are re-raised rather
+        # than recorded as measurements, which is also what S5754 asks for.
+        if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+            raise
         return [{"shape": "merge_result_not_stripped", "document": document,
                  "error": f"{type(exc).__name__}: {exc}"}]
     raise AssertionError(
@@ -204,9 +210,11 @@ def _prefix_refusals() -> list[dict]:
         "issue #120's stripped-result rule rests on it refusing one")
 ```
 
-`BaseException` rather than `Exception`: a Rust panic surfaces as `pyo3_runtime.PanicException`, which
-does not inherit from `Exception` in every pyo3 version, and a narrower catch would let it escape and fail
-the whole generation. Issue #130's generator does the same for the same reason.
+**The `isinstance` re-raise is not optional.** Without it SonarPython raises `python:S5754` on the
+`except` line — measured, and `tools/generate_oracles.py` is not excluded from the scan, so the finding
+blocks the merge. The sibling `_added_coverage_refusals` carries exactly these two lines for exactly this
+reason; the comment above defers to it rather than restating a claim about this shape's own exception type,
+which nothing here measures.
 
 - [ ] **Step 4: Add the generator and register it**
 
