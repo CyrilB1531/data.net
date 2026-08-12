@@ -3074,6 +3074,172 @@ def generate_wordpiece_added_tokens() -> dict:
     }
 
 
+# --- fuse_unk (issue #119) ----------------------------------------------------
+
+# Named rather than repeated: python:S1192 fires at five occurrences of a
+# literal, and this one appears across two vocabularies, one merge table and
+# one function default.
+_FUSE_UNK_TOKEN = "[UNK]"
+
+# Z is in none of these vocabularies, which is what makes it a run when repeated.
+_FUSE_VOCAB = {_FUSE_UNK_TOKEN: 0, "a": 1, "b": 2, "ab": 3}
+_FUSE_MERGES = [("a", "b")]
+
+# A merge whose LEFT side is the unknown token. Training never produces this;
+# it is stated so that "does fusing happen before or after merging" has an
+# answer a test can read. Fused, "ZZa" merges to [UNK]a; unfused it cannot,
+# because the second [UNK] sits between the first and the a.
+_FUSE_MERGE_VOCAB = {_FUSE_UNK_TOKEN: 0, "a": 1, _FUSE_UNK_TOKEN + "a": 2}
+_FUSE_MERGE_MERGES = [(_FUSE_UNK_TOKEN, "a")]
+
+# The unknown token is ALSO a covered single character. This is the only shape
+# that tells "the previous symbol was substituted" from "the previous id equals
+# the unknown id", and the two disagree: "qZ" does not fuse, "ZZ" does.
+#
+# A letter, not punctuation: the pre-tokenizer isolates punctuation from
+# letters, so "?" and "Z" would land in different pieces and never meet. The
+# trap needs both characters inside one piece.
+_FUSE_COVERED_UNK_VOCAB = {"q": 0, "a": 1}
+
+# D7: the end-of-word suffix is appended to a piece's last code point BEFORE
+# the vocabulary lookup, and only at the last position — there is no fallback
+# to the bare form there. "a" is covered both bare (the form looked up
+# everywhere but the last position) and suffixed (the form looked up at the
+# last position), so a run ending on a covered character still resolves and
+# does not fuse. "Z" is the distinguishing case: covered bare, but "Z</w>" is
+# deliberately absent, so a "Z" in last position is uncovered and substituted
+# even though the same character is a real token everywhere else in the
+# piece — an implementation that fell back to the bare lookup at the last
+# position would resolve it instead and never show the difference. Y is
+# covered in neither form, so a run it starts still extends across a "Z" the
+# suffix turns uncovered.
+_FUSE_EOW_SUFFIX = "</w>"
+_FUSE_EOW_VOCAB = {_FUSE_UNK_TOKEN: 0, "a": 1, "a" + _FUSE_EOW_SUFFIX: 2, "Z": 3}
+
+
+def _fuse_unk_model(vocab, merges, fuse, *, unk=_FUSE_UNK_TOKEN, byte_level=False, eow=None):
+    """One tokenizer, built rather than trained, so the file is byte-stable.
+
+    Every classic model declares Whitespace. A model declaring no pre-tokenizer
+    at all is a shape DataNet cannot currently express — `PreTokenizerPattern =
+    null` means "Whitespace" there by decision, while HuggingFace's absent
+    pre-tokenizer does not split at all, and the two disagree on any text with
+    a space. That gap is issue #129 and is not this lot's to close; declaring
+    the pre-tokenizer explicitly keeps this corpus about fuse_unk.
+    """
+    from tokenizers import Tokenizer, models, pre_tokenizers  # noqa: PLC0415
+
+    # tokenizers 0.23.1 raises TypeError on unk_token=None and on
+    # end_of_word_suffix=None alike; both keywords have to be omitted rather
+    # than passed empty.
+    kwargs = {"fuse_unk": fuse}
+    if unk is not None:
+        kwargs["unk_token"] = unk
+    if eow is not None:
+        kwargs["end_of_word_suffix"] = eow
+    tokenizer = Tokenizer(models.BPE(dict(vocab), list(merges), **kwargs))
+    tokenizer.pre_tokenizer = (pre_tokenizers.ByteLevel(add_prefix_space=False) if byte_level
+                               else pre_tokenizers.Whitespace())
+    return tokenizer
+
+
+def _fuse_unk_models() -> list[tuple]:
+    """(name, declares, fuse, tokenizer, texts) for every shape the spec decided on."""
+    from tokenizers import pre_tokenizers  # noqa: PLC0415
+
+    byte_vocab = {c: i for i, c in enumerate(sorted(pre_tokenizers.ByteLevel.alphabet()))}
+
+    # A run in the middle, at each end, the whole text, a single unknown (where
+    # the two flags must agree), two runs split by a covered character, an
+    # alternation (no run at all), and an astral run.
+    plain_texts = ["aZZZa", "ZZa", "aZZ", "ZZZ", "aZa", "ZZaZZ", "ZaZaZ", "a\U0001F600\U0001F601a"]
+    # Without a pre-tokenizer the space is itself uncovered, so "aZ Za" is one
+    # run of three; with Whitespace it is two pieces and must not fuse across.
+    split_texts = ["aZ Za", "Z a Z"]
+
+    models_out = []
+    for fuse in (False, True):
+        suffix = "fused" if fuse else "unfused"
+        models_out.append((
+            f"in_piece_{suffix}", "a run inside a single piece", fuse,
+            _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse), plain_texts))
+        # Only the texts that HAVE a boundary. Handing this model the plain
+        # texts as well would make it report `differs=True` for a reason that
+        # has nothing to do with boundaries — none of them contains a space, so
+        # Whitespace makes each one a single piece and the run fuses inside it
+        # exactly as it does with no pre-tokenizer. The model exists to show a
+        # run *not* crossing a split, so it gets only texts that have one.
+        models_out.append((
+            f"across_split_{suffix}", "a run interrupted by a piece boundary", fuse,
+            _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse), split_texts))
+        models_out.append((
+            f"unk_merge_{suffix}", "a merge whose left side is the unknown token", fuse,
+            _fuse_unk_model(_FUSE_MERGE_VOCAB, _FUSE_MERGE_MERGES, fuse), ["ZZa", "Za", "ZZZa"]))
+        models_out.append((
+            f"covered_unk_{suffix}", "an unknown token that is also a covered character", fuse,
+            _fuse_unk_model(_FUSE_COVERED_UNK_VOCAB, [], fuse, unk="q"),
+            ["qZ", "Zq", "qq", "ZZ", "qZa", "aqZ"]))
+        models_out.append((
+            f"no_unk_{suffix}", "fuse_unk with no unknown token declared", fuse,
+            _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse, unk=None), ["aZZa", "ZZZ"]))
+        models_out.append((
+            f"byte_level_{suffix}", "byte-level, where no character is uncovered", fuse,
+            _fuse_unk_model(byte_vocab, [], fuse, unk=None, byte_level=True),
+            ["a\U0001F600b", "ab"]))
+        models_out.append((
+            f"end_of_word_{suffix}",
+            "a character covered bare but not suffixed, where the end-of-word suffix decides"
+            " the last-position lookup rather than the character's own coverage (D7)", fuse,
+            _fuse_unk_model(_FUSE_EOW_VOCAB, [], fuse, eow=_FUSE_EOW_SUFFIX),
+            ["aYZ", "aZZ", "Za", "aZ"]))
+    return models_out
+
+
+def generate_bpe_fuse_unk() -> dict:
+    """Every fuse_unk shape, each recorded with the flag off and on."""
+    carried = _fuse_unk_models()
+    cases = []
+    for name, _, _, tokenizer, texts in carried:
+        for text in texts:
+            enc = tokenizer.encode(text)
+            cases.append({
+                "id": len(cases),
+                "model": name,
+                "text": text,
+                "tokens": enc.tokens,
+                "ids": enc.ids,
+            })
+
+    # Read as: turning the flag on changes this model's stream, or does not.
+    # The `differs` column is measured below rather than asserted here.
+    streams = {}
+    for case in cases:
+        streams.setdefault(case["model"], {})[case["text"]] = case["tokens"]
+    pairs = []
+    for name, _, fuse, _, _ in carried:
+        if not fuse:
+            continue
+        unfused = name.replace("_fused", "_unfused")
+        differs = any(streams[name][t] != streams[unfused][t] for t in streams[name])
+        pairs.append({"fused": name, "unfused": unfused, "differs": differs})
+
+    return {
+        "metadata": {
+            "algorithm": "BPE fuse_unk",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "hand-built: six classic BPE shapes and one byte-level, all defined in tools/generate_oracles.py",
+            "models": {
+                name: {"declares": declares, "fuse_unk": fuse, "tokenizer_json": tokenizer.to_str()}
+                for name, declares, fuse, tokenizer, _ in carried
+            },
+            "fuse_pairs": pairs,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -3122,6 +3288,7 @@ def main() -> None:
         "bpe_added_tokens.json": generate_bpe_added_tokens,
         "bpe_added_token_flags.json": generate_bpe_added_token_flags,
         "bpe_no_op_settings.json": generate_bpe_no_op_settings,
+        "bpe_fuse_unk.json": generate_bpe_fuse_unk,
         "wordpiece_added_tokens.json": generate_wordpiece_added_tokens,
     }
     for filename, gen in generators.items():

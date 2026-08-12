@@ -555,6 +555,7 @@ public static class TokenizerJsonLoader
             ByteLevel = byteLevel,
             AddPrefixSpace = addPrefixSpace,
             IgnoreMerges = OptionalBoolean(model, "ignore_merges") ?? false,
+            FuseUnk = OptionalBoolean(model, "fuse_unk") ?? false,
             SkippedMerges = skippedMerges,
             EndOfWordSuffix = OptionalString(model, "end_of_word_suffix"),
             // ContinuingSubwordPrefix is deliberately not carried across: a non-null one
@@ -566,7 +567,7 @@ public static class TokenizerJsonLoader
     }
 
     /// <summary>
-    /// Refuses the three <c>model</c> settings that change what BPE produces and that
+    /// Refuses the two <c>model</c> settings that change what BPE produces and that
     /// <see cref="BpeTokenizer"/> does not apply.
     /// </summary>
     /// <remarks>
@@ -577,10 +578,8 @@ public static class TokenizerJsonLoader
     /// 0.23.1: with <c>continuing_subword_prefix="##"</c>, the vocabulary
     /// <c>{a, b, ##b, ab, a##b}</c> and the single merge <c>("a", "##b")</c>, Python
     /// encodes "ab" to the one id of <c>ab</c> where the same model without the prefix
-    /// gives two; <c>fuse_unk</c> collapses a run of uncovered characters into one
-    /// unknown token where this tokenizer always emits one per code point.
-    /// <c>dropout</c> is a training-time regularizer that drops merges at random,
-    /// which no deterministic tokenizer can reproduce at all.
+    /// gives two. <c>dropout</c> is a training-time regularizer that drops merges at
+    /// random, which no deterministic tokenizer can reproduce at all.
     /// </para>
     /// <para>
     /// Refused by name rather than implemented: support is a feature, and a file
@@ -597,12 +596,6 @@ public static class TokenizerJsonLoader
             throw Unsupported(
                 $"its model declares continuing_subword_prefix '{prefix}'",
                 "HuggingFace prefixes every non-initial symbol with it before merging, where BpeTokenizer merges the symbols as they stand");
-        }
-        if (OptionalBoolean(model, "fuse_unk") is true)
-        {
-            throw Unsupported(
-                "its model declares fuse_unk",
-                "HuggingFace then collapses a run of uncovered characters into a single unknown token, where BpeTokenizer emits one per code point");
         }
         // At 0.0 no merge is ever skipped, which is the determinism this refusal
         // protects, so a numeric zero is exempt. A dropout that is present, non-null
