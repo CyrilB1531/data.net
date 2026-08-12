@@ -50,6 +50,19 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private const int End = -1;
 
     private readonly Dictionary<string, int> _vocab;
+    /// <summary>
+    /// The model's own vocabulary, without the added tokens <see cref="_vocab"/>
+    /// folds in — the map that answers "does the model cover this symbol".
+    /// </summary>
+    /// <remarks>
+    /// The two are not interchangeable and the difference is observable. An added
+    /// token that <c>model.vocab</c> does not declare has an id, decodes, and
+    /// answers <c>token_to_id</c> — so identity reads <see cref="_vocab"/> — but it
+    /// does not make the character it spells covered: HuggingFace substitutes that
+    /// character with the unknown token, and measured, <c>aQa</c> is
+    /// <c>['a', '[UNK]', 'a']</c> there. Coverage therefore reads this one.
+    /// </remarks>
+    private readonly Dictionary<string, int> _modelVocab;
     private readonly string[] _tokens;          // id -> token, the inverse of _vocab
     private readonly Dictionary<long, int> _ranks;   // (left << 32 | right) -> rank
     private readonly int[] _merged;             // rank -> the id the pair becomes
@@ -83,6 +96,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             _vocab[entry.Key] = entry.Value;
             maxId = Math.Max(maxId, entry.Value);
         }
+        _modelVocab = new Dictionary<string, int>(_vocab, StringComparer.Ordinal);
         foreach (AddedToken added in vocabulary.AddedTokens)
         {
             _vocab[added.Content] = added.Id;
@@ -100,7 +114,11 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
         if (vocabulary.UnkToken is { } unk)
         {
-            if (!_vocab.TryGetValue(unk, out _unkId))
+            // The model's vocabulary, not the folded one: a file declaring its
+            // unknown token only in added_tokens does not build in the
+            // reference either — "Unk token `<unk>` not found in the
+            // vocabulary" — so accepting it here was a divergence.
+            if (!_modelVocab.TryGetValue(unk, out _unkId))
             {
                 throw new ArgumentException(
                     $"The unknown token '{unk}' is not in the vocabulary.", nameof(vocabulary));
@@ -251,7 +269,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         if (_ignoreMerges)
         {
             string mapped = _byteLevel ? MapBytes(piece) : piece;
-            if (_vocab.TryGetValue(mapped, out int whole))
+            if (_modelVocab.TryGetValue(mapped, out int whole))
             {
                 ids.Add(whole);
                 tokens.Add(_tokens[whole]);
@@ -331,7 +349,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
                 ? piece.Substring(i, width) + _endOfWord
                 : piece.Substring(i, width);
 #pragma warning restore CA1845
-            if (_vocab.TryGetValue(symbol, out int id))
+            if (_modelVocab.TryGetValue(symbol, out int id))
             {
                 symbols[count++] = id;
                 previousWasSubstituted = false;
@@ -385,7 +403,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         for (int i = 0; i < bytes.Length; i++)
         {
             string symbol = ByteLevelAlphabet.ToChar(bytes[i]).ToString();
-            if (!_vocab.TryGetValue(symbol, out int id))
+            if (!_modelVocab.TryGetValue(symbol, out int id))
             {
                 throw new ArgumentException(
                     $"The vocabulary has no entry for byte 0x{bytes[i]:X2} ('{symbol}'); it is not a byte-level model.");
