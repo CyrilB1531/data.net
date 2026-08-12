@@ -25,6 +25,15 @@ POSIX_HOME = "/home/" + "someone/Documents/devs/data.net"
 MAC_HOME = "/Users/" + "someone/src/data.net"
 WINDOWS_HOME = "C:\\\\Users\\\\someone\\\\src"
 
+# A generic Windows profile folder named in prose, with nothing after it: the
+# same "mention vs. path" distinction the POSIX patterns draw with their
+# trailing separator, checked here for the Windows one too.
+WINDOWS_PROSE = "C:" + "\\Users\\" + "Public"
+
+# The same folder as an actual path, with a trailing separator and a
+# component after it -- the shape that must still be flagged.
+WINDOWS_PATH_WITH_FILE = WINDOWS_PROSE + "\\file"
+
 # Load-bearing paths that must never be flagged. The oracle generator has to
 # run from a neutral directory -- nltk refuses to import its dependencies when
 # they appear to live under the current one -- so /tmp appears in CLAUDE.md,
@@ -52,6 +61,17 @@ def test_a_mac_home_directory_is_flagged():
 
 def test_a_windows_home_directory_is_flagged():
     assert scan(WINDOWS_HOME)
+
+
+def test_a_bare_windows_profile_mention_is_not_flagged():
+    # "Public" here is a generic Windows profile folder, not someone's home --
+    # the same class of false positive the trailing separator rules out for
+    # the POSIX patterns above.
+    assert not scan("See " + WINDOWS_PROSE + " for shared files")
+
+
+def test_a_windows_path_with_a_trailing_component_is_flagged():
+    assert scan(WINDOWS_PATH_WITH_FILE)
 
 
 def test_the_neutral_working_directory_is_not_flagged():

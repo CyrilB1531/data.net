@@ -34,7 +34,8 @@ import sys
 NAMED_SHAPES: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("a home directory under /home", re.compile(r"/home/[A-Za-z0-9._-]+/")),
     ("a home directory under /Users", re.compile(r"/Users/[A-Za-z0-9._-]+/")),
-    ("a Windows home directory", re.compile(r"[A-Za-z]:\\{1,2}Users\\{1,2}[A-Za-z0-9._-]+")),
+    ("a Windows home directory",
+     re.compile(r"[A-Za-z]:\\{1,2}Users\\{1,2}[A-Za-z0-9._-]+\\{1,2}")),
     # A following path character is required, so that a mention of the
     # directory in prose is not a finding and, more usefully, so that this
     # very line does not match the pattern it defines.
