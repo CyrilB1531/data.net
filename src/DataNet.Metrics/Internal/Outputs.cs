@@ -191,24 +191,26 @@ internal static class Outputs
         TKernel kernel = default)
         where TKernel : struct, IResidualKernel
     {
-        double[] result = new double[outputCount];
+        CompensatedSum[] sums = new CompensatedSum[outputCount];
         bool weighted = !sampleWeight.IsEmpty;
-        double totalWeight = 0.0;
+        CompensatedSum totalWeight = default;
 
         for (int row = 0; row < samples; row++)
         {
             double weight = weighted ? sampleWeight[row] : 1.0;
-            totalWeight += weight;
+            totalWeight.Add(weight);
             int offset = row * outputCount;
             for (int col = 0; col < outputCount; col++)
             {
-                result[col] += weight * kernel.Apply(yTrue[offset + col], yPred[offset + col]);
+                sums[col].Add(weight * kernel.Apply(yTrue[offset + col], yPred[offset + col]));
             }
         }
 
+        double[] result = new double[outputCount];
+        double total = totalWeight.Value;
         for (int col = 0; col < outputCount; col++)
         {
-            result[col] /= totalWeight;
+            result[col] = sums[col].Value / total;
         }
 
         return result;

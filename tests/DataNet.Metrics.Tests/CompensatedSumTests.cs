@@ -194,4 +194,29 @@ public sealed class CompensatedSumTests
         }
         return 1m - (numerator / denominator);
     }
+
+    /// <summary>
+    /// The shared walk accumulates the total weight as well as the values, over as many
+    /// terms as there are samples. A million equal weights must still divide the sum by
+    /// exactly what they add up to.
+    /// </summary>
+    [Fact]
+    public void A_uniform_weight_changes_no_shared_mean()
+    {
+        const int Rows = 1_000_000;
+        double[] yTrue = new double[Rows];
+        double[] yPred = new double[Rows];
+        double[] weights = new double[Rows];
+        for (int i = 0; i < Rows; i++)
+        {
+            yTrue[i] = 1.0 + (i % 17);
+            yPred[i] = yTrue[i] - 0.25;
+            weights[i] = 0.1;
+        }
+
+        double unweighted = MeanSquaredError.Score(yTrue, yPred);
+        double weighted = MeanSquaredError.Score(yTrue, yPred, sampleWeight: weights);
+
+        Assert.Equal(unweighted, weighted, 15);
+    }
 }
