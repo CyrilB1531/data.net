@@ -357,16 +357,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
                 ? 2
                 : 1;
             bool last = i + width == piece.Length;
-            // CA1845 wants string.Concat over spans here. Its two-span overload
-            // arrived in netstandard2.1, and this library targets netstandard2.0
-            // as well, where the call binds to Concat(object, object) and does
-            // not compile. The suffix is null for every byte-level model, so this
-            // branch is the classic lineage's alone.
-#pragma warning disable CA1845
-            string symbol = last && _endOfWord is not null
-                ? piece.Substring(i, width) + _endOfWord
-                : piece.Substring(i, width);
-#pragma warning restore CA1845
+            string symbol = Decorate(piece, i, width, last);
             if (_modelVocab.TryGetValue(symbol, out int id))
             {
                 symbols[count++] = id;
@@ -387,6 +378,28 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             i += width;
         }
         return count;
+    }
+
+    /// <summary>
+    /// The vocabulary key for one code point of a piece: the characters
+    /// themselves, plus whatever decoration its position calls for.
+    /// </summary>
+    /// <param name="piece">The pre-tokenized piece being walked.</param>
+    /// <param name="at">The index of the code point's first <see cref="char"/>.</param>
+    /// <param name="width">Its width in <see cref="char"/>s — two for a surrogate pair.</param>
+    /// <param name="last">Whether it ends the piece.</param>
+    private string Decorate(string piece, int at, int width, bool last)
+    {
+        // CA1845 wants string.Concat over spans here. Its two-span overload
+        // arrived in netstandard2.1, and this library targets netstandard2.0 as
+        // well, where the call binds to Concat(object, object) and does not
+        // compile. The suffix is null for every byte-level model, so this
+        // branch is the classic lineage's alone.
+#pragma warning disable CA1845
+        return last && _endOfWord is not null
+            ? piece.Substring(at, width) + _endOfWord
+            : piece.Substring(at, width);
+#pragma warning restore CA1845
     }
 
     /// <summary>Fills <paramref name="symbols"/> with one id per UTF-8 byte of <paramref name="piece"/>.</summary>
