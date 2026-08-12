@@ -50,11 +50,8 @@ gh run list --workflow sonarcloud.yml --limit 5
 gh run view <id> --log | grep -i "Base dir"
 ```
 
-Expected:
-
-```text
-Base dir: /home/runner/work/data.net/data.net
-```
+Expected: a `Base dir:` line holding the runner's checkout directory, which is the value of
+`$GITHUB_WORKSPACE`.
 
 - [x] **Step 3: Confirm that equals `$GITHUB_WORKSPACE`**
 

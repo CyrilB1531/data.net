@@ -733,7 +733,7 @@ more and compare before reporting drift.
 - [x] **Step 3: The two gates outside the solution**
 
 ```bash
-SCRATCH=/tmp/claude-49201103/-home-cyril-Documents-devs-data-net/dc8f8ded-9994-4ad8-969c-b4d66b7527f8/scratchpad
+SCRATCH=$(mktemp -d)   # any scratch directory outside the repository
 rm -rf ./artifacts "$SCRATCH/pack-packages"
 NUGET_PACKAGES="$SCRATCH/pack-packages" bash -c 'for p in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do dotnet pack "$p" -c Release -o ./artifacts || exit 1; done'
 python3 tools/check_nuspec_dependencies.py ./artifacts --require-all

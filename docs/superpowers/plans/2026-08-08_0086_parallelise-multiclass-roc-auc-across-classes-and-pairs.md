@@ -551,7 +551,7 @@ serialise the gain this whole plan exists to collect.
 
 This refactor must not move a value, and the committed corpus test only asserts
 1e-9. So take a raw-bits fingerprint of the current code first. Create
-`/tmp/claude-49201103/-home-cyril-Documents-devs-data-net2/7a731faa-cc89-49bb-ba20-60f8be57968a/scratchpad/BitsFingerprint.cs`
+`$SCRATCH/BitsFingerprint.cs`
 as a temporary test file, copied into the test project:
 
 ```csharp
@@ -599,7 +599,7 @@ public sealed class BitsFingerprint
 ```
 
 ```bash
-SCRATCH=/tmp/claude-49201103/-home-cyril-Documents-devs-data-net2/7a731faa-cc89-49bb-ba20-60f8be57968a/scratchpad
+SCRATCH=$(mktemp -d)   # any scratch directory outside the repository
 cp $SCRATCH/BitsFingerprint.cs tests/DataNet.Metrics.Tests/
 BITS_OUT=$SCRATCH/bits-before.txt dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj \
   -c Release --filter "FullyQualifiedName~BitsFingerprint" -e BITS_OUT=$SCRATCH/bits-before.txt
@@ -928,7 +928,7 @@ one fewer thing for a worker to get wrong.
 - [x] **Step 5: Diff the bits against the pre-refactor fingerprint**
 
 ```bash
-SCRATCH=/tmp/claude-49201103/-home-cyril-Documents-devs-data-net2/7a731faa-cc89-49bb-ba20-60f8be57968a/scratchpad
+SCRATCH=$(mktemp -d)   # any scratch directory outside the repository
 BITS_OUT=$SCRATCH/bits-after.txt dotnet test tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj \
   -c Release --filter "FullyQualifiedName~BitsFingerprint" -e BITS_OUT=$SCRATCH/bits-after.txt
 diff $SCRATCH/bits-before.txt $SCRATCH/bits-after.txt && echo "IDENTICAL"
@@ -1782,7 +1782,7 @@ Expected: clean. Warnings are errors here too.
 uptime          # record the one-minute load average; it goes in the write-up
 nproc
 dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- roc-parallel \
-  | tee /tmp/claude-49201103/-home-cyril-Documents-devs-data-net2/7a731faa-cc89-49bb-ba20-60f8be57968a/scratchpad/roc-parallel.txt
+  | tee $SCRATCH/roc-parallel.txt
 uptime          # and again afterwards
 ```
 

@@ -954,7 +954,7 @@ Counts, enumerations and "see X" pointers go stale silently. Check the BPE guide
 - [x] **Step 5: Verify the guides still compile**
 
 ```bash
-SCRATCH=/tmp/claude-49201103/-home-cyril-Documents-devs-data-net/c134d377-25c6-4da3-8dec-8ffcbffa021b/scratchpad
+SCRATCH=$(mktemp -d)   # any scratch directory outside the repository
 rm -rf "$SCRATCH/pack-packages" ./artifacts
 NUGET_PACKAGES="$SCRATCH/pack-packages" bash -c '
   for p in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
@@ -981,7 +981,7 @@ git commit -m "Record how an added token matches, and what it costs the round tr
 
 ```bash
 cd <repo>
-SCRATCH=/tmp/claude-49201103/-home-cyril-Documents-devs-data-net/c134d377-25c6-4da3-8dec-8ffcbffa021b/scratchpad
+SCRATCH=$(mktemp -d)   # any scratch directory outside the repository
 
 git status --porcelain                                                   # empty
 dotnet build DataNet.slnx -c Release --no-incremental > "$SCRATCH/b.log" 2>&1; echo "build=$?"; tail -3 "$SCRATCH/b.log"

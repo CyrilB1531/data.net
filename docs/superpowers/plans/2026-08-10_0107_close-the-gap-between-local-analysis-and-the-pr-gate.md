@@ -31,7 +31,7 @@ Revised counts: **15 real fixes** (CA1305 ×9, CA1062 ×4, CA2251 ×1, CA1307 ×
 
 ```bash
 cd <repo>
-SCRATCH=/tmp/claude-49201103/-home-cyril-Documents-devs-data-net/c134d377-25c6-4da3-8dec-8ffcbffa021b/scratchpad
+SCRATCH=$(mktemp -d)   # any scratch directory outside the repository
 
 # The switch, as a command-line override. Used in Tasks 3-7, before it is committed.
 ANALYSIS="-p:EnableNETAnalyzers=true -p:AnalysisLevel=10.0 -p:AnalysisMode=All"
