@@ -380,12 +380,16 @@ the reviewer's question is "is this the same code" rather than "what broke".
 grep -n "private int InitialSymbols" -A 48 src/DataNet.Embeddings/Tokenization/BpeTokenizer.cs
 ```
 
-Note the `#pragma warning disable CA1845` and the comment above it: `string.Concat`'s two-span overload
+Note the `#pragma warning disable CA1845` and the comment above it: the rule fires because a `Substring`
+call is an operand of the concatenation, and the fix it wants — `string.Concat`'s two-span overload —
 arrived with .NET Core 3.0 and is in no `netstandard` version at all, so on `netstandard2.0` the call
-resolves against `Concat(object, object)` and fails to compile with `CS1503`. **The pragma moves with the
-code it covers.** When
-suppressed code moves and the suppression stays behind, the rule reappears somewhere else — that has
-happened twice in this repository.
+resolves against `Concat(object, object)` and fails to compile with `CS1503`. **The suppression does not
+come along**, because the extraction removes the reason for it: hoisting the `Substring` into a local
+leaves no `Substring` call inside the concatenation, which is what CA1845 keys on, and the rule stops
+firing. Step 2 does that, and the build measures the result at 0 warnings.
+
+Carry a suppression across a move only when the rule still fires on the other side. When it does and the
+`#pragma` stays behind, the rule reappears somewhere else — that has happened twice in this repository.
 
 - [ ] **Step 2: Extract**
 
@@ -403,18 +407,18 @@ and add the method below `InitialSymbols`:
     /// <param name="last">Whether it ends the piece.</param>
     private string Decorate(string piece, int at, int width, bool last)
     {
-        // CA1845 wants string.Concat over spans here. Its two-span overload
-        // arrived with .NET Core 3.0 and is in no netstandard version at all,
-        // and this library targets netstandard2.0 as well, where the call
-        // resolves against Concat(object, object) and fails to compile --
-        // measured, CS1503, and a ReadOnlySpan<char> cannot become an object.
-        // The suffix is null for every byte-level model, so this branch is the
-        // classic lineage's alone.
-#pragma warning disable CA1845
+        // The characters go into a local rather than being spelled twice, which
+        // is also what retires the CA1845 suppression the old code carried: the
+        // rule keys on a Substring call inside the concatenation, and there is
+        // none here. Its own fix would not compile anyway -- string.Concat's
+        // two-span overload arrived with .NET Core 3.0, is in no netstandard
+        // version at all, and on netstandard2.0 the call resolves against
+        // Concat(object, object), CS1503, since a ReadOnlySpan<char> cannot
+        // become an object.
+        string characters = piece.Substring(at, width);
         return last && _endOfWord is not null
-            ? piece.Substring(at, width) + _endOfWord
-            : piece.Substring(at, width);
-#pragma warning restore CA1845
+            ? characters + _endOfWord
+            : characters;
     }
 ```
 
@@ -461,8 +465,9 @@ extends.
 No test comes with this, deliberately: the frozen corpora are the test, and
 a pure extraction that moved a token stream would fail them.
 
-The CA1845 pragma moves with the code it covers. Left behind, the rule
-reappears elsewhere -- that has happened twice here.
+The CA1845 pragma does not come along. Hoisting the Substring into a local
+leaves no Substring call inside the concatenation, which is what the rule
+keys on, so there is nothing left to suppress -- measured, 0 warnings.
 
 Issue #120
 EOF
@@ -704,8 +709,10 @@ and give `Decorate` the position it now needs. Replace the method from Task 2 wi
     /// symbol that both continues a piece and ends it carries both — measured
     /// against <c>tokenizers</c> 0.23.1, where <c>"ab"</c> under both settings
     /// gives <c>['a', '##b&lt;/w&gt;']</c>. The prefix belongs to the piece and
-    /// not to the text, which costs nothing here because this is called once
-    /// per piece.
+    /// not to the text, which costs nothing here: this runs once per code point
+    /// and only reads <paramref name="first"/>, and the caller computing it —
+    /// <see cref="InitialSymbols"/>, which is the once-per-piece one — already
+    /// knows where the piece starts.
     /// </remarks>
     private string Decorate(string piece, int at, int width, bool first, bool last)
     {
@@ -713,18 +720,9 @@ and give `Decorate` the position it now needs. Replace the method from Task 2 wi
         string prefix = !first && _continuingPrefix is not null ? _continuingPrefix : string.Empty;
         string suffix = last && _endOfWord is not null ? _endOfWord : string.Empty;
 
-        // CA1845 wants string.Concat over spans. Its two-span overload arrived
-        // with .NET Core 3.0 and is in no netstandard version at all, and this
-        // library also targets netstandard2.0, where the call resolves against
-        // Concat(object, object) and fails to compile -- measured, CS1503, and
-        // a ReadOnlySpan<char> cannot become an object. Both decorations are
-        // null for every byte-level model, so this is the classic lineage's
-        // path alone.
-#pragma warning disable CA1845
         return prefix.Length == 0 && suffix.Length == 0
             ? characters
             : prefix + characters + suffix;
-#pragma warning restore CA1845
     }
 ```
 

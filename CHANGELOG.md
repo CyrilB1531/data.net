@@ -207,12 +207,17 @@ and including `0.2.0` predate the split and covered all three at once — see
   including a known split divergence from HuggingFace on letters and digits
   above the Basic Multilingual Plane.
 - **`continuing_subword_prefix`** — a `tokenizer.json` declaring one loads instead of being refused, and
-  every symbol after the first of each pre-tokenized piece is looked up with the prefix applied.
-  `BpeVocabulary.ContinuingSubwordPrefix` stops being a name with nothing behind it. A merge's result is
-  its left side plus its right side without the prefix — the left keeps its own — and an empty prefix
-  reads as absent, as an empty `EndOfWordSuffix` has since the loader stopped refusing one. All of it
-  measured against `tokenizers` 0.23.1 rather than assumed, including the absence of any fallback to the
-  bare form.
+  on the classic, non-byte-level lineage every symbol after the first of each pre-tokenized piece is
+  looked up with the prefix applied. `BpeVocabulary.ContinuingSubwordPrefix` stops being a name with
+  nothing behind it. A merge's result is its left side plus its right side without the prefix — the left
+  keeps its own, and an `end_of_word_suffix` on that right side stays on — and an empty prefix reads as
+  absent, as an empty `EndOfWordSuffix` has since the loader stopped refusing one. All of it measured
+  against `tokenizers` 0.23.1 rather than assumed, including the absence of any fallback to the bare
+  form. The byte-level pairing is **refused** by name instead, by `BpeTokenizer`'s constructor and by
+  `TokenizerJsonLoader.LoadBpe`: byte-level symbols are never prefixed while a merge's right side is
+  still stripped, and the byte-level alphabet spells `0x23` as `#`, so the two halves would disagree and
+  land on another existing id rather than raise. Nothing here measures what `tokenizers` does with such
+  a file; the refusal says only that DataNet does not reproduce it.
 - **`fuse_unk`** — a `tokenizer.json` declaring it loads instead of being
   refused, and a run of consecutive characters the vocabulary does not cover
   becomes one unknown token rather than one each. The run stops at a

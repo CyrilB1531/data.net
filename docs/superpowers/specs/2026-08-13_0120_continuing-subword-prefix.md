@@ -141,7 +141,8 @@ changed: what moves is which symbols enter the loop, not what the loop is keyed 
 A corpus `bpe_continuing_prefix.json`, generated against `tokenizers` 0.23.1, with the models built inside
 the generator and carried in `metadata.models` — the shape #118, #119 and #130 established.
 
-Seven cases across eight models — case 3 needs two — each existing for something no other distinguishes:
+Eight distinctions across ten models — distinction 3 needs two, and 7 needs a no-prefix baseline to be
+compared against — recorded as 25 encoded cases. Each exists for something no other distinguishes:
 
 1. **the base case**, `ab` → `['a','##b']`;
 2. **two words**, `ab ab`, the only case that tells per-piece from per-text (D1);
@@ -151,14 +152,24 @@ Seven cases across eight models — case 3 needs two — each existing for somet
 5. **a merge with both sides prefixed**, the only case that tells "the right side loses its prefix" from
    "both sides do" — the second reading gives `bc` where the reference gives `##bc` (D3b);
 6. **prefix and suffix together** (D4);
-7. **an empty prefix**, whose stream must equal the no-prefix model's — its own regression proof (D5).
+7. **an empty prefix**, whose stream must equal the no-prefix model's — its own regression proof (D5);
+8. **a merge whose right side carries the prefix and the suffix at once**, the only case that tells "the
+   strip takes the prefix off and leaves the suffix on" from a strip that takes both, or neither — D3b's
+   fourth row, `("a", "##b</w>")` → `ab</w>`, which was measured during design and had no model holding
+   it until the final review put one there.
 
 Plus the build refusal of D3's third row, recorded the way #118 records its own: the exact document handed
 to the reference and the error it answered with.
 
 ## Out of scope
 
-`ByteLevelSymbols`, since a byte-level model declares no prefix. `WordPieceTokenizer`, which carries its
+Applying the prefix in `ByteLevelSymbols`. Nothing here measured what a byte-level model declaring one
+does in the reference, and the two halves of `BpeTokenizer` would answer differently if it were left
+alone — the symbols unprefixed, a merge's right side still stripped, and the disagreement silent because
+the byte-level alphabet spells `0x23` as `#`. So the pairing is **refused** by name instead, by
+`TokenizerJsonLoader.LoadBpe` for a file and by `BpeTokenizer`'s constructor for a hand-built
+`BpeVocabulary`; what the reference makes of such a file stays out of scope, and the refusal does not rest
+on it. `WordPieceTokenizer`, which carries its
 own implementation of the same setting — `ReadWordPiece` already reads `continuing_subword_prefix` and
 defaults it to `##`, and whether the two implementations should share anything is a question this lot does
 not open. The rest of umbrella #105: `dropout` (#123), the normalizer (#121), and the no-split mode

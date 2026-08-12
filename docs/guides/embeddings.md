@@ -177,12 +177,18 @@ different one is **rejected**, with a message naming what was found:
   of `0.0` and an `end_of_word_suffix` of `""` are accepted, because each
   provably changes nothing — the empty suffix reads back as absent on
   `BpeVocabulary`, an empty marker marking nothing. `continuing_subword_prefix`
-  is not refused at any value: HuggingFace prefixes every non-initial symbol
-  of a piece with it before merging, on the classic (non-byte-level) lineage,
-  and so does `BpeTokenizer`; an empty prefix reads back as absent on
-  `BpeVocabulary`, the same normalisation `end_of_word_suffix` gets. A
-  byte-level model that declares one is untested against the reference and is
-  not applied on that path;
+  is applied rather than refused on the classic (non-byte-level) lineage:
+  HuggingFace prefixes every non-initial symbol of a piece with it before
+  merging, and so does `BpeTokenizer`; an empty prefix reads back as absent on
+  `BpeVocabulary`, the same normalisation `end_of_word_suffix` gets;
+- for BPE, a **non-empty** `continuing_subword_prefix` on a byte-level model.
+  The prefix is never applied to a byte-level model's symbols while a merge's
+  right side still has it stripped, so the two halves of the tokenizer would
+  disagree — and silently, since the byte-level alphabet spells `0x23` as `#`,
+  which makes a stripped right side land on another entry that exists. The
+  refusal says that DataNet does not reproduce such a file, not anything about
+  what `tokenizers` makes of one. `BpeTokenizer`'s constructor refuses the same
+  pairing, since `BpeVocabulary` can be built by hand;
 - for BPE, a `ByteLevel` block that declares no `add_prefix_space`, wherever it
   appears — as the pre-tokenizer, as the second step of a `Sequence`, or as the
   `decoder`. `tokenizers` has no default for that field and refuses such a file
