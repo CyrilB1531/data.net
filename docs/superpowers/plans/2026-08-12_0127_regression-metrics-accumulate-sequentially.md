@@ -1058,14 +1058,146 @@ git commit -m "Publish what compensating the regression sums costs"
 
 ---
 
-### Task 7: The record, and final verification
+### Task 7: Recover the cost, one lever at a time
+
+**Files:**
+
+- Modify: `src/DataNet.Metrics/Internal/CompensatedSum.cs`
+- Modify: `src/DataNet.Metrics/Internal/Outputs.cs`
+- Modify: `src/DataNet.Metrics/R2.cs`, `src/DataNet.Metrics/ExplainedVariance.cs` *(only where the unweighted path applies)*
+
+**Depends on:** Task 6, whose numbers are the line to beat.
+
+**Interfaces:**
+
+- `CompensatedSum` keeps `void Add(double value)` and `readonly double Value`. Nothing outside changes.
+
+**What Task 6 measured, and what it means.** Compensating cost **1.38× to 1.56×** on the largest rows, and
+the reference the guide publishes moved with it: `mse` at n = 1 000 000 was level with numpy (4 715 against
+4 738 ms) and is now 1.43× it. The important asymmetry is that **the uncompensated baseline is scalar too**,
+so this is not a matter of clawing back an unavoidable tax — a vectorized compensated sum can be faster than
+the naive scalar loop it replaced.
+
+Three levers. **Measure each on its own**, keep it only if it pays, and say what each one bought.
+
+- [ ] **Step 1: The unweighted path, which is pure waste today**
+
+`Outputs.WeightedMean` multiplies by `weight` and accumulates `totalWeight` term by term even when no weight
+was supplied — where the sum of *n* ones is exactly *n* for every `n` below 2^53, and multiplying by 1.0
+changes nothing. Split the loop rather than testing inside it:
+
+```csharp
+        CompensatedSum[] sums = new CompensatedSum[outputCount];
+        double total;
+
+        if (sampleWeight.IsEmpty)
+        {
+            for (int row = 0; row < samples; row++)
+            {
+                int offset = row * outputCount;
+                for (int col = 0; col < outputCount; col++)
+                {
+                    sums[col].Add(kernel.Apply(yTrue[offset + col], yPred[offset + col]));
+                }
+            }
+            // Exact: n additions of 1.0 land on n for every n below 2^53, and this
+            // repository's array-length guard is far below that.
+            total = samples;
+        }
+        else
+        {
+            CompensatedSum totalWeight = default;
+            for (int row = 0; row < samples; row++)
+            {
+                double weight = sampleWeight[row];
+                totalWeight.Add(weight);
+                int offset = row * outputCount;
+                for (int col = 0; col < outputCount; col++)
+                {
+                    sums[col].Add(weight * kernel.Apply(yTrue[offset + col], yPred[offset + col]));
+                }
+            }
+            total = totalWeight.Value;
+        }
+```
+
+`R2` and `ExplainedVariance` carry the same `weighted ? sampleWeight[row] : 1.0` shape; give them the same
+treatment only if Step 4 shows this lever pays.
+
+- [ ] **Step 2: Branchless accumulation**
+
+`CompensatedSum.Add` branches on `Math.Abs(_sum) >= Math.Abs(value)`, and that branch's outcome depends on
+the data, so it mispredicts. Knuth's 2Sum is exact, branchless, and six operations:
+
+```csharp
+    public void Add(double value)
+    {
+        double total = _sum + value;
+        double valuePart = total - _sum;
+        double sumPart = total - valuePart;
+        _compensation += (_sum - sumPart) + (value - valuePart);
+        _sum = total;
+    }
+```
+
+This is not an approximation of Neumaier — it is exact for every pair of finite doubles, where Neumaier's
+branch exists precisely to avoid the case 2Sum handles arithmetically. The unit tests must not move: if any
+value changes, the two are not both exact and something is wrong.
+
+- [ ] **Step 3: Vectorize, if the first two leave anything on the table**
+
+Keep one partial compensated sum per SIMD lane and reduce at the end. `VectorMath.Dot` is the precedent —
+`Vector<T>` on `net10.0`, a scalar loop on `netstandard2.0`, and
+`docs/decisions/` records that split. Read it before writing a second one.
+
+Two consequences to state rather than discover:
+
+- lane-wise summation changes the **order** of additions, so `net10.0` and `netstandard2.0` will not
+  produce bit-identical results for these metrics. The corpus compares at `1e-9` and both paths stay
+  compensated, so both remain correct — but this repository asserts bit-identity elsewhere
+  (`Pooler.MeanPoolBatch`), and it must be clear that it is not asserted here;
+- the kernel is called per element through a generic struct, so it vectorizes only if the kernel does.
+  Measure before committing to it: a lane-wise `Vector<double>` accumulation that still calls `Apply`
+  scalar-wise per element buys nothing.
+
+- [ ] **Step 4: Measure each lever separately, in one window, with the control**
+
+The protocol Task 6 used, and for the same reasons: build the baseline worktree at the merge base, copy
+this branch's `bench/corpus/metrics/` into it, and **interleave** — branch, baseline, branch, baseline.
+Record `uptime` at both ends. `median_ae` sorts and no lever touches it: if it moves more than a percent or
+two, the window is contaminated and the round is void.
+
+```bash
+dotnet run -c Release --project bench/DataNet.Text.Benchmarks --no-build -- compare-metrics
+```
+
+writes `bench/results/csharp-metrics.json`. Copy it aside after every campaign, or the next run overwrites
+it — that is how the first attempt at Task 6 lost three campaigns.
+
+Report a table per lever: `mse`, `mae`, `r2` at n = 100 000 and n = 1 000 000, against Task 6's numbers,
+with `median_ae` beside them as the control. A lever that does not pay is **reverted**, not kept "because
+it should help".
+
+- [ ] **Step 5: Green, and commit what paid**
+
+```bash
+dotnet build DataNet.slnx -c Release --no-incremental > /tmp/127-t7-b.log 2>&1; echo "build=$?"; tail -3 /tmp/127-t7-b.log
+dotnet test DataNet.slnx -c Release > /tmp/127-t7-t.log 2>&1; echo "test=$?"; grep -E "^Réussi!|^Échoué!" /tmp/127-t7-t.log
+```
+
+Every accuracy test must still pass unchanged — the whole point is that these levers change speed and not
+answers. One commit per lever kept, each naming what it bought.
+
+---
+
+### Task 8: The record, and final verification
 
 **Files:**
 
 - Modify: `CHANGELOG.md`
 - Modify: `docs/equivalence.md`
 
-**Depends on:** Tasks 2-6.
+**Depends on:** Tasks 2-7.
 
 - [ ] **Step 1: Amend the CHANGELOG entry rather than adding a Fixed one**
 
