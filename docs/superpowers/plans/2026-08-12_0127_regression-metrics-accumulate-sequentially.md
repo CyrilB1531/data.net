@@ -35,7 +35,8 @@ sample arrays rebuilt on both sides from one closed form, probes compared bit fo
   is incremental: without `--no-incremental` no analyzer diagnostic is produced at all.**
 - A suppression carries a reason a reviewer could disagree with, at the call site for one site, in the
   area's `Directory.Build.props` for a whole area. "Too noisy" is not a reason.
-- `dotnet format DataNet.slnx --verify-no-changes` must exit 0. Run it **bare**, no `env -u DOTNET_ROOT`.
+- `dotnet format DataNet.slnx --verify-no-changes` runs **once, in Task 7**, before the final review — not
+  per task. It must exit 0 there, and it is run **bare**, with no `env -u DOTNET_ROOT` wrapper.
 - Read the pass/fail **counts** of every test run. A `--filter` that matches nothing exits zero and reports
   success. Baseline on this branch: **2947 passing, 0 failed**, across eight assemblies — taken after
   `origin/main` was merged in on 2026-08-12, bringing issue #119's `fuse_unk` and its 16 tests.
