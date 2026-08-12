@@ -44,6 +44,14 @@ sample arrays rebuilt on both sides from one closed form, probes compared bit fo
 - Oracle generation runs from a neutral working directory (`cd /tmp` first) or `nltk` refuses to import,
   and the generator's own exit code is read, never a pipeline's.
 - `docs/**` and `tools/README.md` are inside CI's markdownlint glob; `CHANGELOG.md` is not.
+- **No machine path in anything committed** — issue #133 exists because two sweeps removed them and nothing
+  stops the next one. `/home/`, `/Users/`, `/root/`, `C:\Users`, and the session scratchpad prefix, which
+  is named after the checkout's absolute path. `/tmp` is fine and is load-bearing for the oracle generator.
+- **A comment that asserts what numpy, scikit-learn or the arithmetic does is a claim, and a false one is a
+  defect** — issue #134 exists because three were found in a day, none by a tool. Every comment this branch
+  adds about the reference or about floating-point behaviour must be one the reader could check and find
+  true, and the ones that rest on a measurement should carry it. The task reviews ask about this
+  explicitly.
 
 ## What the tolerance is, and why it matters here
 
