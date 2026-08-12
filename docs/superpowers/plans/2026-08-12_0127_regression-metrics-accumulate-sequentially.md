@@ -92,7 +92,7 @@ The spec's D3 rule cannot be applied to a guess, and Task 4 must not write a tes
 believe can fail.
 
 **Measured on 2026-08-12, and the shape it corrected.** The construction this plan first proposed was
-degenerate: at `offset = 1e9` the ULP is about `2.4e-7`, and a prediction perturbed by `1e-8` rounds back
+degenerate: at `offset = 1e9` the ULP is `2^-23`, about `1.19e-7`, and a prediction perturbed by `1e-8` rounds back
 onto the target, so every residual was exactly zero and `mse = 0`, `r2 = 1` would have passed while proving
 nothing — in the probe, in Task 2's test and in Task 5's fixture alike. The perturbation is what has to
 clear the ULP; the *ramp* does not, because a ramp quantized onto ULP multiples is exactly the
@@ -258,7 +258,7 @@ public sealed class CompensatedSumTests
     /// it, and a prediction perturbed by a multiple of 1e-6.
     /// </summary>
     /// <remarks>
-    /// 1e-6 and not smaller: the ULP at 1e9 is about 2.4e-7, so a perturbation below
+    /// 1e-6 and not smaller: the ULP at 1e9 is 2^-23, about 1.19e-7, so a perturbation below
     /// half of that rounds back onto the target and every residual becomes exactly
     /// zero — which scores a perfect R² and proves nothing. The ramp's own step is
     /// 5e-8, below the ULP and deliberately so: quantizing it onto ULP multiples is
@@ -759,7 +759,7 @@ In `tools/generate_oracles.py`, beside the other regression generators:
 CONDITIONING_SAMPLES = 200_000
 CONDITIONING_OFFSET = 1e9
 CONDITIONING_SPREAD = 1e-2
-# 1e-6 and not the ramp's own 5e-8 step: the ULP at 1e9 is about 2.4e-7, so a
+# 1e-6 and not the ramp's own 5e-8 step: the ULP at 1e9 is 2^-23, about 1.19e-7, so a
 # perturbation below half of that rounds straight back onto the target. Measured:
 # with 1e-8 every residual is exactly zero, mse is 0 and r2 is 1, and a fixture built
 # that way passes while proving nothing. The ramp's step stays below the ULP on
