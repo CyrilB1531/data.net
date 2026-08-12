@@ -86,10 +86,20 @@ public sealed record BpeVocabulary(
 
     /// <summary>The marker opening a non-initial piece; <see langword="null"/> when there is none.</summary>
     /// <remarks>
+    /// <para>
     /// An empty marker prefixes nothing, so it reads back as <see langword="null"/>: a
     /// <c>tokenizer.json</c> may declare <c>"continuing_subword_prefix": ""</c>, and the two spellings
     /// have to mean one thing on a public, constructible type — otherwise a loaded vocabulary and
     /// a hand-built one compare unequal while behaving identically.
+    /// </para>
+    /// <para>
+    /// It cannot be paired with <see cref="ByteLevel"/>. Nothing forbids setting both
+    /// here — this record restates what a file declared and decides nothing — but
+    /// <see cref="BpeTokenizer"/>'s constructor refuses such a vocabulary, and
+    /// <see cref="Persistence.TokenizerJsonLoader"/> refuses the file that spells it,
+    /// because the prefix is applied to a byte-level model's merges and not to its
+    /// symbols.
+    /// </para>
     /// </remarks>
     public string? ContinuingSubwordPrefix
     {

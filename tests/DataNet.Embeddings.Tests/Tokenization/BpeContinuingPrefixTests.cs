@@ -33,8 +33,7 @@ public sealed class BpeContinuingPrefixTests
 
     /// <summary>
     /// The prefix belongs to the piece, not to the text: the first symbol of the
-    /// second word is bare. Recomputed from the cases rather than asserted, so a
-    /// corpus that stopped carrying the distinction fails here.
+    /// second word is bare.
     /// </summary>
     [Fact]
     public void The_second_piece_starts_bare()
@@ -138,6 +137,72 @@ public sealed class BpeContinuingPrefixTests
 
         Assert.Null(vocabulary.ContinuingSubwordPrefix);
     }
+
+    /// <summary>
+    /// A byte-level model declaring a non-empty prefix is refused rather than
+    /// loaded: <c>ByteLevelSymbols</c> never applies the prefix while the merge
+    /// loop still strips it, so the two halves of the tokenizer would disagree.
+    /// The pre-tokenizer block is the one
+    /// <c>TokenizerJsonLoaderTests.LoadBpe_encodes_a_byte_level_block_that_declares_add_prefix_space</c>
+    /// uses, so the only difference from a file that loads is the prefix.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_refuses_a_byte_level_model_declaring_a_prefix()
+    {
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(
+                Bytes(ByteLevelJson(@"""continuing_subword_prefix"": ""##""")), OracleReplay.BpeBounds()));
+
+        Assert.Contains("continuing_subword_prefix", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The same refusal on the hand-built path, which no loader guards:
+    /// <see cref="BpeVocabulary"/> is public and constructible, so the two
+    /// settings can be paired without a <c>tokenizer.json</c> ever existing.
+    /// </summary>
+    [Fact]
+    public void The_constructor_refuses_a_byte_level_vocabulary_declaring_a_prefix()
+    {
+        var vocabulary = new BpeVocabulary(
+            new Dictionary<string, int>(StringComparer.Ordinal) { ["Ġ"] = 0, ["h"] = 1, ["i"] = 2 },
+            [])
+        {
+            ByteLevel = true,
+            ContinuingSubwordPrefix = "##",
+        };
+
+        ArgumentException error = Assert.Throws<ArgumentException>(() => new BpeTokenizer(vocabulary));
+
+        Assert.Contains("byte-level", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The case the refusal must not catch: an empty prefix prefixes nothing and
+    /// reads back as absent, so a byte-level model declaring one still loads and
+    /// still encodes. The leading <c>Ġ</c> is what proves it went the whole way
+    /// rather than merely not throwing.
+    /// </summary>
+    [Fact]
+    public void A_byte_level_model_declaring_an_empty_prefix_still_loads()
+    {
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(
+            Bytes(ByteLevelJson(@"""continuing_subword_prefix"": """"")), OracleReplay.BpeBounds());
+
+        Assert.Null(vocabulary.ContinuingSubwordPrefix);
+        Assert.Equal(["Ġ", "h", "i"], new BpeTokenizer(vocabulary).Encode("hi").Tokens);
+    }
+
+    /// <summary>
+    /// A byte-level BPE document — the pre-tokenizer block
+    /// <c>TokenizerJsonLoaderTests</c> loads and encodes with — carrying
+    /// <paramref name="model"/> as one more <c>model</c> property.
+    /// </summary>
+    /// <param name="model">One model property, without a leading or trailing comma.</param>
+    private static string ByteLevelJson(string model) =>
+        """{"model":{"type":"BPE","vocab":{"Ġ":0,"h":1,"i":2},"merges":[],"""
+        + model
+        + """},"pre_tokenizer":{"type":"ByteLevel","add_prefix_space":true,"use_regex":true}}""";
 
     private static string[] Tokens(string model, string text)
     {

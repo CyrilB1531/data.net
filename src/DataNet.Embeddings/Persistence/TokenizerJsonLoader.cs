@@ -543,6 +543,7 @@ public static class TokenizerJsonLoader
         RejectNonNull(root, "post_processor", "DataNet tokenizers do not insert special tokens such as [CLS] and [SEP]");
         (bool byteLevel, bool addPrefixSpace, string? pattern) = ReadBpePreTokenizer(root);
         EnsureDecoderMatchesModel(root, byteLevel);
+        EnsureContinuingPrefixIsNotByteLevel(model, byteLevel);
 
         Dictionary<string, int> vocab = ReadBpeVocab(model, limits);
         List<MergePair> merges = ReadBpeMerges(model, limits);
@@ -626,6 +627,45 @@ public static class TokenizerJsonLoader
         throw Unsupported(
             $"its normalizer is '{type}'",
             "BpeTokenizer normalizes nothing, so every rule this one declares would go unapplied");
+    }
+
+    /// <summary>
+    /// Refuses a byte-level model that also declares a non-empty
+    /// <c>continuing_subword_prefix</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="BpeTokenizer"/> does not apply the prefix on the byte-level path —
+    /// there, one symbol is one byte of the alphabet and nothing decorates it — while
+    /// the merge loop in its constructor strips the prefix from every merge's right
+    /// side without asking whether the model is byte-level. The two halves would
+    /// therefore disagree about the same setting, and the disagreement is silent: the
+    /// byte-level alphabet contains the characters a prefix is typically spelled with
+    /// (<c>#</c> is byte <c>0x23</c>), so a merge whose right side begins with them
+    /// resolves to a different entry that exists rather than to a missing one.
+    /// </para>
+    /// <para>
+    /// Refused by name for the reason <see cref="EnsureBpeModelSettingsAreReproduced"/>
+    /// refuses <c>dropout</c> and <see cref="EnsureBpeNormalizerIsAbsent"/> refuses a
+    /// normalizer: a file this loader cannot reproduce is told so, rather than
+    /// tokenized plausibly and wrongly. This says nothing about what the reference
+    /// produces for such a file — nothing here measured that, and the refusal does not
+    /// rest on it. An empty prefix prefixes nothing and normalises to absent on
+    /// <see cref="BpeVocabulary.ContinuingSubwordPrefix"/>, so it pairs harmlessly and
+    /// is not refused.
+    /// </para>
+    /// </remarks>
+    private static void EnsureContinuingPrefixIsNotByteLevel(JsonElement model, bool byteLevel)
+    {
+        if (byteLevel && !string.IsNullOrEmpty(OptionalString(model, "continuing_subword_prefix")))
+        {
+            throw Unsupported(
+                "its pre_tokenizer is byte-level and its model declares a non-empty continuing_subword_prefix",
+                "BpeTokenizer does not apply the prefix on the byte-level path while its merge loop still strips it "
+                + "from a merge's right side, so the two would disagree — and the byte-level alphabet contains the "
+                + "characters a prefix is typically spelled with, so that disagreement resolves to another existing "
+                + "id instead of raising");
+        }
     }
 
     private static Dictionary<string, int> ReadBpeVocab(JsonElement model, in ArtifactLimits limits)
