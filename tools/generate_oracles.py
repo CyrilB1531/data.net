@@ -2710,6 +2710,89 @@ def generate_regression() -> dict:
     }
 
 
+# --- The conditioning the ordinary regression corpus cannot reach (issue #127) ---
+#
+# regression.json stores its arrays in full and caps at 450 values, over targets in
+# [0.5, 40] -- a range where a sequential sum and numpy's pairwise one agree to far
+# more digits than the corpus compares at. The defect #127 fixes needs the opposite:
+# many samples, and a large offset over a small spread, so that the low-order bits of
+# every term fall off the end of the accumulator.
+#
+# Storing 200 000 samples as JSON would be megabytes, so this case carries the closed
+# form instead. The C# side rebuilds the same arrays from the same expression, in the
+# same order -- both languages evaluate IEEE-754 doubles, so the two constructions are
+# identical value for value. PROBE_INDICES is how that stops being a matter of faith:
+# the raw bits at those positions are recorded and compared before anything is scored.
+
+CONDITIONING_SAMPLES = 200_000
+CONDITIONING_OFFSET = 1e9
+CONDITIONING_SPREAD = 1e-2
+# 1e-6 and not the ramp's own 5e-8 step: the ULP at 1e9 is 2^-23, about 1.19e-7
+# (checked with math.ulp(1e9)), so a perturbation below half of that rounds straight
+# back onto the target. Measured: with 1e-8 every residual is exactly zero, mse is 0
+# and r2 is 1, and a fixture built that way passes while proving nothing. The ramp's
+# step stays below the ULP on purpose -- quantizing it is the ill-conditioning this
+# case exists to carry.
+CONDITIONING_PERTURBATION = 1e-6
+PROBE_INDICES = [0, 1, CONDITIONING_SAMPLES // 2, CONDITIONING_SAMPLES - 2, CONDITIONING_SAMPLES - 1]
+
+
+def _conditioning_arrays() -> tuple[list[float], list[float]]:
+    """The closed form both sides build, and nothing but it."""
+    step = CONDITIONING_SPREAD / CONDITIONING_SAMPLES
+    y_true = [CONDITIONING_OFFSET + i * step for i in range(CONDITIONING_SAMPLES)]
+    y_pred = [y_true[i] + ((i % 7) - 3) * CONDITIONING_PERTURBATION
+              for i in range(CONDITIONING_SAMPLES)]
+    return y_true, y_pred
+
+
+def _bits(value: float) -> str:
+    """The double's raw IEEE-754 bits, so a probe compares the number and not its spelling."""
+    import struct  # noqa: PLC0415
+
+    return f"{struct.unpack('<Q', struct.pack('<d', value))[0]:016x}"
+
+
+def generate_regression_conditioning() -> dict:
+    """scikit-learn's answers on a target no committed array could carry."""
+    y_true, y_pred = _conditioning_arrays()
+    yt = np.asarray(y_true)
+    yp = np.asarray(y_pred)
+
+    values = {
+        "r2": stable(float(skm.r2_score(yt, yp))),
+        "explained_variance": stable(float(skm.explained_variance_score(yt, yp))),
+        "mse": stable(float(skm.mean_squared_error(yt, yp))),
+        "mae": stable(float(skm.mean_absolute_error(yt, yp))),
+    }
+    return {
+        "metadata": {
+            "algorithm": "Regression under ill conditioning",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.r2_score",
+                "sklearn.metrics.explained_variance_score",
+                "sklearn.metrics.mean_squared_error",
+                "sklearn.metrics.mean_absolute_error",
+            ],
+            "samples": CONDITIONING_SAMPLES,
+            "offset": CONDITIONING_OFFSET,
+            "spread": CONDITIONING_SPREAD,
+            "perturbation": CONDITIONING_PERTURBATION,
+            "construction": (
+                "step = spread / samples; y_true[i] = offset + i * step; "
+                "y_pred[i] = y_true[i] + ((i % 7) - 3) * perturbation"
+            ),
+            "probe_indices": PROBE_INDICES,
+            "probe_bits_y_true": [_bits(y_true[i]) for i in PROBE_INDICES],
+            "probe_bits_y_pred": [_bits(y_pred[i]) for i in PROBE_INDICES],
+            "count": len(values),
+        },
+        "values": values,
+    }
+
+
 # The four matching flags an added_tokens entry carries beyond its content and
 # id, over a byte-level model (issue #104). One token per flag, because a flag
 # only shows in the pieces around the match: lstrip and rstrip make the space
@@ -3280,6 +3363,7 @@ def main() -> None:
         "classification_metrics.json": generate_classification_metrics,
         "roc_auc.json": generate_roc_auc,
         "regression.json": generate_regression,
+        "regression_conditioning.json": generate_regression_conditioning,
         "bpe.json": generate_bpe,
         "orphan_bpe.json": generate_orphan_bpe,
         "bytelevel_bpe.json": generate_bytelevel_bpe,
