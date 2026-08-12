@@ -17,7 +17,7 @@ doing it twice.
 
 ## What the reference does
 
-All measured against `tokenizers` 0.23.1 before this spec was written. `P` is the prefix `##`.
+All measured against `tokenizers` 0.23.1 before this spec was written, with `##` as the prefix throughout.
 
 ### D1 — the prefix applies per pre-tokenized piece, not per text
 
@@ -74,6 +74,30 @@ which is correct only while no prefix is ever reproduced. With a prefix live it 
 
 The refusal #130 added keeps its reason. What changes is the string it is asked about.
 
+### D3b — only the right side loses a prefix, and the suffix is not involved
+
+`(a, ##b)` is the shape #105 recorded, and it does not say what happens when both sides carry the prefix,
+or when a suffix is in play. Measured:
+
+| merge | result | vocabulary holds |
+| --- | --- | --- |
+| `("a", "##b")` | `ab` | `ab` |
+| `("##b", "##c")` | `##bc` | `##bc` |
+| `("##b", "##c")` | **build refused**, ``Token `##bc` out of vocabulary`` | `##b##c` instead |
+| `("a", "##b</w>")` | `ab</w>` | `ab</w>` |
+
+One rule covers all four: **the result is the left side plus the right side with its continuing prefix
+removed.** The left keeps whatever decoration it has — the second row would be `bc` if both sides were
+stripped, and the third shows the reference requires `##bc` specifically. An end-of-word suffix is simply
+part of the string and rides along; it never participates.
+
+The fourth row also shows merges name the *fully* decorated right side. A merge written `("a", "##b")`
+does not fire on a symbol that is `##b</w>`, which is what a non-initial final character becomes — measured,
+that model returns `['a', '##b</w>']` unmerged.
+
+This matters beyond correctness: "both sides lose their prefix" is the plausible reading, it gives `bc`
+where the reference gives `##bc`, and no case in #105 or in the issue would have caught it.
+
 ### D4 — the two decorations compose, prefix then suffix
 
 Vocabulary `{a, b, ##b, b</w>, ##b</w>, a</w>}`, `end_of_word_suffix="</w>"`:
@@ -104,7 +128,7 @@ needs no new keying — the ids it maps are the decorated symbols' own.
 | Where | What |
 | --- | --- |
 | `BpeTokenizer.InitialSymbols` | Decorates: bare at the start of a piece, prefixed after, suffixed at the end, both where both apply. No fallback to the undecorated form. |
-| `BpeTokenizer`'s merge loop | The result is `Left` plus `Right` with the prefix removed, not the plain concatenation. #130's refusal stays, asked about the right string. |
+| `BpeTokenizer`'s merge loop | The result is `Left` plus `Right` with its continuing prefix removed, not the plain concatenation — the left side keeps its own (D3b). #130's refusal stays, asked about the right string. |
 | `TokenizerJsonLoader.LoadBpe` | Stops refusing a non-empty prefix and sets `ContinuingSubwordPrefix`; an empty one reads as absent. |
 | `BpeVocabulary` | Nothing structural. The property stops being a name with nothing behind it. |
 | `BpeFilesLoader` | Untouched: `merges.txt` has no field to declare a prefix in. |
@@ -117,15 +141,17 @@ changed: what moves is which symbols enter the loop, not what the loop is keyed 
 A corpus `bpe_continuing_prefix.json`, generated against `tokenizers` 0.23.1, with the models built inside
 the generator and carried in `metadata.models` — the shape #118, #119 and #130 established.
 
-Six models, each existing for a case no other distinguishes:
+Seven cases across eight models — case 3 needs two — each existing for something no other distinguishes:
 
 1. **the base case**, `ab` → `['a','##b']`;
 2. **two words**, `ab ab`, the only case that tells per-piece from per-text (D1);
 3. **a missing prefixed form**, the only case that proves there is no fallback (D2), carried twice — with
    an unknown token and without, since the two lose the character differently;
 4. **a merge whose stripped result alone exists**, the only case that catches #130's concatenation (D3);
-5. **prefix and suffix together** (D4);
-6. **an empty prefix**, whose stream must equal the no-prefix model's — its own regression proof (D5).
+5. **a merge with both sides prefixed**, the only case that tells "the right side loses its prefix" from
+   "both sides do" — the second reading gives `bc` where the reference gives `##bc` (D3b);
+6. **prefix and suffix together** (D4);
+7. **an empty prefix**, whose stream must equal the no-prefix model's — its own regression proof (D5).
 
 Plus the build refusal of D3's third row, recorded the way #118 records its own: the exact document handed
 to the reference and the error it answered with.
