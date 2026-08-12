@@ -10,7 +10,9 @@ with — two ONNX graphs, a trained BPE, and a hand-constructed BPE — and
 commits them directly;
 `check_nuspec_dependencies.py` verifies what the packages *declare*;
 `check_version_floor.py` verifies that the version numbers the source tree keeps
-in three places still agree; `generate_sonar_globalconfig.py` writes the
+in three places still agree; `check_machine_paths.py` refuses a tracked file
+that holds a path under someone's home directory;
+`generate_sonar_globalconfig.py` writes the
 `.globalconfig` that raises the Sonar rules `SonarAnalyzer.CSharp` ships
 disabled, from the SonarCloud quality profile that gates the pull request; and
 `sonarqube-local/` holds the compose file for a disposable local SonarQube
@@ -209,6 +211,44 @@ python tools/generate_sonar_globalconfig.py --check
 A regenerated file that differs means the SonarCloud profile moved; an
 unreachable API is reported separately and never as drift, so a network hiccup
 cannot make the check pass on a stale file.
+
+## `check_machine_paths.py`
+
+Refuses a tracked file that holds a path under someone's home directory. Ten of
+them reached this public repository across six documents before anything looked
+for them, and both sweeps that removed them started from a reader noticing a
+line rather than from a check — they arrive by being pasted from a terminal,
+which is exactly when nobody is thinking about what the string contains.
+
+```bash
+python3 tools/check_machine_paths.py                # named shapes, plus this machine's $HOME
+python3 tools/check_machine_paths.py --no-environment  # named shapes only
+python3 tools/check_machine_paths.py --help
+```
+
+Two probe sets. **Named shapes** run everywhere: a home directory under `/home`
+or `/Users`, its Windows equivalent, the root user's own home, and the session
+scratch-directory prefix. **Environment-derived probes** are computed at run
+time from `$HOME` — the path itself, the account name bounded by a separator or
+a dash, and the dashed form a session scratch directory is named after — which
+catch shapes no fixed list enumerates, on the machine where a path is actually
+created.
+
+An ordinary account name (`src`, `build`, `net` and the like) can turn a derived
+probe into noise on an otherwise unrelated line. `--no-environment` drops that
+set and leaves the named shapes enforcing, which have no such escape by design:
+a path under a home directory is never wanted in a committed file. The report
+names which probe matched each finding, and mentions `--no-environment` only
+when a derived probe is the one that fired.
+
+Exit: `0` clean, `1` findings printed (with a suggestion — `$SCRATCH`,
+`$(mktemp -d)`, or a description of what the path held), `2` bad usage.
+
+It exempts only its own source and its own test module, which have to contain
+the patterns they search for to exist; nothing else is, because an exemption
+list that grows is a guard being switched off one file at a time. See
+[`../docs/superpowers/specs/2026-08-12_0133_machine-path-guard.md`](../docs/superpowers/specs/2026-08-12_0133_machine-path-guard.md)
+for the measurement that shaped the two-probe-set design.
 
 ## Rules
 

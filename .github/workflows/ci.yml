@@ -28,20 +28,27 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
-      # tools/tests exercises only generate_sonar_globalconfig.py, which imports
-      # nothing beyond the standard library and pytest -- scikit-learn, tokenizers,
-      # nltk and the rest of tools/requirements.lock.txt are unused here. Installed
-      # anyway, deliberately: a second, narrower lock for this one test file would be
-      # a second hashed graph to keep in sync with tools/requirements.txt by hand,
-      # which is exactly the kind of drift check_version_floor.py exists to catch
-      # elsewhere in this repository -- and --only-binary :all: means the install
-      # is wheels-only with nothing to compile, so the wall-clock cost of the extra
-      # packages is a pip resolve, not a build. One lock file, one source of truth.
+      # tools/tests exercises generate_sonar_globalconfig.py and
+      # check_machine_paths.py, both of which import nothing beyond the standard
+      # library and pytest -- scikit-learn, tokenizers, nltk and the rest of
+      # tools/requirements.lock.txt are unused here. Installed anyway, deliberately:
+      # a second, narrower lock for these two test files would be a second hashed
+      # graph to keep in sync with tools/requirements.txt by hand, which is exactly
+      # the kind of drift check_version_floor.py exists to catch elsewhere in this
+      # repository -- and --only-binary :all: means the install is wheels-only with
+      # nothing to compile, so the wall-clock cost of the extra packages is a pip
+      # resolve, not a build. One lock file, one source of truth.
       - name: Install tool dependencies
         run: |
           pip install --only-binary :all: --require-hashes -r tools/requirements.lock.txt
       - name: Tool tests
         run: python -m pytest tools/tests -q
+      # An absolute path under a home directory reaches a file by being pasted
+      # from a terminal, which is exactly when nobody is thinking about what the
+      # string contains. Ten of them were committed to this public repository
+      # before anything looked for them.
+      - name: No machine paths in tracked files
+        run: python tools/check_machine_paths.py
       # The .globalconfig mirrors a profile that lives on a server, so it can go stale
       # without anything in this repository changing. One call to sonarcloud.io per run
       # buys learning about that on the pull request that first meets it. A profile that
