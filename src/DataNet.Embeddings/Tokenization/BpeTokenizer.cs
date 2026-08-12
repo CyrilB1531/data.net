@@ -71,6 +71,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private readonly AddedTokenScanner _scanner;
     private readonly HashSet<int> _addedIds;
     private readonly string? _endOfWord;
+    private readonly string? _continuingPrefix;
     private readonly int _unkId;
     private readonly bool _hasUnk;
     private readonly bool _byteLevel;
@@ -89,6 +90,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         Guard.NotNull(vocabulary);
         _addPrefixSpace = vocabulary.AddPrefixSpace;
         _endOfWord = vocabulary.EndOfWordSuffix;
+        _continuingPrefix = vocabulary.ContinuingSubwordPrefix;
         _byteLevel = vocabulary.ByteLevel;
         _ignoreMerges = vocabulary.IgnoreMerges;
         _fuseUnk = vocabulary.FuseUnk;
@@ -153,10 +155,21 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             // The result is a third shape, and the reference does not raise on it
             // — it panics, walking off the end of a slice. A panic is a bug, not
             // behaviour to reproduce, so this message is DataNet's own.
-            if (!_modelVocab.TryGetValue(pair.Left + pair.Right, out int result))
+            //
+            // The result is the left side plus the right side WITHOUT its
+            // continuing prefix. Measured: ("a", "##b") produces "ab", and
+            // ("##b", "##c") produces "##bc" — the left keeps its own prefix
+            // and only the right loses one. An end-of-word suffix is part of
+            // the string and rides along: ("a", "##b</w>") produces "ab</w>".
+            //
+            // The reference does not merely prefer the stripped form. With the
+            // concatenated one in the vocabulary instead, it refuses to build:
+            // "Token `##bc` out of vocabulary".
+            string merged = pair.Left + StripContinuingPrefix(pair.Right);
+            if (!_modelVocab.TryGetValue(merged, out int result))
             {
                 throw new ArgumentException(
-                    $"The merge at rank {rank} produces '{pair.Left + pair.Right}', "
+                    $"The merge at rank {rank} produces '{merged}', "
                     + "which the vocabulary does not contain.", nameof(vocabulary));
             }
             // If a pair is listed twice, the first (lowest) rank is kept rather than
@@ -357,7 +370,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
                 ? 2
                 : 1;
             bool last = i + width == piece.Length;
-            string symbol = Decorate(piece, i, width, last);
+            string symbol = Decorate(piece, i, width, i == 0, last);
             if (_modelVocab.TryGetValue(symbol, out int id))
             {
                 symbols[count++] = id;
@@ -387,22 +400,43 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// <param name="piece">The pre-tokenized piece being walked.</param>
     /// <param name="at">The index of the code point's first <see cref="char"/>.</param>
     /// <param name="width">Its width in <see cref="char"/>s — two for a surrogate pair.</param>
+    /// <param name="first">Whether it opens the piece.</param>
     /// <param name="last">Whether it ends the piece.</param>
-    private string Decorate(string piece, int at, int width, bool last)
+    /// <remarks>
+    /// The two decorations compose, prefix then characters then suffix, and a
+    /// symbol that both continues a piece and ends it carries both — measured
+    /// against <c>tokenizers</c> 0.23.1, where <c>"ab"</c> under both settings
+    /// gives <c>['a', '##b&lt;/w&gt;']</c>. The prefix belongs to the piece and
+    /// not to the text, which costs nothing here because this is called once
+    /// per piece.
+    /// </remarks>
+    private string Decorate(string piece, int at, int width, bool first, bool last)
     {
-        // CA1845 wants string.Concat over spans here. Its two-span overload
-        // arrived with .NET Core 3.0 and is in no netstandard version at all,
-        // and this library targets netstandard2.0 as well, where the call
-        // resolves against Concat(object, object) and fails to compile --
-        // measured, CS1503, and a ReadOnlySpan<char> cannot become an object.
-        // The suffix is null for every byte-level model, so this branch is the
-        // classic lineage's alone.
+        string characters = piece.Substring(at, width);
+        string prefix = !first && _continuingPrefix is not null ? _continuingPrefix : string.Empty;
+        string suffix = last && _endOfWord is not null ? _endOfWord : string.Empty;
+
+        // CA1845 wants string.Concat over spans. Its two-span overload arrived
+        // with .NET Core 3.0 and is in no netstandard version at all, and this
+        // library also targets netstandard2.0, where the call resolves against
+        // Concat(object, object) and fails to compile -- measured, CS1503, and
+        // a ReadOnlySpan<char> cannot become an object. Both decorations are
+        // null for every byte-level model, so this is the classic lineage's
+        // path alone.
 #pragma warning disable CA1845
-        return last && _endOfWord is not null
-            ? piece.Substring(at, width) + _endOfWord
-            : piece.Substring(at, width);
+        return prefix.Length == 0 && suffix.Length == 0
+            ? characters
+            : prefix + characters + suffix;
 #pragma warning restore CA1845
     }
+
+    /// <summary>The symbol without a leading continuing prefix, if it has one.</summary>
+    /// <param name="symbol">A merge pair's right-hand side, as the file spells it.</param>
+    private string StripContinuingPrefix(string symbol) =>
+        _continuingPrefix is { Length: > 0 } prefix
+            && symbol.StartsWith(prefix, StringComparison.Ordinal)
+            ? symbol.Substring(prefix.Length)
+            : symbol;
 
     /// <summary>Fills <paramref name="symbols"/> with one id per UTF-8 byte of <paramref name="piece"/>.</summary>
     /// <remarks>

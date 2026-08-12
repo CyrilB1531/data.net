@@ -556,45 +556,37 @@ public static class TokenizerJsonLoader
             IgnoreMerges = OptionalBoolean(model, "ignore_merges") ?? false,
             FuseUnk = OptionalBoolean(model, "fuse_unk") ?? false,
             EndOfWordSuffix = OptionalString(model, "end_of_word_suffix"),
-            // ContinuingSubwordPrefix is deliberately not carried across: a non-null one
-            // is refused above, so reading it here could only ever restate that null,
-            // and a property that is read but never applied is what made this a bug.
+            // An empty prefix prefixes nothing — measured, its token stream
+            // equals that of a model declaring none — so it reads as absent
+            // rather than as a second spelling of the same thing.
+            ContinuingSubwordPrefix = OptionalString(model, "continuing_subword_prefix") is { Length: > 0 } prefix
+                ? prefix
+                : null,
             UnkToken = OptionalString(model, "unk_token"),
             PreTokenizerPattern = pattern,
         };
     }
 
     /// <summary>
-    /// Refuses the two <c>model</c> settings that change what BPE produces and that
+    /// Refuses the <c>model</c> setting that changes what BPE produces and that
     /// <see cref="BpeTokenizer"/> does not apply.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Each of these is read out of a shipped <c>tokenizer.json</c> today and each is
-    /// measurably not a no-op, so accepting one is a file that tokenizes differently
-    /// here than in Python without saying so. Verified against <c>tokenizers</c>
-    /// 0.23.1: with <c>continuing_subword_prefix="##"</c>, the vocabulary
-    /// <c>{a, b, ##b, ab, a##b}</c> and the single merge <c>("a", "##b")</c>, Python
-    /// encodes "ab" to the one id of <c>ab</c> where the same model without the prefix
-    /// gives two. <c>dropout</c> is a training-time regularizer that drops merges at
-    /// random, which no deterministic tokenizer can reproduce at all.
+    /// <c>dropout</c> is read out of a shipped <c>tokenizer.json</c> today and is
+    /// measurably not a no-op, so accepting it is a file that tokenizes differently
+    /// here than in Python without saying so. It is a training-time regularizer
+    /// that drops merges at random, which no deterministic tokenizer can reproduce
+    /// at all.
     /// </para>
     /// <para>
     /// Refused by name rather than implemented: support is a feature, and a file
-    /// naming one of these deserves to be told which one rather than to be tokenized
-    /// plausibly and wrongly.
+    /// declaring it deserves to be told so rather than to be tokenized plausibly
+    /// and wrongly.
     /// </para>
     /// </remarks>
     private static void EnsureBpeModelSettingsAreReproduced(JsonElement model)
     {
-        // An empty prefix prefixes no symbol, so the divergence this refusal exists to
-        // guard against cannot occur; only a non-empty prefix is still refused.
-        if (OptionalString(model, "continuing_subword_prefix") is { Length: > 0 } prefix)
-        {
-            throw Unsupported(
-                $"its model declares continuing_subword_prefix '{prefix}'",
-                "HuggingFace prefixes every non-initial symbol with it before merging, where BpeTokenizer merges the symbols as they stand");
-        }
         // At 0.0 no merge is ever skipped, which is the determinism this refusal
         // protects, so a numeric zero is exempt. A dropout that is present, non-null
         // and not a number is malformed rather than a reproduced zero, so it still
