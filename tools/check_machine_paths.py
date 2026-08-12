@@ -42,7 +42,16 @@ NAMED_SHAPES: tuple[tuple[str, re.Pattern[str]], ...] = (
     # The session scratch directory, which names itself after the absolute
     # path of the checkout it belongs to. This is the shape the four plans
     # carried, and the one no slash-separated pattern sees.
-    ("a session scratch directory", re.compile(r"/tmp/claude-\d+/")),
+    #
+    # S5443 flags this literal as a world-writable directory used unsafely --
+    # the rule is about code that opens, writes to or resolves a path under
+    # /tmp, where a symlink planted by another user can redirect the write.
+    # This string is never used that way: it is a search pattern matched
+    # against file *contents*, never passed to open(), joined into a path, or
+    # resolved against the filesystem. /tmp appears here only because that is
+    # where the session scratch directory this pattern hunts for actually
+    # lives.
+    ("a session scratch directory", re.compile(r"/tmp/claude-\d+/")),  # NOSONAR S5443
 )
 
 EXEMPT = frozenset({
