@@ -1,4 +1,6 @@
+#if NET5_0_OR_GREATER
 using System.Numerics;
+#endif
 using DataNet.Metrics.Internal;
 
 namespace DataNet.Metrics;

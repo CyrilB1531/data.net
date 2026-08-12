@@ -401,8 +401,12 @@ table relies on (each workload measured twice, at `k=2` and `k=10`) stays
 intact. The compensated-and-optimised numbers are in
 "Compensated summation (issue #127)" below, in the same window as its own
 `numpy` column, which is not directly comparable to the `Python ms` column
-here. `mse` and `mae` are not marked: that section's own numbers show them
-within this page's noise band of the figures printed above.
+here. `mse` and `mae` are not marked at n = 1 000 000: that section's own
+numbers put them within this page's noise band there (0.6% and 1.8% away
+from the figures printed above). That does not hold at n = 100 000, where
+the same comparison is 5.7% and 5.4% — wider than the 1.8% this page treats
+as the top of the band — so the claim below is scoped to the n = 1 000 000
+rows only.
 
 **20/24 rows at or above 1× on processor time when this table was first
 measured — `median_ae` was the finding, not a fluke to rerun away.** That is
@@ -501,8 +505,12 @@ unweighted case on `net10.0` (the scalar loop is unchanged on
 `netstandard2.0` and for multi-output; see
 [`docs/decisions/0001`](../decisions/0001-target-framework.md)). A third
 lever, a branchless 2Sum in place of Neumaier's magnitude-compared branch,
-was measured and **reverted**: on this machine the branch predicts well
-enough on this workload that removing it cost more than it saved.
+was measured and **reverted**: it was measurably slower on this workload,
+most visibly on `r2` (+5.2%, outside both groups' own spread in either
+measurement order). No performance counters were read, so branch prediction
+is offered as the likely explanation, not as something observed — what was
+measured is that the "branchless is faster" hypothesis this lever tested
+came out falsified, not confirmed.
 
 **Before (the original sequential sum) against after (compensated and
 optimised) — same corpus, same harness as the table above, `k=2` shape

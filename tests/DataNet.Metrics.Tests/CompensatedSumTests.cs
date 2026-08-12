@@ -20,6 +20,7 @@ public sealed class CompensatedSumTests
     private const int Samples = 200_000;
     private const double Offset = 1e9;
     private const double Spread = 1e-2;
+    private const int MagnitudeDisparitySamples = 1_000_000;
 
     /// <summary>
     /// The measured shape: a ramp of 83 887 distinct values over an offset that swamps
@@ -218,5 +219,109 @@ public sealed class CompensatedSumTests
         double weighted = MeanSquaredError.Score(yTrue, yPred, sampleWeight: weights);
 
         Assert.Equal(unweighted, weighted, 15);
+    }
+
+    /// <summary>
+    /// The shape that catches <c>Outputs.WeightedMean</c>, the walk
+    /// <see cref="MeanSquaredError"/> shares with six other metrics: one huge residual
+    /// among many small ones, no shared offset anywhere.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Neither existing fixture can tell a compensated walk from a reverted one here.
+    /// <see cref="A_uniform_weight_changes_no_shared_mean"/>'s kernel returns a constant, so
+    /// both paths give the same answer regardless of accumulation. <see cref="IllConditioned"/>
+    /// cannot either, for a more specific reason: <c>MeanSquaredError</c> and its siblings
+    /// average a <em>difference</em> (<c>yTrue[i] - yPred[i]</c>), and on that fixture the
+    /// 1e9 offset cancels out of every difference before <c>Outputs.WeightedMean</c> ever adds
+    /// anything — measured directly, the naive and compensated sums of its squared residuals
+    /// are bit-identical. A test built on that shape would pass unchanged whether or not the
+    /// walk is compensated, which is exactly the kind of test this branch has already deleted
+    /// once.
+    /// </para>
+    /// <para>
+    /// This shape has no offset to cancel: the squared residuals themselves — <c>1e20</c>
+    /// once, <c>10000</c> a million times minus one — are what a sequential sum mishandles. The
+    /// large residual sits first, so a sequential sum accumulates the small terms on top of it,
+    /// the case Neumaier's magnitude-compared branch exists for. Measured independently: a
+    /// plain <c>+=</c> loop over these squared residuals lands 6.38e9 away from the exact sum
+    /// of 100000000009999990000 — about 64% of the mass the 999 999 small residuals
+    /// contribute — while <see cref="CompensatedSum"/> reproduces that sum exactly.
+    /// </para>
+    /// </remarks>
+    private static (double[] YTrue, double[] YPred) MagnitudeDisparity()
+    {
+        double[] yTrue = new double[MagnitudeDisparitySamples];
+        double[] yPred = new double[MagnitudeDisparitySamples];
+        yTrue[0] = 1e10;
+        for (int i = 1; i < MagnitudeDisparitySamples; i++)
+        {
+            yTrue[i] = 100.0;
+        }
+        return (yTrue, yPred);
+    }
+
+    /// <summary>
+    /// Mean squared error in <see cref="decimal"/>, computed directly on
+    /// <paramref name="yTrue"/> and <paramref name="yPred"/> — unlike <see cref="ExactR2"/>, no
+    /// <c>value - Offset</c> shift is needed here: every value <see cref="MagnitudeDisparity"/>
+    /// produces is a small integer (<c>0</c>, <c>100</c> or <c>1e10</c>), so
+    /// <c>(decimal)double</c>'s 15-significant-digit rounding budget is never spent on digits
+    /// this fixture does not have, the way it would be spent entirely on a ~1e9 offset.
+    /// </summary>
+    private static decimal ExactMse(double[] yTrue, double[] yPred)
+    {
+        decimal sum = 0m;
+        for (int i = 0; i < yTrue.Length; i++)
+        {
+            decimal residual = (decimal)yTrue[i] - (decimal)yPred[i];
+            sum += residual * residual;
+        }
+        return sum / yTrue.Length;
+    }
+
+    /// <summary>The shared walk's original accumulation, kept here as the control.</summary>
+    private static double SequentialMse(double[] yTrue, double[] yPred)
+    {
+        double sum = 0.0;
+        for (int i = 0; i < yTrue.Length; i++)
+        {
+            double residual = yTrue[i] - yPred[i];
+            sum += residual * residual;
+        }
+        return sum / yTrue.Length;
+    }
+
+    /// <summary>
+    /// <see cref="MeanSquaredError"/> walks through <c>Outputs.WeightedMean</c> on the
+    /// <see cref="MagnitudeDisparity"/> shape, which — unlike the two existing fixtures in this
+    /// class — actually discriminates a compensated walk from a reverted one. See the
+    /// remarks on <see cref="MagnitudeDisparity"/> for why.
+    /// </summary>
+    [Fact]
+    public void MeanSquaredError_matches_a_decimal_reference_on_a_magnitude_disparity_target()
+    {
+        (double[] yTrue, double[] yPred) = MagnitudeDisparity();
+
+        double expected = (double)ExactMse(yTrue, yPred);
+        double actual = MeanSquaredError.Score(yTrue, yPred);
+
+        Assert.Equal(expected, actual, 0);
+    }
+
+    /// <summary>
+    /// The same data through a deliberately sequential sum, so the test above is known to
+    /// discriminate: if this one ever agreed with the decimal reference, the first test would
+    /// be passing for free.
+    /// </summary>
+    [Fact]
+    public void A_sequential_sum_does_not_match_that_reference_on_magnitude_disparity()
+    {
+        (double[] yTrue, double[] yPred) = MagnitudeDisparity();
+
+        double sequential = SequentialMse(yTrue, yPred);
+        double expected = (double)ExactMse(yTrue, yPred);
+
+        Assert.NotEqual(expected, sequential, 0);
     }
 }

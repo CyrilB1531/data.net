@@ -393,9 +393,10 @@ namespace DataNet.Metrics.Internal;
 /// <para>
 /// numpy sums pairwise, so on an ill-conditioned target — a large offset over a small
 /// spread — a sequential loop and <c>numpy.mean</c> separate well past the 1e-9 the
-/// oracle corpora compare at. Measured on n = 200 000 around 1e9: the sequential mean
-/// lands 2.1e-3 away from the exact one, 21% of the range the data occupies, and R²
-/// and explained variance centre on that mean before squaring. Issue #127.
+/// oracle corpora compare at. Measured on <c>CompensatedSumTests.IllConditioned()</c>
+/// (offset 1e9, spread 1e-2, n = 200 000): the sequential mean lands 5.0e-3 away from
+/// the exact one, 50% of the range the data occupies, and R² and explained variance
+/// centre on that mean before squaring. Issue #127.
 /// </para>
 /// <para>
 /// Neumaier rather than Kahan: Kahan's correction is lost whenever the incoming term

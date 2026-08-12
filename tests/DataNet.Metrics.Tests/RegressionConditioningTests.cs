@@ -56,7 +56,27 @@ public sealed class RegressionConditioningTests
             _ => throw new ArgumentOutOfRangeException(nameof(key), key, "no metric for this corpus key"),
         };
 
-        RegressionCorpus.AssertClose(expected, actual, key);
+        AssertRelative(expected, actual, key);
+    }
+
+    /// <summary>
+    /// A pure relative bound, in place of <see cref="RegressionCorpus.AssertClose"/>'s
+    /// <c>1e-9 * max(1, |expected|)</c> for this corpus specifically.
+    /// </summary>
+    /// <remarks>
+    /// This fixture's own <c>mse</c> (<c>3.97e-12</c>) and <c>mae</c> (<c>1.70e-6</c>) sit far
+    /// below 1, where the shared bound's floor turns into an <em>absolute</em> <c>1e-9</c> —
+    /// 250× the <c>mse</c> value itself, so returning <c>0.0</c> would still pass. Dropping the
+    /// floor here (not in the shared helper, which other corpora rely on at their own scale)
+    /// keeps the same 1e-9 relative precision every other row on this page compares at, and it
+    /// costs nothing on <c>r2</c>/<c>explained_variance</c>: both sit near 1, where the floored
+    /// and floor-free bounds already agree.
+    /// </remarks>
+    private static void AssertRelative(double expected, double actual, string because)
+    {
+        double bound = 1e-9 * Math.Abs(expected);
+        Assert.True(Math.Abs(expected - actual) <= bound,
+            $"{because}: expected {expected:R}, got {actual:R} (tolerance {bound:R})");
     }
 
     /// <summary>The corpus's own closed form, evaluated in the same order Python evaluates it.</summary>
