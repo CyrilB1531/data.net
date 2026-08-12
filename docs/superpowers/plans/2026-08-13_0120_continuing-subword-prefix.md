@@ -847,10 +847,19 @@ in the shape the neighbours use, carrying only what was measured:
 | `BPE(..., continuing_subword_prefix="##")` | tokenizers | `new BpeVocabulary(vocab, merges) { ContinuingSubwordPrefix = "##" }` | Every symbol after the first **of each pre-tokenized piece** is looked up prefixed, so `"ab ab"` gives `['a', '##b', 'a', '##b']` — the second word starts bare. There is no fallback: a non-initial symbol whose prefixed form is absent is substituted or dropped like any uncovered character, and the bare form is not consulted, which is what the reference does. A merge's result is its left side plus its right side **without** the prefix, so `("##b", "##c")` produces `##bc` and not `bc`; the reference refuses to build a file whose vocabulary carries the concatenated form instead. The prefix composes with `end_of_word_suffix`, prefix then characters then suffix. An empty prefix reads as absent. |
 ```
 
-- [ ] **Step 2: The CHANGELOG entry**
+- [ ] **Step 2: The CHANGELOG entry, and the sentence it contradicts**
 
-Re-read `CHANGELOG.md` first — the headings move. Under `## [Unreleased]` → `### DataNet.Embeddings —
-0.3.0`, in `#### Added`:
+Re-read `CHANGELOG.md` first — the headings move.
+
+**Before adding anything, delete what stopped being true.** Under `## [Unreleased]` → `### DataNet.Embeddings
+— 0.3.0`, around line 189, an existing entry says `LoadBpe` "refuses any `normalizer`, a `ByteLevel`
+pre-tokenizer with `use_regex` off, a **non-empty** `continuing_subword_prefix` and a **non-zero**
+`dropout` by name too", and goes on to list an empty prefix among "the values that change nothing". Both
+halves are now false. Strike the prefix from the refusal list and from the accepted-because-inert list,
+leaving `normalizer`, `use_regex` and `dropout` where they are. An entry added beside a contradicting one
+leaves the changelog arguing with itself, which is worse than either sentence alone.
+
+Then, in `#### Added`:
 
 ```markdown
 - **`continuing_subword_prefix`** — a `tokenizer.json` declaring one loads instead of being refused, and
