@@ -13,10 +13,20 @@ namespace DataNet.Metrics.Internal;
 /// and explained variance centre on that mean before squaring. Issue #127.
 /// </para>
 /// <para>
-/// Neumaier rather than Kahan: Kahan's correction is lost whenever the incoming term
-/// is larger than the running total, which is exactly this shape — an accumulator
-/// starting at zero taking terms near 1e9. The branch below is what fixes that, and
-/// is the only difference between the two.
+/// Neumaier rather than Kahan: Kahan's correction is a known weakness of the
+/// algorithm in general — it is lost whenever an incoming term is larger in
+/// magnitude than the running total, because the correction is computed against the
+/// sum's own scale and is swamped once a bigger term arrives. Neumaier's branch
+/// below removes that failure mode unconditionally, by comparing magnitudes and
+/// correcting against whichever operand is larger, and is the only difference
+/// between the two algorithms. That failure mode is not, in fact, what happens on
+/// the shape this type exists for: measured on <c>IllConditioned()</c> (offset 1e9,
+/// spread 1e-2, n = 200 000), plain Kahan and Neumaier both land within about
+/// 1e-16 relative of the decimal reference — because after the first addition the
+/// running sum near 1e9 dominates every later term, and an incoming term never
+/// again exceeds it. Neumaier is still the right choice: it costs nothing extra
+/// over Kahan, and its correctness does not depend on the data staying shaped the
+/// way it is today.
 /// </para>
 /// <para>
 /// This is not fragile in the way it would be in C: .NET does not reassociate
