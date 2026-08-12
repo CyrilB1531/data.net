@@ -169,15 +169,20 @@ different one is **rejected**, with a message naming what was found:
   `decoder` whose byte-level-ness disagrees with the model's own, which would
   not decode what it encodes;
 - for BPE, any `normalizer` at all (`BpeTokenizer` normalizes nothing), a
-  **non-empty** `continuing_subword_prefix`, a **non-zero**
-  `dropout`, and a bare `ByteLevel` with `use_regex` off — each of those changes
-  what Python produces and none of them is applied here. `use_regex` off on the
-  `ByteLevel` step of a `Split`-then-`ByteLevel` `Sequence` is a different thing,
-  and is accepted: the `Split` step carries the pattern there, which is how
-  Llama-3 and Qwen2 are written. An empty prefix, a `dropout` of `0.0` and an
-  `end_of_word_suffix` of `""` are accepted, because each provably changes
-  nothing — the empty suffix reads back as absent on `BpeVocabulary`, an empty
-  marker marking nothing;
+  **non-zero** `dropout`, and a bare `ByteLevel` with `use_regex` off — each of
+  those changes what Python produces and none of them is applied here.
+  `use_regex` off on the `ByteLevel` step of a `Split`-then-`ByteLevel`
+  `Sequence` is a different thing, and is accepted: the `Split` step carries
+  the pattern there, which is how Llama-3 and Qwen2 are written. A `dropout`
+  of `0.0` and an `end_of_word_suffix` of `""` are accepted, because each
+  provably changes nothing — the empty suffix reads back as absent on
+  `BpeVocabulary`, an empty marker marking nothing. `continuing_subword_prefix`
+  is not refused at any value: HuggingFace prefixes every non-initial symbol
+  of a piece with it before merging, on the classic (non-byte-level) lineage,
+  and so does `BpeTokenizer`; an empty prefix reads back as absent on
+  `BpeVocabulary`, the same normalisation `end_of_word_suffix` gets. A
+  byte-level model that declares one is untested against the reference and is
+  not applied on that path;
 - for BPE, a `ByteLevel` block that declares no `add_prefix_space`, wherever it
   appears — as the pre-tokenizer, as the second step of a `Sequence`, or as the
   `decoder`. `tokenizers` has no default for that field and refuses such a file

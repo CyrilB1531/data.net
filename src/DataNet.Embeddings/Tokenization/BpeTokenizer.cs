@@ -416,18 +416,9 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         string prefix = !first && _continuingPrefix is not null ? _continuingPrefix : string.Empty;
         string suffix = last && _endOfWord is not null ? _endOfWord : string.Empty;
 
-        // CA1845 wants string.Concat over spans. Its two-span overload arrived
-        // with .NET Core 3.0 and is in no netstandard version at all, and this
-        // library also targets netstandard2.0, where the call resolves against
-        // Concat(object, object) and fails to compile -- measured, CS1503, and
-        // a ReadOnlySpan<char> cannot become an object. Both decorations are
-        // null for every byte-level model, so this is the classic lineage's
-        // path alone.
-#pragma warning disable CA1845
         return prefix.Length == 0 && suffix.Length == 0
             ? characters
             : prefix + characters + suffix;
-#pragma warning restore CA1845
     }
 
     /// <summary>The symbol without a leading continuing prefix, if it has one.</summary>
@@ -446,12 +437,21 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// the input is represented, so decoding can put them back.
     /// </para>
     /// <para>
-    /// Unlike <see cref="InitialSymbols"/>, this never appends <c>_endOfWord</c>:
-    /// <see cref="BpeVocabulary.EndOfWordSuffix"/> is documented as
+    /// Unlike <see cref="InitialSymbols"/>, this never appends <c>_endOfWord</c> or
+    /// prepends <c>_continuingPrefix</c>: <see cref="BpeVocabulary.EndOfWordSuffix"/>
+    /// and <see cref="BpeVocabulary.ContinuingSubwordPrefix"/> are both documented as
     /// <see langword="null"/> for byte-level models, and no model in scope pairs
-    /// the two, but the two properties are independent and a vocabulary could
-    /// still declare both. Were that to happen, the suffix would be silently
-    /// ignored on this path rather than applied.
+    /// either with <see cref="BpeVocabulary.ByteLevel"/>, but the properties are
+    /// independent and a vocabulary could still declare one or both. Were that to
+    /// happen, the suffix and the prefix would each be silently ignored on this path
+    /// rather than applied. The prefix carries a second cost the suffix does not:
+    /// <see cref="StripContinuingPrefix(string)"/>, in the constructor's merge loop,
+    /// strips it from a merge's right side without checking <c>_byteLevel</c>, so a
+    /// byte-level model declaring a prefix would have its merge results computed as
+    /// if the prefix applied while its symbols here are built as if it did not — the
+    /// two halves of the same tokenizer disagreeing about the same setting. Nothing
+    /// here measured what the reference does on such a model; this documents the
+    /// gap, not a reproduced behaviour.
     /// </para>
     /// </remarks>
     /// <exception cref="ArgumentException">

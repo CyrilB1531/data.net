@@ -556,12 +556,11 @@ public static class TokenizerJsonLoader
             IgnoreMerges = OptionalBoolean(model, "ignore_merges") ?? false,
             FuseUnk = OptionalBoolean(model, "fuse_unk") ?? false,
             EndOfWordSuffix = OptionalString(model, "end_of_word_suffix"),
-            // An empty prefix prefixes nothing — measured, its token stream
-            // equals that of a model declaring none — so it reads as absent
-            // rather than as a second spelling of the same thing.
-            ContinuingSubwordPrefix = OptionalString(model, "continuing_subword_prefix") is { Length: > 0 } prefix
-                ? prefix
-                : null,
+            // BpeVocabulary.ContinuingSubwordPrefix normalises "" to null itself,
+            // the way EndOfWordSuffix above does -- so this passes the raw value
+            // straight through; see BpeContinuingPrefixTests for the measurement
+            // that an empty prefix's token stream equals a declared-none model's.
+            ContinuingSubwordPrefix = OptionalString(model, "continuing_subword_prefix"),
             UnkToken = OptionalString(model, "unk_token"),
             PreTokenizerPattern = pattern,
         };
