@@ -78,10 +78,29 @@ absolute tolerance of about `1`, which is why the ill-conditioned case has to as
 **Depends on:** nothing.
 
 **Produces:** the two numbers Task 4 and Task 6 need — the relative error the *centring mean* loses, and
-the relative error the *kernel sum* loses, both on the ill-conditioned shape at n = 1 000 000.
+the relative error the *kernel sum* loses.
 
 The spec's D3 rule cannot be applied to a guess, and Task 4 must not write a test it has no reason to
 believe can fail.
+
+**Measured on 2026-08-12, and the shape it corrected.** The construction this plan first proposed was
+degenerate: at `offset = 1e9` the ULP is about `2.4e-7`, and a prediction perturbed by `1e-8` rounds back
+onto the target, so every residual was exactly zero and `mse = 0`, `r2 = 1` would have passed while proving
+nothing — in the probe, in Task 2's test and in Task 5's fixture alike. The perturbation is what has to
+clear the ULP; the *ramp* does not, because a ramp quantized onto ULP multiples is exactly the
+ill-conditioning under repair. On the corrected shape — **`offset = 1e9`, `spread = 1e-2`,
+`n = 200 000`, perturbation `((i % 7) - 3) * 1e-6`** — the measurements are:
+
+| Quantity | Value |
+| --- | --- |
+| distinct values in `y_true` | **83 887** |
+| indices with a non-zero residual | **6/7** |
+| centring mean, sequential against compensated | **5.0e-12** relative |
+| kernel sum (squared residuals), sequential against compensated | **0.0** — the array never carries the offset |
+| **R², sequential against compensated** | **3.574e-7** relative, 357× the oracle's `1e-9` tolerance |
+
+Those numbers are what Tasks 2 to 6 use. An executor re-running the probe should reproduce them; a
+material difference is a finding, not a nuisance.
 
 - [ ] **Step 1: Build a probe that measures both accumulations**
 
@@ -224,6 +243,31 @@ public sealed class CompensatedSumTests
 {
     private const int Samples = 200_000;
     private const double Offset = 1e9;
+    private const double Spread = 1e-2;
+
+    /// <summary>
+    /// The measured shape: a ramp of 83 887 distinct values over an offset that swamps
+    /// it, and a prediction perturbed by a multiple of 1e-6.
+    /// </summary>
+    /// <remarks>
+    /// 1e-6 and not smaller: the ULP at 1e9 is about 2.4e-7, so a perturbation below
+    /// half of that rounds back onto the target and every residual becomes exactly
+    /// zero — which scores a perfect R² and proves nothing. The ramp's own step is
+    /// 5e-8, below the ULP and deliberately so: quantizing it onto ULP multiples is
+    /// what makes the target ill-conditioned in the first place.
+    /// </remarks>
+    private static (double[] YTrue, double[] YPred) IllConditioned()
+    {
+        double step = Spread / Samples;
+        double[] yTrue = new double[Samples];
+        double[] yPred = new double[Samples];
+        for (int i = 0; i < Samples; i++)
+        {
+            yTrue[i] = Offset + (i * step);
+            yPred[i] = yTrue[i] + (((i % 7) - 3) * 1e-6);
+        }
+        return (yTrue, yPred);
+    }
 
     /// <summary>
     /// R² of a prediction that is exactly the truth shifted by a constant. The exact
@@ -234,19 +278,12 @@ public sealed class CompensatedSumTests
     [Fact]
     public void R2_matches_a_decimal_reference_on_an_ill_conditioned_target()
     {
-        double step = 1e-2 / Samples;
-        double[] yTrue = new double[Samples];
-        double[] yPred = new double[Samples];
-        for (int i = 0; i < Samples; i++)
-        {
-            yTrue[i] = Offset + (i * step);
-            yPred[i] = yTrue[i] + step;
-        }
+        (double[] yTrue, double[] yPred) = IllConditioned();
 
         double expected = (double)ExactR2(yTrue, yPred);
         double actual = R2.Score(yTrue, yPred);
 
-        Assert.Equal(expected, actual, 12);
+        Assert.Equal(expected, actual, 10);
     }
 
     /// <summary>
@@ -257,19 +294,12 @@ public sealed class CompensatedSumTests
     [Fact]
     public void A_sequential_sum_does_not_match_that_reference()
     {
-        double step = 1e-2 / Samples;
-        double[] yTrue = new double[Samples];
-        double[] yPred = new double[Samples];
-        for (int i = 0; i < Samples; i++)
-        {
-            yTrue[i] = Offset + (i * step);
-            yPred[i] = yTrue[i] + step;
-        }
+        (double[] yTrue, double[] yPred) = IllConditioned();
 
         double sequential = SequentialR2(yTrue, yPred);
         double expected = (double)ExactR2(yTrue, yPred);
 
-        Assert.NotEqual(expected, sequential, 12);
+        Assert.NotEqual(expected, sequential, 10);
     }
 
     /// <summary>R² in <see cref="decimal"/>, which carries eleven more digits than <see cref="double"/>.</summary>
@@ -334,9 +364,10 @@ Expected: `R2_matches_a_decimal_reference_on_an_ill_conditioned_target` **fails*
 `A_sequential_sum_does_not_match_that_reference` **passes** — the second is what proves the first is not
 passing for free. Four tests in total across the two mirrored projects. **Read the count.**
 
-If the first test *passes* before any change, stop and report: either the shape is not ill-conditioned
-enough at 200 000 samples, or `Assert.Equal(expected, actual, 12)` is looser than the defect. Task 1's
-numbers say which, and the fix is to raise `Samples` or tighten the digit count — not to proceed.
+If the first test *passes* before any change, stop and report. Task 1 measured this exact shape at
+**3.574e-7** relative between a sequential R² and a compensated one, which ten decimal places separate by
+more than three orders of magnitude, so a green first test means the construction was not built as written
+— check the perturbation is `1e-6` and not the ramp's `5e-8` step, which rounds away entirely.
 
 - [ ] **Step 3: Write the accumulator**
 
@@ -488,19 +519,12 @@ Add to `CompensatedSumTests.cs`, beside the R² pair:
     [Fact]
     public void ExplainedVariance_matches_a_decimal_reference_on_an_ill_conditioned_target()
     {
-        double step = 1e-2 / Samples;
-        double[] yTrue = new double[Samples];
-        double[] yPred = new double[Samples];
-        for (int i = 0; i < Samples; i++)
-        {
-            yTrue[i] = Offset + (i * step);
-            yPred[i] = yTrue[i] + (((i % 7) - 3) * step);
-        }
+        (double[] yTrue, double[] yPred) = IllConditioned();
 
         double expected = (double)ExactExplainedVariance(yTrue, yPred);
         double actual = ExplainedVariance.Score(yTrue, yPred);
 
-        Assert.Equal(expected, actual, 12);
+        Assert.Equal(expected, actual, 10);
     }
 
     /// <summary>Explained variance in <see cref="decimal"/>: 1 − Var(y − ŷ) ⁄ Var(y).</summary>
@@ -585,14 +609,15 @@ This is `MeanSquaredError`, `RootMeanSquaredError`, `MeanAbsoluteError`, `MeanAb
 
 - [ ] **Step 1: Decide, from Task 1's numbers, whether a failing test exists to write**
 
-If Task 1's *kernel sum* relative error was at or above `1e-12`, write a test in the shape of Task 2's,
-through `MeanSquaredError.Score`, on a payload that reproduces it — and say in your report which payload
-and what error it showed.
+**Task 1 settled this: the kernel sum's relative error is `0.0`, exactly.** The array these seven metrics
+average holds squared *residuals*, which are differences — the offset that wrecks the centring mean is gone
+before the first addition, and a sequential sum and a compensated one come out bit-identical. Measured on
+the same shape that puts R² 357× outside the oracle tolerance, and measured twice, at n = 200 000 and at
+n = 1 000 000.
 
-If it was below `1e-12`, **say so and write no behavioural test**: there is no shape inside this metric's
-contract that a test could catch, the change is a strictness upgrade rather than a bug fix, and Task 6's
-benchmark decides whether it stays. Do not invent a test that passes before and after; that is a test that
-asserts nothing.
+So **write no behavioural test here**: there is no payload inside this metric's contract that one could
+catch, this change is a strictness upgrade rather than a bug fix, and Task 6's benchmark decides whether it
+stays. Do not invent a test that passes before and after; that is a test that asserts nothing.
 
 Either way, one property is worth pinning and costs nothing: the total weight is accumulated too, so a
 million samples of weight `0.1` must average exactly what the same data averages unweighted.
@@ -726,6 +751,12 @@ In `tools/generate_oracles.py`, beside the other regression generators:
 CONDITIONING_SAMPLES = 200_000
 CONDITIONING_OFFSET = 1e9
 CONDITIONING_SPREAD = 1e-2
+# 1e-6 and not the ramp's own 5e-8 step: the ULP at 1e9 is about 2.4e-7, so a
+# perturbation below half of that rounds straight back onto the target. Measured:
+# with 1e-8 every residual is exactly zero, mse is 0 and r2 is 1, and a fixture built
+# that way passes while proving nothing. The ramp's step stays below the ULP on
+# purpose -- quantizing it is the ill-conditioning this case exists to carry.
+CONDITIONING_PERTURBATION = 1e-6
 PROBE_INDICES = [0, 1, CONDITIONING_SAMPLES // 2, CONDITIONING_SAMPLES - 2, CONDITIONING_SAMPLES - 1]
 
 
@@ -733,7 +764,8 @@ def _conditioning_arrays() -> tuple[list[float], list[float]]:
     """The closed form both sides build, and nothing but it."""
     step = CONDITIONING_SPREAD / CONDITIONING_SAMPLES
     y_true = [CONDITIONING_OFFSET + i * step for i in range(CONDITIONING_SAMPLES)]
-    y_pred = [y_true[i] + ((i % 7) - 3) * step for i in range(CONDITIONING_SAMPLES)]
+    y_pred = [y_true[i] + ((i % 7) - 3) * CONDITIONING_PERTURBATION
+              for i in range(CONDITIONING_SAMPLES)]
     return y_true, y_pred
 
 
@@ -770,9 +802,10 @@ def generate_regression_conditioning() -> dict:
             "samples": CONDITIONING_SAMPLES,
             "offset": CONDITIONING_OFFSET,
             "spread": CONDITIONING_SPREAD,
+            "perturbation": CONDITIONING_PERTURBATION,
             "construction": (
                 "step = spread / samples; y_true[i] = offset + i * step; "
-                "y_pred[i] = y_true[i] + ((i % 7) - 3) * step"
+                "y_pred[i] = y_true[i] + ((i % 7) - 3) * perturbation"
             ),
             "probe_indices": PROBE_INDICES,
             "probe_bits_y_true": [_bits(y_true[i]) for i in PROBE_INDICES],
@@ -873,13 +906,14 @@ public sealed class RegressionConditioningTests
         int samples = metadata.GetProperty("samples").GetInt32();
         double offset = metadata.GetProperty("offset").GetDouble();
         double step = metadata.GetProperty("spread").GetDouble() / samples;
+        double perturbation = metadata.GetProperty("perturbation").GetDouble();
 
         double[] yTrue = new double[samples];
         double[] yPred = new double[samples];
         for (int i = 0; i < samples; i++)
         {
             yTrue[i] = offset + (i * step);
-            yPred[i] = yTrue[i] + (((i % 7) - 3) * step);
+            yPred[i] = yTrue[i] + (((i % 7) - 3) * perturbation);
         }
         return (yTrue, yPred);
     }
