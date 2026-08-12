@@ -26,11 +26,12 @@ public sealed class CompensatedSumTests
     /// it, and a prediction perturbed by a multiple of 1e-6.
     /// </summary>
     /// <remarks>
-    /// 1e-6 and not smaller: the ULP at 1e9 is about 2.4e-7, so a perturbation below
-    /// half of that rounds back onto the target and every residual becomes exactly
-    /// zero — which scores a perfect R² and proves nothing. The ramp's own step is
-    /// 5e-8, below the ULP and deliberately so: quantizing it onto ULP multiples is
-    /// what makes the target ill-conditioned in the first place.
+    /// 1e-6 and not smaller: the ULP at 1e9 is about 1.19e-7
+    /// (<c>Math.BitIncrement(1e9) - 1e9</c>), so a perturbation below half of that
+    /// rounds back onto the target and every residual becomes exactly zero — which
+    /// scores a perfect R² and proves nothing. The ramp's own step is 5e-8, below
+    /// the ULP and deliberately so: quantizing it onto ULP multiples is what makes
+    /// the target ill-conditioned in the first place.
     /// </remarks>
     private static (double[] YTrue, double[] YPred) IllConditioned()
     {
@@ -46,10 +47,12 @@ public sealed class CompensatedSumTests
     }
 
     /// <summary>
-    /// R² of a prediction that is exactly the truth shifted by a constant. The exact
-    /// score is derivable: the residual is the same constant everywhere, so the
-    /// numerator is n·c² and the denominator is the centred sum of squares of an
-    /// arithmetic progression — both computed here in decimal.
+    /// R² of the <see cref="IllConditioned"/> fixture, checked against a decimal
+    /// reference computed on the same residual and centred values <see cref="R2.Score"/>
+    /// itself works from — not a closed form, since the perturbation cycles through
+    /// seven distinct values (<c>((i % 7) - 3) * 1e-6</c>) rather than shifting every
+    /// prediction by one constant, so there is no single <c>c</c> to square and
+    /// multiply by <c>n</c>.
     /// </summary>
     [Fact]
     public void R2_matches_a_decimal_reference_on_an_ill_conditioned_target()
