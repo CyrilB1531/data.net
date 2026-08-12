@@ -114,10 +114,13 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
         if (vocabulary.UnkToken is { } unk)
         {
-            // The model's vocabulary, not the folded one: a file declaring its
-            // unknown token only in added_tokens does not build in the
-            // reference either — "Unk token `<unk>` not found in the
-            // vocabulary" — so accepting it here was a divergence.
+            // The model's vocabulary, not the folded one. The reference does
+            // not refuse such a file: it loads, answers token_to_id, and
+            // encodes text the model covers. It raises "Unk token `<unk>`
+            // not found in the vocabulary" from encode, and only on text that
+            // needs a substitution. Refusing at construction is earlier than
+            // that, deliberately — a failure that depends on which text a
+            // caller happens to pass is what loading exists to catch.
             if (!_modelVocab.TryGetValue(unk, out _unkId))
             {
                 throw new ArgumentException(
