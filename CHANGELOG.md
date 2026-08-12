@@ -186,15 +186,14 @@ and including `0.2.0` predate the split and covered all three at once — see
   and Mistral v0.1 are SentencePiece BPE with `Metaspace` and `byte_fallback`,
   a third pipeline this package does not implement — rather than tokenizing
   them to a plausible-looking wrong answer. It refuses any
-  `normalizer`, a `ByteLevel` pre-tokenizer with `use_regex` off, a **non-empty**
-  `continuing_subword_prefix` and a **non-zero** `dropout` by name too — each of
-  those changes what HuggingFace produces and none of them is applied here. The
-  values that change nothing are accepted rather than refused with them: an empty
-  prefix prefixes no symbol, a zero dropout skips no merge, and an
+  `normalizer`, a `ByteLevel` pre-tokenizer with `use_regex` off, and a
+  **non-zero** `dropout` by name too — each of those changes what HuggingFace
+  produces and none of them is applied here. The values that change nothing are
+  accepted rather than refused with them: a zero dropout skips no merge, and an
   `end_of_word_suffix` declared as `""` reads back as absent on
   `BpeVocabulary`, since an empty marker marks nothing — it used to load cleanly
   and then throw out of `Decode`. `tests/oracles/bpe_no_op_settings.json` records
-  `tokenizers` 0.23.1 producing the same tokens with each of those three declared
+  `tokenizers` 0.23.1 producing the same tokens with each of those two declared
   as with it absent; a file that loads is not evidence that a value is a no-op.
   A `ByteLevel` block declaring no `add_prefix_space` **is** refused, wherever it
   appears — top-level `pre_tokenizer`, a `Sequence` step, or the `decoder`:
@@ -207,6 +206,13 @@ and including `0.2.0` predate the split and covered all three at once — see
   [Decision 0017](docs/decisions/0017-bpe-parity-scope.md) records the scope,
   including a known split divergence from HuggingFace on letters and digits
   above the Basic Multilingual Plane.
+- **`continuing_subword_prefix`** — a `tokenizer.json` declaring one loads instead of being refused, and
+  every symbol after the first of each pre-tokenized piece is looked up with the prefix applied.
+  `BpeVocabulary.ContinuingSubwordPrefix` stops being a name with nothing behind it. A merge's result is
+  its left side plus its right side without the prefix — the left keeps its own — and an empty prefix
+  reads as absent, as an empty `EndOfWordSuffix` has since the loader stopped refusing one. All of it
+  measured against `tokenizers` 0.23.1 rather than assumed, including the absence of any fallback to the
+  bare form.
 - **`fuse_unk`** — a `tokenizer.json` declaring it loads instead of being
   refused, and a run of consecutive characters the vocabulary does not cover
   becomes one unknown token rather than one each. The run stops at a
