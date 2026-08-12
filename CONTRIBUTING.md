@@ -93,6 +93,7 @@ dotnet format DataNet.slnx --verify-no-changes
 npx markdownlint-cli2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
 python3 tools/check_version_floor.py
 python3 tools/extract_doc_snippets.py && dotnet build samples/DataNet.DocSnippets -c Release
+python3 tools/check_machine_paths.py
 ```
 
 `check_version_floor.py` is offline and instant; it catches the version numbers
@@ -101,6 +102,9 @@ with `--check-feed`, which additionally proves the dependency floor is published
 — see [`tools/README.md`](tools/README.md). If you touched packaging, packing and
 running `python3 tools/check_nuspec_dependencies.py ./artifacts --require-all`
 closes the loop.
+
+`check_machine_paths.py` refuses a tracked file that holds a path under someone's
+home directory; `/tmp` and other system paths are deliberately allowed.
 
 ## Before pushing: the half the build cannot see
 

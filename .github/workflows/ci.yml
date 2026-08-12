@@ -42,6 +42,12 @@ jobs:
           pip install --only-binary :all: --require-hashes -r tools/requirements.lock.txt
       - name: Tool tests
         run: python -m pytest tools/tests -q
+      # An absolute path under a home directory reaches a file by being pasted
+      # from a terminal, which is exactly when nobody is thinking about what the
+      # string contains. Ten of them were committed to this public repository
+      # before anything looked for them.
+      - name: No machine paths in tracked files
+        run: python tools/check_machine_paths.py
       # The .globalconfig mirrors a profile that lives on a server, so it can go stale
       # without anything in this repository changing. One call to sonarcloud.io per run
       # buys learning about that on the pull request that first meets it. A profile that
