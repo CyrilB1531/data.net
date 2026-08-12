@@ -146,15 +146,14 @@ public static class R2
         double[] denominators = new double[outputCount];
         CompensatedSum[] numerators = new CompensatedSum[outputCount];
         CompensatedSum[] centredSquares = new CompensatedSum[outputCount];
-        CompensatedSum[] meanSums = new CompensatedSum[outputCount];
 
         if (sampleWeight.IsEmpty)
         {
-            AccumulateUnweighted(yTrue, yPred, samples, meanSums, numerators, centredSquares);
+            AccumulateUnweighted(yTrue, yPred, samples, numerators, centredSquares);
         }
         else
         {
-            AccumulateWeighted(yTrue, yPred, sampleWeight, samples, meanSums, numerators, centredSquares);
+            AccumulateWeighted(yTrue, yPred, sampleWeight, samples, numerators, centredSquares);
         }
 
         for (int col = 0; col < outputCount; col++)
@@ -165,9 +164,11 @@ public static class R2
         return (scores, denominators);
     }
 
-    // outputCount is not a parameter here: meanSums.Length already carries it,
-    // and dropping it keeps this at six parameters against S107's limit of
-    // seven — the weighted overload below needs the room for sampleWeight.
+    // meanSums is not a parameter here or on the weighted overload below: it
+    // is read only to compute means, which is read only inside this method
+    // (Compute never sees it), so it is a local rather than a caller-allocated
+    // array threaded through for no reason. Dropping it also keeps both
+    // overloads under S107's seven-parameter limit with room to spare.
     //
     // No weight to multiply and no total to accumulate: the sum of n ones is
     // exactly n for every n below 2^53, so the unweighted mean divides by
@@ -176,25 +177,28 @@ public static class R2
         ReadOnlySpan<double> yTrue,
         ReadOnlySpan<double> yPred,
         int samples,
-        CompensatedSum[] meanSums,
         CompensatedSum[] numerators,
         CompensatedSum[] centredSquares)
     {
-        int outputCount = meanSums.Length;
+        int outputCount = numerators.Length;
 
         // outputCount == 1 is the common shape (a single target) and the only
         // one where rows are contiguous in yTrue/yPred, so a SIMD lane can hold
         // consecutive samples instead of columns of the same row. outputCount
         // > 1 keeps the scalar loop below rather than gathering a strided
-        // column into a Vector<T>.
+        // column into a Vector<T>. Vector.IsHardwareAccelerated also falls
+        // through to the scalar loop on a runtime where Vector<double> is
+        // software-emulated, the same guard Pooling.cs and
+        // EmbeddingIndex.Persistence.cs use (VectorMath.Dot predates it).
 #if NET5_0_OR_GREATER
-        if (outputCount == 1)
+        if (outputCount == 1 && Vector.IsHardwareAccelerated)
         {
-            AccumulateUnweightedVectorized(yTrue, yPred, samples, meanSums, numerators, centredSquares);
+            AccumulateUnweightedVectorized(yTrue, yPred, samples, numerators, centredSquares);
             return;
         }
 #endif
 
+        CompensatedSum[] meanSums = new CompensatedSum[outputCount];
         for (int row = 0; row < samples; row++)
         {
             int offset = row * outputCount;
@@ -224,14 +228,14 @@ public static class R2
     }
 
 #if NET5_0_OR_GREATER
-    // Not bit-identical with the scalar loop above: see VectorCompensatedSum's
-    // remarks for why lane-wise summation reorders the additions. Both stay
-    // Neumaier-compensated and the oracle corpus compares at 1e-9.
+    // Not guaranteed bit-identical with the scalar loop above: see
+    // VectorCompensatedSum's remarks for why lane-wise summation can reorder
+    // the additions. Both stay Neumaier-compensated and the oracle corpus
+    // compares at 1e-9.
     private static void AccumulateUnweightedVectorized(
         ReadOnlySpan<double> yTrue,
         ReadOnlySpan<double> yPred,
         int samples,
-        CompensatedSum[] meanSums,
         CompensatedSum[] numerators,
         CompensatedSum[] centredSquares)
     {
@@ -248,7 +252,6 @@ public static class R2
         {
             meanSum.Add(yTrue[i]);
         }
-        meanSums[0] = meanSum;
 
         double mean = meanSum.Value / samples;
         var meanVec = new Vector<double>(mean);
@@ -285,11 +288,11 @@ public static class R2
         ReadOnlySpan<double> yPred,
         ReadOnlySpan<double> sampleWeight,
         int samples,
-        CompensatedSum[] meanSums,
         CompensatedSum[] numerators,
         CompensatedSum[] centredSquares)
     {
-        int outputCount = meanSums.Length;
+        int outputCount = numerators.Length;
+        CompensatedSum[] meanSums = new CompensatedSum[outputCount];
         CompensatedSum totalWeight = default;
         for (int row = 0; row < samples; row++)
         {

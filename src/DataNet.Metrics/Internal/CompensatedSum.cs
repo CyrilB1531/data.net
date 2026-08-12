@@ -86,9 +86,10 @@ internal struct CompensatedSum
 /// lanes in yet another step on top of that. Two mathematically valid
 /// summation orders of the same finite-precision terms are not guaranteed to
 /// round to the same <see cref="double"/>, so a metric computed this way and
-/// the same metric computed by <see cref="CompensatedSum"/> are not bit-identical
-/// — both are Neumaier-compensated and both are correct to the oracle corpus's
-/// 1e-9 comparison, but neither is a stand-in for the other bit for bit. This
+/// the same metric computed by <see cref="CompensatedSum"/> are not
+/// guaranteed to be bit-identical — both are Neumaier-compensated and both
+/// are correct to the oracle corpus's 1e-9 comparison, but the guarantee of
+/// an exact match, not the match itself, is what is withdrawn here. This
 /// repository asserts bit-identity elsewhere (<c>Pooler.MeanPoolBatch</c>); it
 /// is deliberately not asserted here.
 /// </para>
@@ -111,8 +112,11 @@ internal struct VectorCompensatedSum
     }
 
     /// <summary>
-    /// Folds every lane's own compensated total into one <see cref="CompensatedSum"/>,
-    /// combining them the same compensated way each lane combined its own terms.
+    /// Rounds each lane's own <c>_sum + _compensation</c> to one <see cref="double"/>
+    /// first, then Neumaier-adds those <see cref="Vector{T}.Count"/> doubles into
+    /// one <see cref="CompensatedSum"/> — a second, separate compensated
+    /// combination on top of what each lane already did for itself, not a
+    /// continuation of it.
     /// </summary>
     public readonly CompensatedSum Reduce()
     {
