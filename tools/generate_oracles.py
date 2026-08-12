@@ -3250,6 +3250,14 @@ def generate_bpe_fuse_unk() -> dict:
 _COVERAGE_VOCAB = {UNK_TOKEN: 0, "a": 1, "b": 2, "ab": 3}
 _COVERAGE_MERGES = [("a", "b")]
 
+# The ignore_merges pair: "!!" is the added token, single_word so that
+# Whitespace's split of "a!!" into "a" / "!!" reaches the whole-piece shortcut
+# while still being an added token's exact content. One vocabulary omits
+# "!!"; the control carries it too, so the shortcut can fire from model.vocab
+# rather than from the fold.
+_IGNORE_MERGES_VOCAB_WITHOUT_BANG = {UNK_TOKEN: 0, "a": 1, "!": 2}
+_IGNORE_MERGES_VOCAB_WITH_BANG = {UNK_TOKEN: 0, "a": 1, "!": 2, "!!": 3}
+
 
 def _added_coverage_model(single_word):
     """One tokenizer whose added token is not in model.vocab."""
@@ -3262,6 +3270,18 @@ def _added_coverage_model(single_word):
     return tokenizer
 
 
+def _added_coverage_ignore_merges_model(vocab):
+    """One tokenizer with ignore_merges on: "!!" is an added token, in model.vocab or not."""
+    from tokenizers import AddedToken, Tokenizer, models, pre_tokenizers  # noqa: PLC0415
+
+    model = models.BPE(dict(vocab), [], unk_token=UNK_TOKEN)
+    model.ignore_merges = True
+    tokenizer = Tokenizer(model)
+    tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
+    tokenizer.add_tokens([AddedToken("!!", single_word=True, normalized=False)])
+    return tokenizer
+
+
 def _added_coverage_models() -> list[tuple]:
     """(name, declares, single_word, tokenizer, texts)."""
     # aQa and ZQZ put the added token inside a word, where single_word decides
@@ -3269,11 +3289,26 @@ def _added_coverage_models() -> list[tuple]:
     # the scanner matches under either flag and both sides already agree. aQ
     # ends a piece with it, and QQ doubles it.
     texts = ["aQa", "ZQZ", "QQ", "Q", "a Q a", "aQ"]
+    # a!! is split by Whitespace into "a" / "!!"; single_word declines the
+    # scanner on "a" (a word character), so "!!" reaches the ignore_merges
+    # shortcut while being an added token's exact content. Bare "!!" reaches
+    # the scanner directly under either vocabulary, and is carried as the
+    # non-discriminating control.
+    ignore_merges_texts = ["a!!", "!!"]
     return [
         ("single_word", "an added token absent from model.vocab, matched only on its own",
          True, _added_coverage_model(True), texts),
         ("any_position", "the same added token, matchable inside a word",
          False, _added_coverage_model(False), texts),
+        ("ignore_merges_added_token_only",
+         "ignore_merges on; the added token '!!' is absent from model.vocab, "
+         "so the whole-piece shortcut cannot see it",
+         True, _added_coverage_ignore_merges_model(_IGNORE_MERGES_VOCAB_WITHOUT_BANG),
+         ignore_merges_texts),
+        ("ignore_merges_added_token_in_vocab",
+         "the control: '!!' is in model.vocab too, so the shortcut fires from there",
+         True, _added_coverage_ignore_merges_model(_IGNORE_MERGES_VOCAB_WITH_BANG),
+         ignore_merges_texts),
     ]
 
 
