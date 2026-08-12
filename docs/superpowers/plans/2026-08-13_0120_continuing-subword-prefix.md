@@ -381,8 +381,9 @@ grep -n "private int InitialSymbols" -A 48 src/DataNet.Embeddings/Tokenization/B
 ```
 
 Note the `#pragma warning disable CA1845` and the comment above it: `string.Concat`'s two-span overload
-arrived in `netstandard2.1` and this library also targets `netstandard2.0`, where the call binds to
-`Concat(object, object)` and does not compile. **The pragma moves with the code it covers.** When
+arrived with .NET Core 3.0 and is in no `netstandard` version at all, so on `netstandard2.0` the call
+resolves against `Concat(object, object)` and fails to compile with `CS1503`. **The pragma moves with the
+code it covers.** When
 suppressed code moves and the suppression stays behind, the rule reappears somewhere else — that has
 happened twice in this repository.
 
@@ -403,10 +404,12 @@ and add the method below `InitialSymbols`:
     private string Decorate(string piece, int at, int width, bool last)
     {
         // CA1845 wants string.Concat over spans here. Its two-span overload
-        // arrived in netstandard2.1, and this library targets netstandard2.0 as
-        // well, where the call binds to Concat(object, object) and does not
-        // compile. The suffix is null for every byte-level model, so this
-        // branch is the classic lineage's alone.
+        // arrived with .NET Core 3.0 and is in no netstandard version at all,
+        // and this library targets netstandard2.0 as well, where the call
+        // resolves against Concat(object, object) and fails to compile --
+        // measured, CS1503, and a ReadOnlySpan<char> cannot become an object.
+        // The suffix is null for every byte-level model, so this branch is the
+        // classic lineage's alone.
 #pragma warning disable CA1845
         return last && _endOfWord is not null
             ? piece.Substring(at, width) + _endOfWord
@@ -711,10 +714,12 @@ and give `Decorate` the position it now needs. Replace the method from Task 2 wi
         string suffix = last && _endOfWord is not null ? _endOfWord : string.Empty;
 
         // CA1845 wants string.Concat over spans. Its two-span overload arrived
-        // in netstandard2.1 and this library also targets netstandard2.0, where
-        // the call binds to Concat(object, object) and does not compile. Both
-        // decorations are null for every byte-level model, so this is the
-        // classic lineage's path alone.
+        // with .NET Core 3.0 and is in no netstandard version at all, and this
+        // library also targets netstandard2.0, where the call resolves against
+        // Concat(object, object) and fails to compile -- measured, CS1503, and
+        // a ReadOnlySpan<char> cannot become an object. Both decorations are
+        // null for every byte-level model, so this is the classic lineage's
+        // path alone.
 #pragma warning disable CA1845
         return prefix.Length == 0 && suffix.Length == 0
             ? characters

@@ -391,10 +391,12 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private string Decorate(string piece, int at, int width, bool last)
     {
         // CA1845 wants string.Concat over spans here. Its two-span overload
-        // arrived in netstandard2.1, and this library targets netstandard2.0 as
-        // well, where the call binds to Concat(object, object) and does not
-        // compile. The suffix is null for every byte-level model, so this
-        // branch is the classic lineage's alone.
+        // arrived with .NET Core 3.0 and is in no netstandard version at all,
+        // and this library targets netstandard2.0 as well, where the call
+        // resolves against Concat(object, object) and fails to compile --
+        // measured, CS1503, and a ReadOnlySpan<char> cannot become an object.
+        // The suffix is null for every byte-level model, so this branch is the
+        // classic lineage's alone.
 #pragma warning disable CA1845
         return last && _endOfWord is not null
             ? piece.Substring(at, width) + _endOfWord
