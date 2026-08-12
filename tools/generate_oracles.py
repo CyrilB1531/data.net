@@ -57,6 +57,9 @@ ORACLE_DIR = Path(__file__).resolve().parent.parent / "tests" / "oracles"
 QUICK_FOX = "the quick brown fox"
 METS = "new york mets"
 UNK_TOKEN = "[UNK]"
+# WordPiece's spelling; the sentencepiece-based families (Unigram, XLM-R) spell
+# the same concept in angle brackets below.
+UNK_TOKEN_LOWER = "<unk>"
 CAT_SENTENCE = "the cat sat on the mat"
 HELLO_WORLD = "hello world"
 TINY_SP_MODEL = "tiny_sp.model"
@@ -1310,7 +1313,7 @@ def generate_tokenizer_json() -> dict:
     unigram_pieces = [(p.piece, p.score) for p in proto.pieces]
     unigram = Tokenizer(Unigram(unigram_pieces, unk_id=proto.trainer_spec.unk_id, byte_fallback=False))
     unigram.pre_tokenizer = Metaspace()
-    unigram.add_special_tokens(["<unk>", "<s>", "</s>"])
+    unigram.add_special_tokens([UNK_TOKEN_LOWER, "<s>", "</s>"])
     unigram_cases = []
     for i, text in enumerate(LOADER_TEXTS):
         enc = unigram.encode(text)
@@ -1414,7 +1417,7 @@ XLMR_TEXTS = [
 ]
 
 # The five strings a vocabulary in this layout must never segment onto.
-XLMR_MARKERS = ["<s>", "<pad>", "</s>", "<unk>", MASK_TOKEN]
+XLMR_MARKERS = ["<s>", "<pad>", "</s>", UNK_TOKEN_LOWER, MASK_TOKEN]
 
 
 def generate_xlmr_fairseq() -> dict:
@@ -3242,11 +3245,9 @@ def generate_bpe_fuse_unk() -> dict:
 
 # --- added tokens are not vocabulary entries (issue #130) ---------------------
 
-_COVERAGE_UNK = "[UNK]"
-
 # Q is the added token and is deliberately absent from this vocabulary; Z is
 # absent from everything, so it is uncovered in every model here.
-_COVERAGE_VOCAB = {_COVERAGE_UNK: 0, "a": 1, "b": 2, "ab": 3}
+_COVERAGE_VOCAB = {UNK_TOKEN: 0, "a": 1, "b": 2, "ab": 3}
 _COVERAGE_MERGES = [("a", "b")]
 
 
@@ -3255,7 +3256,7 @@ def _added_coverage_model(single_word):
     from tokenizers import AddedToken, Tokenizer, models, pre_tokenizers  # noqa: PLC0415
 
     tokenizer = Tokenizer(models.BPE(
-        dict(_COVERAGE_VOCAB), list(_COVERAGE_MERGES), unk_token=_COVERAGE_UNK))
+        dict(_COVERAGE_VOCAB), list(_COVERAGE_MERGES), unk_token=UNK_TOKEN))
     tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
     tokenizer.add_tokens([AddedToken("Q", single_word=single_word, normalized=False)])
     return tokenizer
@@ -3311,14 +3312,14 @@ def _added_coverage_refusals() -> list[dict]:
         # reference defers the check to encode, and raises only on text that
         # needs a substitution. "ab" encodes fine; "aZb" does not.
         ("unk_only_in_added_tokens",
-         document({"a": 0, "b": 1}, [], "<unk>",
-                  [{"id": 2, "content": "<unk>", "single_word": False, "lstrip": False,
+         document({"a": 0, "b": 1}, [], UNK_TOKEN_LOWER,
+                  [{"id": 2, "content": UNK_TOKEN_LOWER, "single_word": False, "lstrip": False,
                     "rstrip": False, "normalized": False, "special": True}]),
          "aZb"),
         # A merge names a token that only added_tokens declares. Refused while
         # the document is read.
         ("merge_names_an_added_token",
-         document({_COVERAGE_UNK: 0, "a": 1, "Qa": 3}, [["Q", "a"]], _COVERAGE_UNK, added_q),
+         document({UNK_TOKEN: 0, "a": 1, "Qa": 3}, [["Q", "a"]], UNK_TOKEN, added_q),
          "Qa"),
         # A merge whose two sides are present but whose result is not. The
         # reference PANICS while reading rather than raising; the panic is
@@ -3337,12 +3338,22 @@ def _added_coverage_refusals() -> list[dict]:
         try:
             tokenizer = Tokenizer.from_str(doc)
         except BaseException as exc:  # noqa: BLE001 - the refusal IS the measurement
+            # BaseException because a Rust panic surfaces as
+            # pyo3_runtime.PanicException, which does not inherit from
+            # Exception and whose module cannot be imported to name it here.
+            # Ctrl-C and a SystemExit are re-raised rather than recorded as
+            # measurements, which is also what S5754 asks for.
+            if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                raise
             refusals.append({"shape": shape, "document": doc, "raised_by": "load",
                              "text": None, "error": f"{type(exc).__name__}: {exc}"})
             continue
         try:
             tokenizer.encode(provoking_text)
         except BaseException as exc:  # noqa: BLE001
+            # Same reasoning as the from_str handler above.
+            if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                raise
             refusals.append({"shape": shape, "document": doc, "raised_by": "encode",
                              "text": provoking_text, "error": f"{type(exc).__name__}: {exc}"})
         else:
