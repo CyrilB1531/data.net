@@ -3517,6 +3517,12 @@ def _prefix_refusals() -> list[dict]:
     try:
         Tokenizer.from_str(document)
     except BaseException as exc:  # noqa: BLE001 - the refusal IS the measurement
+        # Same reasoning as _added_coverage_refusals: BaseException because a
+        # Rust panic surfaces as pyo3_runtime.PanicException, which does not
+        # inherit from Exception. Ctrl-C and a SystemExit are re-raised rather
+        # than recorded as measurements, which is also what S5754 asks for.
+        if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+            raise
         return [{"shape": "merge_result_not_stripped", "document": document,
                  "error": f"{type(exc).__name__}: {exc}"}]
     raise AssertionError(
