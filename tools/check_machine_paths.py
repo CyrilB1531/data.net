@@ -18,6 +18,17 @@ are exempt. Nothing else is, deliberately -- an exemption list that grows is a
 guard being switched off one file at a time.
 
 Usage:  python tools/check_machine_paths.py [--no-environment]
+        python tools/check_machine_paths.py --help
+
+  --no-environment  Skip the probes derived from this machine's $HOME (its
+                    home directory, its account name, and the dashed form a
+                    session scratch directory is named after). Use this when
+                    an ordinary account name -- src, build, net, docs, main,
+                    dev and the like -- collides with prose already in the
+                    tree and turns the guard into noise; the named shapes
+                    above still run either way.
+  --help, -h        Print this message to stdout and exit 0.
+
 Exit:   0 clean, 1 findings printed, 2 bad usage
 """
 
@@ -28,6 +39,8 @@ import pathlib
 import re
 import subprocess
 import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 # A directory named after a person, under the place each platform keeps them.
 # The trailing separator is required: it is what distinguishes a path from a
@@ -45,12 +58,11 @@ NAMED_SHAPES: tuple[tuple[str, re.Pattern[str]], ...] = (
     # path of the checkout it belongs to. This is the shape the four plans
     # carried, and the one no slash-separated pattern sees.
     #
-    # S5443 flags this literal as a world-writable directory used unsafely --
-    # the rule is about code that opens, writes to or resolves a path under
-    # /tmp, where a symlink planted by another user can redirect the write.
-    # This string is never used that way: it is a search pattern matched
-    # against file *contents*, never passed to open(), joined into a path, or
-    # resolved against the filesystem. /tmp appears here only because that is
+    # S5443 flags this hard-coded /tmp literal as a security hotspot. This
+    # string is never used the way the rule guards against: it is a search
+    # pattern matched against file *contents*, never passed to open(),
+    # joined into a path, or resolved against the filesystem -- the literal
+    # never leaves re.compile(). /tmp appears here only because that is
     # where the session scratch directory this pattern hunts for actually
     # lives.
     ("a session scratch directory", re.compile(r"/tmp/claude-\d+/")),  # NOSONAR S5443
@@ -64,12 +76,12 @@ EXEMPT = frozenset({
 
 # S8495 flags the empty-tuple returns below as inconsistent with the 3-tuple
 # case -- the rule is about a function whose callers positionally unpack a
-# fixed-arity result, where a shorter tuple raises a ValueError. The return
-# type here is tuple[tuple[str, re.Pattern[str]], ...]: a variable-length
-# sequence of probes, and every call site (scan_text's `for _, pattern in
-# probes`, main's `probes += environment_probes(...)`, the `== ()` checks in
-# the tests) iterates or concatenates the result rather than unpacking it by
-# length.
+# fixed-arity result, where a shorter tuple raises a ValueError. The declared
+# return type is tuple[tuple[str, re.Pattern[str]], ...]: a variable-length
+# sequence, so no caller may positionally unpack it by length. Every call
+# site (scan_text's `for _, pattern in probes`, main's `probes +=
+# environment_probes(...)`, the tests' `== ()` checks) iterates, concatenates
+# or compares the result instead.
 def environment_probes(home: str | None) -> tuple[tuple[str, re.Pattern[str]], ...]:  # NOSONAR S8495
     """Probes for *this* machine's home directory, in the forms it gets written.
 
@@ -90,6 +102,14 @@ def environment_probes(home: str | None) -> tuple[tuple[str, re.Pattern[str]], .
     if not home:
         return ()
 
+    # A trailing separator (as in "/home/name/") would otherwise survive into
+    # the rsplit below and leave account == "", silently dropping all three
+    # probes -- including the plain home-path probe, which needs no account
+    # name at all.
+    home = home.rstrip("/")
+    if not home:
+        return ()
+
     account = home.rsplit("/", 1)[-1]
     if not account:
         return ()
@@ -102,48 +122,91 @@ def environment_probes(home: str | None) -> tuple[tuple[str, re.Pattern[str]], .
     )
 
 
-def scan_text(text: str, probes) -> list[tuple[int, str]]:
-    """Every (1-based line number, matched text) `probes` finds in `text`."""
+def scan_text(text: str, probes) -> list[tuple[int, str, str]]:
+    """Every (1-based line number, probe description, matched text) `probes` finds in `text`."""
     findings = []
-    for _, pattern in probes:
+    for description, pattern in probes:
         for match in pattern.finditer(text):
-            findings.append((text.count("\n", 0, match.start()) + 1, match.group(0)))
+            findings.append((text.count("\n", 0, match.start()) + 1, description, match.group(0)))
     return sorted(findings)
 
 
 def tracked_files() -> list[str]:
-    """Every path `git ls-files` reports, in repository-relative form."""
+    """Every path `git ls-files` reports, in repository-relative form.
+
+    Run with cwd pinned to ROOT: git resolves relative to the process's
+    current directory otherwise, and so does every read in main() below, so a
+    guard invoked from a subdirectory would silently scan a fraction of the
+    repository and still exit 0.
+    """
     listing = subprocess.run(
-        ["git", "ls-files"], capture_output=True, text=True, check=True)
+        ["git", "ls-files"], capture_output=True, text=True, check=True, cwd=ROOT)
     return listing.stdout.split("\n")[:-1] if listing.stdout else []
 
 
-def main(argv: list[str]) -> int:
-    for argument in argv[1:]:
+def _parse_arguments(arguments: list[str]) -> int | None:
+    """Handle `--help`/`-h` and reject anything but `--no-environment`.
+
+    Returns the exit code main() should return immediately, or None to mean
+    "keep going" -- pulled out of main() to keep its cognitive complexity
+    under the limit the rest of the repository holds itself to.
+    """
+    if "--help" in arguments or "-h" in arguments:
+        print(__doc__)
+        return 0
+
+    for argument in arguments:
         if argument != "--no-environment":
             print(__doc__, file=sys.stderr)
             return 2
 
-    probes = NAMED_SHAPES
-    if "--no-environment" not in argv[1:]:
-        probes += environment_probes(os.environ.get("HOME"))
+    return None
+
+
+def _failure_message(findings: int, derived_matched: bool) -> str:
+    """The stderr summary after a scan that found something."""
+    message = (
+        f"\n{findings} machine path(s) in tracked files. "
+        "Replace them with $SCRATCH, $(mktemp -d), or a description of what the path held."
+    )
+    if derived_matched:
+        message += (
+            " At least one of those came from a probe derived from this "
+            "machine's $HOME, which can be a false positive for an ordinary "
+            "account name -- rerun with --no-environment to check against "
+            "the named shapes alone."
+        )
+    return message
+
+
+def main(argv: list[str]) -> int:
+    arguments = argv[1:]
+    early_exit = _parse_arguments(arguments)
+    if early_exit is not None:
+        return early_exit
+
+    use_environment = "--no-environment" not in arguments
+    derived = environment_probes(os.environ.get("HOME")) if use_environment else ()
+    probes = NAMED_SHAPES + derived
+    derived_descriptions = frozenset(description for description, _ in derived)
+
     findings = 0
+    derived_matched = False
     for path in tracked_files():
         if path in EXEMPT:
             continue
         try:
-            text = pathlib.Path(path).read_text(encoding="utf-8")
+            text = (ROOT / path).read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
-        for line, matched in scan_text(text, probes):
-            print(f"{path}:{line}: {matched}")
+        for line, description, matched in scan_text(text, probes):
+            print(f"{path}:{line}: {description}: {matched}")
             findings += 1
+            if description in derived_descriptions:
+                derived_matched = True
 
     if findings:
-        print(
-            f"\n{findings} machine path(s) in tracked files. "
-            "Replace them with $SCRATCH, $(mktemp -d), or a description of what the path held.",
-            file=sys.stderr)
+        print(_failure_message(findings, derived_matched), file=sys.stderr)
         return 1
     return 0
 

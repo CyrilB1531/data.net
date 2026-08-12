@@ -16,6 +16,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import check_machine_paths as guard  # noqa: E402
 
+# argv[0] for the main() calls below -- its value is never read by main(),
+# only argv[1:], but a shared constant keeps python:S1192 quiet rather than
+# repeating the literal past the three occurrences it fires at.
+PROG = "check_machine_paths.py"
+
 
 # The two CI runner paths, as they appeared in issue #70's spec and plan.
 RUNNER_PATH = "Base dir: " + "/home/" + "runner/work/data.net/data.net"
@@ -92,6 +97,12 @@ def test_the_report_names_the_line():
     assert findings[0][0] == 2
 
 
+def test_the_report_names_which_probe_matched():
+    findings = scan(POSIX_HOME)
+
+    assert findings[0][1] == "a home directory under /home"
+
+
 def test_the_guard_exempts_only_itself_and_its_tests():
     assert guard.EXEMPT == frozenset({
         "tools/check_machine_paths.py",
@@ -101,8 +112,11 @@ def test_the_guard_exempts_only_itself_and_its_tests():
 
 # The scratchpad path as it appeared in four plans, with the name redacted the
 # way the spec redacts it -- the shape is what matters, and a whole one here
-# would put a home directory back into a tracked file.
-SCRATCH = "/tmp/claude-" + "49201103/" + "-home-" + "someone-Documents-devs-data-net2/x/scratchpad"
+# would put a home directory back into a tracked file. The id below is an
+# obviously fake stand-in, not the real one recovered from history: that
+# value is a stable machine identifier in its own right, and redacting it is
+# the same judgement call as redacting the account name.
+SCRATCH = "/tmp/claude-" + "12345678/" + "-home-" + "someone-Documents-devs-data-net2/x/scratchpad"
 
 
 def test_the_named_shapes_alone_miss_the_dashed_form():
@@ -139,3 +153,94 @@ def test_an_environment_probe_needs_a_boundary_around_the_name():
 
 def test_no_home_means_no_environment_probes():
     assert guard.environment_probes(None) == ()
+
+
+def test_a_trailing_separator_on_home_does_not_disable_the_probes():
+    # environment_probes("/home/name/") used to split on the trailing "/" and
+    # get account == "", dropping all three probes -- including the plain
+    # home-path one, which needs no account name at all. Stripping first
+    # makes the trailing separator a no-op instead of a silent blind spot.
+    with_slash = guard.environment_probes("/home/" + "someone" + "/")
+    without_slash = guard.environment_probes("/home/" + "someone")
+
+    assert with_slash == without_slash
+    assert with_slash != ()
+
+
+def test_home_of_only_a_separator_still_yields_no_probes():
+    # Stripping "/" from "/" leaves "", which the existing empty-account
+    # guard clause already catches -- this must keep returning no probes,
+    # not crash or derive an empty account name.
+    assert guard.environment_probes("/") == ()
+
+
+def test_tracked_files_is_independent_of_the_process_cwd(monkeypatch):
+    # tracked_files() used to inherit git's cwd from the process, so running
+    # the guard from a subdirectory silently scanned a fraction of the
+    # repository and still reported clean. Pinning cwd=ROOT on the subprocess
+    # is what this test guards.
+    baseline = guard.tracked_files()
+
+    monkeypatch.chdir(guard.ROOT / "tools")
+
+    assert guard.tracked_files() == baseline
+
+
+def test_help_flag_prints_to_stdout_and_exits_zero(capsys):
+    exit_code = guard.main([PROG, "--help"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.out
+    assert not captured.err
+
+
+def test_short_help_flag_behaves_the_same(capsys):
+    exit_code = guard.main([PROG, "-h"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.out
+    assert not captured.err
+
+
+def test_an_unrecognised_argument_is_bad_usage_on_stderr(capsys):
+    exit_code = guard.main([PROG, "--nonsense"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 2
+    assert not captured.out
+    assert captured.err
+
+
+def test_the_failure_message_points_at_no_environment_for_a_derived_hit(tmp_path, monkeypatch, capsys):
+    # A derived probe (this machine's account name, most often) is the one
+    # that can fire on an ordinary word already in the tree. The escape
+    # hatch is undiscoverable unless the failure message names it.
+    monkeypatch.setenv("HOME", "/home/" + "someone")
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "tracked_files", lambda: ["finding.txt"])
+    (tmp_path / "finding.txt").write_text(
+        "-home-" + "someone-Documents-devs-data-net2\n", encoding="utf-8")
+
+    exit_code = guard.main([PROG])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "--no-environment" in captured.err
+
+
+def test_the_failure_message_omits_no_environment_for_a_named_shape_hit(tmp_path, monkeypatch, capsys):
+    # A named-shape hit has no escape by design (spec D3): it is always a
+    # path under a home directory, never a false positive, so the message
+    # should not point a reader at a flag that would not have helped.
+    monkeypatch.delenv("HOME", raising=False)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "tracked_files", lambda: ["finding.txt"])
+    (tmp_path / "finding.txt").write_text(RUNNER_PATH + "\n", encoding="utf-8")
+
+    exit_code = guard.main([PROG])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "--no-environment" not in captured.err
