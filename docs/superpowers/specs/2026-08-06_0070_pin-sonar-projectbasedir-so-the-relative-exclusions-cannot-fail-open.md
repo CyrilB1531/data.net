@@ -48,13 +48,8 @@ runner; `.` reintroduces the very ambiguity being removed.
 Changing it would close and reopen every issue as new, and disturb blame
 attribution.
 
-So the value is taken from the log of the run on #69 rather than reasoned about:
-
-```text
-Base dir: /home/runner/work/data.net/data.net
-```
-
-which is `$GITHUB_WORKSPACE`. **This is a no-op today and a guarantee
+So the value is taken from the log of the run on #69 rather than reasoned about: the scanner prints a
+`Base dir:` line, and it holds the runner's checkout directory — which is `$GITHUB_WORKSPACE`. **This is a no-op today and a guarantee
 afterwards** — and that combination is the whole design. A "safety" change that
 re-keys a project is not safe.
 
