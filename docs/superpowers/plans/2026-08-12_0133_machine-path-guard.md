@@ -74,7 +74,8 @@ were applied.
 | `tools/check_machine_paths.py` | **New.** The whole guard: probes, scan, report, exit code. |
 | `tools/tests/test_check_machine_paths.py` | **New.** Its tests, holding the strings that actually occurred. |
 | `.github/workflows/ci.yml` | One step in the `Lint` job. |
-| `CONTRIBUTING.md` | One sentence under the existing local-checks list. |
+| `CONTRIBUTING.md` | The command in the local-checks block, with its sentence. |
+| `CLAUDE.md` | The command in the `Commands` block, with the one-line comment its neighbours carry. |
 
 ---
 
@@ -512,12 +513,13 @@ EOF
 
 ---
 
-### Task 3: The gate, and the sentence that tells a contributor about it
+### Task 3: The gate, and the two documents that tell a reader about it
 
 **Files:**
 
 - Modify: `.github/workflows/ci.yml`, the `Lint` job
 - Modify: `CONTRIBUTING.md`
+- Modify: `CLAUDE.md`
 
 **Interfaces:**
 
@@ -550,19 +552,30 @@ After the `python -m pytest tools/tests -q` step in the `Lint` job:
 
 `$HOME` is set on the runner, so the derived probes are active there too and search for `runner`.
 
-- [ ] **Step 3: Add the sentence to `CONTRIBUTING.md`**
+- [ ] **Step 3: Add the command to both documents that carry one**
 
-Find the list of checks a contributor runs locally — the one naming markdownlint and
-`dotnet format --verify-no-changes` — and add the guard beside them, in the same shape the neighbours use:
+Two files list the commands a contributor or a session runs, and a guard absent from them will not be run
+locally — which is most of its value, since it is on the machine where a path is created that the derived
+probes are strongest.
 
-```markdown
-python tools/check_machine_paths.py
+`CONTRIBUTING.md` has a fenced block listing `dotnet build`, `dotnet test`, `dotnet format`, markdownlint,
+`check_version_floor.py` and the doc-snippets pair. Add the guard to it:
+
+```bash
+python3 tools/check_machine_paths.py
 ```
 
-with one sentence of prose above or beside it, matching how the neighbouring entries are introduced, saying
-that it refuses a tracked file holding a path under someone's home directory and that `/tmp` and system
-paths are deliberately allowed. **Do not paste an example that matches** — describe the shapes, as the spec
-and this plan do, or the guard will fail on `CONTRIBUTING.md`.
+The prose under that block already explains `check_version_floor.py` in one sentence. Add one for this in
+the same shape, saying that it refuses a tracked file holding a path under someone's home directory and
+that `/tmp` and system paths are deliberately allowed.
+
+`CLAUDE.md`'s `Commands` block is the same list with a trailing comment on some lines — `check_version_floor.py`
+carries "offline, instant; catches the three version numbers drifting apart". Add the guard with a comment
+in that shape, naming what it catches rather than what it is.
+
+**Do not paste an example that matches** in either file. Describe the shapes, as the spec and this plan do,
+or the guard will fail on the documents that explain it — which is the constraint this plan's own
+"scanned too" section records.
 
 - [ ] **Step 4: Verify the workflow parses and the guard still passes**
 
@@ -581,7 +594,7 @@ and the workflow's syntax is otherwise verified by CI itself.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add .github/workflows/ci.yml CONTRIBUTING.md
+git add .github/workflows/ci.yml CONTRIBUTING.md CLAUDE.md
 git commit -m "$(cat <<'EOF'
 Run the machine-path guard in the job that gates the merge
 
@@ -589,9 +602,14 @@ One step in Lint, beside markdownlint and the format check, after the
 existing pytest step -- both are Python and the guard installs nothing of its
 own. $HOME is set on the runner, so the derived probes are active there too.
 
-CONTRIBUTING gains the command beside the other local checks. Its sentence
-describes the shapes rather than showing one, because an example that matched
-would make the guard fail on the document explaining it.
+CONTRIBUTING and CLAUDE.md both gain the command, because both carry the list
+a contributor and a session actually run, and a guard missing from them is a
+guard that only ever runs after the push -- where the derived probes search
+for the runner's home rather than the one that wrote the path.
+
+Their sentences describe the shapes rather than showing one, because an
+example that matched would make the guard fail on the documents explaining
+it.
 
 Closes #133
 EOF
@@ -607,7 +625,9 @@ order so that Task 2's test can record what Task 1 misses. D2, the guard being a
 rather than absolute paths, is Task 1's `NEUTRAL`/`SYSTEM`/`TILDE` tests and the docstring's paragraph.
 D3, the boundary around a generic account name, is
 `test_an_environment_probe_needs_a_boundary_around_the_name` and `--no-environment`. D4, the `Lint` step
-and no hook, is Task 3 — no task creates a hook. D4b, the two-file exemption, is
+and no hook, is Task 3 — no task creates a hook, and Task 3 adds the command to both `CONTRIBUTING.md` and
+`CLAUDE.md`, since the derived probes are strongest on the machine where a path is created and a command
+absent from those lists is not run there. D4b, the two-file exemption, is
 `test_the_guard_exempts_only_itself_and_its_tests`, which asserts the set is exactly those two so that a
 third addition fails a test rather than passing quietly. D5, tests carrying the strings that occurred, is
 Task 1's `RUNNER_PATH` and Task 2's `SCRATCH`.
