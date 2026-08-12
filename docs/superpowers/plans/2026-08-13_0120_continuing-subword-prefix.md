@@ -49,16 +49,42 @@ result rule stops being a plain concatenation. The loader stops refusing and sta
 
 ## The complexity budget, measured before the first line
 
-`InitialSymbols` sits at roughly **14 of S3776's 15** today: a `while`, two ternaries with their boolean
-operators, an `if`/`else if`, and a nested `if` with an `||`. Counting by hand gives 14; the exact number
-matters less than the margin, which is one.
+Read by the analyzer itself, not counted by hand — see *Measuring S3776* below:
 
-**So the prefix cannot be added inline.** A "is this the first symbol of the piece" flag and another
-ternary would push it over, and the compile error would land on whoever wrote the last line rather than on
-the design. Task 2 extracts `Decorate` **before** adding anything, and the extraction is what makes room.
+| Member | Before Task 2 | After Task 2 | Limit |
+| --- | --- | --- | --- |
+| `InitialSymbols` | **14** | **11** | 15 |
+| `Decorate` | — | 2 | 15 |
+| the constructor | 14 | 14 | 15 |
 
-Run the check rather than trusting this paragraph: the SonarQube MCP's `analyze_code_snippet` reports on a
-pasted file, and `mcp__sonarqube__show_rule` gives S3776's own text.
+**So the prefix cannot be added inline.** With `InitialSymbols` at 14 the margin is one, and a "is this the
+first symbol of the piece" flag with another ternary would push it over — the compile error landing on
+whoever wrote the last line rather than on the design. Task 2 extracts `Decorate` **before** adding
+anything; the extraction buys three points, and Task 3 spends them in `Decorate` rather than in the loop.
+
+**The constructor is also at 14**, which Task 3 Step 5 edits. Replacing a concatenation with a call adds
+nothing — a method call carries no cognitive complexity — so that step is safe as written. It stops being
+safe the moment a branch is added there instead: if the stripping ever needs an `if` in the merge loop, it
+belongs in a helper, not inline.
+
+### Measuring S3776
+
+`analyze_code_snippet` on the SonarQube MCP server does **not** accept C#, so it cannot answer this. Two
+things that do:
+
+- **The build.** S3776 is `warning` in `.globalconfig` since #109 and `TreatWarningsAsErrors` is on
+  repository-wide, so a clean `dotnet build DataNet.slnx -c Release` already proves every member is at 15
+  or below. That is the gate; it does not give a number.
+- **A temporary threshold.** For the number, drop a `SonarLint.xml` beside the project declaring
+  `<Rule><Key>S3776</Key><Parameters><Parameter><Key>threshold</Key><Value>1</Value>` and wire it with
+  `<AdditionalFiles Include="SonarLint.xml" />` in the `.csproj`. Every member then reports its own value
+  in the warning text. **Revert both edits afterwards** — neither belongs in a commit.
+
+  ```bash
+  dotnet build src/DataNet.Embeddings -c Release -f net10.0 \
+    -p:TreatWarningsAsErrors=false --no-incremental 2>&1 \
+    | grep S3776 | grep BpeTokenizer.cs | sed 's/ \[\/home.*//' | sort -u
+  ```
 
 ## File Structure
 
@@ -407,9 +433,10 @@ existing corpora *are* the test, and a pure extraction that changes a token stre
 
 - [ ] **Step 4: Confirm the budget moved**
 
-Paste `InitialSymbols` and `Decorate` into the SonarQube MCP's `analyze_code_snippet` and confirm neither
-reports `S3776`. Record both results in your report: this is the measurement Task 3 depends on, and "it
-compiled" does not establish it.
+Already done, and recorded in *Measuring S3776* above: `InitialSymbols` goes from **14 to 11** and
+`Decorate` lands at **2**, so the extraction buys three points. Re-run that section's command if you want
+to see it yourself, and revert the two probe edits afterwards. Note that `analyze_code_snippet` on the
+SonarQube MCP server does not accept C# — do not report a number from it.
 
 - [ ] **Step 5: Commit**
 
@@ -753,6 +780,11 @@ dotnet build DataNet.slnx -c Release && dotnet test DataNet.slnx -c Release
 Expected: 0 warnings, 0 errors — **which is itself the S3776 check**, since the rule is enabled in the
 build since #109. If it fires, the extraction in Task 2 did not buy enough room and the loop needs a
 second one; say so rather than suppressing it.
+
+The margin is known rather than hoped for: `InitialSymbols` is at 11 of 15 and `Decorate` at 2, so this
+task's additions have room. **The constructor is the tight one, at 14** — Step 5 above only replaces a
+concatenation with a call, which costs nothing, and it must stay that way. If stripping ever needs a
+branch in the merge loop, put it in the helper rather than inline.
 
 - [ ] **Step 7: Commit**
 
