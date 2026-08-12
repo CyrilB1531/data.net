@@ -19,6 +19,7 @@ dotnet test DataNet.slnx -c Release       # runs the suite twice: net10 and nets
 dotnet format DataNet.slnx --verify-no-changes
 npx markdownlint-cli2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
 python3 tools/check_version_floor.py      # offline, instant; catches the three version numbers drifting apart
+python3 tools/check_machine_paths.py      # catches a tracked file holding a path under someone's home directory
 ```
 
 A single test, or one area:
