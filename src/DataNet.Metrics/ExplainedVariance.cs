@@ -121,35 +121,71 @@ public static class ExplainedVariance
     {
         double[] scores = new double[outputCount];
         double[] denominators = new double[outputCount];
-        CompensatedSum[] numerators = new CompensatedSum[outputCount];
-        CompensatedSum[] centredSquares = new CompensatedSum[outputCount];
-        CompensatedSum[] meanSums = new CompensatedSum[outputCount];
-        CompensatedSum[] meanResidualSums = new CompensatedSum[outputCount];
-        double[] means = new double[outputCount];
-        double[] meanResiduals = new double[outputCount];
-        bool weighted = !sampleWeight.IsEmpty;
-        CompensatedSum totalWeight = default;
+        var sums = new Accumulators
+        {
+            Numerators = new CompensatedSum[outputCount],
+            CentredSquares = new CompensatedSum[outputCount],
+            MeanSums = new CompensatedSum[outputCount],
+            MeanResidualSums = new CompensatedSum[outputCount],
+        };
 
+        if (sampleWeight.IsEmpty)
+        {
+            AccumulateUnweighted(yTrue, yPred, samples, sums);
+        }
+        else
+        {
+            AccumulateWeighted(yTrue, yPred, sampleWeight, samples, sums);
+        }
+
+        for (int col = 0; col < outputCount; col++)
+        {
+            denominators[col] = sums.CentredSquares[col].Value;
+            scores[col] = Resolve(sums.Numerators[col].Value, denominators[col], forceFinite);
+        }
+        return (scores, denominators);
+    }
+
+    // The four running sums a pass fills, bundled so that AccumulateUnweighted
+    // and AccumulateWeighted stay within S107's seven-parameter limit despite
+    // the extra mean-residual array this metric carries over R2's version of
+    // the same split — four array references collapse to one struct.
+    private readonly struct Accumulators
+    {
+        public required CompensatedSum[] Numerators { get; init; }
+        public required CompensatedSum[] CentredSquares { get; init; }
+        public required CompensatedSum[] MeanSums { get; init; }
+        public required CompensatedSum[] MeanResidualSums { get; init; }
+    }
+
+    // No weight to multiply and no total to accumulate: the sum of n ones is
+    // exactly n for every n below 2^53, so the unweighted mean divides by
+    // samples directly rather than walking a weight column of 1.0s — the same
+    // reasoning Outputs.WeightedMean's unweighted path applies.
+    private static void AccumulateUnweighted(
+        ReadOnlySpan<double> yTrue, ReadOnlySpan<double> yPred, int samples, Accumulators sums)
+    {
+        int outputCount = sums.MeanSums.Length;
         for (int row = 0; row < samples; row++)
         {
-            double weight = weighted ? sampleWeight[row] : 1.0;
-            totalWeight.Add(weight);
             int offset = row * outputCount;
             for (int col = 0; col < outputCount; col++)
             {
-                meanSums[col].Add(weight * yTrue[offset + col]);
-                meanResidualSums[col].Add(weight * (yTrue[offset + col] - yPred[offset + col]));
+                sums.MeanSums[col].Add(yTrue[offset + col]);
+                sums.MeanResidualSums[col].Add(yTrue[offset + col] - yPred[offset + col]);
             }
         }
+
+        double[] means = new double[outputCount];
+        double[] meanResiduals = new double[outputCount];
         for (int col = 0; col < outputCount; col++)
         {
-            means[col] = meanSums[col].Value / totalWeight.Value;
-            meanResiduals[col] = meanResidualSums[col].Value / totalWeight.Value;
+            means[col] = sums.MeanSums[col].Value / samples;
+            meanResiduals[col] = sums.MeanResidualSums[col].Value / samples;
         }
 
         for (int row = 0; row < samples; row++)
         {
-            double weight = weighted ? sampleWeight[row] : 1.0;
             int offset = row * outputCount;
             for (int col = 0; col < outputCount; col++)
             {
@@ -159,16 +195,54 @@ public static class ExplainedVariance
                 // prediction scores lower on R².
                 double residual = yTrue[offset + col] - yPred[offset + col] - meanResiduals[col];
                 double centred = yTrue[offset + col] - means[col];
-                numerators[col].Add(weight * residual * residual);
-                centredSquares[col].Add(weight * centred * centred);
+                sums.Numerators[col].Add(residual * residual);
+                sums.CentredSquares[col].Add(centred * centred);
             }
         }
+    }
+
+    private static void AccumulateWeighted(
+        ReadOnlySpan<double> yTrue,
+        ReadOnlySpan<double> yPred,
+        ReadOnlySpan<double> sampleWeight,
+        int samples,
+        Accumulators sums)
+    {
+        int outputCount = sums.MeanSums.Length;
+        CompensatedSum totalWeight = default;
+        for (int row = 0; row < samples; row++)
+        {
+            double weight = sampleWeight[row];
+            totalWeight.Add(weight);
+            int offset = row * outputCount;
+            for (int col = 0; col < outputCount; col++)
+            {
+                sums.MeanSums[col].Add(weight * yTrue[offset + col]);
+                sums.MeanResidualSums[col].Add(weight * (yTrue[offset + col] - yPred[offset + col]));
+            }
+        }
+
+        double total = totalWeight.Value;
+        double[] means = new double[outputCount];
+        double[] meanResiduals = new double[outputCount];
         for (int col = 0; col < outputCount; col++)
         {
-            denominators[col] = centredSquares[col].Value;
-            scores[col] = Resolve(numerators[col].Value, denominators[col], forceFinite);
+            means[col] = sums.MeanSums[col].Value / total;
+            meanResiduals[col] = sums.MeanResidualSums[col].Value / total;
         }
-        return (scores, denominators);
+
+        for (int row = 0; row < samples; row++)
+        {
+            double weight = sampleWeight[row];
+            int offset = row * outputCount;
+            for (int col = 0; col < outputCount; col++)
+            {
+                double residual = yTrue[offset + col] - yPred[offset + col] - meanResiduals[col];
+                double centred = yTrue[offset + col] - means[col];
+                sums.Numerators[col].Add(weight * residual * residual);
+                sums.CentredSquares[col].Add(weight * centred * centred);
+            }
+        }
     }
 
     /// <summary>

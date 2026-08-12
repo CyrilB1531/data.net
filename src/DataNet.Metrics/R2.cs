@@ -146,13 +146,82 @@ public static class R2
         CompensatedSum[] numerators = new CompensatedSum[outputCount];
         CompensatedSum[] centredSquares = new CompensatedSum[outputCount];
         CompensatedSum[] meanSums = new CompensatedSum[outputCount];
+
+        if (sampleWeight.IsEmpty)
+        {
+            AccumulateUnweighted(yTrue, yPred, samples, meanSums, numerators, centredSquares);
+        }
+        else
+        {
+            AccumulateWeighted(yTrue, yPred, sampleWeight, samples, meanSums, numerators, centredSquares);
+        }
+
+        for (int col = 0; col < outputCount; col++)
+        {
+            denominators[col] = centredSquares[col].Value;
+            scores[col] = Resolve(numerators[col].Value, denominators[col], samples, forceFinite, zeroDivision);
+        }
+        return (scores, denominators);
+    }
+
+    // outputCount is not a parameter here: meanSums.Length already carries it,
+    // and dropping it keeps this at six parameters against S107's limit of
+    // seven — the weighted overload below needs the room for sampleWeight.
+    //
+    // No weight to multiply and no total to accumulate: the sum of n ones is
+    // exactly n for every n below 2^53, so the unweighted mean divides by
+    // samples directly rather than walking a weight column of 1.0s.
+    private static void AccumulateUnweighted(
+        ReadOnlySpan<double> yTrue,
+        ReadOnlySpan<double> yPred,
+        int samples,
+        CompensatedSum[] meanSums,
+        CompensatedSum[] numerators,
+        CompensatedSum[] centredSquares)
+    {
+        int outputCount = meanSums.Length;
+        for (int row = 0; row < samples; row++)
+        {
+            int offset = row * outputCount;
+            for (int col = 0; col < outputCount; col++)
+            {
+                meanSums[col].Add(yTrue[offset + col]);
+            }
+        }
+
         double[] means = new double[outputCount];
-        bool weighted = !sampleWeight.IsEmpty;
-        CompensatedSum totalWeight = default;
+        for (int col = 0; col < outputCount; col++)
+        {
+            means[col] = meanSums[col].Value / samples;
+        }
 
         for (int row = 0; row < samples; row++)
         {
-            double weight = weighted ? sampleWeight[row] : 1.0;
+            int offset = row * outputCount;
+            for (int col = 0; col < outputCount; col++)
+            {
+                double residual = yTrue[offset + col] - yPred[offset + col];
+                double centred = yTrue[offset + col] - means[col];
+                numerators[col].Add(residual * residual);
+                centredSquares[col].Add(centred * centred);
+            }
+        }
+    }
+
+    private static void AccumulateWeighted(
+        ReadOnlySpan<double> yTrue,
+        ReadOnlySpan<double> yPred,
+        ReadOnlySpan<double> sampleWeight,
+        int samples,
+        CompensatedSum[] meanSums,
+        CompensatedSum[] numerators,
+        CompensatedSum[] centredSquares)
+    {
+        int outputCount = meanSums.Length;
+        CompensatedSum totalWeight = default;
+        for (int row = 0; row < samples; row++)
+        {
+            double weight = sampleWeight[row];
             totalWeight.Add(weight);
             int offset = row * outputCount;
             for (int col = 0; col < outputCount; col++)
@@ -160,14 +229,17 @@ public static class R2
                 meanSums[col].Add(weight * yTrue[offset + col]);
             }
         }
+
+        double total = totalWeight.Value;
+        double[] means = new double[outputCount];
         for (int col = 0; col < outputCount; col++)
         {
-            means[col] = meanSums[col].Value / totalWeight.Value;
+            means[col] = meanSums[col].Value / total;
         }
 
         for (int row = 0; row < samples; row++)
         {
-            double weight = weighted ? sampleWeight[row] : 1.0;
+            double weight = sampleWeight[row];
             int offset = row * outputCount;
             for (int col = 0; col < outputCount; col++)
             {
@@ -177,13 +249,6 @@ public static class R2
                 centredSquares[col].Add(weight * centred * centred);
             }
         }
-
-        for (int col = 0; col < outputCount; col++)
-        {
-            denominators[col] = centredSquares[col].Value;
-            scores[col] = Resolve(numerators[col].Value, denominators[col], samples, forceFinite, zeroDivision);
-        }
-        return (scores, denominators);
     }
 
     /// <summary>

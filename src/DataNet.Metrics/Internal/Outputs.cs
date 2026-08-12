@@ -192,22 +192,40 @@ internal static class Outputs
         where TKernel : struct, IResidualKernel
     {
         CompensatedSum[] sums = new CompensatedSum[outputCount];
-        bool weighted = !sampleWeight.IsEmpty;
-        CompensatedSum totalWeight = default;
+        double total;
 
-        for (int row = 0; row < samples; row++)
+        if (sampleWeight.IsEmpty)
         {
-            double weight = weighted ? sampleWeight[row] : 1.0;
-            totalWeight.Add(weight);
-            int offset = row * outputCount;
-            for (int col = 0; col < outputCount; col++)
+            for (int row = 0; row < samples; row++)
             {
-                sums[col].Add(weight * kernel.Apply(yTrue[offset + col], yPred[offset + col]));
+                int offset = row * outputCount;
+                for (int col = 0; col < outputCount; col++)
+                {
+                    sums[col].Add(kernel.Apply(yTrue[offset + col], yPred[offset + col]));
+                }
             }
+
+            // Exact: n additions of 1.0 land on n for every n below 2^53, and this
+            // repository's array-length guard is far below that.
+            total = samples;
+        }
+        else
+        {
+            CompensatedSum totalWeight = default;
+            for (int row = 0; row < samples; row++)
+            {
+                double weight = sampleWeight[row];
+                totalWeight.Add(weight);
+                int offset = row * outputCount;
+                for (int col = 0; col < outputCount; col++)
+                {
+                    sums[col].Add(weight * kernel.Apply(yTrue[offset + col], yPred[offset + col]));
+                }
+            }
+            total = totalWeight.Value;
         }
 
         double[] result = new double[outputCount];
-        double total = totalWeight.Value;
         for (int col = 0; col < outputCount; col++)
         {
             result[col] = sums[col].Value / total;
