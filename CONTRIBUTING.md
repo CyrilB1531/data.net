@@ -45,7 +45,7 @@ becomes available:
 
 | Job | What it guards |
 | --- | --- |
-| `Lint (markdown + C# format)` | markdownlint, and `dotnet format --verify-no-changes` |
+| `Lint (markdown + C# format)` | markdownlint, `dotnet format --verify-no-changes`, the `tools/tests` suite, that no tracked file holds a machine path, and that the Sonar `.globalconfig` is current |
 | `Build, test, pack` | the build, the full test suite, and that the packages still pack |
 | `Oracles are reproducible` | that the committed corpora match a fresh generation |
 | `Build and analyze` | publishes analysis and coverage to SonarQube Cloud, **and fails the job when the quality gate fails** — a finding in the code a pull request introduces blocks its merge |
@@ -104,7 +104,12 @@ running `python3 tools/check_nuspec_dependencies.py ./artifacts --require-all`
 closes the loop.
 
 `check_machine_paths.py` refuses a tracked file that holds a path under someone's
-home directory; `/tmp` and other system paths are deliberately allowed.
+home directory; `/tmp` is deliberately allowed, other than the session
+scratch-directory shape `/tmp/claude-<digits>/`, which is the one that carried
+eight of the ten paths this guard exists because of. `/usr`, `/etc`, `~/.nuget`
+and other system paths are allowed too. An ordinary account name can still
+collide with the probes derived from `$HOME`; `--no-environment` skips those
+and keeps the named shapes enforcing.
 
 ## Before pushing: the half the build cannot see
 

@@ -372,7 +372,7 @@ Append to `tools/tests/test_check_machine_paths.py`:
 # The scratchpad path as it appeared in four plans, with the name redacted the
 # way the spec redacts it -- the shape is what matters, and a whole one here
 # would put a home directory back into a tracked file.
-SCRATCH = "/tmp/claude-" + "49201103/" + "-home-" + "someone-Documents-devs-data-net2/x/scratchpad"
+SCRATCH = "/tmp/claude-" + "12345678/" + "-home-" + "someone-Documents-devs-data-net2/x/scratchpad"
 
 
 def test_the_named_shapes_alone_miss_the_dashed_form():

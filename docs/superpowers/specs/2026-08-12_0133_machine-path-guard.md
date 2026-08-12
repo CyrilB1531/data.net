@@ -89,9 +89,12 @@ its own issue, with its own decision about installation and opt-out.
 
 ### D4b — the guard exempts its own source and tests, and nothing else
 
-A guard's implementation must contain the patterns it searches for, and so must its tests. Run over the
-whole tree with no exemption, it fails on itself — discovered by running the design's own patterns over
-this spec, which flagged twice for naming one of them.
+A guard's implementation must contain the patterns it searches for, and so must its tests. The exemption is
+forward-looking rather than something today's tree already needs: the literals in both files are assembled
+from pieces (concatenated strings, a regex written as a pattern rather than a matching literal), so running
+the design's own patterns over them today finds nothing. It would become load-bearing the day a contributor
+whose account name is `home` or `tmp` runs the guard — a derived probe built from that `$HOME` would turn one
+of those same pieces into a hit, in the one file that must not be asked to exempt itself out of existence.
 
 Two files are exempt: `tools/check_machine_paths.py` and its test module. The justification does not
 generalise, which is the point — an exemption list that grows is a guard being switched off one file at a
@@ -114,7 +117,7 @@ Alongside them, tests that the load-bearing paths are *not* flagged: a bare `/tm
 
 ## Evidence
 
-- The guard reports clean on `main` as it stands: 519 tracked text files, zero hits under all four named
+- The guard reports clean on `main` as it stands: 519 tracked text files, zero hits under all five named
   shapes. Measured before this spec was written.
 - The guard flags the eight scratchpad paths and the two runner paths. This is asserted by unit tests
   holding those exact strings as fixtures — recovered from git history — rather than by running the script
