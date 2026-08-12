@@ -1,3 +1,7 @@
+#if NET5_0_OR_GREATER
+using System.Numerics;
+#endif
+
 namespace DataNet.Metrics.Internal;
 
 /// <summary>
@@ -55,3 +59,69 @@ internal struct CompensatedSum
     /// <summary>The sum, with the accumulated rounding folded back in.</summary>
     public readonly double Value => _sum + _compensation;
 }
+
+#if NET5_0_OR_GREATER
+/// <summary>
+/// <see cref="CompensatedSum"/>, one term per SIMD lane instead of one term
+/// total — <see cref="Vector{T}"/> on <c>net10.0</c> only, the same split
+/// <c>VectorMath.Dot</c> uses and <c>docs/decisions/0001-target-framework.md</c>
+/// records, because the span-based <see cref="Vector{T}"/> constructor is
+/// net-only.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Each lane runs Neumaier's exact formula independently — <see cref="Add"/>
+/// is <see cref="CompensatedSum.Add"/> with every scalar operation replaced by
+/// its <see cref="Vector{T}"/> counterpart, <c>Vector.Abs</c> and
+/// <c>Vector.ConditionalSelect</c> standing in for <c>Math.Abs</c> and the
+/// ternary. No lane ever sees another lane's terms, so within a lane this is
+/// exactly as exact as the scalar type it mirrors.
+/// </para>
+/// <para>
+/// What is not the same is the <em>order</em> the terms arrive in: a caller
+/// that batches <c>Vector{double}.Count</c> consecutive array elements per
+/// <see cref="Add"/> call has lane 0 summing elements 0, W, 2W, … while lane 1
+/// sums 1, W+1, 2W+1, … — a different association of the same terms than a
+/// sequential scalar loop would use, and <see cref="Reduce"/> combines the
+/// lanes in yet another step on top of that. Two mathematically valid
+/// summation orders of the same finite-precision terms are not guaranteed to
+/// round to the same <see cref="double"/>, so a metric computed this way and
+/// the same metric computed by <see cref="CompensatedSum"/> are not bit-identical
+/// — both are Neumaier-compensated and both are correct to the oracle corpus's
+/// 1e-9 comparison, but neither is a stand-in for the other bit for bit. This
+/// repository asserts bit-identity elsewhere (<c>Pooler.MeanPoolBatch</c>); it
+/// is deliberately not asserted here.
+/// </para>
+/// </remarks>
+internal struct VectorCompensatedSum
+{
+    private Vector<double> _sum;
+    private Vector<double> _compensation;
+
+    /// <summary>Adds one term per lane, keeping what each lane's addition rounded off.</summary>
+    /// <param name="value">One term per lane.</param>
+    public void Add(Vector<double> value)
+    {
+        Vector<double> total = _sum + value;
+        Vector<double> useSum = Vector.GreaterThanOrEqual<double>(Vector.Abs(_sum), Vector.Abs(value));
+        Vector<double> viaSum = (_sum - total) + value;
+        Vector<double> viaValue = (value - total) + _sum;
+        _compensation += Vector.ConditionalSelect(useSum, viaSum, viaValue);
+        _sum = total;
+    }
+
+    /// <summary>
+    /// Folds every lane's own compensated total into one <see cref="CompensatedSum"/>,
+    /// combining them the same compensated way each lane combined its own terms.
+    /// </summary>
+    public readonly CompensatedSum Reduce()
+    {
+        CompensatedSum result = default;
+        for (int lane = 0; lane < Vector<double>.Count; lane++)
+        {
+            result.Add(_sum[lane] + _compensation[lane]);
+        }
+        return result;
+    }
+}
+#endif

@@ -29,10 +29,22 @@ to .NET Framework 4.6.1+, Mono, Xamarin and Unity for a bounded, one-off cost.
 
 ## Consequences
 
-- **One deliberate performance difference.** `VectorMath.Dot` takes a
-  `Vector<T>` SIMD path under `#if NET5_0_OR_GREATER` and falls back to a scalar
-  loop on `netstandard2.0`, because the span-based `Vector<T>` constructor is
-  net-only. Everything else compiles to equivalent IL.
+- **Two deliberate performance differences, both behind the same guard and for
+  the same reason.** `VectorMath.Dot` takes a `Vector<T>` SIMD path under
+  `#if NET5_0_OR_GREATER` and falls back to a scalar loop on `netstandard2.0`,
+  because the span-based `Vector<T>` constructor is net-only. `R2` and
+  `ExplainedVariance` do the same for their single-output, unweighted
+  accumulation (issue #127 task 7): `VectorCompensatedSum` keeps one Neumaier
+  partial sum per SIMD lane, reduced to one `CompensatedSum` at the end.
+  Everything else compiles to equivalent IL.
+  - This second case is not bit-identical across targets, and deliberately so:
+    lane-wise summation reorders the additions relative to the scalar loop
+    (lane 0 sums elements 0, W, 2W, … while lane 1 sums 1, W+1, …), so the
+    `net10.0` and `netstandard2.0` results for `R2`/`ExplainedVariance` on this
+    path can differ in the last few bits. Both stay Neumaier-compensated and
+    both pass the oracle corpora, which compare at `1e-9`. This is narrower
+    than the bit-identity `Pooler.MeanPoolBatch` asserts elsewhere in the
+    codebase — a reader should not assume that guarantee extends here.
 - A handful of net-only conveniences are replaced by portable equivalents:
   `ArgumentNullException.ThrowIfNull` (behind a shared `Guard.NotNull`, so a single
   `#if` covers every call site instead of one per site), `string.Join(char, …)`,

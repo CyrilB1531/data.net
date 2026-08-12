@@ -1,3 +1,4 @@
+using System.Numerics;
 using DataNet.Metrics.Internal;
 
 namespace DataNet.Metrics;
@@ -162,10 +163,25 @@ public static class ExplainedVariance
     // exactly n for every n below 2^53, so the unweighted mean divides by
     // samples directly rather than walking a weight column of 1.0s — the same
     // reasoning Outputs.WeightedMean's unweighted path applies.
+    //
+    // outputCount == 1 is the common shape (a single target) and the only one
+    // where rows are contiguous in yTrue/yPred, so a SIMD lane can hold
+    // consecutive samples instead of columns of the same row. outputCount > 1
+    // keeps the scalar loop below rather than gathering a strided column into
+    // a Vector<T>.
     private static void AccumulateUnweighted(
         ReadOnlySpan<double> yTrue, ReadOnlySpan<double> yPred, int samples, Accumulators sums)
     {
         int outputCount = sums.MeanSums.Length;
+
+#if NET5_0_OR_GREATER
+        if (outputCount == 1)
+        {
+            AccumulateUnweightedVectorized(yTrue, yPred, samples, sums);
+            return;
+        }
+#endif
+
         for (int row = 0; row < samples; row++)
         {
             int offset = row * outputCount;
@@ -200,6 +216,67 @@ public static class ExplainedVariance
             }
         }
     }
+
+#if NET5_0_OR_GREATER
+    // Not bit-identical with the scalar loop above: see VectorCompensatedSum's
+    // remarks for why lane-wise summation reorders the additions. Both stay
+    // Neumaier-compensated and the oracle corpus compares at 1e-9.
+    private static void AccumulateUnweightedVectorized(
+        ReadOnlySpan<double> yTrue, ReadOnlySpan<double> yPred, int samples, Accumulators sums)
+    {
+        int width = Vector<double>.Count;
+        VectorCompensatedSum meanAcc = default;
+        VectorCompensatedSum meanResidualAcc = default;
+        int i = 0;
+        for (; i <= samples - width; i += width)
+        {
+            var truth = new Vector<double>(yTrue.Slice(i, width));
+            var prediction = new Vector<double>(yPred.Slice(i, width));
+            meanAcc.Add(truth);
+            meanResidualAcc.Add(truth - prediction);
+        }
+
+        CompensatedSum meanSum = meanAcc.Reduce();
+        CompensatedSum meanResidualSum = meanResidualAcc.Reduce();
+        for (; i < samples; i++)
+        {
+            meanSum.Add(yTrue[i]);
+            meanResidualSum.Add(yTrue[i] - yPred[i]);
+        }
+        sums.MeanSums[0] = meanSum;
+        sums.MeanResidualSums[0] = meanResidualSum;
+
+        double mean = meanSum.Value / samples;
+        double meanResidual = meanResidualSum.Value / samples;
+        var meanVec = new Vector<double>(mean);
+        var meanResidualVec = new Vector<double>(meanResidual);
+
+        VectorCompensatedSum numeratorAcc = default;
+        VectorCompensatedSum centredSquareAcc = default;
+        i = 0;
+        for (; i <= samples - width; i += width)
+        {
+            var truth = new Vector<double>(yTrue.Slice(i, width));
+            var prediction = new Vector<double>(yPred.Slice(i, width));
+            Vector<double> residual = truth - prediction - meanResidualVec;
+            Vector<double> centred = truth - meanVec;
+            numeratorAcc.Add(residual * residual);
+            centredSquareAcc.Add(centred * centred);
+        }
+
+        CompensatedSum numerator = numeratorAcc.Reduce();
+        CompensatedSum centredSquare = centredSquareAcc.Reduce();
+        for (; i < samples; i++)
+        {
+            double residual = yTrue[i] - yPred[i] - meanResidual;
+            double centred = yTrue[i] - mean;
+            numerator.Add(residual * residual);
+            centredSquare.Add(centred * centred);
+        }
+        sums.Numerators[0] = numerator;
+        sums.CentredSquares[0] = centredSquare;
+    }
+#endif
 
     private static void AccumulateWeighted(
         ReadOnlySpan<double> yTrue,
