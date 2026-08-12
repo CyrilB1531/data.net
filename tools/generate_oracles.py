@@ -57,6 +57,9 @@ ORACLE_DIR = Path(__file__).resolve().parent.parent / "tests" / "oracles"
 QUICK_FOX = "the quick brown fox"
 METS = "new york mets"
 UNK_TOKEN = "[UNK]"
+# WordPiece's spelling; the sentencepiece-based families (Unigram, XLM-R) spell
+# the same concept in angle brackets below.
+UNK_TOKEN_LOWER = "<unk>"
 CAT_SENTENCE = "the cat sat on the mat"
 HELLO_WORLD = "hello world"
 TINY_SP_MODEL = "tiny_sp.model"
@@ -1310,7 +1313,7 @@ def generate_tokenizer_json() -> dict:
     unigram_pieces = [(p.piece, p.score) for p in proto.pieces]
     unigram = Tokenizer(Unigram(unigram_pieces, unk_id=proto.trainer_spec.unk_id, byte_fallback=False))
     unigram.pre_tokenizer = Metaspace()
-    unigram.add_special_tokens(["<unk>", "<s>", "</s>"])
+    unigram.add_special_tokens([UNK_TOKEN_LOWER, "<s>", "</s>"])
     unigram_cases = []
     for i, text in enumerate(LOADER_TEXTS):
         enc = unigram.encode(text)
@@ -1414,7 +1417,7 @@ XLMR_TEXTS = [
 ]
 
 # The five strings a vocabulary in this layout must never segment onto.
-XLMR_MARKERS = ["<s>", "<pad>", "</s>", "<unk>", MASK_TOKEN]
+XLMR_MARKERS = ["<s>", "<pad>", "</s>", UNK_TOKEN_LOWER, MASK_TOKEN]
 
 
 def generate_xlmr_fairseq() -> dict:
@@ -3323,6 +3326,189 @@ def generate_bpe_fuse_unk() -> dict:
     }
 
 
+# --- added tokens are not vocabulary entries (issue #130) ---------------------
+
+# Q is the added token and is deliberately absent from this vocabulary; Z is
+# absent from everything, so it is uncovered in every model here.
+_COVERAGE_VOCAB = {UNK_TOKEN: 0, "a": 1, "b": 2, "ab": 3}
+_COVERAGE_MERGES = [("a", "b")]
+
+# The ignore_merges pair: "!!" is the added token, single_word so that
+# Whitespace's split of "a!!" into "a" / "!!" reaches the whole-piece shortcut
+# while still being an added token's exact content. One vocabulary omits
+# "!!"; the control carries it too, so the shortcut can fire from model.vocab
+# rather than from the fold.
+_IGNORE_MERGES_VOCAB_WITHOUT_BANG = {UNK_TOKEN: 0, "a": 1, "!": 2}
+_IGNORE_MERGES_VOCAB_WITH_BANG = {UNK_TOKEN: 0, "a": 1, "!": 2, "!!": 3}
+
+
+def _added_coverage_model(single_word):
+    """One tokenizer whose added token is not in model.vocab."""
+    from tokenizers import AddedToken, Tokenizer, models, pre_tokenizers  # noqa: PLC0415
+
+    tokenizer = Tokenizer(models.BPE(
+        dict(_COVERAGE_VOCAB), list(_COVERAGE_MERGES), unk_token=UNK_TOKEN))
+    tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
+    tokenizer.add_tokens([AddedToken("Q", single_word=single_word, normalized=False)])
+    return tokenizer
+
+
+def _added_coverage_ignore_merges_model(vocab):
+    """One tokenizer with ignore_merges on: "!!" is an added token, in model.vocab or not."""
+    from tokenizers import AddedToken, Tokenizer, models, pre_tokenizers  # noqa: PLC0415
+
+    model = models.BPE(dict(vocab), [], unk_token=UNK_TOKEN)
+    model.ignore_merges = True
+    tokenizer = Tokenizer(model)
+    tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
+    tokenizer.add_tokens([AddedToken("!!", single_word=True, normalized=False)])
+    return tokenizer
+
+
+def _added_coverage_models() -> list[tuple]:
+    """(name, declares, single_word, tokenizer, texts)."""
+    # aQa and ZQZ put the added token inside a word, where single_word decides
+    # whether the scanner may match it. Q and "a Q a" put it on its own, where
+    # the scanner matches under either flag and both sides already agree. aQ
+    # ends a piece with it, and QQ doubles it.
+    texts = ["aQa", "ZQZ", "QQ", "Q", "a Q a", "aQ"]
+    # a!! is split by Whitespace into "a" / "!!"; single_word declines the
+    # scanner on "a" (a word character), so "!!" reaches the ignore_merges
+    # shortcut while being an added token's exact content. Bare "!!" reaches
+    # the scanner directly under either vocabulary, and is carried as the
+    # non-discriminating control.
+    ignore_merges_texts = ["a!!", "!!"]
+    return [
+        ("single_word", "an added token absent from model.vocab, matched only on its own",
+         True, _added_coverage_model(True), texts),
+        ("any_position", "the same added token, matchable inside a word",
+         False, _added_coverage_model(False), texts),
+        ("ignore_merges_added_token_only",
+         "ignore_merges on; the added token '!!' is absent from model.vocab, "
+         "so the whole-piece shortcut cannot see it",
+         True, _added_coverage_ignore_merges_model(_IGNORE_MERGES_VOCAB_WITHOUT_BANG),
+         ignore_merges_texts),
+        ("ignore_merges_added_token_in_vocab",
+         "the control: '!!' is in model.vocab too, so the shortcut fires from there",
+         True, _added_coverage_ignore_merges_model(_IGNORE_MERGES_VOCAB_WITH_BANG),
+         ignore_merges_texts),
+    ]
+
+
+def _added_coverage_refusals() -> list[dict]:
+    """Three shapes the reference refuses, recorded with what it said and when.
+
+    Two never produce a tokenizer at all — they fail while the document is
+    read. The third produces a working one that answers token_to_id and
+    encodes covered text, and refuses only an input needing a substitution.
+    None of the three can be an ordinary case, because two have no token
+    stream and the third's is beside the point; recording the refusal is what
+    makes "the reference refuses this too" a measurement rather than a claim.
+    """
+    from tokenizers import Tokenizer  # noqa: PLC0415
+
+    def document(vocab, merges, unk, added):
+        return json.dumps({
+            "version": "1.0", "truncation": None, "padding": None,
+            "added_tokens": added,
+            "normalizer": None, "pre_tokenizer": {"type": "Whitespace"},
+            "post_processor": None, "decoder": None,
+            "model": {
+                "type": "BPE", "dropout": None, "unk_token": unk,
+                "continuing_subword_prefix": None, "end_of_word_suffix": None,
+                "fuse_unk": False, "byte_fallback": False, "ignore_merges": False,
+                "vocab": vocab, "merges": merges,
+            },
+        })
+
+    added_q = [{"id": 2, "content": "Q", "single_word": True, "lstrip": False,
+                "rstrip": False, "normalized": False, "special": False}]
+
+    # (shape, document, the text that provokes the failure if loading did not)
+    shapes = [
+        # The unknown token exists only in added_tokens. This one LOADS: the
+        # reference defers the check to encode, and raises only on text that
+        # needs a substitution. "ab" encodes fine; "aZb" does not.
+        ("unk_only_in_added_tokens",
+         document({"a": 0, "b": 1}, [], UNK_TOKEN_LOWER,
+                  [{"id": 2, "content": UNK_TOKEN_LOWER, "single_word": False, "lstrip": False,
+                    "rstrip": False, "normalized": False, "special": True}]),
+         "aZb"),
+        # A merge names a token that only added_tokens declares. Refused while
+        # the document is read.
+        ("merge_names_an_added_token",
+         document({UNK_TOKEN: 0, "a": 1, "Qa": 3}, [["Q", "a"]], UNK_TOKEN, added_q),
+         "Qa"),
+        # A merge whose two sides are present but whose result is not. The
+        # reference PANICS while reading rather than raising; the panic is
+        # recorded as what it is, and DataNet refuses in its own words (D6).
+        ("merge_result_missing",
+         document({"a": 0, "b": 1}, [["a", "b"]], None, []),
+         "ab"),
+    ]
+
+    # The reference does not refuse all three at the same moment, and the corpus
+    # records which. Two fail while the document is being read; the first loads
+    # and fails from encode, and only on text that needs a substitution — which
+    # is why each shape carries the text that provokes it.
+    refusals = []
+    for shape, doc, provoking_text in shapes:
+        try:
+            tokenizer = Tokenizer.from_str(doc)
+        except BaseException as exc:  # noqa: BLE001 - the refusal IS the measurement
+            # BaseException because a Rust panic surfaces as
+            # pyo3_runtime.PanicException, which does not inherit from
+            # Exception and whose module cannot be imported to name it here.
+            # Ctrl-C and a SystemExit are re-raised rather than recorded as
+            # measurements, which is also what S5754 asks for.
+            if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                raise
+            refusals.append({"shape": shape, "document": doc, "raised_by": "load",
+                             "text": None, "error": f"{type(exc).__name__}: {exc}"})
+            continue
+        try:
+            tokenizer.encode(provoking_text)
+        except BaseException as exc:  # noqa: BLE001
+            # Same reasoning as the from_str handler above.
+            if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                raise
+            refusals.append({"shape": shape, "document": doc, "raised_by": "encode",
+                             "text": provoking_text, "error": f"{type(exc).__name__}: {exc}"})
+        else:
+            raise AssertionError(
+                f"tokenizers accepted {shape} and encoded {provoking_text!r} without complaint; "
+                "issue #130's refusal rests on it refusing one")
+    return refusals
+
+
+def generate_bpe_added_token_coverage() -> dict:
+    """An added token absent from model.vocab, with the scanner allowed and denied."""
+    carried = _added_coverage_models()
+    cases = []
+    for name, _, _, tokenizer, texts in carried:
+        for text in texts:
+            enc = tokenizer.encode(text)
+            cases.append({"id": len(cases), "model": name, "text": text,
+                          "tokens": enc.tokens, "ids": enc.ids})
+
+    return {
+        "metadata": {
+            "algorithm": "BPE added-token coverage",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "hand-built: one 4-entry classic BPE, twice, defined in tools/generate_oracles.py",
+            "models": {
+                name: {"declares": declares, "single_word": single_word,
+                       "tokenizer_json": tokenizer.to_str()}
+                for name, declares, single_word, tokenizer, _ in carried
+            },
+            "refusals": _added_coverage_refusals(),
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -3373,6 +3559,7 @@ def main() -> None:
         "bpe_added_token_flags.json": generate_bpe_added_token_flags,
         "bpe_no_op_settings.json": generate_bpe_no_op_settings,
         "bpe_fuse_unk.json": generate_bpe_fuse_unk,
+        "bpe_added_token_coverage.json": generate_bpe_added_token_coverage,
         "wordpiece_added_tokens.json": generate_wordpiece_added_tokens,
     }
     for filename, gen in generators.items():
