@@ -152,7 +152,6 @@ public sealed class BpeFilesLoaderTests
             new ArtifactLoadOptions { MaxTotalBytes = 8L * 1024 * 1024, MaxVocabularySize = 100_000, MaxArrayLength = 100_000 });
 
         Assert.Equal(50257, vocab.Count);
-        Assert.Equal(0, vocab.SkippedMerges);
         Assert.Equal(new BpeTokenizer(ByteLevelBpeTests.Gpt2Vocabulary()).Encode("Hello, world!").Ids,
                      new BpeTokenizer(vocab).Encode("Hello, world!").Ids);
     }

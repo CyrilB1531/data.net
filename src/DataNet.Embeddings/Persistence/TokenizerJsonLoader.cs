@@ -546,7 +546,6 @@ public static class TokenizerJsonLoader
 
         Dictionary<string, int> vocab = ReadBpeVocab(model, limits);
         List<MergePair> merges = ReadBpeMerges(model, limits);
-        int skippedMerges = merges.Count(pair => !vocab.ContainsKey(pair.Left) || !vocab.ContainsKey(pair.Right));
         List<AddedToken> addedTokens = ReadAddedTokenTable(root, vocab, limits);
 
         return new BpeVocabulary(vocab, merges)
@@ -556,7 +555,6 @@ public static class TokenizerJsonLoader
             AddPrefixSpace = addPrefixSpace,
             IgnoreMerges = OptionalBoolean(model, "ignore_merges") ?? false,
             FuseUnk = OptionalBoolean(model, "fuse_unk") ?? false,
-            SkippedMerges = skippedMerges,
             EndOfWordSuffix = OptionalString(model, "end_of_word_suffix"),
             // ContinuingSubwordPrefix is deliberately not carried across: a non-null one
             // is refused above, so reading it here could only ever restate that null,

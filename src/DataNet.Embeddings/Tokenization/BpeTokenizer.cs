@@ -50,6 +50,19 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private const int End = -1;
 
     private readonly Dictionary<string, int> _vocab;
+    /// <summary>
+    /// The model's own vocabulary, without the added tokens <see cref="_vocab"/>
+    /// folds in — the map that answers "does the model cover this symbol".
+    /// </summary>
+    /// <remarks>
+    /// The two are not interchangeable and the difference is observable. An added
+    /// token that <c>model.vocab</c> does not declare has an id, decodes, and
+    /// answers <c>token_to_id</c> — so identity reads <see cref="_vocab"/> — but it
+    /// does not make the character it spells covered: HuggingFace substitutes that
+    /// character with the unknown token, and measured, <c>aQa</c> is
+    /// <c>['a', '[UNK]', 'a']</c> there. Coverage therefore reads this one.
+    /// </remarks>
+    private readonly Dictionary<string, int> _modelVocab;
     private readonly string[] _tokens;          // id -> token, the inverse of _vocab
     private readonly Dictionary<long, int> _ranks;   // (left << 32 | right) -> rank
     private readonly int[] _merged;             // rank -> the id the pair becomes
@@ -66,7 +79,11 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
     /// <summary>Creates a tokenizer from a loaded BPE model.</summary>
     /// <param name="vocabulary">A vocabulary from <see cref="Persistence.BpeFilesLoader"/> or <see cref="Persistence.TokenizerJsonLoader"/>.</param>
-    /// <exception cref="ArgumentException">The declared unknown token is not in the vocabulary.</exception>
+    /// <exception cref="ArgumentException">
+    /// The declared unknown token is not in the vocabulary; or a merge names a
+    /// token the vocabulary does not declare; or a merge's result is not itself
+    /// a vocabulary entry.
+    /// </exception>
     public BpeTokenizer(BpeVocabulary vocabulary)
     {
         Guard.NotNull(vocabulary);
@@ -83,6 +100,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             _vocab[entry.Key] = entry.Value;
             maxId = Math.Max(maxId, entry.Value);
         }
+        _modelVocab = new Dictionary<string, int>(_vocab, StringComparer.Ordinal);
         foreach (AddedToken added in vocabulary.AddedTokens)
         {
             _vocab[added.Content] = added.Id;
@@ -100,7 +118,14 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
         if (vocabulary.UnkToken is { } unk)
         {
-            if (!_vocab.TryGetValue(unk, out _unkId))
+            // The model's vocabulary, not the folded one. The reference does
+            // not refuse such a file: it loads, answers token_to_id, and
+            // encodes text the model covers. It raises "Unk token `<unk>`
+            // not found in the vocabulary" from encode, and only on text that
+            // needs a substitution. Refusing at construction is earlier than
+            // that, deliberately — a failure that depends on which text a
+            // caller happens to pass is what loading exists to catch.
+            if (!_modelVocab.TryGetValue(unk, out _unkId))
             {
                 throw new ArgumentException(
                     $"The unknown token '{unk}' is not in the vocabulary.", nameof(vocabulary));
@@ -113,15 +138,26 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         for (int rank = 0; rank < vocabulary.Merges.Count; rank++)
         {
             MergePair pair = vocabulary.Merges[rank];
-            // A pair naming a token the vocabulary does not contain cannot apply.
-            // HuggingFace tolerates it, so refusing the file would be a divergence.
-            // BpeVocabulary.SkippedMerges is where the count is reported.
-            if (!_vocab.TryGetValue(pair.Left, out int left)
-                || !_vocab.TryGetValue(pair.Right, out int right)
-                || !_vocab.TryGetValue(pair.Left + pair.Right, out int result))
+            // Against the model's vocabulary, not the folded one, and refused
+            // rather than skipped. An earlier comment here said HuggingFace
+            // tolerates a merge naming an absent token; measured on both the
+            // constructor and the tokenizer.json load path, it raises
+            // "Token `x` out of vocabulary". It does not tolerate it.
+            if (!_modelVocab.TryGetValue(pair.Left, out int left)
+                || !_modelVocab.TryGetValue(pair.Right, out int right))
             {
-                _merged[rank] = -1;
-                continue;
+                throw new ArgumentException(
+                    $"The merge at rank {rank} names '{pair.Left}' and '{pair.Right}', "
+                    + "and the vocabulary does not contain both.", nameof(vocabulary));
+            }
+            // The result is a third shape, and the reference does not raise on it
+            // — it panics, walking off the end of a slice. A panic is a bug, not
+            // behaviour to reproduce, so this message is DataNet's own.
+            if (!_modelVocab.TryGetValue(pair.Left + pair.Right, out int result))
+            {
+                throw new ArgumentException(
+                    $"The merge at rank {rank} produces '{pair.Left + pair.Right}', "
+                    + "which the vocabulary does not contain.", nameof(vocabulary));
             }
             // If a pair is listed twice, the first (lowest) rank is kept rather than
             // the last write winning. Neither tokenizer.json nor merges.txt defines
@@ -251,7 +287,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         if (_ignoreMerges)
         {
             string mapped = _byteLevel ? MapBytes(piece) : piece;
-            if (_vocab.TryGetValue(mapped, out int whole))
+            if (_modelVocab.TryGetValue(mapped, out int whole))
             {
                 ids.Add(whole);
                 tokens.Add(_tokens[whole]);
@@ -331,7 +367,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
                 ? piece.Substring(i, width) + _endOfWord
                 : piece.Substring(i, width);
 #pragma warning restore CA1845
-            if (_vocab.TryGetValue(symbol, out int id))
+            if (_modelVocab.TryGetValue(symbol, out int id))
             {
                 symbols[count++] = id;
                 previousWasSubstituted = false;
@@ -385,7 +421,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         for (int i = 0; i < bytes.Length; i++)
         {
             string symbol = ByteLevelAlphabet.ToChar(bytes[i]).ToString();
-            if (!_vocab.TryGetValue(symbol, out int id))
+            if (!_modelVocab.TryGetValue(symbol, out int id))
             {
                 throw new ArgumentException(
                     $"The vocabulary has no entry for byte 0x{bytes[i]:X2} ('{symbol}'); it is not a byte-level model.");

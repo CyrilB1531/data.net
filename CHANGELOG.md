@@ -312,6 +312,19 @@ and including `0.2.0` predate the split and covered all three at once — see
 - The zero `token_type_ids` buffer is thread-static and never written to instead
   of being allocated per call, and the model output is read through the tensor's
   own buffer instead of `ToArray()`.
+- **An added token is a token, not a vocabulary entry.** A single-character added token that
+  `model.vocab` does not declare no longer makes the character it spells look covered: it is substituted
+  with the unknown token, as `tokenizers` substitutes it. Identity is unchanged — `TryGetId` and `Decode`
+  still resolve added tokens, matching `token_to_id` and `decode`. Two shapes the reference also refuses
+  while reading the document are now refused here too: a merge naming a token the model does not declare,
+  and a merge whose result is absent — that one with a message of DataNet's own, since the reference
+  panics there instead of raising. A third shape, an `unk_token` present only in `added_tokens`, is
+  refused here at construction, earlier than the reference: `tokenizers` loads such a file and raises only
+  from `encode`, and only on text needing a substitution the vocabulary cannot supply — a divergence in
+  timing, not in outcome. `BpeVocabulary.SkippedMerges` is removed with them — it counted a case the
+  reference makes impossible, on the strength of a comment saying HuggingFace tolerated it, which
+  measurement contradicted. Not a breaking change: `SkippedMerges` shipped in no release — the last tag is
+  0.2.0, and this is unreleased 0.3.0.
 
 #### Deprecated
 
