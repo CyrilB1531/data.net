@@ -3,7 +3,7 @@
   "algorithm": "BPE continuing_subword_prefix",
   "library": "tokenizers",
   "library_version": "0.23.1",
-  "model": "hand-built: nine classic BPE shapes, defined in tools/generate_oracles.py",
+  "model": "hand-built: ten classic BPE shapes, defined in tools/generate_oracles.py",
   "models": {
    "base": {
     "declares": "a prefix, and a piece long enough to need it",
@@ -29,6 +29,10 @@
     "declares": "a merge whose two sides both carry the prefix",
     "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":null,\"continuing_subword_prefix\":\"##\",\"end_of_word_suffix\":null,\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"##b\":1,\"##c\":2,\"##bc\":3},\"merges\":[[\"##b\",\"##c\"]]}}"
    },
+   "merge_suffixed_right": {
+    "declares": "a merge whose right side carries the prefix and the suffix at once",
+    "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":null,\"continuing_subword_prefix\":\"##\",\"end_of_word_suffix\":\"</w>\",\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"##b</w>\":1,\"ab</w>\":2,\"a</w>\":3},\"merges\":[[\"a\",\"##b</w>\"]]}}"
+   },
    "prefix_and_suffix": {
     "declares": "a prefix and an end-of-word suffix on the same symbol",
     "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":null,\"continuing_subword_prefix\":\"##\",\"end_of_word_suffix\":\"</w>\",\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"b\":1,\"##b\":2,\"b</w>\":3,\"##b</w>\":4,\"a</w>\":5},\"merges\":[]}}"
@@ -49,7 +53,7 @@
     "error": "Exception: Token `##bc` out of vocabulary at line 1 column 449"
    }
   ],
-  "count": 23
+  "count": 25
  },
  "cases": [
   {
@@ -252,6 +256,28 @@
   },
   {
    "id": 16,
+   "model": "merge_suffixed_right",
+   "text": "ab",
+   "tokens": [
+    "ab</w>"
+   ],
+   "ids": [
+    2
+   ]
+  },
+  {
+   "id": 17,
+   "model": "merge_suffixed_right",
+   "text": "a",
+   "tokens": [
+    "a</w>"
+   ],
+   "ids": [
+    3
+   ]
+  },
+  {
+   "id": 18,
    "model": "prefix_and_suffix",
    "text": "ab",
    "tokens": [
@@ -264,7 +290,7 @@
    ]
   },
   {
-   "id": 17,
+   "id": 19,
    "model": "prefix_and_suffix",
    "text": "a",
    "tokens": [
@@ -275,7 +301,7 @@
    ]
   },
   {
-   "id": 18,
+   "id": 20,
    "model": "prefix_and_suffix",
    "text": "b",
    "tokens": [
@@ -286,34 +312,8 @@
    ]
   },
   {
-   "id": 19,
-   "model": "empty_prefix",
-   "text": "ab",
-   "tokens": [
-    "a",
-    "b"
-   ],
-   "ids": [
-    0,
-    1
-   ]
-  },
-  {
-   "id": 20,
-   "model": "empty_prefix",
-   "text": "a b",
-   "tokens": [
-    "a",
-    "b"
-   ],
-   "ids": [
-    0,
-    1
-   ]
-  },
-  {
    "id": 21,
-   "model": "no_prefix",
+   "model": "empty_prefix",
    "text": "ab",
    "tokens": [
     "a",
@@ -326,6 +326,32 @@
   },
   {
    "id": 22,
+   "model": "empty_prefix",
+   "text": "a b",
+   "tokens": [
+    "a",
+    "b"
+   ],
+   "ids": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": 23,
+   "model": "no_prefix",
+   "text": "ab",
+   "tokens": [
+    "a",
+    "b"
+   ],
+   "ids": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": 24,
    "model": "no_prefix",
    "text": "a b",
    "tokens": [

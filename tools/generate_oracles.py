@@ -3476,6 +3476,15 @@ def _prefix_models() -> list[tuple]:
          _prefix_model({"a": 0, _PREFIX + "b": 1, _PREFIX + "c": 2, _PREFIX + "bc": 3},
                        [(_PREFIX + "b", _PREFIX + "c")]),
          ["abc", "ab"]),
+        # The right side of a merge carries both decorations at once, so the
+        # strip has to take the prefix off and leave the suffix on:
+        # ("a", "##b</w>") has to give "ab</w>", and the vocabulary holds only
+        # that. Stripping both, or neither, looks for a token that is absent.
+        ("merge_suffixed_right", "a merge whose right side carries the prefix and the suffix at once",
+         _prefix_model({"a": 0, _PREFIX + "b" + _PREFIX_EOW: 1, "ab" + _PREFIX_EOW: 2,
+                        "a" + _PREFIX_EOW: 3},
+                       [("a", _PREFIX + "b" + _PREFIX_EOW)], eow=_PREFIX_EOW),
+         ["ab", "a"]),
         # Prefix and suffix compose, prefix then character then suffix.
         ("prefix_and_suffix", "a prefix and an end-of-word suffix on the same symbol",
          _prefix_model({"a": 0, "b": 1, _PREFIX + "b": 2, "b" + _PREFIX_EOW: 3,
@@ -3545,7 +3554,7 @@ def generate_bpe_continuing_prefix() -> dict:
             "algorithm": "BPE continuing_subword_prefix",
             "library": "tokenizers",
             "library_version": version("tokenizers"),
-            "model": "hand-built: nine classic BPE shapes, defined in tools/generate_oracles.py",
+            "model": "hand-built: ten classic BPE shapes, defined in tools/generate_oracles.py",
             "models": {
                 name: {"declares": declares, "tokenizer_json": tokenizer.to_str()}
                 for name, declares, tokenizer, _ in carried

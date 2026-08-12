@@ -160,10 +160,13 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             // behaviour to reproduce, so this message is DataNet's own.
             //
             // The result is the left side plus the right side WITHOUT its
-            // continuing prefix. Measured: ("a", "##b") produces "ab", and
-            // ("##b", "##c") produces "##bc" — the left keeps its own prefix
-            // and only the right loses one. An end-of-word suffix is part of
-            // the string and rides along: ("a", "##b</w>") produces "ab</w>".
+            // continuing prefix. Frozen in bpe_continuing_prefix.json rather
+            // than asserted here: ("a", "##b") produces "ab" and ("##b", "##c")
+            // produces "##bc" — the left keeps its own prefix and only the
+            // right loses one — under models merge_stripped_result and
+            // merge_both_prefixed. An end-of-word suffix is part of the string
+            // and rides along, ("a", "##b</w>") producing "ab</w>", under
+            // merge_suffixed_right.
             //
             // The reference does not merely prefer the stripped form. With the
             // concatenated one in the vocabulary instead, it refuses to build:

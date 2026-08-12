@@ -8,7 +8,7 @@ using Xunit;
 namespace DataNet.Embeddings.Tests;
 
 /// <summary>
-/// Replays <c>bpe_continuing_prefix.json</c>: nine hand-built models, each for
+/// Replays <c>bpe_continuing_prefix.json</c>: ten hand-built models, each for
 /// one thing no other tells apart.
 /// </summary>
 public sealed class BpeContinuingPrefixTests
@@ -65,6 +65,17 @@ public sealed class BpeContinuingPrefixTests
         string model, string text, string[] expected)
     {
         Assert.Equal(expected, Tokens(model, text));
+    }
+
+    /// <summary>
+    /// The strip takes the prefix off a merge's right side and leaves the
+    /// end-of-word suffix on: <c>("a", "##b&lt;/w&gt;")</c> gives
+    /// <c>ab&lt;/w&gt;</c>, and the vocabulary carries only that form.
+    /// </summary>
+    [Fact]
+    public void A_merge_strips_the_prefix_and_keeps_the_suffix()
+    {
+        Assert.Equal(["ab</w>"], Tokens("merge_suffixed_right", "ab"));
     }
 
     /// <summary>Prefix then character then suffix, on a symbol that is both.</summary>
