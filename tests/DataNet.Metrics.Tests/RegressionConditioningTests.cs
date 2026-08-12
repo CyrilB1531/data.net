@@ -64,6 +64,7 @@ public sealed class RegressionConditioningTests
     /// <c>1e-9 * max(1, |expected|)</c> for this corpus specifically.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// This fixture's own <c>mse</c> (<c>3.97e-12</c>) and <c>mae</c> (<c>1.70e-6</c>) sit far
     /// below 1, where the shared bound's floor turns into an <em>absolute</em> <c>1e-9</c> —
     /// 250× the <c>mse</c> value itself, so returning <c>0.0</c> would still pass. Dropping the
@@ -71,9 +72,33 @@ public sealed class RegressionConditioningTests
     /// keeps the same 1e-9 relative precision every other row on this page compares at, and it
     /// costs nothing on <c>r2</c>/<c>explained_variance</c>: both sit near 1, where the floored
     /// and floor-free bounds already agree.
+    /// </para>
+    /// <para>
+    /// The <c>NaN</c>/infinity branches are carried over from <see cref="RegressionCorpus.AssertClose"/>
+    /// rather than dropped as dead weight: this corpus's four rows are finite by construction
+    /// today, but <c>regression_conditioning.json</c> shares a generator with
+    /// <c>tests/oracles/regression.json</c>, which already stores <c>nan</c>/<c>inf</c> for
+    /// undefined metrics, so a fifth row here landing on one is not hypothetical.
+    /// </para>
     /// </remarks>
     private static void AssertRelative(double expected, double actual, string because)
     {
+        if (double.IsNaN(expected))
+        {
+            Assert.True(double.IsNaN(actual), $"{because}: expected NaN, got {actual}");
+            return;
+        }
+
+        if (double.IsInfinity(expected))
+        {
+            bool matches = double.IsPositiveInfinity(expected)
+                ? double.IsPositiveInfinity(actual)
+                : double.IsNegativeInfinity(actual);
+
+            Assert.True(matches, $"{because}: expected {expected}, got {actual}");
+            return;
+        }
+
         double bound = 1e-9 * Math.Abs(expected);
         Assert.True(Math.Abs(expected - actual) <= bound,
             $"{because}: expected {expected:R}, got {actual:R} (tolerance {bound:R})");

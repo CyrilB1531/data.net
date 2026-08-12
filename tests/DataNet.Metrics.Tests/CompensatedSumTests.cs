@@ -246,7 +246,10 @@ public sealed class CompensatedSumTests
     /// the case Neumaier's magnitude-compared branch exists for. Measured independently: a
     /// plain <c>+=</c> loop over these squared residuals lands 6.38e9 away from the exact sum
     /// of 100000000009999990000 — about 64% of the mass the 999 999 small residuals
-    /// contribute — while <see cref="CompensatedSum"/> reproduces that sum exactly.
+    /// contribute — while <see cref="CompensatedSum"/> lands on the correctly rounded
+    /// <see cref="double"/>, 784 away from that integer and inside a single ULP of it: the
+    /// strongest result any <see cref="double"/> accumulator can produce, and what makes this
+    /// test discriminate.
     /// </para>
     /// </remarks>
     private static (double[] YTrue, double[] YPred) MagnitudeDisparity()
