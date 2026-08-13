@@ -322,16 +322,20 @@ and the comment naming it stays until a case changes it.
 
 ### 10. What #105 inherits
 
-> **#119 update:** the paragraph below is as this decision found it, and one
-> clause has since gone stale. [#119](https://github.com/CyrilB1531/data.net/issues/119)
-> stopped refusing `fuse_unk`, so it is no longer one of the settings
-> `EnsureBpeModelSettingsAreReproduced` owns. **Three** settings under `model`
-> are refused by name today, not four: `byte_fallback`
-> (`EnsureByteFallbackIsOff`), and `continuing_subword_prefix` and `dropout`
-> (`EnsureBpeModelSettingsAreReproduced`, whose own summary now counts the two
-> it owns). The rest of this section — the scan-versus-normalization order and
-> what a strip does to a segment boundary — is untouched by #119 and still
-> holds.
+> **#119 and #120 update:** the paragraph below is as this decision found it,
+> and two of its clauses have since gone stale.
+> [#119](https://github.com/CyrilB1531/data.net/issues/119) stopped refusing
+> `fuse_unk`, and [#120](https://github.com/CyrilB1531/data.net/issues/120)
+> stopped refusing `continuing_subword_prefix` — it is applied now, so
+> `EnsureBpeModelSettingsAreReproduced` owns `dropout` alone and its summary
+> says "the `model` setting", singular. **Two** settings under `model` are
+> refused unconditionally by name today, not four: `byte_fallback`
+> (`EnsureByteFallbackIsOff`) and `dropout`. A third refusal is conditional
+> and new with #120: a non-empty `continuing_subword_prefix` on a byte-level
+> model, which `BpeTokenizer` would answer inconsistently, refused by
+> `EnsureContinuingPrefixIsNotByteLevel`. The rest of this section — the
+> scan-versus-normalization order and what a strip does to a segment boundary
+> — is untouched by both and still holds.
 
 Issue #105 covers the `model` settings `LoadBpe` still refuses and the
 per-segment prefix-space rule. **Four** settings under `model` are refused by

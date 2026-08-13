@@ -663,8 +663,8 @@ public static class TokenizerJsonLoader
                 "its pre_tokenizer is byte-level and its model declares a non-empty continuing_subword_prefix",
                 "BpeTokenizer does not apply the prefix on the byte-level path while its merge loop still strips it "
                 + "from a merge's right side, so the two would disagree — and the byte-level alphabet contains the "
-                + "characters a prefix is typically spelled with, so that disagreement resolves to another existing "
-                + "id instead of raising");
+                + "characters a prefix is typically spelled with, so that disagreement can land on another "
+                + "existing id rather than raise");
         }
     }
 

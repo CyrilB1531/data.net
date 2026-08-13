@@ -166,7 +166,8 @@ to the reference and the error it answered with.
 Applying the prefix in `ByteLevelSymbols`. Nothing here measured what a byte-level model declaring one
 does in the reference, and the two halves of `BpeTokenizer` would answer differently if it were left
 alone — the symbols unprefixed, a merge's right side still stripped, and the disagreement silent where
-the byte-level alphabet spells `0x23` as `#` and the stripped side lands on another entry that exists. So the pairing is **refused** by name instead, by
+the byte-level alphabet spells `0x23` as `#` and the stripped side can land on another entry that
+exists. So the pairing is **refused** by name instead, by
 `TokenizerJsonLoader.LoadBpe` for a file and by `BpeTokenizer`'s constructor for a hand-built
 `BpeVocabulary`; what the reference makes of such a file stays out of scope, and the refusal does not rest
 on it. `WordPieceTokenizer`, which carries its
