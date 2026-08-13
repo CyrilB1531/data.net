@@ -290,6 +290,18 @@ and including `0.2.0` predate the split and covered all three at once — see
   vector, kept off `SearchResult` so the array `Search` scores into stays eight
   bytes per hit and free of references for the collector to chase.
 
+#### Fixed
+
+- **A `Sequence` of `Split` then `ByteLevel` now applies both patterns.** The loader took the `Split`
+  step's pattern and never read the `ByteLevel` step's `use_regex`, so DataNet split once where
+  HuggingFace splits twice — the `Split` step's pattern, then `ByteLevel`'s own over each resulting
+  piece. **This changes the tokens produced for Llama-3 and Qwen2 on ordinary text**, which is the point:
+  GPT-2's pattern knows only the contractions `'s`, `'t`, `'re`, `'ve`, `'m`, `'ll`, `'d`, so `it's` and
+  `don't` were already right while every French elision, and Irish and Italian names, were not —
+  `aujourd'hui` came out as two pieces where `tokenizers` 0.23.1 gives three. Ids stored by an earlier
+  build of this unreleased package will not be reproduced. `BpeVocabulary` gains `PreSplitPattern` to
+  carry the first of the two.
+
 #### Changed
 
 - **`EmbeddingIndex.Load` moves a vector block in three passes instead of five.**
