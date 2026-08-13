@@ -360,7 +360,7 @@ and including `0.2.0` predate the split and covered all three at once — see
   GPT-2's pattern knows only the contractions `'s`, `'t`, `'re`, `'ve`, `'m`, `'ll`, `'d`, so `it's` and
   `don't` were already right while every French elision, and Irish and Italian names, were not —
   `aujourd'hui` came out as two pieces where `tokenizers` 0.23.1 gives three. Ids stored by an earlier
-  build of this unreleased package will not be reproduced. `BpeVocabulary` gains `PreSplitPattern` to
+  build of this unreleased package will not be reproduced. `BpeVocabulary` gains `PreSplit` to
   carry the first of the two.
 - **A `Sequence`'s `Split` step now does what its `behavior` says.** The loader read the step's pattern and
   nothing else, so every file got the one arrangement `BpePreTokenizer` implemented — which, measured, is
