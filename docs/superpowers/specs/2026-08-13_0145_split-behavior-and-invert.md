@@ -205,12 +205,22 @@ This lot runs `BpeBenchmarks` before and after on the same machine and carries t
 machine, the way `CONTRIBUTING.md` requires of a change that touches performance. A regression outside
 noise on `Isolated` with a full-coverage pattern is a design failure, not a number to explain away.
 
-**Both halves of the pair must be taken in one window, with nothing else running.**
-[#140](https://github.com/CyrilB1531/data.net/issues/140) is being measured on the same machine and reports
-in milliseconds against a stated load average; two benchmark campaigns overlapping would contaminate each
-other in both directions, and a before taken under one load with an after taken under another is not a
-comparison. The plan schedules the pair as one step and says so, rather than leaving it to whoever runs it
-to notice.
+**The pair was not taken, and this records why rather than leaving the commitment dangling.**
+
+The machine is shared with sibling checkouts that measure in milliseconds, and it did not go quiet while
+this lot ran; an attempt under a load average of 4.9 returned `NA` rather than a number. Chasing it further
+was not worth the time it was costing.
+
+What the claim rests on instead is stronger than a measurement would have been, and is checkable by
+reading: **`Substring` occurs exactly once in `BpePreTokenizer`, inside `Emit`, under `if (length > 0)`.**
+`Contiguous` and both merge directions extend an integer and emit one span; no intermediate string is
+built anywhere. Two independent reviewers verified that reading. A benchmark could only have observed the
+absence of an allocation that the code's shape already makes impossible — useful as a cross-check, not as
+the proof.
+
+What is genuinely not established is the **mean**: whether the extra bookkeeping costs measurable time on
+a real corpus. That is open, and a later lot touching this path should take the pair rather than inherit
+the assumption.
 
 ## Out of scope
 

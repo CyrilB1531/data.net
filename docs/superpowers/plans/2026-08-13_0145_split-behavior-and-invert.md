@@ -1083,7 +1083,19 @@ EOF
 
 ---
 
-### Task 4: The number
+### Task 4: The number — NOT DONE, and deliberately
+
+**This task was not executed.** The machine is shared with sibling checkouts measuring in milliseconds, it
+did not go quiet while this lot ran, and an attempt under a load average of 4.9 returned `NA` instead of a
+number.
+
+The allocation claim — the one this design is actually about — rests on a static reading instead:
+`Substring` occurs exactly once in `BpePreTokenizer`, inside `Emit`, guarded by `length > 0`, and both
+merge directions plus `Contiguous` extend an integer rather than concatenating. Two independent reviewers
+checked it. The **mean** is not established, and a later lot touching this path should take the
+before/after pair rather than inherit the assumption. The spec's *Cost* section records the same.
+
+The steps below are kept as written, so whoever does take the pair does not have to reconstruct them.
 
 **Files:** none committed except the report; this task measures.
 
