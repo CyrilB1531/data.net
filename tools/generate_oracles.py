@@ -62,6 +62,7 @@ UNK_TOKEN = "[UNK]"
 UNK_TOKEN_LOWER = "<unk>"
 CAT_SENTENCE = "the cat sat on the mat"
 HELLO_WORLD = "hello world"
+END_OF_TEXT = "<|endoftext|>"
 TINY_SP_MODEL = "tiny_sp.model"
 EMBEDDING_SENTENCE = "tokenization is embedding embeddings"
 XLMR_FAIRSEQ_MODEL = "xlmr_fairseq.model"
@@ -2519,7 +2520,7 @@ def generate_bpe_normalizer() -> dict:
             # One of each half. The normalized entry is written decomposed, so it
             # can only match once its own content has been normalized too.
             tokenizer.add_tokens([AddedToken("café", normalized=True)])
-            tokenizer.add_special_tokens([AddedToken("<|endoftext|>", special=True, normalized=False)])
+            tokenizer.add_special_tokens([AddedToken(END_OF_TEXT, special=True, normalized=False)])
         texts = BPE_NORMALIZER_TEXTS + (["a café<|endoftext|>b", "café tail"] if with_added else [])
         text_cases = []
         for text in texts:
@@ -2563,7 +2564,7 @@ def generate_bpe_normalizer() -> dict:
 #      between two segments, hence the extra texts below.
 BPE_ADDED_TOKEN_TEXTS = BPE_TEXTS + [
     "hi<|endoftext|>bye",             # a segment after an added token, no space of its own
-    "<|endoftext|>",                  # nothing but the token
+    END_OF_TEXT,                      # nothing but the token
     "<|endoftext|>tail",              # an empty segment before it
     " <|endoftext|> ",                # segments that already start with a space
     "x<|endoftext|> y<|endoftext|>z",  # several, mixed
@@ -2581,7 +2582,7 @@ def generate_bpe_added_tokens() -> dict:
     from tokenizers import AddedToken  # noqa: PLC0415
 
     tokenizer = _gpt2_tokenizer(add_prefix_space=True)
-    tokenizer.add_special_tokens([AddedToken("<|endoftext|>", special=True)])
+    tokenizer.add_special_tokens([AddedToken(END_OF_TEXT, special=True)])
 
     cases = []
     for i, text in enumerate(BPE_ADDED_TOKEN_TEXTS):
