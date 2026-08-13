@@ -182,6 +182,36 @@ the prefix space is applied at a different point here than in HuggingFace, that 
 [#122](https://github.com/CyrilB1531/data.net/issues/122), and with it on every case here would measure the
 two on top of each other.
 
+## Cost, and how it is kept at zero
+
+`BpePreTokenizer.Split` runs once per added-token-delimited segment, on every `Encode`. It is a hot path,
+and D3's model asks for strictly more work than today's `Matches` loop: the gaps have to be located as
+well as the matches.
+
+**The extra allocation is avoidable by construction, not by optimisation.** A gap is a `(start, length)`
+pair derived from two consecutive match positions; nothing needs to be materialised until a piece is
+emitted, and an empty gap is never emitted (D7). For the case every shipped model is in — a pattern that
+matches every character, so every gap has length zero — that is one integer comparison per match and no
+string at all. The work equals today's plus a test.
+
+The implementation is therefore constrained, not merely encouraged: **walk the matches once, computing
+each gap's bounds from the previous match's end, and call `Substring` only for a piece that will be
+emitted.** An implementation that builds a list of gap strings and then filters it would pay for
+generality nobody uses, on the path that decides encoding throughput.
+
+That claim needs a number rather than an argument. `bench/DataNet.Text.Benchmarks` already carries
+`BpeBenchmarks.Bpe()`, which encodes a corpus through `BpeTokenizer.Encode`, and `BpeScalingBenchmarks`.
+This lot runs `BpeBenchmarks` before and after on the same machine and carries the pair, naming the
+machine, the way `CONTRIBUTING.md` requires of a change that touches performance. A regression outside
+noise on `Isolated` with a full-coverage pattern is a design failure, not a number to explain away.
+
+**Both halves of the pair must be taken in one window, with nothing else running.**
+[#140](https://github.com/CyrilB1531/data.net/issues/140) is being measured on the same machine and reports
+in milliseconds against a stated load average; two benchmark campaigns overlapping would contaminate each
+other in both directions, and a before taken under one load with an after taken under another is not a
+comparison. The plan schedules the pair as one step and says so, rather than leaving it to whoever runs it
+to notice.
+
 ## Out of scope
 
 **`add_prefix_space`'s placement** ([#122](https://github.com/CyrilB1531/data.net/issues/122)) and **the
