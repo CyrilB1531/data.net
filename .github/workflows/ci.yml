@@ -265,3 +265,53 @@ jobs:
           name: oracles-as-regenerated
           path: tests/oracles/
           retention-days: 14
+
+  windows:
+    name: Build, test and platform checks (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      # Markdownlint, the oracle drift gate and the SonarCloud gate stay
+      # Linux-only above: none of the three depends on which platform runs it,
+      # so duplicating them here would buy nothing but wall-clock on every pull
+      # request. This job carries what does depend on the platform: the build,
+      # the eight test assemblies across both target frameworks, and the three
+      # checks whose failure mode is platform-specific -- a machine path
+      # slipping into a tracked file, the DataNet.Text version floor, and the
+      # tool tests that exercise the guard and generator scripts themselves.
+      # Measured on windows-latest at 39.7 s (build) and 24.3 s (test) -- issue
+      # #138's probe, run 31728500235 -- against several minutes for
+      # "Build, test, pack" on Linux, so this job will not become the slowest
+      # check on a pull request even running in parallel with the others.
+      - name: Build
+        run: dotnet build DataNet.slnx -c Release
+
+      - name: Test
+        run: dotnet test DataNet.slnx -c Release
+
+      # Same lock file, same flags, installed into the runner's own Python --
+      # no venv, matching the Linux jobs. This is the first job to install it
+      # on Windows at all: the lock would not install here until issue #138
+      # (task 1b) pinned colorama unconditionally, and nothing had re-run it
+      # on this platform since. `python` is deliberate, not `python3` (absent
+      # on a python.org install) or `py` (resolves a different interpreter
+      # than the one setup-python just put on PATH).
+      - name: Install tool dependencies
+        run: |
+          pip install --only-binary :all: --require-hashes -r tools/requirements.lock.txt
+
+      - name: Tool tests
+        run: python -m pytest tools/tests -q
+
+      - name: No machine paths in tracked files
+        run: python tools/check_machine_paths.py
+
+      - name: The DataNet.Text floor is coherent
+        run: python tools/check_version_floor.py

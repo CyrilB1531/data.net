@@ -91,17 +91,35 @@ dotnet build DataNet.slnx -c Release
 dotnet test DataNet.slnx -c Release
 dotnet format DataNet.slnx --verify-no-changes
 npx markdownlint-cli2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
+```
+
+Neither `python` nor `python3` is safe to assume on both platforms: Ubuntu 24.04 ships
+`/usr/bin/python3` and no `python` by default, while python.org's Windows installer (and
+`winget install Python.Python.3.12`, which wraps it) ships `python.exe` and no `python3.exe` —
+a `python3` that does resolve there is often the Microsoft Store app-execution alias, which
+opens the Store instead of running anything.
+
+```bash
+# POSIX (bash/zsh)
 python3 tools/check_version_floor.py
 python3 tools/extract_doc_snippets.py && dotnet build samples/DataNet.DocSnippets -c Release
 python3 tools/check_machine_paths.py
+```
+
+```powershell
+# PowerShell — split, not chained with `&&`, which needs PowerShell 7+
+python tools/check_version_floor.py
+python tools/extract_doc_snippets.py
+dotnet build samples/DataNet.DocSnippets -c Release
+python tools/check_machine_paths.py
 ```
 
 `check_version_floor.py` is offline and instant; it catches the version numbers
 that must agree drifting apart, which MSBuild is perfectly happy to let happen. CI runs it
 with `--check-feed`, which additionally proves the dependency floor is published
 — see [`tools/README.md`](tools/README.md). If you touched packaging, packing and
-running `python3 tools/check_nuspec_dependencies.py ./artifacts --require-all`
-closes the loop.
+running `python3 tools/check_nuspec_dependencies.py ./artifacts --require-all` (`python …` on
+Windows, per the split above) closes the loop.
 
 `check_machine_paths.py` refuses a tracked file that holds a path under someone's
 home directory; `/tmp` is deliberately allowed, other than the session
@@ -121,10 +139,22 @@ SonarQube Community server that covers all three, for whoever wants that answer
 before pushing rather than after.
 
 ```bash
+# POSIX (bash/zsh)
 cd tools/sonarqube-local && docker compose up -d
 # Podman instead of Docker Engine: podman compose up -d
 # Wait for the server rather than sleeping blind:
 until curl -s http://localhost:9000/api/system/status | grep -q '"status":"UP"'; do sleep 5; done
+```
+
+```powershell
+# PowerShell — split, not chained with `&&`, which needs PowerShell 7+
+cd tools/sonarqube-local
+docker compose up -d
+# Podman instead of Docker Engine: podman compose up -d
+# Wait for the server rather than sleeping blind. -ErrorAction SilentlyContinue does not
+# stop Invoke-RestMethod's connection-refused error from aborting a do/until, so this
+# catches it explicitly instead — verified against a port with nothing listening yet:
+while ($true) { try { if ((Invoke-RestMethod http://localhost:9000/api/system/status).status -eq 'UP') { break } } catch { }; Start-Sleep -Seconds 5 }
 ```
 
 The figures below were measured with Podman on one machine, which is what makes
@@ -197,7 +227,14 @@ points at a `DataNet.Text` older than the one in your working tree, so
 change. Flip the reference back for the duration:
 
 ```bash
+# POSIX (bash/zsh)
 export DataNetUseProjectRefs=true
+dotnet build DataNet.slnx -c Release   # prints a reminder that this is on
+```
+
+```powershell
+# PowerShell
+$env:DataNetUseProjectRefs = 'true'
 dotnet build DataNet.slnx -c Release   # prints a reminder that this is on
 ```
 
@@ -235,20 +272,29 @@ alongside the implementation.
 2. Regenerate, and commit the resulting `tests/oracles/*.json`:
 
    ```bash
+   # POSIX (bash/zsh)
    cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python <repo>/tools/generate_oracles.py
    ```
 
+   ```powershell
+   # PowerShell
+   cd $env:TEMP
+   $env:PYTHONSAFEPATH = '1'
+   <repo>\.venv-oracles\Scripts\python.exe <repo>\tools\generate_oracles.py
+   Remove-Item Env:PYTHONSAFEPATH   # POSIX sets it only for this one command; PowerShell must clear it back out
+   ```
+
    Run it from a neutral working directory. `nltk` refuses to import its own
-   dependencies when they appear to live *under* the current directory, so the
-   run fails — even with `PYTHONSAFEPATH` set — whenever the working directory is
-   an ancestor of the virtualenv:
+   dependencies when they appear to live *under* the current directory, on POSIX and
+   Windows alike, so the run fails — even with `PYTHONSAFEPATH` set — whenever the
+   working directory is an ancestor of the virtualenv:
 
    ```text
    ImportError: Blocked import of regex from current working directory for security reasons
    ```
 
-   Running from `/tmp` with the virtualenv inside the repository satisfies this.
-   Running from the repository root, or from `~`, does not.
+   Running from `/tmp` (POSIX) or `$env:TEMP` (PowerShell), with the virtualenv inside the
+   repository, satisfies this. Running from the repository root, or from `~`, does not.
 
    Check the generator's own exit code, not a pipeline's. `python … | tail` reports
    `tail`'s status, so a failed generation looks successful — and the drift check

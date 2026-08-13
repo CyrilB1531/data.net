@@ -18,8 +18,24 @@ dotnet build DataNet.slnx -c Release      # both target frameworks; warnings are
 dotnet test DataNet.slnx -c Release       # runs the suite twice: net10 and netstandard2.0 assemblies
 dotnet format DataNet.slnx --verify-no-changes
 npx markdownlint-cli2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
+```
+
+Neither `python` nor `python3` is safe to assume on both platforms: Ubuntu 24.04 ships
+`/usr/bin/python3` and no `python` by default, while python.org's Windows installer (and
+`winget install Python.Python.3.12`, which wraps it) ships `python.exe` and no `python3.exe` —
+a `python3` that does resolve there is often the Microsoft Store app-execution alias, which
+opens the Store instead of running anything.
+
+```bash
+# POSIX (bash/zsh)
 python3 tools/check_version_floor.py      # offline, instant; catches the three version numbers drifting apart
 python3 tools/check_machine_paths.py      # catches a tracked file holding a path under someone's home directory
+```
+
+```powershell
+# PowerShell
+python tools/check_version_floor.py
+python tools/check_machine_paths.py
 ```
 
 A single test, or one area:
@@ -32,16 +48,38 @@ dotnet test tests/DataNet.Text.Tests -c Release --filter "FullyQualifiedName~Lev
 **Read the test count, not the colour.** A `--filter` that matches nothing exits
 zero and reports success. This has produced false confidence here more than once.
 
-Oracle corpora (see *Oracle validation* below):
+Oracle corpora (see *Oracle validation* below), run from outside the repository:
 
 ```bash
+# POSIX (bash/zsh)
 cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python <repo>/tools/generate_oracles.py
 ```
 
-Guide snippets, benchmarks, packaging:
+```powershell
+# PowerShell
+cd $env:TEMP
+$env:PYTHONSAFEPATH = '1'
+<repo>\.venv-oracles\Scripts\python.exe <repo>\tools\generate_oracles.py
+Remove-Item Env:PYTHONSAFEPATH   # POSIX sets it only for this one command; PowerShell must clear it back out
+```
+
+Both need a neutral directory because `nltk` refuses to import under the repository (see
+*Oracle validation* below) — `/tmp` on POSIX, `$env:TEMP` on PowerShell.
+
+Guide snippets, benchmarks, packaging (see the `python`/`python3` split above):
 
 ```bash
+# POSIX (bash/zsh)
 python3 tools/extract_doc_snippets.py && dotnet build samples/DataNet.DocSnippets -c Release
+```
+
+```powershell
+# PowerShell — split, not chained with `&&`, which needs PowerShell 7+
+python tools/extract_doc_snippets.py
+dotnet build samples/DataNet.DocSnippets -c Release
+```
+
+```bash
 dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter '*Levenshtein*'
 for p in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
   dotnet pack "$p" -c Release -o ./artifacts
@@ -94,7 +132,13 @@ When a branch edits two packages together, the floor points at an older
 `DataNet.Text` than your working tree:
 
 ```bash
+# POSIX (bash/zsh)
 export DataNetUseProjectRefs=true   # local developer loop only; CI never sets it
+```
+
+```powershell
+# PowerShell
+$env:DataNetUseProjectRefs = 'true'   # local developer loop only; CI never sets it
 ```
 
 Unset it before measuring anything — with it on you are building a graph that will

@@ -42,6 +42,13 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
+# Windows accepts either separator in a path -- cmd, PowerShell and the Win32
+# API all take "C:/Users/..." interchangeably with "C:\Users\..." -- while a
+# backslash written into a JSON or C# string literal comes out doubled. This
+# fragment matches one of: a single or doubled backslash, or a single forward
+# slash, which is never doubled because nothing escapes it.
+_WINDOWS_SEP = r"(?:\\{1,2}|/)"
+
 # A directory named after a person, under the place each platform keeps them.
 # The trailing separator is required: it is what distinguishes a path from a
 # mention of the directory itself in prose.
@@ -49,7 +56,16 @@ NAMED_SHAPES: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("a home directory under /home", re.compile(r"/home/[A-Za-z0-9._-]+/")),
     ("a home directory under /Users", re.compile(r"/Users/[A-Za-z0-9._-]+/")),
     ("a Windows home directory",
-     re.compile(r"[A-Za-z]:\\{1,2}Users\\{1,2}[A-Za-z0-9._-]+\\{1,2}")),
+     re.compile(r"[A-Za-z]:" + _WINDOWS_SEP + r"Users" + _WINDOWS_SEP
+                + r"[A-Za-z0-9._-]+" + _WINDOWS_SEP)),
+    # A UNC path to a profile redirected onto a network share: a corporate-
+    # Windows shape with no drive letter, so the pattern above -- anchored on
+    # "[A-Za-z]:" -- cannot see it. "Users" is required for the same reason
+    # the drive-letter pattern requires it: a bare server share is not a home
+    # directory, and a share literally called "Users" with nobody's profile
+    # after it still is not one.
+    ("a Windows home directory on a network share",
+     re.compile(r"\\{2,4}[A-Za-z0-9._-]+\\{1,2}Users\\{1,2}[A-Za-z0-9._-]+\\{1,2}")),
     # A following path character is required, so that a mention of the
     # directory in prose is not a finding and, more usefully, so that this
     # very line does not match the pattern it defines.
@@ -98,19 +114,34 @@ def environment_probes(home: str | None) -> tuple[tuple[str, re.Pattern[str]], .
 
     The account name is matched only when a separator or a dash bounds it, so
     a contributor called `ed` does not turn every "edited" into a finding.
+
+    The caller passes whichever of $HOME or %USERPROFILE% is set, checking
+    $HOME first: a probe job on windows-latest measured $HOME unset in both
+    PowerShell and cmd (with %USERPROFILE% holding the runner's profile),
+    while Git Bash on Windows does set $HOME, so a guard reading only one of
+    the two is inert in half the shells a contributor on Windows might use.
+
+    Known blind spot, left open rather than half-fixed: that same probe job
+    found %TEMP% resolved to the 8.3 short name
+    C:\\Users\\RUNNER~1\\AppData\\Local\\Temp against that %USERPROFILE%, so a
+    path written from %TEMP% sits inside the profile while matching none of
+    these three probes -- resolving short names back to their long form is
+    not portable enough to attempt here.
     """
     if not home:
         return ()
 
-    # A trailing separator (as in "/home/name/") would otherwise survive into
-    # the rsplit below and leave account == "", silently dropping all three
-    # probes -- including the plain home-path probe, which needs no account
-    # name at all.
-    home = home.rstrip("/")
+    # A trailing separator (as in "/home/name/" or "C:\Users\name\") would
+    # otherwise survive into the rsplit below and leave account == "",
+    # silently dropping all three probes -- including the plain home-path
+    # probe, which needs no account name at all. Both separators are
+    # stripped and split on, because the caller may hand this either a POSIX
+    # HOME or a Windows USERPROFILE.
+    home = home.rstrip("/\\")
     if not home:
         return ()
 
-    account = home.rsplit("/", 1)[-1]
+    account = re.split(r"[/\\]", home)[-1]
     if not account:
         return ()
 
@@ -186,7 +217,8 @@ def main(argv: list[str]) -> int:
         return early_exit
 
     use_environment = "--no-environment" not in arguments
-    derived = environment_probes(os.environ.get("HOME")) if use_environment else ()
+    derived = environment_probes(
+        os.environ.get("HOME") or os.environ.get("USERPROFILE")) if use_environment else ()
     probes = NAMED_SHAPES + derived
     derived_descriptions = frozenset(description for description, _ in derived)
 
