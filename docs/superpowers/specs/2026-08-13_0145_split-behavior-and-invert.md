@@ -205,22 +205,27 @@ This lot runs `BpeBenchmarks` before and after on the same machine and carries t
 machine, the way `CONTRIBUTING.md` requires of a change that touches performance. A regression outside
 noise on `Isolated` with a full-coverage pattern is a design failure, not a number to explain away.
 
-**The pair was not taken, and this records why rather than leaving the commitment dangling.**
+**The pair was taken.** `BpeBenchmarks.Bpe` over the 30 000-entry shared corpus, `--job short --inProcess`,
+Intel i7-4770S (8 threads), 31 GB, Ubuntu 24.04.4, .NET SDK 10.0.110:
 
-The machine is shared with sibling checkouts that measure in milliseconds, and it did not go quiet while
-this lot ran; an attempt under a load average of 4.9 returned `NA` rather than a number. Chasing it further
-was not worth the time it was costing.
+| | mean | error | allocated |
+| --- | ---: | ---: | ---: |
+| before (`c457d98`) | 702.2 ms | ±134.7 ms | 112.44 MB |
+| after | 728.1 ms | ±142.3 ms | **112.18 MB** |
 
-What the claim rests on instead is stronger than a measurement would have been, and is checkable by
-reading: **`Substring` occurs exactly once in `BpePreTokenizer`, inside `Emit`, under `if (length > 0)`.**
-`Contiguous` and both merge directions extend an integer and emit one span; no intermediate string is
-built anywhere. Two independent reviewers verified that reading. A benchmark could only have observed the
-absence of an allocation that the code's shape already makes impossible — useful as a cross-check, not as
-the proof.
+**The allocation did not grow — it fell**, by 0.26 MB. The segmentation adds no string, and removing
+`.Cast<Match>()`'s per-call iterator from `Apply` takes a little off. That is the number this design is
+about, and `MemoryDiagnoser` reports it exactly rather than as a sampled average.
 
-What is genuinely not established is the **mean**: whether the extra bookkeeping costs measurable time on
-a real corpus. That is open, and a later lot touching this path should take the pair rather than inherit
-the assumption.
+**The mean is not a result.** The 26 ms difference sits far inside error bars of ±135 ms, themselves
+inflated by a short run on a machine under a load average of 11 to 13 — sibling checkouts were building
+and testing throughout, which is the condition this machine is in rather than an accident of timing. What
+the pair establishes is the absence of a large regression, not the absence of a small one.
+
+The stronger evidence for the allocation claim remains static and checkable by reading: **`Substring`
+occurs exactly once in `BpePreTokenizer`, inside `Emit`, under `if (length > 0)`**, and `Contiguous` and
+both merge directions extend an integer rather than concatenating. Two independent reviewers verified that
+reading. The benchmark agrees with it; the code's shape is what guarantees it.
 
 ## Out of scope
 

@@ -391,10 +391,6 @@ matched at all, gaps at both ends, and empty. Those are where an off-by-one
 in the segmentation lands, and none of them is where a behavior difference
 shows, which is why both kinds are carried.
 
-Two pairs come out identical and are meant to: invert is a no-op for isolated
-and for contiguous, because both keep every piece either way and two gaps are
-never adjacent. The check in this task's step 6 allows exactly those two.
-
 The three refusals are recorded the way #118, #120 and #130 record theirs: the
 document handed to the reference and the error it answered with. behavior and
 invert are required fields there, so DataNet has no default to invent.
@@ -674,6 +670,14 @@ only for a piece that will be emitted.
     }
 ```
 
+**What shipped instead, and why:** `Step` and `Close` (Step 4 below) each take a behaviour and an
+invert flag alongside their other parameters, which put both over `S107`'s parameter-count ceiling.
+The two fields above are bundled into one `private readonly record struct SplitRule(SplitBehavior
+Behavior, bool Invert)` field, `_rule`, instead of staying as `_behavior`/`_invert` — every assignment
+above becomes `_rule = new SplitRule(...)` and every read becomes `_rule.Behavior` / `_rule.Invert`.
+`SplitBehavior` and `BpeSplitStep` are unaffected; only this pre-tokenizer's private state changed
+shape. See `src/DataNet.Embeddings/Tokenization/BpePreTokenizer.cs`.
+
 `Split` keeps the two-stage shape #143 gave it, with the behaviour applying to the first stage only:
 
 ```csharp
@@ -741,6 +745,22 @@ The model itself. Every piece is a `(start, length)` pair until it is emitted:
         Close(text, cursor, behavior, invert, carried, pieces);
     }
 ```
+
+**What shipped instead, and why:**
+
+- `behavior`/`invert` above are one `SplitRule rule` parameter throughout `Step`, `Close` and `Apply`
+  itself — the `S107` reason given under the constructor block applies here too.
+- The sentinel `-1` is a named `private const int NoOpenPiece = -1;` on the class, read as
+  `NoOpenPiece` everywhere `Step`, `Close` and their helpers compare or return it — a bare `-1`
+  compared against `carried` several call-frames away from its declaration is what a named constant
+  is for.
+- `pattern.Matches(text).Cast<Match>()` did not ship: `MatchCollection`'s own enumerator binds
+  directly to `Match` on both target frameworks, so `.Cast<Match>()` allocates an iterator this task's
+  own complexity budget (`Substring` called only from `Emit`) does not otherwise pay for. The shipped
+  loop is `foreach (Match match in pattern.Matches(text))`, with a comment saying exactly that.
+
+See `src/DataNet.Embeddings/Tokenization/BpePreTokenizer.cs` for the shipped `Apply`, `Step` and
+`Close`.
 
 **`Step` and `Close` are yours to write**, and the plan deliberately stops here rather than handing you a
 body: five recombinations over two roles is exactly the kind of code that is easier to derive from the
@@ -913,6 +933,22 @@ Add `using DataNet.Embeddings.Persistence;` and `using DataNet.Embeddings.Tests.
 corpus's `isolated` case for `"ab cd!"` before running: if the two disagree, the corpus wins and you report
 the difference.
 
+**What shipped instead, and why:**
+
+- `The_loader_carries_the_step_the_file_declares`'s four `[InlineData]` rows became
+  `The_loader_carries_the_step_every_model_declares`, looping `metadata.models` for all twenty rather
+  than a hand-picked subset — the PascalCase switch in `ReadBpeSequencePreTokenizer` has five arms, and
+  a hard-coded subset could miss a wrong mapping on any one of them (`MergedWithPrevious` included) the
+  same way a hand-written list has already gone stale once on this branch (item 1 of this plan's own
+  review, "two pairs").
+- `Assert.Contains("Split", error.Message, ...)` did not ship: `"Split"` passes for any of the three
+  refusal shapes, including the unrelated "is a Sequence that is not exactly [Split, ByteLevel]"
+  refusal, so it cannot tell the three messages apart. `The_reference_refuses_it_too_and_so_do_we` takes
+  a second `[InlineData]` value instead — a distinguishing substring per shape (`"declares no
+  behavior"`, `"declares no invert"`, `"Nonsense"`) — and asserts that.
+
+See `tests/DataNet.Embeddings.Tests/Tokenization/BpeSplitBehaviorTests.cs` for the shipped tests.
+
 - [ ] **Step 2: Run them and watch them fail**
 
 ```bash
@@ -1083,19 +1119,18 @@ EOF
 
 ---
 
-### Task 4: The number — NOT DONE, and deliberately
+### Task 4: The number — done, with one trap worth recording
 
-**This task was not executed.** The machine is shared with sibling checkouts measuring in milliseconds, it
-did not go quiet while this lot ran, and an attempt under a load average of 4.9 returned `NA` instead of a
-number.
+The pair is in the spec's *Cost* section: allocation **fell** 0.26 MB, and the mean difference sits far
+inside the error bars.
 
-The allocation claim — the one this design is actually about — rests on a static reading instead:
-`Substring` occurs exactly once in `BpePreTokenizer`, inside `Emit`, guarded by `length > 0`, and both
-merge directions plus `Contiguous` extend an integer rather than concatenating. Two independent reviewers
-checked it. The **mean** is not established, and a later lot touching this path should take the
-before/after pair rather than inherit the assumption. The spec's *Cost* section records the same.
+**The first attempt returned `NA`, and it was not a volume problem.** `bench/corpus/vocabs` is git-ignored
+and simply did not exist; `python bench/corpus/generate_vocabs.py` builds it in seconds, offline and
+seeded. Read the benchmark's own error text rather than assuming a short run failed to converge.
 
-The steps below are kept as written, so whoever does take the pair does not have to reconstruct them.
+**The before was measured in a `git worktree` at `c457d98`, not by checking files out over the working
+tree** — another agent was editing it at the time. The bench corpus is git-ignored, so copy
+`bench/corpus/vocabs` into the worktree before running.
 
 **Files:** none committed except the report; this task measures.
 
