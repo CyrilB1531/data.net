@@ -279,9 +279,12 @@ def main() -> None:
 
     # newline="\n" on all three: these fixtures are committed, and generate_oracles.py
     # reads tiny_bpe.json and orphan_bpe_model.json back in turn (ORACLE_DIR / "...").
-    # Left to the platform default, a rebuild on Windows would translate "\n" to
-    # "\r\n" and leave the checked-in file permanently different from what a Linux
-    # rebuild produces, for no semantic reason.
+    # A contributor with core.autocrlf=false or unset who rebuilds on Windows would
+    # have the platform default translate "\n" to "\r\n" on write, and that CRLF would
+    # reach the repository as-is, leaving the checked-in file permanently different
+    # from what a Linux rebuild produces, for no semantic reason. (core.autocrlf=true
+    # or =input is unaffected: git normalises CRLF back to LF on add/commit regardless
+    # of what Python wrote to disk.)
     path = ORACLE_DIR / "tiny_bpe.json"
     path.write_text(build_tiny_bpe() + "\n", encoding="utf-8", newline="\n")
     print(f"tiny_bpe.json: {path.stat().st_size} bytes -> {path}")

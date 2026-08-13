@@ -3707,10 +3707,15 @@ def main() -> None:
         payload = gen()
         path = ORACLE_DIR / filename
         # newline="\n": these files are committed and CI's "Oracles are reproducible"
-        # job compares them with a raw `git diff`, not a text-mode read. Left to the
-        # platform default, a regeneration on Windows would translate every "\n" to
-        # "\r\n" and make that diff nonempty forever, even though nothing semantic
-        # changed.
+        # job compares them with a raw `git diff`, not a text-mode read. A contributor
+        # with core.autocrlf=false or unset who regenerates on Windows would have the
+        # platform default translate every "\n" to "\r\n" on write, and that CRLF would
+        # reach the repository as-is and make the diff nonempty forever, even though
+        # nothing semantic changed. (core.autocrlf=true or =input is unaffected: git
+        # normalises CRLF back to LF on add/commit regardless of what Python wrote to
+        # disk — verified against all three settings by committing an LF file, rewriting
+        # it as CRLF, and re-running `git diff --quiet`: true and input exit 0, false
+        # exits 1.)
         with path.open("w", encoding="utf-8", newline="\n") as f:
             # allow_nan=False: Python would otherwise write a bare NaN or
             # Infinity, which is not JSON and which System.Text.Json refuses at
