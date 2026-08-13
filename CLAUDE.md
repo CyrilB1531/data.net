@@ -32,11 +32,23 @@ dotnet test tests/DataNet.Text.Tests -c Release --filter "FullyQualifiedName~Lev
 **Read the test count, not the colour.** A `--filter` that matches nothing exits
 zero and reports success. This has produced false confidence here more than once.
 
-Oracle corpora (see *Oracle validation* below):
+Oracle corpora (see *Oracle validation* below), run from outside the repository:
 
 ```bash
+# POSIX (bash/zsh)
 cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python <repo>/tools/generate_oracles.py
 ```
+
+```powershell
+# PowerShell
+cd $env:TEMP
+$env:PYTHONSAFEPATH = '1'
+<repo>\.venv-oracles\Scripts\python.exe <repo>\tools\generate_oracles.py
+```
+
+POSIX needs the neutral directory because `nltk` refuses to import under the repository (see
+*Oracle validation* below); whether Windows needs it too is unverified — the probe that answered
+this branch's other Windows questions never reached `nltk`.
 
 Guide snippets, benchmarks, packaging:
 
@@ -94,7 +106,13 @@ When a branch edits two packages together, the floor points at an older
 `DataNet.Text` than your working tree:
 
 ```bash
+# POSIX (bash/zsh)
 export DataNetUseProjectRefs=true   # local developer loop only; CI never sets it
+```
+
+```powershell
+# PowerShell
+$env:DataNetUseProjectRefs = 'true'   # local developer loop only; CI never sets it
 ```
 
 Unset it before measuring anything — with it on you are building a graph that will

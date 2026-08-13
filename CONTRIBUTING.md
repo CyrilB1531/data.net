@@ -123,8 +123,13 @@ before pushing rather than after.
 ```bash
 cd tools/sonarqube-local && docker compose up -d
 # Podman instead of Docker Engine: podman compose up -d
-# Wait for the server rather than sleeping blind:
+# Wait for the server rather than sleeping blind (POSIX):
 until curl -s http://localhost:9000/api/system/status | grep -q '"status":"UP"'; do sleep 5; done
+```
+
+```powershell
+# Wait for the server rather than sleeping blind (PowerShell)
+do { Start-Sleep -Seconds 5 } until ((Invoke-RestMethod http://localhost:9000/api/system/status -ErrorAction SilentlyContinue).status -eq 'UP')
 ```
 
 The figures below were measured with Podman on one machine, which is what makes
@@ -197,7 +202,14 @@ points at a `DataNet.Text` older than the one in your working tree, so
 change. Flip the reference back for the duration:
 
 ```bash
+# POSIX (bash/zsh)
 export DataNetUseProjectRefs=true
+dotnet build DataNet.slnx -c Release   # prints a reminder that this is on
+```
+
+```powershell
+# PowerShell
+$env:DataNetUseProjectRefs = 'true'
 dotnet build DataNet.slnx -c Release   # prints a reminder that this is on
 ```
 
@@ -235,10 +247,18 @@ alongside the implementation.
 2. Regenerate, and commit the resulting `tests/oracles/*.json`:
 
    ```bash
+   # POSIX (bash/zsh)
    cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python <repo>/tools/generate_oracles.py
    ```
 
-   Run it from a neutral working directory. `nltk` refuses to import its own
+   ```powershell
+   # PowerShell
+   cd $env:TEMP
+   $env:PYTHONSAFEPATH = '1'
+   <repo>\.venv-oracles\Scripts\python.exe <repo>\tools\generate_oracles.py
+   ```
+
+   Run it from a neutral working directory. On POSIX, `nltk` refuses to import its own
    dependencies when they appear to live *under* the current directory, so the
    run fails — even with `PYTHONSAFEPATH` set — whenever the working directory is
    an ancestor of the virtualenv:
@@ -248,7 +268,11 @@ alongside the implementation.
    ```
 
    Running from `/tmp` with the virtualenv inside the repository satisfies this.
-   Running from the repository root, or from `~`, does not.
+   Running from the repository root, or from `~`, does not. Whether the same refusal
+   happens on Windows is unverified: the probe that answered this branch's other
+   Windows questions never reached `nltk`, because the hashed lock would not install
+   there at all (fixed since, but not re-run against Windows). `$env:TEMP` is given
+   above as the safe default until that is confirmed either way.
 
    Check the generator's own exit code, not a pipeline's. `python … | tail` reports
    `tail`'s status, so a failed generation looks successful — and the drift check
