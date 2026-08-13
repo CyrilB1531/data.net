@@ -3162,7 +3162,7 @@ def generate_wordpiece_added_tokens() -> dict:
 
 # --- fuse_unk (issue #119) ----------------------------------------------------
 
-# Named rather than repeated: python:S1192 fires at five occurrences of a
+# Named rather than repeated: python:S1192 fires at three occurrences of a
 # literal, and this one appears across two vocabularies, one merge table and
 # one function default.
 _FUSE_UNK_TOKEN = UNK_TOKEN
@@ -3649,6 +3649,113 @@ def generate_bpe_continuing_prefix() -> dict:
     }
 
 
+# --- Split + ByteLevel Sequence, both patterns (issue #143) -------------------
+
+# Llama-3's own Split pattern, from its tokenizer.json. The same string is in
+# BpePatterns.Llama3 on the C# side; it is repeated here rather than imported
+# because the generator must not depend on the library it is checking.
+_SEQ_SPLIT = (
+    r"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}"
+    r"| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+"
+)
+
+
+def _sequence_split_model(use_regex):
+    """A byte-level BPE behind Sequence[Split(Llama-3), ByteLevel].
+
+    add_prefix_space is off throughout, deliberately: HuggingFace prepends the
+    space BETWEEN the two splits and DataNet prepends it per segment, so with it
+    on every case here would measure that divergence on top of this one and none
+    would discriminate. ADR 0022 section 10 recorded the same reasoning when
+    bpe_added_token_flags.json was generated with it off.
+
+    The merges exist so the split is observable in the tokens and not only in the
+    pieces: a merge never crosses a piece boundary, so "'ai" can only be reached
+    when the apostrophe and the letters share a piece.
+    """
+    from tokenizers import Tokenizer, models, pre_tokenizers, decoders, Regex  # noqa: PLC0415
+
+    vocab = {c: i for i, c in enumerate(sorted(pre_tokenizers.ByteLevel.alphabet()))}
+    merges = []
+    for left, right in (("'", "a"), ("'a", "i"), ("a", "i"), ("'", "h"), ("'h", "u")):
+        merged = left + right
+        if merged not in vocab:
+            vocab[merged] = len(vocab)
+        merges.append((left, right))
+
+    tokenizer = Tokenizer(models.BPE(vocab, merges))
+    tokenizer.pre_tokenizer = pre_tokenizers.Sequence([
+        pre_tokenizers.Split(Regex(_SEQ_SPLIT), behavior="isolated"),
+        pre_tokenizers.ByteLevel(add_prefix_space=False, use_regex=use_regex),
+    ])
+    tokenizer.decoder = decoders.ByteLevel()
+    return tokenizer
+
+
+def _sequence_split_models() -> list[tuple]:
+    """(name, declares, tokenizer, texts) — one per side of the divergence."""
+    texts = [
+        # The divergence, on five shapes of one cause rather than five spellings
+        # of one shape: elision before a vowel, before an h, an accented letter
+        # after the apostrophe, a capitalised name, and twice inside one word.
+        "j'ai vu l'ami d'Anne",
+        "aujourd'hui",
+        "C'est l'été",
+        "O'Brien and D'Angelo",
+        "rock'n'roll",
+        # The cases that must NOT move. Without them the corpus proves something
+        # changed, not that the right thing changed: a fix that split on every
+        # apostrophe would pass the group above and fail here.
+        "it's fine",
+        "don't",
+        "the 'quoted' word",
+        # The minimal case the design was read off, so the corpus carries the
+        # measurement and not only its consequences.
+        "hello123 don't",
+    ]
+    return [
+        ("use_regex_on",
+         "a Sequence whose ByteLevel step splits again, which is the default",
+         _sequence_split_model(True), texts),
+        ("use_regex_off",
+         "the same Sequence with the second split turned off",
+         _sequence_split_model(False), texts),
+    ]
+
+
+def generate_bpe_sequence_split() -> dict:
+    """Both patterns of a Split + ByteLevel Sequence, pieces as well as tokens."""
+    carried = _sequence_split_models()
+    cases = []
+    for name, _, tokenizer, texts in carried:
+        for text in texts:
+            enc = tokenizer.encode(text)
+            cases.append({
+                "id": len(cases),
+                "model": name,
+                "text": text,
+                # The pre-tokenizer's own output, which is where the defect is.
+                "pieces": [p for p, _span in tokenizer.pre_tokenizer.pre_tokenize_str(text)],
+                "tokens": enc.tokens,
+                "ids": enc.ids,
+            })
+
+    return {
+        "metadata": {
+            "algorithm": "BPE Sequence[Split, ByteLevel] pre-tokenization",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "hand-built: the byte-level alphabet plus five merges, defined in tools/generate_oracles.py",
+            "models": {
+                name: {"declares": declares, "tokenizer_json": tokenizer.to_str()}
+                for name, declares, tokenizer, _ in carried
+            },
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -3701,6 +3808,7 @@ def main() -> None:
         "bpe_fuse_unk.json": generate_bpe_fuse_unk,
         "bpe_added_token_coverage.json": generate_bpe_added_token_coverage,
         "bpe_continuing_prefix.json": generate_bpe_continuing_prefix,
+        "bpe_sequence_split.json": generate_bpe_sequence_split,
         "wordpiece_added_tokens.json": generate_wordpiece_added_tokens,
     }
     for filename, gen in generators.items():
