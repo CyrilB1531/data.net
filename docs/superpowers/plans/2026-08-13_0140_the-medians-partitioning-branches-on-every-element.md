@@ -77,7 +77,7 @@ passes* collapsed, and the branch would take credit it had not earned.
 
 So count **element touches** and compare **nanoseconds per touch**.
 
-- [ ] **Step 1: Copy the algorithm into a scratch project, with a counter**
+- [x] **Step 1: Copy the algorithm into a scratch project, with a counter**
 
 `WeightedPercentile` is `internal`, so a scratch project cannot call it. Copy `QuickSelect`, `Partition`,
 `Swap` and `FloorLog2` verbatim from `src/DataNet.Metrics/Internal/WeightedPercentile.cs` into
@@ -99,7 +99,7 @@ cat > diag.csproj <<'EOF'
 EOF
 ```
 
-- [ ] **Step 2: Measure three distributions, per touch**
+- [x] **Step 2: Measure three distributions, per touch**
 
 Three arrays of 1 000 000 doubles, each selected at `k = n/2`, each repeated enough times to be stable
 (five repeats, report the median):
@@ -115,7 +115,7 @@ measures different data.
 Report, for each: total ms, `touches`, and **ns per touch**. The third case matters because if the branch
 is the cost, its per-touch figure should sit with random rather than with sorted.
 
-- [ ] **Step 3: Decide, and say which way**
+- [x] **Step 3: Decide, and say which way**
 
 - **Per-touch cost on sorted is far below random** (the spec expects roughly half or better) → the branch
   is the cost, and Tasks 2-4 proceed.
@@ -143,7 +143,7 @@ These go in **before** the change, on the current code, and must pass on it. The
 cycle: they are the net that catches an off-by-one in the new index arithmetic, and a net woven after the
 fall catches nothing.
 
-- [ ] **Step 1: Write them**
+- [x] **Step 1: Write them**
 
 Read the file first and follow its idiom — how it reaches the metric, whether it calls
 `MedianAbsoluteError.Score` or the internal helper, and how it names cases. The shapes:
@@ -203,7 +203,7 @@ Read the file first and follow its idiom — how it reaches the metric, whether 
 `ExpectedMedian` sorts rather than selects on purpose: a reference that used the same selection would agree
 with a broken partition.
 
-- [ ] **Step 2: Run them against the unchanged code**
+- [x] **Step 2: Run them against the unchanged code**
 
 ```bash
 dotnet test DataNet.slnx -c Release --filter "FullyQualifiedName~The_median_is_right_on_the_shapes" > /tmp/140-t2.log 2>&1
@@ -215,7 +215,7 @@ Expected: **10 passing** — five shapes × two mirrored projects — on code no
 here is a defect in the *current* partition and a much bigger finding than this lot expected: stop and
 report it.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add tests/DataNet.Metrics.Tests/WeightedPercentileMedianTests.cs
@@ -232,7 +232,7 @@ git commit -m "Pin the median on the shapes a partition scheme gets wrong"
 
 **Depends on:** Tasks 1 and 2.
 
-- [ ] **Step 1: Replace the loop, and nothing around it**
+- [x] **Step 1: Replace the loop, and nothing around it**
 
 The current inner loop:
 
@@ -271,7 +271,7 @@ The median-of-three above it, the final `Swap(values, storeIndex, to)`, the intr
 `InsertionCutoff` fallback and the weighted path all stay exactly as they are. If the diff shows anything
 else, narrow it.
 
-- [ ] **Step 2: The whole suite, and the corpora**
+- [x] **Step 2: The whole suite, and the corpora**
 
 ```bash
 dotnet build DataNet.slnx -c Release --no-incremental > /tmp/140-t3-b.log 2>&1; echo "build=$?"; tail -3 /tmp/140-t3-b.log
@@ -282,7 +282,7 @@ Expected: 0 warnings and **3 061 passing** (3 051 + Task 2's ten). Every median 
 is already pinned against scikit-learn, so this run is the real check: a partition that no longer
 partitions moves one of them.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/DataNet.Metrics/Internal/WeightedPercentile.cs
@@ -303,7 +303,7 @@ git commit -m "Swap unconditionally, advance conditionally, and stop mispredicti
 **The bar, from the spec and fixed before the number: 20% on `median_ae` at n = 1 000 000, or the change is
 reverted.**
 
-- [ ] **Step 1: Measure, interleaved, in one window**
+- [x] **Step 1: Measure, interleaved, in one window**
 
 Build a baseline worktree at the merge base, copy this branch's corpus into it so both sides measure the
 same data, and alternate:
@@ -329,24 +329,26 @@ measurement on this repository lost three campaigns.
 `mse` and `mae` are the control here: this change cannot touch them, so if they move more than a couple of
 percent between the two sides, the window is contaminated and the round is void.
 
-- [ ] **Step 2: Apply the bar, and say which way you went**
+- [x] **Step 2: Apply the bar, and say which way you went**
 
 Compute `median_ae` at n = 1 000 000, after against before, as the median of the two rounds.
 
-- **≥ 20% faster** → keep it, and write the guide.
+- **≥ 20% faster** → keep it, and write the guide. **Measured: −38.6%** (16.201 ms
+  against 9.941, medians of four interleaved campaigns; controls `mse` −0.3%, `mae`
+  −0.9%). Kept.
 - **< 20%** → `git revert` Task 3's commit, keep Task 2's tests (they are worth having either way), and
   amend the spec's D3 with the measured figure. Reverting is not a failure: the spec says what the change
   costs in readability, and a change that does not pay for that is one this repository does not take —
   #127 reverted its branchless 2Sum on exactly this rule.
 
-- [ ] **Step 3: Write the guide section**
+- [x] **Step 3: Write the guide section**
 
 Extend the regression-metrics section rather than starting a rival one. It must carry the phase
 decomposition — alloc 0.6 ms, fill 2.6 ms, select 10.8 ms — because that is what explains why this lever
 and not another, the before and after per round, the machine, and the load at both ends. Say plainly that
 `mse` and `mae` served as controls and by how much they moved.
 
-- [ ] **Step 4: Remove the worktree and commit**
+- [x] **Step 4: Remove the worktree and commit**
 
 ```bash
 git worktree remove /tmp/140-baseline --force
@@ -360,7 +362,7 @@ git commit -m "Publish what the branchless partition bought"
 
 **Depends on:** Tasks 1-4. Nothing is committed here unless a gate fails and is fixed.
 
-- [ ] **Step 1: Every gate**
+- [x] **Step 1: Every gate**
 
 ```bash
 cd <repo>
@@ -377,7 +379,7 @@ npx --yes --ignore-scripts markdownlint-cli2@0.23.2 "README.md" "CONTRIBUTING.md
 
 All 0, 0 warnings, and the eight per-assembly counts read and stated.
 
-- [ ] **Step 2: The oracle drift gate**
+- [x] **Step 2: The oracle drift gate**
 
 ```bash
 cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python <repo>/tools/generate_oracles.py > /tmp/140-fv-gen.log 2>&1
@@ -388,7 +390,7 @@ cd <repo> && git status --porcelain tests/oracles/
 Expected: empty. This branch changes an algorithm that feeds no corpus, so anything here is the known
 flakiness — regenerate once before reporting it.
 
-- [ ] **Step 3: Stop and report**
+- [x] **Step 3: Stop and report**
 
 Do not push and do not open a pull request. Report Task 1's per-touch figures, Task 4's before/after with
 its controls, which way the bar went, and let the user decide.
