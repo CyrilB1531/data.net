@@ -112,16 +112,28 @@ public sealed record BpeVocabulary(
 
     /// <summary>
     /// The last pattern text is split on before merging; <see langword="null"/> to
-    /// split on word boundaries, isolating punctuation from letters and digits —
-    /// HuggingFace's <c>Whitespace</c> pre-tokenizer type, not the coarser
-    /// <c>WhitespaceSplit</c> that only collapses whitespace runs — when
-    /// <see cref="PreSplit"/> is also <see langword="null"/>. When
-    /// <see cref="PreSplit"/> is set and this one is not, this pattern runs
-    /// second, over every piece the pre-split produced. When
-    /// <see cref="PreSplit"/> is set and this one is <see langword="null"/>,
-    /// there is no word-boundary fallback: the pre-split is the only split there is,
-    /// the state <see cref="Persistence.TokenizerJsonLoader"/> produces for a
-    /// <c>Sequence</c> whose <c>ByteLevel</c> step declares <c>use_regex: false</c>.
+    /// split on word boundaries when <see cref="PreSplit"/> is also
+    /// <see langword="null"/>. There are two ways for a model to split text — this
+    /// pattern and <see cref="PreSplit"/> — and they can combine; see <em>Remarks</em>
+    /// for how.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A <see langword="null"/> <see cref="PreSplit"/> falls back to word boundaries,
+    /// isolating punctuation from letters and digits — HuggingFace's <c>Whitespace</c>
+    /// pre-tokenizer type, not the coarser <c>WhitespaceSplit</c> that only collapses
+    /// whitespace runs.
+    /// </para>
+    /// <para>
+    /// When <see cref="PreSplit"/> is set and this pattern is <em>not</em>
+    /// <see langword="null"/>, this pattern runs second, over every piece the
+    /// pre-split produced. When <see cref="PreSplit"/> is set and this pattern
+    /// <em>is</em> <see langword="null"/>, there is no word-boundary fallback: the
+    /// pre-split is the only split there is, the state
+    /// <see cref="Persistence.TokenizerJsonLoader"/> produces for a <c>Sequence</c>
+    /// whose <c>ByteLevel</c> step declares <c>use_regex: false</c>.
+    /// </para>
+    /// <para>
     /// When this is the <em>only</em> pattern set (<see cref="PreSplit"/>
     /// <see langword="null"/>), it is not run under <see cref="SplitBehavior.Isolated"/>:
     /// the merge loop only ever sees the regex's own matches, with the gaps
@@ -129,7 +141,8 @@ public sealed record BpeVocabulary(
     /// on — which is <see cref="BpePreTokenizer"/>'s own fallback rule when it
     /// is built with no <see cref="BpeSplitStep"/>, not a choice this property
     /// makes.
-    /// </summary>
+    /// </para>
+    /// </remarks>
     public string? PreTokenizerPattern { get; init; }
 
     /// <summary>
