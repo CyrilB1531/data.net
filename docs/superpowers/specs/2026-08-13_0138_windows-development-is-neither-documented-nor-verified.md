@@ -27,10 +27,12 @@ can ask the six questions and print their answers; the log is the evidence, and 
 this repository is public, so GitHub's standard runners are free and unmetered on every platform, Windows
 included. The 2× multiplier applies to private repositories' included minutes and does not apply here.
 
-**And the runner is not representative for one of the six.** GitHub's Actions environment sets `HOME` on
-Windows runners. A contributor's machine does not: `cmd` and PowerShell have `USERPROFILE`, and Git Bash
-sets `HOME` itself. Measuring the `HOME` question on a runner measures the runner. That one is flagged in
-D2 and answered conservatively rather than from a reading that cannot see the case that matters.
+**Amended after the probe ran, 2026-08-13.** This section claimed the runner would not be representative
+for the `HOME` question, on the belief that Actions sets `HOME` on Windows runners where a contributor's
+shell would not. **Measured: it does not.** On `windows-latest`, PowerShell reports `HOME=''` and `cmd`
+leaves `%HOME%` unsubstituted — the two agree, and neither has it. So the runner *is* representative here,
+D2's conclusion stands for a better reason than the one first given, and the caution about a virtual
+machine in D6 loses this particular justification while keeping its other one.
 
 ## Decisions
 
@@ -59,9 +61,20 @@ reports.
 ### D2 — the guard reads both variables, and shared profiles are not home directories
 
 `environment_probes` takes the first of `HOME` and `USERPROFILE` that is set, and the separator handling
-learns `\` beside `/`. Both, rather than one, because the two coexist: Git Bash sets `HOME` on Windows and
-`cmd` does not, so a guard that reads only one is inert in half the shells a contributor uses — and the
-probe job of D1 cannot settle this, since the runner sets `HOME` where a real machine would not.
+learns `\` beside `/`.
+
+**The measured reason, which is stronger than the one first written here.** `HOME` is unset on Windows —
+on the runner, in PowerShell and in `cmd` alike — so a guard reading only `HOME` is inert on **every**
+Windows path, not merely in some shells. `USERPROFILE` held `C:\Users\runneradmin`. Git Bash does set
+`HOME`, which is why the fallback is ordered rather than exclusive: whichever is present supplies the
+probes.
+
+**And a shape the probe found that nobody had listed.** `TEMP` came back as
+`C:\Users\RUNNER~1\AppData\Local\Temp` — the 8.3 short name — against a `USERPROFILE` of
+`C:\Users\runneradmin`. A path written from `%TEMP%` therefore sits inside the profile while matching no
+probe derived from it, and the probe job's own "is TEMP inside USERPROFILE" check answered `False` for
+exactly that reason. The guard cannot resolve short names portably, so this is recorded as a known blind
+spot rather than closed, and the plan states it where a reader would otherwise assume coverage.
 
 `C:\Users\Public`, `Default` and `All Users` are **not** treated as home directories. They are shared
 profile folders, no contributor's path runs through them, and a probe derived from one would fire on
@@ -98,6 +111,27 @@ do not depend on the platform, and duplicating them buys nothing but wall-clock 
 Cost is not the criterion — the runners are free here — but **return time is**. The job runs in parallel
 with the others, so it lengthens a pull request only if it becomes the slowest, which D1's sixth question
 measures before this is committed to.
+
+### D7 — the hashed lock file does not install on Windows, and that is this lot's problem
+
+The probe found it: `pip install --require-hashes -r tools/requirements.lock.txt` **fails on Windows**.
+
+```text
+ERROR: In --require-hashes mode, all requirements must have their versions pinned with ==. These do not:
+    colorama … (from click==8.4.2->-r tools/requirements.lock.txt (line 17))
+```
+
+`colorama` is `click`'s Windows-only conditional dependency, and `click` is `nltk`'s. A lock resolved on
+Linux never needed to pin it, so `--require-hashes` — which demands every package in the closure — refuses
+the whole install. Nothing downstream of it can run: not the oracle generator, not the tool tests, not the
+`nltk` question the probe was meant to answer, which is why that answer came back "never tested" rather
+than yes or no.
+
+This is squarely D4's subject — tooling that assumes POSIX where it need not — and it is the one finding
+that changes what this lot must build rather than what it must write. The fix is a lock that carries the
+whole closure for both platforms; `pip-compile --universal` produces one, and whether this repository's
+`pip-tools` version supports it is a fact to establish before promising it. What must not happen is
+dropping `--require-hashes`, which is #38's whole point.
 
 ### D6 — a Windows virtual machine is a complement, not a prerequisite
 

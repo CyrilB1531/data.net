@@ -209,6 +209,76 @@ If an answer contradicts the spec, say so plainly — that is the probe working,
 
 ---
 
+### Task 1b: The hashed lock file, which does not install on Windows at all
+
+**Files:**
+
+- Modify: `tools/requirements.txt` and/or `tools/requirements.lock.txt`
+
+**Depends on:** Task 1, which found this.
+
+**What the probe found, and why it blocks more than it looks like.**
+
+```text
+ERROR: In --require-hashes mode, all requirements must have their versions pinned with ==. These do not:
+    colorama … (from click==8.4.2->-r tools/requirements.lock.txt (line 17))
+```
+
+`colorama` is `click`'s Windows-only conditional dependency, and `click` is `nltk`'s. A lock resolved on
+Linux never needed to pin it, so `--require-hashes` — which demands the whole closure — refuses the entire
+install. Nothing downstream runs: not the oracle generator, not the tool tests, and not the `nltk` question
+the probe existed to answer, which came back "never tested" for this reason alone.
+
+- [ ] **Step 1: Establish what this repository's pip-tools can do**
+
+```bash
+pip-compile --version
+pip-compile --help | grep -n "universal"
+```
+
+`--universal` produces a lock carrying every platform's closure with environment markers, and it exists
+from pip-tools 7.4. If this version has it, that is the fix. If it does not, the alternatives are naming
+the Windows-only packages in `tools/requirements.txt` so the resolver pins them, or generating a second
+lock — and the second is worse, because two hashed graphs drift apart exactly the way
+`check_version_floor.py` exists to catch elsewhere. **Report which route the version left open.**
+
+- [ ] **Step 2: Regenerate, and diff what moved**
+
+The command `CONTRIBUTING.md` records is
+`pip-compile --generate-hashes --strip-extras --output-file tools/requirements.lock.txt tools/requirements.txt`;
+add `--universal` to it if Step 1 says so, and update that documented line in the same commit — a recorded
+command that no longer produces the committed file is worse than none.
+
+```bash
+git diff --stat tools/requirements.lock.txt
+git diff tools/requirements.lock.txt | grep -E "^\+[a-z]" | head -20
+```
+
+Expect `colorama` to appear with a marker, and expect **nothing else to move**. A version bump smuggled in
+by a regeneration is a separate change: if one appears, say so and stop rather than carrying it.
+
+- [ ] **Step 3: Prove it still installs where it already worked**
+
+```bash
+python3 -m venv /tmp/138-lockcheck
+/tmp/138-lockcheck/bin/pip install --only-binary :all: --require-hashes -r tools/requirements.lock.txt > /tmp/138-lock.log 2>&1
+echo "install=$?"
+tail -3 /tmp/138-lock.log
+rm -rf /tmp/138-lockcheck
+```
+
+Linux is where it already worked and where a regeneration could break it. Windows is proven by the
+permanent job of Task 5, not here — say so rather than claiming what you cannot run.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add tools/requirements.txt tools/requirements.lock.txt CONTRIBUTING.md
+git commit -m "Lock the dependencies Windows needs and Linux never asked for"
+```
+
+---
+
 ### Task 2: The guard learns the other home directory
 
 **Files:**
@@ -216,7 +286,16 @@ If an answer contradicts the spec, say so plainly — that is the probe working,
 - Modify: `tools/check_machine_paths.py` (`environment_probes`, and its single caller at the bottom)
 - Modify: `tools/tests/test_check_machine_paths.py`
 
-**Depends on:** Task 1 (question 3).
+**Depends on:** Task 1 (question 3), whose answer contradicted the spec and is quoted here so this task
+is not written against the old assumption: on `windows-latest`, **`HOME` is unset in PowerShell and in
+`cmd` alike** (`HOME=''`, and `%HOME%` left unsubstituted), while `USERPROFILE` held
+`C:\Users\runneradmin`. A guard reading only `HOME` is therefore inert on every Windows path, not merely
+in some shells.
+
+The probe also found a shape nobody had listed: `TEMP` came back as the 8.3 short name
+`C:\Users\RUNNER~1\AppData\Local\Temp` against that `USERPROFILE`, so a path written from `%TEMP%` sits
+inside the profile while matching no probe derived from it. The guard cannot resolve short names portably;
+record it as a known blind spot in the code comment rather than attempting to close it.
 
 **Interfaces:**
 
@@ -419,7 +498,14 @@ Copy the three pinned `uses:` lines from the jobs above it, SHA and version comm
 above the job says what it is for and what it deliberately does not duplicate: markdownlint, the oracle
 drift gate and the SonarCloud gate do not depend on the platform.
 
-- [ ] **Step 2: If Task 1's timing says it would be the slowest check, cut and say so**
+- [ ] **Step 2: The timing is already in, and it says keep the scope**
+
+Task 1 measured `dotnet build` at **39.7 s** and `dotnet test` at **24.3 s** on `windows-latest`, against a
+`Build, test, pack` job that takes minutes on Linux. The Windows job will not be the slowest check, so the
+scope stays as D5 defines it. Confirm those numbers against the probe's log rather than taking them from
+here, then move on — this step exists to be closed, not to be re-litigated.
+
+- [ ] **Step 2b: If your own reading of the timings disagrees, cut and say so**
 
 The scope is a decision, not a default. If the build and test wall-clock on `windows-latest` exceeds what
 `Build, test, pack` takes on Linux by enough to lengthen every pull request, cut to the build and the test
