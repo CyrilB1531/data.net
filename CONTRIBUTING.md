@@ -284,21 +284,17 @@ alongside the implementation.
    Remove-Item Env:PYTHONSAFEPATH   # POSIX sets it only for this one command; PowerShell must clear it back out
    ```
 
-   Run it from a neutral working directory. On POSIX, `nltk` refuses to import its own
-   dependencies when they appear to live *under* the current directory, so the
-   run fails — even with `PYTHONSAFEPATH` set — whenever the working directory is
-   an ancestor of the virtualenv:
+   Run it from a neutral working directory. `nltk` refuses to import its own
+   dependencies when they appear to live *under* the current directory, on POSIX and
+   Windows alike, so the run fails — even with `PYTHONSAFEPATH` set — whenever the
+   working directory is an ancestor of the virtualenv:
 
    ```text
    ImportError: Blocked import of regex from current working directory for security reasons
    ```
 
-   Running from `/tmp` with the virtualenv inside the repository satisfies this.
-   Running from the repository root, or from `~`, does not. Whether the same refusal
-   happens on Windows is unverified: the probe that answered this branch's other
-   Windows questions never reached `nltk`, because the hashed lock would not install
-   there at all (fixed since, but not re-run against Windows). `$env:TEMP` is given
-   above as the safe default until that is confirmed either way.
+   Running from `/tmp` (POSIX) or `$env:TEMP` (PowerShell), with the virtualenv inside the
+   repository, satisfies this. Running from the repository root, or from `~`, does not.
 
    Check the generator's own exit code, not a pipeline's. `python … | tail` reports
    `tail`'s status, so a failed generation looks successful — and the drift check

@@ -63,9 +63,8 @@ $env:PYTHONSAFEPATH = '1'
 Remove-Item Env:PYTHONSAFEPATH   # POSIX sets it only for this one command; PowerShell must clear it back out
 ```
 
-POSIX needs the neutral directory because `nltk` refuses to import under the repository (see
-*Oracle validation* below); whether Windows needs it too is unverified — the probe that answered
-this branch's other Windows questions never reached `nltk`.
+Both need a neutral directory because `nltk` refuses to import under the repository (see
+*Oracle validation* below) — `/tmp` on POSIX, `$env:TEMP` on PowerShell.
 
 Guide snippets, benchmarks, packaging (see the `python`/`python3` split above):
 
