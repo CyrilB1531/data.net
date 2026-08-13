@@ -93,7 +93,7 @@ alphabet plus a few merges, which covers any input with no unknown token); one s
 ADR and removes a form from the reproduced set. That has to be known before the loader decides which four
 types it accepts.
 
-- [ ] **Step 1: Add the two generators**
+- [x] **Step 1: Add the two generators**
 
 In `tools/generate_oracles.py`, beside `generate_bpe_tokenizer_json` (which is the shape to follow — it
 freezes the whole `tokenizer.json` into each case so the C# side parses the exact bytes HuggingFace was
@@ -221,7 +221,7 @@ Register both in the generator table beside `"bpe_tokenizer_json.json"`:
         "unicode_forms.json": generate_unicode_forms,
 ```
 
-- [ ] **Step 2: Generate, from a neutral directory, and read the generator's own exit code**
+- [x] **Step 2: Generate, from a neutral directory, and read the generator's own exit code**
 
 ```bash
 cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python <repo>/tools/generate_oracles.py > /tmp/121-gen.log 2>&1
@@ -233,7 +233,7 @@ cd <repo> && git status --porcelain tests/oracles/
 Expected: exit 0, and `git status` shows exactly the two **new** files. **Any modification to an existing
 corpus is a stop condition** — this lot changes no generator that feeds one.
 
-- [ ] **Step 3: Write the Unicode-form probe test**
+- [x] **Step 3: Write the Unicode-form probe test**
 
 Create `tests/DataNet.Embeddings.Tests/Tokenization/BpeNormalizerTests.cs`. Follow the file conventions of
 `tests/DataNet.Embeddings.Tests/Persistence/TokenizerJsonLoaderTests.cs` — read it first for how it reaches
@@ -282,7 +282,7 @@ Create `tests/DataNet.Embeddings.Tests/Tokenization/BpeNormalizerTests.cs`. Foll
         string.Concat(text.Select(ch => ch < 0x20 || ch > 0x7e ? $"\\u{(int)ch:x4}" : ch.ToString()));
 ```
 
-- [ ] **Step 4: Run it, and record which way D5 went**
+- [x] **Step 4: Run it, and record which way D5 went**
 
 ```bash
 cd <repo>
@@ -300,7 +300,7 @@ Expected: **2 passing** (one per mirrored assembly).
 
 Report which happened. Do not proceed to Task 2 without stating it.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tools/generate_oracles.py tests/oracles/bpe_normalizer.json tests/oracles/unicode_forms.json \
@@ -326,7 +326,7 @@ git commit -m "Freeze what a BPE normalizer does, and whether .NET agrees about 
 - Produces `BpeVocabulary.NormalizationForms` — `IReadOnlyList<NormalizationForm>`, empty when the file
   declares no normalizer, in **declared order**. Task 3 consumes it.
 
-- [ ] **Step 1: Carry the forms on the vocabulary**
+- [x] **Step 1: Carry the forms on the vocabulary**
 
 In `BpeVocabulary.cs`, beside `AddPrefixSpace` and the other `init` properties:
 
@@ -361,7 +361,7 @@ In `BpeVocabulary.cs`, beside `AddPrefixSpace` and the other `init` properties:
         }
 ```
 
-- [ ] **Step 2: Replace the blanket refusal**
+- [x] **Step 2: Replace the blanket refusal**
 
 In `TokenizerJsonLoader.cs`, delete `EnsureBpeNormalizerIsAbsent` and write:
 
@@ -456,7 +456,7 @@ and add `NormalizationForms = normalizationForms,` to the object initializer tha
 If Task 1 found a form that disagrees with the reference, that form's `case` throws `Unsupported` naming the
 divergence instead of adding to the list.
 
-- [ ] **Step 3: Test what loads and what is refused**
+- [x] **Step 3: Test what loads and what is refused**
 
 In `TokenizerJsonLoaderTests.cs`, following the file's existing idiom for building a `tokenizer.json` string
 and calling `TokenizerJsonLoader.LoadBpe` (read the neighbouring tests first — several already build a
@@ -513,7 +513,7 @@ Add the helper if the file has no equivalent — check first, and reuse whatever
 `Unsupported` must produce whatever exception type the neighbouring refusal tests already assert — check
 one before writing `NotSupportedException`, and match it.
 
-- [ ] **Step 4: Build with analyzers, and run the suite**
+- [x] **Step 4: Build with analyzers, and run the suite**
 
 ```bash
 cd <repo>
@@ -526,7 +526,7 @@ property until Task 3, so a file declaring `NFC` now **loads and tokenizes witho
 wrong and is why Task 3 exists. The corpus replay is not written until then, deliberately: it would fail
 here for a reason this task cannot fix.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/DataNet.Embeddings/Persistence/TokenizerJsonLoader.cs \
@@ -551,7 +551,7 @@ git commit -m "Read the BPE normalizer instead of refusing every one of them"
 
 - Consumes `BpeVocabulary.NormalizationForms`. Produces no new public API.
 
-- [ ] **Step 1: Split the scanner in two and hold the forms**
+- [x] **Step 1: Split the scanner in two and hold the forms**
 
 Replace the single `_scanner` field and its assignment (`:121`):
 
@@ -577,7 +577,7 @@ Replace the single `_scanner` field and its assignment (`:121`):
 Leave every other use of `vocabulary.AddedTokens` alone — the folded `_vocab`, `_tokens` and `_addedIds`
 still take the whole table, and `TryGetId` must keep answering for both halves.
 
-- [ ] **Step 2: Normalize per gap, and scan inside it**
+- [x] **Step 2: Normalize per gap, and scan inside it**
 
 `Encode`'s loop keeps its shape; only the scanner it consults and the call it makes change:
 
@@ -660,7 +660,7 @@ and the new method sits between `Encode` and `EncodeSegment`:
 
 `EncodeSegment` itself does not change.
 
-- [ ] **Step 3: Replay the corpus**
+- [x] **Step 3: Replay the corpus**
 
 Add to `BpeNormalizerTests.cs`, in the same shape as
 `TokenizerJsonLoaderTests.LoadBpe_reproduces_every_frozen_pipeline` — accumulate failures, assert once, so
@@ -742,7 +742,7 @@ one run names every case that differs:
 `Decode`'s exact signature and whether it takes a `skip_special_tokens`-shaped argument must be read from
 `BpeTokenizer` before writing this — match what the existing decode tests call.
 
-- [ ] **Step 4: Run everything, and read the counts**
+- [x] **Step 4: Run everything, and read the counts**
 
 ```bash
 cd <repo>
@@ -755,7 +755,7 @@ Expected: 0 warnings, every earlier test still passing, the new corpus green, an
 **unchanged** — the existing BPE corpora are the guard that files loading today keep their exact token
 stream through the restructured `Encode`, and a moved byte there is a regression, not an update.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/DataNet.Embeddings/Tokenization/BpeTokenizer.cs \
@@ -776,7 +776,7 @@ git commit -m "Normalize each gap, and match the normalized entries inside it"
 
 **Depends on:** Tasks 1-3.
 
-- [ ] **Step 1: Correct both equivalence rows**
+- [x] **Step 1: Correct both equivalence rows**
 
 Two rows carry the blanket refusal, and both are now false:
 
@@ -790,27 +790,27 @@ Two rows carry the blanket refusal, and both are now false:
 Say in the `LoadBpe` row what D3 settled: with a normalizer declared, `Decode(Encode(x))` returns the
 normalized text rather than `x`, as it does in Python, and `bpe_normalizer.json` measures it.
 
-- [ ] **Step 2: The guide**
+- [x] **Step 2: The guide**
 
 `docs/guides/embeddings.md` is user-facing, and the round trip is user-visible behaviour. Add a short note
 where the guide already discusses BPE loading. If the note needs a ` ```csharp ` fence, remember the
 doc-snippets gate compiles every one of them against the packed packages — prefer prose, or keep the fence
 to API that exists.
 
-- [ ] **Step 3: The packaging gate**
+- [x] **Step 3: The packaging gate**
 
 `samples/DataNet.Sample/Lot3Embeddings.cs` is the file that already exercises BPE. Add a **member
 reference** to `BpeVocabulary.NormalizationForms` — printing its count beside the vocabulary's other
 properties is enough. New public API that no sample references fails ADR 0009's gate.
 
-- [ ] **Step 4: The ADR, only if Task 1 found a divergence**
+- [x] **Step 4: The ADR, only if Task 1 found a divergence**
 
 If all four forms agreed, **write no ADR**: record the agreement in one sentence in the `LoadBpe` row and
 move on. If one disagreed, write the ADR in the shape of `docs/decisions/0017-bpe-parity-scope.md`: the
 code point, both answers, which form is consequently refused, and what a caller should do instead. Number
 it one above the highest existing ADR.
 
-- [ ] **Step 5: Lint, and commit**
+- [x] **Step 5: Lint, and commit**
 
 ```bash
 cd <repo>
@@ -827,7 +827,7 @@ git commit -m "Say what LoadBpe reads now, and what it still refuses"
 
 **Depends on:** Tasks 1-4. Nothing is committed here unless a gate fails and is fixed.
 
-- [ ] **Step 1: Every gate**
+- [x] **Step 1: Every gate**
 
 ```bash
 cd <repo>
@@ -842,7 +842,7 @@ python3 tools/check_machine_paths.py > /tmp/121-fv-p.log 2>&1;                  
 
 All 0, 0 warnings, and the eight per-assembly counts read and stated.
 
-- [ ] **Step 2: The packaging gate, end to end**
+- [x] **Step 2: The packaging gate, end to end**
 
 The sample consumes the packages from `./artifacts` through `samples/NuGet.config`, so it needs a fresh
 pack **and** an isolated `NUGET_PACKAGES` or it judges the published packages instead of this branch
@@ -859,7 +859,7 @@ NUGET_PACKAGES=/tmp/121-nuget ./.dotnet-guarded dotnet build samples/DataNet.Doc
 echo "snippets-build=$?"
 ```
 
-- [ ] **Step 3: The oracle drift gate**
+- [x] **Step 3: The oracle drift gate**
 
 ```bash
 cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python <repo>/tools/generate_oracles.py > /tmp/121-fv-gen.log 2>&1
@@ -869,7 +869,7 @@ cd <repo> && git status --porcelain tests/oracles/
 
 Expected: empty. The job is occasionally flaky — regenerate once before reporting drift.
 
-- [ ] **Step 4: Stop and report**
+- [x] **Step 4: Stop and report**
 
 Do not push and do not open a pull request. Report: which way Task 1's Unicode question went, the
 per-assembly test counts, whether any existing corpus moved, and whether an ADR was written.
