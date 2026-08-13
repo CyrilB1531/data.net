@@ -47,7 +47,9 @@ internal sealed class BpePreTokenizer
     private readonly record struct SplitRule(SplitBehavior Behavior, bool Invert);
 
     /// <summary>A run of text as a position and a length, never yet substringed.</summary>
-    private readonly record struct Span(int Start, int Length);
+    /// <remarks>Named <c>Run</c>, not <c>Span</c>, so it does not shadow <see cref="System.Span{T}"/> in a
+    /// package that leans on spans elsewhere.</remarks>
+    private readonly record struct Run(int Start, int Length);
 
     private readonly Regex _first;
     private readonly Regex? _second;
@@ -101,8 +103,11 @@ internal sealed class BpePreTokenizer
 
         // The second pattern runs over the pieces the first produced, on raw
         // text -- the byte mapping happens later, per final piece, in
-        // BpeTokenizer. A local list rather than a field: this type is used
-        // from a tokenizer documented as thread-safe after construction.
+        // BpeTokenizer. It always runs Isolated, invert off: the ByteLevel
+        // step's own pattern has no behavior field in the tokenizer.json
+        // format, and its arrangement is Isolated. A local list rather than a
+        // field: this type is used from a tokenizer documented as thread-safe
+        // after construction.
         List<string> staged = [];
         Apply(_first, _rule, text, staged);
         var isolated = new SplitRule(SplitBehavior.Isolated, Invert: false);
@@ -128,9 +133,9 @@ internal sealed class BpePreTokenizer
         }
     }
 
-    /// <summary>Emits a <see cref="Span"/> the same way <see cref="Emit(string, int, int, List{string})"/> does.</summary>
-    private static void Emit(string text, Span span, List<string> pieces) =>
-        Emit(text, span.Start, span.Length, pieces);
+    /// <summary>Emits a <see cref="Run"/> the same way <see cref="Emit(string, int, int, List{string})"/> does.</summary>
+    private static void Emit(string text, Run run, List<string> pieces) =>
+        Emit(text, run.Start, run.Length, pieces);
 
     /// <summary>
     /// Splits <paramref name="text"/> into alternating gaps and matches, swaps the
@@ -146,7 +151,10 @@ internal sealed class BpePreTokenizer
     {
         int cursor = 0;
         int carried = NoOpenPiece;   // start of a piece still open, or NoOpenPiece
-        foreach (Match match in pattern.Matches(text).Cast<Match>())
+        // Not .Cast<Match>(): MatchCollection's own enumerator binds directly
+        // to Match on both target frameworks, and .Cast<Match>() allocates an
+        // iterator on a path this task claims the allocation budget of.
+        foreach (Match match in pattern.Matches(text))
         {
             carried = Step(text, cursor, match.Index, match.Length, rule, carried, pieces);
             cursor = match.Index + match.Length;
@@ -164,18 +172,21 @@ internal sealed class BpePreTokenizer
     private static int Step(
         string text, int cursor, int matchStart, int matchLength, SplitRule rule, int carried, List<string> pieces)
     {
-        var gap = new Span(cursor, matchStart - cursor);
+        var gap = new Run(cursor, matchStart - cursor);
         return rule.Behavior switch
         {
             SplitBehavior.Isolated => StepIsolated(text, gap, matchStart, matchLength, pieces),
             SplitBehavior.Contiguous => StepContiguous(text, gap, matchStart, carried, pieces),
             SplitBehavior.Removed => StepRemoved(text, gap, matchStart, matchLength, rule.Invert, pieces),
-            _ => StepMerged(text, gap, matchStart, matchLength, rule, carried, pieces),
+            SplitBehavior.MergedWithPrevious or SplitBehavior.MergedWithNext =>
+                StepMerged(text, gap, matchStart, matchLength, rule, carried, pieces),
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(rule), rule.Behavior, "Not one of the five Split behaviours."),
         };
     }
 
     /// <summary>Every gap and every match, each its own piece, in text order.</summary>
-    private static int StepIsolated(string text, Span gap, int matchStart, int matchLength, List<string> pieces)
+    private static int StepIsolated(string text, Run gap, int matchStart, int matchLength, List<string> pieces)
     {
         Emit(text, gap, pieces);
         Emit(text, matchStart, matchLength, pieces);
@@ -186,7 +197,7 @@ internal sealed class BpePreTokenizer
     /// Like <see cref="StepIsolated"/>, except a match with no gap before it joins
     /// the still-open run instead of starting its own piece.
     /// </summary>
-    private static int StepContiguous(string text, Span gap, int matchStart, int carried, List<string> pieces)
+    private static int StepContiguous(string text, Run gap, int matchStart, int carried, List<string> pieces)
     {
         if (gap.Length == 0)
         {
@@ -202,7 +213,7 @@ internal sealed class BpePreTokenizer
     }
 
     /// <summary>Keeps the gap and drops the match, or the reverse when <paramref name="invert"/> asks.</summary>
-    private static int StepRemoved(string text, Span gap, int matchStart, int matchLength, bool invert, List<string> pieces)
+    private static int StepRemoved(string text, Run gap, int matchStart, int matchLength, bool invert, List<string> pieces)
     {
         if (invert)
         {
@@ -222,7 +233,7 @@ internal sealed class BpePreTokenizer
     /// picks the other side.
     /// </summary>
     private static int StepMerged(
-        string text, Span gap, int matchStart, int matchLength, SplitRule rule, int carried, List<string> pieces)
+        string text, Run gap, int matchStart, int matchLength, SplitRule rule, int carried, List<string> pieces)
     {
         if (!WithNext(rule))
         {
@@ -249,7 +260,7 @@ internal sealed class BpePreTokenizer
     /// <summary>Closes out the text after the last match: the trailing gap, and any piece still open.</summary>
     private static void Close(string text, int cursor, SplitRule rule, int carried, List<string> pieces)
     {
-        var gap = new Span(cursor, text.Length - cursor);
+        var gap = new Run(cursor, text.Length - cursor);
         switch (rule.Behavior)
         {
             case SplitBehavior.Removed:
@@ -262,21 +273,25 @@ internal sealed class BpePreTokenizer
             case SplitBehavior.MergedWithNext:
                 CloseMerged(text, gap, rule, carried, pieces);
                 break;
-            default:
-                // Isolated and Contiguous: a run left open by Contiguous closes
-                // here; Isolated never opens one, so carried is always NoOpenPiece
-                // and this only emits the trailing gap.
+            case SplitBehavior.Isolated:
+            case SplitBehavior.Contiguous:
+                // A run left open by Contiguous closes here; Isolated never
+                // opens one, so carried is always NoOpenPiece and this only
+                // emits the trailing gap.
                 if (carried != NoOpenPiece)
                 {
                     Emit(text, carried, gap.Start - carried, pieces);
                 }
                 Emit(text, gap, pieces);
                 break;
+            default:
+                throw new ArgumentOutOfRangeException(
+                    nameof(rule), rule.Behavior, "Not one of the five Split behaviours.");
         }
     }
 
     /// <summary>The trailing half of <see cref="StepMerged"/>: nothing follows the last match to attach to.</summary>
-    private static void CloseMerged(string text, Span gap, SplitRule rule, int carried, List<string> pieces)
+    private static void CloseMerged(string text, Run gap, SplitRule rule, int carried, List<string> pieces)
     {
         if (WithNext(rule) && carried != NoOpenPiece)
         {
@@ -284,8 +299,11 @@ internal sealed class BpePreTokenizer
         }
         else
         {
-            // MergedWithPrevious: the trailing gap has no following match to join,
-            // so it stands alone, the same way a leading gap does under MergedWithNext.
+            // The trailing gap has no following match to join: either the merge
+            // points backwards (MergedWithPrevious, after invert), which never
+            // carries a piece across calls, or it points forwards but nothing
+            // is open -- the text had no match at all. Either way it stands
+            // alone, the same way a leading gap does under MergedWithNext.
             Emit(text, gap, pieces);
         }
     }

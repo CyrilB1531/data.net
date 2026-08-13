@@ -42,6 +42,22 @@ public sealed class BpePreTokenizerTests
         Assert.Equal(["world", "!"], Split(new BpePreTokenizer(null, null), "world!"));
     }
 
+    /// <summary>
+    /// "world!" cannot tell apart the rule this branch actually uses (<c>Removed</c>,
+    /// <c>invert</c> on) from the one a naive reading of "Whitespace" might reach for
+    /// (<c>Isolated</c>) -- it has no whitespace, so both drop nothing and agree. A
+    /// text with a real gap does discriminate: <c>Isolated</c> would keep the space
+    /// between the two words as its own piece, which the classic lineage's tokens
+    /// have never contained (measured, <c>bpe.json</c>'s 16 of 20 whitespace-bearing
+    /// cases). Without this, the constructor's choice was proven only two layers up,
+    /// as a token-id match in <c>BpeTokenizerTests</c>.
+    /// </summary>
+    [Fact]
+    public void Both_null_drops_the_gap_between_words()
+    {
+        Assert.Equal(["ab", "cd"], Split(new BpePreTokenizer(null, null), "ab cd"));
+    }
+
     /// <summary>One pattern and no pre-split is what a bare <c>ByteLevel</c> declares.</summary>
     [Fact]
     public void A_pattern_alone_is_the_only_split()
