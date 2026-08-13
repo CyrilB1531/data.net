@@ -769,12 +769,15 @@ public sealed class BpeSequenceSplitTests
     [Fact]
     public void An_elision_is_split_at_the_apostrophe_when_the_second_pattern_runs()
     {
+        // Measured, not predicted: the corpus's toy vocabulary is the byte
+        // alphabet plus five merges, so "aujourd" and "hui" are not whole
+        // tokens under either reading. What moves is the apostrophe.
         Assert.Equal(
-            ["aujourd", "'", "hui"],
+            ["a", "u", "j", "o", "u", "r", "d", "'", "h", "u", "i"],
             new BpeTokenizer(Vocabulary(Model("use_regex_on"))).Encode("aujourd'hui").Tokens);
 
         Assert.Equal(
-            ["aujourd", "'hu", "i"],
+            ["a", "u", "j", "o", "u", "r", "d", "'hu", "i"],
             new BpeTokenizer(Vocabulary(Model("use_regex_off"))).Encode("aujourd'hui").Tokens);
     }
 
