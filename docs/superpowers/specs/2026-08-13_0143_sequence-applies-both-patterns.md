@@ -151,8 +151,14 @@ Two models, `use_regex` on and off, over one text set:
 2. **`it's fine`, `don't`, `the 'quoted' word`** — the cases that must **not** move. Without them the
    corpus would prove that something changed, not that the right thing changed: a fix that split on every
    apostrophe would pass on the first group and fail here.
-3. **`hello123 don't`** — the minimal case from D1, so the corpus carries the measurement the design was
-   derived from rather than only its consequences.
+3. **`hello123 don't`** — a fourth text that must not move, for a different reason from the other three:
+   Llama-3's `Split` pattern already parts letters from digits and already isolates `'t`, so the second
+   pass changes nothing here even though it changes every elision above.
+
+   D1's own configuration — a plain `Split(" ")`, where the second pass does have work to do on this text
+   — is **not** frozen, deliberately. No shipped model declares a space as its `Split` pattern; it was a
+   probe shape chosen to make the composition visible in one line, and the five elision cases prove the
+   same rule over a pattern a real file actually carries.
 
 All generated with **`add_prefix_space: false`**, and that is a decision rather than an omission. D4
 established that HuggingFace prepends the space between the two splits while DataNet prepends it per

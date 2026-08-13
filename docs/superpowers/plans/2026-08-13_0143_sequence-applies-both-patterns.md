@@ -203,8 +203,10 @@ def _sequence_split_models() -> list[tuple]:
         "it's fine",
         "don't",
         "the 'quoted' word",
-        # The minimal case the design was read off, so the corpus carries the
-        # measurement and not only its consequences.
+        # A fourth must-not-move case, and the one that covers a different
+        # reason for not moving: Llama-3's pattern already parts letters from
+        # digits and already isolates 't, so the second pass changes nothing
+        # here even though it changes the elisions above.
         "hello123 don't",
     ]
     return [
@@ -291,8 +293,15 @@ print(f"\n  {moved} texts discriminate, {same} do not")
 PY
 ```
 
-Expected: the five elision texts and `hello123 don't` **differ** between the two models; `it's fine`,
-`don't` and `the 'quoted' word` are **the same** under both.
+Expected: the five elision texts **differ** between the two models; `it's fine`, `don't`,
+`the 'quoted' word` **and `hello123 don't`** are **the same** under both.
+
+`hello123 don't` is in the second group and not the first, which contradicts what an earlier draft of this
+plan said. The spec's D1 measured it under a plain `Split(" ")`, where GPT-2's pattern still had letters,
+digits and a contraction to separate. This corpus splits on Llama-3's own pattern, which already isolates
+`'t` and already parts `hello` from `123` — so the second pass has nothing left to do. It earns its place
+as a fourth must-not-move case: it proves the cascade is idempotent on letters and digits, where the other
+three prove it on listed contractions and on a quoted word.
 
 **If nothing differs, stop and report.** A corpus where both models agree everywhere proves nothing, and
 the tasks after this one would be built on it.
