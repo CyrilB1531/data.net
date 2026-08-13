@@ -40,24 +40,32 @@ public sealed class BpeSplitBehaviorTests
     {
         using JsonDocument doc = OracleLoader.Load(Corpus);
         JsonElement models = doc.RootElement.GetProperty("metadata").GetProperty("models");
+        var failures = new List<string>();
         int checkedCases = 0;
 
         foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
         {
-            JsonElement model = models.GetProperty(c.GetProperty("model").GetString()!);
+            string modelName = c.GetProperty("model").GetString()!;
+            JsonElement model = models.GetProperty(modelName);
             var step = new BpeSplitStep(
                 model.GetProperty("pattern").GetString()!,
                 Behavior(model.GetProperty("behavior").GetString()!),
                 model.GetProperty("invert").GetBoolean());
 
+            string text = c.GetProperty("text").GetString()!;
             string[] expected = [.. c.GetProperty("pieces").EnumerateArray().Select(p => p.GetString()!)];
-            string[] actual = [.. Split(step, c.GetProperty("text").GetString()!).Select(ByteMapped)];
+            string[] actual = [.. Split(step, text).Select(ByteMapped)];
 
-            Assert.Equal(expected, actual);
+            if (!expected.SequenceEqual(actual))
+            {
+                failures.Add(
+                    $"[{modelName}] \"{text}\"\n  exp: [{string.Join(", ", expected)}]\n  got: [{string.Join(", ", actual)}]");
+            }
             checkedCases++;
         }
 
         Assert.True(checkedCases > 0, $"{Corpus} carries no case.");
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
     }
 
     /// <summary>
@@ -132,6 +140,7 @@ public sealed class BpeSplitBehaviorTests
     {
         using JsonDocument doc = OracleLoader.Load(Corpus);
         JsonElement models = doc.RootElement.GetProperty("metadata").GetProperty("models");
+        var failures = new List<string>();
         int checkedModels = 0;
 
         foreach (JsonProperty model in models.EnumerateObject())
@@ -140,10 +149,41 @@ public sealed class BpeSplitBehaviorTests
             SplitBehavior expectedBehavior = Behavior(model.Value.GetProperty("behavior").GetString()!);
             bool expectedInvert = model.Value.GetProperty("invert").GetBoolean();
 
-            Assert.NotNull(vocabulary.PreSplit);
-            Assert.Equal(expectedBehavior, vocabulary.PreSplit.Behavior);
-            Assert.Equal(expectedInvert, vocabulary.PreSplit.Invert);
+            if (vocabulary.PreSplit is null)
+            {
+                failures.Add($"[{model.Name}] PreSplit is null, expected {expectedBehavior} invert={expectedInvert}");
+            }
+            else if (vocabulary.PreSplit.Behavior != expectedBehavior || vocabulary.PreSplit.Invert != expectedInvert)
+            {
+                failures.Add(
+                    $"[{model.Name}] expected {expectedBehavior} invert={expectedInvert}, " +
+                    $"got {vocabulary.PreSplit.Behavior} invert={vocabulary.PreSplit.Invert}");
+            }
             checkedModels++;
+        }
+
+        Assert.True(checkedModels > 0, $"{Corpus} carries no model.");
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    /// <summary>
+    /// All 120 recorded cases, end to end through the loader and the merge loop —
+    /// not just the pre-tokenizer's pieces. The corpus already carries
+    /// <c>tokens</c> and <c>ids</c> per case; this is the shape
+    /// <see cref="BpeSequenceSplitTests"/> uses for the same replay.
+    /// </summary>
+    [Fact]
+    public void Every_model_is_reproduced_end_to_end()
+    {
+        using JsonDocument doc = OracleLoader.Load(Corpus);
+        JsonElement models = doc.RootElement.GetProperty("metadata").GetProperty("models");
+        int checkedModels = 0;
+
+        foreach (JsonProperty model in models.EnumerateObject())
+        {
+            checkedModels++;
+            var tokenizer = new BpeTokenizer(Vocabulary(model.Name));
+            OracleReplay.AssertEncodings(doc, tokenizer.Encode, "tokens", model.Name, nameProperty: "model");
         }
 
         Assert.True(checkedModels > 0, $"{Corpus} carries no model.");
