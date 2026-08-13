@@ -39,28 +39,51 @@ internal sealed class BpePreTokenizer
     private static readonly Regex Whitespace =
         new(@"\w+|[^\w\s]+", RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexDefaults.MatchTimeout);
 
+    private const int NoOpenPiece = -1;
+
+    /// <summary>A behaviour and its invert flag, bundled so <see cref="Step"/> and
+    /// <see cref="Close"/> take one parameter instead of two -- both sit at the
+    /// S107 parameter-count limit otherwise.</summary>
+    private readonly record struct SplitRule(SplitBehavior Behavior, bool Invert);
+
+    /// <summary>A run of text as a position and a length, never yet substringed.</summary>
+    private readonly record struct Span(int Start, int Length);
+
     private readonly Regex _first;
     private readonly Regex? _second;
+    private readonly SplitRule _rule;
 
     // RegexOptions.Compiled is deliberately not used here: compiling costs
     // milliseconds per distinct pattern, and a tokenizer is built once per model,
     // so that cost would be paid on a path that runs once.
-    public BpePreTokenizer(string? preSplitPattern, string? pattern)
+    public BpePreTokenizer(BpeSplitStep? preSplit, string? pattern)
     {
-        // Both null is the classic Whitespace split. Otherwise the non-null
-        // patterns run in order, the pre-split first -- which is what a
-        // Sequence of Split then ByteLevel does: ByteLevel re-splits every
-        // piece the Split step produced, on its own pattern, unless use_regex
-        // is off. Measured against tokenizers 0.23.1; see issue #143.
-        if (preSplitPattern is null)
+        // Both absent is the classic Whitespace split. Otherwise the pre-split
+        // runs first and the second pattern re-splits its pieces (issue #143).
+        // Only the pre-split carries a declared behaviour; a null pre-split still
+        // needs one to drive Apply, and it is Removed with invert on -- the same
+        // "keep the regex matches, drop everything else" rule the bridge in
+        // BpeTokenizer states for the pre-split case (issue #145), not Isolated.
+        // The two are interchangeable only when the pattern never leaves a gap,
+        // which is true of every shipped byte-level pattern (Gpt2/Llama3/Qwen2)
+        // but false of Whitespace's own \w+|[^\w\s]+, which never matches a run
+        // of whitespace: under Isolated that whitespace would surface as its own
+        // piece and reach the merge loop as an uncovered symbol, where measured
+        // (bpe.json, e.g. " leading space") the reference produces no such piece
+        // and no substituted token for one. Removed+invert keeps that path
+        // byte-for-byte unchanged; BpeSplitBehaviorTests never exercises this
+        // branch at all, since every corpus case supplies its own BpeSplitStep.
+        if (preSplit is null)
         {
             _first = pattern is null ? Whitespace : Compile(pattern);
             _second = null;
+            _rule = new SplitRule(SplitBehavior.Removed, Invert: true);
         }
         else
         {
-            _first = Compile(preSplitPattern);
+            _first = Compile(preSplit.Pattern);
             _second = pattern is null ? null : Compile(pattern);
+            _rule = new SplitRule(preSplit.Behavior, preSplit.Invert);
         }
     }
 
@@ -72,7 +95,7 @@ internal sealed class BpePreTokenizer
     {
         if (_second is null)
         {
-            Apply(_first, text, pieces);
+            Apply(_first, _rule, text, pieces);
             return;
         }
 
@@ -81,16 +104,189 @@ internal sealed class BpePreTokenizer
         // BpeTokenizer. A local list rather than a field: this type is used
         // from a tokenizer documented as thread-safe after construction.
         List<string> staged = [];
-        Apply(_first, text, staged);
+        Apply(_first, _rule, text, staged);
+        var isolated = new SplitRule(SplitBehavior.Isolated, Invert: false);
         foreach (string piece in staged)
         {
-            Apply(_second, piece, pieces);
+            Apply(_second, isolated, piece, pieces);
         }
     }
 
-    private static void Apply(Regex pattern, string text, List<string> pieces)
+    /// <summary>Appends one piece, unless it is empty.</summary>
+    /// <remarks>
+    /// Empty pieces are dropped -- measured, an empty input yields nothing and a
+    /// text the pattern covers entirely emits no gap under
+    /// <see cref="SplitBehavior.Removed"/>. Nothing is allocated for one: with a
+    /// pattern that matches every character, which is what every shipped model
+    /// declares, this is one comparison per match and no string at all.
+    /// </remarks>
+    private static void Emit(string text, int start, int length, List<string> pieces)
     {
-        IEnumerable<Match> matches = pattern.Matches(text).Cast<Match>();
-        pieces.AddRange(matches.Select(m => m.Value));
+        if (length > 0)
+        {
+            pieces.Add(text.Substring(start, length));
+        }
+    }
+
+    /// <summary>Emits a <see cref="Span"/> the same way <see cref="Emit(string, int, int, List{string})"/> does.</summary>
+    private static void Emit(string text, Span span, List<string> pieces) =>
+        Emit(text, span.Start, span.Length, pieces);
+
+    /// <summary>
+    /// Splits <paramref name="text"/> into alternating gaps and matches, swaps the
+    /// two roles where <paramref name="rule"/>'s invert flag asks, and recombines
+    /// them the way its behaviour says.
+    /// </summary>
+    /// <remarks>
+    /// One model produces all ten combinations of the five behaviours and the flag,
+    /// which is why there is no ten-way switch here. Measured against
+    /// <c>tokenizers</c> 0.23.1; the grid is in issue #145.
+    /// </remarks>
+    private static void Apply(Regex pattern, SplitRule rule, string text, List<string> pieces)
+    {
+        int cursor = 0;
+        int carried = NoOpenPiece;   // start of a piece still open, or NoOpenPiece
+        foreach (Match match in pattern.Matches(text).Cast<Match>())
+        {
+            carried = Step(text, cursor, match.Index, match.Length, rule, carried, pieces);
+            cursor = match.Index + match.Length;
+        }
+        Close(text, cursor, rule, carried, pieces);
+    }
+
+    /// <summary>
+    /// Handles one regex match: the gap that precedes it, at
+    /// <c>[cursor, matchStart)</c>, and the match itself, at
+    /// <c>[matchStart, matchStart + matchLength)</c>. Returns the position a piece
+    /// is still open at, for <see cref="Close"/> or the next call, or
+    /// <see cref="NoOpenPiece"/>.
+    /// </summary>
+    private static int Step(
+        string text, int cursor, int matchStart, int matchLength, SplitRule rule, int carried, List<string> pieces)
+    {
+        var gap = new Span(cursor, matchStart - cursor);
+        return rule.Behavior switch
+        {
+            SplitBehavior.Isolated => StepIsolated(text, gap, matchStart, matchLength, pieces),
+            SplitBehavior.Contiguous => StepContiguous(text, gap, matchStart, carried, pieces),
+            SplitBehavior.Removed => StepRemoved(text, gap, matchStart, matchLength, rule.Invert, pieces),
+            _ => StepMerged(text, gap, matchStart, matchLength, rule, carried, pieces),
+        };
+    }
+
+    /// <summary>Every gap and every match, each its own piece, in text order.</summary>
+    private static int StepIsolated(string text, Span gap, int matchStart, int matchLength, List<string> pieces)
+    {
+        Emit(text, gap, pieces);
+        Emit(text, matchStart, matchLength, pieces);
+        return NoOpenPiece;
+    }
+
+    /// <summary>
+    /// Like <see cref="StepIsolated"/>, except a match with no gap before it joins
+    /// the still-open run instead of starting its own piece.
+    /// </summary>
+    private static int StepContiguous(string text, Span gap, int matchStart, int carried, List<string> pieces)
+    {
+        if (gap.Length == 0)
+        {
+            return carried == NoOpenPiece ? matchStart : carried;
+        }
+
+        if (carried != NoOpenPiece)
+        {
+            Emit(text, carried, gap.Start - carried, pieces);
+        }
+        Emit(text, gap, pieces);
+        return matchStart;
+    }
+
+    /// <summary>Keeps the gap and drops the match, or the reverse when <paramref name="invert"/> asks.</summary>
+    private static int StepRemoved(string text, Span gap, int matchStart, int matchLength, bool invert, List<string> pieces)
+    {
+        if (invert)
+        {
+            Emit(text, matchStart, matchLength, pieces);
+        }
+        else
+        {
+            Emit(text, gap, pieces);
+        }
+        return NoOpenPiece;
+    }
+
+    /// <summary>
+    /// <see cref="SplitBehavior.MergedWithPrevious"/> and
+    /// <see cref="SplitBehavior.MergedWithNext"/> share one body because invert
+    /// exchanges them: each joins a match to the gap on one side, and inverting
+    /// picks the other side.
+    /// </summary>
+    private static int StepMerged(
+        string text, Span gap, int matchStart, int matchLength, SplitRule rule, int carried, List<string> pieces)
+    {
+        if (!WithNext(rule))
+        {
+            // The gap immediately precedes the match, so the two are one
+            // contiguous run of text -- no carry needed across calls.
+            Emit(text, gap.Start, (matchStart + matchLength) - gap.Start, pieces);
+            return NoOpenPiece;
+        }
+
+        if (carried == NoOpenPiece)
+        {
+            Emit(text, gap, pieces);
+        }
+        else
+        {
+            Emit(text, carried, (gap.Start + gap.Length) - carried, pieces);
+        }
+        return matchStart;
+    }
+
+    /// <summary>Whether <paramref name="rule"/> joins a match to the gap that follows it, after invert.</summary>
+    private static bool WithNext(SplitRule rule) => (rule.Behavior == SplitBehavior.MergedWithNext) ^ rule.Invert;
+
+    /// <summary>Closes out the text after the last match: the trailing gap, and any piece still open.</summary>
+    private static void Close(string text, int cursor, SplitRule rule, int carried, List<string> pieces)
+    {
+        var gap = new Span(cursor, text.Length - cursor);
+        switch (rule.Behavior)
+        {
+            case SplitBehavior.Removed:
+                if (!rule.Invert)
+                {
+                    Emit(text, gap, pieces);
+                }
+                break;
+            case SplitBehavior.MergedWithPrevious:
+            case SplitBehavior.MergedWithNext:
+                CloseMerged(text, gap, rule, carried, pieces);
+                break;
+            default:
+                // Isolated and Contiguous: a run left open by Contiguous closes
+                // here; Isolated never opens one, so carried is always NoOpenPiece
+                // and this only emits the trailing gap.
+                if (carried != NoOpenPiece)
+                {
+                    Emit(text, carried, gap.Start - carried, pieces);
+                }
+                Emit(text, gap, pieces);
+                break;
+        }
+    }
+
+    /// <summary>The trailing half of <see cref="StepMerged"/>: nothing follows the last match to attach to.</summary>
+    private static void CloseMerged(string text, Span gap, SplitRule rule, int carried, List<string> pieces)
+    {
+        if (WithNext(rule) && carried != NoOpenPiece)
+        {
+            Emit(text, carried, (gap.Start + gap.Length) - carried, pieces);
+        }
+        else
+        {
+            // MergedWithPrevious: the trailing gap has no following match to join,
+            // so it stands alone, the same way a leading gap does under MergedWithNext.
+            Emit(text, gap, pieces);
+        }
     }
 }

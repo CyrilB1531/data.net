@@ -194,8 +194,28 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             _merged[rank] = result;
         }
 
-        _split = new BpePreTokenizer(vocabulary.PreSplitPattern, vocabulary.PreTokenizerPattern);
+        _split = CreateSplit(vocabulary);
     }
+
+    /// <summary>
+    /// Today's behaviour, stated rather than inherited: keeping the regex matches
+    /// and nothing else is exactly <c>Split(behavior="Removed", invert=true)</c> --
+    /// measured over 91 pattern/text combinations with zero mismatches (issue #145).
+    /// The loader starts reading the file's own behaviour in a later commit; until
+    /// then this preserves the stream every existing model produces.
+    /// </summary>
+    /// <remarks>
+    /// A method rather than the ternary inline in the constructor, which was
+    /// already at 14 of S3776's limit of 15 before this: a call carries no
+    /// cognitive complexity where a branch costs a point, the same reason
+    /// <see cref="EnsureByteLevelDeclaresNoContinuingPrefix"/> is one.
+    /// </remarks>
+    private static BpePreTokenizer CreateSplit(BpeVocabulary vocabulary) =>
+        new(
+            vocabulary.PreSplitPattern is null
+                ? null
+                : new BpeSplitStep(vocabulary.PreSplitPattern, SplitBehavior.Removed, Invert: true),
+            vocabulary.PreTokenizerPattern);
 
     /// <summary>
     /// Refuses a byte-level vocabulary that also declares a continuing subword
