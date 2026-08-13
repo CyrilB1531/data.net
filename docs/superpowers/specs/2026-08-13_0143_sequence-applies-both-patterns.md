@@ -167,15 +167,21 @@ none of them would discriminate. [ADR 0022 §10](../../decisions/0022-added-toke
 recorded the same reasoning when `bpe_added_token_flags.json` was generated with it off, for the same
 reason, and hands the prefix-space rule to #105.
 
-The four existing corpora that already carry `Sequence` models — `bpe_tokenizer_json.json`,
-`bpe_added_tokens.json`, `bpe_added_token_flags.json`, `bpe_no_op_settings.json` — are the regression
-proof. They pass today and must still pass after the fix.
+**Pre-existing coverage of this shape is one case, not four corpora.** An earlier draft of this spec said
+four — `bpe_tokenizer_json.json`, `bpe_added_tokens.json`, `bpe_added_token_flags.json`,
+`bpe_no_op_settings.json` — from searching those files for the string `Sequence`. That search matches the
+byte-level vocabulary token `ĠSequence`, which is what three of them actually contain.
 
-Measured over their cases: between them they carry **not one apostrophe**, discriminating or otherwise.
-That is why the defect survived four corpora, and it is also why they can serve as the regression proof —
-they exercise the `Sequence` path on text where the two readings agree. Their continuing to pass is a
-requirement of this lot rather than a prediction; a red one means the second pattern is being applied where
-it should not be.
+Walked properly, through every embedded `tokenizer_json` for a `pre_tokenizer` of type `Sequence`: one
+case, `bpe_tokenizer_json.json` case 1, and its `ByteLevel` step declares `use_regex: false`. That is the
+row this change cannot move by construction.
+
+So **nothing committed exercises a `Sequence` with `use_regex: true`** — the shape the shipped models
+declare and the one the defect lives in. That, rather than an absence of apostrophes, is why the defect
+survived: the configuration was never built. The corpus above is its first coverage.
+
+The one existing case must still pass, and it is a real check that the second pattern is not constructed
+where it should not be. It is simply a narrower proof than a count of files suggested.
 
 ## Out of scope
 

@@ -51,15 +51,24 @@ commit is on it)
 
   **Read the test count, not the colour.** A `--filter` matching nothing exits zero.
 
-## The four corpora that must stay green
+## What pre-existing coverage there is, which is less than it looks
 
-`bpe_tokenizer_json.json`, `bpe_added_tokens.json`, `bpe_added_token_flags.json` and
-`bpe_no_op_settings.json` all carry `Sequence` models and all pass today. **Measured: between them they
-contain not one apostrophe**, which is why they never caught this and also why they can serve as the
-regression proof — they exercise the `Sequence` path on text where the two readings agree.
+An earlier draft of this plan said four corpora carry `Sequence` models and would serve as the regression
+proof. **That was wrong, and the way it was wrong is worth knowing.** It came from searching the corpus
+files for the string `Sequence`, which matches the byte-level vocabulary token `ĠSequence` in three of
+them.
 
-If one of them goes red, the second pattern is being applied where it should not be. That is a finding to
-report, not a corpus to regenerate.
+Walked properly — every embedded `tokenizer_json`, looking for a `pre_tokenizer` of type `Sequence` — the
+true count is **one**: `bpe_tokenizer_json.json` case 1, whose `ByteLevel` step declares `use_regex: false`.
+That is shape 4, the one this change cannot move by construction.
+
+So **no pre-existing corpus exercises `Sequence` with `use_regex: true`**, which is the shape the shipped
+models declare and the shape the defect lives in. That is the real reason the bug survived four corpora,
+and the new corpus from Task 1 is the first coverage of it.
+
+The whole suite must still be green, and shape 4's single case is a genuine check that the second pattern
+is not applied where it should not be. It is just a much narrower proof than "four corpora", and no
+document on this branch should claim otherwise.
 
 ## The complexity budget
 
@@ -866,11 +875,10 @@ dotnet test tests/DataNet.Embeddings.Tests -c Release --filter "FullyQualifiedNa
 dotnet build DataNet.slnx -c Release && dotnet test DataNet.slnx -c Release
 ```
 
-**The full suite is the important one here.** Four existing corpora carry `Sequence` models —
-`bpe_tokenizer_json.json`, `bpe_added_tokens.json`, `bpe_added_token_flags.json`,
-`bpe_no_op_settings.json` — and they must stay green. Measured before this plan was written: between them
-they contain not one apostrophe, so the two readings agree on all their text. A red one means the second
-pattern is being applied where it should not be — **report it, do not regenerate the corpus.**
+**The full suite is the important one here**, though the pre-existing `Sequence` coverage is narrower than
+it looks — see *What pre-existing coverage there is* above. One case exercises the shape at all
+(`bpe_tokenizer_json.json` case 1, `use_regex: false`), and it is a genuine check that the second pattern
+is not applied where it should not be. A red anywhere means **report it, do not regenerate the corpus.**
 
 - [ ] **Step 5: Commit**
 
