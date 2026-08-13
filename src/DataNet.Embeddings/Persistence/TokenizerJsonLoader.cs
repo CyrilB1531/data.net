@@ -860,19 +860,37 @@ public static class TokenizerJsonLoader
         // "missing field `behavior`" / "missing field `invert`". So there is
         // nothing to default to here, and accepting one would invent the value
         // that decides what the step does with the text around its matches.
-        if (!split.TryGetProperty("behavior", out JsonElement behaviorElement)
-            || behaviorElement.ValueKind != JsonValueKind.String)
+        // A present-but-wrongly-typed field (a number where behavior wants a
+        // string, a string where invert wants a boolean) is a distinct failure
+        // from an absent one -- Serde reports a type mismatch, not a missing
+        // field -- so it gets its own message rather than reusing "declares no
+        // behavior"/"declares no invert", which would misstate why the
+        // reference refuses it.
+        if (!split.TryGetProperty("behavior", out JsonElement behaviorElement))
         {
             throw Unsupported(
                 "its Sequence's Split step declares no behavior",
                 "tokenizers 0.23.1 has no default for that field and refuses the file identically");
         }
-        if (OptionalBoolean(split, "invert") is not bool invert)
+        if (behaviorElement.ValueKind != JsonValueKind.String)
+        {
+            throw Unsupported(
+                "its Sequence's Split step's behavior is not a string",
+                "tokenizers 0.23.1 expects one of five string values there and refuses a file whose type disagrees");
+        }
+        if (!split.TryGetProperty("invert", out JsonElement invertElement))
         {
             throw Unsupported(
                 "its Sequence's Split step declares no invert",
                 "tokenizers 0.23.1 has no default for that field and refuses the file identically");
         }
+        if (invertElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+        {
+            throw Unsupported(
+                "its Sequence's Split step's invert is not a boolean",
+                "tokenizers 0.23.1 expects true or false there and refuses a file whose type disagrees");
+        }
+        bool invert = invertElement.ValueKind == JsonValueKind.True;
         // The file spells these in PascalCase; the snake_case spellings are the
         // reference's Python constructor API instead. The corpus's own
         // behavior_unknown refusal freezes "Nonsense" refused with "unknown
