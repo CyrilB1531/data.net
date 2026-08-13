@@ -114,9 +114,14 @@ public sealed record BpeVocabulary(
     /// The last pattern text is split on before merging; <see langword="null"/> to
     /// split on word boundaries, isolating punctuation from letters and digits —
     /// HuggingFace's <c>Whitespace</c> pre-tokenizer type, not the coarser
-    /// <c>WhitespaceSplit</c> that only collapses whitespace runs. When
-    /// <see cref="PreSplitPattern"/> is also set, this pattern runs second, over
-    /// every piece the pre-split produced, rather than alone.
+    /// <c>WhitespaceSplit</c> that only collapses whitespace runs — when
+    /// <see cref="PreSplitPattern"/> is also <see langword="null"/>. When
+    /// <see cref="PreSplitPattern"/> is set and this one is not, this pattern runs
+    /// second, over every piece the pre-split produced. When
+    /// <see cref="PreSplitPattern"/> is set and this one is <see langword="null"/>,
+    /// there is no word-boundary fallback: the pre-split is the only split there is,
+    /// the state <see cref="Persistence.TokenizerJsonLoader"/> produces for a
+    /// <c>Sequence</c> whose <c>ByteLevel</c> step declares <c>use_regex: false</c>.
     /// </summary>
     public string? PreTokenizerPattern { get; init; }
 
@@ -129,9 +134,11 @@ public sealed record BpeVocabulary(
     /// HuggingFace's <c>Sequence</c> of <c>Split</c> then <c>ByteLevel</c> splits
     /// twice: the <c>Split</c> step's pattern first, then <c>ByteLevel</c>'s own
     /// over each resulting piece, unless its <c>use_regex</c> is off. Measured
-    /// against <c>tokenizers</c> 0.23.1, where <c>"hello123 don't"</c> gives
-    /// <c>['hello', '123', 'Ġ', 'don', "'t"]</c> with the second split and
-    /// <c>['hello123', 'Ġ', "don't"]</c> without it.
+    /// against <c>tokenizers</c> 0.23.1 under Llama-3's own <c>Split</c> pattern —
+    /// the pattern this property actually carries — where <c>"aujourd'hui"</c>
+    /// splits into <c>['aujourd', "'", 'hui']</c> with the second split and
+    /// <c>['aujourd', "'hui"]</c> without it
+    /// (<c>tests/oracles/bpe_sequence_split.json</c> cases 1 and 10).
     /// </remarks>
     public string? PreSplitPattern { get; init; }
 
