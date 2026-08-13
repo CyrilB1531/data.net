@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using DataNet.Embeddings.Tokenization;
 using DataNet.Internal.Persistence;
@@ -539,7 +540,7 @@ public static class TokenizerJsonLoader
         EnsureModelType(model, "BPE");
         EnsureByteFallbackIsOff(model);
         EnsureBpeModelSettingsAreReproduced(model);
-        EnsureBpeNormalizerIsAbsent(root);
+        IReadOnlyList<NormalizationForm> normalizationForms = ReadBpeNormalizer(root);
         RejectNonNull(root, "truncation", "DataNet tokenizers do not truncate");
         RejectNonNull(root, "padding", "DataNet tokenizers do not pad");
         RejectNonNull(root, "post_processor", "DataNet tokenizers do not insert special tokens such as [CLS] and [SEP]");
@@ -567,6 +568,7 @@ public static class TokenizerJsonLoader
             UnkToken = OptionalString(model, "unk_token"),
             PreSplit = preSplit,
             PreTokenizerPattern = pattern,
+            NormalizationForms = normalizationForms,
         };
     }
 
@@ -610,26 +612,79 @@ public static class TokenizerJsonLoader
     }
 
     /// <summary>
-    /// Refuses any normalizer, since <see cref="BpeTokenizer"/> applies none.
+    /// Reads the BPE normalizer: the four Unicode forms, a <c>Sequence</c> of them,
+    /// or nothing. The counterpart of <see cref="ReadLowercaseFrom"/> for WordPiece
+    /// and <see cref="ReadUnigramNormalizer"/> for Unigram.
     /// </summary>
     /// <remarks>
-    /// The counterpart of <see cref="ReadLowercaseFrom"/> for WordPiece and
-    /// <see cref="ReadUnigramNormalizer"/> for Unigram, and the one this reader was
-    /// missing: a BPE file declaring <c>NFC</c>, <c>NFKC</c>, <c>Replace</c> or a
-    /// <c>Sequence</c> of them would otherwise load and skip the normalization in
-    /// silence. Absent or <c>null</c> is identity and is what every model in scope
-    /// declares.
+    /// <para>
+    /// Measured across sixteen public BPE <c>tokenizer.json</c> files: five declare a
+    /// normalizer, four of them <c>NFC</c> (Qwen2, GPT-NeoX, Pythia, OLMo) and one an
+    /// empty <c>Sequence</c> (deepseek-coder). None of the five declares
+    /// <c>byte_fallback</c> or uses <c>Metaspace</c>, so all five are the lineage
+    /// <see cref="BpeTokenizer"/> implements and the blanket refusal was the only
+    /// thing stopping them.
+    /// </para>
+    /// <para>
+    /// An empty <c>Sequence</c> yields an empty list and normalizes nothing, which is
+    /// the deepseek case: a declaration that provably changes nothing is accepted,
+    /// as <c>dropout: 0.0</c> and <c>end_of_word_suffix: ""</c> already are.
+    /// </para>
     /// </remarks>
-    private static void EnsureBpeNormalizerIsAbsent(JsonElement root)
+    private static List<NormalizationForm> ReadBpeNormalizer(JsonElement root)
     {
         if (!root.TryGetProperty("normalizer", out JsonElement normalizer) || normalizer.ValueKind == JsonValueKind.Null)
         {
-            return;
+            return [];
         }
+
+        var forms = new List<NormalizationForm>();
+        CollectNormalizationForms(normalizer, forms);
+        return forms;
+    }
+
+    private static void CollectNormalizationForms(JsonElement normalizer, List<NormalizationForm> forms)
+    {
         string type = OptionalString(normalizer, "type") ?? UntypedName;
-        throw Unsupported(
-            $"its normalizer is '{type}'",
-            "BpeTokenizer normalizes nothing, so every rule this one declares would go unapplied");
+        switch (type)
+        {
+            case "NFC":
+                forms.Add(NormalizationForm.FormC);
+                return;
+
+            case "NFKC":
+                forms.Add(NormalizationForm.FormKC);
+                return;
+
+            case "NFD":
+                forms.Add(NormalizationForm.FormD);
+                return;
+
+            case "NFKD":
+                forms.Add(NormalizationForm.FormKD);
+                return;
+
+            case "Sequence":
+                if (!normalizer.TryGetProperty("normalizers", out JsonElement inner) || inner.ValueKind != JsonValueKind.Array)
+                {
+                    throw Unsupported("its normalizer is a Sequence with no 'normalizers' array", "the file is not usable");
+                }
+                foreach (JsonElement step in inner.EnumerateArray())
+                {
+                    CollectNormalizationForms(step, forms);
+                }
+                return;
+
+            case "Replace":
+                throw Unsupported(
+                    "its normalizer is 'Replace'",
+                    "a Replace pattern may be a Rust regex, whose flavour .NET does not share, so reproducing it needs a measurement nobody has made");
+
+            default:
+                throw Unsupported(
+                    $"its normalizer is '{type}'",
+                    "only NFC, NFKC, NFD, NFKD and a Sequence of those are understood");
+        }
     }
 
     /// <summary>
@@ -649,8 +704,8 @@ public static class TokenizerJsonLoader
     /// </para>
     /// <para>
     /// Refused by name for the reason <see cref="EnsureBpeModelSettingsAreReproduced"/>
-    /// refuses <c>dropout</c> and <see cref="EnsureBpeNormalizerIsAbsent"/> refuses a
-    /// normalizer: a file this loader cannot reproduce is told so, rather than
+    /// refuses <c>dropout</c> and <see cref="CollectNormalizationForms"/> refuses a
+    /// normalizer it does not reproduce: a file this loader cannot reproduce is told so, rather than
     /// tokenized plausibly and wrongly. This says nothing about what the reference
     /// produces for such a file — nothing here measured that, and the refusal does not
     /// rest on it. An empty prefix prefixes nothing and normalises to absent on
