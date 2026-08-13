@@ -110,6 +110,73 @@ public sealed class WeightedPercentileMedianTests
     }
 
     /// <summary>
+    /// The inputs a partition scheme gets wrong, on a size large enough to pass the
+    /// insertion cutoff and exercise the introselect loop rather than the sort
+    /// fallback. Written against the branchy partition and expected to pass there:
+    /// they exist to catch what a rewrite of the index arithmetic would break, and
+    /// a test added after a change cannot do that.
+    ///
+    /// Not all five shapes guard a wrong rank equally. "already sorted" and
+    /// "reverse sorted" hold every value distinct, so any off-by-one changes the
+    /// result. "organ pipe" is tied everywhere — its sorted form is 0, 1, 1, 2, 2,
+    /// … 2499, 2499, 2500 — and both selected ranks land on the same pair, 1250;
+    /// consecutive pairs differ by one, so a shifted rank moves the answer by 0.5.
+    /// All three have full teeth. "two distinct values" is
+    /// half zeros and half ones, so it only catches a rank shifted across that
+    /// boundary — a shift that stays inside one run returns the same value.
+    /// "all equal" cannot detect a wrong rank at all: every element is 3.0, so no
+    /// index error changes the result. It stays in the theory anyway because both
+    /// degenerate shapes still defeat a median-of-three pivot, which is where a
+    /// rewritten loop would hang or exhaust the introselect budget rather than
+    /// return a wrong number — a failure mode distinct from, and not covered by,
+    /// the three rank-guarding shapes.
+    /// </summary>
+    [Theory]
+    [InlineData("all equal")]
+    [InlineData("already sorted")]
+    [InlineData("reverse sorted")]
+    [InlineData("two distinct values")]
+    [InlineData("organ pipe")]
+    public void The_median_is_right_on_the_shapes_that_break_a_partition(string shape)
+    {
+        const int Samples = 5_000;
+        double[] yTrue = new double[Samples];
+        double[] yPred = new double[Samples];
+        for (int i = 0; i < Samples; i++)
+        {
+            double residual = shape switch
+            {
+                "all equal" => 3.0,
+                "already sorted" => i,
+                "reverse sorted" => Samples - i,
+                "two distinct values" => i % 2 == 0 ? 0.0 : 1.0,
+                "organ pipe" => i < Samples / 2 ? i : Samples - i,
+                _ => throw new ArgumentOutOfRangeException(nameof(shape), shape, "no such shape"),
+            };
+            yTrue[i] = residual;
+        }
+
+        // MedianAbsoluteError.PerOutput is the public entry point used above,
+        // for the same reason: the internal WeightedPercentile type is not
+        // visible from this project.
+        double actual = MedianAbsoluteError.PerOutput(yTrue, yPred)[0];
+
+        Assert.Equal(ExpectedMedian(yTrue), actual, 12);
+    }
+
+    /// <summary>
+    /// The median by the definition, computed by sorting a copy — independent of the
+    /// selection under test, which is the point.
+    /// </summary>
+    private static double ExpectedMedian(double[] residuals)
+    {
+        double[] sorted = (double[])residuals.Clone();
+        Array.Sort(sorted);
+        int n = sorted.Length;
+        return n % 2 == 1 ? sorted[n / 2] : (sorted[(n / 2) - 1] + sorted[n / 2]) / 2.0;
+    }
+
+    /// <summary>
     /// The reference implementation: take the same absolute value
     /// <c>MedianAbsoluteError.PerOutput(values, zeros)</c> computes internally
     /// (<c>Math.Abs(yTrue - yPred)</c> with <c>yPred</c> all zero), sort that

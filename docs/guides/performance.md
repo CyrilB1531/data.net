@@ -393,6 +393,9 @@ reason no conclusion on this page rests on an n=1 000 row.
 † All six `median_ae` rows were re-measured after the quickselect rewrite
 described below, in a separate window from the other eighteen rows in this
 table. Every other cell is the original, unrewritten-algorithm measurement.
+**They are themselves superseded**: issue #140 took a further 38% off
+`median_ae` at n = 1 000 000, so every row marked † measures a partition this
+package no longer ships. See "Branchless partitioning (issue #140)" below.
 
 ‡ These four `r2` rows predate issue #127: they measure the original
 sequential-sum `R2`, not the Neumaier-compensated one this package ships
@@ -524,8 +527,12 @@ only:**
 | `mae_n1000000_k2` | 4.769 | 5.146 | 1.08x | 5.330 |
 | `r2_n100000_k2` | 0.740 | 0.358 | **0.48x** | 0.867 |
 | `r2_n1000000_k2` | 7.820 | 4.280 | **0.55x** | 9.193 |
-| `median_ae_n100000_k2` *(control)* | 1.681 | 1.672 | 0.99x | 1.716 |
-| `median_ae_n1000000_k2` *(control)* | 15.718 | 15.994 | 1.02x | 15.696 |
+| `median_ae_n100000_k2` *(control)*§ | 1.681 | 1.672 | 0.99x | 1.716 |
+| `median_ae_n1000000_k2` *(control)*§ | 15.718 | 15.994 | 1.02x | 15.696 |
+
+§ Both control rows predate issue #140, which took 38% off `median_ae` at
+n = 1 000 000. They are the right control for *this* round — nothing here
+touched the median — but they are not the current cost of the operation.
 
 `r2` is this round's confirmed result: **faster than the uncompensated loop
 it replaced**, not merely recovered back to it, and 2.15× faster than numpy
@@ -554,6 +561,113 @@ measured the unweighted fast path alone, before the SIMD lever, put both
 nearer 1.02×–1.07× with the control moving at most 1.4% — closer to the true
 cost of that lever, but not this round's number, and not what is published
 above as the current state.
+
+#### Branchless partitioning (issue #140)
+
+`MedianAbsoluteError` was the most expensive regression metric by a factor of
+three, and the issue opened believing a sort was the reason and threads were
+the answer. Instrumenting `Compute` per phase at n = 1 000 000 said otherwise:
+
+| phase | time | share |
+| --- | ---: | ---: |
+| allocating the 8 MB residual column | 0.6 ms | 4% |
+| filling it with abs(y − ŷ) | 2.6 ms | 16% |
+| **`QuickSelect`** | **10.8 ms** | **68%** |
+| validation, reduction, harness | 2.0 ms | 12% |
+
+That killed two hypotheses in one measurement. `ArrayPool` for the column
+would have bought 0.6 ms, not a third. And the fill is *cheaper* than `mse`'s
+loop, because it only subtracts and takes an absolute value where `mse` adds a
+compensated sum per element. Parallelism was measured separately and not
+taken: partitioning `Outputs.WeightedMean` over fixed ranges reached 1.56× at
+four workers and 1.65× at eight, and only with pinned pointers —
+`ReadOnlySpan<double>` cannot be captured in a lambda, so a shipped version
+needs either `unsafe`, which this repository sets to `false` explicitly, or
+the 16 MB copy `MultiClassRoc.CopyForWorkers` makes, which costs more than the
+parallelism saves.
+
+**The diagnosis, and the experiment it had to avoid.** `QuickSelect` was
+spending about 5 ns per element on sequential access, which is not bandwidth.
+The suspect was the one data-dependent branch in the Lomuto partition's inner
+loop, taken about half the time on unsorted residuals — the worst case for a
+predictor. The natural test, timing random input against sorted input, is
+**confounded**: on sorted input the median-of-three pivot lands on the true
+median, so one partition pass suffices where random data needs several, and
+the time would collapse because the *number of passes* collapsed. So the
+experiment counted inner-loop iterations and compared nanoseconds per element
+touched, on three shapes:
+
+| shape | ns per element touched |
+| --- | ---: |
+| random | 4.39 |
+| sorted ascending | 2.15 |
+| alternating 0 / 1 | 2.65 |
+
+Both *predictable* shapes sit together at 2.15 and 2.65 and only the coin-flip
+shape costs 4.4. That is the signature of misprediction rather than of memory
+or of pass count — and it also corrects the guess this experiment started
+from, which expected the alternating shape to sit with random. A period-2
+pattern is trivial for a modern predictor; "varies" and "hard to predict" are
+not the same property.
+
+**The change** is three lines: swap unconditionally, then advance the store
+index by the comparison rather than branching on it. It is correct for the
+same reason the branchy version is — when the element does not belong left,
+the store index points at another element that also does not, so the two are
+interchangeable and the swap is harmless. The comparison must use the value
+read *before* the swap. That the JIT then emits it without a branch was
+checked rather than assumed, with `DOTNET_JitDisasm` on a verbatim copy of the
+loop in a scratch project — `Partition` is `internal`, so it cannot be called
+from one:
+
+```text
+vucomisd xmm0, xmm1
+seta     r8b
+movzx    r8, r8b
+add      esi, r8d      ; storeIndex += (value < pivot)
+```
+
+RyuJIT on x64. The `netstandard2.0` assembly also ships to .NET Framework,
+Mono and IL2CPP, where this is unverified — the correctness of the loop does
+not depend on it, only the gain does. The trade is two stores every iteration
+instead of two only when the swap fires: more memory traffic bought fewer
+mispredictions, and only a measurement can say whether that pays.
+
+**Before against after**, four interleaved campaigns in one window, same
+corpus on both sides, `mse` and `mae` as controls because this change cannot
+touch them:
+
+| Operation, n = 1 000 000 | before (ms) | after (ms) | change |
+| --- | ---: | ---: | ---: |
+| `median_ae_n1000000_k2` | 16.201 | 9.941 | **−38.6%** |
+| `mse_n1000000_k2` *(control)* | 5.051 | 5.037 | −0.3% |
+| `mae_n1000000_k2` *(control)* | 5.080 | 5.034 | −0.9% |
+
+Medians of four campaigns each, run after/before/after/before inside a single
+window rather than campaign by campaign — the machine drifts more between
+campaigns than the effect being measured. Spread within each side was at most
+0.22 ms, and the controls moved under 1%, so the window is clean. The bar was
+fixed before the number was known: 20% on `median_ae` or the change reverts.
+It cleared it by a factor of nearly two, taking the selection phase from
+10.8 ms to roughly 4.5 and `median_ae` from three times `mse` to twice.
+
+Machine: Intel i7-4770S, four physical cores, `uptime`'s one-minute average
+7.9 at the start of the window and 5.5 at the end — a desktop session ran
+throughout, which is what the interleaving and the controls are for.
+
+Reproduce it with the operation filter the same issue added, which measures
+three rows instead of seventy-eight and turns an eight-minute-twenty campaign
+into a twenty-one-second one:
+
+```bash
+dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- \
+    compare-metrics --only median_ae,mse,mae --shapes 1000000x2
+```
+
+A filtered run writes the same `bench/results/csharp-metrics.json` holding
+fewer rows, so it stamps `filtered` into the file's metadata and
+`bench/compare.py` refuses it. The merge gate above needs the whole matrix, and
+a three-row file would otherwise have printed as a green one.
 
 ## Multiclass ROC-AUC, sequential against parallel (issue #86)
 

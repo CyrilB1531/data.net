@@ -11,7 +11,11 @@ using DataNet.Text.Benchmarks.CrossLang;
 //   * "compare-persistence" -> the same, for the #58 loaders and the TF-IDF
 //                       round trip (bench/python/bench_persistence.py)
 //   * "compare-metrics" -> the same, for the #61 classification metrics
-//                       (bench/python/bench_metrics.py)
+//                       (bench/python/bench_metrics.py). Two optional filters,
+//                       for a before/after that measures one operation rather
+//                       than the whole matrix:
+//       dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- \
+//           compare-metrics --only median_ae,mse,mae --shapes 1000000x2
 //   * "roc-parallel" -> multiclass ROC-AUC at several worker counts, C# against
 //                       C#: the before/after for issue #86
 if (args.Length > 0 && args[0] == "compare")
@@ -28,7 +32,7 @@ if (args.Length > 0 && args[0] == "compare-persistence")
 
 if (args.Length > 0 && args[0] == "compare-metrics")
 {
-    MetricsCrossLang.Run();
+    MetricsCrossLang.Run(args);
     return;
 }
 

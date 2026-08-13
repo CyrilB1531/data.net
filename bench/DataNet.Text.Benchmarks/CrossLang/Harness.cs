@@ -95,6 +95,18 @@ internal static class Harness
         [JsonPropertyName("os")] public string Os { get; init; } = "";
         [JsonPropertyName("min_time_s")] public double MinTimeS { get; init; }
         [JsonPropertyName("repeats")] public int Repeats { get; init; }
+
+        /// <summary>
+        /// What a partial run left out, or <see langword="null"/> when the run was
+        /// complete. A filtered run writes the same file to the same path holding
+        /// fewer rows, and <c>bench/compare.py</c> silently skips the operations it
+        /// cannot pair — so without this field a three-row file reads as a green
+        /// merge gate over every operation and every size. The comparison refuses
+        /// to run when it is present.
+        /// </summary>
+        [JsonPropertyName("filtered")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Filtered { get; init; }
     }
 
     public sealed record OperationResult
