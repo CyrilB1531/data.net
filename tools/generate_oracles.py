@@ -3082,7 +3082,7 @@ def generate_wordpiece_added_tokens() -> dict:
 # Named rather than repeated: python:S1192 fires at five occurrences of a
 # literal, and this one appears across two vocabularies, one merge table and
 # one function default.
-_FUSE_UNK_TOKEN = "[UNK]"
+_FUSE_UNK_TOKEN = UNK_TOKEN
 
 # Z is in none of these vocabularies, which is what makes it a run when repeated.
 _FUSE_VOCAB = {_FUSE_UNK_TOKEN: 0, "a": 1, "b": 2, "ab": 3}
@@ -3464,7 +3464,7 @@ def _prefix_models() -> list[tuple]:
         ("no_prefixed_form", "a character whose prefixed form is absent, and no unknown token",
          _prefix_model({"a": 0, "b": 1}, []), ["ab", "a", "ba"]),
         ("no_prefixed_form_unk", "the same, with an unknown token to substitute",
-         _prefix_model({"a": 0, "b": 1, "[UNK]": 2}, [], unk="[UNK]"), ["ab", "a", "ba"]),
+         _prefix_model({"a": 0, "b": 1, UNK_TOKEN: 2}, [], unk=UNK_TOKEN), ["ab", "a", "ba"]),
         # The merge result is the stripped concatenation. Only `ab` is present,
         # so a plain concatenation would look for `a##b` and fail.
         ("merge_stripped_result", "a merge whose stripped result alone is in the vocabulary",
