@@ -3162,21 +3162,16 @@ def generate_wordpiece_added_tokens() -> dict:
 
 # --- fuse_unk (issue #119) ----------------------------------------------------
 
-# Named rather than repeated: python:S1192 fires at three occurrences of a
-# literal, and this one appears across two vocabularies, one merge table and
-# one function default.
-_FUSE_UNK_TOKEN = UNK_TOKEN
-
 # Z is in none of these vocabularies, which is what makes it a run when repeated.
-_FUSE_VOCAB = {_FUSE_UNK_TOKEN: 0, "a": 1, "b": 2, "ab": 3}
+_FUSE_VOCAB = {UNK_TOKEN: 0, "a": 1, "b": 2, "ab": 3}
 _FUSE_MERGES = [("a", "b")]
 
 # A merge whose LEFT side is the unknown token. Training never produces this;
 # it is stated so that "does fusing happen before or after merging" has an
 # answer a test can read. Fused, "ZZa" merges to [UNK]a; unfused it cannot,
 # because the second [UNK] sits between the first and the a.
-_FUSE_MERGE_VOCAB = {_FUSE_UNK_TOKEN: 0, "a": 1, _FUSE_UNK_TOKEN + "a": 2}
-_FUSE_MERGE_MERGES = [(_FUSE_UNK_TOKEN, "a")]
+_FUSE_MERGE_VOCAB = {UNK_TOKEN: 0, "a": 1, UNK_TOKEN + "a": 2}
+_FUSE_MERGE_MERGES = [(UNK_TOKEN, "a")]
 
 # The unknown token is ALSO a covered single character. This is the only shape
 # that tells "the previous symbol was substituted" from "the previous id equals
@@ -3200,10 +3195,10 @@ _FUSE_COVERED_UNK_VOCAB = {"q": 0, "a": 1}
 # covered in neither form, so a run it starts still extends across a "Z" the
 # suffix turns uncovered.
 _FUSE_EOW_SUFFIX = "</w>"
-_FUSE_EOW_VOCAB = {_FUSE_UNK_TOKEN: 0, "a": 1, "a" + _FUSE_EOW_SUFFIX: 2, "Z": 3}
+_FUSE_EOW_VOCAB = {UNK_TOKEN: 0, "a": 1, "a" + _FUSE_EOW_SUFFIX: 2, "Z": 3}
 
 
-def _fuse_unk_model(vocab, merges, fuse, *, unk=_FUSE_UNK_TOKEN, byte_level=False, eow=None):
+def _fuse_unk_model(vocab, merges, fuse, *, unk=UNK_TOKEN, byte_level=False, eow=None):
     """One tokenizer, built rather than trained, so the file is byte-stable.
 
     Every classic model declares Whitespace. A model declaring no pre-tokenizer
