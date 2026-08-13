@@ -10,8 +10,10 @@
 `ReadUnigramNormalizer` reads `Precompiled`, `ReadLowercaseFrom` reads `Lowercase`, a `Sequence` and a
 plain `BertNormalizer`.
 
-The issue asked which normalizers should make the reproduced set. That was answered by measuring sixteen
-public `tokenizer.json` files rather than by intuition, and the measurement moved the lot twice.
+The issue asked which normalizers should make the reproduced set. That was answered by measuring fifteen
+public `tokenizer.json` files rather than by intuition, and the measurement moved the lot twice. Sixteen
+files were fetched, but `gpt2` and `openai-community/gpt2` are the same repository byte for byte, so the
+table below enumerates fifteen distinct models — 5 + 10.
 
 ### What the survey found
 
@@ -24,7 +26,7 @@ public `tokenizer.json` files rather than by intuition, and the measurement move
 | deepseek-ai/deepseek-coder-1.3b-base | BPE | no | `Sequence[Split×4, Digits, …]` | **`Sequence[]`, empty** |
 | gpt2, roberta-base, bart-large, bloom-560m, falcon-7b, phi-2, starcoder2-3b, SmolLM2-135M, stablelm-2, codegen-350M | BPE | no | `ByteLevel` or a `Sequence` | `null` |
 
-Five of sixteen declare one, four of them `NFC`. **None declares `byte_fallback` and none uses
+Five of fifteen declare one, four of them `NFC`. **None declares `byte_fallback` and none uses
 `Metaspace`**, so all five are the lineage `BpeTokenizer` already implements: the blanket refusal is the
 only thing stopping them. Qwen2 is the model [#143](https://github.com/CyrilB1531/data.net/issues/143) and
 [#145](https://github.com/CyrilB1531/data.net/issues/145) are working on right now, and this library
@@ -96,9 +98,14 @@ Normalization therefore happens **before** `add_prefix_space`, on gap text. That
 and **measured in the implementation**, not assumed: a normalizer that emitted a leading space would
 otherwise interact with the "only when the segment does not already begin with one" rule.
 
-With no normalizer declared the list is empty, normalization is the identity, and the second scanner is
-empty — so every file that loads today keeps its exact token stream. That is a claim the existing corpora
-already test, and it must hold with **no oracle byte moving**.
+With no normalizer declared the *forms* list is empty, so normalization is the identity — but the second
+scanner is not necessarily empty: `AddedToken.Normalized` defaults to `!Special` independently of a declared
+normalizer, so any file with a non-special added token already populates it (`bpe_added_token_flags.json`'s
+`<m>` is one). What changes for those files is that a raw entry now beats an earlier or longer normalized
+match, HuggingFace's own two-pass order ([ADR 0022 §10](../../decisions/0022-added-token-matching-flags.md))
+rather than the single combined scan pre-#121 BPE used. None of the existing corpora has a raw and
+normalized entry competing for the same span, so **no oracle byte moves** — but that reordering itself is
+unmeasured there; `bpe_normalizer.json`'s precedence pipelines measure it instead.
 
 ### D3 — the round trip degrades to the normalized text, as it does in Python
 
@@ -154,6 +161,9 @@ lot is where a reader would be tempted to share the mechanism.
 - **The Unicode-table divergence of D5**, which is the one thing that could turn a small lot into an ADR.
 - **`BpeTokenizer.Encode` is being edited in parallel** by #145, which has ~37 uncommitted lines in that
   file. This branch works in its own worktree and rebases on `main` after each of that lot's merges.
-- **The second scanner is a real behaviour change for files that load today** — none of them can declare a
-  normalizer, so the normalized scanner is empty for all of them, but the restructuring of `Encode` is not
-  a no-op in shape. The existing corpora are the guard, and not one byte of them may move.
+- **The second scanner is a real behaviour change for files that load today** — the *forms* list is empty
+  for all of them since none declares a normalizer, but the normalized scanner is not: `AddedToken.Normalized`
+  is independent of that, and several existing files already populate it. The restructuring of `Encode`
+  changes precedence between the two halves for any of them where a raw and a normalized entry could compete
+  for the same span; the existing corpora are the guard that none of them actually does, and not one byte of
+  them may move.

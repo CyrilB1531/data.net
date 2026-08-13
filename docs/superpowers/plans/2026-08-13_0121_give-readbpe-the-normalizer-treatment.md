@@ -50,7 +50,7 @@ because every form here changes length.
 
 | Fact | Value |
 | --- | --- |
-| Public BPE `tokenizer.json` files surveyed | 16 |
+| Public BPE `tokenizer.json` files surveyed | 15 distinct models (16 fetched: `gpt2` and `openai-community/gpt2` are the same repository) |
 | Declaring a normalizer | 5 — `NFC` ×4 (gpt-neox, pythia, Qwen2-0.5B, OLMo), empty `Sequence[]` ×1 (deepseek) |
 | Declaring `byte_fallback` or using `Metaspace` among those five | none — all five are the lineage `BpeTokenizer` implements |
 | `normalized: true` added tokens in those files | 23/25 gpt-neox, 23/25 pythia, 26/28 OLMo, 22/22 deepseek, 0/3 Qwen2 |
@@ -373,7 +373,8 @@ In `TokenizerJsonLoader.cs`, delete `EnsureBpeNormalizerIsAbsent` and write:
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Measured across sixteen public BPE <c>tokenizer.json</c> files: five declare a
+    /// Measured across fifteen public BPE <c>tokenizer.json</c> files (one of which,
+    /// GPT-2, was fetched twice under two repository names): five declare a
     /// normalizer, four of them <c>NFC</c> (Qwen2, GPT-NeoX, Pythia, OLMo) and one an
     /// empty <c>Sequence</c> (deepseek-coder). None of the five declares
     /// <c>byte_fallback</c> or uses <c>Metaspace</c>, so all five are the lineage
@@ -753,7 +754,11 @@ git status --porcelain tests/oracles/
 
 Expected: 0 warnings, every earlier test still passing, the new corpus green, and `tests/oracles/`
 **unchanged** — the existing BPE corpora are the guard that files loading today keep their exact token
-stream through the restructured `Encode`, and a moved byte there is a regression, not an update.
+stream through the restructured `Encode`, and a moved byte there is a regression, not an update. The
+restructuring is not inert for all of them: any file with a non-special added token already has
+`AddedToken.Normalized == true` entries and takes the two-pass path, `bpe_added_token_flags.json` among
+them. The guard is that none of those entries competes with a raw one for the same span, not that the
+second scanner never runs.
 
 - [x] **Step 5: Commit**
 

@@ -49,8 +49,12 @@ string back = bpe.Decode(t.Ids);   // == "Hello, world! 🎉", byte for byte
 ```
 
 A `tokenizer.json` that declares a normalizer — `NFC`, `NFKC`, `NFD`, `NFKD`, or a
-`Sequence` of those — has it applied before encoding and after decoding, so
-`Decode(Encode(x))` returns the normalized text rather than `x`, matching Python.
+`Sequence` of those — has it applied before encoding, not after decoding: `Decode`
+applies no normalizer of its own, but since `Encode` already normalized the text it
+saw, `Decode(Encode(x))` returns the normalized text rather than `x`, matching Python.
+One case does not round-trip at all: a non-ASCII added token that is not byte-level
+encodable end to end makes `Decode` throw where HuggingFace substitutes U+FFFD instead
+— [#149](https://github.com/CyrilB1531/data.net/issues/149).
 
 See [Which tokenizer for which model family](#which-tokenizer-for-which-model-family)
 for the family-to-class mapping, including the one family this package refuses

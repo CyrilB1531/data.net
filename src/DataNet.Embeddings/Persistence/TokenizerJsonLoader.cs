@@ -618,7 +618,8 @@ public static class TokenizerJsonLoader
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Measured across sixteen public BPE <c>tokenizer.json</c> files: five declare a
+    /// Measured across fifteen public BPE <c>tokenizer.json</c> files (one of which,
+    /// GPT-2, was fetched twice under two repository names): five declare a
     /// normalizer, four of them <c>NFC</c> (Qwen2, GPT-NeoX, Pythia, OLMo) and one an
     /// empty <c>Sequence</c> (deepseek-coder). None of the five declares
     /// <c>byte_fallback</c> or uses <c>Metaspace</c>, so all five are the lineage
