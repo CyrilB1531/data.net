@@ -85,12 +85,15 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// token the vocabulary does not declare; or a merge's result is not itself
     /// a vocabulary entry; or a byte-level vocabulary declares a continuing
     /// subword prefix, which this tokenizer would apply to its merges and not to
-    /// its symbols — see <see cref="EnsureByteLevelDeclaresNoContinuingPrefix"/>.
+    /// its symbols — see <see cref="EnsureByteLevelDeclaresNoContinuingPrefix"/>;
+    /// or <see cref="BpeVocabulary.PreSplit"/> declares a <see cref="SplitBehavior"/>
+    /// outside its five defined values — see <see cref="EnsureSplitBehaviorIsDefined"/>.
     /// </exception>
     public BpeTokenizer(BpeVocabulary vocabulary)
     {
         Guard.NotNull(vocabulary);
         EnsureByteLevelDeclaresNoContinuingPrefix(vocabulary);
+        EnsureSplitBehaviorIsDefined(vocabulary);
         _addPrefixSpace = vocabulary.AddPrefixSpace;
         _endOfWord = vocabulary.EndOfWordSuffix;
         _continuingPrefix = vocabulary.ContinuingSubwordPrefix;
@@ -230,6 +233,42 @@ public sealed class BpeTokenizer : ISubwordTokenizer
                 "The vocabulary is byte-level and declares the continuing subword prefix "
                 + $"'{vocabulary.ContinuingSubwordPrefix}'. A byte-level model's symbols are never "
                 + "prefixed here while a merge's right side is still stripped, so the two would disagree.",
+                nameof(vocabulary));
+        }
+    }
+
+    /// <summary>
+    /// Refuses a <see cref="BpeVocabulary.PreSplit"/> whose <see cref="SplitBehavior"/>
+    /// is not one of the five values the type defines.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="SplitBehavior"/> is a public enum on <see cref="BpeSplitStep"/>, a public
+    /// record, so a hand-built <see cref="BpeVocabulary"/> can name a value outside it —
+    /// no loader can produce one, since <see cref="Persistence.TokenizerJsonLoader"/> maps
+    /// from a fixed set of strings, but nothing stops a caller building
+    /// <see cref="BpeVocabulary"/> directly. Left unchecked, that value surfaces only once
+    /// <see cref="Encode(string)"/> walks into <see cref="BpePreTokenizer"/>'s merge-loop
+    /// switch and throws <see cref="ArgumentOutOfRangeException"/> naming a parameter of
+    /// that internal type that no caller of this constructor can see. Refusing it here
+    /// instead names the vocabulary, the same way
+    /// <see cref="EnsureByteLevelDeclaresNoContinuingPrefix"/> does for the other hand-built
+    /// shape no loader guards.
+    /// </remarks>
+    /// <param name="vocabulary">The vocabulary the constructor was handed.</param>
+    private static void EnsureSplitBehaviorIsDefined(BpeVocabulary vocabulary)
+    {
+        if (vocabulary.PreSplit is not { } preSplit)
+        {
+            return;
+        }
+
+        bool defined = preSplit.Behavior is SplitBehavior.Isolated or SplitBehavior.Removed
+            or SplitBehavior.MergedWithPrevious or SplitBehavior.MergedWithNext or SplitBehavior.Contiguous;
+        if (!defined)
+        {
+            throw new ArgumentException(
+                $"The vocabulary's Split step declares behavior {(int)preSplit.Behavior}, "
+                + "which is not one of the five SplitBehavior values.",
                 nameof(vocabulary));
         }
     }

@@ -236,6 +236,30 @@ public sealed class BpeSplitBehaviorTests
         Assert.Contains(distinguishing, error.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The hand-built path, which no loader guards: <c>SplitBehavior</c> is a public
+    /// enum on a public record, so a value outside its five members can only reach
+    /// <see cref="BpeVocabulary.PreSplit"/> by construction, not through
+    /// <see cref="TokenizerJsonLoader"/>. Refused at the <see cref="BpeTokenizer"/>
+    /// constructor, naming the vocabulary, rather than surfacing later from inside
+    /// <c>Encode</c> as an <see cref="ArgumentOutOfRangeException"/> naming an
+    /// internal parameter no caller of the constructor can see.
+    /// </summary>
+    [Fact]
+    public void The_constructor_refuses_an_undefined_split_behavior()
+    {
+        var vocabulary = new BpeVocabulary(
+            new Dictionary<string, int>(StringComparer.Ordinal) { ["a"] = 0, ["b"] = 1 },
+            [])
+        {
+            PreSplit = new BpeSplitStep(@"\w+", (SplitBehavior)99, Invert: false),
+        };
+
+        ArgumentException error = Assert.Throws<ArgumentException>(() => new BpeTokenizer(vocabulary));
+
+        Assert.Contains("SplitBehavior", error.Message, StringComparison.Ordinal);
+    }
+
     private static BpeVocabulary Vocabulary(string model)
     {
         using JsonDocument doc = OracleLoader.Load(Corpus);
