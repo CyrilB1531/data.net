@@ -1,0 +1,346 @@
+{
+ "metadata": {
+  "algorithm": "Unicode normalization forms",
+  "library": "tokenizers",
+  "library_version": "0.23.1",
+  "count": 56
+ },
+ "cases": [
+  {
+   "id": 0,
+   "form": "NFC",
+   "text": "école",
+   "normalized": "école"
+  },
+  {
+   "id": 1,
+   "form": "NFKC",
+   "text": "école",
+   "normalized": "école"
+  },
+  {
+   "id": 2,
+   "form": "NFD",
+   "text": "école",
+   "normalized": "école"
+  },
+  {
+   "id": 3,
+   "form": "NFKD",
+   "text": "école",
+   "normalized": "école"
+  },
+  {
+   "id": 4,
+   "form": "NFC",
+   "text": "école",
+   "normalized": "école"
+  },
+  {
+   "id": 5,
+   "form": "NFKC",
+   "text": "école",
+   "normalized": "école"
+  },
+  {
+   "id": 6,
+   "form": "NFD",
+   "text": "école",
+   "normalized": "école"
+  },
+  {
+   "id": 7,
+   "form": "NFKD",
+   "text": "école",
+   "normalized": "école"
+  },
+  {
+   "id": 8,
+   "form": "NFC",
+   "text": "Ångstrom unit",
+   "normalized": "Ångstrom unit"
+  },
+  {
+   "id": 9,
+   "form": "NFKC",
+   "text": "Ångstrom unit",
+   "normalized": "Ångstrom unit"
+  },
+  {
+   "id": 10,
+   "form": "NFD",
+   "text": "Ångstrom unit",
+   "normalized": "Ångstrom unit"
+  },
+  {
+   "id": 11,
+   "form": "NFKD",
+   "text": "Ångstrom unit",
+   "normalized": "Ångstrom unit"
+  },
+  {
+   "id": 12,
+   "form": "NFC",
+   "text": "ﬁve o￦clock",
+   "normalized": "ﬁve o￦clock"
+  },
+  {
+   "id": 13,
+   "form": "NFKC",
+   "text": "ﬁve o￦clock",
+   "normalized": "five o₩clock"
+  },
+  {
+   "id": 14,
+   "form": "NFD",
+   "text": "ﬁve o￦clock",
+   "normalized": "ﬁve o￦clock"
+  },
+  {
+   "id": 15,
+   "form": "NFKD",
+   "text": "ﬁve o￦clock",
+   "normalized": "five o₩clock"
+  },
+  {
+   "id": 16,
+   "form": "NFC",
+   "text": "① ② café",
+   "normalized": "① ② café"
+  },
+  {
+   "id": 17,
+   "form": "NFKC",
+   "text": "① ② café",
+   "normalized": "1 2 café"
+  },
+  {
+   "id": 18,
+   "form": "NFD",
+   "text": "① ② café",
+   "normalized": "① ② café"
+  },
+  {
+   "id": 19,
+   "form": "NFKD",
+   "text": "① ② café",
+   "normalized": "1 2 café"
+  },
+  {
+   "id": 20,
+   "form": "NFC",
+   "text": "hello world",
+   "normalized": "hello world"
+  },
+  {
+   "id": 21,
+   "form": "NFKC",
+   "text": "hello world",
+   "normalized": "hello world"
+  },
+  {
+   "id": 22,
+   "form": "NFD",
+   "text": "hello world",
+   "normalized": "hello world"
+  },
+  {
+   "id": 23,
+   "form": "NFKD",
+   "text": "hello world",
+   "normalized": "hello world"
+  },
+  {
+   "id": 24,
+   "form": "NFC",
+   "text": "ẛ̣",
+   "normalized": "ẛ̣"
+  },
+  {
+   "id": 25,
+   "form": "NFKC",
+   "text": "ẛ̣",
+   "normalized": "ṩ"
+  },
+  {
+   "id": 26,
+   "form": "NFD",
+   "text": "ẛ̣",
+   "normalized": "ẛ̣"
+  },
+  {
+   "id": 27,
+   "form": "NFKD",
+   "text": "ẛ̣",
+   "normalized": "ṩ"
+  },
+  {
+   "id": 28,
+   "form": "NFC",
+   "text": "İ",
+   "normalized": "İ"
+  },
+  {
+   "id": 29,
+   "form": "NFKC",
+   "text": "İ",
+   "normalized": "İ"
+  },
+  {
+   "id": 30,
+   "form": "NFD",
+   "text": "İ",
+   "normalized": "İ"
+  },
+  {
+   "id": 31,
+   "form": "NFKD",
+   "text": "İ",
+   "normalized": "İ"
+  },
+  {
+   "id": 32,
+   "form": "NFC",
+   "text": "Ω",
+   "normalized": "Ω"
+  },
+  {
+   "id": 33,
+   "form": "NFKC",
+   "text": "Ω",
+   "normalized": "Ω"
+  },
+  {
+   "id": 34,
+   "form": "NFD",
+   "text": "Ω",
+   "normalized": "Ω"
+  },
+  {
+   "id": 35,
+   "form": "NFKD",
+   "text": "Ω",
+   "normalized": "Ω"
+  },
+  {
+   "id": 36,
+   "form": "NFC",
+   "text": "̈́",
+   "normalized": "̈́"
+  },
+  {
+   "id": 37,
+   "form": "NFKC",
+   "text": "̈́",
+   "normalized": "̈́"
+  },
+  {
+   "id": 38,
+   "form": "NFD",
+   "text": "̈́",
+   "normalized": "̈́"
+  },
+  {
+   "id": 39,
+   "form": "NFKD",
+   "text": "̈́",
+   "normalized": "̈́"
+  },
+  {
+   "id": 40,
+   "form": "NFC",
+   "text": "가한",
+   "normalized": "가한"
+  },
+  {
+   "id": 41,
+   "form": "NFKC",
+   "text": "가한",
+   "normalized": "가한"
+  },
+  {
+   "id": 42,
+   "form": "NFD",
+   "text": "가한",
+   "normalized": "가한"
+  },
+  {
+   "id": 43,
+   "form": "NFKD",
+   "text": "가한",
+   "normalized": "가한"
+  },
+  {
+   "id": 44,
+   "form": "NFC",
+   "text": "豈",
+   "normalized": "豈"
+  },
+  {
+   "id": 45,
+   "form": "NFKC",
+   "text": "豈",
+   "normalized": "豈"
+  },
+  {
+   "id": 46,
+   "form": "NFD",
+   "text": "豈",
+   "normalized": "豈"
+  },
+  {
+   "id": 47,
+   "form": "NFKD",
+   "text": "豈",
+   "normalized": "豈"
+  },
+  {
+   "id": 48,
+   "form": "NFC",
+   "text": "ᾂ",
+   "normalized": "ᾂ"
+  },
+  {
+   "id": 49,
+   "form": "NFKC",
+   "text": "ᾂ",
+   "normalized": "ᾂ"
+  },
+  {
+   "id": 50,
+   "form": "NFD",
+   "text": "ᾂ",
+   "normalized": "ᾂ"
+  },
+  {
+   "id": 51,
+   "form": "NFKD",
+   "text": "ᾂ",
+   "normalized": "ᾂ"
+  },
+  {
+   "id": 52,
+   "form": "NFC",
+   "text": "ﷺ",
+   "normalized": "ﷺ"
+  },
+  {
+   "id": 53,
+   "form": "NFKC",
+   "text": "ﷺ",
+   "normalized": "صلى الله عليه وسلم"
+  },
+  {
+   "id": 54,
+   "form": "NFD",
+   "text": "ﷺ",
+   "normalized": "ﷺ"
+  },
+  {
+   "id": 55,
+   "form": "NFKD",
+   "text": "ﷺ",
+   "normalized": "صلى الله عليه وسلم"
+  }
+ ]
+}
