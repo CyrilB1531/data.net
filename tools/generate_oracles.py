@@ -3763,6 +3763,170 @@ def generate_bpe_sequence_split() -> dict:
     }
 
 
+# --- Split behavior and invert (issue #145) -----------------------------------
+
+# Twenty models: five behaviors x invert x two patterns. The behaviors are named
+# in the Python constructor's spelling; the file they serialize to uses
+# PascalCase, which is what the C# loader reads. Measured, spec D6.
+_SPLIT_BEHAVIORS = ["isolated", "removed", "merged_with_previous",
+                    "merged_with_next", "contiguous"]
+
+# Two patterns, because one cannot separate every behavior. "\w+" leaves gaps in
+# most of these texts, which is what tells removed and the two merge directions
+# apart -- but it is greedy, so it never produces two ADJACENT matches, and
+# isolated and contiguous differ nowhere else (spec D4). "X" over "aXXb" is that
+# shape, and it is the only reason the second pattern exists.
+_SPLIT_PATTERN = r"\w+"
+_SPLIT_ADJACENT_PATTERN = "X"
+
+
+def _split_behavior_model(pattern, behavior, invert):
+    """One byte-level BPE behind Sequence[Split(pattern), ByteLevel].
+
+    add_prefix_space is off throughout, deliberately: HuggingFace prepends the
+    space between the two splits and DataNet prepends it per segment, so with
+    it on every case here would measure that divergence on top of this one.
+    ADR 0022 section 10 recorded the same reasoning.
+
+    use_regex is off on the ByteLevel step so the Split step's arrangement
+    reaches the model untouched -- with it on, GPT-2's pattern would re-split
+    every piece and hide the behavior being measured.
+    """
+    from tokenizers import Tokenizer, models, pre_tokenizers, decoders, Regex  # noqa: PLC0415
+
+    vocab = {c: i for i, c in enumerate(sorted(pre_tokenizers.ByteLevel.alphabet()))}
+    tokenizer = Tokenizer(models.BPE(vocab, []))
+    tokenizer.pre_tokenizer = pre_tokenizers.Sequence([
+        pre_tokenizers.Split(Regex(pattern), behavior=behavior, invert=invert),
+        pre_tokenizers.ByteLevel(add_prefix_space=False, use_regex=False),
+    ])
+    tokenizer.decoder = decoders.ByteLevel()
+    return tokenizer
+
+
+def _split_behavior_texts():
+    """The texts, boundaries as well as examples.
+
+    They do NOT make all twenty models differ, and could not: invert is a no-op
+    for isolated and contiguous, and it exchanges the two merge directions, so
+    twelve of the pairs are equal by the reference's own rules rather than by a
+    weakness here. What the set has to do is separate the five behaviors, which
+    needs the adjacency case above for isolated against contiguous.
+    """
+    return [
+        # The spec's D2 row: separates removed, merged_with_previous,
+        # merged_with_next and their inversions from each other.
+        "ab cd!",
+        # D7's boundary rows, which are where an off-by-one in the segmentation
+        # lands: fully matched, not matched at all, and gaps on both ends.
+        "abc",
+        "  ",
+        " ab ",
+        "",
+        # Adjacent matches under the second pattern -- the only shape that
+        # tells isolated from contiguous (D4).
+        "aXXb",
+    ]
+
+
+def _split_behavior_models() -> list[tuple]:
+    """(name, declares, pattern, behavior, invert, tokenizer, texts)."""
+    carried = []
+    for behavior in _SPLIT_BEHAVIORS:
+        for invert in (False, True):
+            for pattern, tag in ((_SPLIT_PATTERN, ""), (_SPLIT_ADJACENT_PATTERN, "_adjacent")):
+                name = f"{behavior}{'_inverted' if invert else ''}{tag}"
+                carried.append((
+                    name,
+                    f"behavior {behavior}, invert {invert}, pattern {pattern!r}",
+                    pattern, behavior, invert,
+                    _split_behavior_model(pattern, behavior, invert),
+                    _split_behavior_texts(),
+                ))
+    return carried
+
+
+def _split_behavior_refusals() -> list[dict]:
+    """The three Split-step shapes the reference refuses to build."""
+    from tokenizers import Tokenizer  # noqa: PLC0415
+
+    def document(step):
+        return json.dumps({
+            "version": "1.0", "truncation": None, "padding": None, "added_tokens": [],
+            "normalizer": None,
+            "pre_tokenizer": {"type": "Sequence", "pretokenizers": [
+                step, {"type": "ByteLevel", "add_prefix_space": False,
+                       "trim_offsets": True, "use_regex": False}]},
+            "post_processor": None, "decoder": None,
+            "model": {"type": "BPE", "dropout": None, "unk_token": None,
+                      "continuing_subword_prefix": None, "end_of_word_suffix": None,
+                      "fuse_unk": False, "byte_fallback": False, "ignore_merges": False,
+                      "vocab": {"a": 0}, "merges": []},
+        })
+
+    full = {"type": "Split", "pattern": {"Regex": _SPLIT_PATTERN},
+            "behavior": "Isolated", "invert": False}
+    shapes = [
+        ("behavior_absent", {k: v for k, v in full.items() if k != "behavior"}),
+        ("invert_absent", {k: v for k, v in full.items() if k != "invert"}),
+        ("behavior_unknown", {**full, "behavior": "Nonsense"}),
+    ]
+
+    refusals = []
+    for shape, step in shapes:
+        doc = document(step)
+        try:
+            Tokenizer.from_str(doc)
+        except BaseException as exc:  # noqa: BLE001 - the refusal IS the measurement
+            # Same reasoning as _added_coverage_refusals: BaseException because a
+            # Rust panic surfaces as pyo3_runtime.PanicException, which does not
+            # inherit from Exception. Ctrl-C and a SystemExit are re-raised rather
+            # than recorded as measurements, which is also what S5754 asks for.
+            if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                raise
+            refusals.append({"shape": shape, "document": doc,
+                             "error": f"{type(exc).__name__}: {exc}"})
+            continue
+        raise AssertionError(
+            f"tokenizers accepted {shape}; issue #145's refusal of it rests on the reference refusing it")
+    return refusals
+
+
+def generate_bpe_split_behavior() -> dict:
+    """Every Split behavior and invert, pieces as well as tokens."""
+    carried = _split_behavior_models()
+    cases = []
+    for name, _declares, _pattern, _behavior, _invert, tokenizer, texts in carried:
+        for text in texts:
+            enc = tokenizer.encode(text)
+            cases.append({
+                "id": len(cases),
+                "model": name,
+                "text": text,
+                # The pre-tokenizer's own output, which is where the behavior is.
+                "pieces": [p for p, _span in tokenizer.pre_tokenizer.pre_tokenize_str(text)],
+                "tokens": enc.tokens,
+                "ids": enc.ids,
+            })
+
+    return {
+        "metadata": {
+            "algorithm": "BPE Sequence Split step behavior and invert",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "hand-built: the byte-level alphabet with no merges, defined in tools/generate_oracles.py",
+            "models": {
+                name: {"declares": declares, "pattern": pattern, "behavior": behavior,
+                       "invert": invert, "tokenizer_json": tokenizer.to_str()}
+                for name, declares, pattern, behavior, invert, tokenizer, _ in carried
+            },
+            "refusals": _split_behavior_refusals(),
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -3816,6 +3980,7 @@ def main() -> None:
         "bpe_added_token_coverage.json": generate_bpe_added_token_coverage,
         "bpe_continuing_prefix.json": generate_bpe_continuing_prefix,
         "bpe_sequence_split.json": generate_bpe_sequence_split,
+        "bpe_split_behavior.json": generate_bpe_split_behavior,
         "wordpiece_added_tokens.json": generate_wordpiece_added_tokens,
     }
     for filename, gen in generators.items():

@@ -123,14 +123,23 @@ internal static class Lot3Embeddings
             PreTokenizerPattern = BpePatterns.Gpt2,
             // Stock GPT-2 declares a bare ByteLevel, which does its own splitting
             // and has no Split step in front of it. A Llama-3 or Qwen2 file sets
-            // both, and the two patterns then run in order.
-            PreSplitPattern = null,
+            // one, and its behavior decides what happens to the text between the
+            // pattern's matches.
+            PreSplit = null,
         };
         var bpe = new BpeTokenizer(bpeModel);
         TokenizationResult bpeEncoded = bpe.Encode(Token);
         Console.WriteLine($"  BPE byte-level   : [{string.Join(", ", bpeEncoded.Tokens)}] -> [{string.Join(", ", bpeEncoded.Ids)}]");
         Console.WriteLine($"  BPE round trip   : \"{bpe.Decode(bpeEncoded.Ids)}\"");
         Console.WriteLine($"  merge rank 0     : {bpeModel.Merges[0].Left} + {bpeModel.Merges[0].Right}");
+
+        // A Llama-3 or Qwen2 file's own Sequence declares a Split step ahead of
+        // ByteLevel, carrying the file's behavior and invert -- the two fields
+        // TokenizerJsonLoader now reads instead of assuming (issue #145). The
+        // vocabulary above stays stock GPT-2's shape; this only demonstrates the
+        // type BpeVocabulary.PreSplit carries.
+        var llamaSplit = new BpeSplitStep(BpePatterns.Llama3, SplitBehavior.Isolated, Invert: false);
+        Console.WriteLine($"  BpeSplitStep     : behavior={llamaSplit.Behavior}, invert={llamaSplit.Invert}");
 
         // The same model as a consumer gets it: vocab.json + merges.txt.
         BpeVocabulary fromFiles = BpeFilesLoader.Load(

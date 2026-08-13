@@ -1016,7 +1016,7 @@ public sealed class TokenizerJsonLoaderTests
         BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
         Assert.True(vocabulary.ByteLevel);
-        Assert.Null(vocabulary.PreSplitPattern);
+        Assert.Null(vocabulary.PreSplit);
         Assert.Equal(BpePatterns.Gpt2, vocabulary.PreTokenizerPattern);
     }
 
@@ -1045,7 +1045,7 @@ public sealed class TokenizerJsonLoaderTests
     /// The same flag inside a <c>Sequence</c> of <c>Split</c> then <c>ByteLevel</c> is
     /// the opposite case and stays accepted, unlike a bare <c>ByteLevel</c>: the
     /// <c>Split</c> step still carries a pattern of its own -- read into
-    /// <see cref="BpeVocabulary.PreSplitPattern"/> -- so <c>use_regex: false</c> only
+    /// <see cref="BpeVocabulary.PreSplit"/> -- so <c>use_regex: false</c> only
     /// means <c>ByteLevel</c> contributes no second pattern of its own, not that
     /// nothing is split at all. Issue #143.
     /// </summary>
@@ -1055,7 +1055,7 @@ public sealed class TokenizerJsonLoaderTests
         const string Json = """
         {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
          "pre_tokenizer":{"type":"Sequence","pretokenizers":[
-            {"type":"Split","pattern":{"Regex":"\\w+"},"behavior":"Isolated"},
+            {"type":"Split","pattern":{"Regex":"\\w+"},"behavior":"Isolated","invert":false},
             {"type":"ByteLevel","add_prefix_space":false,"use_regex":false}]},
          "decoder":{"type":"ByteLevel","add_prefix_space":true}}
         """;
@@ -1063,7 +1063,8 @@ public sealed class TokenizerJsonLoaderTests
         BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
         Assert.True(vocabulary.ByteLevel);
-        Assert.Equal("\\w+", vocabulary.PreSplitPattern);
+        Assert.NotNull(vocabulary.PreSplit);
+        Assert.Equal("\\w+", vocabulary.PreSplit.Pattern);
         Assert.Null(vocabulary.PreTokenizerPattern);
     }
 
@@ -1071,7 +1072,7 @@ public sealed class TokenizerJsonLoaderTests
     /// A <c>Sequence</c>'s <c>ByteLevel</c> step that omits <c>use_regex</c>
     /// entirely -- what a hand-written <c>tokenizer.json</c> may do, leaning on
     /// the same default the reference relies on. Absent means on: both patterns
-    /// are carried, the <c>Split</c> step's into <see cref="BpeVocabulary.PreSplitPattern"/>
+    /// are carried, the <c>Split</c> step's into <see cref="BpeVocabulary.PreSplit"/>
     /// and <see cref="BpePatterns.Gpt2"/> into <see cref="BpeVocabulary.PreTokenizerPattern"/>.
     /// Issue #143.
     /// </summary>
@@ -1081,7 +1082,7 @@ public sealed class TokenizerJsonLoaderTests
         const string Json = """
         {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
          "pre_tokenizer":{"type":"Sequence","pretokenizers":[
-            {"type":"Split","pattern":{"Regex":"\\w+"},"behavior":"Isolated"},
+            {"type":"Split","pattern":{"Regex":"\\w+"},"behavior":"Isolated","invert":false},
             {"type":"ByteLevel","add_prefix_space":false}]},
          "decoder":{"type":"ByteLevel","add_prefix_space":true}}
         """;
@@ -1089,7 +1090,8 @@ public sealed class TokenizerJsonLoaderTests
         BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
         Assert.True(vocabulary.ByteLevel);
-        Assert.Equal("\\w+", vocabulary.PreSplitPattern);
+        Assert.NotNull(vocabulary.PreSplit);
+        Assert.Equal("\\w+", vocabulary.PreSplit.Pattern);
         Assert.Equal(BpePatterns.Gpt2, vocabulary.PreTokenizerPattern);
     }
 
@@ -1124,7 +1126,7 @@ public sealed class TokenizerJsonLoaderTests
         const string Json = """
         {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
          "pre_tokenizer":{"type":"Sequence","pretokenizers":[
-            {"type":"Split","pattern":{"Regex":"\\w+"},"behavior":"Isolated"},
+            {"type":"Split","pattern":{"Regex":"\\w+"},"behavior":"Isolated","invert":false},
             {"type":"ByteLevel","use_regex":true}]}}
         """;
 
