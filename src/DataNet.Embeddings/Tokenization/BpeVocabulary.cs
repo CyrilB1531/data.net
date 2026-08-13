@@ -111,12 +111,29 @@ public sealed record BpeVocabulary(
     public string? UnkToken { get; init; }
 
     /// <summary>
-    /// The pattern text is split on before merging; <see langword="null"/> to split
-    /// on word boundaries, isolating punctuation from letters and digits —
+    /// The last pattern text is split on before merging; <see langword="null"/> to
+    /// split on word boundaries, isolating punctuation from letters and digits —
     /// HuggingFace's <c>Whitespace</c> pre-tokenizer type, not the coarser
-    /// <c>WhitespaceSplit</c> that only collapses whitespace runs.
+    /// <c>WhitespaceSplit</c> that only collapses whitespace runs. When
+    /// <see cref="PreSplitPattern"/> is also set, this pattern runs second, over
+    /// every piece the pre-split produced, rather than alone.
     /// </summary>
     public string? PreTokenizerPattern { get; init; }
+
+    /// <summary>
+    /// The pattern a <c>Sequence</c>'s <c>Split</c> step declares, applied before
+    /// <see cref="PreTokenizerPattern"/>; <see langword="null"/> when the file
+    /// declares no such step.
+    /// </summary>
+    /// <remarks>
+    /// HuggingFace's <c>Sequence</c> of <c>Split</c> then <c>ByteLevel</c> splits
+    /// twice: the <c>Split</c> step's pattern first, then <c>ByteLevel</c>'s own
+    /// over each resulting piece, unless its <c>use_regex</c> is off. Measured
+    /// against <c>tokenizers</c> 0.23.1, where <c>"hello123 don't"</c> gives
+    /// <c>['hello', '123', 'Ġ', 'don', "'t"]</c> with the second split and
+    /// <c>['hello123', 'Ġ', "don't"]</c> without it.
+    /// </remarks>
+    public string? PreSplitPattern { get; init; }
 
     /// <summary>Number of entries in the vocabulary.</summary>
     public int Count => Vocab.Count;
@@ -145,6 +162,7 @@ public sealed record BpeVocabulary(
             || !string.Equals(ContinuingSubwordPrefix, other.ContinuingSubwordPrefix, StringComparison.Ordinal)
             || !string.Equals(UnkToken, other.UnkToken, StringComparison.Ordinal)
             || !string.Equals(PreTokenizerPattern, other.PreTokenizerPattern, StringComparison.Ordinal)
+            || !string.Equals(PreSplitPattern, other.PreSplitPattern, StringComparison.Ordinal)
             || Vocab.Count != other.Vocab.Count
             || Merges.Count != other.Merges.Count
             || AddedTokens.Count != other.AddedTokens.Count)
@@ -183,7 +201,8 @@ public sealed record BpeVocabulary(
             hash = (hash * 31) + (EndOfWordSuffix is null ? 0 : StringComparer.Ordinal.GetHashCode(EndOfWordSuffix));
             hash = (hash * 31) + (ContinuingSubwordPrefix is null ? 0 : StringComparer.Ordinal.GetHashCode(ContinuingSubwordPrefix));
             hash = (hash * 31) + (UnkToken is null ? 0 : StringComparer.Ordinal.GetHashCode(UnkToken));
-            return (hash * 31) + (PreTokenizerPattern is null ? 0 : StringComparer.Ordinal.GetHashCode(PreTokenizerPattern));
+            hash = (hash * 31) + (PreTokenizerPattern is null ? 0 : StringComparer.Ordinal.GetHashCode(PreTokenizerPattern));
+            return (hash * 31) + (PreSplitPattern is null ? 0 : StringComparer.Ordinal.GetHashCode(PreSplitPattern));
         }
     }
 

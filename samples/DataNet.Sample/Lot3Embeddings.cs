@@ -121,6 +121,10 @@ internal static class Lot3Embeddings
         {
             ByteLevel = true,
             PreTokenizerPattern = BpePatterns.Gpt2,
+            // Stock GPT-2 declares a bare ByteLevel, which does its own splitting
+            // and has no Split step in front of it. A Llama-3 or Qwen2 file sets
+            // both, and the two patterns then run in order.
+            PreSplitPattern = null,
         };
         var bpe = new BpeTokenizer(bpeModel);
         TokenizationResult bpeEncoded = bpe.Encode(Token);

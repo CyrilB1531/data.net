@@ -39,7 +39,7 @@ public sealed class BpePreTokenizeTests
             string text = c.GetProperty("text").GetString()!;
             string[] expected = c.GetProperty("pieces").EnumerateArray().Select(e => e.GetString()!).ToArray();
 
-            var splitter = new BpePreTokenizer(patterns.GetProperty(name).GetString());
+            var splitter = new BpePreTokenizer(null, patterns.GetProperty(name).GetString());
             pieces.Clear();
             splitter.Split(text, pieces);
             string[] mapped = [.. pieces.Select(ToByteLevel)];
@@ -89,7 +89,7 @@ public sealed class BpePreTokenizeTests
     [Fact]
     public void The_null_pattern_splits_on_word_boundaries_not_on_whitespace_alone()
     {
-        var splitter = new BpePreTokenizer(null);
+        var splitter = new BpePreTokenizer(null, null);
         var pieces = new List<string>();
         splitter.Split("world!", pieces);
         Assert.Equal(["world", "!"], pieces);
@@ -98,7 +98,7 @@ public sealed class BpePreTokenizeTests
     [Fact]
     public void A_pathological_pattern_times_out_rather_than_hanging()
     {
-        var splitter = new BpePreTokenizer("(a+)+$");
+        var splitter = new BpePreTokenizer(null, "(a+)+$");
         var pieces = new List<string>();
         Assert.Throws<RegexMatchTimeoutException>(
             () => splitter.Split(new string('a', 40) + "!", pieces));
