@@ -1,3 +1,6 @@
+#if NET5_0_OR_GREATER
+using System.Numerics;
+#endif
 using DataNet.Metrics.Internal;
 
 namespace DataNet.Metrics;
@@ -143,44 +146,186 @@ public static class R2
     {
         double[] scores = new double[outputCount];
         double[] denominators = new double[outputCount];
-        double[] numerators = new double[outputCount];
-        double[] means = new double[outputCount];
-        bool weighted = !sampleWeight.IsEmpty;
-        double totalWeight = 0.0;
+        CompensatedSum[] numerators = new CompensatedSum[outputCount];
+        CompensatedSum[] centredSquares = new CompensatedSum[outputCount];
 
+        if (sampleWeight.IsEmpty)
+        {
+            AccumulateUnweighted(yTrue, yPred, samples, numerators, centredSquares);
+        }
+        else
+        {
+            AccumulateWeighted(yTrue, yPred, sampleWeight, samples, numerators, centredSquares);
+        }
+
+        for (int col = 0; col < outputCount; col++)
+        {
+            denominators[col] = centredSquares[col].Value;
+            scores[col] = Resolve(numerators[col].Value, denominators[col], samples, forceFinite, zeroDivision);
+        }
+        return (scores, denominators);
+    }
+
+    // meanSums is not a parameter here or on the weighted overload below: it
+    // is read only to compute means, which is read only inside this method
+    // (Compute never sees it), so it is a local rather than a caller-allocated
+    // array threaded through for no reason. Dropping it also keeps both
+    // overloads under S107's seven-parameter limit with room to spare.
+    //
+    // No weight to multiply and no total to accumulate: the sum of n ones is
+    // exactly n for every n below 2^53, so the unweighted mean divides by
+    // samples directly rather than walking a weight column of 1.0s.
+    private static void AccumulateUnweighted(
+        ReadOnlySpan<double> yTrue,
+        ReadOnlySpan<double> yPred,
+        int samples,
+        CompensatedSum[] numerators,
+        CompensatedSum[] centredSquares)
+    {
+        int outputCount = numerators.Length;
+
+        // outputCount == 1 is the common shape (a single target) and the only
+        // one where rows are contiguous in yTrue/yPred, so a SIMD lane can hold
+        // consecutive samples instead of columns of the same row. outputCount
+        // > 1 keeps the scalar loop below rather than gathering a strided
+        // column into a Vector<T>. Vector.IsHardwareAccelerated also falls
+        // through to the scalar loop on a runtime where Vector<double> is
+        // software-emulated, the same guard Pooling.cs and
+        // EmbeddingIndex.Persistence.cs use (VectorMath.Dot predates it).
+#if NET5_0_OR_GREATER
+        if (outputCount == 1 && Vector.IsHardwareAccelerated)
+        {
+            AccumulateUnweightedVectorized(yTrue, yPred, samples, numerators, centredSquares);
+            return;
+        }
+#endif
+
+        CompensatedSum[] meanSums = new CompensatedSum[outputCount];
         for (int row = 0; row < samples; row++)
         {
-            double weight = weighted ? sampleWeight[row] : 1.0;
-            totalWeight += weight;
             int offset = row * outputCount;
             for (int col = 0; col < outputCount; col++)
             {
-                means[col] += weight * yTrue[offset + col];
+                meanSums[col].Add(yTrue[offset + col]);
             }
         }
+
+        double[] means = new double[outputCount];
         for (int col = 0; col < outputCount; col++)
         {
-            means[col] /= totalWeight;
+            means[col] = meanSums[col].Value / samples;
         }
 
         for (int row = 0; row < samples; row++)
         {
-            double weight = weighted ? sampleWeight[row] : 1.0;
             int offset = row * outputCount;
             for (int col = 0; col < outputCount; col++)
             {
                 double residual = yTrue[offset + col] - yPred[offset + col];
                 double centred = yTrue[offset + col] - means[col];
-                numerators[col] += weight * residual * residual;
-                denominators[col] += weight * centred * centred;
+                numerators[col].Add(residual * residual);
+                centredSquares[col].Add(centred * centred);
+            }
+        }
+    }
+
+#if NET5_0_OR_GREATER
+    // Not guaranteed bit-identical with the scalar loop above: see
+    // VectorCompensatedSum's remarks for why lane-wise summation can reorder
+    // the additions. Both stay Neumaier-compensated and the oracle corpus
+    // compares at 1e-9.
+    private static void AccumulateUnweightedVectorized(
+        ReadOnlySpan<double> yTrue,
+        ReadOnlySpan<double> yPred,
+        int samples,
+        CompensatedSum[] numerators,
+        CompensatedSum[] centredSquares)
+    {
+        int width = Vector<double>.Count;
+        VectorCompensatedSum meanAcc = default;
+        int i = 0;
+        for (; i <= samples - width; i += width)
+        {
+            meanAcc.Add(new Vector<double>(yTrue.Slice(i, width)));
+        }
+
+        CompensatedSum meanSum = meanAcc.Reduce();
+        for (; i < samples; i++)
+        {
+            meanSum.Add(yTrue[i]);
+        }
+
+        double mean = meanSum.Value / samples;
+        var meanVec = new Vector<double>(mean);
+
+        VectorCompensatedSum numeratorAcc = default;
+        VectorCompensatedSum centredSquareAcc = default;
+        i = 0;
+        for (; i <= samples - width; i += width)
+        {
+            var truth = new Vector<double>(yTrue.Slice(i, width));
+            var prediction = new Vector<double>(yPred.Slice(i, width));
+            Vector<double> residual = truth - prediction;
+            Vector<double> centred = truth - meanVec;
+            numeratorAcc.Add(residual * residual);
+            centredSquareAcc.Add(centred * centred);
+        }
+
+        CompensatedSum numerator = numeratorAcc.Reduce();
+        CompensatedSum centredSquare = centredSquareAcc.Reduce();
+        for (; i < samples; i++)
+        {
+            double residual = yTrue[i] - yPred[i];
+            double centred = yTrue[i] - mean;
+            numerator.Add(residual * residual);
+            centredSquare.Add(centred * centred);
+        }
+        numerators[0] = numerator;
+        centredSquares[0] = centredSquare;
+    }
+#endif
+
+    private static void AccumulateWeighted(
+        ReadOnlySpan<double> yTrue,
+        ReadOnlySpan<double> yPred,
+        ReadOnlySpan<double> sampleWeight,
+        int samples,
+        CompensatedSum[] numerators,
+        CompensatedSum[] centredSquares)
+    {
+        int outputCount = numerators.Length;
+        CompensatedSum[] meanSums = new CompensatedSum[outputCount];
+        CompensatedSum totalWeight = default;
+        for (int row = 0; row < samples; row++)
+        {
+            double weight = sampleWeight[row];
+            totalWeight.Add(weight);
+            int offset = row * outputCount;
+            for (int col = 0; col < outputCount; col++)
+            {
+                meanSums[col].Add(weight * yTrue[offset + col]);
             }
         }
 
+        double total = totalWeight.Value;
+        double[] means = new double[outputCount];
         for (int col = 0; col < outputCount; col++)
         {
-            scores[col] = Resolve(numerators[col], denominators[col], samples, forceFinite, zeroDivision);
+            means[col] = meanSums[col].Value / total;
         }
-        return (scores, denominators);
+
+        for (int row = 0; row < samples; row++)
+        {
+            double weight = sampleWeight[row];
+            int offset = row * outputCount;
+            for (int col = 0; col < outputCount; col++)
+            {
+                double residual = yTrue[offset + col] - yPred[offset + col];
+                double centred = yTrue[offset + col] - means[col];
+                numerators[col].Add(weight * residual * residual);
+                centredSquares[col].Add(weight * centred * centred);
+            }
+        }
     }
 
     /// <summary>

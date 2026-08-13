@@ -521,6 +521,25 @@ First release of a fourth package.
   agreeing with scikit-learn to a unit in the last place and being out by 1.4e-8
   relative. `netstandard2.0` has no `log1p` under any name, and one
   implementation for both targets is what keeps them from disagreeing.
+- **Accumulation is compensated, not sequential.** `R2`'s two passes,
+  `ExplainedVariance`'s five accumulations, and `Outputs.WeightedMean` — the
+  walk `MeanSquaredError`, `RootMeanSquaredError`, `MeanAbsoluteError`,
+  `MeanAbsolutePercentageError`, `MeanSquaredLogError`,
+  `RootMeanSquaredLogError` and `PinballLoss` all share — sum with Neumaier
+  compensation rather than a running total. A plain sequential sum divides its
+  rounding error differently from numpy's pairwise reduction, and on an
+  ill-conditioned target — a large offset over a small spread — that
+  difference compounds through `R2`'s two passes into an answer measured
+  **357× outside** the oracle's `1e-9` tolerance (issue #127). The
+  unweighted paths were then optimised back down rather than left at
+  compensation's first cost: an unweighted fast path at all three sites, and,
+  for `R2` and `ExplainedVariance`'s single-output case, a `Vector<double>`
+  reduction on `net10.0`. At n = 1 000 000, `r2` now runs at **0.55×** the
+  cost of the original uncompensated loop — faster, not merely recovered —
+  and 2.15× faster than numpy on the same corpus; `mse` and `mae` sit close
+  to unchanged, within measurement noise of that round. Numbers, the
+  optimisation, and the noise caveat are in
+  [the performance guide](docs/guides/performance.md).
 - **Measured, and one row honestly under the gate.** `mse`, `mae`, `median_ae`
   and `r2` were benchmarked against scikit-learn over six shapes. `median_ae` is
   the one operation in the package below the 1× processor-time gate, at

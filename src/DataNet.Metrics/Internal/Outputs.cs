@@ -191,24 +191,44 @@ internal static class Outputs
         TKernel kernel = default)
         where TKernel : struct, IResidualKernel
     {
-        double[] result = new double[outputCount];
-        bool weighted = !sampleWeight.IsEmpty;
-        double totalWeight = 0.0;
+        CompensatedSum[] sums = new CompensatedSum[outputCount];
+        double total;
 
-        for (int row = 0; row < samples; row++)
+        if (sampleWeight.IsEmpty)
         {
-            double weight = weighted ? sampleWeight[row] : 1.0;
-            totalWeight += weight;
-            int offset = row * outputCount;
-            for (int col = 0; col < outputCount; col++)
+            for (int row = 0; row < samples; row++)
             {
-                result[col] += weight * kernel.Apply(yTrue[offset + col], yPred[offset + col]);
+                int offset = row * outputCount;
+                for (int col = 0; col < outputCount; col++)
+                {
+                    sums[col].Add(kernel.Apply(yTrue[offset + col], yPred[offset + col]));
+                }
             }
+
+            // Exact: n additions of 1.0 land on n for every n below 2^53, and this
+            // repository's array-length guard is far below that.
+            total = samples;
+        }
+        else
+        {
+            CompensatedSum totalWeight = default;
+            for (int row = 0; row < samples; row++)
+            {
+                double weight = sampleWeight[row];
+                totalWeight.Add(weight);
+                int offset = row * outputCount;
+                for (int col = 0; col < outputCount; col++)
+                {
+                    sums[col].Add(weight * kernel.Apply(yTrue[offset + col], yPred[offset + col]));
+                }
+            }
+            total = totalWeight.Value;
         }
 
+        double[] result = new double[outputCount];
         for (int col = 0; col < outputCount; col++)
         {
-            result[col] /= totalWeight;
+            result[col] = sums[col].Value / total;
         }
 
         return result;

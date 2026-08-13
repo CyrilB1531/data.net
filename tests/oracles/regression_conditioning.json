@@ -1,0 +1,46 @@
+{
+ "metadata": {
+  "algorithm": "Regression under ill conditioning",
+  "library": "scikit-learn",
+  "library_version": "1.9.0",
+  "reference_calls": [
+   "sklearn.metrics.r2_score",
+   "sklearn.metrics.explained_variance_score",
+   "sklearn.metrics.mean_squared_error",
+   "sklearn.metrics.mean_absolute_error"
+  ],
+  "samples": 200000,
+  "offset": 1000000000.0,
+  "spread": 0.01,
+  "perturbation": 1e-06,
+  "construction": "step = spread / samples; y_true[i] = offset + i * step; y_pred[i] = y_true[i] + ((i % 7) - 3) * perturbation",
+  "probe_indices": [
+   0,
+   1,
+   100000,
+   199998,
+   199999
+  ],
+  "probe_bits_y_true": [
+   "41cdcd6500000000",
+   "41cdcd6500000000",
+   "41cdcd650000a3d7",
+   "41cdcd65000147ad",
+   "41cdcd65000147ae"
+  ],
+  "probe_bits_y_pred": [
+   "41cdcd64ffffffe7",
+   "41cdcd64ffffffef",
+   "41cdcd650000a3e8",
+   "41cdcd650001479c",
+   "41cdcd65000147a6"
+  ],
+  "count": 4
+ },
+ "values": {
+  "r2": 0.999999523489,
+  "explained_variance": 0.999999523489,
+  "mse": 3.97092875914e-12,
+  "mae": 1.7029941082e-06
+ }
+}
