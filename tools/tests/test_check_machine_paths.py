@@ -39,6 +39,24 @@ WINDOWS_PROSE = "C:" + "\\Users\\" + "Public"
 # component after it -- the shape that must still be flagged.
 WINDOWS_PATH_WITH_FILE = WINDOWS_PROSE + "\\file"
 
+# The same home directory, written with forward slashes -- which Windows and
+# PowerShell both accept -- rather than backslashes.
+WINDOWS_HOME_FORWARD_SLASH = "C:/Users/" + "someone/src/thing.cs"
+WINDOWS_PROSE_FORWARD_SLASH = "C:/Users/" + "Public"
+
+# A UNC path to a profile redirected onto a network share, assembled from
+# fragments for the same reason POSIX_HOME and WINDOWS_HOME are above: this
+# file must not contain a literal instance of the shape it tests for.
+UNC_HOME = chr(92) * 2 + "server" + chr(92) + "Users" + chr(92) + "someone"
+UNC_HOME_WITH_FILE = UNC_HOME + chr(92) + "file"
+
+# A share that is not called "Users" -- not a home directory, however deep.
+UNC_SHARE_BARE = chr(92) * 2 + "server" + chr(92) + "share"
+
+# The "Users" share itself, named in prose with nobody's profile after it --
+# the same "mention vs. path" distinction WINDOWS_PROSE draws above.
+UNC_USERS_SHARE_BARE = chr(92) * 2 + "server" + chr(92) + "Users"
+
 # Load-bearing paths that must never be flagged. The oracle generator has to
 # run from a neutral directory -- nltk refuses to import its dependencies when
 # they appear to live under the current one -- so /tmp appears in CLAUDE.md,
@@ -77,6 +95,29 @@ def test_a_bare_windows_profile_mention_is_not_flagged():
 
 def test_a_windows_path_with_a_trailing_component_is_flagged():
     assert scan(WINDOWS_PATH_WITH_FILE)
+
+
+def test_a_forward_slash_windows_home_directory_is_flagged():
+    # Caught deliberately by the Windows pattern now, not by luck through the
+    # /Users/ pattern meant for macOS.
+    assert scan(WINDOWS_HOME_FORWARD_SLASH)
+
+
+def test_a_bare_forward_slash_windows_profile_mention_is_not_flagged():
+    assert not scan("See " + WINDOWS_PROSE_FORWARD_SLASH + " for shared files")
+
+
+def test_a_unc_home_directory_is_flagged():
+    assert scan(UNC_HOME_WITH_FILE)
+
+
+def test_a_bare_unc_share_is_not_flagged():
+    # A network share that isn't named "Users" isn't a home directory.
+    assert not scan(UNC_SHARE_BARE)
+
+
+def test_a_bare_unc_users_share_is_not_flagged():
+    assert not scan(UNC_USERS_SHARE_BARE)
 
 
 def test_the_neutral_working_directory_is_not_flagged():

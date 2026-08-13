@@ -42,6 +42,13 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
+# Windows accepts either separator in a path -- cmd, PowerShell and the Win32
+# API all take "C:/Users/..." interchangeably with "C:\Users\..." -- while a
+# backslash written into a JSON or C# string literal comes out doubled. This
+# fragment matches one of: a single or doubled backslash, or a single forward
+# slash, which is never doubled because nothing escapes it.
+_WINDOWS_SEP = r"(?:\\{1,2}|/)"
+
 # A directory named after a person, under the place each platform keeps them.
 # The trailing separator is required: it is what distinguishes a path from a
 # mention of the directory itself in prose.
@@ -49,7 +56,16 @@ NAMED_SHAPES: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("a home directory under /home", re.compile(r"/home/[A-Za-z0-9._-]+/")),
     ("a home directory under /Users", re.compile(r"/Users/[A-Za-z0-9._-]+/")),
     ("a Windows home directory",
-     re.compile(r"[A-Za-z]:\\{1,2}Users\\{1,2}[A-Za-z0-9._-]+\\{1,2}")),
+     re.compile(r"[A-Za-z]:" + _WINDOWS_SEP + r"Users" + _WINDOWS_SEP
+                + r"[A-Za-z0-9._-]+" + _WINDOWS_SEP)),
+    # A UNC path to a profile redirected onto a network share: a corporate-
+    # Windows shape with no drive letter, so the pattern above -- anchored on
+    # "[A-Za-z]:" -- cannot see it. "Users" is required for the same reason
+    # the drive-letter pattern requires it: a bare server share is not a home
+    # directory, and a share literally called "Users" with nobody's profile
+    # after it still is not one.
+    ("a Windows home directory on a network share",
+     re.compile(r"\\{2,4}[A-Za-z0-9._-]+\\{1,2}Users\\{1,2}[A-Za-z0-9._-]+\\{1,2}")),
     # A following path character is required, so that a mention of the
     # directory in prose is not a finding and, more usefully, so that this
     # very line does not match the pattern it defines.
