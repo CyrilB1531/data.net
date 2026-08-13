@@ -24,10 +24,12 @@ commit is on it)
 - **Warnings are errors repository-wide.** Since #109 the build enforces nine Sonar rules locally,
   `S3776` (cognitive complexity over 15) and `S1192` (a literal repeated three times) among them. A
   finding is a compile error on your machine.
-- **`python:S1192` fires on the generator too, and it is invisible to `dotnet build`.** It has already
-  been tripped twice by adding literals near a threshold that was already tight — most recently on #120,
-  where a maintainer had to hoist `[UNK]` after the fact. Before adding a repeated string to
-  `tools/generate_oracles.py`, check whether a module-level constant for it already exists.
+- **`python:S1192` fires on the generator too, and it is invisible to `dotnet build`** — but read its two
+  exceptions before reaching for a constant: it raises nothing on a string of **fewer than 5 characters**,
+  nor on one made **only of letters, numbers and underscores**. That is why `"metadata"` appears 45 times
+  in `tools/generate_oracles.py` without a finding, and why `"[UNK]"` — five characters, with brackets —
+  needed hoisting on #120. Check a literal against those two exceptions first; naming a constant for an
+  exempt string adds indirection and buys nothing.
 - **Two target frameworks**, `net10.0;netstandard2.0`, one public API, no `#if` at call sites. The test
   projects link the same sources and run twice.
 - **Every public member carries XML documentation** naming the HuggingFace field it matches.
@@ -120,15 +122,21 @@ grep -n "_no_op_models" -A 30 tools/generate_oracles.py
 That gives the `metadata.models` convention — `{name: {"declares", "tokenizer_json"}}` built from a list of
 `(name, declares, tokenizer, texts)` tuples.
 
-- [ ] **Step 2: Check whether the literals you need already have constants**
+- [ ] **Step 2: Confirm no literal you add can trip `python:S1192`**
+
+The rule's exceptions exempt strings under 5 characters and strings of only letters, numbers and
+underscores. Checked against this task's code before the plan was written: the merge tuples (`'`, `a`,
+`i`, `h`, `'a`, `'h`, `u`) are all under 5 characters, every dict key and both model names are
+letters-and-underscores, and the nine texts are distinct and used once each. **Nothing here needs a
+constant.**
+
+Re-check only if you deviate from the brief's code. If you do add a repeated literal that clears neither
+exception, hoist it at module level with a comment saying why it is named — and look first, because a
+constant may already exist:
 
 ```bash
 grep -n "^_[A-Z_]* = \|^UNK_TOKEN" tools/generate_oracles.py | tail -30
 ```
-
-`python:S1192` fires at three occurrences of a literal and is invisible to `dotnet build`. This has been
-tripped twice already. If you need a string three times, hoist it once at module level with a comment
-saying why it is named.
 
 - [ ] **Step 3: Add the models**
 
