@@ -81,9 +81,13 @@ because every form here changes length.
 
 **Depends on:** nothing.
 
-**Produces:** `bpe_normalizer.json` with `cases[]` of `{id, name, tokenizer_json, text, tokens[], ids[],
-decoded}`, and `unicode_forms.json` with `cases[]` of `{id, form, text, normalized}`. Task 3 replays the
-first; nothing else consumes the second.
+**Produces:** `bpe_normalizer.json` with `cases[]` of `{id, name, tokenizer_json, texts[]}` where each
+entry of `texts[]` is `{text, tokens[], ids[], decoded}` — **the file is carried once per pipeline, not once
+per text**, because GPT-2's `tokenizer.json` is 1.8 MB and forty-four copies of it is a 78 MB corpus against
+a 1.64 MB repository. Six of the seven pipelines are built on a small byte-level model (the 256-character
+alphabet plus a few merges, which covers any input with no unknown token); one stays on real GPT-2 for the
+`nfc` case, the form four of the five surveyed models actually declare. And `unicode_forms.json` with
+`cases[]` of `{id, form, text, normalized}`. Task 3 replays the first; nothing else consumes the second.
 
 **Why this is first.** D5 says a divergence between .NET's Unicode tables and Rust's turns this lot into an
 ADR and removes a form from the reproduced set. That has to be known before the loader decides which four
@@ -676,17 +680,24 @@ one run names every case that differs:
         foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
         {
             string name = c.GetProperty("name").GetString()!;
-            string text = c.GetProperty("text").GetString()!;
-            int[] expected = [.. c.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32())];
 
+            // One tokenizer per pipeline, reused across its texts: the corpus carries
+            // the file once per pipeline rather than once per text, which is what
+            // keeps it near two megabytes instead of seventy-eight.
             BpeVocabulary vocab = TokenizerJsonLoader.LoadBpe(
                 Bytes(c.GetProperty("tokenizer_json").GetString()!), OracleReplay.BpeBounds());
             var tokenizer = new BpeTokenizer(vocab);
-            int[] actual = [.. tokenizer.Encode(text).Ids];
 
-            if (!expected.SequenceEqual(actual))
+            foreach (JsonElement t in c.GetProperty("texts").EnumerateArray())
             {
-                failures.Add($"[{name}] {Escape(text)}: expected [{string.Join(", ", expected)}], got [{string.Join(", ", actual)}]");
+                string text = t.GetProperty("text").GetString()!;
+                int[] expected = [.. t.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32())];
+                int[] actual = [.. tokenizer.Encode(text).Ids];
+
+                if (!expected.SequenceEqual(actual))
+                {
+                    failures.Add($"[{name}] {Escape(text)}: expected [{string.Join(", ", expected)}], got [{string.Join(", ", actual)}]");
+                }
             }
         }
 
@@ -708,16 +719,19 @@ one run names every case that differs:
         foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
         {
             string name = c.GetProperty("name").GetString()!;
-            string expected = c.GetProperty("decoded").GetString()!;
-
             BpeVocabulary vocab = TokenizerJsonLoader.LoadBpe(
                 Bytes(c.GetProperty("tokenizer_json").GetString()!), OracleReplay.BpeBounds());
             var tokenizer = new BpeTokenizer(vocab);
-            string actual = tokenizer.Decode([.. tokenizer.Encode(c.GetProperty("text").GetString()!).Ids]);
 
-            if (!string.Equals(expected, actual, StringComparison.Ordinal))
+            foreach (JsonElement t in c.GetProperty("texts").EnumerateArray())
             {
-                failures.Add($"[{name}] expected {Escape(expected)}, got {Escape(actual)}");
+                string expected = t.GetProperty("decoded").GetString()!;
+                string actual = tokenizer.Decode([.. tokenizer.Encode(t.GetProperty("text").GetString()!).Ids]);
+
+                if (!string.Equals(expected, actual, StringComparison.Ordinal))
+                {
+                    failures.Add($"[{name}] expected {Escape(expected)}, got {Escape(actual)}");
+                }
             }
         }
 
