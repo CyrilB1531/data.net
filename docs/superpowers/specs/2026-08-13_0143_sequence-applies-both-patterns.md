@@ -71,7 +71,7 @@ With Llama-3's actual pattern and `add_prefix_space=false`:
 | `don't` | identical | identical |
 | `the 'quoted' word` | identical | identical |
 
-Six of nine sample texts diverge. Qwen2 diverges identically. English contractions in GPT-2's list pass,
+Five of the eight above diverge. Qwen2 diverges identically. English contractions in GPT-2's list pass,
 which is why nothing noticed: **every French elision fails**, and Irish and Italian names with them.
 
 The failure is silent — different tokens, different ids, no exception — on the two byte-level models

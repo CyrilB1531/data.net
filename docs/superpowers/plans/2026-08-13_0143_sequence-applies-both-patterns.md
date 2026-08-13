@@ -896,13 +896,14 @@ So DataNet reproduced the use_regex:false row and diverged on the default
 one, silently, on Llama-3 and Qwen2 -- and on ordinary text. GPT-2's pattern
 knows the seven English contractions and nothing else, so an apostrophe
 before anything else is split off: it's and don't were identical, j'ai,
-aujourd'hui, C'est, O'Brien and rock'n'roll were not. Six of nine sample
-texts.
+aujourd'hui, C'est, O'Brien and rock'n'roll were not. Five of the eight
+sample texts diverge.
 
-Four existing corpora carry Sequence models and stay green, which is what
-proves the second pattern is applied where it belongs and not everywhere:
-measured, between them they contain not one apostrophe, and that is both why
-the defect survived them and why they can serve as the regression proof.
+Exactly one pre-existing case has a Sequence pre-tokenizer, and its
+ByteLevel step declares use_regex: false -- the one shape this change cannot
+move. Nothing committed exercised Sequence with use_regex: true, which is
+why the defect survived: the new corpus from Task 1 is the first coverage of
+that shape.
 
 Issue #143
 EOF
