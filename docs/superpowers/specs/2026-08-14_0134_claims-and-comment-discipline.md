@@ -72,6 +72,25 @@ why the two halves of this lot use different instruments and why neither substit
 prose in the wrong place: it belongs where someone goes to understand a decision, not where someone is
 trying to read code.
 
+### D5 — nine claims in ten cite nothing
+
+504 comment lines across the tracked tree name a reference library. **46 of them — 9% — carry a pointer to
+anything that would check them**: a corpus file, an oracle case, a measurement, an ADR, an issue.
+
+| zone | claims | citing evidence |
+| --- | ---: | ---: |
+| `src/DataNet.Metrics` | 162 | 2 |
+| `src/DataNet.Embeddings` | 113 | 12 |
+| `src/DataNet.Text` | 76 | 3 |
+| `tests/DataNet.Embeddings.Tests` | 42 | 7 |
+| `tests/DataNet.Metrics.Tests` | 35 | 6 |
+| `tools/generate_oracles.py` | 28 | 10 |
+| `samples/`, `bench/`, the rest | 48 | 6 |
+
+That distribution is what orders the sweep, and it also says what the sweep can honestly be. **Nobody can
+re-derive 504 claims by hand**, and a sweep that said it had would be the most expensive false claim in
+this issue. What it can do is make each one checkable or make it go away.
+
 ## Design
 
 ### The rule, in `CONTRIBUTING.md`
@@ -126,7 +145,57 @@ what keeps this from being a ban**: longer is allowed where it is necessary, and
 is what stops it becoming the norm — the same bargain `#pragma warning disable` strikes. The guard also
 reports the marker count, so growth is visible rather than gradual.
 
-**It cannot be switched on before the 354 blocks are dealt with**, which is what makes this two lots.
+**It cannot be switched on before the 354 blocks are dealt with**, which is why the sweep is in this
+lot rather than after it, and why the guard lands last.
+
+### The sweep, and what it can honestly claim
+
+The 354 over-length blocks and the 504 claims are in scope, and the guard cannot be switched on until the
+blocks are dealt with — that ordering is what makes them one lot rather than two.
+
+**Its product is not "504 claims verified".** It is: every claim either carries a pointer to what would
+check it, or no longer exists. Each is triaged into one of three, and the triage is the work:
+
+1. **A corpus already answers it.** Cite the file and the case. This is the cheap tier and it is why the
+   sweep starts where the corpora are thickest.
+2. **It is executable but nothing frozen answers it.** Run it once and cite the output — or, where the
+   answer deserves freezing, add the corpus case and cite that instead.
+3. **Nothing reasonable checks it.** Then it is an opinion wearing a measurement's clothes, and it gets
+   cut or rewritten as the opinion it is. A comment that cannot be checked is not thereby exempt; it is
+   thereby not a claim.
+
+The same pass handles the block that sits around it: over eight lines, it is cut, moved to an ADR and cited
+from one line, or marked with its reason.
+
+**Order, from D5's distribution:** `src/DataNet.Metrics` with `tests/DataNet.Metrics.Tests` first — the
+most claims, the fewest citations, and oracle corpora that make tier 1 nearly free. Then
+`src/DataNet.Embeddings` with its tests, then `src/DataNet.Text`, then `tools/generate_oracles.py`, then
+`bench/` and `samples/`. Each is its own plan; the guard is switched on by the last of them.
+
+`tests/` is not the lesser half. A comment in `src/` asserts what the reference does; a comment in `tests/`
+asserts **what the corpus proves**, which is the evidence a reviewer reaches for when judging everything
+else. `tools/generate_oracles.py`'s 28 are the same shape one step earlier — they explain why a corpus
+contains what it contains, and they are read by whoever regenerates it.
+
+### The prose documents, read against each other
+
+`CONTRIBUTING.md`, `README.md`, `docs/equivalence.md`, `CLAUDE.md` and `docs/guides/` are in scope for the
+same reason the comments are: they assert things, they were written at different times, and nothing checks
+that they still agree. A duplicated paragraph is where a correction lands in one copy and not the other —
+which is how three of the eight 2026-08-13 failures happened, inside single documents.
+
+This pass looks for three things, and they need different fixes:
+
+- **A statement in two places.** One of them is the home; the other becomes a pointer. Which is which is
+  decided by where a reader would look first, not by which was written first.
+- **Two statements that disagree.** Measure which is true before choosing — a contradiction resolved by
+  preferring the newer sentence is a coin toss with extra steps.
+- **A statement that was true and is not.** The same defect as a stale comment, in a file the build never
+  reads.
+
+`docs/decisions/` is included, and the sweep will have added to it: an ADR contradicting a newer one is
+worse than a stale comment, because ADRs are what the repository consults to settle exactly that kind of
+question.
 
 ## Evidence
 
@@ -138,18 +207,21 @@ a marked block, and a block interrupted by a blank line, which is where a naive 
 The rule's own text is checked by the thing it describes: this spec and its plan are inside the scope it
 declares.
 
+## What done looks like
+
+This lot is large enough that "finished" has to be a state rather than a list of tasks completed:
+
+- `tools/check_comment_length.py` runs in `Lint` **and passes**, which means every block over eight lines
+  carries a marker whose reason a reviewer accepted.
+- Every comment naming a reference library either cites what would check it or has been rewritten as the
+  opinion it was. The count that is 46 of 504 today is the measure, and it is checkable the same way it was
+  measured.
+- No comment paraphrases the line below it.
+- `CONTRIBUTING.md` states the rule, `CLAUDE.md` points at it, and `.github/instructions/` carries the
+  review step.
+- The prose documents say each thing once, and nothing in them contradicts anything else in them.
+
 ## Out of scope
-
-**The sweep of the 354 blocks and the existing claims** — 504 in `src/` naming a reference
-library, and 197 more outside it. It inherits the definition these two
-parts freeze, and specifying it now would mean guessing what that definition says. It gets its own spec,
-sized on `DataNet.Metrics` **and** `tests/DataNet.Metrics.Tests` together — the two halves of one claim are
-usually split across them, and `tests/` is the worse half: a comment there asserts what the corpus
-*proves*, which is the evidence a reviewer reaches for.
-
-**The prose-document audit** — `CONTRIBUTING.md`, `README.md`, `docs/equivalence.md` and the guides read
-against each other for duplication and contradiction. That is a cross-reading, not a rule, and it is its
-own lot.
 
 **Automating truth.** No tool decides whether a sentence is true. The guard counts lines; the review step
 asks for derivation. Anything claiming to do more would be the third instrument this lot does not have.
