@@ -336,6 +336,10 @@ and including `0.2.0` predate the split and covered all three at once — see
   reference makes impossible, on the strength of a comment saying HuggingFace tolerated it, which
   measurement contradicted. Not a breaking change: `SkippedMerges` shipped in no release — the last tag is
   0.2.0, and this is unreleased 0.3.0.
+- **`BpeVocabulary.PreSplitPattern` becomes `PreSplit`**, a `BpeSplitStep` carrying the pattern, the
+  `behavior` and the `invert` flag together — the three fields a `tokenizer.json` requires together, so
+  none of them can be set without the others. `SplitBehavior` is the accompanying enum, spelled as the
+  file spells it.
 
 #### Deprecated
 
@@ -358,6 +362,15 @@ and including `0.2.0` predate the split and covered all three at once — see
   `aujourd'hui` came out as two pieces where `tokenizers` 0.23.1 gives three. Ids stored by an earlier
   build of this unreleased package will not be reproduced. `BpeVocabulary` gains `PreSplitPattern` to
   carry the first of the two.
+- **A `Sequence`'s `Split` step now does what its `behavior` says.** The loader read the step's pattern and
+  nothing else, so every file got the one arrangement `BpePreTokenizer` implemented — which, measured, is
+  exactly `behavior: Removed` with `invert: true`. Every shipped model declares `Isolated`, and their
+  patterns match every character, so the two agreed and the divergence needed a pattern narrower than its
+  input to appear: with a `Split` of `\w+`, `"ab cd!"` produced `['ab', 'cd']` where `tokenizers` 0.23.1
+  gives `['ab', 'Ġ', 'cd', '!']` — the space and the `!` dropped before the merge loop, and for a
+  byte-level model a round trip that could not return them. All five behaviours and both `invert` values
+  are reproduced now, and an absent or unknown `behavior` or `invert` is refused by name, as the reference
+  refuses it.
 
 ### DataNet.Fuzzy — 0.3.0
 

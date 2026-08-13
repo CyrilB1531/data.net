@@ -55,9 +55,10 @@ outright.
 The loaders are what make the second and third examples correct rather than
 merely short: `spiece.model` records the *type* of every piece, so the
 tokenizer knows which entries are control markers instead of inferring it from
-their ids, and the BPE loaders read `ignore_merges`, the split pattern and the
-byte-level flag straight from the model rather than asking the caller to get
-them right. See [loading vocabularies](#loading-vocabularies) for
+their ids, and the BPE loaders read `ignore_merges`, the split pattern together
+with its `behavior` and `invert` flag, and the byte-level flag straight from
+the model rather than asking the caller to get them right. See
+[loading vocabularies](#loading-vocabularies) for
 `tokenizer.json`, for the limits applied to untrusted files, and for which
 models are refused outright.
 
@@ -168,6 +169,12 @@ different one is **rejected**, with a message naming what was found:
   `Split` then `ByteLevel` (Llama-3, Qwen2) — and, on the byte-level path, a
   `decoder` whose byte-level-ness disagrees with the model's own, which would
   not decode what it encodes;
+- for BPE, a `Sequence`'s `Split` step declaring no `behavior`, no `invert`, or
+  a `behavior` other than the five `tokenizers` defines — `Isolated`,
+  `Removed`, `MergedWithPrevious`, `MergedWithNext`, `Contiguous`, spelled in
+  the file's own PascalCase, not the Python constructor's snake_case.
+  `tokenizers` 0.23.1 has no default for either field and refuses the file
+  identically;
 - for BPE, any `normalizer` at all (`BpeTokenizer` normalizes nothing), a
   **non-zero** `dropout`, and a bare `ByteLevel` with `use_regex` off — each of
   those changes what Python produces and none of them is applied here.
