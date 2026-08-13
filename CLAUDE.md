@@ -18,8 +18,24 @@ dotnet build DataNet.slnx -c Release      # both target frameworks; warnings are
 dotnet test DataNet.slnx -c Release       # runs the suite twice: net10 and netstandard2.0 assemblies
 dotnet format DataNet.slnx --verify-no-changes
 npx markdownlint-cli2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
+```
+
+Neither `python` nor `python3` is safe to assume on both platforms: Ubuntu 24.04 ships
+`/usr/bin/python3` and no `python` by default, while python.org's Windows installer (and
+`winget install Python.Python.3.12`, which wraps it) ships `python.exe` and no `python3.exe` —
+a `python3` that does resolve there is often the Microsoft Store app-execution alias, which
+opens the Store instead of running anything.
+
+```bash
+# POSIX (bash/zsh)
 python3 tools/check_version_floor.py      # offline, instant; catches the three version numbers drifting apart
 python3 tools/check_machine_paths.py      # catches a tracked file holding a path under someone's home directory
+```
+
+```powershell
+# PowerShell
+python tools/check_version_floor.py
+python tools/check_machine_paths.py
 ```
 
 A single test, or one area:
@@ -44,16 +60,27 @@ cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python <repo>/tools/generat
 cd $env:TEMP
 $env:PYTHONSAFEPATH = '1'
 <repo>\.venv-oracles\Scripts\python.exe <repo>\tools\generate_oracles.py
+Remove-Item Env:PYTHONSAFEPATH   # POSIX sets it only for this one command; PowerShell must clear it back out
 ```
 
 POSIX needs the neutral directory because `nltk` refuses to import under the repository (see
 *Oracle validation* below); whether Windows needs it too is unverified — the probe that answered
 this branch's other Windows questions never reached `nltk`.
 
-Guide snippets, benchmarks, packaging:
+Guide snippets, benchmarks, packaging (see the `python`/`python3` split above):
 
 ```bash
+# POSIX (bash/zsh)
 python3 tools/extract_doc_snippets.py && dotnet build samples/DataNet.DocSnippets -c Release
+```
+
+```powershell
+# PowerShell — split, not chained with `&&`, which needs PowerShell 7+
+python tools/extract_doc_snippets.py
+dotnet build samples/DataNet.DocSnippets -c Release
+```
+
+```bash
 dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter '*Levenshtein*'
 for p in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
   dotnet pack "$p" -c Release -o ./artifacts
