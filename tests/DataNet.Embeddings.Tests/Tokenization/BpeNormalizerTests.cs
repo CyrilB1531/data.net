@@ -74,12 +74,19 @@ public sealed class BpeNormalizerTests
             foreach (JsonElement t in c.GetProperty("texts").EnumerateArray())
             {
                 string text = t.GetProperty("text").GetString()!;
-                int[] expected = [.. t.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32())];
-                int[] actual = [.. tokenizer.Encode(text).Ids];
+                int[] expectedIds = [.. t.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32())];
+                string[] expectedTokens = [.. t.GetProperty("tokens").EnumerateArray().Select(e => e.GetString()!)];
+                TokenizationResult result = tokenizer.Encode(text);
+                int[] actualIds = [.. result.Ids];
+                string[] actualTokens = [.. result.Tokens];
 
-                if (!expected.SequenceEqual(actual))
+                if (!expectedIds.SequenceEqual(actualIds))
                 {
-                    failures.Add($"[{name}] {Escape(text)}: expected [{string.Join(", ", expected)}], got [{string.Join(", ", actual)}]");
+                    failures.Add($"[{name}] {Escape(text)}: expected ids [{string.Join(", ", expectedIds)}], got [{string.Join(", ", actualIds)}]");
+                }
+                if (!expectedTokens.SequenceEqual(actualTokens, StringComparer.Ordinal))
+                {
+                    failures.Add($"[{name}] {Escape(text)}: expected tokens [{string.Join(", ", expectedTokens.Select(Escape))}], got [{string.Join(", ", actualTokens.Select(Escape))}]");
                 }
             }
         }
@@ -179,6 +186,32 @@ public sealed class BpeNormalizerTests
         // regenerated corpus that stops exercising this divergence, or starts
         // exercising a different one, is noticed here rather than passing silently.
         Assert.Equal(3, divergentCount);
+    }
+
+    /// <summary>
+    /// Branch review of #121, finding 7: <see cref="string.Normalize(NormalizationForm)"/>
+    /// throws <see cref="ArgumentException"/> on a lone (unpaired) UTF-16 surrogate --
+    /// measured with a throwaway probe against every one of the four forms before this
+    /// test was written, not assumed. It fires from <c>EncodeGap</c>'s call to
+    /// <c>Normalize</c>, which runs before a byte-level model ever gets to re-encode the
+    /// gap to UTF-8, so it preempts <see cref="EncoderFallbackException"/>
+    /// rather than joining it. Reachable only once a normalizer is declared: with none,
+    /// <c>Normalize</c> is never called and the lone surrogate reaches the byte-level path
+    /// instead, as before this lot.
+    /// </summary>
+    [Fact]
+    public void Encode_throws_ArgumentException_on_a_lone_surrogate_once_a_normalizer_is_declared()
+    {
+        const string json = """
+            {"version":"1.0","normalizer":{"type":"NFC"},
+             "pre_tokenizer":{"type":"ByteLevel","add_prefix_space":false},
+             "decoder":{"type":"ByteLevel","add_prefix_space":false},
+             "model":{"type":"BPE","vocab":{"a":0,"b":1},"merges":[]}}
+            """;
+        BpeVocabulary vocab = TokenizerJsonLoader.LoadBpe(Bytes(json), OracleReplay.BpeBounds());
+        var tokenizer = new BpeTokenizer(vocab);
+
+        Assert.Throws<ArgumentException>(() => tokenizer.Encode("a\uD800b"));
     }
 
     /// <summary>Renders a string as its code points, so a failure names what differs rather than showing two identical-looking lines.</summary>

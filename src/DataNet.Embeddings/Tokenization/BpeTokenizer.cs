@@ -317,11 +317,18 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// happen on the classic (non-byte-level) path, which never encodes to UTF-8.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// A byte-level model whose vocabulary is missing one of the 256 byte-level
-    /// alphabet characters, which is a vocabulary that is not what
-    /// <see cref="BpeVocabulary.ByteLevel"/> claims it is. Thrown from here rather
-    /// than at construction because it is the input's own bytes that decide which
-    /// entries are looked up; see <see cref="ByteLevelSymbols"/>.
+    /// Two unrelated causes share this type. A byte-level model whose vocabulary is
+    /// missing one of the 256 byte-level alphabet characters, which is a vocabulary
+    /// that is not what <see cref="BpeVocabulary.ByteLevel"/> claims it is — thrown
+    /// from here rather than at construction because it is the input's own bytes
+    /// that decide which entries are looked up; see <see cref="ByteLevelSymbols"/>.
+    /// And, once <see cref="BpeVocabulary.NormalizationForms"/> is non-empty, a lone
+    /// (unpaired) UTF-16 surrogate anywhere in a gap: <see cref="string.Normalize(NormalizationForm)"/>
+    /// throws on one rather than substituting, measured across all four forms, and
+    /// it does so before a byte-level model ever gets to re-encode the gap to UTF-8
+    /// — so this preempts <see cref="EncoderFallbackException"/> below
+    /// rather than joining it. With no normalizer declared, <c>Normalize</c> is never
+    /// called and a lone surrogate reaches the byte-level path unchanged.
     /// </exception>
     public TokenizationResult Encode(string text)
     {
@@ -373,10 +380,11 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// </para>
     /// <para>
     /// Order: normalization first, then <c>add_prefix_space</c> and the split inside
-    /// <see cref="EncodeSegment"/>. That is what the corpus measures -- a normalizer
-    /// that produced a leading space would otherwise meet the "only when the segment
-    /// does not already begin with one" rule, and the two would have to be ordered
-    /// by evidence rather than by preference.
+    /// <see cref="EncodeSegment"/>. The <c>add_prefix_space_after_normalize</c> pipeline
+    /// in <c>bpe_normalizer.json</c> is what measures it -- a normalizer that turns a
+    /// non-space leading character into U+0020 (U+3000 IDEOGRAPHIC SPACE under NFKC)
+    /// meets the "only when the segment does not already begin with one" rule the same
+    /// way a literal leading space does, which only holds if normalization ran first.
     /// </para>
     /// <para>
     /// A file declaring no normalizer and no normalized added token takes the same

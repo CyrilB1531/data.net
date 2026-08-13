@@ -2465,7 +2465,7 @@ def generate_unicode_forms() -> dict:
     }
 
 
-def _small_bytelevel_bpe_tokenizer():
+def _small_bytelevel_bpe_tokenizer(add_prefix_space: bool = False):
     """A byte-level BPE with full coverage and no merges.
 
     Every one of the 256 alphabet characters is its own token, so any input
@@ -2478,7 +2478,7 @@ def _small_bytelevel_bpe_tokenizer():
 
     vocab = {c: i for i, c in enumerate(sorted(pre_tokenizers.ByteLevel.alphabet()))}
     tokenizer = Tokenizer(models.BPE(vocab, []))
-    tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
+    tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=add_prefix_space)
     tokenizer.decoder = decoders.ByteLevel()
     return tokenizer
 
@@ -2486,19 +2486,23 @@ def _small_bytelevel_bpe_tokenizer():
 def generate_bpe_normalizer() -> dict:
     """A BPE pipeline with a normalizer, which LoadBpe refused wholesale.
 
-    Seven pipelines: one per form, a Sequence of two, and an empty Sequence --
-    the deepseek shape, which does nothing and was refused for nothing. The
-    seventh is the one that matters most: a normalizer beside both halves of
-    the added token table, which is the gpt-neox shape (23 of its 25 entries
-    are normalized: true) and the only case that separates the two scanners.
+    Ten pipelines. Seven cover D1-D4 of the spec: one per form, a Sequence of
+    two, an empty Sequence -- the deepseek shape, which does nothing and was
+    refused for nothing -- and a normalizer beside both halves of the added
+    token table, the gpt-neox shape (23 of its 25 entries are normalized:
+    true). Three more, added by the branch review of #121: two where a raw
+    and a normalized added token compete for the same span (finding 1), and
+    one measuring add_prefix_space against a normalizer for the first time
+    (finding 2) -- see the comments at each for what they pin down.
 
     Only "nfc" -- the form four of the five surveyed models actually declare --
     runs on real GPT-2, so the corpus still proves the case that exists in the
-    wild against a real 50 257-entry vocabulary. The other six run on
+    wild against a real 50 257-entry vocabulary. Every other pipeline runs on
     _small_bytelevel_bpe_tokenizer(): each case already carries its own whole
     tokenizer.json (so the C# side parses the exact bytes HuggingFace was
-    handed), and seven copies of GPT-2's 1.8 MB model would have made this
-    corpus 78 MB for a question that has nothing to do with vocabulary size.
+    handed), and ten copies of GPT-2's 1.8 MB model would have made this
+    corpus over 100 MB for a question that has nothing to do with vocabulary
+    size.
     """
     from tokenizers import AddedToken, normalizers  # noqa: PLC0415
 
@@ -2537,6 +2541,80 @@ def generate_bpe_normalizer() -> dict:
             "tokenizer_json": tokenizer.to_str(),
             "texts": text_cases,
         })
+
+    # Branch review of #121, finding 1: AddedToken.Normalized is read
+    # independently of whether a "normalizer" is declared at all
+    # (TokenizerJsonLoader.cs's ReadAddedTokenTable, around :411, defaults it
+    # to !Special) -- so a file with a non-special added token already takes the
+    # two-pass path today, with no normalizer in sight. bpe_added_token_flags.json's
+    # "<m>" is one such file. The "added_tokens" pipeline above never measured the
+    # two halves' precedence because café and <|endoftext|> never compete for the
+    # same span. These two make a raw entry and a normalized entry compete for one:
+    # HuggingFace's raw pass runs over the whole text first and claims its match
+    # unconditionally, so it wins even where the normalized entry starts earlier or
+    # is longer -- by the time the normalized scanner sees a gap, the raw match's
+    # characters are already gone from it.
+    precedence_pipelines = [
+        # "ab" (normalized) starts at 0 and "b" (raw) at 1: if the two were
+        # compared together by earliest-start, "ab" would win. The raw pass runs
+        # first regardless and claims "b", leaving the gaps "xa" then "y" -- neither
+        # contains "ab" any more, so the normalized entry never gets a chance.
+        ("precedence_raw_beats_normalized", [("ab", True), ("b", False)], ["xaby"]),
+        # "abc" (normalized) starts earlier (0) and is longer (3) than "cy" (raw,
+        # starts at 2, length 2) -- the shape a single earliest-start-then-longest
+        # scan would give to "abc". The raw pass still claims "cy" first, which
+        # removes the 'c' "abc" needed from the remaining gap.
+        ("precedence_raw_beats_earlier_longer_normalized", [("abc", True), ("cy", False)], ["abcy"]),
+    ]
+    for name, tokens, texts in precedence_pipelines:
+        tokenizer = _small_bytelevel_bpe_tokenizer()
+        for content, normalized in tokens:
+            tokenizer.add_tokens([AddedToken(content, normalized=normalized)])
+        text_cases = []
+        for text in texts:
+            enc = tokenizer.encode(text)
+            text_cases.append({
+                "text": text,
+                "tokens": enc.tokens,
+                "ids": enc.ids,
+                "decoded": tokenizer.decode(enc.ids, skip_special_tokens=False),
+            })
+        cases.append({
+            "id": len(cases),
+            "name": name,
+            "tokenizer_json": tokenizer.to_str(),
+            "texts": text_cases,
+        })
+
+    # Branch review of #121, finding 2: every pipeline above carries
+    # add_prefix_space: false, so none of them measures BpeTokenizer.EncodeGap's
+    # claim that normalization runs before add_prefix_space is decided. U+3000
+    # IDEOGRAPHIC SPACE normalizes to U+0020 SPACE under NFKC, so a text starting
+    # with it does not begin with a literal space until after normalization --
+    # if add_prefix_space were (wrongly) decided on the raw text, it would prepend
+    # a second one.
+    prefix_space_tokenizer = _small_bytelevel_bpe_tokenizer(add_prefix_space=True)
+    prefix_space_tokenizer.normalizer = normalizers.NFKC()
+    prefix_space_texts = [
+        "　café",  # IDEOGRAPHIC SPACE + café: a leading space only after NFKC
+        " café",       # control: already begins with a literal space
+    ]
+    prefix_space_text_cases = []
+    for text in prefix_space_texts:
+        enc = prefix_space_tokenizer.encode(text)
+        prefix_space_text_cases.append({
+            "text": text,
+            "tokens": enc.tokens,
+            "ids": enc.ids,
+            "decoded": prefix_space_tokenizer.decode(enc.ids, skip_special_tokens=False),
+        })
+    cases.append({
+        "id": len(cases),
+        "name": "add_prefix_space_after_normalize",
+        "tokenizer_json": prefix_space_tokenizer.to_str(),
+        "texts": prefix_space_text_cases,
+    })
+
     return {
         "metadata": {
             "algorithm": "BPE normalizer",
