@@ -25,9 +25,14 @@ public sealed class BpePreTokenizerTests
     /// <summary>
     /// A pre-split step over <paramref name="pattern"/>, with the behaviour and
     /// invert this file's #143 cascade always meant: keep the regex matches,
-    /// drop everything else. <see cref="BpeTokenizer"/>'s own bridge builds the
-    /// same step (issue #145); this helper exists only because this suite builds
-    /// <see cref="BpePreTokenizer"/> directly, bypassing that bridge.
+    /// drop everything else. This is not a bridge built elsewhere — Task 3
+    /// removed <see cref="BpeTokenizer"/>'s bridge, and a real Llama-3 file now
+    /// reaches <see cref="BpePreTokenizer"/> declaring <see cref="SplitBehavior.Isolated"/>,
+    /// not <see cref="SplitBehavior.Removed"/> inverted. The rule lives in
+    /// <see cref="BpePreTokenizer"/>'s own constructor, in the branch taken when
+    /// its <c>preSplit</c> parameter is <see langword="null"/>; this helper exists
+    /// only because this suite builds <see cref="BpePreTokenizer"/> directly with a
+    /// non-null step, bypassing that branch.
     /// </summary>
     private static BpeSplitStep PreSplit(string pattern) => new(pattern, SplitBehavior.Removed, Invert: true);
 
