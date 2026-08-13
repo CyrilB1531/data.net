@@ -174,6 +174,29 @@ def test_home_of_only_a_separator_still_yields_no_probes():
     assert guard.environment_probes("/") == ()
 
 
+def test_a_windows_home_directory_yields_the_same_three_probes():
+    home = "C:" + chr(92) + "Users" + chr(92) + "someone"
+
+    probes = guard.environment_probes(home)
+
+    assert len(probes) == 3
+
+
+def test_a_windows_path_is_caught_by_the_derived_probes():
+    home = "C:" + chr(92) + "Users" + chr(92) + "someone"
+    text = "the file lives at " + home + chr(92) + "src" + chr(92) + "thing.cs"
+
+    assert any(pattern.search(text) for _, pattern in guard.environment_probes(home))
+
+
+def test_a_trailing_backslash_does_not_swallow_the_account_name():
+    # The POSIX branch strips a trailing "/" for this reason: without it the
+    # account name comes out empty and all three probes are silently dropped.
+    bare = "C:" + chr(92) + "Users" + chr(92) + "someone"
+
+    assert guard.environment_probes(bare + chr(92)) == guard.environment_probes(bare)
+
+
 def test_tracked_files_is_independent_of_the_process_cwd(monkeypatch):
     # tracked_files() used to inherit git's cwd from the process, so running
     # the guard from a subdirectory silently scanned a fraction of the

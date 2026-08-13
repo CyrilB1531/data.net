@@ -98,19 +98,34 @@ def environment_probes(home: str | None) -> tuple[tuple[str, re.Pattern[str]], .
 
     The account name is matched only when a separator or a dash bounds it, so
     a contributor called `ed` does not turn every "edited" into a finding.
+
+    The caller passes whichever of $HOME or %USERPROFILE% is set, checking
+    $HOME first: a probe job on windows-latest measured $HOME unset in both
+    PowerShell and cmd (with %USERPROFILE% holding the runner's profile),
+    while Git Bash on Windows does set $HOME, so a guard reading only one of
+    the two is inert in half the shells a contributor on Windows might use.
+
+    Known blind spot, left open rather than half-fixed: that same probe job
+    found %TEMP% resolved to the 8.3 short name
+    C:\\Users\\RUNNER~1\\AppData\\Local\\Temp against that %USERPROFILE%, so a
+    path written from %TEMP% sits inside the profile while matching none of
+    these three probes -- resolving short names back to their long form is
+    not portable enough to attempt here.
     """
     if not home:
         return ()
 
-    # A trailing separator (as in "/home/name/") would otherwise survive into
-    # the rsplit below and leave account == "", silently dropping all three
-    # probes -- including the plain home-path probe, which needs no account
-    # name at all.
-    home = home.rstrip("/")
+    # A trailing separator (as in "/home/name/" or "C:\Users\name\") would
+    # otherwise survive into the rsplit below and leave account == "",
+    # silently dropping all three probes -- including the plain home-path
+    # probe, which needs no account name at all. Both separators are
+    # stripped and split on, because the caller may hand this either a POSIX
+    # HOME or a Windows USERPROFILE.
+    home = home.rstrip("/\\")
     if not home:
         return ()
 
-    account = home.rsplit("/", 1)[-1]
+    account = re.split(r"[/\\]", home)[-1]
     if not account:
         return ()
 
@@ -186,7 +201,8 @@ def main(argv: list[str]) -> int:
         return early_exit
 
     use_environment = "--no-environment" not in arguments
-    derived = environment_probes(os.environ.get("HOME")) if use_environment else ()
+    derived = environment_probes(
+        os.environ.get("HOME") or os.environ.get("USERPROFILE")) if use_environment else ()
     probes = NAMED_SHAPES + derived
     derived_descriptions = frozenset(description for description, _ in derived)
 
