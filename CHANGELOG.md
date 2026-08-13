@@ -216,7 +216,7 @@ and including `0.2.0` predate the split and covered all three at once — see
   form. The byte-level pairing is **refused** by name instead, by `BpeTokenizer`'s constructor and by
   `TokenizerJsonLoader.LoadBpe`: byte-level symbols are never prefixed while a merge's right side is
   still stripped, and the byte-level alphabet spells `0x23` as `#`, so the two halves would disagree and
-  land on another existing id rather than raise. Nothing here measures what `tokenizers` does with such
+  can land on another existing id rather than raise. Nothing here measures what `tokenizers` does with such
   a file; the refusal says only that DataNet does not reproduce it.
 - **`fuse_unk`** — a `tokenizer.json` declaring it loads instead of being
   refused, and a run of consecutive characters the vocabulary does not cover

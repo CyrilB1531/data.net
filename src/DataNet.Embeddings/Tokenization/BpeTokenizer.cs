@@ -208,9 +208,9 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// applied there, while the constructor's merge loop strips it from every
     /// merge's right side without asking whether the model is byte-level. The
     /// byte-level alphabet contains the characters a prefix is typically spelled
-    /// with — <c>#</c> is byte <c>0x23</c> — so on such a model the stripped right
-    /// side resolves to another entry that exists, and the merge silently produces
-    /// a different id rather than raising.
+    /// with — <c>#</c> is byte <c>0x23</c> — so on such a model a stripped right
+    /// side can land on another entry that exists, and the merge then silently
+    /// produces a different id instead of raising.
     /// </para>
     /// <para>
     /// <see cref="Persistence.TokenizerJsonLoader"/> refuses the same pairing in a
@@ -499,7 +499,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// <c>_byteLevel</c>, so the merge results would be computed as if the prefix
     /// applied while the symbols here are built as if it did not. That disagreement is
     /// silent — the byte-level alphabet contains the characters a prefix is typically
-    /// spelled with, so the stripped side resolves to another entry that exists — which
+    /// spelled with, so a stripped side can land on another entry that exists — which
     /// is why the pairing is refused rather than documented.
     /// </para>
     /// </remarks>

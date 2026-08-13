@@ -185,7 +185,7 @@ different one is **rejected**, with a message naming what was found:
   The prefix is never applied to a byte-level model's symbols while a merge's
   right side still has it stripped, so the two halves of the tokenizer would
   disagree — and silently, since the byte-level alphabet spells `0x23` as `#`,
-  which makes a stripped right side land on another entry that exists. The
+  which lets a stripped right side land on another entry that exists. The
   refusal says that DataNet does not reproduce such a file, not anything about
   what `tokenizers` makes of one. `BpeTokenizer`'s constructor refuses the same
   pairing, since `BpeVocabulary` can be built by hand;

@@ -642,7 +642,7 @@ public static class TokenizerJsonLoader
     /// therefore disagree about the same setting, and the disagreement is silent: the
     /// byte-level alphabet contains the characters a prefix is typically spelled with
     /// (<c>#</c> is byte <c>0x23</c>), so a merge whose right side begins with them
-    /// resolves to a different entry that exists rather than to a missing one.
+    /// can resolve to a different entry that exists rather than to a missing one.
     /// </para>
     /// <para>
     /// Refused by name for the reason <see cref="EnsureBpeModelSettingsAreReproduced"/>
