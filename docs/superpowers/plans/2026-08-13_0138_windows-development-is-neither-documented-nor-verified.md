@@ -236,11 +236,18 @@ pip-compile --version
 pip-compile --help | grep -n "universal"
 ```
 
-`--universal` produces a lock carrying every platform's closure with environment markers, and it exists
-from pip-tools 7.4. If this version has it, that is the fix. If it does not, the alternatives are naming
-the Windows-only packages in `tools/requirements.txt` so the resolver pins them, or generating a second
-lock — and the second is worse, because two hashed graphs drift apart exactly the way
-`check_version_floor.py` exists to catch elsewhere. **Report which route the version left open.**
+**Amended during execution, 2026-08-13, because both routes this step first named were wrong.**
+`--universal` is a `uv` flag; `pip-compile` has never shipped it, at 7.6.1 or any earlier version — that
+claim was written from memory and the implementer checked it. And naming the package with a marker does not
+work either: `pip-compile` evaluates markers against the resolving host even for top-level entries, so a
+`colorama ; sys_platform == "win32"` line is dropped on Linux exactly as `click`'s own conditional edge is.
+
+What survives is an **unconditional** `colorama==0.4.6` in `tools/requirements.txt`, which is safe because
+`colorama` is a dependency-free leaf that `click` calls only on Windows — Linux installs a package it never
+imports, at the cost of one small pure-Python wheel. The reasoning goes in a comment beside the pin, since
+a bare unconditional dependency on a Windows-only package is exactly what a later reader would try to
+"clean up". Generating a second lock stays rejected: two hashed graphs drift apart the way
+`check_version_floor.py` exists to catch elsewhere.
 
 - [ ] **Step 2: Regenerate, and diff what moved**
 
