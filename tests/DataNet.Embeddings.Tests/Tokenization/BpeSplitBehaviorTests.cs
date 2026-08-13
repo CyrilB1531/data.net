@@ -118,21 +118,35 @@ public sealed class BpeSplitBehaviorTests
     /// <summary>
     /// The loader reads the file's own <c>behavior</c> and <c>invert</c>, which it
     /// ignored entirely before issue #145 — it took the pattern and applied
-    /// <see cref="SplitBehavior.Removed"/> inverted to everything.
+    /// <see cref="SplitBehavior.Removed"/> inverted to everything. Looped over
+    /// all twenty models rather than a hand-picked few: the PascalCase switch
+    /// in <c>ReadBpeSequencePreTokenizer</c> has five arms, and
+    /// <see cref="The_ten_combinations"/> never goes through the loader at all
+    /// (it builds a <see cref="BpeSplitStep"/> directly), so a wrong mapping on
+    /// any one arm — <c>MergedWithPrevious</c> included — would otherwise go
+    /// unnoticed. A hand-written subset of rows could go stale the same way;
+    /// enumerating <c>metadata.models</c> cannot.
     /// </summary>
-    [Theory]
-    [InlineData("isolated", SplitBehavior.Isolated, false)]
-    [InlineData("removed_inverted", SplitBehavior.Removed, true)]
-    [InlineData("merged_with_next", SplitBehavior.MergedWithNext, false)]
-    [InlineData("contiguous_adjacent", SplitBehavior.Contiguous, false)]
-    public void The_loader_carries_the_step_the_file_declares(
-        string model, SplitBehavior behavior, bool invert)
+    [Fact]
+    public void The_loader_carries_the_step_every_model_declares()
     {
-        BpeVocabulary vocabulary = Vocabulary(model);
+        using JsonDocument doc = OracleLoader.Load(Corpus);
+        JsonElement models = doc.RootElement.GetProperty("metadata").GetProperty("models");
+        int checkedModels = 0;
 
-        Assert.NotNull(vocabulary.PreSplit);
-        Assert.Equal(behavior, vocabulary.PreSplit.Behavior);
-        Assert.Equal(invert, vocabulary.PreSplit.Invert);
+        foreach (JsonProperty model in models.EnumerateObject())
+        {
+            BpeVocabulary vocabulary = Vocabulary(model.Name);
+            SplitBehavior expectedBehavior = Behavior(model.Value.GetProperty("behavior").GetString()!);
+            bool expectedInvert = model.Value.GetProperty("invert").GetBoolean();
+
+            Assert.NotNull(vocabulary.PreSplit);
+            Assert.Equal(expectedBehavior, vocabulary.PreSplit.Behavior);
+            Assert.Equal(expectedInvert, vocabulary.PreSplit.Invert);
+            checkedModels++;
+        }
+
+        Assert.True(checkedModels > 0, $"{Corpus} carries no model.");
     }
 
     /// <summary>
@@ -158,13 +172,17 @@ public sealed class BpeSplitBehaviorTests
     /// <summary>
     /// Three shapes the reference refuses, cited against the reference rather than
     /// against this repository's word: the corpus carries the document it was
-    /// handed and the error it answered with.
+    /// handed and the error it answered with. Each row asserts on a substring
+    /// distinguishing enough to prove <em>its own</em> branch fired — "Split"
+    /// alone would pass for any of the three, including the unrelated "is a
+    /// Sequence that is not exactly [Split, ByteLevel]" refusal, and would not
+    /// tell three distinct messages from one repeated.
     /// </summary>
     [Theory]
-    [InlineData("behavior_absent")]
-    [InlineData("invert_absent")]
-    [InlineData("behavior_unknown")]
-    public void The_reference_refuses_it_too_and_so_do_we(string shape)
+    [InlineData("behavior_absent", "declares no behavior")]
+    [InlineData("invert_absent", "declares no invert")]
+    [InlineData("behavior_unknown", "Nonsense")]
+    public void The_reference_refuses_it_too_and_so_do_we(string shape, string distinguishing)
     {
         using JsonDocument doc = OracleLoader.Load(Corpus);
 
@@ -175,7 +193,7 @@ public sealed class BpeSplitBehaviorTests
         InvalidDataException error = Assert.Throws<InvalidDataException>(
             () => TokenizerJsonLoader.LoadBpe(
                 Bytes(refusal.GetProperty("document").GetString()!), OracleReplay.BpeBounds()));
-        Assert.Contains("Split", error.Message, StringComparison.Ordinal);
+        Assert.Contains(distinguishing, error.Message, StringComparison.Ordinal);
     }
 
     private static BpeVocabulary Vocabulary(string model)

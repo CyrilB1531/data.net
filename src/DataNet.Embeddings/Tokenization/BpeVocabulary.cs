@@ -122,6 +122,13 @@ public sealed record BpeVocabulary(
     /// there is no word-boundary fallback: the pre-split is the only split there is,
     /// the state <see cref="Persistence.TokenizerJsonLoader"/> produces for a
     /// <c>Sequence</c> whose <c>ByteLevel</c> step declares <c>use_regex: false</c>.
+    /// When this is the <em>only</em> pattern set (<see cref="PreSplit"/>
+    /// <see langword="null"/>), it is not run under <see cref="SplitBehavior.Isolated"/>:
+    /// the merge loop only ever sees the regex's own matches, with the gaps
+    /// between them dropped — <see cref="SplitBehavior.Removed"/> with invert
+    /// on — which is <see cref="BpePreTokenizer"/>'s own fallback rule when it
+    /// is built with no <see cref="BpeSplitStep"/>, not a choice this property
+    /// makes.
     /// </summary>
     public string? PreTokenizerPattern { get; init; }
 
@@ -136,7 +143,8 @@ public sealed record BpeVocabulary(
     /// resulting piece, unless its <c>use_regex</c> is off. Measured against
     /// <c>tokenizers</c> 0.23.1 under Llama-3's own <c>Split</c> pattern, where
     /// <c>"aujourd'hui"</c> splits into <c>['aujourd', "'", 'hui']</c> with the
-    /// second split and <c>['aujourd', "'hui"]</c> without it.
+    /// second split and <c>['aujourd', "'hui"]</c> without it
+    /// (<c>tests/oracles/bpe_sequence_split.json</c> cases 1 and 10).
     /// </remarks>
     public BpeSplitStep? PreSplit { get; init; }
 

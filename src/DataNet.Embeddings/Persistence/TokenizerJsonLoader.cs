@@ -753,10 +753,11 @@ public static class TokenizerJsonLoader
     }
 
     /// <summary>
-    /// Validates the pre-tokenizer and derives the four flags <see cref="BpeVocabulary"/>
+    /// Validates the pre-tokenizer and derives the four values <see cref="BpeVocabulary"/>
     /// carries independently: whether the model is byte-level, whether a space is
-    /// prepended, the pattern text is split on first, and the pattern it is split
-    /// on again.
+    /// prepended, the <c>Split</c> step text is split on first (its pattern,
+    /// behavior and invert together, not a bare pattern), and the pattern it is
+    /// split on again.
     /// </summary>
     private static (bool ByteLevel, bool AddPrefixSpace, BpeSplitStep? PreSplit, string? Pattern) ReadBpePreTokenizer(JsonElement root)
     {
@@ -873,8 +874,11 @@ public static class TokenizerJsonLoader
                 "tokenizers 0.23.1 has no default for that field and refuses the file identically");
         }
         // The file spells these in PascalCase; the snake_case spellings are the
-        // reference's Python constructor API, and a document declaring one is
-        // refused there with "unknown variant `isolated`".
+        // reference's Python constructor API instead. The corpus's own
+        // behavior_unknown refusal freezes "Nonsense" refused with "unknown
+        // variant `Nonsense`, expected one of `Removed`, `Isolated`, ..."; that a
+        // lowercase "isolated" is refused the same way is measured in the spec
+        // (D6), not frozen in this corpus.
         SplitBehavior behavior = behaviorElement.GetString() switch
         {
             "Isolated" => SplitBehavior.Isolated,
