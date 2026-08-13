@@ -57,18 +57,51 @@ public static class MetricsCrossLang
         (1_000, 2), (1_000, 10), (100_000, 2), (100_000, 10), (1_000_000, 2), (1_000_000, 10),
     ];
 
-    public static void Run()
+    /// <summary>
+    /// Runs the whole matrix, or the part of it named by <c>--only</c> and
+    /// <c>--shapes</c>.
+    /// </summary>
+    /// <param name="args">
+    /// The process arguments. Two optional filters, both comma-separated:
+    /// <c>--only mse,median_ae</c> keeps the operations whose name starts with
+    /// one of the given prefixes, and <c>--shapes 1000000x2</c> keeps the corpus
+    /// files of those <c>samples</c>×<c>classes</c> shapes. A filtered run writes
+    /// the same file in the same format, holding fewer rows — which is what makes
+    /// it a before/after instrument rather than a comparison against Python: the
+    /// full matrix takes over eight minutes a campaign on a four-core desktop, and
+    /// an interleaved before/after needs four of them. Ask for the operation under
+    /// test and a control, and it takes about one.
+    /// </param>
+    public static void Run(string[] args)
     {
+        ArgumentNullException.ThrowIfNull(args);
+
+        string[] operations = Filter(args, "--only");
+        string[] shapes = Filter(args, "--shapes");
+
         string root = BenchCorpus.RepoRoot();
         string corpusDir = Path.Combine(root, "bench", "corpus", "metrics");
         string outPath = Path.Combine(root, "bench", "results", "csharp-metrics.json");
 
         Console.WriteLine("C# metrics cross-lang bench");
+        if (operations.Length > 0 || shapes.Length > 0)
+        {
+            Console.WriteLine($"  filtered: operations=[{string.Join(",", operations)}] shapes=[{string.Join(",", shapes)}]");
+        }
+
         var results = new List<Harness.OperationResult>();
 
         foreach ((int n, int k) in Shapes)
         {
-            results.AddRange(MeasureShape(corpusDir, n, k));
+            // Skipped before the corpus file is read, not after: the largest is
+            // 40 MB of JSON, and deserializing a shape nobody asked for would
+            // cost more than the measurement it is not making.
+            if (shapes.Length > 0 && Array.IndexOf(shapes, $"{n}x{k}") < 0)
+            {
+                continue;
+            }
+
+            results.AddRange(MeasureShape(corpusDir, n, k, operations));
         }
 
         var payload = new Harness.Output
@@ -88,7 +121,16 @@ public static class MetricsCrossLang
         Harness.Write(outPath, payload);
     }
 
-    private static List<Harness.OperationResult> MeasureShape(string corpusDir, int n, int k)
+    /// <summary>Reads the comma-separated values of <paramref name="option"/>, or an empty array if it is absent.</summary>
+    private static string[] Filter(string[] args, string option)
+    {
+        int at = Array.IndexOf(args, option);
+        return at >= 0 && at + 1 < args.Length
+            ? args[at + 1].Split(',', StringSplitOptions.RemoveEmptyEntries)
+            : [];
+    }
+
+    private static List<Harness.OperationResult> MeasureShape(string corpusDir, int n, int k, string[] operations)
     {
         string path = Path.Combine(corpusDir, $"metrics_n{n}_k{k}.json");
         if (!File.Exists(path))
@@ -104,34 +146,47 @@ public static class MetricsCrossLang
         double[] yPredReal = file.YPredReal;
         string suffix = $"n{n}_k{k}";
 
-        var results = new List<Harness.OperationResult>
+        var results = new List<Harness.OperationResult>();
+
+        void Add(string name, Func<object> operation)
         {
-            Harness.Measure($"confusion_matrix_{suffix}", () => ConfusionMatrix.Compute(yTrue, yPred)),
-            Harness.Measure($"accuracy_{suffix}", () => Accuracy.Score(yTrue, yPred)),
-            Harness.Measure($"precision_recall_f1_macro_{suffix}", () => PrecisionRecallF1Macro(yTrue, yPred)),
-            Harness.Measure($"classification_report_{suffix}", () =>
-                ClassificationReport.Compute(yTrue, yPred, zeroDivision: ZeroDivision.Zero).ToText()),
-        };
+            // A prefix, not the whole name: `--only median_ae` takes that
+            // operation across every shape, `--only median_ae_n1000000` takes one.
+            if (operations.Length == 0 || Array.Exists(operations, only => name.StartsWith(only, StringComparison.Ordinal)))
+            {
+                results.Add(Harness.Measure(name, operation));
+            }
+        }
+
+        Add($"confusion_matrix_{suffix}", () => ConfusionMatrix.Compute(yTrue, yPred));
+        Add($"accuracy_{suffix}", () => Accuracy.Score(yTrue, yPred));
+        Add($"precision_recall_f1_macro_{suffix}", () => PrecisionRecallF1Macro(yTrue, yPred));
+        Add($"classification_report_{suffix}", () =>
+            ClassificationReport.Compute(yTrue, yPred, zeroDivision: ZeroDivision.Zero).ToText());
 
         if (k == 2 && file.BinaryScores is { } binaryScores)
         {
-            results.Add(Harness.Measure($"roc_auc_binary_{suffix}", () => RocAuc.Score(yTrue, binaryScores)));
+            Add($"roc_auc_binary_{suffix}", () => RocAuc.Score(yTrue, binaryScores));
         }
 
         if (k > 2 && file.Scores is { } scores)
         {
+            // Flattened outside the lambda, as before: the reshape is corpus
+            // preparation, and timing it would make this row measure the wrong
+            // thing. It costs a copy when the filter drops the row, which is
+            // cheaper than getting the one number this file exists to report wrong.
             double[] flat = Flatten(scores, k);
-            results.Add(Harness.Measure($"roc_auc_ovr_macro_{suffix}", () => RocAuc.MultiClass(yTrue, flat, k)));
+            Add($"roc_auc_ovr_macro_{suffix}", () => RocAuc.MultiClass(yTrue, flat, k));
         }
 
-        results.Add(Harness.Measure($"balanced_accuracy_{suffix}", () => BalancedAccuracy.Score(yTrue, yPred)));
-        results.Add(Harness.Measure($"matthews_{suffix}", () => MatthewsCorrelation.Score(yTrue, yPred)));
-        results.Add(Harness.Measure($"cohen_kappa_{suffix}", () => CohenKappa.Score(yTrue, yPred)));
+        Add($"balanced_accuracy_{suffix}", () => BalancedAccuracy.Score(yTrue, yPred));
+        Add($"matthews_{suffix}", () => MatthewsCorrelation.Score(yTrue, yPred));
+        Add($"cohen_kappa_{suffix}", () => CohenKappa.Score(yTrue, yPred));
 
-        results.Add(Harness.Measure($"mse_{suffix}", () => MeanSquaredError.Score(yTrueReal, yPredReal)));
-        results.Add(Harness.Measure($"mae_{suffix}", () => MeanAbsoluteError.Score(yTrueReal, yPredReal)));
-        results.Add(Harness.Measure($"median_ae_{suffix}", () => MedianAbsoluteError.Score(yTrueReal, yPredReal)));
-        results.Add(Harness.Measure($"r2_{suffix}", () => R2.Score(yTrueReal, yPredReal)));
+        Add($"mse_{suffix}", () => MeanSquaredError.Score(yTrueReal, yPredReal));
+        Add($"mae_{suffix}", () => MeanAbsoluteError.Score(yTrueReal, yPredReal));
+        Add($"median_ae_{suffix}", () => MedianAbsoluteError.Score(yTrueReal, yPredReal));
+        Add($"r2_{suffix}", () => R2.Score(yTrueReal, yPredReal));
 
         return results;
     }
