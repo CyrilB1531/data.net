@@ -14,10 +14,15 @@ Two separate failures live here, and they need different instruments.
 **Claims go stale.** Eight false claims were produced in two lots on 2026-08-13 alone, none caught by a
 tool. Four more came from #127, four from #140 and #121, three predate the issue.
 
-**Prose has crowded out code.** Measured across `src/`, `tests/`, `tools/`, `bench/` and `samples/`:
-**1837 comment blocks, 9803 lines.** 354 of those blocks run over eight lines — 19% of the blocks, holding
-**5532 lines, 56% of all the prose**. One block in five carries more than half the text. The longest is 63
-lines.
+**Prose has crowded out code.** Measured across `src/`, `tests/`, `tools/`, `bench/` and `samples/`, over
+**C# files only**: **1837 comment blocks, 9803 lines**, of which 354 run over eight lines — 19% of the
+blocks, holding **5532 lines, 56% of all the prose**. One block in five carries more than half the text.
+The longest is 63 lines.
+
+Counting the Python under `tools/` and `bench/` as well, which is what the guard does: **2079 blocks,
+10 615 lines, 372 over eight**. The first figures are the ones quoted throughout this spec; the second is
+the population the guard actually refuses, and the two were reconciled rather than averaged — the gap is
+242 Python blocks, not drift.
 
 ## What is measured
 
@@ -53,10 +58,12 @@ it and paste the output.
 
 ### D3 — the length problem is mechanisable, and the truth problem is not
 
-| | blocks | lines | share of prose |
+| C# only | blocks | lines | share of prose |
 | --- | ---: | ---: | ---: |
 | all comment blocks | 1837 | 9803 | 100% |
 | blocks over 8 lines | 354 | 5532 | **56%** |
+| **including Python** | **2079** | **10 615** | — |
+| of those, over 8 lines | 372 | — | — |
 
 The ten longest run 35 to 63 lines. `src/DataNet.Embeddings/Tokenization/BpeTokenizer.cs` holds three of
 them; `TokenizerJsonLoader.cs:7` holds the longest.
