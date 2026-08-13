@@ -205,9 +205,15 @@ internal static class WeightedPercentile
             // value below the pivot, so when values[i] is not below it either, the
             // two positions hold interchangeable values and the swap is a no-op in
             // meaning if not in memory. The comparison then advances the index by
-            // one or zero, which the JIT emits as a setcc rather than a branch --
-            // and that branch is the point: it is taken about half the time on the
-            // data this metric sees, which is the worst case for a predictor.
+            // one or zero, which RyuJIT on x64 emits as a setcc rather than a
+            // branch (disassembled, not assumed; unverified on the other runtimes
+            // the netstandard2.0 assembly reaches) -- and that branch is the point:
+            // on unsorted residuals it is taken about half the time, which is the
+            // worst case for a predictor. Measured at n = 1 000 000: 4.39 ns per
+            // element touched on random data against 2.15 on sorted.
+            //
+            // The comparison must read `value`, the copy taken before the swap.
+            // After it, values[i] holds the other element.
             double value = values[i];
             values[i] = values[storeIndex];
             values[storeIndex] = value;

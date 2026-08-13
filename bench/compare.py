@@ -93,6 +93,18 @@ def _metric_row(op: str, cs_row: dict, py_row: dict) -> tuple[str, float | None]
 def metrics() -> None:
     py = load("python", "metrics")
     cs = load("csharp", "metrics")
+
+    # A filtered C# run writes this same file with fewer rows, and the loop below
+    # skips every operation it cannot pair. The gate would then print "every
+    # operation, every size" over whatever survived, and a three-row table would
+    # read as green. Refuse instead of comparing part of the matrix.
+    filtered = cs["metadata"].get("filtered")
+    if filtered:
+        raise SystemExit(
+            f"the C# results are from a filtered run ({filtered}); the merge gate "
+            "needs the whole matrix — rerun `compare-metrics` with no --only/--shapes"
+        )
+
     cs_by_op = {r["operation"]: r for r in cs["results"]}
 
     print()

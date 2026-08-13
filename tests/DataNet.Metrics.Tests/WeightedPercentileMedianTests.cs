@@ -116,10 +116,12 @@ public sealed class WeightedPercentileMedianTests
     /// they exist to catch what a rewrite of the index arithmetic would break, and
     /// a test added after a change cannot do that.
     ///
-    /// Not all five shapes guard a wrong rank equally. "already sorted", "reverse
-    /// sorted" and "organ pipe" hold every value distinct at the two selected
-    /// ranks (organ pipe's ranks land either side of its one tied pair), so any
-    /// off-by-one there changes the result: full teeth. "two distinct values" is
+    /// Not all five shapes guard a wrong rank equally. "already sorted" and
+    /// "reverse sorted" hold every value distinct, so any off-by-one changes the
+    /// result. "organ pipe" is tied everywhere — its sorted form is 0, 1, 1, 2, 2,
+    /// … 2499, 2499, 2500 — and both selected ranks land on the same pair, 1250;
+    /// consecutive pairs differ by one, so a shifted rank moves the answer by 0.5.
+    /// All three have full teeth. "two distinct values" is
     /// half zeros and half ones, so it only catches a rank shifted across that
     /// boundary — a shift that stays inside one run returns the same value.
     /// "all equal" cannot detect a wrong rank at all: every element is 3.0, so no

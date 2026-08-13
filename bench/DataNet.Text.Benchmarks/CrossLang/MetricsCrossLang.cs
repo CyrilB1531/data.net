@@ -114,6 +114,9 @@ public static class MetricsCrossLang
                 Os = Environment.OSVersion.ToString(),
                 MinTimeS = Harness.MinTimeSeconds,
                 Repeats = Harness.RepeatCount,
+                Filtered = operations.Length == 0 && shapes.Length == 0
+                    ? null
+                    : $"only=[{string.Join(",", operations)}] shapes=[{string.Join(",", shapes)}]",
             },
             Results = results,
         };

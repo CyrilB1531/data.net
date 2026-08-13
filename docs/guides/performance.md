@@ -527,8 +527,12 @@ only:**
 | `mae_n1000000_k2` | 4.769 | 5.146 | 1.08x | 5.330 |
 | `r2_n100000_k2` | 0.740 | 0.358 | **0.48x** | 0.867 |
 | `r2_n1000000_k2` | 7.820 | 4.280 | **0.55x** | 9.193 |
-| `median_ae_n100000_k2` *(control)* | 1.681 | 1.672 | 0.99x | 1.716 |
-| `median_ae_n1000000_k2` *(control)* | 15.718 | 15.994 | 1.02x | 15.696 |
+| `median_ae_n100000_k2` *(control)*§ | 1.681 | 1.672 | 0.99x | 1.716 |
+| `median_ae_n1000000_k2` *(control)*§ | 15.718 | 15.994 | 1.02x | 15.696 |
+
+§ Both control rows predate issue #140, which took 38% off `median_ae` at
+n = 1 000 000. They are the right control for *this* round — nothing here
+touched the median — but they are not the current cost of the operation.
 
 `r2` is this round's confirmed result: **faster than the uncompensated loop
 it replaced**, not merely recovered back to it, and 2.15× faster than numpy
@@ -568,8 +572,8 @@ the answer. Instrumenting `Compute` per phase at n = 1 000 000 said otherwise:
 | --- | ---: | ---: |
 | allocating the 8 MB residual column | 0.6 ms | 4% |
 | filling it with abs(y − ŷ) | 2.6 ms | 16% |
-| **`QuickSelect`** | **10.8 ms** | **65%** |
-| validation, reduction, harness | ~2 ms | 15% |
+| **`QuickSelect`** | **10.8 ms** | **68%** |
+| validation, reduction, harness | 2.0 ms | 12% |
 
 That killed two hypotheses in one measurement. `ArrayPool` for the column
 would have bought 0.6 ms, not a third. And the fill is *cheaper* than `mse`'s
@@ -599,7 +603,7 @@ touched, on three shapes:
 | sorted ascending | 2.15 |
 | alternating 0 / 1 | 2.65 |
 
-Both *predictable* shapes sit together near 2.2–2.6 and only the coin-flip
+Both *predictable* shapes sit together at 2.15 and 2.65 and only the coin-flip
 shape costs 4.4. That is the signature of misprediction rather than of memory
 or of pass count — and it also corrects the guess this experiment started
 from, which expected the alternating shape to sit with random. A period-2
@@ -612,7 +616,9 @@ same reason the branchy version is — when the element does not belong left,
 the store index points at another element that also does not, so the two are
 interchangeable and the swap is harmless. The comparison must use the value
 read *before* the swap. That the JIT then emits it without a branch was
-checked rather than assumed, with `DOTNET_JitDisasm` on the same loop:
+checked rather than assumed, with `DOTNET_JitDisasm` on a verbatim copy of the
+loop in a scratch project — `Partition` is `internal`, so it cannot be called
+from one:
 
 ```text
 vucomisd xmm0, xmm1
@@ -637,7 +643,7 @@ touch them:
 | `mse_n1000000_k2` *(control)* | 5.051 | 5.037 | −0.3% |
 | `mae_n1000000_k2` *(control)* | 5.080 | 5.034 | −0.9% |
 
-Medians of four campaigns each, run before/after/before/after inside a single
+Medians of four campaigns each, run after/before/after/before inside a single
 window rather than campaign by campaign — the machine drifts more between
 campaigns than the effect being measured. Spread within each side was at most
 0.22 ms, and the controls moved under 1%, so the window is clean. The bar was
@@ -650,13 +656,18 @@ Machine: Intel i7-4770S, four physical cores, `uptime`'s one-minute average
 throughout, which is what the interleaving and the controls are for.
 
 Reproduce it with the operation filter the same issue added, which measures
-one operation instead of thirteen and turns an eight-and-a-half-minute
-campaign into a twenty-one-second one:
+three rows instead of seventy-eight and turns an eight-minute-twenty campaign
+into a twenty-one-second one:
 
 ```bash
 dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- \
     compare-metrics --only median_ae,mse,mae --shapes 1000000x2
 ```
+
+A filtered run writes the same `bench/results/csharp-metrics.json` holding
+fewer rows, so it stamps `filtered` into the file's metadata and
+`bench/compare.py` refuses it. The merge gate above needs the whole matrix, and
+a three-row file would otherwise have printed as a green one.
 
 ## Multiclass ROC-AUC, sequential against parallel (issue #86)
 
