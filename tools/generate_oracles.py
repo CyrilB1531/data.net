@@ -3165,7 +3165,7 @@ def generate_wordpiece_added_tokens() -> dict:
 # Named rather than repeated: python:S1192 fires at five occurrences of a
 # literal, and this one appears across two vocabularies, one merge table and
 # one function default.
-_FUSE_UNK_TOKEN = "[UNK]"
+_FUSE_UNK_TOKEN = UNK_TOKEN
 
 # Z is in none of these vocabularies, which is what makes it a run when repeated.
 _FUSE_VOCAB = {_FUSE_UNK_TOKEN: 0, "a": 1, "b": 2, "ab": 3}
@@ -3509,6 +3509,146 @@ def generate_bpe_added_token_coverage() -> dict:
     }
 
 
+# --- continuing_subword_prefix (issue #120) -----------------------------------
+
+_PREFIX = "##"
+_PREFIX_EOW = "</w>"
+
+
+def _prefix_model(vocab, merges, *, prefix=_PREFIX, eow=None, unk=None):
+    """One tokenizer, built rather than trained, so the file is byte-stable."""
+    from tokenizers import Tokenizer, models, pre_tokenizers  # noqa: PLC0415
+
+    kwargs = {}
+    if prefix is not None:
+        kwargs["continuing_subword_prefix"] = prefix
+    if eow is not None:
+        kwargs["end_of_word_suffix"] = eow
+    if unk is not None:
+        kwargs["unk_token"] = unk
+    tokenizer = Tokenizer(models.BPE(dict(vocab), list(merges), **kwargs))
+    tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
+    return tokenizer
+
+
+def _prefix_models() -> list[tuple]:
+    """(name, declares, tokenizer, texts), one per case nothing else distinguishes."""
+    bare = {"a": 0, "b": 1, _PREFIX + "a": 2, _PREFIX + "b": 3}
+
+    return [
+        ("base", "a prefix, and a piece long enough to need it",
+         _prefix_model(bare, []), ["ab", "a", "b"]),
+        # Two words is the only shape that tells per-piece from per-text: the
+        # first symbol of the SECOND word is bare.
+        ("two_pieces", "two pieces, so the second one's first symbol is bare",
+         _prefix_model(bare, []), ["ab ab", "a b", "ab a"]),
+        # b exists bare and ##b does not. There is no fallback, so the character
+        # is dropped -- or substituted where an unknown token exists.
+        ("no_prefixed_form", "a character whose prefixed form is absent, and no unknown token",
+         _prefix_model({"a": 0, "b": 1}, []), ["ab", "a", "ba"]),
+        ("no_prefixed_form_unk", "the same, with an unknown token to substitute",
+         _prefix_model({"a": 0, "b": 1, UNK_TOKEN: 2}, [], unk=UNK_TOKEN), ["ab", "a", "ba"]),
+        # The merge result is the stripped concatenation. Only `ab` is present,
+        # so a plain concatenation would look for `a##b` and fail.
+        ("merge_stripped_result", "a merge whose stripped result alone is in the vocabulary",
+         _prefix_model({"a": 0, "b": 1, _PREFIX + "b": 2, "ab": 3}, [("a", _PREFIX + "b")]),
+         ["ab", "aba"]),
+        # Both sides prefixed: the left keeps its prefix, only the right loses
+        # one. "Both lose it" would need `bc` and is the plausible wrong reading.
+        ("merge_both_prefixed", "a merge whose two sides both carry the prefix",
+         _prefix_model({"a": 0, _PREFIX + "b": 1, _PREFIX + "c": 2, _PREFIX + "bc": 3},
+                       [(_PREFIX + "b", _PREFIX + "c")]),
+         ["abc", "ab"]),
+        # The right side of a merge carries both decorations at once, so the
+        # strip has to take the prefix off and leave the suffix on:
+        # ("a", "##b</w>") has to give "ab</w>", and the vocabulary holds only
+        # that. Stripping both, or neither, looks for a token that is absent.
+        ("merge_suffixed_right", "a merge whose right side carries the prefix and the suffix at once",
+         _prefix_model({"a": 0, _PREFIX + "b" + _PREFIX_EOW: 1, "ab" + _PREFIX_EOW: 2,
+                        "a" + _PREFIX_EOW: 3},
+                       [("a", _PREFIX + "b" + _PREFIX_EOW)], eow=_PREFIX_EOW),
+         ["ab", "a"]),
+        # Prefix and suffix compose, prefix then character then suffix.
+        ("prefix_and_suffix", "a prefix and an end-of-word suffix on the same symbol",
+         _prefix_model({"a": 0, "b": 1, _PREFIX + "b": 2, "b" + _PREFIX_EOW: 3,
+                        _PREFIX + "b" + _PREFIX_EOW: 4, "a" + _PREFIX_EOW: 5},
+                       [], eow=_PREFIX_EOW),
+         ["ab", "a", "b"]),
+        # An empty prefix must give the same stream as none at all. This is the
+        # untouched path's own regression proof.
+        ("empty_prefix", "an empty prefix, which prefixes nothing",
+         _prefix_model(bare, [], prefix=""), ["ab", "a b"]),
+        ("no_prefix", "no prefix declared, the baseline the empty one must equal",
+         _prefix_model(bare, [], prefix=None), ["ab", "a b"]),
+    ]
+
+
+def _prefix_refusals() -> list[dict]:
+    """The shape the reference refuses to build, with what it said.
+
+    A merge whose two sides carry the prefix but whose CONCATENATED form is in
+    the vocabulary instead of the stripped one. There is no token stream to
+    record -- the reference never produces a tokenizer -- so recording the
+    refusal is what makes "the reference refuses this too" a measurement.
+    """
+    from tokenizers import Tokenizer  # noqa: PLC0415
+
+    document = json.dumps({
+        "version": "1.0", "truncation": None, "padding": None, "added_tokens": [],
+        "normalizer": None, "pre_tokenizer": {"type": "Whitespace"},
+        "post_processor": None, "decoder": None,
+        "model": {
+            "type": "BPE", "dropout": None, "unk_token": None,
+            "continuing_subword_prefix": _PREFIX, "end_of_word_suffix": None,
+            "fuse_unk": False, "byte_fallback": False, "ignore_merges": False,
+            "vocab": {"a": 0, _PREFIX + "b": 1, _PREFIX + "c": 2, _PREFIX + "b" + _PREFIX + "c": 3},
+            "merges": [[_PREFIX + "b", _PREFIX + "c"]],
+        },
+    })
+
+    try:
+        Tokenizer.from_str(document)
+    except BaseException as exc:  # noqa: BLE001 - the refusal IS the measurement
+        # Same reasoning as _added_coverage_refusals: BaseException because a
+        # Rust panic surfaces as pyo3_runtime.PanicException, which does not
+        # inherit from Exception. Ctrl-C and a SystemExit are re-raised rather
+        # than recorded as measurements, which is also what S5754 asks for.
+        if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+            raise
+        return [{"shape": "merge_result_not_stripped", "document": document,
+                 "error": f"{type(exc).__name__}: {exc}"}]
+    raise AssertionError(
+        "tokenizers accepted a merge whose result is the concatenated form; "
+        "issue #120's stripped-result rule rests on it refusing one")
+
+
+def generate_bpe_continuing_prefix() -> dict:
+    """Every continuing_subword_prefix shape, and the one the reference refuses."""
+    carried = _prefix_models()
+    cases = []
+    for name, _, tokenizer, texts in carried:
+        for text in texts:
+            enc = tokenizer.encode(text)
+            cases.append({"id": len(cases), "model": name, "text": text,
+                          "tokens": enc.tokens, "ids": enc.ids})
+
+    return {
+        "metadata": {
+            "algorithm": "BPE continuing_subword_prefix",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "hand-built: ten classic BPE shapes, defined in tools/generate_oracles.py",
+            "models": {
+                name: {"declares": declares, "tokenizer_json": tokenizer.to_str()}
+                for name, declares, tokenizer, _ in carried
+            },
+            "refusals": _prefix_refusals(),
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -3560,6 +3700,7 @@ def main() -> None:
         "bpe_no_op_settings.json": generate_bpe_no_op_settings,
         "bpe_fuse_unk.json": generate_bpe_fuse_unk,
         "bpe_added_token_coverage.json": generate_bpe_added_token_coverage,
+        "bpe_continuing_prefix.json": generate_bpe_continuing_prefix,
         "wordpiece_added_tokens.json": generate_wordpiece_added_tokens,
     }
     for filename, gen in generators.items():

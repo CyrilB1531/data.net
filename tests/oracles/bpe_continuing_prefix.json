@@ -1,0 +1,367 @@
+{
+ "metadata": {
+  "algorithm": "BPE continuing_subword_prefix",
+  "library": "tokenizers",
+  "library_version": "0.23.1",
+  "model": "hand-built: ten classic BPE shapes, defined in tools/generate_oracles.py",
+  "models": {
+   "base": {
+    "declares": "a prefix, and a piece long enough to need it",
+    "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":null,\"continuing_subword_prefix\":\"##\",\"end_of_word_suffix\":null,\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"b\":1,\"##a\":2,\"##b\":3},\"merges\":[]}}"
+   },
+   "two_pieces": {
+    "declares": "two pieces, so the second one's first symbol is bare",
+    "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":null,\"continuing_subword_prefix\":\"##\",\"end_of_word_suffix\":null,\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"b\":1,\"##a\":2,\"##b\":3},\"merges\":[]}}"
+   },
+   "no_prefixed_form": {
+    "declares": "a character whose prefixed form is absent, and no unknown token",
+    "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":null,\"continuing_subword_prefix\":\"##\",\"end_of_word_suffix\":null,\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"b\":1},\"merges\":[]}}"
+   },
+   "no_prefixed_form_unk": {
+    "declares": "the same, with an unknown token to substitute",
+    "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":\"[UNK]\",\"continuing_subword_prefix\":\"##\",\"end_of_word_suffix\":null,\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"b\":1,\"[UNK]\":2},\"merges\":[]}}"
+   },
+   "merge_stripped_result": {
+    "declares": "a merge whose stripped result alone is in the vocabulary",
+    "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":null,\"continuing_subword_prefix\":\"##\",\"end_of_word_suffix\":null,\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"b\":1,\"##b\":2,\"ab\":3},\"merges\":[[\"a\",\"##b\"]]}}"
+   },
+   "merge_both_prefixed": {
+    "declares": "a merge whose two sides both carry the prefix",
+    "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":null,\"continuing_subword_prefix\":\"##\",\"end_of_word_suffix\":null,\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"##b\":1,\"##c\":2,\"##bc\":3},\"merges\":[[\"##b\",\"##c\"]]}}"
+   },
+   "merge_suffixed_right": {
+    "declares": "a merge whose right side carries the prefix and the suffix at once",
+    "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":null,\"continuing_subword_prefix\":\"##\",\"end_of_word_suffix\":\"</w>\",\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"##b</w>\":1,\"ab</w>\":2,\"a</w>\":3},\"merges\":[[\"a\",\"##b</w>\"]]}}"
+   },
+   "prefix_and_suffix": {
+    "declares": "a prefix and an end-of-word suffix on the same symbol",
+    "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":null,\"continuing_subword_prefix\":\"##\",\"end_of_word_suffix\":\"</w>\",\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"b\":1,\"##b\":2,\"b</w>\":3,\"##b</w>\":4,\"a</w>\":5},\"merges\":[]}}"
+   },
+   "empty_prefix": {
+    "declares": "an empty prefix, which prefixes nothing",
+    "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":null,\"continuing_subword_prefix\":\"\",\"end_of_word_suffix\":null,\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"b\":1,\"##a\":2,\"##b\":3},\"merges\":[]}}"
+   },
+   "no_prefix": {
+    "declares": "no prefix declared, the baseline the empty one must equal",
+    "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":{\"type\":\"Whitespace\"},\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":null,\"continuing_subword_prefix\":null,\"end_of_word_suffix\":null,\"fuse_unk\":false,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"a\":0,\"b\":1,\"##a\":2,\"##b\":3},\"merges\":[]}}"
+   }
+  },
+  "refusals": [
+   {
+    "shape": "merge_result_not_stripped",
+    "document": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [], \"normalizer\": null, \"pre_tokenizer\": {\"type\": \"Whitespace\"}, \"post_processor\": null, \"decoder\": null, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": \"##\", \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"##b\": 1, \"##c\": 2, \"##b##c\": 3}, \"merges\": [[\"##b\", \"##c\"]]}}",
+    "error": "Exception: Token `##bc` out of vocabulary at line 1 column 449"
+   }
+  ],
+  "count": 25
+ },
+ "cases": [
+  {
+   "id": 0,
+   "model": "base",
+   "text": "ab",
+   "tokens": [
+    "a",
+    "##b"
+   ],
+   "ids": [
+    0,
+    3
+   ]
+  },
+  {
+   "id": 1,
+   "model": "base",
+   "text": "a",
+   "tokens": [
+    "a"
+   ],
+   "ids": [
+    0
+   ]
+  },
+  {
+   "id": 2,
+   "model": "base",
+   "text": "b",
+   "tokens": [
+    "b"
+   ],
+   "ids": [
+    1
+   ]
+  },
+  {
+   "id": 3,
+   "model": "two_pieces",
+   "text": "ab ab",
+   "tokens": [
+    "a",
+    "##b",
+    "a",
+    "##b"
+   ],
+   "ids": [
+    0,
+    3,
+    0,
+    3
+   ]
+  },
+  {
+   "id": 4,
+   "model": "two_pieces",
+   "text": "a b",
+   "tokens": [
+    "a",
+    "b"
+   ],
+   "ids": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": 5,
+   "model": "two_pieces",
+   "text": "ab a",
+   "tokens": [
+    "a",
+    "##b",
+    "a"
+   ],
+   "ids": [
+    0,
+    3,
+    0
+   ]
+  },
+  {
+   "id": 6,
+   "model": "no_prefixed_form",
+   "text": "ab",
+   "tokens": [
+    "a"
+   ],
+   "ids": [
+    0
+   ]
+  },
+  {
+   "id": 7,
+   "model": "no_prefixed_form",
+   "text": "a",
+   "tokens": [
+    "a"
+   ],
+   "ids": [
+    0
+   ]
+  },
+  {
+   "id": 8,
+   "model": "no_prefixed_form",
+   "text": "ba",
+   "tokens": [
+    "b"
+   ],
+   "ids": [
+    1
+   ]
+  },
+  {
+   "id": 9,
+   "model": "no_prefixed_form_unk",
+   "text": "ab",
+   "tokens": [
+    "a",
+    "[UNK]"
+   ],
+   "ids": [
+    0,
+    2
+   ]
+  },
+  {
+   "id": 10,
+   "model": "no_prefixed_form_unk",
+   "text": "a",
+   "tokens": [
+    "a"
+   ],
+   "ids": [
+    0
+   ]
+  },
+  {
+   "id": 11,
+   "model": "no_prefixed_form_unk",
+   "text": "ba",
+   "tokens": [
+    "b",
+    "[UNK]"
+   ],
+   "ids": [
+    1,
+    2
+   ]
+  },
+  {
+   "id": 12,
+   "model": "merge_stripped_result",
+   "text": "ab",
+   "tokens": [
+    "ab"
+   ],
+   "ids": [
+    3
+   ]
+  },
+  {
+   "id": 13,
+   "model": "merge_stripped_result",
+   "text": "aba",
+   "tokens": [
+    "ab"
+   ],
+   "ids": [
+    3
+   ]
+  },
+  {
+   "id": 14,
+   "model": "merge_both_prefixed",
+   "text": "abc",
+   "tokens": [
+    "a",
+    "##bc"
+   ],
+   "ids": [
+    0,
+    3
+   ]
+  },
+  {
+   "id": 15,
+   "model": "merge_both_prefixed",
+   "text": "ab",
+   "tokens": [
+    "a",
+    "##b"
+   ],
+   "ids": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": 16,
+   "model": "merge_suffixed_right",
+   "text": "ab",
+   "tokens": [
+    "ab</w>"
+   ],
+   "ids": [
+    2
+   ]
+  },
+  {
+   "id": 17,
+   "model": "merge_suffixed_right",
+   "text": "a",
+   "tokens": [
+    "a</w>"
+   ],
+   "ids": [
+    3
+   ]
+  },
+  {
+   "id": 18,
+   "model": "prefix_and_suffix",
+   "text": "ab",
+   "tokens": [
+    "a",
+    "##b</w>"
+   ],
+   "ids": [
+    0,
+    4
+   ]
+  },
+  {
+   "id": 19,
+   "model": "prefix_and_suffix",
+   "text": "a",
+   "tokens": [
+    "a</w>"
+   ],
+   "ids": [
+    5
+   ]
+  },
+  {
+   "id": 20,
+   "model": "prefix_and_suffix",
+   "text": "b",
+   "tokens": [
+    "b</w>"
+   ],
+   "ids": [
+    3
+   ]
+  },
+  {
+   "id": 21,
+   "model": "empty_prefix",
+   "text": "ab",
+   "tokens": [
+    "a",
+    "b"
+   ],
+   "ids": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": 22,
+   "model": "empty_prefix",
+   "text": "a b",
+   "tokens": [
+    "a",
+    "b"
+   ],
+   "ids": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": 23,
+   "model": "no_prefix",
+   "text": "ab",
+   "tokens": [
+    "a",
+    "b"
+   ],
+   "ids": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": 24,
+   "model": "no_prefix",
+   "text": "a b",
+   "tokens": [
+    "a",
+    "b"
+   ],
+   "ids": [
+    0,
+    1
+   ]
+  }
+ ]
+}

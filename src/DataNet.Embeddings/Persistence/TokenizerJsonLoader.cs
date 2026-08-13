@@ -543,6 +543,7 @@ public static class TokenizerJsonLoader
         RejectNonNull(root, "post_processor", "DataNet tokenizers do not insert special tokens such as [CLS] and [SEP]");
         (bool byteLevel, bool addPrefixSpace, string? pattern) = ReadBpePreTokenizer(root);
         EnsureDecoderMatchesModel(root, byteLevel);
+        EnsureContinuingPrefixIsNotByteLevel(model, byteLevel);
 
         Dictionary<string, int> vocab = ReadBpeVocab(model, limits);
         List<MergePair> merges = ReadBpeMerges(model, limits);
@@ -556,45 +557,36 @@ public static class TokenizerJsonLoader
             IgnoreMerges = OptionalBoolean(model, "ignore_merges") ?? false,
             FuseUnk = OptionalBoolean(model, "fuse_unk") ?? false,
             EndOfWordSuffix = OptionalString(model, "end_of_word_suffix"),
-            // ContinuingSubwordPrefix is deliberately not carried across: a non-null one
-            // is refused above, so reading it here could only ever restate that null,
-            // and a property that is read but never applied is what made this a bug.
+            // BpeVocabulary.ContinuingSubwordPrefix normalises "" to null itself,
+            // the way EndOfWordSuffix above does -- so this passes the raw value
+            // straight through; see BpeContinuingPrefixTests for the measurement
+            // that an empty prefix's token stream equals a declared-none model's.
+            ContinuingSubwordPrefix = OptionalString(model, "continuing_subword_prefix"),
             UnkToken = OptionalString(model, "unk_token"),
             PreTokenizerPattern = pattern,
         };
     }
 
     /// <summary>
-    /// Refuses the two <c>model</c> settings that change what BPE produces and that
+    /// Refuses the <c>model</c> setting that changes what BPE produces and that
     /// <see cref="BpeTokenizer"/> does not apply.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Each of these is read out of a shipped <c>tokenizer.json</c> today and each is
-    /// measurably not a no-op, so accepting one is a file that tokenizes differently
-    /// here than in Python without saying so. Verified against <c>tokenizers</c>
-    /// 0.23.1: with <c>continuing_subword_prefix="##"</c>, the vocabulary
-    /// <c>{a, b, ##b, ab, a##b}</c> and the single merge <c>("a", "##b")</c>, Python
-    /// encodes "ab" to the one id of <c>ab</c> where the same model without the prefix
-    /// gives two. <c>dropout</c> is a training-time regularizer that drops merges at
-    /// random, which no deterministic tokenizer can reproduce at all.
+    /// <c>dropout</c> is read out of a shipped <c>tokenizer.json</c> today and is
+    /// measurably not a no-op, so accepting it is a file that tokenizes differently
+    /// here than in Python without saying so. It is a training-time regularizer
+    /// that drops merges at random, which no deterministic tokenizer can reproduce
+    /// at all.
     /// </para>
     /// <para>
     /// Refused by name rather than implemented: support is a feature, and a file
-    /// naming one of these deserves to be told which one rather than to be tokenized
-    /// plausibly and wrongly.
+    /// declaring it deserves to be told so rather than to be tokenized plausibly
+    /// and wrongly.
     /// </para>
     /// </remarks>
     private static void EnsureBpeModelSettingsAreReproduced(JsonElement model)
     {
-        // An empty prefix prefixes no symbol, so the divergence this refusal exists to
-        // guard against cannot occur; only a non-empty prefix is still refused.
-        if (OptionalString(model, "continuing_subword_prefix") is { Length: > 0 } prefix)
-        {
-            throw Unsupported(
-                $"its model declares continuing_subword_prefix '{prefix}'",
-                "HuggingFace prefixes every non-initial symbol with it before merging, where BpeTokenizer merges the symbols as they stand");
-        }
         // At 0.0 no merge is ever skipped, which is the determinism this refusal
         // protects, so a numeric zero is exempt. A dropout that is present, non-null
         // and not a number is malformed rather than a reproduced zero, so it still
@@ -635,6 +627,45 @@ public static class TokenizerJsonLoader
         throw Unsupported(
             $"its normalizer is '{type}'",
             "BpeTokenizer normalizes nothing, so every rule this one declares would go unapplied");
+    }
+
+    /// <summary>
+    /// Refuses a byte-level model that also declares a non-empty
+    /// <c>continuing_subword_prefix</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="BpeTokenizer"/> does not apply the prefix on the byte-level path —
+    /// there, one symbol is one byte of the alphabet and nothing decorates it — while
+    /// the merge loop in its constructor strips the prefix from every merge's right
+    /// side without asking whether the model is byte-level. The two halves would
+    /// therefore disagree about the same setting, and the disagreement is silent: the
+    /// byte-level alphabet contains the characters a prefix is typically spelled with
+    /// (<c>#</c> is byte <c>0x23</c>), so a merge whose right side begins with them
+    /// can resolve to a different entry that exists rather than to a missing one.
+    /// </para>
+    /// <para>
+    /// Refused by name for the reason <see cref="EnsureBpeModelSettingsAreReproduced"/>
+    /// refuses <c>dropout</c> and <see cref="EnsureBpeNormalizerIsAbsent"/> refuses a
+    /// normalizer: a file this loader cannot reproduce is told so, rather than
+    /// tokenized plausibly and wrongly. This says nothing about what the reference
+    /// produces for such a file — nothing here measured that, and the refusal does not
+    /// rest on it. An empty prefix prefixes nothing and normalises to absent on
+    /// <see cref="BpeVocabulary.ContinuingSubwordPrefix"/>, so it pairs harmlessly and
+    /// is not refused.
+    /// </para>
+    /// </remarks>
+    private static void EnsureContinuingPrefixIsNotByteLevel(JsonElement model, bool byteLevel)
+    {
+        if (byteLevel && !string.IsNullOrEmpty(OptionalString(model, "continuing_subword_prefix")))
+        {
+            throw Unsupported(
+                "its pre_tokenizer is byte-level and its model declares a non-empty continuing_subword_prefix",
+                "BpeTokenizer does not apply the prefix on the byte-level path while its merge loop still strips it "
+                + "from a merge's right side, so the two would disagree — and the byte-level alphabet contains the "
+                + "characters a prefix is typically spelled with, so that disagreement can land on another "
+                + "existing id rather than raise");
+        }
     }
 
     private static Dictionary<string, int> ReadBpeVocab(JsonElement model, in ArtifactLimits limits)

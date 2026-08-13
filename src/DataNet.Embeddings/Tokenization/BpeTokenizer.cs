@@ -71,6 +71,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private readonly AddedTokenScanner _scanner;
     private readonly HashSet<int> _addedIds;
     private readonly string? _endOfWord;
+    private readonly string? _continuingPrefix;
     private readonly int _unkId;
     private readonly bool _hasUnk;
     private readonly bool _byteLevel;
@@ -82,13 +83,17 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// <exception cref="ArgumentException">
     /// The declared unknown token is not in the vocabulary; or a merge names a
     /// token the vocabulary does not declare; or a merge's result is not itself
-    /// a vocabulary entry.
+    /// a vocabulary entry; or a byte-level vocabulary declares a continuing
+    /// subword prefix, which this tokenizer would apply to its merges and not to
+    /// its symbols — see <see cref="EnsureByteLevelDeclaresNoContinuingPrefix"/>.
     /// </exception>
     public BpeTokenizer(BpeVocabulary vocabulary)
     {
         Guard.NotNull(vocabulary);
+        EnsureByteLevelDeclaresNoContinuingPrefix(vocabulary);
         _addPrefixSpace = vocabulary.AddPrefixSpace;
         _endOfWord = vocabulary.EndOfWordSuffix;
+        _continuingPrefix = vocabulary.ContinuingSubwordPrefix;
         _byteLevel = vocabulary.ByteLevel;
         _ignoreMerges = vocabulary.IgnoreMerges;
         _fuseUnk = vocabulary.FuseUnk;
@@ -153,10 +158,24 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             // The result is a third shape, and the reference does not raise on it
             // — it panics, walking off the end of a slice. A panic is a bug, not
             // behaviour to reproduce, so this message is DataNet's own.
-            if (!_modelVocab.TryGetValue(pair.Left + pair.Right, out int result))
+            //
+            // The result is the left side plus the right side WITHOUT its
+            // continuing prefix. Frozen in bpe_continuing_prefix.json rather
+            // than asserted here: ("a", "##b") produces "ab" and ("##b", "##c")
+            // produces "##bc" — the left keeps its own prefix and only the
+            // right loses one — under models merge_stripped_result and
+            // merge_both_prefixed. An end-of-word suffix is part of the string
+            // and rides along, ("a", "##b</w>") producing "ab</w>", under
+            // merge_suffixed_right.
+            //
+            // The reference does not merely prefer the stripped form. With the
+            // concatenated one in the vocabulary instead, it refuses to build:
+            // "Token `##bc` out of vocabulary".
+            string merged = pair.Left + StripContinuingPrefix(pair.Right);
+            if (!_modelVocab.TryGetValue(merged, out int result))
             {
                 throw new ArgumentException(
-                    $"The merge at rank {rank} produces '{pair.Left + pair.Right}', "
+                    $"The merge at rank {rank} produces '{merged}', "
                     + "which the vocabulary does not contain.", nameof(vocabulary));
             }
             // If a pair is listed twice, the first (lowest) rank is kept rather than
@@ -176,6 +195,43 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         }
 
         _split = new BpePreTokenizer(vocabulary.PreTokenizerPattern);
+    }
+
+    /// <summary>
+    /// Refuses a byte-level vocabulary that also declares a continuing subword
+    /// prefix, the one pairing whose two halves this class would answer
+    /// differently.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <see cref="ByteLevelSymbols"/> decorates nothing, so the prefix is never
+    /// applied there, while the constructor's merge loop strips it from every
+    /// merge's right side without asking whether the model is byte-level. The
+    /// byte-level alphabet contains the characters a prefix is typically spelled
+    /// with — <c>#</c> is byte <c>0x23</c> — so on such a model a stripped right
+    /// side can land on another entry that exists, and the merge then silently
+    /// produces a different id instead of raising.
+    /// </para>
+    /// <para>
+    /// <see cref="Persistence.TokenizerJsonLoader"/> refuses the same pairing in a
+    /// file. This one is here as well because <see cref="BpeVocabulary"/> is public
+    /// and constructible: a caller can pair the two without going through a loader.
+    /// A method rather than an <c>if</c> in the constructor, which sits at 14 of
+    /// S3776's limit of 15 — a call carries no cognitive complexity where a branch
+    /// costs a point.
+    /// </para>
+    /// </remarks>
+    /// <param name="vocabulary">The vocabulary the constructor was handed.</param>
+    private static void EnsureByteLevelDeclaresNoContinuingPrefix(BpeVocabulary vocabulary)
+    {
+        if (vocabulary.ByteLevel && vocabulary.ContinuingSubwordPrefix is not null)
+        {
+            throw new ArgumentException(
+                "The vocabulary is byte-level and declares the continuing subword prefix "
+                + $"'{vocabulary.ContinuingSubwordPrefix}'. A byte-level model's symbols are never "
+                + "prefixed here while a merge's right side is still stripped, so the two would disagree.",
+                nameof(vocabulary));
+        }
     }
 
     /// <summary>Tokenizes <paramref name="text"/> into sub-word tokens and their ids.</summary>
@@ -357,16 +413,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
                 ? 2
                 : 1;
             bool last = i + width == piece.Length;
-            // CA1845 wants string.Concat over spans here. Its two-span overload
-            // arrived in netstandard2.1, and this library targets netstandard2.0
-            // as well, where the call binds to Concat(object, object) and does
-            // not compile. The suffix is null for every byte-level model, so this
-            // branch is the classic lineage's alone.
-#pragma warning disable CA1845
-            string symbol = last && _endOfWord is not null
-                ? piece.Substring(i, width) + _endOfWord
-                : piece.Substring(i, width);
-#pragma warning restore CA1845
+            string symbol = Decorate(piece, i, width, i == 0, last);
             if (_modelVocab.TryGetValue(symbol, out int id))
             {
                 symbols[count++] = id;
@@ -389,6 +436,44 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         return count;
     }
 
+    /// <summary>
+    /// The vocabulary key for one code point of a piece: the characters
+    /// themselves, plus whatever decoration its position calls for.
+    /// </summary>
+    /// <param name="piece">The pre-tokenized piece being walked.</param>
+    /// <param name="at">The index of the code point's first <see cref="char"/>.</param>
+    /// <param name="width">Its width in <see cref="char"/>s — two for a surrogate pair.</param>
+    /// <param name="first">Whether it opens the piece.</param>
+    /// <param name="last">Whether it ends the piece.</param>
+    /// <remarks>
+    /// The two decorations compose, prefix then characters then suffix, and a
+    /// symbol that both continues a piece and ends it carries both — measured
+    /// against <c>tokenizers</c> 0.23.1, where <c>"ab"</c> under both settings
+    /// gives <c>['a', '##b&lt;/w&gt;']</c>. The prefix belongs to the piece and
+    /// not to the text, which costs nothing here: this runs once per code point
+    /// and only reads <paramref name="first"/>, and the caller computing it —
+    /// <see cref="InitialSymbols"/>, which is the once-per-piece one — already
+    /// knows where the piece starts.
+    /// </remarks>
+    private string Decorate(string piece, int at, int width, bool first, bool last)
+    {
+        string characters = piece.Substring(at, width);
+        string prefix = !first && _continuingPrefix is not null ? _continuingPrefix : string.Empty;
+        string suffix = last && _endOfWord is not null ? _endOfWord : string.Empty;
+
+        return prefix.Length == 0 && suffix.Length == 0
+            ? characters
+            : prefix + characters + suffix;
+    }
+
+    /// <summary>The symbol without a leading continuing prefix, if it has one.</summary>
+    /// <param name="symbol">A merge pair's right-hand side, as the file spells it.</param>
+    private string StripContinuingPrefix(string symbol) =>
+        _continuingPrefix is { Length: > 0 } prefix
+            && symbol.StartsWith(prefix, StringComparison.Ordinal)
+            ? symbol.Substring(prefix.Length)
+            : symbol;
+
     /// <summary>Fills <paramref name="symbols"/> with one id per UTF-8 byte of <paramref name="piece"/>.</summary>
     /// <remarks>
     /// <para>
@@ -398,11 +483,24 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// </para>
     /// <para>
     /// Unlike <see cref="InitialSymbols"/>, this never appends <c>_endOfWord</c>:
-    /// <see cref="BpeVocabulary.EndOfWordSuffix"/> is documented as
-    /// <see langword="null"/> for byte-level models, and no model in scope pairs
-    /// the two, but the two properties are independent and a vocabulary could
-    /// still declare both. Were that to happen, the suffix would be silently
-    /// ignored on this path rather than applied.
+    /// <see cref="BpeVocabulary.EndOfWordSuffix"/> and
+    /// <see cref="BpeVocabulary.ByteLevel"/> are independent properties, so a
+    /// vocabulary can declare both, and the suffix is then silently ignored on this
+    /// path rather than applied. Nothing here measured what the reference does with
+    /// that pairing, so it is a documented gap rather than a refusal.
+    /// </para>
+    /// <para>
+    /// <see cref="BpeVocabulary.ContinuingSubwordPrefix"/> was the same gap and is
+    /// not one any more: it is refused beside <see cref="BpeVocabulary.ByteLevel"/>,
+    /// by <see cref="EnsureByteLevelDeclaresNoContinuingPrefix"/> here and by
+    /// <see cref="Persistence.TokenizerJsonLoader"/> for a file. The prefix carries a
+    /// cost the suffix does not: <see cref="StripContinuingPrefix(string)"/>, in the
+    /// constructor's merge loop, strips it from a merge's right side without checking
+    /// <c>_byteLevel</c>, so the merge results would be computed as if the prefix
+    /// applied while the symbols here are built as if it did not. That disagreement is
+    /// silent — the byte-level alphabet contains the characters a prefix is typically
+    /// spelled with, so a stripped side can land on another entry that exists — which
+    /// is why the pairing is refused rather than documented.
     /// </para>
     /// </remarks>
     /// <exception cref="ArgumentException">

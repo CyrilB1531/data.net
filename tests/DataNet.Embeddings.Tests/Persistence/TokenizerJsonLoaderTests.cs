@@ -1146,25 +1146,25 @@ public sealed class TokenizerJsonLoaderTests
     }
 
     /// <summary>
-    /// <c>continuing_subword_prefix</c> was read into <see cref="BpeVocabulary"/>,
-    /// compared and hashed, and never applied. HuggingFace prefixes every non-initial
-    /// symbol with it before merging, which is not a no-op: over <c>tokenizers</c>
-    /// 0.23.1 with the vocabulary below and the merge <c>("a", "##b")</c>, Python
-    /// encodes "ab" to <c>[4]</c> where an implementation ignoring the prefix gives
-    /// <c>[1, 2]</c>. Refused by name until it is implemented.
+    /// <c>continuing_subword_prefix</c> is carried into <see cref="BpeVocabulary"/>
+    /// and applied by <see cref="BpeTokenizer"/>: HuggingFace prefixes every
+    /// non-initial symbol with it before merging, which is not a no-op. Verified
+    /// against <c>tokenizers</c> 0.23.1: with the vocabulary below and the merge
+    /// <c>("a", "##b")</c>, Python encodes "ab" to <c>[4]</c> where an
+    /// implementation ignoring the prefix gives <c>[1, 2]</c>.
     /// </summary>
     [Fact]
-    public void LoadBpe_refuses_a_continuing_subword_prefix()
+    public void LoadBpe_applies_a_continuing_subword_prefix()
     {
         const string Json = """
         {"model":{"type":"BPE","vocab":{"a":1,"b":2,"##b":3,"ab":4,"a##b":5},
                   "merges":[["a","##b"]],"continuing_subword_prefix":"##"}}
         """;
 
-        InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
+        var tokenizer = new BpeTokenizer(TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
+        TokenizationResult encoded = tokenizer.Encode("ab");
 
-        Assert.Contains("continuing_subword_prefix", error.Message, StringComparison.Ordinal);
+        Assert.Equal([4], encoded.Ids);
     }
 
     /// <summary>
@@ -1203,24 +1203,11 @@ public sealed class TokenizerJsonLoaderTests
     [Fact]
     public void LoadBpe_accepts_an_empty_continuing_subword_prefix()
     {
-        // An empty prefix prefixes nothing, so the divergence the refusal guards cannot occur.
+        // An empty prefix prefixes nothing, so it reads as absent rather than as a
+        // second spelling of "none" -- see BpeContinuingPrefixTests for the value.
         BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(BpeJson(@"""continuing_subword_prefix"": """"")));
 
         Assert.NotNull(vocabulary);
-    }
-
-    /// <summary>
-    /// <c>Unsupported</c> throws <see cref="InvalidDataException"/>, the type every
-    /// other refusal in this class asserts against -- not
-    /// <see cref="NotSupportedException"/>, which this loader never throws.
-    /// </summary>
-    [Fact]
-    public void LoadBpe_still_refuses_a_non_empty_continuing_subword_prefix()
-    {
-        InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(BpeJson(@"""continuing_subword_prefix"": ""##"""))));
-
-        Assert.Contains("continuing_subword_prefix", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
