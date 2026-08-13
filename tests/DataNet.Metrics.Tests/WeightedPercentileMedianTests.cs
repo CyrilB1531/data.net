@@ -115,6 +115,19 @@ public sealed class WeightedPercentileMedianTests
     /// fallback. Written against the branchy partition and expected to pass there:
     /// they exist to catch what a rewrite of the index arithmetic would break, and
     /// a test added after a change cannot do that.
+    ///
+    /// Not all five shapes guard a wrong rank equally. "already sorted", "reverse
+    /// sorted" and "organ pipe" hold every value distinct at the two selected
+    /// ranks (organ pipe's ranks land either side of its one tied pair), so any
+    /// off-by-one there changes the result: full teeth. "two distinct values" is
+    /// half zeros and half ones, so it only catches a rank shifted across that
+    /// boundary — a shift that stays inside one run returns the same value.
+    /// "all equal" cannot detect a wrong rank at all: every element is 3.0, so no
+    /// index error changes the result. It stays in the theory anyway because both
+    /// degenerate shapes still defeat a median-of-three pivot, which is where a
+    /// rewritten loop would hang or exhaust the introselect budget rather than
+    /// return a wrong number — a failure mode distinct from, and not covered by,
+    /// the three rank-guarding shapes.
     /// </summary>
     [Theory]
     [InlineData("all equal")]
@@ -139,7 +152,6 @@ public sealed class WeightedPercentileMedianTests
                 _ => throw new ArgumentOutOfRangeException(nameof(shape), shape, "no such shape"),
             };
             yTrue[i] = residual;
-            yPred[i] = 0.0;
         }
 
         // MedianAbsoluteError.PerOutput is the public entry point used above,
