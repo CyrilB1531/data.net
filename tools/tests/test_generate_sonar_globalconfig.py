@@ -12,7 +12,6 @@ server never leaves the machine, so this stays as offline as the fixture file wa
 import contextlib
 import http.server
 import json
-import os
 import re
 import threading
 from pathlib import Path
@@ -253,21 +252,24 @@ def test_check_names_the_path_and_does_not_report_the_api_as_unreachable_when_a_
 
 
 def test_check_reports_an_unreadable_local_file_as_a_local_failure_not_the_network(tmp_path, monkeypatch, capsys):
-    if hasattr(os, "geteuid") and os.geteuid() == 0:
-        pytest.skip("root ignores POSIX permission bits, so chmod 000 would not fail")
-
+    # A directory, not a chmod'd file: os.chmod(0o000) only clears POSIX
+    # permission bits, which os.geteuid() == 0 already ignores, and on Windows
+    # chmod cannot remove the owner's read access at all -- it only toggles the
+    # read-only attribute, so the file there still opens fine and the test
+    # would pass without ever reaching the branch under test. Opening a
+    # directory as a file fails on both: confirmed on this machine as
+    # IsADirectoryError, and PermissionError is Windows' documented equivalent
+    # (Windows has no directory-as-file read at all, so CPython's os module
+    # reports it as a permission failure) -- both are OSError subclasses,
+    # which is what the branch under test catches.
     unreadable = tmp_path / "unreadable.sarif"
-    unreadable.write_text("{}", encoding="utf-8")
-    unreadable.chmod(0o000)
+    unreadable.mkdir()
     monkeypatch.setattr(gen, "ERROR_LOG", unreadable)
     monkeypatch.setattr(gen, "OUTPUT", tmp_path / ".globalconfig")
 
-    try:
-        with api_server(RULES_SEARCH) as api:
-            monkeypatch.setattr(gen, "DEFAULT_API", api)
-            code = gen.main(["--check"])
-    finally:
-        unreadable.chmod(0o644)
+    with api_server(RULES_SEARCH) as api:
+        monkeypatch.setattr(gen, "DEFAULT_API", api)
+        code = gen.main(["--check"])
 
     captured = capsys.readouterr()
     # The local server above answers every call, so this exercises exactly what it

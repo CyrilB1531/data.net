@@ -31,3 +31,17 @@ protobuf==7.35.1
 # parses two foreign formats and writes a file the build reads; a drift check
 # proves that generator stable, never that it is right.
 pytest==8.4.2
+
+# colorama — click's Windows-only conditional dependency (click is nltk's;
+# click declares it as `colorama; platform_system == "Windows"`). Resolved on
+# Linux, that marker is false, so pip-compile never pins it and --require-hashes
+# then refuses the whole install on Windows, where click actually needs it.
+#
+# pip-tools 7.6.1 (the newest release; checked with `pip index versions
+# pip-tools`) has no --universal flag, and re-adding the marker here does not
+# help either: pip-compile evaluates markers against the resolving host, so a
+# conditional entry is dropped exactly like click's is. The only way this
+# tool-chain can pin it at all is unconditionally — safe here, since colorama
+# is a standalone leaf package (no further dependencies) that click only
+# imports and calls on Windows; installing it on Linux is inert.
+colorama==0.4.6
