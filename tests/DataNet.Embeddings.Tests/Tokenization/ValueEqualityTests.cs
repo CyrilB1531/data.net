@@ -1,3 +1,4 @@
+using System.Text;
 using DataNet.Embeddings.Tokenization;
 using Xunit;
 
@@ -270,5 +271,29 @@ public sealed class ValueEqualityTests
 
         Assert.NotEqual(fused, plain);
         Assert.NotEqual(fused.GetHashCode(), plain.GetHashCode());
+    }
+
+    [Fact]
+    public void BpeVocabularies_differing_only_in_normalization_forms_are_not_equal_and_do_not_share_a_hash()
+    {
+        BpeVocabulary other = SampleBpe() with { NormalizationForms = [NormalizationForm.FormC] };
+
+        Assert.NotEqual(SampleBpe(), other);
+        Assert.NotEqual(SampleBpe().GetHashCode(), other.GetHashCode());
+    }
+
+    /// <summary>
+    /// Same two forms, reversed -- same count, so <see cref="BpeVocabulary.GetHashCode"/>'s
+    /// count-only hashing (matching how <see cref="BpeVocabulary.Merges"/> and
+    /// <see cref="BpeVocabulary.AddedTokens"/> are hashed) does not distinguish them, but
+    /// <see cref="BpeVocabulary.Equals(BpeVocabulary?)"/>'s element-wise loop still must.
+    /// </summary>
+    [Fact]
+    public void BpeVocabularies_with_the_same_normalization_forms_in_a_different_order_are_not_equal()
+    {
+        BpeVocabulary ncThenNfd = SampleBpe() with { NormalizationForms = [NormalizationForm.FormC, NormalizationForm.FormD] };
+        BpeVocabulary ndThenNfc = SampleBpe() with { NormalizationForms = [NormalizationForm.FormD, NormalizationForm.FormC] };
+
+        Assert.NotEqual(ncThenNfd, ndThenNfc);
     }
 }
