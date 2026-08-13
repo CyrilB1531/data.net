@@ -1016,6 +1016,7 @@ public sealed class TokenizerJsonLoaderTests
         BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
         Assert.True(vocabulary.ByteLevel);
+        Assert.Null(vocabulary.PreSplitPattern);
         Assert.Equal(BpePatterns.Gpt2, vocabulary.PreTokenizerPattern);
     }
 
@@ -1064,6 +1065,32 @@ public sealed class TokenizerJsonLoaderTests
         Assert.True(vocabulary.ByteLevel);
         Assert.Equal("\\w+", vocabulary.PreSplitPattern);
         Assert.Null(vocabulary.PreTokenizerPattern);
+    }
+
+    /// <summary>
+    /// A <c>Sequence</c>'s <c>ByteLevel</c> step that omits <c>use_regex</c>
+    /// entirely -- what a hand-written <c>tokenizer.json</c> may do, leaning on
+    /// the same default the reference relies on. Absent means on: both patterns
+    /// are carried, the <c>Split</c> step's into <see cref="BpeVocabulary.PreSplitPattern"/>
+    /// and <see cref="BpePatterns.Gpt2"/> into <see cref="BpeVocabulary.PreTokenizerPattern"/>.
+    /// Issue #143.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_defaults_a_sequence_byte_level_steps_missing_use_regex_to_on()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "pre_tokenizer":{"type":"Sequence","pretokenizers":[
+            {"type":"Split","pattern":{"Regex":"\\w+"},"behavior":"Isolated"},
+            {"type":"ByteLevel","add_prefix_space":false}]},
+         "decoder":{"type":"ByteLevel","add_prefix_space":true}}
+        """;
+
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
+
+        Assert.True(vocabulary.ByteLevel);
+        Assert.Equal("\\w+", vocabulary.PreSplitPattern);
+        Assert.Equal(BpePatterns.Gpt2, vocabulary.PreTokenizerPattern);
     }
 
     /// <summary>

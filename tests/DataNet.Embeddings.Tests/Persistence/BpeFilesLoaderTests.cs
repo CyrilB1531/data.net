@@ -22,6 +22,7 @@ public sealed class BpeFilesLoaderTests
         Assert.Single(vocab.Merges);
         Assert.Equal(new MergePair("a", "b"), vocab.Merges[0]);
         Assert.True(vocab.ByteLevel);
+        Assert.Null(vocab.PreSplitPattern);
         Assert.Equal(BpePatterns.Gpt2, vocab.PreTokenizerPattern);
     }
 

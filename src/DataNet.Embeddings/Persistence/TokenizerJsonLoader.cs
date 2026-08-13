@@ -763,7 +763,10 @@ public static class TokenizerJsonLoader
         if (!root.TryGetProperty("pre_tokenizer", out JsonElement pre) || pre.ValueKind == JsonValueKind.Null)
         {
             // Absent is the classic (non-byte-level) lineage's own default: BpeTokenizer
-            // falls back to word-boundary splitting when PreTokenizerPattern is null.
+            // falls back to word-boundary splitting only when both PreSplitPattern and
+            // PreTokenizerPattern are null -- a Sequence whose ByteLevel step has
+            // use_regex off leaves PreTokenizerPattern null too, but PreSplitPattern
+            // still carries the Split step's pattern, so no fallback happens there.
             return (false, false, null, null);
         }
 
@@ -815,7 +818,9 @@ public static class TokenizerJsonLoader
     /// A <c>Sequence</c> of exactly a <c>Split</c> step then a <c>ByteLevel</c> step --
     /// what Llama-3 and Qwen2 declare. HuggingFace runs both: <c>Split</c> produces
     /// the pieces first, and <c>ByteLevel</c> re-splits each of them on its own
-    /// pattern unless the step's <c>use_regex</c> is off.
+    /// pattern unless the step's <c>use_regex</c> is off. Where <c>add_prefix_space</c>
+    /// is applied within that pipeline still diverges from HuggingFace's own placement;
+    /// issue #122 owns closing it.
     /// </summary>
     private static (bool ByteLevel, bool AddPrefixSpace, string? PreSplit, string? Pattern) ReadBpeSequencePreTokenizer(JsonElement pre)
     {
