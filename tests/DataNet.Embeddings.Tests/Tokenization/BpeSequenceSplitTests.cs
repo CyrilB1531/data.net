@@ -44,7 +44,10 @@ public sealed class BpeSequenceSplitTests
     {
         BpeVocabulary vocabulary = Vocabulary(Model(model));
 
-        Assert.Equal(BpePatterns.Llama3, vocabulary.PreSplitPattern);
+        Assert.NotNull(vocabulary.PreSplit);
+        Assert.Equal(BpePatterns.Llama3, vocabulary.PreSplit.Pattern);
+        Assert.Equal(SplitBehavior.Isolated, vocabulary.PreSplit.Behavior);
+        Assert.False(vocabulary.PreSplit.Invert);
         Assert.Equal(carried ? BpePatterns.Gpt2 : null, vocabulary.PreTokenizerPattern);
     }
 

@@ -63,10 +63,9 @@ internal sealed class BpePreTokenizer
         // Both absent is the classic Whitespace split. Otherwise the pre-split
         // runs first and the second pattern re-splits its pieces (issue #143).
         // Only the pre-split carries a declared behaviour; a null pre-split still
-        // needs one to drive Apply, and it is Removed with invert on -- the same
-        // "keep the regex matches, drop everything else" rule the bridge in
-        // BpeTokenizer states for the pre-split case (issue #145), not Isolated.
-        // The two are interchangeable only when the pattern never leaves a gap,
+        // needs one to drive Apply, and it is Removed with invert on -- "keep the
+        // regex matches, drop everything else" -- not Isolated. The two are
+        // interchangeable only when the pattern never leaves a gap,
         // which is true of every shipped byte-level pattern (Gpt2/Llama3/Qwen2)
         // but false of Whitespace's own \w+|[^\w\s]+, which never matches a run
         // of whitespace: under Isolated that whitespace would surface as its own

@@ -1,5 +1,7 @@
 using System.Text;
 using System.Text.Json;
+using DataNet.Embeddings.Persistence;
+using DataNet.Embeddings.Tests.Persistence;
 using DataNet.Embeddings.Tokenization;
 using Xunit;
 
@@ -112,4 +114,77 @@ public sealed class BpeSplitBehaviorTests
             "contiguous" => SplitBehavior.Contiguous,
             _ => throw new Xunit.Sdk.XunitException($"{Corpus} carries an unknown behavior '{name}'."),
         };
+
+    /// <summary>
+    /// The loader reads the file's own <c>behavior</c> and <c>invert</c>, which it
+    /// ignored entirely before issue #145 — it took the pattern and applied
+    /// <see cref="SplitBehavior.Removed"/> inverted to everything.
+    /// </summary>
+    [Theory]
+    [InlineData("isolated", SplitBehavior.Isolated, false)]
+    [InlineData("removed_inverted", SplitBehavior.Removed, true)]
+    [InlineData("merged_with_next", SplitBehavior.MergedWithNext, false)]
+    [InlineData("contiguous_adjacent", SplitBehavior.Contiguous, false)]
+    public void The_loader_carries_the_step_the_file_declares(
+        string model, SplitBehavior behavior, bool invert)
+    {
+        BpeVocabulary vocabulary = Vocabulary(model);
+
+        Assert.NotNull(vocabulary.PreSplit);
+        Assert.Equal(behavior, vocabulary.PreSplit.Behavior);
+        Assert.Equal(invert, vocabulary.PreSplit.Invert);
+    }
+
+    /// <summary>
+    /// End to end: the arrangement the file declares reaches the merge loop.
+    /// <c>Isolated</c> keeps the space and the <c>!</c> that the old rule dropped.
+    /// </summary>
+    /// <remarks>
+    /// The array is taken from the corpus's own <c>isolated</c> case for
+    /// <c>"ab cd!"</c> (case id 0), not from a prediction: that model's vocabulary
+    /// has no merges and no <c>"ab"</c>/<c>"cd"</c> entries, so
+    /// <see cref="BpeTokenizer.Encode(string)"/> emits one token per byte —
+    /// <c>["a", "b", "Ġ", "c", "d", "!"]</c> — rather than the whole pieces
+    /// <c>["ab", "Ġ", "cd", "!"]</c> that <c>pre_tokenize_str</c> alone would show.
+    /// </remarks>
+    [Fact]
+    public void An_isolated_split_keeps_the_text_between_the_matches()
+    {
+        var tokenizer = new BpeTokenizer(Vocabulary("isolated"));
+
+        Assert.Equal(["a", "b", "Ġ", "c", "d", "!"], tokenizer.Encode("ab cd!").Tokens);
+    }
+
+    /// <summary>
+    /// Three shapes the reference refuses, cited against the reference rather than
+    /// against this repository's word: the corpus carries the document it was
+    /// handed and the error it answered with.
+    /// </summary>
+    [Theory]
+    [InlineData("behavior_absent")]
+    [InlineData("invert_absent")]
+    [InlineData("behavior_unknown")]
+    public void The_reference_refuses_it_too_and_so_do_we(string shape)
+    {
+        using JsonDocument doc = OracleLoader.Load(Corpus);
+
+        JsonElement refusal = doc.RootElement.GetProperty("metadata").GetProperty("refusals")
+            .EnumerateArray().Single(r => r.GetProperty("shape").GetString() == shape);
+        Assert.NotEmpty(refusal.GetProperty("error").GetString()!);
+
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(
+                Bytes(refusal.GetProperty("document").GetString()!), OracleReplay.BpeBounds()));
+        Assert.Contains("Split", error.Message, StringComparison.Ordinal);
+    }
+
+    private static BpeVocabulary Vocabulary(string model)
+    {
+        using JsonDocument doc = OracleLoader.Load(Corpus);
+        string json = doc.RootElement.GetProperty("metadata").GetProperty("models")
+            .GetProperty(model).GetProperty("tokenizer_json").GetString()!;
+        return TokenizerJsonLoader.LoadBpe(Bytes(json), OracleReplay.BpeBounds());
+    }
+
+    private static MemoryStream Bytes(string json) => new MemoryStream(Encoding.UTF8.GetBytes(json));
 }

@@ -194,43 +194,8 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             _merged[rank] = result;
         }
 
-        _split = CreateSplit(vocabulary);
+        _split = new BpePreTokenizer(vocabulary.PreSplit, vocabulary.PreTokenizerPattern);
     }
-
-    /// <summary>
-    /// Today's behaviour, stated rather than inherited: keeping the regex matches
-    /// and nothing else is exactly <c>Split(behavior="Removed", invert=true)</c> --
-    /// measured over 91 pattern/text combinations with zero mismatches (issue #145).
-    /// The loader starts reading the file's own behaviour in a later commit; until
-    /// then this preserves the stream every existing model produces.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// A method rather than the ternary inline in the constructor, which was
-    /// already at 14 of S3776's limit of 15 before this: a call carries no
-    /// cognitive complexity where a branch costs a point, the same reason
-    /// <see cref="EnsureByteLevelDeclaresNoContinuingPrefix"/> is one.
-    /// </para>
-    /// <para>
-    /// "Preserves the stream" is exact for every vocabulary a loader actually
-    /// hands this constructor, because there <see cref="BpeVocabulary.PreTokenizerPattern"/>
-    /// is always one of <see cref="BpePatterns"/>'s, and each of those matches
-    /// every character in its input -- letter, number, or neither, all three
-    /// alternatives are covered, and the trailing <c>\s+</c> alternatives cover
-    /// whitespace too -- so it never leaves a gap for <see cref="BpePreTokenizer.Split"/>'s
-    /// second stage (always <see cref="SplitBehavior.Isolated"/>, per that method's
-    /// own doc) to expose. It is not a guarantee about <see cref="BpeVocabulary"/> in
-    /// general: nothing stops a hand-built one from pairing a pre-split with a
-    /// narrower <see cref="BpeVocabulary.PreTokenizerPattern"/> that does leave a gap,
-    /// and that combination is not measured here.
-    /// </para>
-    /// </remarks>
-    private static BpePreTokenizer CreateSplit(BpeVocabulary vocabulary) =>
-        new(
-            vocabulary.PreSplitPattern is null
-                ? null
-                : new BpeSplitStep(vocabulary.PreSplitPattern, SplitBehavior.Removed, Invert: true),
-            vocabulary.PreTokenizerPattern);
 
     /// <summary>
     /// Refuses a byte-level vocabulary that also declares a continuing subword

@@ -115,10 +115,10 @@ public sealed record BpeVocabulary(
     /// split on word boundaries, isolating punctuation from letters and digits —
     /// HuggingFace's <c>Whitespace</c> pre-tokenizer type, not the coarser
     /// <c>WhitespaceSplit</c> that only collapses whitespace runs — when
-    /// <see cref="PreSplitPattern"/> is also <see langword="null"/>. When
-    /// <see cref="PreSplitPattern"/> is set and this one is not, this pattern runs
+    /// <see cref="PreSplit"/> is also <see langword="null"/>. When
+    /// <see cref="PreSplit"/> is set and this one is not, this pattern runs
     /// second, over every piece the pre-split produced. When
-    /// <see cref="PreSplitPattern"/> is set and this one is <see langword="null"/>,
+    /// <see cref="PreSplit"/> is set and this one is <see langword="null"/>,
     /// there is no word-boundary fallback: the pre-split is the only split there is,
     /// the state <see cref="Persistence.TokenizerJsonLoader"/> produces for a
     /// <c>Sequence</c> whose <c>ByteLevel</c> step declares <c>use_regex: false</c>.
@@ -126,21 +126,19 @@ public sealed record BpeVocabulary(
     public string? PreTokenizerPattern { get; init; }
 
     /// <summary>
-    /// The pattern a <c>Sequence</c>'s <c>Split</c> step declares, applied before
-    /// <see cref="PreTokenizerPattern"/>; <see langword="null"/> when the file
-    /// declares no such step.
+    /// The <c>Split</c> step a <c>Sequence</c> pre-tokenizer declares, applied
+    /// before <see cref="PreTokenizerPattern"/>; <see langword="null"/> when the
+    /// file declares no such step.
     /// </summary>
     /// <remarks>
     /// HuggingFace's <c>Sequence</c> of <c>Split</c> then <c>ByteLevel</c> splits
-    /// twice: the <c>Split</c> step's pattern first, then <c>ByteLevel</c>'s own
-    /// over each resulting piece, unless its <c>use_regex</c> is off. Measured
-    /// against <c>tokenizers</c> 0.23.1 under Llama-3's own <c>Split</c> pattern —
-    /// the pattern this property actually carries — where <c>"aujourd'hui"</c>
-    /// splits into <c>['aujourd', "'", 'hui']</c> with the second split and
-    /// <c>['aujourd', "'hui"]</c> without it
-    /// (<c>tests/oracles/bpe_sequence_split.json</c> cases 1 and 10).
+    /// twice: this step first, then <c>ByteLevel</c>'s own pattern over each
+    /// resulting piece, unless its <c>use_regex</c> is off. Measured against
+    /// <c>tokenizers</c> 0.23.1 under Llama-3's own <c>Split</c> pattern, where
+    /// <c>"aujourd'hui"</c> splits into <c>['aujourd', "'", 'hui']</c> with the
+    /// second split and <c>['aujourd', "'hui"]</c> without it.
     /// </remarks>
-    public string? PreSplitPattern { get; init; }
+    public BpeSplitStep? PreSplit { get; init; }
 
     /// <summary>Number of entries in the vocabulary.</summary>
     public int Count => Vocab.Count;
@@ -169,7 +167,7 @@ public sealed record BpeVocabulary(
             || !string.Equals(ContinuingSubwordPrefix, other.ContinuingSubwordPrefix, StringComparison.Ordinal)
             || !string.Equals(UnkToken, other.UnkToken, StringComparison.Ordinal)
             || !string.Equals(PreTokenizerPattern, other.PreTokenizerPattern, StringComparison.Ordinal)
-            || !string.Equals(PreSplitPattern, other.PreSplitPattern, StringComparison.Ordinal)
+            || PreSplit != other.PreSplit
             || Vocab.Count != other.Vocab.Count
             || Merges.Count != other.Merges.Count
             || AddedTokens.Count != other.AddedTokens.Count)
@@ -209,7 +207,7 @@ public sealed record BpeVocabulary(
             hash = (hash * 31) + (ContinuingSubwordPrefix is null ? 0 : StringComparer.Ordinal.GetHashCode(ContinuingSubwordPrefix));
             hash = (hash * 31) + (UnkToken is null ? 0 : StringComparer.Ordinal.GetHashCode(UnkToken));
             hash = (hash * 31) + (PreTokenizerPattern is null ? 0 : StringComparer.Ordinal.GetHashCode(PreTokenizerPattern));
-            return (hash * 31) + (PreSplitPattern is null ? 0 : StringComparer.Ordinal.GetHashCode(PreSplitPattern));
+            return (hash * 31) + (PreSplit is null ? 0 : PreSplit.GetHashCode());
         }
     }
 

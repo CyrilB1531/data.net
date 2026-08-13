@@ -528,7 +528,7 @@ public static class TokenizerJsonLoader
     /// pre-tokenizer here is not merely accepted or refused: <c>ByteLevel</c>,
     /// <c>Whitespace</c>, and a <c>Sequence</c> of <c>Split</c> then <c>ByteLevel</c>
     /// each set <see cref="BpeVocabulary.ByteLevel"/>, <see cref="BpeVocabulary.AddPrefixSpace"/>,
-    /// <see cref="BpeVocabulary.PreSplitPattern"/> and <see cref="BpeVocabulary.PreTokenizerPattern"/>
+    /// <see cref="BpeVocabulary.PreSplit"/> and <see cref="BpeVocabulary.PreTokenizerPattern"/>
     /// differently, because stock GPT-2 declares a bare <c>ByteLevel</c> node with no
     /// <c>Split</c> at all, and because a <c>Sequence</c>'s <c>ByteLevel</c> step
     /// contributes a second pattern of its own only when its <c>use_regex</c> is on.
@@ -543,7 +543,7 @@ public static class TokenizerJsonLoader
         RejectNonNull(root, "truncation", "DataNet tokenizers do not truncate");
         RejectNonNull(root, "padding", "DataNet tokenizers do not pad");
         RejectNonNull(root, "post_processor", "DataNet tokenizers do not insert special tokens such as [CLS] and [SEP]");
-        (bool byteLevel, bool addPrefixSpace, string? preSplit, string? pattern) = ReadBpePreTokenizer(root);
+        (bool byteLevel, bool addPrefixSpace, BpeSplitStep? preSplit, string? pattern) = ReadBpePreTokenizer(root);
         EnsureDecoderMatchesModel(root, byteLevel);
         EnsureContinuingPrefixIsNotByteLevel(model, byteLevel);
 
@@ -565,7 +565,7 @@ public static class TokenizerJsonLoader
             // that an empty prefix's token stream equals a declared-none model's.
             ContinuingSubwordPrefix = OptionalString(model, "continuing_subword_prefix"),
             UnkToken = OptionalString(model, "unk_token"),
-            PreSplitPattern = preSplit,
+            PreSplit = preSplit,
             PreTokenizerPattern = pattern,
         };
     }
@@ -758,15 +758,15 @@ public static class TokenizerJsonLoader
     /// prepended, the pattern text is split on first, and the pattern it is split
     /// on again.
     /// </summary>
-    private static (bool ByteLevel, bool AddPrefixSpace, string? PreSplit, string? Pattern) ReadBpePreTokenizer(JsonElement root)
+    private static (bool ByteLevel, bool AddPrefixSpace, BpeSplitStep? PreSplit, string? Pattern) ReadBpePreTokenizer(JsonElement root)
     {
         if (!root.TryGetProperty("pre_tokenizer", out JsonElement pre) || pre.ValueKind == JsonValueKind.Null)
         {
             // Absent is the classic (non-byte-level) lineage's own default: BpeTokenizer
-            // falls back to word-boundary splitting only when both PreSplitPattern and
+            // falls back to word-boundary splitting only when both PreSplit and
             // PreTokenizerPattern are null -- a Sequence whose ByteLevel step has
-            // use_regex off leaves PreTokenizerPattern null too, but PreSplitPattern
-            // still carries the Split step's pattern, so no fallback happens there.
+            // use_regex off leaves PreTokenizerPattern null too, but PreSplit
+            // still carries the Split step itself, so no fallback happens there.
             return (false, false, null, null);
         }
 
@@ -795,7 +795,7 @@ public static class TokenizerJsonLoader
     /// fallback, which discards the whitespace between the words and so cannot round
     /// trip, the one guarantee byte-level BPE exists to make.
     /// </remarks>
-    private static (bool ByteLevel, bool AddPrefixSpace, string? PreSplit, string? Pattern) ReadByteLevelPreTokenizer(JsonElement pre)
+    private static (bool ByteLevel, bool AddPrefixSpace, BpeSplitStep? PreSplit, string? Pattern) ReadByteLevelPreTokenizer(JsonElement pre)
     {
         if (OptionalBoolean(pre, "use_regex") is false)
         {
@@ -822,7 +822,7 @@ public static class TokenizerJsonLoader
     /// is applied within that pipeline still diverges from HuggingFace's own placement;
     /// issue #122 owns closing it.
     /// </summary>
-    private static (bool ByteLevel, bool AddPrefixSpace, string? PreSplit, string? Pattern) ReadBpeSequencePreTokenizer(JsonElement pre)
+    private static (bool ByteLevel, bool AddPrefixSpace, BpeSplitStep? PreSplit, string? Pattern) ReadBpeSequencePreTokenizer(JsonElement pre)
     {
         if (!pre.TryGetProperty("pretokenizers", out JsonElement steps)
             || steps.ValueKind != JsonValueKind.Array
@@ -854,6 +854,39 @@ public static class TokenizerJsonLoader
                 "BpeTokenizer reproduces a regex Split pattern only");
         }
 
+        // behavior and invert are REQUIRED fields, not defaulted ones: handed a
+        // document with either removed, tokenizers 0.23.1 refuses it with
+        // "missing field `behavior`" / "missing field `invert`". So there is
+        // nothing to default to here, and accepting one would invent the value
+        // that decides what the step does with the text around its matches.
+        if (!split.TryGetProperty("behavior", out JsonElement behaviorElement)
+            || behaviorElement.ValueKind != JsonValueKind.String)
+        {
+            throw Unsupported(
+                "its Sequence's Split step declares no behavior",
+                "tokenizers 0.23.1 has no default for that field and refuses the file identically");
+        }
+        if (OptionalBoolean(split, "invert") is not bool invert)
+        {
+            throw Unsupported(
+                "its Sequence's Split step declares no invert",
+                "tokenizers 0.23.1 has no default for that field and refuses the file identically");
+        }
+        // The file spells these in PascalCase; the snake_case spellings are the
+        // reference's Python constructor API, and a document declaring one is
+        // refused there with "unknown variant `isolated`".
+        SplitBehavior behavior = behaviorElement.GetString() switch
+        {
+            "Isolated" => SplitBehavior.Isolated,
+            "Removed" => SplitBehavior.Removed,
+            "MergedWithPrevious" => SplitBehavior.MergedWithPrevious,
+            "MergedWithNext" => SplitBehavior.MergedWithNext,
+            "Contiguous" => SplitBehavior.Contiguous,
+            _ => throw Unsupported(
+                $"its Sequence's Split step declares behavior '{behaviorElement.GetString()}'",
+                "tokenizers 0.23.1 accepts only Removed, Isolated, MergedWithPrevious, MergedWithNext and Contiguous, and refuses the file identically"),
+        };
+
         if (OptionalBoolean(byteLevelStep, AddPrefixSpaceProperty) is not bool addPrefixSpace)
         {
             throw Unsupported(
@@ -873,7 +906,8 @@ public static class TokenizerJsonLoader
         // outright; here it is reproducible, because the Split step still
         // carries a pattern when ByteLevel contributes none.
         bool useRegex = OptionalBoolean(byteLevelStep, "use_regex") ?? true;
-        return (true, addPrefixSpace, regexElement.GetString(), useRegex ? BpePatterns.Gpt2 : null);
+        var step = new BpeSplitStep(regexElement.GetString()!, behavior, invert);
+        return (true, addPrefixSpace, step, useRegex ? BpePatterns.Gpt2 : null);
     }
 
     /// <summary>

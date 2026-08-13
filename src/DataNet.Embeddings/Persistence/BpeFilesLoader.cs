@@ -107,7 +107,7 @@ public static class BpeFilesLoader
             // A vocab.json and merges.txt pair declares no pre_tokenizer at all,
             // so there is no Split step to carry -- the byte-level lineage that
             // reaches here is stock GPT-2, whose ByteLevel does its own splitting.
-            PreSplitPattern = null,
+            PreSplit = null,
         };
     }
 
