@@ -651,15 +651,18 @@ only for a piece that will be emitted.
     {
         // Both absent is the classic Whitespace split. Otherwise the pre-split
         // runs first and the second pattern re-splits its pieces (issue #143).
-        // Only the pre-split carries a behaviour: the ByteLevel step's own
-        // pattern has no behavior field in the format, and its arrangement is
-        // Isolated.
+        // A null pre-split still needs a rule to drive Apply, and it is Removed
+        // with invert on -- the same "keep the matches, drop the rest" the code
+        // did before #145 -- NOT Isolated. The two coincide only where the
+        // pattern never leaves a gap, which holds for Gpt2/Llama3/Qwen2 and
+        // fails for Whitespace's own \w+|[^\w\s]+: it never matches a run of
+        // whitespace, so Isolated would surface that whitespace as its own piece.
         if (preSplit is null)
         {
             _first = pattern is null ? Whitespace : Compile(pattern);
             _second = null;
-            _behavior = SplitBehavior.Isolated;
-            _invert = false;
+            _behavior = SplitBehavior.Removed;
+            _invert = true;
         }
         else
         {
