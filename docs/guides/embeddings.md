@@ -172,8 +172,11 @@ different one is **rejected**, with a message naming what was found:
   **non-zero** `dropout`, and a bare `ByteLevel` with `use_regex` off — each of
   those changes what Python produces and none of them is applied here.
   `use_regex` off on the `ByteLevel` step of a `Split`-then-`ByteLevel`
-  `Sequence` is a different thing, and is accepted: the `Split` step carries
-  the pattern there, which is how Llama-3 and Qwen2 are written. A `dropout`
+  `Sequence` is a different thing, and is accepted — but not because `ByteLevel`
+  contributes no split of its own there. On, it re-splits each piece the
+  `Split` step already produced, on its own GPT-2 pattern; off, that second
+  split does not happen, and the `Split` step's pattern is genuinely the only
+  one applied. It is how Llama-3 and Qwen2 are written. A `dropout`
   of `0.0` and an `end_of_word_suffix` of `""` are accepted, because each
   provably changes nothing — the empty suffix reads back as absent on
   `BpeVocabulary`, an empty marker marking nothing. `continuing_subword_prefix`

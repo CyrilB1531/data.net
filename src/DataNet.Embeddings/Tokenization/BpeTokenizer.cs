@@ -194,7 +194,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             _merged[rank] = result;
         }
 
-        _split = new BpePreTokenizer(vocabulary.PreTokenizerPattern);
+        _split = new BpePreTokenizer(vocabulary.PreSplitPattern, vocabulary.PreTokenizerPattern);
     }
 
     /// <summary>
