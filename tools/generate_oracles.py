@@ -3714,8 +3714,10 @@ def _sequence_split_models() -> list[tuple]:
         "it's fine",
         "don't",
         "the 'quoted' word",
-        # The minimal case the design was read off, so the corpus carries the
-        # measurement and not only its consequences.
+        # A fourth must-not-move case, covering a reason the other three do
+        # not: Llama-3's pattern already parts letters from digits and
+        # already isolates 't, so the second pass changes nothing here even
+        # though it changes every elision above.
         "hello123 don't",
     ]
     return [
