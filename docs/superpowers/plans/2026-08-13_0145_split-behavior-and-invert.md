@@ -123,16 +123,17 @@ Insert before `def main():`:
 ```python
 # --- Split behavior and invert (issue #145) -----------------------------------
 
-# Ten models, one per behavior x invert. The behaviors are named in the Python
-# constructor's spelling; the file they serialize to uses PascalCase, which is
+# Twenty models: five behaviors x invert x two patterns. The behaviors are named
+# in the Python constructor's spelling; the file they serialize to uses PascalCase, which is
 # what the C# loader reads. Measured, spec D6.
 _SPLIT_BEHAVIORS = ["isolated", "removed", "merged_with_previous",
                     "merged_with_next", "contiguous"]
 
 # Two patterns, because one text set cannot separate every cell. "\w+" leaves
-# gaps in most texts, which is what tells the five behaviors apart; "X" produces
-# ADJACENT matches in "aXXb", which is the only shape that tells isolated from
-# contiguous -- without it two of the ten models are indistinguishable (spec D4).
+# gaps in most of these texts, which is what tells removed and the two merge
+# directions apart -- but it is greedy, so it never produces two ADJACENT matches,
+# and isolated and contiguous differ nowhere else (spec D4). "X" over "aXXb" is
+# that shape, and it is the only reason the second pattern exists.
 _SPLIT_PATTERN = r"\w+"
 _SPLIT_ADJACENT_PATTERN = "X"
 
@@ -162,7 +163,14 @@ def _split_behavior_model(pattern, behavior, invert):
 
 
 def _split_behavior_texts():
-    """One list, chosen so every cell of the ten differs from every other."""
+    """The texts, boundaries as well as examples.
+
+    They do NOT make all twenty models differ, and could not: invert is a no-op
+    for isolated and contiguous, and it exchanges the two merge directions, so
+    twelve of the pairs are equal by the reference's own rules rather than by a
+    weakness here. What the set has to do is separate the five behaviors, which
+    needs the adjacency case above for isolated against contiguous.
+    """
     return [
         # The spec's D2 row: separates removed, merged_with_previous,
         # merged_with_next and their inversions from each other.
@@ -302,10 +310,10 @@ git status --porcelain tests/oracles/
 
 Expected: `exit=0`, and a diff adding `bpe_split_behavior.json` and touching **nothing else**.
 
-- [ ] **Step 6: Confirm every one of the ten is distinguishable**
+- [ ] **Step 6: Confirm the corpus separates the five behaviours**
 
-This is the heart of the task. Ten models are worth carrying only if no two produce the same pieces on
-every text.
+This is the heart of the task — and the criterion is subtler than "no two models agree", which is what an
+earlier draft of this plan asked for and which the reference makes impossible.
 
 ```bash
 python3 - <<'PY'
@@ -331,20 +339,36 @@ for r in d['metadata']['refusals']:
 PY
 ```
 
-**Expected, and each line is a decision the spec records:**
+**Expected — and the criterion is not "almost nothing is identical".** Twelve of the pairs **are** equal,
+and every one of them is equal because the reference's own rules say so. Measured before this plan was
+written:
 
-- `isolated` and `isolated_inverted` produce the same pieces, and so do `contiguous` and
-  `contiguous_inverted` — `invert` is a no-op for those two (D3). **Those two pairs are the only
-  indistinguishable ones that are allowed.** Any other pair means the text set is too weak.
-- `removed` on `"ab cd!"` gives `[' ', '!']` and `removed_inverted` gives `['ab', 'cd']`.
-- `merged_with_previous` gives `['ab', ' cd', '!']`; `merged_with_next` gives `['ab ', 'cd!']`; each
-  inversion equals the other's non-inverted form.
-- On the adjacency pattern, `isolated_adjacent` on `"aXXb"` gives `['a','X','X','b']` and
-  `contiguous_adjacent` gives `['a','XX','b']`.
-- Three refusals, each with a non-empty error.
+Under `\w+`, which is greedy and so never produces two adjacent matches:
 
-**If a pair other than the two `invert`-no-op pairs comes out identical, stop and report.** Carrying two
-models that no test can tell apart would let an implementation collapse them and still pass.
+- `isolated`, `isolated_inverted`, `contiguous`, `contiguous_inverted` — all four equal, six pairs.
+  `invert` is a no-op for both (D3), and `Isolated` and `Contiguous` differ nowhere but adjacency (D4).
+- `merged_with_next` == `merged_with_previous_inverted`, and `merged_with_previous` ==
+  `merged_with_next_inverted` — two pairs. `invert` exchanges the two merge directions (D3).
+
+Under `X`, where `aXXb` gives the adjacency:
+
+- `isolated_adjacent` == `isolated_inverted_adjacent`, `contiguous_adjacent` ==
+  `contiguous_inverted_adjacent`, and the same two merge exchanges — four pairs.
+
+**Twelve, and no thirteenth.** What has to hold is not scarcity but these four conditions:
+
+- `isolated_adjacent` and `contiguous_adjacent` **differ** — `['a','X','X','b']` against `['a','XX','b']`.
+  If they do not, the adjacency pattern is not doing its job and two behaviours are unprovable.
+- `removed` and `removed_inverted` differ from each other and from every other model.
+- The two merge directions differ from each other, under both patterns.
+- No pair outside the twelve is identical.
+
+`'ab cd!'` under `\w+`: `isolated` gives `['ab', 'Ġ', 'cd', '!']`, `removed` gives `['Ġ', '!']`,
+`removed_inverted` gives `['ab', 'cd']`, `merged_with_previous` gives `['ab', 'Ġcd', '!']` and
+`merged_with_next` gives `['abĠ', 'cd!']`.
+
+**A thirteenth identical pair is the stop condition** — it would mean the text set stopped separating a
+behaviour, and an implementation could collapse two of them and still pass.
 
 - [ ] **Step 7: Commit**
 
@@ -353,11 +377,14 @@ git add tools/generate_oracles.py tests/oracles/bpe_split_behavior.json
 git commit -m "$(cat <<'EOF'
 Freeze all five Split behaviors and both invert values
 
-Ten models, one per behavior x invert, over two patterns. The second pattern
-exists for one case: "X" over "aXXb" produces adjacent matches, which is the
-only shape that tells isolated from contiguous. Without it two of the ten
-would be indistinguishable, and an implementation could collapse them and
-still pass.
+Twenty models: five behaviors x invert, each over two patterns. The second
+pattern exists for one case -- "X" over "aXXb" produces adjacent matches, the
+only shape that tells isolated from contiguous, because "\\w+" is greedy and
+never yields two in a row.
+
+Twelve of the pairs come out identical and are meant to: invert is a no-op for
+isolated and contiguous, and it exchanges the two merge directions. What the
+set has to separate is the five behaviors, not the twenty models.
 
 Six texts, four of them boundaries rather than examples -- fully matched, not
 matched at all, gaps at both ends, and empty. Those are where an off-by-one
@@ -420,8 +447,8 @@ using Xunit;
 namespace DataNet.Embeddings.Tests;
 
 /// <summary>
-/// Replays <c>bpe_split_behavior.json</c>: ten models, one per <c>behavior</c>
-/// and <c>invert</c> combination, over two patterns.
+/// Replays <c>bpe_split_behavior.json</c>: twenty models, one per
+/// <c>behavior</c> and <c>invert</c> combination, each over two patterns.
 /// </summary>
 public sealed class BpeSplitBehaviorTests
 {
@@ -444,7 +471,7 @@ public sealed class BpeSplitBehaviorTests
         new([.. Encoding.UTF8.GetBytes(piece).Select(ByteLevelAlphabet.ToChar)]);
 
     /// <summary>
-    /// Every piece the corpus recorded, for every one of the ten models. The
+    /// Every piece the corpus recorded, for every one of the twenty models. The
     /// corpus is the authority: where this disagrees, the code is wrong.
     /// </summary>
     [Fact]
@@ -808,7 +835,7 @@ EOF
 - [ ] **Step 1: Write the failing tests**
 
 Add to `BpeSplitBehaviorTests.cs`. Take the literal arrays from the corpus before running anything —
-`metadata.models[<name>].tokenizer_json` is a loadable document for every one of the ten:
+`metadata.models[<name>].tokenizer_json` is a loadable document for every one of the twenty:
 
 ```csharp
     /// <summary>
@@ -1240,7 +1267,8 @@ EOF
 ## Self-review
 
 **Spec coverage.** D1 is Task 2's bridge, which states the measured identity rather than preserving
-behaviour by accident. D2 and D3 are Task 1's ten models and Task 2's `The_ten_combinations`. D4 is the
+behaviour by accident. D2 and D3 are Task 1's twenty models and Task 2's `The_ten_combinations`, which covers the ten
+combinations the table has. D4 is the
 adjacency pattern, its two `_adjacent` models, and `Adjacent_matches_are_where_isolated_and_contiguous_part`
 — and Task 1's Step 6 fails if it stops discriminating. D5 and D6 are Task 1's three refusals and Task 3's
 `The_reference_refuses_it_too_and_so_do_we` plus the loader's PascalCase switch. D7 is the four boundary

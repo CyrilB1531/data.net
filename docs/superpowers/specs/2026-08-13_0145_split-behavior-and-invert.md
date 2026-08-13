@@ -163,13 +163,13 @@ A corpus `bpe_split_behavior.json`, generated against `tokenizers` 0.23.1, model
 `metadata.models` — the shape #118, #119, #120, #130 and #143 established, recording `pieces` beside
 `tokens` and `ids` as #143 did, because the pre-tokenizer's own output is where the behaviour lives.
 
-**Ten models**, one per `behavior` × `invert` combination, over a text set chosen so that each of D2's
+**Twenty models** — five behaviours × `invert` × two patterns, over a text set chosen so that each of D2's
 cells is distinguished from every other:
 
 - `ab cd!` — D2's own row, which separates `Removed`, `MergedWithPrevious`, `MergedWithNext` and their
   inversions from each other;
 - `aXXb` with an adjacency-producing pattern — the only shape that tells `Isolated` from `Contiguous`
-  (D4), and without it two of the ten models would be indistinguishable;
+  (D4), and without it `Isolated` and `Contiguous` would be indistinguishable;
 - `abc` fully matched, `"  "` unmatched, `" ab "` with leading and trailing gaps — D7's boundary rows,
   which are where an off-by-one in the segmentation lands;
 - the empty string.
