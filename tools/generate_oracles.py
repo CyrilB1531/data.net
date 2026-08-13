@@ -3667,6 +3667,16 @@ def _sequence_split_model(use_regex):
     The merges exist so the split is observable in the tokens and not only in the
     pieces: a merge never crosses a piece boundary, so "'ai" can only be reached
     when the apostrophe and the letters share a piece.
+
+    They cover 'a/'ai and 'h/'hu, so of the five texts whose PIECES differ
+    between the two models, two also differ in TOKENS -- "j'ai vu l'ami d'Anne"
+    and "aujourd'hui". "C'est l'été", "O'Brien and D'Angelo" and "rock'n'roll"
+    differ in pieces alone, there being no merge starting 'e, 'B, 'n or 'r.
+
+    That is deliberate rather than a gap. The pieces are the evidence, and all
+    five carry it; the tokens exist only to prove the pieces reach the merge
+    loop, which two texts establish as well as five would. Merges added for 'e,
+    'B, 'n and 'r would exist solely to make an established proof redundant.
     """
     from tokenizers import Tokenizer, models, pre_tokenizers, decoders, Regex  # noqa: PLC0415
 

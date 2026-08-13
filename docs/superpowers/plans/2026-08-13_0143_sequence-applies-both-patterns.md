@@ -309,6 +309,12 @@ the tasks after this one would be built on it.
 Also confirm the tokens discriminate for at least `aujourd'hui` — if only `pieces` differ and `tokens` do
 not, the merge table is not doing its job and Task 3's end-to-end test would pass under the broken rule.
 
+Measured, so Task 3 does not have to rediscover it: of the five texts whose **pieces** differ, only
+`j'ai vu l'ami d'Anne` and `aujourd'hui` also differ in **tokens**. The merge table covers `'a`/`'ai` and
+`'h`/`'hu` and nothing starting `'e`, `'B`, `'n` or `'r`. That is enough and is left alone — the pieces are
+the evidence and all five carry it, while the tokens exist only to prove the pieces reach the merge loop,
+which two texts establish as well as five would.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -794,6 +800,10 @@ public sealed class BpeSequenceSplitTests
     private static MemoryStream Bytes(string json) => new MemoryStream(Encoding.UTF8.GetBytes(json));
 }
 ```
+
+**Pick your end-to-end texts from the two that discriminate at token level** — `aujourd'hui` and
+`j'ai vu l'ami d'Anne`. The other three elisions differ in pieces only, so a token assertion on them would
+pass under the broken rule as well as the fixed one and prove nothing.
 
 **The two literal token arrays above are predictions, not measurements.** Take them from the generated
 corpus before running anything — `python3 -c "import json; d=json.load(open('tests/oracles/bpe_sequence_split.json')); print([(c['model'], c['tokens']) for c in d['cases'] if c['text']=='aujourd\\'hui'])"` — and use
