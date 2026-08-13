@@ -44,7 +44,7 @@ public sealed class BpeSequenceSplitTests
     {
         BpeVocabulary vocabulary = Vocabulary(Model(model));
 
-        Assert.NotNull(vocabulary.PreSplitPattern);
+        Assert.Equal(BpePatterns.Llama3, vocabulary.PreSplitPattern);
         Assert.Equal(carried ? BpePatterns.Gpt2 : null, vocabulary.PreTokenizerPattern);
     }
 
@@ -68,10 +68,17 @@ public sealed class BpeSequenceSplitTests
             new BpeTokenizer(Vocabulary(Model("use_regex_off"))).Encode("aujourd'hui").Tokens);
     }
 
-    /// <summary>An English contraction is in GPT-2's list, so it must not move.</summary>
+    /// <summary>
+    /// An English contraction is in GPT-2's list, so it must not move. Literal
+    /// array from tests/oracles/bpe_sequence_split.json cases 6 and 15, which
+    /// are themselves identical.
+    /// </summary>
     [Fact]
     public void A_listed_contraction_is_the_same_under_both()
     {
+        Assert.Equal(
+            ["d", "o", "n", "'", "t"],
+            new BpeTokenizer(Vocabulary(Model("use_regex_on"))).Encode("don't").Tokens);
         Assert.Equal(
             new BpeTokenizer(Vocabulary(Model("use_regex_on"))).Encode("don't").Tokens,
             new BpeTokenizer(Vocabulary(Model("use_regex_off"))).Encode("don't").Tokens);

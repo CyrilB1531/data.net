@@ -88,9 +88,8 @@ public sealed class BpePreTokenizerTests
     [Fact]
     public void The_order_matters()
     {
-        Assert.NotEqual(
-            Split(new BpePreTokenizer(BpePatterns.Llama3, BpePatterns.Gpt2), "'Tis"),
-            Split(new BpePreTokenizer(BpePatterns.Gpt2, BpePatterns.Llama3), "'Tis"));
+        Assert.Equal(["'", "T", "is"], Split(new BpePreTokenizer(BpePatterns.Llama3, BpePatterns.Gpt2), "'Tis"));
+        Assert.Equal(["'", "Tis"], Split(new BpePreTokenizer(BpePatterns.Gpt2, BpePatterns.Llama3), "'Tis"));
     }
 
     /// <summary>
