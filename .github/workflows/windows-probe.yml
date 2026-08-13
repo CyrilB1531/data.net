@@ -1,0 +1,84 @@
+name: Windows probe (temporary, issue #138)
+
+# Pushed on this branch only and deleted before the pull request. It answers
+# questions nobody can settle from Linux; the run log is the evidence and it
+# survives the file.
+on:
+  push:
+    branches: [chore/138-windows-development]
+
+jobs:
+  probe:
+    name: What Windows actually does
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Q5 — what the interpreter is called
+        continue-on-error: true
+        run: |
+          Write-Host "python  : $(python --version 2>&1)"
+          Write-Host "python3 : $(python3 --version 2>&1)"
+          Write-Host "py      : $(py --version 2>&1)"
+
+      - name: Q3 — the environment variables the guard depends on
+        run: |
+          Write-Host "HOME        = '$env:HOME'"
+          Write-Host "USERPROFILE = '$env:USERPROFILE'"
+          Write-Host "TEMP        = '$env:TEMP'"
+          Write-Host "TMP         = '$env:TMP'"
+          $inProfile = $env:TEMP -and $env:USERPROFILE -and $env:TEMP.StartsWith($env:USERPROFILE)
+          Write-Host "TEMP is inside USERPROFILE: $inProfile"
+          Write-Host "--- and what cmd sees, which is not what Actions sets for PowerShell ---"
+          cmd /c "echo HOME=%HOME% USERPROFILE=%USERPROFILE% TEMP=%TEMP%"
+
+      - name: Q4 — line endings
+        run: |
+          git config core.autocrlf
+          Write-Host "--- dotnet format, on a checkout as the runner made it ---"
+          dotnet format DataNet.slnx --verify-no-changes
+          Write-Host "format exit: $LASTEXITCODE"
+          Write-Host "--- and whether any tracked file differs from its committed bytes ---"
+          git status --porcelain
+          git diff --stat
+
+      - name: Q2 and Q1 — the venv layout, and nltk's working directory
+        continue-on-error: true
+        run: |
+          python -m venv .venv-probe
+          Write-Host "--- what the venv contains ---"
+          Get-ChildItem .venv-probe -Name
+          if (Test-Path .venv-probe\Scripts\python.exe) { Write-Host "interpreter: Scripts\python.exe" }
+          if (Test-Path .venv-probe/bin/python)          { Write-Host "interpreter: bin/python" }
+          .venv-probe\Scripts\python.exe -m pip install --quiet --only-binary :all: --require-hashes -r tools/requirements.lock.txt
+          Write-Host "--- importing nltk from the repository root, which is what fails on Linux ---"
+          .venv-probe\Scripts\python.exe -c "import nltk; print('import from repo root: OK', nltk.__version__)"
+          Write-Host "nltk-from-root exit: $LASTEXITCODE"
+          Write-Host "--- and from a neutral directory, whatever that is here ---"
+          Push-Location $env:TEMP
+          & "$env:GITHUB_WORKSPACE\.venv-probe\Scripts\python.exe" -c "import nltk; print('import from TEMP: OK', nltk.__version__)"
+          Write-Host "nltk-from-temp exit: $LASTEXITCODE"
+          Pop-Location
+
+      - name: Q6 — what the permanent job would cost
+        run: |
+          $build = Measure-Command { dotnet build DataNet.slnx -c Release --no-incremental }
+          Write-Host "build   : $($build.TotalSeconds) s"
+          $test = Measure-Command { dotnet test DataNet.slnx -c Release }
+          Write-Host "test    : $($test.TotalSeconds) s"
+
+      - name: The Python checks, which the permanent job is meant to carry
+        continue-on-error: true
+        run: |
+          python tools/check_version_floor.py
+          Write-Host "version-floor exit: $LASTEXITCODE"
+          python tools/check_machine_paths.py
+          Write-Host "machine-paths exit: $LASTEXITCODE"
+          .venv-probe\Scripts\python.exe -m pytest tools/tests -q
+          Write-Host "tool-tests exit: $LASTEXITCODE"
