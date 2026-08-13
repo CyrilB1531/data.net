@@ -3706,7 +3706,12 @@ def main() -> None:
     for filename, gen in generators.items():
         payload = gen()
         path = ORACLE_DIR / filename
-        with path.open("w", encoding="utf-8") as f:
+        # newline="\n": these files are committed and CI's "Oracles are reproducible"
+        # job compares them with a raw `git diff`, not a text-mode read. Left to the
+        # platform default, a regeneration on Windows would translate every "\n" to
+        # "\r\n" and make that diff nonempty forever, even though nothing semantic
+        # changed.
+        with path.open("w", encoding="utf-8", newline="\n") as f:
             # allow_nan=False: Python would otherwise write a bare NaN or
             # Infinity, which is not JSON and which System.Text.Json refuses at
             # load time — a failure that would surface in CI as a broken test run

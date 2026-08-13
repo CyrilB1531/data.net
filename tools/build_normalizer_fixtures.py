@@ -80,14 +80,19 @@ def train(settings: dict) -> bytes:
     """Train one tiny unigram model and return its serialized proto."""
     with tempfile.TemporaryDirectory() as tmp:
         work = pathlib.Path(tmp)
+        # newline="\n": these are inputs to spm_train, not its output, but the
+        # trained model this function returns is committed and compared byte for
+        # byte by --check. Left to the platform default, a stray "\r" from a
+        # Windows-translated corpus or rules file could feed the trainer different
+        # bytes than the ones the checked-in model was trained on.
         corpus = work / "corpus.txt"
-        corpus.write_text("\n".join(CORPUS) + "\n", encoding="utf-8")
+        corpus.write_text("\n".join(CORPUS) + "\n", encoding="utf-8", newline="\n")
 
         options = dict(settings)
         tsv = options.pop("normalization_rule_tsv", None)
         if tsv is not None:
             rules = work / "rules.tsv"
-            rules.write_text(tsv, encoding="utf-8")
+            rules.write_text(tsv, encoding="utf-8", newline="\n")
             options["normalization_rule_tsv"] = str(rules)
 
         spm.SentencePieceTrainer.train(

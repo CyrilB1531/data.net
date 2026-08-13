@@ -277,16 +277,21 @@ def main() -> None:
         path.write_bytes(model.SerializeToString())
         print(f"{filename}: {path.stat().st_size} bytes -> {path}")
 
+    # newline="\n" on all three: these fixtures are committed, and generate_oracles.py
+    # reads tiny_bpe.json and orphan_bpe_model.json back in turn (ORACLE_DIR / "...").
+    # Left to the platform default, a rebuild on Windows would translate "\n" to
+    # "\r\n" and leave the checked-in file permanently different from what a Linux
+    # rebuild produces, for no semantic reason.
     path = ORACLE_DIR / "tiny_bpe.json"
-    path.write_text(build_tiny_bpe() + "\n", encoding="utf-8")
+    path.write_text(build_tiny_bpe() + "\n", encoding="utf-8", newline="\n")
     print(f"tiny_bpe.json: {path.stat().st_size} bytes -> {path}")
 
     path = ORACLE_DIR / "orphan_bpe_model.json"
-    path.write_text(build_orphan_bpe() + "\n", encoding="utf-8")
+    path.write_text(build_orphan_bpe() + "\n", encoding="utf-8", newline="\n")
     print(f"orphan_bpe_model.json: {path.stat().st_size} bytes -> {path}")
 
     path = ORACLE_DIR / "roberta_shaped_model.json"
-    path.write_text(build_roberta_shaped() + "\n", encoding="utf-8")
+    path.write_text(build_roberta_shaped() + "\n", encoding="utf-8", newline="\n")
     print(f"roberta_shaped_model.json: {path.stat().st_size} bytes -> {path}")
 
 
