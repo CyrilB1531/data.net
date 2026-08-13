@@ -26,6 +26,11 @@ re-derived the shape from scratch. Of the eight failures that day, six fell to s
 claim independently, one to a differential against a separately written reference, one to an agent blocked
 by a criterion that contradicted its measurement, and **none to careful reading**.
 
+That breakdown is tabulated in
+`docs/superpowers/specs/2026-08-14_0134_claims-and-comment-discipline.md`, section D2, which names each of
+the eight and how it fell. Cite it rather than this paragraph if you need to check the count — this file
+states the conclusion, the spec carries the working.
+
 So the question is: **what would you run to check this, and did you run it?**
 
 - Where the claim is executable, run it and cite the output — the corpus case, the command, the file and
