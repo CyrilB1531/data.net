@@ -1,23 +1,8 @@
 using BenchmarkDotNet.Running;
 using DataNet.Text.Benchmarks.CrossLang;
 
-// Two entry points:
-//   * default        -> BenchmarkDotNet (rigorous intra-C# micro-benchmarks), e.g.
-//       dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter *Levenshtein*
-//   * "compare"      -> matched cross-language throughput harness vs the Python
-//                       side (bench/python/bench_levenshtein.py), e.g.
-//       dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- compare
-//       dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- compare --codepoint
-//   * "compare-persistence" -> the same, for the #58 loaders and the TF-IDF
-//                       round trip (bench/python/bench_persistence.py)
-//   * "compare-metrics" -> the same, for the #61 classification metrics
-//                       (bench/python/bench_metrics.py). Two optional filters,
-//                       for a before/after that measures one operation rather
-//                       than the whole matrix:
-//       dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- \
-//           compare-metrics --only median_ae,mse,mae --shapes 1000000x2
-//   * "roc-parallel" -> multiclass ROC-AUC at several worker counts, C# against
-//                       C#: the before/after for issue #86
+// Five entry points: default (BenchmarkDotNet), "compare", "compare-persistence",
+// "compare-metrics" and "roc-parallel" — usage for each is in bench/README.md.
 if (args.Length > 0 && args[0] == "compare")
 {
     LevenshteinCrossLang.Run(args);

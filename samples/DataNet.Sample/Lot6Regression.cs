@@ -24,9 +24,8 @@ internal static class Lot6Regression
     private static readonly double[] PositiveTruth = [3.0, 5.0, 2.5, 7.0];
     private static readonly double[] PositivePredicted = [2.5, 5.0, 4.0, 8.0];
 
-    // Three samples of two outputs, row-major: output 0 then output 1, sample by
-    // sample. `outputCount` is how the shape is declared — there is no 2-D array
-    // in the signature, because a span cannot carry one.
+    // Three samples, two outputs, row-major: output 0 then output 1, sample by
+    // sample. `outputCount` declares the shape — a span can't carry a 2-D array.
     private static readonly double[] WideTruth = [0.5, 1.0, -1.0, 1.0, 7.0, -6.0];
     private static readonly double[] WidePredicted = [0.0, 2.0, -1.0, 2.0, 8.0, -5.0];
 
@@ -60,12 +59,8 @@ internal static class Lot6Regression
         Console.WriteLine($"  PinballLoss (α=0.9)   = {F3(PinballLoss.Score(Truth, Predicted, alpha: 0.9))}"
             + " — under-prediction now costs nine times more");
 
-        // With sampleWeight the median becomes an averaged weighted percentile,
-        // and whether it averages is decided within one machine epsilon — so a
-        // uniform weight agrees with the ordinary median here, but a caller
-        // should not read that as a rule. scikit-learn's own weighted median
-        // returns 5.0 on residuals 0…9 weighted [0.7] * 10, where its unweighted
-        // median returns 4.5; DataNet reproduces both.
+        // A uniform weight happens to agree with the ordinary median here; see
+        // MedianAbsoluteError's own remarks for why that is not a rule.
         double[] uniform = [1.0, 1.0, 1.0, 1.0];
         Console.WriteLine($"  MedianAbsoluteError   = "
             + $"{F3(MedianAbsoluteError.Score(Truth, Predicted, sampleWeight: uniform))} under uniform weights");
@@ -100,9 +95,8 @@ internal static class Lot6Regression
         Console.WriteLine($"  R2                    = {F3(R2.Score(Truth, Predicted))}");
         Console.WriteLine($"  ExplainedVariance     = {F3(ExplainedVariance.Score(Truth, Predicted))}");
 
-        // A truth of zero variance is force_finite's case, and only its case:
-        // 1 when the prediction was perfect, 0 otherwise, or the unclamped nan
-        // and -inf when the caller asks for them.
+        // A flat truth is force_finite's case: 1 when the prediction is perfect,
+        // 0 otherwise, or unclamped nan/-inf when asked for.
         double[] flatTruth = [2.0, 2.0, 2.0];
         double[] exact = [2.0, 2.0, 2.0];
         double[] wrong = [1.0, 2.0, 3.0];
@@ -148,9 +142,8 @@ internal static class Lot6Regression
         Console.WriteLine($"    MSLE raw values     = {Format(MeanSquaredLogError.PerOutput(PositiveTruth, PositivePredicted, outputCount: 2))}");
         Console.WriteLine($"    RMSLE raw values    = {Format(RootMeanSquaredLogError.PerOutput(PositiveTruth, PositivePredicted, outputCount: 2))}");
 
-        // variance_weighted is accepted by exactly two of the eleven metrics, so
-        // it is a method on exactly those two — an invalid call does not compile
-        // rather than throwing at run time.
+        // variance_weighted applies to two of the eleven metrics, so it's a method
+        // on just those two — an invalid call fails to compile, not at run time.
         Console.WriteLine($"    R2 raw values       = {Format(R2.PerOutput(WideTruth, WidePredicted, outputCount: 2))}");
         Console.WriteLine($"    R2 variance-weighted= {F3(R2.VarianceWeighted(WideTruth, WidePredicted, outputCount: 2))}");
         Console.WriteLine($"    EV raw values       = {Format(ExplainedVariance.PerOutput(WideTruth, WidePredicted, outputCount: 2))}");

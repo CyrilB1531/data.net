@@ -17,9 +17,8 @@ import json
 import sys
 from pathlib import Path
 
-# These generators are standalone scripts run by hand, not a package. Adding the
-# repository root rather than tools/ is what lets the import below be spelled as
-# a path from the root, which is where every static analyser starts looking too.
+# Standalone script, not a package: puts the repository root on sys.path so the
+# import below resolves the way every static analyser expects it to.
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 from tools.seeded_random import SeededRandom  # noqa: E402

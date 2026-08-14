@@ -9,15 +9,13 @@ namespace DataNet.Text.Benchmarks;
 #pragma warning disable S2245, CA5394
 /// <summary>
 /// Micro-benchmarks for <see cref="VectorMath"/> — the sharpest measurable
-/// difference between the two builds of the libraries.
+/// difference between the two builds. <see cref="VectorMath.Dot"/> takes a
+/// <see cref="System.Numerics.Vector{T}"/> SIMD path under
+/// <c>#if NET5_0_OR_GREATER</c>, falling back to a scalar loop on
+/// netstandard2.0 (the span-based <c>Vector&lt;T&gt;</c> constructor is
+/// net-only). Running this class from both benchmark projects quantifies what
+/// the broad-reach target costs; see bench/README.md for the measured numbers.
 /// </summary>
-/// <remarks>
-/// <see cref="VectorMath.Dot"/> takes a <see cref="System.Numerics.Vector{T}"/>
-/// SIMD path under <c>#if NET5_0_OR_GREATER</c> and falls back to a scalar loop on
-/// netstandard2.0, because the span-based <c>Vector&lt;T&gt;</c> constructor is
-/// net-only. Running this class from both benchmark projects quantifies what the
-/// broad-reach target costs.
-/// </remarks>
 [MemoryDiagnoser]
 public class VectorMathBenchmarks
 {

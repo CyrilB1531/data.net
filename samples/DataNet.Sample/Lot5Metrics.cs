@@ -8,17 +8,14 @@ namespace DataNet.Sample;
 /// </summary>
 internal static class Lot5Metrics
 {
-    // Ten samples over three classes, deliberately imbalanced: class 2 carries
-    // half the support and class 0 a fifth of it. That is what makes the three
-    // averages below disagree — on a balanced set they would print the same
-    // number three times and the reader would learn nothing.
+    // Ten samples, three classes, deliberately imbalanced (class 2 half the
+    // support, class 0 a fifth): balanced data would print the same number three times.
     private static readonly int[] YTrue = [0, 1, 2, 2, 1, 0, 1, 2, 2, 2];
     private static readonly int[] YPred = [0, 2, 2, 1, 1, 0, 1, 1, 2, 2];
     private static readonly string[] TargetNames = ["setosa", "versicolor", "virginica"];
 
-    // Averaging.Binary is not an average — it reports one class against the
-    // rest, and the library refuses it on a matrix with more than two classes.
-    // It therefore needs a target of its own.
+    // Averaging.Binary is not an average — it scores one class against the rest,
+    // and the library refuses it above two classes — so it needs a target of its own.
     private static readonly int[] SpamTruth = [0, 1, 1, 0, 1, 1, 0, 1];
     private static readonly int[] SpamPredicted = [0, 1, 0, 0, 1, 1, 1, 1];
 
@@ -67,9 +64,8 @@ internal static class Lot5Metrics
                 + $"{F1.Score(cm, average):F3}");
         }
 
-        // Averaging.Binary is the default, and it is not an average: it scores
-        // posLabel alone. On the three-class matrix above it throws rather than
-        // guess, so it gets a two-class target of its own.
+        // SpamTruth above explains why Binary needs its own two-class target.
+        // posLabel picks which class counts as positive, here the spam one.
         Console.WriteLine($"    Binary, posLabel=1  = "
             + $"{Precision.Score(SpamTruth, SpamPredicted, Averaging.Binary, posLabel: 1):F3} / "
             + $"{Recall.Score(SpamTruth, SpamPredicted, Averaging.Binary, posLabel: 1):F3} / "
@@ -173,9 +169,8 @@ internal static class Lot5Metrics
         double[] scores = [0.10, 0.40, 0.35, 0.80, 0.70, 0.20];
         Console.WriteLine($"  RocAuc.Score (binary) = {RocAuc.Score(binaryTruth, scores):F3}");
 
-        // Row-major probabilities: sample 0's three classes, then sample 1's.
-        // Each row sums to 1, which is what roc_auc_score demands of a
-        // multiclass score matrix.
+        // Row-major: sample 0's three classes, then sample 1's — each row sums to
+        // 1, which a multiclass score matrix must.
         int[] truth = [0, 1, 2, 2, 1, 0];
         double[] probabilities =
         [
@@ -194,17 +189,8 @@ internal static class Lot5Metrics
         Console.WriteLine($"  MultiClass ovo macro  = "
             + $"{RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { Strategy = MultiClassStrategy.OneVsOne }):F3}");
 
-        // Opt-in parallelism over the per-class loop. Six samples and three
-        // classes is far too small to gain anything — the point here is that the
-        // number does not move, which is the guarantee the knob carries.
-        //
-        // Environment.ProcessorCount is spelled out here because it is the honest
-        // way to say "every logical thread", not because it is the right number:
-        // it counts logical threads, and on a hyperthreaded machine asking for all
-        // of them is measurably slower than asking for half on several shapes. Do
-        // not copy this figure into production code without reading
-        // docs/guides/performance.md, which measures both and says which shapes
-        // lose.
+        // Parallel and sequential agree by contract; Environment.ProcessorCount here
+        // is honest, not optimal — see docs/guides/performance.md before copying it.
         Console.WriteLine($"  MultiClass ovr macro  = "
             + $"{RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }):F3}"
             + "  (parallel, same value)");

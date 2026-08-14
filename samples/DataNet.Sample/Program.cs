@@ -7,21 +7,14 @@ using DataNet.Metrics;
 using DataNet.Sample;
 using DataNet.Text.Distances;
 
-// A consumer of the published packages, exercising one thing per lot. It runs as
-// part of CI, because a sample that is never built rots into documentation that
-// lies.
-//
-// It is also the packaging gate described in ADR 0009, and that is the stricter
-// job: PackagingGate below fails this program when any public type of the four
-// packages has stopped being reachable from outside its assembly. Adding a public
-// type therefore means adding a call here — see the Lot*.cs files.
+// A consumer of the published packages, one thing per lot; runs in CI so it can't
+// rot. Also ADR 0009's packaging gate: a new public type needs a call in Lot*.cs.
 
 Console.WriteLine("DataNet sample — consuming the NuGet packages");
 Console.WriteLine(new string('-', 46));
 
-// Which assets did NuGet actually hand us? On net10.0 this must report
-// .NETCoreApp,Version=v10.0 — proving the package's lib/net10.0 folder resolved,
-// rather than the sample silently picking up something else.
+// Confirms NuGet resolved the package's net10.0 lib folder, not something else —
+// must report .NETCoreApp,Version=v10.0.
 Console.WriteLine($"running on        : {RuntimeInformation.FrameworkDescription}");
 Console.WriteLine($"DataNet.Text      : {FrameworkOf(typeof(Levenshtein))}");
 Console.WriteLine($"DataNet.Fuzzy     : {FrameworkOf(typeof(Fuzz))}");

@@ -7,16 +7,13 @@ namespace DataNet.Text.Benchmarks.CrossLang;
 
 /// <summary>
 /// Cross-language throughput harness for the #58 persistence work, mirroring
-/// <c>bench/python/bench_persistence.py</c> exactly: same corpus files, same
-/// millisecond-per-operation metric, same auto-scaling best-of-N methodology.
-/// Timing itself is <see cref="Harness"/>, a matched Stopwatch loop rather than
-/// BenchmarkDotNet, so both languages are measured the same way.
+/// <c>bench/python/bench_persistence.py</c>: same corpus files, same
+/// millisecond-per-operation metric, same auto-scaling best-of-N methodology
+/// via <see cref="Harness"/>, a matched Stopwatch loop rather than
+/// BenchmarkDotNet. Loaders are called through their path-based overloads —
+/// the Python counterpart, <c>Tokenizer.from_file(path)</c>, reads the file
+/// itself, and timing a C# in-memory parse against it would flatter C# for free.
 /// </summary>
-/// <remarks>
-/// Loaders are called through their path-based overloads on purpose. The Python
-/// counterpart is <c>Tokenizer.from_file(path)</c>, which reads the file itself;
-/// timing a C# in-memory parse against it would flatter C# for free.
-/// </remarks>
 public static class PersistenceCrossLang
 {
     public static void Run()

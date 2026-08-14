@@ -48,9 +48,8 @@ public static class BenchCorpus
             .ToArray();
         if (missing.Length > 0)
         {
-            // Every missing name at once: a half-generated corpus is one run of the
-            // generator away from fixed, and naming only the first invites doing it
-            // five times.
+            // Every missing name at once, not just the first: one generator run
+            // fixes them all, rather than being rediscovered one at a time.
             throw new InvalidOperationException(
                 $"The benchmark corpus is missing {string.Join(", ", missing)} in '{dir}'. " +
                 "Generate it first: python bench/corpus/generate_vocabs.py");

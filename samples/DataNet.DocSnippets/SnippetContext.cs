@@ -2,15 +2,8 @@ using DataNet.Embeddings.Tokenization;
 
 namespace DataNet.DocSnippets;
 
-// The symbols the guides introduce in prose rather than in a fence: a page that
-// says "…later, in another process" is not going to re-declare its corpus, and
-// making it do so would be worse documentation.
-//
-// This is scaffolding, not a copy of any snippet — no line here appears in a
-// guide. The names are camelCase because they are the names the guides use, and
-// the guides are the side that must not move. The values are irrelevant: this
-// project is compiled and never run, because what the check catches is an API
-// that moved, not a wrong number.
+// The symbols guides reference in prose, not a fence — camelCase to match, since
+// guides can't move. Compiled but never run: catches an API that moved, not a wrong value.
 
 internal sealed partial class Vectorization
 {
