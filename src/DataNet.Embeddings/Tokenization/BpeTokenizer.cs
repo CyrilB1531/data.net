@@ -129,9 +129,8 @@ public sealed class BpeTokenizer : ISubwordTokenizer
                     $"The merge at rank {rank} produces '{merged}', "
                     + "which the vocabulary does not contain.", nameof(vocabulary));
             }
-            // A pair listed twice keeps its LAST occurrence, which is what the
-            // reference does -- tests/oracles/bpe_duplicate_merge.json, model
-            // "duplicate": a+b at ranks 0 and 3 gives ['a', 'bc', 'd'].
+            // A pair listed twice keeps its LAST occurrence, as the reference does:
+            // tests/oracles/bpe_duplicate_merge.json, model "duplicate".
             _ranks[Key(left, right)] = rank;
             _merged[rank] = result;
         }

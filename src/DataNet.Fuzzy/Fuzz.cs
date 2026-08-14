@@ -6,14 +6,11 @@ namespace DataNet.Fuzzy;
 /// Applied fuzzy-matching ratios, reproducing <c>rapidfuzz.fuzz</c>.
 /// </summary>
 /// <remarks>
-/// <para>
-/// All scores are in <c>[0, 100]</c>. Like rapidfuzz (and unlike the old
-/// fuzzywuzzy defaults), no preprocessing is applied: comparisons are
-/// case-sensitive and punctuation is kept. The base <see cref="Ratio"/> is the
-/// Indel similarity ×100 — <em>not</em> Levenshtein, the single most common
-/// confusion on this topic.
-/// </para>
-/// <para>Tokenization splits on runs of whitespace (like Python <c>str.split()</c>). Thread-safe.</para>
+/// Scores are in <c>[0, 100]</c>, with no preprocessing: comparisons are
+/// case-sensitive and punctuation is kept, as in rapidfuzz and unlike the old
+/// fuzzywuzzy defaults. <see cref="Ratio"/> is the Indel similarity ×100 —
+/// <em>not</em> Levenshtein, the commonest confusion here. Tokenization splits
+/// on runs of whitespace, as Python's <c>str.split()</c>. Thread-safe.
 /// </remarks>
 public static class Fuzz
 {
