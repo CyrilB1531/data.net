@@ -32,10 +32,20 @@ internal sealed class BpePreTokenizer
     private readonly Regex? _second;
     private readonly SplitRule _rule;
 
-    // RegexOptions.Compiled is deliberately not used: a tokenizer is built once per
-    // model, so paying a compile cost here buys nothing on a path that runs once.
+    // RegexOptions.Compiled is used for no pattern here, so one policy covers all four:
+    // measured, it buys 1.44x on matching for 6-26 ms per tokenizer built (issue #122).
     public BpePreTokenizer(BpeSplitStep? preSplit, string? pattern, bool noSplit)
     {
+        if (noSplit)
+        {
+            // No pattern to match, so no rule to arrange matches with: Split emits
+            // the text whole. The behaviour rules below have nothing to govern here.
+            _first = null;
+            _second = null;
+            _rule = default;
+            return;
+        }
+
         // long-comment: the default rule when no Split step is declared is not
         // obvious, and the measured case is what keeps it from looking arbitrary.
         // A pre-split runs first and the second pattern re-splits its pieces
@@ -51,13 +61,7 @@ internal sealed class BpePreTokenizer
         // and no substituted token for one. Removed+invert keeps that path
         // byte-for-byte unchanged; BpeSplitBehaviorTests never exercises this
         // branch at all, since every corpus case supplies its own BpeSplitStep.
-        if (noSplit)
-        {
-            _first = null;
-            _second = null;
-            _rule = default;
-        }
-        else if (preSplit is null)
+        if (preSplit is null)
         {
             // Not null here: BpeTokenizer.EnsurePreTokenizerIsDeclared refuses a
             // vocabulary declaring no pre-split, no pattern and not the mode.

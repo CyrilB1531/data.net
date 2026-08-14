@@ -25,6 +25,11 @@ public sealed class BpeNoSplitTests
     }
 
     /// <summary>The mode beside a pattern contradicts itself, so it is refused too.</summary>
+    /// <remarks>
+    /// The message is asserted, not only the type: this constructor raises
+    /// <see cref="ArgumentException"/> at seven places, so a guard added ahead of
+    /// this one would leave a type-only assertion green and empty.
+    /// </remarks>
     [Fact]
     public void The_mode_and_a_pattern_together_are_refused()
     {
@@ -34,7 +39,11 @@ public sealed class BpeNoSplitTests
             PreTokenizerPattern = BpePatterns.Whitespace,
         };
 
-        Assert.Throws<ArgumentException>(() => new BpeTokenizer(vocabulary));
+        ArgumentException error = Assert.Throws<ArgumentException>(() => new BpeTokenizer(vocabulary));
+        Assert.Contains(
+            $"{nameof(BpeVocabulary.NoPreTokenizer)} and {nameof(BpeVocabulary.PreTokenizerPattern)} together",
+            error.Message,
+            StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -50,19 +59,19 @@ public sealed class BpeNoSplitTests
             PreSplit = new BpeSplitStep(@"\w+", SplitBehavior.Isolated, Invert: false),
         };
 
-        Assert.Throws<ArgumentException>(() => new BpeTokenizer(vocabulary));
+        ArgumentException error = Assert.Throws<ArgumentException>(() => new BpeTokenizer(vocabulary));
+        Assert.Contains(
+            $"{nameof(BpeVocabulary.NoPreTokenizer)} and {nameof(BpeVocabulary.PreSplit)} together",
+            error.Message,
+            StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// The pattern the constructor used to supply is a member now, so a caller
-    /// who meant the classic lineage can say it.
-    /// </summary>
+    /// <summary>The pattern the constructor used to supply is a member now, so a caller who meant the classic lineage can say it.</summary>
     /// <remarks>
-    /// The merge is what makes this a claim about the split rather than about
-    /// coverage: <c>"a!"</c> is in the vocabulary and reachable in one merge, so
-    /// only the word boundary between the letter and the punctuation keeps the two
-    /// apart. <c>WhitespaceSplit</c> (<c>\S+</c>) or the mode below would give
-    /// <c>["a!"]</c>.
+    /// The merge is what makes this a claim about the split rather than about coverage:
+    /// <c>"a!"</c> is in the vocabulary and reachable in one merge, so only the word
+    /// boundary between the letter and the punctuation keeps the two apart.
+    /// <c>WhitespaceSplit</c> (<c>\S+</c>) or the mode below would give <c>["a!"]</c>.
     /// </remarks>
     [Fact]
     public void The_whitespace_pattern_is_reachable_and_splits_on_word_boundaries()
