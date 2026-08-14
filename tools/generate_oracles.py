@@ -2410,7 +2410,7 @@ BPE_NORMALIZER_TEXTS = [
     "Ångstrom unit",     # ANGSTROM SIGN
     "ﬁve o￦clock",  # the fi ligature, and a fullwidth macron
     "① ② café",
-    "hello world",            # unchanged by every form: the control
+    HELLO_WORLD,              # unchanged by every form: the control
 ]
 
 # Code points chosen to expose a disagreement between .NET's Unicode tables
@@ -2608,7 +2608,7 @@ BYTELEVEL_STREAM_TEXTS = [
     "日本語のテキスト",  # a Japanese sentence
     "\U0001f1eb\U0001f1f7 emoji",       # a regional-indicator pair
     "déjà vu",                # Latin-1: no fragment, the control
-    "hello world",                      # ASCII: the other control
+    HELLO_WORLD,                        # ASCII: the other control
 ]
 
 
