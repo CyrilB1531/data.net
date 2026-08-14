@@ -232,6 +232,8 @@ python3 tools/check_comment_length.py --report  # counts only, always exit 0
 python3 tools/check_comment_length.py --help
 ```
 
+CI runs it in the `Lint` job and on Windows, so a finding fails the build. The `--report` line prints beside it, which is how the marker count stays visible without failing on its own growth.
+
 Longer stays possible where it is necessary. A block past its budget carries
 `long-comment:` and a reason as its first line; an empty marker is refused. The
 guard sees only that a marker exists — whether the block deserved one is a
