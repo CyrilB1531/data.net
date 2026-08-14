@@ -11,8 +11,10 @@ A **data-science toolkit for C#/.NET**, built on an honest premise:
 ## Why
 
 Python dominates data analysis through its ecosystem and its exploratory notebook
-workflow — not through the language itself; its performance comes from C/Fortran
-kernels. C# brings static typing, real parallelism without a global interpreter
+workflow, not through the language itself. Its performance comes from C/Fortran
+kernels.
+
+C# brings static typing, real parallelism without a global interpreter
 lock, safe refactoring, and simple deployment. The only objective reason to stay
 on Python for this domain was the lack of an equivalent .NET library. DataNet
 removes that reason.
@@ -26,7 +28,7 @@ removes that reason.
    which, for each need (NumPy, pandas, scikit-learn, statsmodels, PyTorch,
    matplotlib, seaborn), points to the right .NET building block and the pitfalls.
 
-See the [**three-column migration inventory**](docs/migration/README.md): it's the
+See the [**four-column migration inventory**](docs/migration/README.md): it's the
 project map (use / build / decide).
 
 > Targets: **.NET 10** (`net10.0`, all fast paths) and **.NET Standard 2.0**
@@ -89,9 +91,9 @@ policy are in [`CONTRIBUTING.md`](CONTRIBUTING.md); release history is in
 
 ### Oracle validation
 
-Conformance to Python behavior is **proven**, not assumed (§4 of the brief):
+Conformance to Python behavior is **proven**, not assumed (§4 of the brief).
 `tools/generate_oracles.py` freezes a few thousand reference cases from
-rapidfuzz/jellyfish/etc. into `tests/oracles/*.json` (versioned); the C# suite
+rapidfuzz/jellyfish/etc. into `tests/oracles/*.json` (versioned). The C# suite
 replays them with a `1e-9` tolerance. Python is a development-only dependency. See
 [`tools/README.md`](tools/README.md).
 
@@ -112,6 +114,25 @@ DataNet.slnx
 └── docs/                        guides, equivalence table, decision log
 ```
 
+## Where a fact belongs
+
+Each document below has one subject; content whose subject is another document's
+belongs there instead, with a link left behind. The source column is what tells
+you whether to correct the document itself or something upstream of it.
+
+| document | its source | its subject |
+| --- | --- | --- |
+| `bench/README.md` | the `bench/` harness projects and scripts, hand-maintained | **how to measure** — the harness, the corpus, the commands |
+| `docs/guides/performance.md` | a benchmark run on a named machine | **what was measured** — every number, with its machine and its window |
+| `tools/README.md` | the scripts under `tools/`, hand-maintained | what each tool does and how to run it |
+| `CONTRIBUTING.md` | the project's own process, hand-maintained | the process a contributor follows |
+| `CLAUDE.md` | what a session has found, hand-maintained | what a session needs to be productive, and the traps that cost time |
+| `docs/equivalence.md` | the oracle corpora in `tests/oracles/*.json`, replayed against the C# they compare | the Python call to C# counterpart mapping, with each divergence |
+| `docs/migration/` | the .NET package chosen for each need | what is delegated to another .NET library, and why |
+| `CHANGELOG.md` | the merged pull requests, per release | what changed, per release |
+| `docs/decisions/` | the ADRs' own `**Status:**` lines, indexed in [`docs/decisions/README.md`](docs/decisions/README.md) | a decision, with its options and its loser |
+| root `README.md` | the project as it stands, hand-maintained | what the project is, and where to go next |
+
 ## Publishing
 
 Four NuGet packages are produced: `DataNet.Text`, `DataNet.Embeddings`,
@@ -122,7 +143,7 @@ on `DataNet.Text` as a published package, not as a project reference — see
 [`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md).
 
 **GitHub Packages** (no nuget.org account needed — uses GitHub's automatic token).
-Bump the version, then tag it with the package name; the
+Bump the version, then tag it with the package name. The
 [`release`](.github/workflows/release.yml) workflow packs and publishes that
 package alone:
 
@@ -133,14 +154,14 @@ git tag DataNet.Fuzzy/v0.3.0
 git push origin DataNet.Fuzzy/v0.3.0
 ```
 
-The tag does not set the version, it names which declared version to release: the
+The tag does not set the version; it names which declared version to release. The
 workflow refuses the job if the tag and `Version.props` disagree. Repository-wide
 `v*` tags are retired — there is no single version left for one to designate.
 
 **Step 1 is not optional.** Because the tag only confirms the declared version,
 tagging without bumping first is a tag that agrees with `Version.props` and names
-a version the feed already has. The push is then rejected rather than absorbed —
-the workflows do not pass `--skip-duplicate`, which used to report that case as a
+a version the feed already has. The push is then rejected rather than absorbed.
+The workflows do not pass `--skip-duplicate`, which used to report that case as a
 successful release that shipped nothing. Keeping a declared version off the feed
 is also checked directly in CI by `tools/check_version_floor.py`.
 

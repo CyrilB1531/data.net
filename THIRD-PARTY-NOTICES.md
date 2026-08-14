@@ -8,14 +8,14 @@ for traceability.
 
 ## Runtime / shipped dependencies
 
-`DataNet.Text` and `DataNet.Fuzzy` have **no** runtime dependencies on `net10.0`,
-by design (§3).
+`DataNet.Text`, `DataNet.Fuzzy` and `DataNet.Metrics` have **no** runtime
+dependencies on `net10.0`, by design (§3).
 
 | Component | License | Shipped by | Target |
 | --- | --- | --- | --- |
 | Microsoft.ML.OnnxRuntime | MIT | `DataNet.Embeddings` | both |
-| System.Memory | MIT | all three packages | `netstandard2.0` only |
-| System.Numerics.Vectors | MIT | all three packages | `netstandard2.0` only |
+| System.Memory | MIT | all four packages | `netstandard2.0` only |
+| System.Numerics.Vectors | MIT | all four packages | `netstandard2.0` only |
 | System.Text.Json | MIT | `DataNet.Text`, `DataNet.Embeddings` | `netstandard2.0` only |
 
 `System.Memory` and `System.Numerics.Vectors` supply `Span`, `Memory`,
@@ -126,7 +126,7 @@ The **vocabulary and merge table only** — the 50 257 token-to-id entries of
 The files are compiled into no package: they live under `tests/`, are copied to
 the test output, and exist so `ByteLevelBpeTests`' claim of byte-exact parity
 with HuggingFace `tokenizers` is checked against GPT-2's real 50 257-entry
-vocabulary — a self-trained toy model could never exercise a merge table with
+vocabulary. A self-trained toy model could never exercise a merge table with
 50 000 ranks. They are downloaded verbatim by `tools/fetch_gpt2_bpe.py`, which
 pins the upstream SHA-256 of each file.
 

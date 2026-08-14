@@ -149,7 +149,7 @@ does **not** measure a penalty. On `EmbedBatch` the netstandard2.0 side comes in
 at 32 texts; 1 418 / 1 419 against 1 482 / 1 460 at 128), which is inside this
 harness's noise but consistent in direction. This guide previously reported the
 opposite — "3–5 % behind" — from a pair of commands that did not share a
-BenchmarkDotNet toolchain; that comparison is withdrawn rather than reversed
+BenchmarkDotNet toolchain. That comparison is withdrawn rather than reversed
 (issue #87).
 
 Withdrawn, not disproved. The figures above cannot be set against the old ones,
@@ -187,7 +187,7 @@ same on both targets.
 dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter '*BatchEmbedding*'
 ```
 
-`--inProcess` on the first command, and not on the second, is the point: the
+`--inProcess` on the first command, and not on the second, is the point. The
 netstandard2.0 project pins `InProcessEmitToolchain` in its `Program.cs` — it
 has to, or BenchmarkDotNet's generated project re-resolves the
 `ProjectReference` and silently restores the net10.0 build — so the flag is what
@@ -333,10 +333,10 @@ centred sum. The other seven metrics are one of those four with a different
 arithmetic kernel and are not separately timed. They run over
 `y_true_real`/`y_pred_real`, continuous targets drawn by a separate seeded
 random generator and attached to each of the six existing corpus shapes,
-independent of the classification columns those shapes already carry — the
+independent of the classification columns those shapes already carry. The
 generator inserting these draws would otherwise have shifted every
 classification array after the insertion point, invalidating the 29 and 18
-rows above; a before/after comparison of `y_true[:10]` on the regenerated
+rows above. A before/after comparison of `y_true[:10]` on the regenerated
 corpus confirmed it did not. Same corpus files, same harnesses, same
 methodology as the tables above — **but measured in yet another separate
 window, with its own load**: `uptime`'s one-minute average was **8.05** just
@@ -344,9 +344,9 @@ before the Python side started (five/fifteen-minute: 11.95 / 14.25) and
 **6.05** by the time `compare.py` printed the numbers below (five/fifteen-minute:
 7.15 / 11.07). That is well below the 16–23 one-minute load this session saw
 at dispatch and while the code changes were being made, but still noticeably
-busier than the 1.52 one-minute load recorded for the original 29 rows, so
+busier than the 1.52 one-minute load recorded for the original 29 rows. So
 these 24 rows should be read only under their own conditions, given here —
-**except the six `median_ae` rows marked †**, which come from a later
+**except the six `median_ae` rows marked †**. Those come from a later
 window described below, after `MedianAbsoluteError`'s unweighted path was
 rewritten.
 

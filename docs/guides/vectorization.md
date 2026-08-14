@@ -53,9 +53,10 @@ well.
 English is scikit-learn's 318-word list, for `stop_words="english"` parity. The
 other five come from Snowball, **not** from `nltk.corpus.stopwords`: that corpus
 has no stated licence, so it cannot be redistributed here
-([decision 0010](../decisions/0010-stop-word-list-provenance.md)). The lists are
-close — Italian is identical word for word, the others differ by a handful — but
-if you need exactly what nltk removes, load the corpus yourself and pass it in.
+([decision 0010](../decisions/0010-stop-word-list-provenance.md)). Per-language
+word counts against nltk's are in
+[`docs/equivalence.md`](../equivalence.md#conventions) — but if you need exactly
+what nltk removes, load the corpus yourself and pass it in.
 
 Each list is built the first time it is read and never again, one language at a
 time: a program that only ever asks for French does not pay for the other five.

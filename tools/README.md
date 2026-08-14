@@ -1,25 +1,30 @@
 # Development tools — oracle generation, vendored data, packaging checks
 
 Scripts under `tools/`, each responsible for one input the test suite treats as
-given: `generate_oracles.py` produces the reference values the test suite
-replays; `fetch_stopwords.py` produces source that is *shipped*, which is why it
-verifies what it downloaded before writing anything; `fetch_xlmr_vocab.py` and
-`build_normalizer_fixtures.py` produce fixtures `generate_oracles.py` reads;
-`build_tiny_models.py` builds fixtures too small for that pipeline to bother
-with — two ONNX graphs, a trained BPE, and a hand-constructed BPE — and
-commits them directly;
-`check_nuspec_dependencies.py` verifies what the packages *declare*;
-`check_version_floor.py` verifies that the version numbers the source tree keeps
-in three places still agree; `check_machine_paths.py` refuses a tracked file
-that holds a path under someone's home directory; `check_comment_length.py`
-refuses a comment block that runs past its budget without saying why;
-`generate_sonar_globalconfig.py` writes the
-`.globalconfig` that raises the Sonar rules `SonarAnalyzer.CSharp` ships
-disabled, from the SonarCloud quality profile that gates the pull request; and
-`sonarqube-local/` holds the compose file for a disposable local SonarQube
-server, covering the Python rules, duplication and coverage that no local
-`dotnet build` reaches — see
-[`../CONTRIBUTING.md`](../CONTRIBUTING.md#before-pushing-the-half-the-build-cannot-see).
+given:
+
+- `generate_oracles.py` produces the reference values the test suite replays.
+- `fetch_stopwords.py` produces source that is *shipped*, which is why it
+  verifies what it downloaded before writing anything.
+- `fetch_xlmr_vocab.py` and `build_normalizer_fixtures.py` produce fixtures
+  `generate_oracles.py` reads.
+- `build_tiny_models.py` builds fixtures too small for that pipeline to bother
+  with — two ONNX graphs, a trained BPE, and a hand-constructed BPE — and
+  commits them directly.
+- `check_nuspec_dependencies.py` verifies what the packages *declare*.
+- `check_version_floor.py` verifies that the version numbers the source tree
+  keeps in three places still agree.
+- `check_machine_paths.py` refuses a tracked file that holds a path under
+  someone's home directory.
+- `check_comment_length.py` refuses a comment block that runs past its budget
+  without saying why.
+- `generate_sonar_globalconfig.py` writes the `.globalconfig` that raises the
+  Sonar rules `SonarAnalyzer.CSharp` ships disabled, from the SonarCloud
+  quality profile that gates the pull request.
+- `sonarqube-local/` holds the compose file for a disposable local SonarQube
+  server, covering the Python rules, duplication and coverage that no local
+  `dotnet build` reaches — see
+  [`../CONTRIBUTING.md`](../CONTRIBUTING.md#before-pushing-the-half-the-build-cannot-see).
 
 ## `generate_oracles.py`
 
@@ -131,7 +136,7 @@ python tools/check_nuspec_dependencies.py artifacts
 
 A package's dependency graph is a *build output*, derived from whatever restore
 resolved, so nobody writes it down and nothing notices when it drifts. This
-script is where it is written down. It matters more since the three packages
+script is where it is written down. It matters more since the four packages
 version independently: `DataNet.Fuzzy` reaches `DataNet.Text` through a
 `PackageReference`, and that edge is now the one thing holding the two together.
 See [`../docs/decisions/0012-per-package-versioning.md`](../docs/decisions/0012-per-package-versioning.md).
@@ -160,7 +165,7 @@ python tools/check_version_floor.py --check-feed  # also: the floor is published
 The floor must not exceed the declared version, and must already be on nuget.org
 — that is what makes `git clone && dotnet build` work with no pack step. A floor
 naming an unpublished version still builds for whoever raised it, whose cache is
-warm, and fails for everyone else; `--check-feed` is what turns that into a CI
+warm, and fails for everyone else. `--check-feed` is what turns that into a CI
 failure rather than a contributor's bug report.
 
 ## `generate_sonar_globalconfig.py`
@@ -186,7 +191,7 @@ dotnet build src/DataNet.Fuzzy -c Release --no-incremental -f net10.0 \
 python tools/generate_sonar_globalconfig.py
 ```
 
-The path handed to `-p:ErrorLog` must be absolute: MSBuild resolves a relative one
+The path handed to `-p:ErrorLog` must be absolute. MSBuild resolves a relative one
 against the project directory (`src/DataNet.Fuzzy`), not the shell's current
 directory, so a relative `obj/sonar-rules.sarif` here would write to
 `src/DataNet.Fuzzy/obj/` and the script — which always looks under the
@@ -195,14 +200,14 @@ repository's own `obj/` — would report the input missing.
 The `%2C` is load-bearing, not decorative — it is the URL-encoded comma MSBuild
 needs between the SARIF path and `version=2`. A bare comma there is parsed as two
 separate properties, and `ErrorLog` falls back to its default SARIF **v1**, which
-carries no `defaultConfiguration.enabled` flag at all; `disabled_rules()` would
+carries no `defaultConfiguration.enabled` flag at all. `disabled_rules()` would
 then read an empty rule table and the generated file would enforce nothing, with
 no error to say why. `obj/sonar-rules.sarif` is where the script always looks —
 `obj/` is already git-ignored, so the error log never becomes something to commit
 or clean up by hand.
 
 `--check` compares the regenerated file against the committed one instead of
-writing it — no `.globalconfig` in the tree is touched — which is what the `Lint`
+writing it — no `.globalconfig` in the tree is touched. This is what the `Lint`
 job runs on every pull request:
 
 ```bash
@@ -215,12 +220,11 @@ cannot make the check pass on a stale file.
 
 ## `check_comment_length.py`
 
-Refuses a comment block that runs past its budget without saying why. Two
-budgets, because the two kinds of prose sit in different places: an inline
-comment stands between a reader and the code and gets **two lines**, while XML
-documentation is the member's own interface and gets **eight**, counted over
-prose — a `<param>` or an `<exception>` that a well-formed member must carry
-does not spend it.
+Refuses a comment block that runs past its budget without saying why —
+**two lines** for an inline comment, **eight** for XML documentation, counted
+over prose. `CONTRIBUTING.md`'s
+[*Claims in comments*](../CONTRIBUTING.md#claims-in-comments) has why the two
+budgets differ.
 
 ```bash
 python3 tools/check_comment_length.py           # findings, exit 1 if any
@@ -229,12 +233,9 @@ python3 tools/check_comment_length.py --help
 ```
 
 Longer stays possible where it is necessary. A block past its budget carries
-`long-comment:` and a reason as its first line, which is the bargain a
-`#pragma warning disable` strikes — allowed, deliberate, reviewable. **The
-marker must carry a reason**; an empty one is refused, because it is the
-cheapest rubber stamp available. The guard sees only that a marker exists;
-whether the block deserved one is a code review's call, and
-`CONTRIBUTING.md`'s *Claims in comments* says so.
+`long-comment:` and a reason as its first line; an empty marker is refused. The
+guard sees only that a marker exists — whether the block deserved one is a
+code review's call, per `CONTRIBUTING.md`'s *Claims in comments*.
 
 A docstring is not a comment block. Python prose belongs in one, and the tools
 in this directory open with thirty-line docstrings on purpose.
@@ -244,7 +245,7 @@ in this directory open with thirty-line docstrings on purpose.
 Refuses a tracked file that holds a path under someone's home directory. Ten of
 them reached this public repository across six documents before anything looked
 for them, and both sweeps that removed them started from a reader noticing a
-line rather than from a check — they arrive by being pasted from a terminal,
+line rather than from a check. They arrive by being pasted from a terminal,
 which is exactly when nobody is thinking about what the string contains.
 
 ```bash
@@ -268,8 +269,12 @@ a path under a home directory is never wanted in a committed file. The report
 names which probe matched each finding, and mentions `--no-environment` only
 when a derived probe is the one that fired.
 
-Exit: `0` clean, `1` findings printed (with a suggestion — `$SCRATCH`,
-`$(mktemp -d)`, or a description of what the path held), `2` bad usage.
+Exit codes:
+
+- `0` — clean.
+- `1` — findings printed (with a suggestion — `$SCRATCH`, `$(mktemp -d)`, or a
+  description of what the path held).
+- `2` — bad usage.
 
 It exempts only its own source and its own test module, which have to contain
 the patterns they search for to exist; nothing else is, because an exemption

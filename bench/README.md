@@ -204,7 +204,7 @@ generated rather than committed, so re-measuring after issue #100 meant
 generating it again, and the untouched rows moved with it — `SpieceModel` reads
 5.7 ms here against the 4.2 ms published before, on identical code. Every figure
 in this section, and in the two below it, comes from one session against one
-corpus; what issue #100 was worth is measured against `main` on that same corpus
+corpus. What issue #100 was worth is measured against `main` on that same corpus
 and reported in the paragraph after next, not by subtracting these numbers from
 the previous edition's.
 
@@ -224,7 +224,7 @@ the previous edition's.
 write path changed. Every loader allocates less, by 15% to 52%, which is the
 counted column and does not move between runs — that is the intermediate buffers
 disappearing. Time follows allocation everywhere except `VocabTxt`, which reads
-3% *slower* both times on both targets: a 224 KB file is small enough that one
+3% *slower* both times on both targets. A 224 KB file is small enough that one
 sized allocation buys back less than the extra work of getting to it, and 3% is
 close enough to this harness's spread that it is reported rather than explained.
 
@@ -236,7 +236,7 @@ case. It is deliberate — the question on this axis is what the two *targets* c
 each other, not what a caller pays — but it is not a general "cost of Save".
 
 Four rows are noise, which is what equivalent IL should produce, and two runs per
-side say so more convincingly than one: those four scatter between 0.98× and
+side say so more convincingly than one. Those four scatter between 0.98× and
 1.03× and **change sign between rounds** — `VocabTxt` reads 0.98× then 1.00×,
 `TfidfLoad` 0.99× then 1.03×. A single run per side cannot distinguish that from
 a small consistent penalty, which is what this table used to report.
@@ -253,8 +253,8 @@ piece where net10 allocates nothing, once for the `byte[4]` scratch buffer in
 `ProtobufReader.ReadFloat` and once for the array copy in `DecodeUtf8` that
 `netstandard2.0` needs because it has no span overload. Across 29 861 pieces that
 is the whole 1.95 MB difference — unchanged by issue #100, which took the same
-1.25 MB off both targets and left the gap between them exactly where it was — and
-it costs 1.83×–1.84× the time. The allocation column is counted rather than
+1.25 MB off both targets and left the gap between them exactly where it was. It
+costs 1.83×–1.84× the time. The allocation column is counted rather than
 sampled and does not move between runs at all.
 
 **What the toolchain mismatch was worth here.** Measured in the session that
@@ -460,7 +460,7 @@ before: **BenchmarkDotNet's ± margin describes dispersion *within* one process
 and says nothing about reproducibility *across* processes.** An earlier version
 published `AccuracyScore` at n=1 000, k=10 reading 2.59× and explained it as
 the short job's noise floor — implying a longer job would settle it. A longer
-job did not: the 2.59× vanished, and k=2 came back at 0.64× with a ±0.3%
+job did not. The 2.59× vanished, and k=2 came back at 0.64× with a ±0.3%
 margin on the net10 side, which is to say a tight interval around a figure
 that a re-run then contradicted outright (1 331 ns, then 833 ns). A
 `MatrixWeighted` gap of 1.06×–1.18×, apparently systematic across all six
@@ -491,46 +491,17 @@ python bench/compare.py metrics
 ```
 
 DataNet on .NET 10.0.10 against scikit-learn 1.9.0 / NumPy 2.5.1 on Python
-3.12.3. Ratios above 1 mean DataNet is faster.
-
-| Operation | DataNet ms | Python ms | wall | DataNet cpu ms | Python cpu ms | **cpu** |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `confusion_matrix_n1000_k2` | 0.009 | 1.028 | 117.98x | 0.009 | 1.028 | **117.97x** |
-| `accuracy_n1000_k2` | 0.001 | 0.546 | 618.32x | 0.001 | 0.546 | **618.33x** |
-| `precision_recall_f1_macro_n1000_k2` | 0.008 | 1.793 | 226.58x | 0.008 | 1.793 | **226.58x** |
-| `classification_report_n1000_k2` | 0.011 | 6.692 | 623.31x | 0.011 | 6.691 | **623.25x** |
-| `roc_auc_binary_n1000_k2` | 0.029 | 2.008 | 70.12x | 0.029 | 2.008 | **70.12x** |
-| `confusion_matrix_n1000_k10` | 0.009 | 1.051 | 120.64x | 0.009 | 1.051 | **120.64x** |
-| `accuracy_n1000_k10` | 0.001 | 0.541 | 622.03x | 0.001 | 0.541 | **622.08x** |
-| `precision_recall_f1_macro_n1000_k10` | 0.010 | 1.855 | 192.49x | 0.010 | 1.855 | **192.48x** |
-| `classification_report_n1000_k10` | 0.017 | 7.011 | 422.54x | 0.017 | 7.010 | **422.53x** |
-| `roc_auc_ovr_macro_n1000_k10` | 0.550 | 10.526 | 19.13x | 0.550 | 10.525 | **19.13x** |
-| `confusion_matrix_n100000_k2` | 0.964 | 15.791 | 16.39x | 0.964 | 15.791 | **16.39x** |
-| `accuracy_n100000_k2` | 0.190 | 5.519 | 29.01x | 0.190 | 5.518 | **29.01x** |
-| `precision_recall_f1_macro_n100000_k2` | 0.844 | 17.786 | 21.07x | 0.844 | 17.785 | **21.07x** |
-| `classification_report_n100000_k2` | 0.848 | 36.233 | 42.75x | 0.847 | 36.231 | **42.75x** |
-| `roc_auc_binary_n100000_k2` | 7.977 | 35.024 | 4.39x | 8.092 | 35.023 | **4.33x** |
-| `confusion_matrix_n100000_k10` | 1.059 | 16.109 | 15.20x | 1.059 | 16.108 | **15.21x** |
-| `accuracy_n100000_k10` | 0.296 | 5.519 | 18.66x | 0.296 | 5.519 | **18.66x** |
-| `precision_recall_f1_macro_n100000_k10` | 0.979 | 18.524 | 18.92x | 0.979 | 18.523 | **18.92x** |
-| `classification_report_n100000_k10` | 0.979 | 40.139 | 41.00x | 0.979 | 40.137 | **41.00x** |
-| `roc_auc_ovr_macro_n100000_k10` | 88.385 | 250.400 | 2.83x | 91.396 | 250.402 | **2.74x** |
-| `confusion_matrix_n1000000_k2` | 8.750 | 156.920 | 17.93x | 8.749 | 156.823 | **17.92x** |
-| `accuracy_n1000000_k2` | 2.045 | 51.599 | 25.23x | 2.045 | 51.596 | **25.23x** |
-| `precision_recall_f1_macro_n1000000_k2` | 8.701 | 164.332 | 18.89x | 8.701 | 164.330 | **18.89x** |
-| `classification_report_n1000000_k2` | 8.719 | 314.805 | 36.11x | 8.718 | 314.782 | **36.11x** |
-| `roc_auc_binary_n1000000_k2` | 95.219 | 364.420 | 3.83x | 95.684 | 364.384 | **3.81x** |
-| `confusion_matrix_n1000000_k10` | 9.916 | 156.707 | 15.80x | 9.915 | 156.699 | **15.80x** |
-| `accuracy_n1000000_k10` | 3.122 | 51.877 | 16.61x | 3.122 | 51.874 | **16.61x** |
-| `precision_recall_f1_macro_n1000000_k10` | 10.001 | 173.128 | 17.31x | 10.000 | 173.121 | **17.31x** |
-| `classification_report_n1000000_k10` | 9.865 | 352.364 | 35.72x | 9.864 | 352.349 | **35.72x** |
+3.12.3. Ratios above 1 mean DataNet is faster. The 29 measured rows are
+published in
+[`docs/guides/performance.md`](../docs/guides/performance.md#classification-metrics-issue-61--vs-scikit-learn),
+not duplicated here.
 
 **Merge gate: 29/29 rows at or above 1× on processor time.** Twenty-nine rows,
 not twenty-nine operations: six operations over six shapes, less the seven
 shape/operation pairs the two ROC-AUC rows do not cover. The three issue-#93
 operations add 18 more rows, all of them ≥ 16.5× — published in
 [`docs/guides/performance.md`](../docs/guides/performance.md#balanced-accuracy-matthews-correlation-cohens-kappa-issue-93),
-measured in their own window, and not folded into the table above because they do
+measured in their own window, and not folded into the rows above because they do
 not share its load conditions. The
 narrowest margin here is 2.74× (`roc_auc_ovr_macro` at n=100 000, k=10). The design
 brief named `roc_auc_binary` at a million samples — where the cost is a sort —

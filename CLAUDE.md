@@ -2,14 +2,33 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-DataNet is a data-science toolkit for C#/.NET whose thesis is deliberately narrow:
-don't rewrite Python's ecosystem, write native code only where .NET has a real gap
+DataNet is a data-science toolkit for C#/.NET whose thesis is deliberately narrow.
+Don't rewrite Python's ecosystem, write native code only where .NET has a real gap
 — text (distances, vectorization, tokenizers, embeddings) and scikit-learn-parity
 metrics — with **no Python at runtime**. Everything else is delegated to existing
 .NET libraries, and that delegation is documented in `docs/migration/`.
 
 `CONTRIBUTING.md` is the authoritative process document. This file covers what a
 session needs in order to be productive quickly, and the traps that cost time.
+
+## Where a fact belongs
+
+Each document below has one subject; content whose subject is another document's
+belongs there instead, with a link left behind. The source column is what tells
+you whether to correct the document itself or something upstream of it.
+
+| document | its source | its subject |
+| --- | --- | --- |
+| `bench/README.md` | the `bench/` harness projects and scripts, hand-maintained | **how to measure** — the harness, the corpus, the commands |
+| `docs/guides/performance.md` | a benchmark run on a named machine | **what was measured** — every number, with its machine and its window |
+| `tools/README.md` | the scripts under `tools/`, hand-maintained | what each tool does and how to run it |
+| `CONTRIBUTING.md` | the project's own process, hand-maintained | the process a contributor follows |
+| `CLAUDE.md` | what a session has found, hand-maintained | what a session needs to be productive, and the traps that cost time |
+| `docs/equivalence.md` | the oracle corpora in `tests/oracles/*.json`, replayed against the C# they compare | the Python call to C# counterpart mapping, with each divergence |
+| `docs/migration/` | the .NET package chosen for each need | what is delegated to another .NET library, and why |
+| `CHANGELOG.md` | the merged pull requests, per release | what changed, per release |
+| `docs/decisions/` | the ADRs' own `**Status:**` lines, indexed in [`docs/decisions/README.md`](docs/decisions/README.md) | a decision, with its options and its loser |
+| root `README.md` | the project as it stands, hand-maintained | what the project is, and where to go next |
 
 ## Commands
 
@@ -142,9 +161,10 @@ $env:DataNetUseProjectRefs = 'true'   # local developer loop only; CI never sets
 ```
 
 Unset it before measuring anything — with it on you are building a graph that will
-never ship. A branch whose `DataNet.Fuzzy` needs new `DataNet.Text` API **cannot
-go green**; release `DataNet.Text` first, raise the floor, then land the other
-side. Release tags are `<PackageId>/v<Version>`.
+never ship. CONTRIBUTING.md's
+[*Working across two packages*](CONTRIBUTING.md#working-across-two-packages) has
+the release order that gets a branch with it on to green. Release tags are
+`<PackageId>/v<Version>`.
 
 ### 3. Conformance is proven by frozen oracles, not by hand-written expectations
 
@@ -156,10 +176,9 @@ Python is a **development dependency only**.
 
 Three traps, each of which has already cost a session:
 
-- **Run the generator from a neutral working directory.** `nltk` refuses to import
-  its dependencies when they appear to live under the current directory, so a run
-  from the repository root fails with `ImportError: Blocked import of regex from
-  current working directory` even with `PYTHONSAFEPATH` set.
+- **Run the generator from a neutral working directory** — CONTRIBUTING.md's
+  [*Oracle validation*](CONTRIBUTING.md#oracle-validation) has why and the exact
+  error `nltk` raises otherwise.
 - **Read the generator's own exit code**, never a pipeline's. `python … | tail`
   reports `tail`'s status, so a failed generation looks successful — and the drift
   check that follows then proves nothing, because nothing was regenerated.
@@ -169,20 +188,19 @@ Three traps, each of which has already cost a session:
   corpora as an artefact so the comparison can be made off the runner.
 
 Where behaviour deliberately diverges from the Python reference, it goes in
-`docs/decisions/` — nineteen ADRs so far, and they are the fastest way to
-understand why something looks wrong. `docs/equivalence.md` maps each Python call
-to its C# counterpart; **a row lands in the same commit as the function**, not
-afterwards.
+[`docs/decisions/`](docs/decisions/README.md), the fastest way to understand why
+something looks wrong. `docs/equivalence.md` maps each Python call to its C#
+counterpart; **a row lands in the same commit as the function**, not afterwards.
 
 ### 4. The analyzers gate the build, not the pull request
 
 `SonarAnalyzer.CSharp` is referenced by every project under `src/`, `tests/`,
 `bench/` and `samples/`, and the .NET code-quality rules run at
-`AnalysisMode=All` with `AnalysisLevel` pinned to `10.0`. Warnings are errors
-repository-wide, so **a Sonar or `CAxxxx` finding is a compile error on your
-machine**. The analyzer version is pinned once as
-`$(DataNetSonarAnalyzerVersion)` in the root `Directory.Build.props`; raising it
-or `AnalysisLevel` surfaces new rules and is its own change.
+`AnalysisMode=All` with `AnalysisLevel` pinned to `10.0` — CONTRIBUTING.md's
+[*Analyzers*](CONTRIBUTING.md#analyzers) has what that costs a finding. The
+analyzer version is pinned once as `$(DataNetSonarAnalyzerVersion)` in the root
+`Directory.Build.props`; raising it or `AnalysisLevel` surfaces new rules and is
+its own change.
 
 - A rule an *area* trips by being that area (xunit's underscored names,
   BenchmarkDotNet's reflection-instantiated types, a sample printing to the
@@ -211,18 +229,17 @@ local build is not a green quality gate.
   `NUGET_PACKAGES`, or they judge the published packages instead of the working
   tree (ADR 0009).
 - **The doc-snippets gate.** Every ` ```csharp ` fence in `README.md` and
-  `docs/guides/` is extracted from the Markdown and compiled against the packed
-  packages — there is no second copy, so a renamed method fails CI. A fence that
-  genuinely cannot compile opts out with
-  `<!-- docs-compile: skip - reason -->` above it.
+  `docs/guides/` is compiled against the packed packages, so a renamed method
+  fails CI — CONTRIBUTING.md's [*Definition of
+  done*](CONTRIBUTING.md#definition-of-done), item 5, has the opt-out syntax.
 
 ## Provenance — two hard rules
 
-- **Never transcribe GPL-licensed code.** The stemmers and phonetic encoders are
-  original implementations written from the *published algorithm description*.
-  Reading a reference implementation to diagnose one failing case is diagnosis and
-  is fine; deriving the implementation from it is not. The oracle is what proves
-  behaviour matches, so the source never needs to be copied. See ADR 0003.
+- **Never transcribe GPL-licensed code** — CONTRIBUTING.md's
+  [*Licensing and provenance*](CONTRIBUTING.md#licensing-and-provenance) has the
+  rule, and ADR 0003 the reasoning. Reading a reference implementation to
+  diagnose one failing case is diagnosis and is fine; deriving the
+  implementation from it is not.
 - **Never commit model weights.** Test fixtures are small and synthetic; vocabularies
   are fetched against a pinned SHA-256 by `tools/fetch_*.py`.
 
@@ -232,13 +249,14 @@ GitHub flow, one concern per branch, `<type>/<issue>-<kebab-summary>`
 (`feat/`, `fix/`, `perf/`, `docs/`, `chore/`). Reference the issue with
 `Closes #n`. Everything written in English — code, comments, ADRs, commit
 messages, PR bodies. Comments are held to four rules — say why not what, carry
-what would check the claim, eight lines above a member, and a marker with its
-reason past that. `CONTRIBUTING.md`'s *Claims in comments* is the statement;
+what would check the claim, two lines inline or eight of prose in XML
+documentation, and a marker with its reason past that. `CONTRIBUTING.md`'s
+*Claims in comments* is the statement;
 `tools/check_comment_length.py` counts the lines and
 `.github/instructions/comment_claims.instructions.md` carries what a review
 asks about one. Commit messages carry no `feat:`/`fix:` prefix.
 
-`main` is protected by four required checks with no bypass list; "require
+`main` is protected by four required checks with no bypass list. "Require
 approvals" is off because a single maintainer cannot approve their own PR. Do not
 commit, merge or tag unless asked. A `perf/` PR carries before/after numbers and
 names the machine.
