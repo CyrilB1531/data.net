@@ -70,14 +70,8 @@ internal static class ReportText
         return text.ToString();
     }
 
-    // Support prints as a NumPy float, decimal point and all, whenever the
-    // report was weighted — or, unweighted or not, whenever not one sample in
-    // the whole dataset was predicted correctly. See
-    // ConfusionMatrix.NoSampleCorrect for the scikit-learn mechanism this
-    // mirrors: it is not an approximation of "accuracy is zero" — a sample
-    // outside the requested labels can be the one correct prediction that
-    // makes this false while accuracy over just the requested labels is still
-    // zero, and the two conditions genuinely disagree in that case.
+    // Support prints as a NumPy float whenever weighted, or whenever
+    // ConfusionMatrix.NoSampleCorrect holds; see that member — not "accuracy is zero".
     private static bool LooksLikeAFloatSupport(ClassificationReport report) =>
         report.IsWeighted || report.NoSampleCorrect;
 
@@ -117,11 +111,8 @@ internal static class ReportText
         row.Name ?? row.Label.ToString(CultureInfo.InvariantCulture);
 
     private static string Number(double value, int digits) =>
-        // .NET's own "F" formatter already rounds half-to-even on the exact binary
-        // value, matching Python's str.format. Pre-rounding through Math.Round(double,
-        // int) first is a trap: that overload rescales by a power of ten and back,
-        // which is itself lossy and drifts the last digit on values such as 0.695 or
-        // 0.525 — verified against CPython's "{:.2f}".format on those exact inputs.
+        // .NET's "F" formatter rounds half-to-even like Python's str.format; pre-rounding
+        // with Math.Round's decimal-places overload first drifts 0.695, 0.525's last digit.
         value.ToString("F" + digits.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
 
     private static string Support(double value, bool floatSupport)

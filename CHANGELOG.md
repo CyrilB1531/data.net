@@ -586,6 +586,30 @@ First release of a fourth package.
   passes, and the load the machine was under are in
   [the performance guide](docs/guides/performance.md).
 
+#### Changed
+
+- **The Neumaier-versus-Kahan argument for `CompensatedSum` moved into a
+  record of its own** —
+  [`docs/decisions/0033`](docs/decisions/0033-compensated-sum-is-neumaiers-variant.md)
+  — instead of living only as two long comments in
+  `Internal/CompensatedSum.cs`. It now also covers why
+  `VectorCompensatedSum`'s SIMD lanes are not guaranteed bit-identical to the
+  scalar sum, a fact `docs/decisions/0001` and `docs/decisions/0027` each
+  referenced but never argued. Both types keep a short pointer at the call
+  site instead of restating the measurements.
+- **`MultiClassRocOptions`'s doc comments no longer restate
+  `docs/decisions/0018`.** The `ref struct` rationale and the parallelism
+  defaults were fully argued there already; the type now points at it rather
+  than carrying a second, longer copy of the same reasoning that could drift
+  from the original. `Normalization`'s "projection, not a state" comment
+  gets the same treatment against `docs/decisions/0020`.
+- **The rest of the package's remaining long comments were trimmed to their
+  reason**, in `Internal/Inputs.cs`, `Internal/LabelIndex.cs`,
+  `Internal/MatrixSums.cs`, `Internal/Outputs.cs`, `Internal/ReportText.cs`,
+  `KappaWeighting.cs`, `MatthewsCorrelation.cs` and `MaxError.cs` — no
+  behaviour changed, and every function keeps its XML documentation naming
+  the scikit-learn function it matches.
+
 ## [0.2.0] — 2026-08-05
 
 Reach, correctness and honesty about performance. Nothing in the public API was

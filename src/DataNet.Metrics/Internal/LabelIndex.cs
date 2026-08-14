@@ -5,27 +5,10 @@ namespace DataNet.Metrics.Internal;
 /// to its ordinal in that set.
 /// </summary>
 /// <remarks>
-/// <para>
-/// When the caller supplies an explicit label subset, the ordinal set this
-/// index actually covers is <em>extended</em> beyond that subset: the
-/// requested labels first, in the caller's order, then every other label
-/// observed in the data, appended in ascending order — scikit-learn's own
-/// rule inside <c>multilabel_confusion_matrix</c>
-/// (<c>np.hstack([labels, np.setdiff1d(present_labels, labels)])</c>). This
-/// is what lets a confusion matrix built over a subset still recover the
-/// correct precision/recall denominators, which count predictions and truths
-/// against labels outside the subset too. <see cref="RequestedCount"/> is the
-/// caller-facing count; <see cref="Count"/> is the extended one. They are
-/// equal whenever <c>labels</c> was omitted, or every observed label was
-/// already requested.
-/// </para>
-/// <para>
-/// Two lookup strategies, chosen from the data rather than fixed: a direct
-/// offset table when the label values are packed closely enough that the table
-/// is cheaper than the samples it will serve, and a binary search over the
-/// sorted values otherwise. A dictionary is never the right answer here — the
-/// lookup runs twice per sample, and both strategies beat hashing an int.
-/// </para>
+/// An explicit label subset is <em>extended</em>: requested labels first, then
+/// every other observed label ascending — scikit-learn's own
+/// <c>multilabel_confusion_matrix</c> rule. Lookup picks a direct table or
+/// binary search, whichever beats hashing an int twice per sample.
 /// </remarks>
 internal sealed class LabelIndex
 {
