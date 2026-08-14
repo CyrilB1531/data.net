@@ -4224,7 +4224,8 @@ def _no_split_models() -> list[tuple]:
     from tokenizers import AddedToken, pre_tokenizers  # noqa: PLC0415
 
     fuse_texts = ["aZ Za", "ab", "Z Z"]
-    byte_texts = ["hello world", "  leading and trailing  ", "café \U0001f600"]
+    byte_texts = [HELLO_WORLD, "  leading and trailing  ", "hello world  again", "café \U0001f600"]
+    added_texts = ["o o<sep>o o", "o o"]
     return [
         ("absent", "no pre_tokenizer at all -- the shape DataNet mis-loads today",
          _no_split_classic(None), fuse_texts),
@@ -4238,7 +4239,10 @@ def _no_split_models() -> list[tuple]:
          _no_split_byte_level(False, add_prefix_space=True), byte_texts),
         ("no_regex_added_token", "no split, with an added token the text spans",
          _no_split_byte_level(False, added=[AddedToken("<sep>", special=True)]),
-         ["a b<sep>a b", "a b"]),
+         added_texts),
+        ("regex_added_token", "the split counterpart the row above is measured against",
+         _no_split_byte_level(True, added=[AddedToken("<sep>", special=True)]),
+         added_texts),
     ]
 
 
@@ -4253,7 +4257,7 @@ def generate_bpe_no_split() -> dict:
                 "id": len(cases), "model": name, "text": text,
                 "tokens": enc.tokens, "ids": enc.ids,
                 # D5 is about the input coming back; a token list proves itself.
-                "decoded": tokenizer.decode(enc.ids),
+                "decoded": tokenizer.decode(enc.ids, skip_special_tokens=False),
             })
 
     return {
