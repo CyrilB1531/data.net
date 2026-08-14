@@ -898,21 +898,17 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// <summary>Reassembles the text <paramref name="ids"/> encode.</summary>
     /// <remarks>
     /// <para>
-    /// Matches <c>tokenizers.Tokenizer.decode(ids, skip_special_tokens=…)</c>.
-    /// For a byte-level model this is exact: every byte of the input was mapped
-    /// to a symbol, so every byte comes back.
+    /// Matches <c>tokenizers.Tokenizer.decode(ids, skip_special_tokens=…)</c>, and is
+    /// exact for a byte-level model: every byte mapped to a symbol comes back.
     /// </para>
     /// <para>
-    /// The default is deliberately the opposite of HuggingFace's. Python skips
-    /// special tokens unless told otherwise; here the round trip is exact unless
-    /// asked otherwise, because a <c>Decode</c> that silently drops tokens makes
-    /// <c>Decode(Encode(x)) == x</c> false in exactly the case a caller would
-    /// write to check it.
+    /// The default is the opposite of HuggingFace's, deliberately: a <c>Decode</c>
+    /// that silently drops tokens makes <c>Decode(Encode(x)) == x</c> false in the
+    /// case a caller would write to check it.
     /// </para>
     /// <para>
-    /// For a byte-level model, a byte sequence that is not well-formed UTF-8
-    /// becomes U+FFFD, as in the reference, which is what makes decoding one id
-    /// at a time possible. A caller who needs to know can test the result for U+FFFD.
+    /// Bytes that are not well-formed UTF-8 become U+FFFD, as in the reference —
+    /// see decision 0023, which records what that costs a caller.
     /// </para>
     /// </remarks>
     /// <param name="ids">Token ids, e.g. from <see cref="Encode"/>.</param>

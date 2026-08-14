@@ -2600,9 +2600,8 @@ def generate_bpe_normalizer() -> dict:
     }
 
 
-# Two CJK texts, an emoji sequence and two controls. A byte-level token is a
-# fragment of a multi-byte character far more often than not, which is what makes
-# per-token decoding the case this corpus exists for.
+# Two CJK texts, an emoji sequence and two controls: a byte-level token is a
+# fragment of a multi-byte character far more often than not.
 BYTELEVEL_STREAM_TEXTS = [
     "東京 \U0001f44b",          # 東京 + waving hand
     "日本語のテキスト",  # a Japanese sentence
