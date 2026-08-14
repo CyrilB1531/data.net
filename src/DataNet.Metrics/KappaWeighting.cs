@@ -5,11 +5,10 @@ namespace DataNet.Metrics;
 /// of <c>weights=</c> on <c>sklearn.metrics.cohen_kappa_score</c>.
 /// </summary>
 /// <remarks>
-/// Named <c>weighting</c> where scikit-learn says <c>weights</c>, because
-/// <c>sampleWeight</c> sits in the same signature and the two are unrelated
-/// senses of the word. The distance is between class <em>positions</em>, so the
-/// weighted forms depend on the order of the labels; the unweighted form does
-/// not.
+/// Named <c>weighting</c>, not scikit-learn's <c>weights</c>: <c>sampleWeight</c>
+/// sits in the same signature and the two are unrelated senses of the word. The
+/// distance is between class <em>positions</em>, so the weighted forms depend on
+/// label order; the unweighted form does not.
 /// </remarks>
 public enum KappaWeighting
 {

@@ -23,9 +23,8 @@ public static class RootMeanSquaredLogError
     /// <param name="sampleWeight">A weight per sample. Omit to weight every sample by 1.</param>
     /// <param name="outputWeights">A weight per output. Omit for <c>multioutput="uniform_average"</c>.</param>
     /// <remarks>
-    /// The root is taken per output and the reduction runs on the roots, which
-    /// is scikit-learn's order and is not the same number as the root of the
-    /// reduced mean squared log error whenever the outputs differ.
+    /// The root is taken per output before reducing — scikit-learn's order,
+    /// not the root of the reduced mean squared log error when outputs differ.
     /// </remarks>
     /// <exception cref="ArgumentException">
     /// A length disagrees with the shape, the input is empty, it holds a
@@ -39,10 +38,8 @@ public static class RootMeanSquaredLogError
         ReadOnlySpan<double> sampleWeight = default,
         ReadOnlySpan<double> outputWeights = default)
     {
-        // PerOutput already validates through MeanSquaredLogError.PerOutput, but
-        // that call never sees outputWeights, so nothing checks it unless this
-        // does too. The cost is a second O(n) finiteness pass on this type only
-        // — MeanSquaredLogError, the one the benchmark measures, does not pay it.
+        // PerOutput's call to MeanSquaredLogError.PerOutput never sees
+        // outputWeights, so nothing checks it unless this does too.
         Outputs.Validate(yTrue, yPred, outputCount, sampleWeight, outputWeights);
         return Outputs.Reduce(PerOutput(yTrue, yPred, outputCount, sampleWeight), outputWeights);
     }

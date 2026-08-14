@@ -554,7 +554,7 @@ First release of a fourth package.
 - **`log(1 + x)` is computed as `log1p`.** `MeanSquaredLogError` — and through
   it `RootMeanSquaredLogError` — uses Kahan's identity rather than spelling the
   addition out, which on targets around `1e-9` is the difference between
-  agreeing with scikit-learn to a unit in the last place and being out by 1.4e-8
+  agreeing with scikit-learn to a unit in the last place and being out by 1.7e-8
   relative. `netstandard2.0` has no `log1p` under any name, and one
   implementation for both targets is what keeps them from disagreeing.
 - **Accumulation is compensated, not sequential.** `R2`'s two passes,
@@ -585,6 +585,62 @@ First release of a fourth package.
   The remaining gap is reported rather than rounded away; every row, both
   passes, and the load the machine was under are in
   [the performance guide](docs/guides/performance.md).
+
+#### Changed
+
+- **`DataNet.Metrics`'s long comment blocks became ten decision records**
+  (issue #151), so the reasoning lives where it can be cited and the call site
+  keeps a pointer instead of a second copy that can drift. The package now
+  reports nothing under `tools/check_comment_length.py`, which is the checkable
+  form of that claim. What moved, and where: the weighted median's agreement with scikit-learn's
+  interpolation into
+  [`0024`](docs/decisions/0024-weighted-median-averages-within-scikit-learns-epsilon.md)
+  and the quickselect that replaced the full sort into
+  [`0025`](docs/decisions/0025-quickselect-replaces-a-full-sort-for-the-median.md),
+  both out of `Internal/WeightedPercentile.cs`; `R2.cs` and
+  `ExplainedVariance.cs`'s differing undefined cases into
+  [`0026`](docs/decisions/0026-r2-and-explainedvariance-split-their-undefined-cases-differently.md)
+  and their single-output-only vectorisation into
+  [`0027`](docs/decisions/0027-r2-and-explainedvariance-vectorize-only-a-single-output.md);
+  `MeanSquaredLogError.cs`'s `Log1P` into
+  [`0028`](docs/decisions/0028-log1p-is-kahans-identity-not-math-log-1-plus-x.md);
+  `BalancedAccuracy.cs`'s `adjusted` edge case into
+  [`0029`](docs/decisions/0029-balanced-accuracy-adjusted-is-left-to-ieee-754-at-the-edge.md);
+  `CohenKappa.cs`'s expected-matrix orientation and position-based weighting
+  into
+  [`0030`](docs/decisions/0030-cohen-kappa-keeps-scikit-learns-expected-matrix-orientation.md);
+  `ConfusionMatrix.cs`'s `NoSampleCorrect` into
+  [`0031`](docs/decisions/0031-nosamplecorrect-mirrors-numpys-float64-upcast.md);
+  `Internal/Prf.cs`'s F-beta derivation into
+  [`0032`](docs/decisions/0032-fbeta-substitutes-tp-predicted-and-support-algebraically.md);
+  and `Internal/CompensatedSum.cs` into `0033` below. Two claims were
+  re-measured against scikit-learn 1.9.0 while being moved and came out
+  different from the prose that had been carrying them: `Log1P`'s error on a
+  `1e-9` target is `1.7e-8` relative and not `1.4e-8` (corrected here, in
+  `docs/equivalence.md` and in `0028`), and the F-beta route through precision
+  and recall applies the zero-division policy three times, not twice (`0032`).
+  Nothing the package computes changed.
+- **The Neumaier-versus-Kahan argument for `CompensatedSum` moved into a
+  record of its own** —
+  [`docs/decisions/0033`](docs/decisions/0033-compensated-sum-is-neumaiers-variant.md)
+  — instead of living only as two long comments in
+  `Internal/CompensatedSum.cs`. It now also covers why
+  `VectorCompensatedSum`'s SIMD lanes are not guaranteed bit-identical to the
+  scalar sum, a fact `docs/decisions/0001` and `docs/decisions/0027` each
+  referenced but never argued. Both types keep a short pointer at the call
+  site instead of restating the measurements.
+- **`MultiClassRocOptions`'s doc comments no longer restate
+  `docs/decisions/0018`.** The `ref struct` rationale and the parallelism
+  defaults were fully argued there already; the type now points at it rather
+  than carrying a second, longer copy of the same reasoning that could drift
+  from the original. `Normalization`'s "projection, not a state" comment
+  gets the same treatment against `docs/decisions/0020`.
+- **The rest of the package's remaining long comments were trimmed to their
+  reason**, in `Internal/Inputs.cs`, `Internal/LabelIndex.cs`,
+  `Internal/MatrixSums.cs`, `Internal/Outputs.cs`, `Internal/ReportText.cs`,
+  `KappaWeighting.cs`, `MatthewsCorrelation.cs` and `MaxError.cs` — no
+  behaviour changed, and every function keeps its XML documentation naming
+  the scikit-learn function it matches.
 
 ## [0.2.0] — 2026-08-05
 

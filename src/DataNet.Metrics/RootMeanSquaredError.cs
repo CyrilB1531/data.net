@@ -37,10 +37,8 @@ public static class RootMeanSquaredError
         ReadOnlySpan<double> sampleWeight = default,
         ReadOnlySpan<double> outputWeights = default)
     {
-        // PerOutput already validates through MeanSquaredError.PerOutput, but
-        // that call never sees outputWeights, so nothing checks it unless this
-        // does too. The cost is a second O(n) finiteness pass on this type only
-        // — MeanSquaredError, the one the benchmark measures, does not pay it.
+        // PerOutput's call to MeanSquaredError.PerOutput never sees
+        // outputWeights, so nothing checks it unless this does too.
         Outputs.Validate(yTrue, yPred, outputCount, sampleWeight, outputWeights);
         return Outputs.Reduce(PerOutput(yTrue, yPred, outputCount, sampleWeight), outputWeights);
     }

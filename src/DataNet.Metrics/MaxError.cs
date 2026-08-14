@@ -14,12 +14,10 @@ public static class MaxError
     /// <param name="yTrue">The true values.</param>
     /// <param name="yPred">The predicted values, same length as <paramref name="yTrue"/>.</param>
     /// <remarks>
-    /// This metric takes **neither** a sample weight nor a multioutput mode, and
-    /// the omission is fidelity rather than an oversight: <c>max_error</c>'s own
-    /// signature accepts no <c>sample_weight</c>, and it refuses a
-    /// two-dimensional target outright with <c>Multioutput not supported in
-    /// max_error</c>. A worst case is not an average, so there is nothing for a
-    /// weight to scale.
+    /// Takes neither a sample weight nor a multioutput mode — fidelity, not an
+    /// oversight: <c>max_error</c> accepts no <c>sample_weight</c> and refuses a
+    /// two-dimensional target with <c>Multioutput not supported in max_error</c>.
+    /// A worst case is not an average, so there is nothing for a weight to scale.
     /// </remarks>
     /// <exception cref="ArgumentException">The inputs disagree in length, are empty, or hold a non-finite value.</exception>
     public static double Score(ReadOnlySpan<double> yTrue, ReadOnlySpan<double> yPred)

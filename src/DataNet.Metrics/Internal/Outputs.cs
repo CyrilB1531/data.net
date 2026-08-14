@@ -6,14 +6,9 @@ namespace DataNet.Metrics.Internal;
 /// eleven regression metrics.
 /// </summary>
 /// <remarks>
-/// An interface implemented by <see langword="struct"/>s rather than a
-/// <see cref="Func{T1, T2, TResult}"/>, and it is the difference between an
-/// abstraction and a cost: a generic method over a value-typed parameter is
-/// specialized by the runtime for each kernel, so
-/// <see cref="Outputs.WeightedMean{TKernel}"/> compiles to the same loop it
-/// would have had inline, with the call resolved statically. A delegate would
-/// have been an indirect call per element — a million of them on the largest
-/// benchmark row.
+/// Implemented by <see langword="struct"/>s, not a
+/// <see cref="Func{T1, T2, TResult}"/>: specialized per kernel and resolved
+/// statically, where a delegate would cost an indirect call per element.
 /// </remarks>
 internal interface IResidualKernel
 {
@@ -29,13 +24,9 @@ internal interface IResidualKernel
 /// and reducing the per-output array to a scalar.
 /// </summary>
 /// <remarks>
-/// The walk is shared because it genuinely is the same walk. A squared mean, an
-/// absolute mean, a clamped ratio, a log-space squared mean and a quantile loss
-/// differ in one expression each and agree on everything around it — the
-/// weight, the row offset, the column accumulation and the division at the end.
-/// What is <em>not</em> shared is what is not the same: the median sorts, R²
-/// and explained variance need two passes and the variance of the truth, and
-/// <see cref="MaxError"/> takes no weights at all. Those keep their own code.
+/// Five kernels differ in one expression and share the rest; what is not the
+/// same keeps its own code — the median sorts, R² and explained variance need
+/// two passes, and <see cref="MaxError"/> takes no weights.
 /// </remarks>
 internal static class Outputs
 {
@@ -93,12 +84,9 @@ internal static class Outputs
     /// <c>multioutput=[0, 0]</c>.
     /// </summary>
     /// <remarks>
-    /// The test is the <em>sum</em>, unlike the all-zero test
-    /// <see cref="Inputs.Validate(ReadOnlySpan{double}, ReadOnlySpan{double}, ReadOnlySpan{double})"/>
-    /// applies to the sample weight — the two rules genuinely differ, and both
-    /// were measured. <c>multioutput=[1, -1]</c> is refused here while it is not
-    /// all zero, and <c>multioutput=[-1, -1]</c> is accepted and scores, because
-    /// its sum normalizes perfectly well.
+    /// The test is the <em>sum</em>, not all-zero, unlike the sample weight's
+    /// own check: <c>[1, -1]</c> is refused here though not all zero, while
+    /// <c>[-1, -1]</c> scores, since its sum normalizes fine.
     /// </remarks>
     private static void RequireNormalizable(ReadOnlySpan<double> outputWeights)
     {
@@ -288,7 +276,9 @@ internal static class Outputs
     /// <param name="variances">The weighted variance of the truth, per output.</param>
     /// <remarks>
     /// When every variance is zero there is nothing to weight by, and
-    /// scikit-learn falls back to the plain mean rather than dividing by zero.
+    /// scikit-learn falls back to the plain mean rather than dividing by zero:
+    /// <c>if not xp.any(nonzero_denominator): avg_weights = None</c>,
+    /// <c>sklearn/metrics/_regression.py:982-986</c> (scikit-learn 1.9.0).
     /// </remarks>
     public static double ReduceByVariance(double[] perOutput, double[] variances)
     {

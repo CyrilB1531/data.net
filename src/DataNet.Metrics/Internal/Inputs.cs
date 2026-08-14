@@ -45,18 +45,9 @@ internal static class Inputs
     /// <param name="yPred">The predicted values, expected to be the same length as <paramref name="yTrue"/>.</param>
     /// <param name="sampleWeight">A weight per sample, or empty when every sample is weighted 1.</param>
     /// <remarks>
-    /// <para>
-    /// The third check — that <paramref name="sampleWeight"/> agrees in length —
-    /// is deliberately absent here and lives in <see cref="Outputs.Validate"/>
-    /// instead, because the weight is one per <em>sample</em> and the sample
-    /// count is only known once <c>outputCount</c> has divided the span.
-    /// </para>
-    /// <para>
-    /// The finiteness scan is an extra <c>O(n)</c> pass, and it is what parity
-    /// costs: scikit-learn's <c>check_array</c> refuses <c>NaN</c> and infinity
-    /// before any metric runs, with two distinct messages, and a caller who gets
-    /// a silent <c>NaN</c> back instead has no way to tell it from a genuine one.
-    /// </para>
+    /// The length check on <paramref name="sampleWeight"/> lives in
+    /// <see cref="Outputs.Validate"/> instead, once <c>outputCount</c> gives the
+    /// sample count. The finiteness scan matches scikit-learn's <c>check_array</c>.
     /// </remarks>
     /// <exception cref="ArgumentException">The inputs disagree in length, are empty, hold a non-finite value, or the sample weight is zero throughout.</exception>
     public static void Validate(
@@ -87,12 +78,10 @@ internal static class Inputs
     /// throughout, with its message.
     /// </summary>
     /// <remarks>
-    /// The test is "every weight is zero", not "the weights sum to zero", and
-    /// the difference is measurable: scikit-learn scores <c>[-1, -2, -3]</c>
-    /// happily, and answers a mixed-sign weight that sums to zero with numpy's
-    /// <c>ZeroDivisionError</c> from a different layer entirely. Only the
-    /// all-zero case is this check's, so only the all-zero case is tested here —
-    /// a sum would collapse three distinct behaviours into one.
+    /// The test is <c>_check_sample_weight</c>'s own — <c>all(sample_weight == 0)</c>
+    /// at <c>sklearn/utils/validation.py:2198</c> — not "the weights sum to zero":
+    /// it accepts <c>[1, -1, 0]</c>, which numpy refuses one layer later instead.
+    /// <see cref="Outputs.Validate"/>'s <c>RequireNormalizable</c> is that other rule.
     /// </remarks>
     private static void RequireAnyNonZero(ReadOnlySpan<double> sampleWeight)
     {

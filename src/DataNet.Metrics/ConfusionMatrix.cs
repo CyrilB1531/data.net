@@ -9,27 +9,14 @@ namespace DataNet.Metrics;
 /// metric in this package derives from.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Rows are true labels and columns are predicted ones, which is scikit-learn's
-/// orientation. Computing the matrix once and asking it for several metrics
-/// costs one pass; calling the scalar helpers separately counts once each.
-/// </para>
-/// <para>
-/// Counts are <see cref="double"/> rather than <see cref="int"/> because
-/// <c>sampleWeight</c> is supported throughout. Unweighted counts are exact:
-/// a <see cref="double"/> represents every integer up to 2^53.
-/// </para>
+/// Rows are true labels, columns predicted — scikit-learn's orientation.
+/// Counts are <see cref="double"/>, not <see cref="int"/>, for
+/// <c>sampleWeight</c>; unweighted counts stay exact up to 2^53.
 /// </remarks>
 public sealed class ConfusionMatrix
 {
-    // The flat, row-major store behind Cells is m*m — the *extended* label
-    // count (see LabelIndex) — not k*k. A sample whose true or predicted label
-    // was requested but whose other side was not still needs to land somewhere,
-    // or Prf's per-label predicted/true sums would silently exclude it, which
-    // is exactly the discrepancy scikit-learn's own precision_score avoids by
-    // computing those sums before restricting to the requested labels. The
-    // public surface below — Labels, the indexer, ToArray — only ever exposes
-    // the first k*k of it, so nothing public changes shape.
+    // Row-major, m*m — the extended label count (see Stride) — not k*k, so a
+    // sample landing outside the request still counts in Prf's sums. Labels, the indexer and ToArray expose only the first k*k.
     private readonly double[] _cells;
     private readonly int[] _labels;
     private readonly ReadOnlyCollection<int> _labelView;
@@ -100,19 +87,13 @@ public sealed class ConfusionMatrix
     internal ReadOnlySpan<double> TrueSum => _trueSum;
 
     /// <summary>
-    /// True when not one sample in the whole dataset was predicted correctly —
-    /// <c>y_true[i] == y_pred[i]</c> for no <c>i</c> at all, checked over every
-    /// observed label, not only the requested ones. This is the exact condition
-    /// under which scikit-learn's <c>multilabel_confusion_matrix</c> takes its
-    /// "pathological case" branch and seeds <c>tp_sum</c>/<c>pred_sum</c>/
-    /// <c>true_sum</c> with <c>np.zeros(...)</c> — a NumPy float64 array — in
-    /// place of the int64 array <c>np.bincount</c> would otherwise have produced;
-    /// NumPy then upcasts the whole assembled matrix to float64, so every support
-    /// value downstream prints with a decimal point even when nothing was
-    /// weighted. It is not the same thing as accuracy over the requested labels
-    /// being zero: a sample outside the requested label set can still be the one
+    /// True when not one sample in the whole dataset was predicted correctly,
+    /// checked over every observed label rather than only the requested ones —
+    /// the condition that drives scikit-learn's float-vs-integer support
+    /// formatting; see docs/decisions/0031. Not the same as accuracy over the
+    /// requested labels being zero: a sample outside the request can be the one
     /// correct prediction that keeps this false while <see cref="Prf"/>'s
-    /// accuracy over just the requested labels is nonetheless zero.
+    /// requested-label accuracy is nonetheless zero.
     /// </summary>
     internal bool NoSampleCorrect { get; }
 
@@ -236,11 +217,8 @@ public sealed class ConfusionMatrix
         bool anyTrueLabelRequested = false;
         bool anySampleCorrect = false;
 
-        // index.IndexOf never misses here: the extended set is the requested
-        // labels plus every label actually observed in yTrue/yPred, so every
-        // sample's row and column resolve to some ordinal in [0, m). What can
-        // still fall outside the *requested* k is exactly what scikit-learn's
-        // confusion_matrix(labels=…) — and this type's public view — drop.
+        // index.IndexOf never misses: the extended set covers every label
+        // observed, so only the *requested* k can still exclude a sample.
         for (int i = 0; i < yTrue.Length; i++)
         {
             int row = index.IndexOf(yTrue[i]);
@@ -255,9 +233,8 @@ public sealed class ConfusionMatrix
                 trueSum[row] += weight;
             }
 
-            // Same label maps to the same ordinal, so row == col here is exactly
-            // yTrue[i] == yPred[i] — checked over every observed label, matching
-            // scikit-learn's tp_bins before it is ever narrowed to the request.
+            // row == col is yTrue[i] == yPred[i] over every observed label,
+            // matching scikit-learn's tp_bins before it narrows to the request.
             if (row == col)
             {
                 anySampleCorrect = true;

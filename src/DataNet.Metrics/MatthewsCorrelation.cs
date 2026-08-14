@@ -12,22 +12,10 @@ public static class MatthewsCorrelation
     /// <param name="cm">The matrix to read.</param>
     /// <param name="zeroDivision">What to return when the correlation is undefined.</param>
     /// <remarks>
-    /// <para>
-    /// Computed from the matrix's row sums <c>t</c>, column sums <c>p</c>, total
-    /// <c>n</c> and trace <c>c</c>: <c>(c*n - dot(t, p)) / sqrt((n² - dot(t, t)) *
-    /// (n² - dot(p, p)))</c>. The denominator collapses whenever either side of
-    /// the matrix holds a single label — scikit-learn hard-codes <c>0.0</c> there
-    /// and warns; this reads <paramref name="zeroDivision"/> instead.
-    /// </para>
-    /// <para>
-    /// Every one of those quantities comes from the
-    /// <see cref="ConfusionMatrix.Labels"/>-sized view, so this overload scores
-    /// exactly the classes <paramref name="cm"/> holds and none of the samples a
-    /// matrix built with an explicit label subset dropped.
-    /// <c>matthews_corrcoef</c> takes no <c>labels</c> argument, so a restricted
-    /// matrix has no reference value to agree or disagree with — the rule is a
-    /// property of this overload, not a divergence.
-    /// </para>
+    /// <c>(c*n - dot(t, p)) / sqrt((n² - dot(t, t)) * (n² - dot(p, p)))</c> over
+    /// the matrix's row sums <c>t</c>, column sums <c>p</c>, total <c>n</c> and
+    /// trace <c>c</c>. Divergence from scikit-learn on a collapsed denominator
+    /// or a restricted matrix is covered in <c>docs/equivalence.md</c>.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="cm"/> is null.</exception>
     /// <exception cref="UndefinedMetricException"><paramref name="zeroDivision"/> is <see cref="ZeroDivision.Throw"/> and the correlation is undefined.</exception>
@@ -56,7 +44,8 @@ public static class MatthewsCorrelation
         // S1244: this asks whether the denominator collapsed at all, not whether
         // two computed quantities are close. A tolerance would refuse legitimate
         // inputs whose weights are merely small, and scikit-learn tests the same
-        // quantity against exact zero.
+        // quantity against exact zero: `if cov_ypyp_ytyt == 0` at
+        // sklearn/metrics/_classification.py:1337 (scikit-learn 1.9.0).
 #pragma warning disable S1244
         if (denominator == 0.0)
 #pragma warning restore S1244

@@ -24,11 +24,8 @@ internal static class MultiClassRoc
         int[] classes = ResolveLabels(yTrue, options.Labels, classCount);
         ValidateRowSums(yScore, n, classCount);
 
-        // 0 and 1 both mean sequential: the drivers below read the caller's spans
-        // directly and take no private copy of them — CopyForWorkers is reached
-        // only from the *Parallel variants — and every worker count returns the
-        // same bits. Not that the drivers are unchanged; their allocation profile
-        // moved on this branch, which docs/decisions/0018 records.
+        // 0 and 1 both mean sequential: see docs/decisions/0018 for why, and for
+        // what changed in the drivers' allocation profile on this branch.
         int workers = Math.Max(1, options.MaxDegreeOfParallelism);
 
         if (options.Strategy == MultiClassStrategy.OneVsRest)
@@ -168,18 +165,8 @@ internal static class MultiClassRoc
         public ScoreSource(
             ReadOnlySpan<int> yTrue, ReadOnlySpan<double> scores, int sampleCount, int classCount, bool columnMajor)
         {
-            // The sample count is a parameter rather than yTrue.Length because
-            // deriving it from a span cannot detect the failure it exists to
-            // detect. Checking only scores.Length == yTrue.Length * classCount
-            // lets two *unsliced* rented spans through whenever classCount is a
-            // power of two: ArrayPool buckets are powers of two, so
-            // Rent(n).Length * k == Rent(n * k).Length for k in {2, 4, 8, …} at
-            // almost every n — 4079 of the 4095 values of n in [2, 4096] for
-            // k in {2, 4, 8}. Both lengths would then agree with each other and
-            // disagree with reality, Offset(column) would multiply by the bucket
-            // size, and every column after the first would be read from the
-            // wrong place. Naming the count makes both spans answer to a fact
-            // neither of them supplies.
+            // sampleCount is explicit, not derived from yTrue.Length: two spans
+            // sliced to a rented array's length can silently agree. See docs/decisions/0018.
             if (yTrue.Length != sampleCount)
             {
                 throw new ArgumentException(
@@ -311,46 +298,21 @@ internal static class MultiClassRoc
     }
 
     /// <summary>
-    /// The inputs, in a shape a worker thread can be handed.
+    /// The inputs, in a shape a worker thread can be handed: <c>yTrue</c>, the
+    /// weights if any, and the score matrix transposed so each class's column is
+    /// contiguous for the worker that reads it.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// A <see cref="ReadOnlySpan{T}"/> cannot be captured by the body of a
-    /// <c>Parallel.For</c>: the caller's span may point at the stack, and nothing
-    /// in the language lets it travel to another thread. The unsafe way round is
-    /// not merely <c>fixed</c> — a pinned pointer would have to be captured as a
-    /// raw pointer and every worker would index it unchecked — and it is refused
-    /// on its own terms: no project in <c>src/</c> enables unsafe blocks, and a
-    /// perf change does not reverse that.
-    /// </para>
-    /// <para>
-    /// So the parallel path copies, and pays for it once: <c>yTrue</c>, the
-    /// weights if any, and the score matrix <em>transposed</em>. The transpose
-    /// costs the same single pass as a straight copy and leaves each class's
-    /// column contiguous for the worker that reads it, instead of reads spaced
-    /// <c>classCount</c> apart. Reading rows in order and scattering across
-    /// <c>classCount</c> write streams is the right way round: the read side is
-    /// then sequential, and hardware handles a handful of write streams well.
-    /// </para>
-    /// <para>
-    /// Every span built over these arrays must be sliced to the sample count and
-    /// never to the rented length — <see cref="ArrayPool{T}.Rent"/> hands back
-    /// something longer than asked for, and <see cref="ScoreSource.Offset"/>
-    /// multiplies by the sample count in column-major mode. Getting that wrong
-    /// reads the wrong column, so <see cref="ScoreSource"/>'s constructor is
-    /// handed the sample count as a number and checks both spans against it. Two
-    /// unsliced spans cannot satisfy that check by agreeing with each other,
-    /// which is exactly what they did while the check compared them only to one
-    /// another.
-    /// </para>
+    /// A copy is the only legal option, and every span sliced from the result
+    /// must use the sample count, never the rented length. See
+    /// docs/decisions/0018 for both arguments.
     /// </remarks>
     private static (int[] YTrue, double[] ColumnMajor, double[] Weights) CopyForWorkers(
         ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int classCount, ReadOnlySpan<double> sampleWeight)
     {
         int n = yTrue.Length;
-        // Named for what it holds — a copy of yTrue, one entry per sample. Not
-        // "labels": MultiClassRocOptions.Labels is the class vocabulary, k entries
-        // long, and the two are the same array only by coincidence of length.
+        // Named yTrueCopy, not "labels": MultiClassRocOptions.Labels is the
+        // k-entry class vocabulary, a same-length array only by coincidence.
         int[] yTrueCopy = ArrayPool<int>.Shared.Rent(n);
         double[] columnMajor = ArrayPool<double>.Shared.Rent(n * classCount);
         double[] weights = sampleWeight.IsEmpty
@@ -393,30 +355,11 @@ internal static class MultiClassRoc
     /// failure of the lowest index once every index has been attempted.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The determinism lives here rather than in each driver: the slot array, the
-    /// refusal to stop early, and the lowest-index rethrow are the parts a second
-    /// parallel driver must not re-derive, and the one-vs-one pair loop is the
-    /// second one.
-    /// </para>
-    /// <para>
-    /// <paramref name="body"/> <em>returns</em> the exception it caught instead of
-    /// being wrapped in a <c>catch</c> here, which is deliberate: only the part of
-    /// a body that scores caller-supplied numbers should be guarded. A body
-    /// builds its own <see cref="ScoreSource"/> and its own slices first, outside
-    /// its <c>try</c>, so that a broken internal invariant escapes as the defect
-    /// it is instead of reaching the caller as an
-    /// <see cref="ArgumentException"/> naming a parameter no public method has.
-    /// </para>
-    /// <para>
-    /// One <see cref="BinaryRoc.Scratch"/> per worker, through
-    /// <c>localInit</c>/<c>localFinally</c> — not one per index, which would rent
-    /// four arrays per index for nothing, and not one shared between workers,
-    /// which would have two indices writing the same buffers. The
-    /// <see cref="ParallelLoopState"/> the overload requires is deliberately
-    /// ignored; see <see cref="RethrowFirst"/> for why nothing calls
-    /// <see cref="ParallelLoopState.Stop"/>.
-    /// </para>
+    /// The determinism lives here, not in each driver, so a second parallel
+    /// driver — the one-vs-one pair loop — cannot re-derive it differently.
+    /// <paramref name="body"/> returns its caught exception rather than being
+    /// wrapped in a <c>catch</c> here, so a broken internal invariant in its own
+    /// setup still escapes as the defect it is. See docs/decisions/0018.
     /// </remarks>
     private static void RunPerIndex(
         int count, int workers, int scratchLength, Func<int, BinaryRoc.Scratch, ArgumentException?> body)
@@ -462,17 +405,8 @@ internal static class MultiClassRoc
         {
             RunPerIndex(k, workers, n, (c, scratch) =>
             {
-                // Spans cannot cross into this lambda, but they can be made
-                // inside it: these are views over the arrays the closure
-                // captured, which is the whole point of the copy. ScoreSource is
-                // a ref struct, so it is built here, per iteration, and lives
-                // nowhere that outlives one.
-                //
-                // Both of these are built *above* the try. A failure building
-                // them is a broken internal invariant — a mis-sliced span, not a
-                // number the caller supplied — and it must escape as a defect
-                // rather than be handed back as an ArgumentException about rented
-                // arrays, naming a parameter no public method has.
+                // Per worker (a span cannot cross into a lambda), and above the try
+                // so a slicing bug escapes instead of being reported as bad input.
                 ScoreSource source = new(
                     copy.YTrue.AsSpan(0, n), copy.ColumnMajor.AsSpan(0, n * k), n, k, columnMajor: true);
 
@@ -503,25 +437,14 @@ internal static class MultiClassRoc
     }
 
     /// <summary>
-    /// One-vs-one with the per-pair loop spread over workers. Bit-identical to
-    /// <see cref="OneVsOne"/>: pair <c>p</c> writes <c>pairScores[p]</c> and
-    /// <c>prevalence[p]</c> and nothing else, and the averaging below runs on this
-    /// thread in array order, so no thread's timing can reach a sum.
+    /// One-vs-one with the per-pair loop spread over workers, bit-identical to
+    /// <see cref="OneVsOne"/> — each pair writes only its own two slots.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The nested <c>(a, b)</c> loops become a flat range over the same
-    /// <see cref="Pairs"/> table the sequential driver walks — <c>k(k-1)/2</c>
-    /// tuples, built once. Reading the pair out of that table rather than decoding
-    /// a triangular index arithmetically pins the pair order to exactly the
-    /// sequential order, instead of resting on a decode agreeing with it.
-    /// </para>
-    /// <para>
-    /// No weights, by <see cref="Validate"/>: scikit-learn does not support
-    /// <c>sampleWeight</c> for one-vs-one and neither does this, so
-    /// <see cref="CopyForWorkers"/> is handed <see langword="default"/> — not an
-    /// empty rented array, which would be a buffer to hand back for nothing.
-    /// </para>
+    /// Reads pairs from the same <see cref="Pairs"/> table <see cref="OneVsOne"/>
+    /// walks, rather than decoding a triangular index, so the two orders cannot
+    /// disagree. No weights: <see cref="Validate"/> refuses them here, as
+    /// scikit-learn does; see docs/decisions/0018 for the copy this drives.
     /// </remarks>
     private static double OneVsOneParallel(
         ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int[] classes, Averaging average, int workers)
@@ -537,38 +460,22 @@ internal static class MultiClassRoc
         {
             RunPerIndex(pairs.Length, workers, n, (pair, scratch) =>
             {
-                // As in OneVsRestParallel: the spans cannot cross into this
-                // lambda but can be made inside it, over the arrays the closure
-                // captured, and ScoreSource is a ref struct so it is built here,
-                // per iteration, and stored nowhere that outlives one.
-                //
-                // Sliced to n and n * k, never to the rented lengths, and built
-                // *above* the try: a mis-sliced span is a broken internal
-                // invariant, and it must escape as the defect it is rather than
-                // reach the caller as an ArgumentException naming a parameter no
-                // public method has.
+                // Per worker, and above the try so a slicing bug escapes instead
+                // of being reported as bad input — as in OneVsRestParallel.
                 ScoreSource source = new(
                     copy.YTrue.AsSpan(0, n), copy.ColumnMajor.AsSpan(0, n * k), n, k, columnMajor: true);
 
                 try
                 {
-                    // Everything the pair needs travels in what is already here:
-                    // the tuple carries the two columns and ScorePair resolves
-                    // their labels through classes. ScorePair is at seven
-                    // parameters, the most S107 allows, so a worker asks for
-                    // nothing by widening it.
+                    // The pair tuple already carries both columns, so the worker
+                    // asks for nothing new — ScorePair is at S107's seven-parameter limit.
                     ScorePair(source, classes, pairs[pair], pair, pairScores, prevalence, scratch);
                     return null;
                 }
                 catch (ArgumentException ex)
                 {
-                    // RunPerIndex cannot tell a broken invariant from a body that
-                    // forgot to catch, so the catch belongs here: without it both
-                    // the lowest-index rethrow and "no AggregateException crosses
-                    // the public API" would go quietly. Deleting these two lines
-                    // is a live mutation that
-                    // Reports_the_lowest_offending_pair_not_the_fastest_worker
-                    // fails on and that nothing else in the solution notices.
+                    // Belongs here, not in RunPerIndex: deleting it is a live
+                    // mutation only Reports_the_lowest_offending_pair_not_the_fastest_worker catches.
                     return ex;
                 }
             });
@@ -586,14 +493,9 @@ internal static class MultiClassRoc
     /// exception the sequential path would have produced.
     /// </summary>
     /// <remarks>
-    /// <see cref="RunPerIndex"/> deliberately does not stop early.
-    /// <see cref="ParallelLoopState.Stop"/> would cancel iterations that had not
-    /// started, so a later index's exception could be reported where the
-    /// sequential path reports an earlier index's. The error path therefore does
-    /// all the work — it has no budget to defend — and
-    /// <see cref="ExceptionDispatchInfo"/> rethrows the original instance rather
-    /// than wrapping it, so type, message and <c>ParamName</c> survive and no
-    /// <see cref="AggregateException"/> crosses the public API.
+    /// See docs/decisions/0018 for why <see cref="RunPerIndex"/> never stops
+    /// early and why <see cref="ExceptionDispatchInfo"/> rethrows the original
+    /// instance instead of wrapping it in an <see cref="AggregateException"/>.
     /// </remarks>
     private static void RethrowFirst(ArgumentException?[] failures)
     {

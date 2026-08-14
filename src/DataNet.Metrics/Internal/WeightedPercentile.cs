@@ -5,47 +5,21 @@ namespace DataNet.Metrics.Internal;
 /// <c>median_absolute_error</c> takes when it is given sample weights.
 /// </summary>
 /// <remarks>
-/// <para>
-/// It is not "the value at the halfway point". On four uniformly weighted
-/// residuals scikit-learn returns the mean of the two middle values, so the
-/// rule averages two percentiles: the first whose cumulative weight reaches
-/// half the total, and the one just past the last that comes <em>within one
-/// machine epsilon</em> of it. Where the two coincide — every odd count, and
-/// every lopsided weighting — the average is that single value, so there is no
-/// separate branch for it.
-/// </para>
-/// <para>
-/// The epsilon is scikit-learn's own: it compares its <c>fraction_above</c>
-/// against <c>np.finfo(np.float64).eps</c> rather than against zero, and that
-/// tolerance is load-bearing. On a uniform fractional weight — <c>[0.1] × 10</c>,
-/// or numpy's own <c>np.ones(n) / n</c> — the cumulative sum overshoots half the
-/// total by a few units in the last place, and an exact test then takes one
-/// order statistic where scikit-learn averages two. Measured, that is the
-/// difference between 4.5 and 4.0 on the residuals <c>0…9</c>.
-/// </para>
-/// <para>
-/// It does <em>not</em> follow that a uniform weight always reproduces the
-/// unweighted median. Where the overshoot is wider than an epsilon it does not,
-/// in scikit-learn either: <c>[0.7] × 10</c> over those same residuals gives
-/// 5.0 on this path against 4.5 on the unweighted one. Both are reproduced,
-/// which is the point — the tolerance is a width, not a licence to average
-/// whenever the weights happen to be equal.
-/// </para>
+/// Not "the value at the halfway point": <see cref="Average"/> always averages
+/// two order statistics, coinciding on one when they land on the same index,
+/// chosen within scikit-learn's own epsilon tolerance rather than exactly at
+/// half. See docs/decisions/0024 for the measured divergence that produces.
 /// </remarks>
 internal static class WeightedPercentile
 {
     /// <summary>
     /// numpy's machine epsilon, <c>np.finfo(np.float64).eps</c> — the tolerance
     /// scikit-learn allows the cumulative weight to overshoot the halfway point
-    /// by before it stops averaging.
+    /// by before it stops averaging. See docs/decisions/0024.
     /// </summary>
     /// <remarks>
-    /// Absolute, not relative, because scikit-learn's is absolute. It is not
-    /// <see cref="double.Epsilon"/>, which is the smallest positive subnormal
-    /// and 292 orders of magnitude smaller; and .NET has no built-in constant
-    /// for machine epsilon, which is why this is written out — the same value,
-    /// for a different reason, as the clamp in
-    /// <see cref="MeanAbsolutePercentageError"/>.
+    /// Not <see cref="double.Epsilon"/>, the smallest positive subnormal and 292
+    /// orders of magnitude smaller. .NET has no built-in constant for this.
     /// </remarks>
     private const double MachineEpsilon = 2.220446049250313e-16;
 
@@ -59,10 +33,8 @@ internal static class WeightedPercentile
             return MedianUnweighted(values);
         }
 
-        // Array.Sort(keys, items) sorts by the FIRST array. The residuals are
-        // the sort key here, so values must lead and weights must follow —
-        // Array.Sort(weights, values) would sort by weight instead, which is
-        // not the rule scikit-learn implements.
+        // Array.Sort(keys, items) sorts by the first array, so values (the sort
+        // key) must lead weights — the reverse call would sort by weight instead.
         Array.Sort(values, weights);
         return Average(values, weights);
     }
@@ -82,13 +54,8 @@ internal static class WeightedPercentile
 
         if (upper != lower)
         {
-            // QuickSelect leaves values[lower] holding the correct order
-            // statistic with everything to its right at or above it (the
-            // partition invariant), and upper is always lower + 1 when the
-            // count is even (an odd count takes the branch above instead).
-            // So the other middle value is just the minimum of that
-            // remainder, found with one linear scan instead of a second
-            // full selection.
+            // The partition invariant already leaves values[lower..] at or above
+            // the order statistic, so the other middle value is just its minimum.
             int minIndex = lower + 1;
             for (int i = lower + 2; i < n; i++)
             {
@@ -126,12 +93,8 @@ internal static class WeightedPercentile
             return;
         }
 
-        // Median-of-three pivoting still degrades to O(n^2) on adversarial
-        // input (e.g. an organ-pipe sequence, or many repeats of one value).
-        // Introselect bounds the damage: once partitioning has run more than a
-        // budget proportional to log2(n), fall back to sorting whatever range
-        // remains, turning the worst case into O(n log n) — the same guarantee
-        // that backs numpy's own introselect-based median.
+        // Median-of-three still degrades to O(n^2) on adversarial input (organ
+        // pipe, many repeats); this budget bounds it. See docs/decisions/0025.
         int budget = (2 * FloorLog2(width)) + 4;
 
         while (true)
@@ -171,10 +134,8 @@ internal static class WeightedPercentile
     {
         int mid = from + ((to - from) / 2);
 
-        // Order the two endpoints and the midpoint so the middle value of the
-        // three becomes the pivot, then move it to `to`. This is what defeats
-        // already-sorted and reverse-sorted input, which drive a plain
-        // first-or-last pivot straight to its O(n^2) worst case.
+        // The middle of the two endpoints and the midpoint becomes the pivot,
+        // defeating the sorted/reverse-sorted input a first-or-last pivot fails on.
         if (values[mid] < values[from])
         {
             Swap(values, from, mid);
@@ -185,12 +146,8 @@ internal static class WeightedPercentile
             Swap(values, from, to);
         }
 
-        // An earlier version paired an "is values[to] the smaller one" check
-        // with an unconditional swap that followed it unconditionally — two
-        // swaps of the same pair of positions cancel exactly whenever the
-        // check fired, since swapping twice is the identity. This single,
-        // oppositely-phrased check reaches the same result without ever
-        // performing that wasted pair of swaps.
+        // This single, oppositely-phrased check reaches the same ordering as
+        // pairing a check with an unconditional swap, without the wasted pair.
         if (values[mid] < values[to])
         {
             Swap(values, mid, to);
@@ -200,20 +157,8 @@ internal static class WeightedPercentile
         int storeIndex = from;
         for (int i = from; i < to; i++)
         {
-            // Unconditional swap, conditional advance. This looks wrong and is not:
-            // storeIndex always points at the first slot not yet known to hold a
-            // value below the pivot, so when values[i] is not below it either, the
-            // two positions hold interchangeable values and the swap is a no-op in
-            // meaning if not in memory. The comparison then advances the index by
-            // one or zero, which RyuJIT on x64 emits as a setcc rather than a
-            // branch (disassembled, not assumed; unverified on the other runtimes
-            // the netstandard2.0 assembly reaches) -- and that branch is the point:
-            // on unsorted residuals it is taken about half the time, which is the
-            // worst case for a predictor. Measured at n = 1 000 000: 4.39 ns per
-            // element touched on random data against 2.15 on sorted.
-            //
-            // The comparison must read `value`, the copy taken before the swap.
-            // After it, values[i] holds the other element.
+            // Unconditional swap, then advance by the comparison, not a branch —
+            // see docs/decisions/0025. `value` must be read before the swap.
             double value = values[i];
             values[i] = values[storeIndex];
             values[storeIndex] = value;
@@ -245,13 +190,11 @@ internal static class WeightedPercentile
     /// <summary>
     /// The pair of order-statistic indices the median needs when every weight is
     /// 1: the cumulative count crosses half the total at <c>(n - 1) / 2</c>, and
-    /// the last index still at or under half is <c>n / 2</c>. This is the single
-    /// place that derives that pair — <see cref="Average"/>'s weighted-cumulative
-    /// loop collapses to exactly these two indices when <c>weights</c> is
-    /// <see langword="null"/>, and <see cref="MedianUnweighted"/> needs the same
-    /// pair before selection to know which ranks to quickselect for. Keeping the
-    /// arithmetic here, rather than in both places, is what stops the weighted
-    /// and unweighted paths from silently drifting apart.
+    /// the last index still at or under half is <c>n / 2</c>. The single place
+    /// that derives that pair — <see cref="Average"/>'s weighted-cumulative loop
+    /// collapses to it when <c>weights</c> is <see langword="null"/>, and
+    /// <see cref="MedianUnweighted"/> selects for the same pair before sorting —
+    /// so the weighted and unweighted paths cannot silently drift apart.
     /// </summary>
     private static void MedianIndices(int n, out int lower, out int upper)
     {
@@ -287,12 +230,8 @@ internal static class WeightedPercentile
                 weightedLower = i;
                 lowerFound = true;
             }
-            // Within one machine epsilon of half, not exactly at or below it.
-            // scikit-learn's test is `fraction_above > eps`, where
-            // fraction_above is cdf[i] - half; anything that fails it averages.
-            // Writing this as `cumulative <= half` instead refuses to average
-            // whenever the cumulative sum overshoots by one unit in the last
-            // place, which is what every uniform fractional weight does.
+            // Within one epsilon of half, not exactly at or below it: see
+            // docs/decisions/0024 for why an exact test picks the wrong pair.
             if (cumulative - half <= MachineEpsilon)
             {
                 weightedUpper = i + 1;

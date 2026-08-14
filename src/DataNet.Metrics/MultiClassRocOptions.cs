@@ -1,23 +1,14 @@
 namespace DataNet.Metrics;
 
 /// <summary>
-/// The optional settings of <see cref="RocAuc.MultiClass"/> — scikit-learn's
-/// <c>multi_class</c>, <c>average</c>, <c>labels</c> and <c>sample_weight</c>
-/// arguments to <c>roc_auc_score</c>, plus the parallelism this library adds and
-/// scikit-learn has no equivalent for.
+/// The optional settings of <see cref="RocAuc.MultiClass"/> — <c>roc_auc_score</c>'s
+/// <c>multi_class</c>, <c>average</c>, <c>labels</c> and <c>sample_weight</c> —
+/// plus the parallelism scikit-learn has no equivalent for.
 /// </summary>
 /// <remarks>
-/// <para>
-/// A <c>ref struct</c> because <see cref="Labels"/> and <see cref="SampleWeight"/>
-/// are spans, which nothing else can hold as a field; any other shape would turn
-/// them into arrays and impose an allocation on every caller. Build it at the call
-/// site — it cannot be stored in a field, captured by a lambda, or held across an
-/// <c>await</c>.
-/// </para>
-/// <para>
-/// <c>default</c> reproduces scikit-learn's own defaults: one-vs-rest, macro
-/// averaging, labels read from <c>yTrue</c>, no sample weights, one thread.
-/// </para>
+/// A <c>ref struct</c>, because <see cref="Labels"/> and
+/// <see cref="SampleWeight"/> are spans: build it at the call site. <c>default</c>
+/// reproduces scikit-learn's own defaults. Both argued in <c>docs/decisions/0018</c>.
 /// </remarks>
 public readonly ref struct MultiClassRocOptions
 {
@@ -57,31 +48,9 @@ public readonly ref struct MultiClassRocOptions
     /// reads the caller's spans directly and takes no private copy of them.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The result is bit-identical whatever this is set to: every class and every
-    /// pair writes its own slot, and the averaging runs afterwards on the calling
-    /// thread in array order.
-    /// </para>
-    /// <para>
-    /// Above 1, the inputs are copied. A span cannot be handed to another thread,
-    /// so the parallel path rents a copy of <c>yTrue</c>, of the sample weights if
-    /// any, and a transposed copy of the score matrix — about
-    /// <c>samples × classes × 8</c> bytes, returned to the pool on the way out.
-    /// That is the price of the opt-in, which is why the default does not pay it.
-    /// </para>
-    /// <para>
-    /// The setting is honoured as given, at any input size, and there is no
-    /// sentinel for "all cores": write <see cref="Environment.ProcessorCount"/> if
-    /// that is what is meant, so the number is visible at the call site.
-    /// scikit-learn does not parallelise <c>roc_auc_score</c> at all — see
-    /// <c>docs/decisions/0018-multiclass-roc-auc-parallelism-is-opt-in.md</c>.
-    /// </para>
-    /// <para>
-    /// <see cref="Environment.ProcessorCount"/> is not always the fastest choice:
-    /// it counts logical threads, and on a hyperthreaded machine more workers than
-    /// physical cores can be slower. Measured figures for both, per shape, are in
-    /// <c>docs/guides/performance.md</c>.
-    /// </para>
+    /// Bit-identical at any setting; above 1 the inputs are copied. No sentinel
+    /// for "all cores": write <see cref="Environment.ProcessorCount"/>. Argued
+    /// in <c>docs/decisions/0018-multiclass-roc-auc-parallelism-is-opt-in.md</c>.
     /// </remarks>
     public int MaxDegreeOfParallelism { get; init; }
 }

@@ -477,7 +477,10 @@ pointer is an assertion wearing a measurement's clothes.
 a reader and the code, so it gets **two lines** — a sentence, not a paragraph. XML documentation is the
 member's own interface, read by a caller who does not have the source and required on every public member,
 so it gets **eight**, counted over prose: a `<param>` or an `<exception>` that a well-formed member must
-carry does not spend the budget. Past either, the reasoning belongs in [`docs/decisions/`](docs/decisions/),
+carry does not spend the budget. **The reason above a `#pragma warning disable` is not counted at all**:
+[Suppressions](#suppressions) below already demands a reason a reviewer can disagree with, which is a
+stricter requirement than brevity and rarely met in two lines. Past either budget, the reasoning belongs in
+[`docs/decisions/`](docs/decisions/),
 cited from one line — or it needs cutting. `tools/check_comment_length.py` counts them.
 
 **A longer block carries a marker naming its reason**, as its first line:
