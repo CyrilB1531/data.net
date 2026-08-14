@@ -4433,8 +4433,8 @@ def generate_bpe_no_split() -> dict:
 
 # --- add_prefix_space per Split piece (issue #122) ----------------------------
 
-# A Regex, not a bare string: tokenizers serializes a plain string as
-# {"String": ...} and TokenizerJsonLoader reads only {"Regex": ...}.
+# A Regex, not a bare string: the loader reads both spellings since #167, but
+# swapping this one would re-serialize the models and move a frozen corpus.
 _PREFIX_SPACE_SPLIT = r"\|"
 
 
@@ -4511,8 +4511,8 @@ def generate_bpe_prefix_space() -> dict:
 
 # --- a Split step whose pattern is a literal (issue #167) ---------------------
 
-# "\d" is the only literal here that proves the escape happened: unescaped it
-# matches a digit, so the 7 in the text would leave its gap. The others cannot.
+# Three of these prove the escape happened -- measured, dropping Regex.Escape
+# reddens backslash_d, metachar_dot and pipe; ab, the emoji and "" cannot.
 _SPLIT_LITERALS = {
     "backslash_d": ("\\d", ["a\\db 7", "\\d\\d", "7\\d7"]),
     "metachar_dot": ("a.c", ["abc a.c", "a.c.a", "aXc"]),

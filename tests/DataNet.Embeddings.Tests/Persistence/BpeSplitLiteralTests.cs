@@ -43,7 +43,10 @@ public sealed class BpeSplitLiteralTests
             }
         }
 
-        Assert.Equal(doc.RootElement.GetProperty("metadata").GetProperty("count").GetInt32(), replayed);
+        // 36 and 12 spelled out: metadata.count is written as len(cases), so comparing
+        // the two would be the corpus agreeing with itself rather than with this test.
+        Assert.Equal(36, replayed);
+        Assert.Equal(12, doc.RootElement.GetProperty("metadata").GetProperty("models").EnumerateObject().Count());
         Assert.True(failures.Count == 0, string.Join("\n", failures));
     }
 

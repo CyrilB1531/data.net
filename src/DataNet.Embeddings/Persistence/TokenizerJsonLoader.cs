@@ -891,8 +891,8 @@ public static class TokenizerJsonLoader
             return Regex.Escape(literal);
         }
         throw Unsupported(
-            "its Sequence's Split step declares neither pattern.Regex nor pattern.String",
-            "tokenizers spells a Split pattern as one of those two and nothing else, so a node carrying neither names no pattern to reproduce");
+            "its Sequence's Split step declares neither pattern.Regex nor pattern.String as a string",
+            "tokenizers spells a Split pattern as one of those two and nothing else, so a node carrying neither -- or carrying one whose value is not a string -- names no pattern to reproduce");
     }
 
     /// <summary>

@@ -58,6 +58,7 @@ is one sentence, the issue and the commit; see
 
 #### Changed
 
+- A `Sequence`'s `Split` step whose `pattern` declares both `Regex` and `String` is now refused, where it loaded by silently reading the first. ([#167](https://github.com/CyrilB1531/data.net/issues/167), [`01c0de1`](https://github.com/CyrilB1531/data.net/commit/01c0de1))
 - `EmbeddingIndex.Load` now moves a vector block in three passes instead of five. ([#100](https://github.com/CyrilB1531/data.net/issues/100), [`114245f`](https://github.com/CyrilB1531/data.net/commit/114245f))
 - `OnnxTextEmbedder.Embed` takes `ReadOnlySpan<long>` where it took `IReadOnlyList<long>`, a source break that removes two defensive copies per call. ([#60](https://github.com/CyrilB1531/data.net/issues/60), [`c67b6c5`](https://github.com/CyrilB1531/data.net/commit/c67b6c5))
 - The default output is chosen deterministically instead of by dictionary key order. ([#60](https://github.com/CyrilB1531/data.net/issues/60), [`c67b6c5`](https://github.com/CyrilB1531/data.net/commit/c67b6c5))
