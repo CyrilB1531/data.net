@@ -2,39 +2,18 @@ namespace DataNet.Text.Vectorization;
 
 /// <summary>Ready-made stop-word lists for use via <see cref="CountVectorizerOptions.StopWords"/>.</summary>
 /// <remarks>
-/// <para>
-/// <see cref="English"/> is the exact 318-word list scikit-learn uses for
-/// <c>stop_words="english"</c> (originally from the Glasgow IR "stop list"). Note
-/// that scikit-learn itself documents this list as having known issues; it is
-/// provided for parity, and callers may supply any custom collection instead.
-/// </para>
-/// <para>
-/// The other five lists come from the Snowball project, one per language that has
-/// a Snowball stemmer here. They are close to, but not identical with, the lists
-/// <c>nltk.corpus.stopwords</c> returns — that corpus could not be redistributed,
-/// and the divergence is measured in
-/// <c>docs/decisions/0010-stop-word-list-provenance.md</c>.
-/// </para>
-/// <para>
-/// Matching is ordinal against the analyzer's output, so a list only removes what
-/// the preprocessing leaves behind: the accented words of the non-English lists
-/// never match when <see cref="CountVectorizerOptions.StripAccents"/> is on, and
-/// none of the lists match uppercase input when <c>Lowercase</c> is off.
-/// scikit-learn has the same caveat.
-/// </para>
-/// <para>
-/// Each list is built on first use and never again: six lists share this class,
-/// and a caller who wants French has no reason to pay for the other five.
-/// </para>
+/// <see cref="English"/> is scikit-learn's 318-word list; the other five are Snowball's, pinned by SHA-256 in
+/// <c>tools/fetch_stopwords.py</c> — see <c>docs/decisions/0010-stop-word-list-provenance.md</c> for why not
+/// nltk's, and the "Stop words" section of <c>docs/guides/vectorization.md</c> for matching rules and
+/// per-language counts. Each list builds on first use and never again.
 /// </remarks>
 public static partial class StopWords
 {
     /// <summary>The scikit-learn <c>ENGLISH_STOP_WORDS</c> set (318 words).</summary>
     public static IReadOnlyCollection<string> English => EnglishList.Value;
 
-    // Its own type, so the CLR runs this initialiser when English is first read and
-    // not when any other list is. A static property initialiser here would instead
-    // put all six behind one static constructor: asking for one would build them all.
+    // Its own type: the CLR runs this initialiser only when English is first read,
+    // not when any other list is — a property initialiser here would build all six.
     private static class EnglishList
     {
         internal static readonly IReadOnlyCollection<string> Value = StopWordSet.Freeze(

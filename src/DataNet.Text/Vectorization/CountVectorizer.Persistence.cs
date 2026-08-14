@@ -14,12 +14,10 @@ public sealed partial class CountVectorizer
     /// <paramref name="destination"/> as UTF-8 JSON.
     /// </summary>
     /// <remarks>
-    /// The DataNet equivalent of <c>pickle.dump(vectorizer, f)</c> or
-    /// <c>joblib.dump</c> on a fitted
-    /// <c>sklearn.feature_extraction.text.CountVectorizer</c> — but a declared,
-    /// versioned JSON document rather than an executable pickle, so it can be
-    /// diffed, reviewed and read back from an untrusted source (see
-    /// <see cref="ArtifactLoadOptions"/>).
+    /// The DataNet equivalent of <c>pickle.dump</c> / <c>joblib.dump</c> on a fitted
+    /// <c>sklearn.feature_extraction.text.CountVectorizer</c>, as versioned JSON rather than an executable
+    /// pickle — see <see cref="ArtifactLoadOptions"/> and the "Saving a fitted model" section of
+    /// <c>docs/guides/vectorization.md</c>.
     /// </remarks>
     /// <param name="destination">The stream to write to. It is flushed but never disposed — the caller owns it.</param>
     /// <exception cref="InvalidOperationException">The vectorizer has not been fitted.</exception>
@@ -31,9 +29,8 @@ public sealed partial class CountVectorizer
     /// <exception cref="InvalidOperationException">The vectorizer has not been fitted.</exception>
     public void Save(string path)
     {
-        // Before opening: OpenWrite truncates, and the fitted check would otherwise
-        // fire only once the body starts being written — destroying a good artifact
-        // and leaving a half-written header where it was.
+        // Checked before opening: OpenWrite truncates, so a check any later would
+        // destroy a good artifact and leave a half-written header behind.
         EnsureFitted();
         using FileStream file = JsonArtifact.OpenWrite(path);
         Save(file);

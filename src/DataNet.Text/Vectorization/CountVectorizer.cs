@@ -43,18 +43,9 @@ public sealed record CountVectorizerOptions
     /// <summary>Compares every option, treating <see cref="StopWords"/> as a set.</summary>
     /// <param name="other">The options to compare against.</param>
     /// <remarks>
-    /// <para>
-    /// The generated equality compares <see cref="StopWords"/> by reference, so two
-    /// configurations built from the same list literal would be unequal — and
-    /// comparing two configurations is a far more natural thing to do than
-    /// comparing two fitted models. <see cref="TfidfVectorizerOptions"/> embeds this
-    /// record, so it inherits the fix.
-    /// </para>
-    /// <para>
-    /// Set semantics, not sequence: stop words are looked up, never enumerated in
-    /// order, so two lists holding the same words configure the same vectorizer
-    /// whatever their order or repetition.
-    /// </para>
+    /// <see cref="StopWords"/> compares as a set, not by reference or sequence — the generated equality
+    /// would otherwise treat two lists of the same words as unequal. <see cref="TfidfVectorizerOptions"/>
+    /// embeds this record, so it inherits the fix.
     /// </remarks>
     public bool Equals(CountVectorizerOptions? other)
     {
