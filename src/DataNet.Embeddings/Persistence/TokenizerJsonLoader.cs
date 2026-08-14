@@ -519,9 +519,10 @@ public static class TokenizerJsonLoader
     /// <see cref="BpeTokenizer"/> does not apply.
     /// </summary>
     /// <remarks>
-    /// <c>dropout</c> is BPE-dropout's regularizer: it drops merges at random,
-    /// which no deterministic tokenizer can reproduce, so a file declaring it is
-    /// refused by name rather than tokenized plausibly and wrongly.
+    /// <c>dropout</c> is training-time augmentation, and no model of the 23 read for
+    /// decision 0034 declares one. Refused by name rather than tokenized plausibly
+    /// and wrongly; 0034 also records why "no deterministic tokenizer reproduces it"
+    /// is not the reason.
     /// </remarks>
     private static void EnsureBpeModelSettingsAreReproduced(JsonElement model)
     {
@@ -540,7 +541,8 @@ public static class TokenizerJsonLoader
         {
             throw Unsupported(
                 "its model declares dropout",
-                "that drops merges at random during tokenization, which no deterministic tokenizer reproduces");
+                "that is a training-time regularizer; set it to null to load the file, "
+                + "which changes nothing about what the model was trained to produce");
         }
     }
 
