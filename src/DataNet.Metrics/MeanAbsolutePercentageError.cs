@@ -13,11 +13,10 @@ public static class MeanAbsolutePercentageError
     /// scikit-learn clamps the denominator to.
     /// </summary>
     /// <remarks>
-    /// This is <em>not</em> <see cref="double.Epsilon"/>, which is the smallest
-    /// positive subnormal, about 4.94e-324 — 292 orders of magnitude smaller.
-    /// Both would compile and both would "clamp"; only the frozen oracle says
-    /// which reproduces scikit-learn. There is no built-in .NET constant for
-    /// machine epsilon, which is why this one is written out.
+    /// Not <see cref="double.Epsilon"/>, the smallest positive subnormal — 292
+    /// orders of magnitude smaller. Both compile; the oracle corpus's
+    /// zero-<c>y_true</c> cases are what say this one reproduces scikit-learn.
+    /// .NET has no built-in machine-epsilon constant, hence the literal.
     /// </remarks>
     private const double MachineEpsilon = 2.220446049250313e-16;
 

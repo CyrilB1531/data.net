@@ -59,11 +59,10 @@ public static class PinballLoss
     /// the prediction fell short and <c>1 - alpha</c> when it overshot.
     /// </summary>
     /// <remarks>
-    /// Written as the larger of two products rather than through
-    /// <c>Math.Sign</c>, which is the same number on both sides of zero and one
-    /// comparison instead of a branch and a multiply. The struct carries
-    /// <c>alpha</c>, which is why this kernel is constructed where the other
-    /// four are <see langword="default"/>.
+    /// The larger of two products stands in for <c>Math.Sign</c> — same
+    /// number, one comparison instead of a branch and a multiply. Carrying
+    /// <c>alpha</c> is why this kernel is constructed where the others are
+    /// <see langword="default"/>.
     /// </remarks>
     private readonly struct Quantile(double alpha) : IResidualKernel
     {
