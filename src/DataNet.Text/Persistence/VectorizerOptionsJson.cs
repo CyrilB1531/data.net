@@ -8,17 +8,10 @@ namespace DataNet.Text.Persistence;
 /// Reads and writes the option records of the vectorizers.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Enumerations are persisted under their scikit-learn spelling —
-/// <c>word</c>/<c>char</c>/<c>char_wb</c> for the analyzer, <c>l1</c>/<c>l2</c>
-/// for the norm — so a DataNet artifact reads the same way as the
-/// <c>CountVectorizer(analyzer="char_wb")</c> call it mirrors.
-/// </para>
-/// <para>
-/// Stop words are written in ordinal order. The option is a set, so its
-/// enumeration order carries no meaning and sorting is what makes the artifact
-/// byte-reproducible across runs.
-/// </para>
+/// Enumerations persist under their scikit-learn spelling — <c>word</c>/
+/// <c>char</c>/<c>char_wb</c>, <c>l1</c>/<c>l2</c> — so an artifact reads like
+/// the constructor call it mirrors. Stop words are written in ordinal order:
+/// the option is a set, so only sorting makes the artifact byte-reproducible.
 /// </remarks>
 internal static class VectorizerOptionsJson
 {
