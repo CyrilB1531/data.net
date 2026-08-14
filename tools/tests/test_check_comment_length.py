@@ -34,11 +34,37 @@ def test_xml_documentation_counts_as_a_comment():
     assert [b.length for b in blocks(text)] == [2]
 
 
-def test_eight_lines_is_allowed_and_nine_is_not():
-    eight = "".join(f"// line {i}\n" for i in range(8)) + "int x = 1;\n"
-    nine = "".join(f"// line {i}\n" for i in range(9)) + "int x = 1;\n"
+def test_an_inline_block_gets_two_lines_and_a_third_is_refused():
+    # An inline comment stands between a reader and the code, so it is a
+    # sentence. Measured when the budget was set: 446 blocks ran past two.
+    two = "// one\n// two\nint x = 1;\n"
+    three = "// one\n// two\n// three\nint x = 1;\n"
+    assert guard.findings_in(two.split("\n"), ".cs") == []
+    assert len(guard.findings_in(three.split("\n"), ".cs")) == 1
+
+
+def test_documentation_gets_eight_lines_of_prose():
+    eight = "".join(f"/// line {i}\n" for i in range(8)) + "int X;\n"
+    nine = "".join(f"/// line {i}\n" for i in range(9)) + "int X;\n"
     assert guard.findings_in(eight.split("\n"), ".cs") == []
     assert len(guard.findings_in(nine.split("\n"), ".cs")) == 1
+
+
+def test_structural_elements_do_not_spend_the_documentation_budget():
+    # A well-formed member carries <summary>, a <param> each and an
+    # <exception>; counting those put 316 of 354 over-length blocks inside
+    # public API documentation, which CLAUDE.md requires. Only prose counts.
+    block = (
+        "/// <summary>\n" + "".join(f"/// prose {i}\n" for i in range(7)) +
+        "/// </summary>\n/// <param name=\"a\">a</param>\n"
+        "/// <param name=\"b\">b</param>\n/// <exception cref=\"E\">e</exception>\n"
+        "int X;\n")
+    assert guard.findings_in(block.split("\n"), ".cs") == []
+
+
+def test_python_comments_are_inline_and_get_two():
+    three = "# one\n# two\n# three\nx = 1\n"
+    assert len(guard.findings_in(three.split("\n"), ".py")) == 1
 
 
 def test_a_marked_block_is_allowed_however_long():
@@ -68,14 +94,13 @@ def test_a_shebang_and_a_coding_line_are_not_a_comment_block():
 
 
 def test_a_python_docstring_is_not_a_comment_block():
-    # tools/check_machine_paths.py opens with a 30-line docstring. It is not a
-    # comment and this guard does not count it -- prose in a docstring is the
-    # module's documentation, which is where long explanation belongs.
+    # Prose in a docstring is the module's documentation, which is where a long
+    # explanation belongs -- check_machine_paths.py opens with thirty lines of it.
     text = '"""One\nTwo\nThree\n"""\nimport sys\n'
     assert blocks(text) == []
 
 
-def test_the_finding_names_the_file_the_line_and_the_length():
+def test_the_finding_names_the_line_and_the_prose_count():
     nine = "".join(f"// line {i}\n" for i in range(9)) + "int x = 1;\n"
     finding = guard.findings_in(nine.split("\n"), ".cs")[0]
     assert finding.line == 1

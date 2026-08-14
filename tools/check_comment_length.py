@@ -28,6 +28,7 @@ Exit:   0 clean, 1 findings printed, 2 bad usage
 
 from __future__ import annotations
 
+import re
 import pathlib
 import subprocess
 import sys
@@ -35,18 +36,37 @@ from collections import namedtuple
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
-THRESHOLD = 8
+# long-comment: the measurement that set both budgets, which a reader
+# changing either one needs
+# Two budgets, because the two kinds of prose sit in different places. An
+# inline comment stands between a reader and the code, so it is a sentence:
+# measured, 446 blocks run past two lines today, holding 2391 of them. XML
+# documentation is the member's own interface, read by a caller who does not
+# have the source, and CLAUDE.md requires every public member to carry it --
+# so it gets eight, counted over prose only.
+THRESHOLD_INLINE = 2
+THRESHOLD_DOC = 8
 MARKER = "long-comment:"
 
-# The file suffixes this guard understands, and the leader(s) that make a
-# line of each a comment line. A suffix not listed here is skipped, not
-# guessed at -- LEADERS is the whole vocabulary.
+# long-comment: why structural elements are exempt, measured
+# An XML documentation element a well-formed member must carry anyway: a
+# <param> per parameter, an <exception> per throw, a <summary> that the
+# analyzers require. Measured: counting these against the budget puts 316 of
+# the 354 over-length C# blocks inside public API documentation, which
+# CLAUDE.md separately requires every public member to have -- so the cap
+# would have been a cap on documenting the API rather than on prose. Counting
+# only the prose leaves 228, and a well-formed 12-line block with a four-line
+# <remarks> passes while a three-paragraph essay does not.
+STRUCTURAL = re.compile(
+    r"</?(summary|param|returns|exception|typeparam|value|inheritdoc|seealso)")
+
+# The whole vocabulary: a suffix not listed here is skipped, not guessed at.
 LEADERS: dict[str, tuple[str, ...]] = {
     ".cs": ("///", "//"),
     ".py": ("#",),
 }
 
-Block = namedtuple("Block", "line length marked")
+Block = namedtuple("Block", "line length prose doc marked")
 Finding = namedtuple("Finding", "path line length")
 
 
@@ -85,7 +105,7 @@ def blocks_in(lines: list[str], suffix: str) -> list[Block]:
     A block ends on the first line that is not a comment line -- blank,
     code, or the end of the file. `marked` reports whether the block's own
     first line carries `MARKER` right after its leader, which is what
-    `findings_in` below checks against `THRESHOLD`.
+    `findings_in` below checks against the budget for its kind.
     """
     leaders = LEADERS.get(suffix)
     if not leaders:
@@ -94,6 +114,8 @@ def blocks_in(lines: list[str], suffix: str) -> list[Block]:
     result: list[Block] = []
     start = 0
     length = 0
+    prose = 0
+    doc = False
     marked = False
 
     for number, raw in enumerate(lines, start=1):
@@ -102,23 +124,36 @@ def blocks_in(lines: list[str], suffix: str) -> list[Block]:
             if length == 0:
                 start = number
                 marked = content.startswith(MARKER)
+                prose = 0
+                doc = raw.strip().startswith("///")
             length += 1
+            if not STRUCTURAL.search(content):
+                prose += 1
         elif length:
-            result.append(Block(start, length, marked))
+            result.append(Block(start, length, prose, doc, marked))
             length = 0
 
     if length:
-        result.append(Block(start, length, marked))
+        result.append(Block(start, length, prose, doc, marked))
 
     return result
 
 
+def _budget(block) -> int:
+    """Two lines for an inline block, eight for XML documentation."""
+    return THRESHOLD_DOC if block.doc else THRESHOLD_INLINE
+
+
 def findings_in(lines: list[str], suffix: str) -> list[Finding]:
-    """The blocks in `lines` past `THRESHOLD` whose first line has no `MARKER`."""
+    """The blocks whose PROSE runs past their budget with no `MARKER`.
+
+    Structural XML elements do not spend the budget: see STRUCTURAL above for
+    the measurement that decided it.
+    """
     return [
-        Finding("", block.line, block.length)
+        Finding("", block.line, block.prose)
         for block in blocks_in(lines, suffix)
-        if block.length > THRESHOLD and not block.marked
+        if block.prose > _budget(block) and not block.marked
     ]
 
 
@@ -180,17 +215,18 @@ def main(argv: list[str]) -> int:
         for block in blocks_in(text.split("\n"), suffix):
             total_blocks += 1
             total_lines += block.length
-            if block.length > THRESHOLD:
+            if block.prose > _budget(block):
                 long_blocks += 1
-                long_lines += block.length
+                long_lines += block.prose
                 if block.marked:
                     marked_blocks += 1
                 else:
-                    findings.append(Finding(path, block.line, block.length))
+                    findings.append(Finding(path, block.line, block.prose))
 
     if report:
         print(f"{total_blocks} comment blocks, {total_lines} comment lines")
-        print(f"{long_blocks} run past {THRESHOLD} lines, holding {long_lines} of them")
+        print(f"{long_blocks} run past their budget ({THRESHOLD_INLINE} inline, "
+              f"{THRESHOLD_DOC} documentation), holding {long_lines} prose lines")
         print(f"{marked_blocks} of those {long_blocks} carry a {MARKER} marker")
         return 0
 

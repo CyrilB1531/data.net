@@ -42,7 +42,8 @@ So the question is: **what would you run to check this, and did you run it?**
 
 ## The marker
 
-A comment block over eight lines carries `long-comment:` and a reason on its first line, and
+A block past its budget — two lines inline, eight lines of prose in XML documentation — carries
+`long-comment:` and a reason on its first line, and
 `tools/check_comment_length.py` refuses one that does not. The guard sees only that a marker exists.
 **Whether the block deserved one is the review's call**, at the bar a `#pragma warning disable` is held to.
 A block that could have been eight lines, or whose reasoning belonged in an ADR, is a finding even though

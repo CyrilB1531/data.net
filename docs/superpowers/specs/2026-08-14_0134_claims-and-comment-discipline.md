@@ -19,8 +19,14 @@ tool. Four more came from #127, four from #140 and #121, three predate the issue
 blocks, holding **5532 lines, 56% of all the prose**. One block in five carries more than half the text.
 The longest is 63 lines.
 
-Counting the Python under `tools/` and `bench/` as well, which is what the guard does: **2079 blocks,
-10 615 lines, 372 over eight**. The first figures are the ones quoted throughout this spec; the second is
+Counting the Python under `tools/` and `bench/` as well, which is what the guard does: **2065 blocks,
+10 616 lines**, and **629 past their budget holding 5586 prose lines** once the two budgets are applied —
+two for an inline block, eight for documentation prose.
+
+Splitting the 354 by kind is what set those budgets: **316 were pure XML documentation** (5017 lines) and
+only 38 were inline. A single eight-line cap would therefore have been, at 89%, a cap on documenting the
+public API — which `CLAUDE.md` separately requires. Excluding structural elements and tightening inline to
+two lines puts the work where the prose actually is. The first figures are the ones quoted throughout this spec; the second is
 the population the guard actually refuses, and the two were reconciled rather than averaged — the gap is
 242 Python blocks, not drift.
 
@@ -113,8 +119,12 @@ Four rules, stated once:
 2. **A claim carries what would check it.** Where the claim is executable — a measurement, a reference
    library's output, a count — run it and cite the output or the corpus case. "Measured" without a pointer
    is an assertion.
-3. **Eight lines above a member.** Beyond that, the reasoning belongs in `docs/decisions/`, cited from one
-   line — or it needs cutting.
+3. **Two budgets, because the two kinds of prose sit in different places.** An inline comment stands
+   between a reader and the code, so it gets **two lines** — a sentence, not a paragraph. XML documentation
+   is the member's own interface, read by a caller who does not have the source and required on every
+   public member by `CLAUDE.md`, so it gets **eight**, counted over prose: a `<param>` or an `<exception>`
+   a well-formed member must carry does not spend the budget. Beyond either, the reasoning belongs in
+   `docs/decisions/`, cited from one line — or it needs cutting.
 4. **A block over eight lines carries a marker naming its reason**, in the shape every other exemption in
    this repository takes.
 

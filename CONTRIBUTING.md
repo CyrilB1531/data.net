@@ -473,7 +473,11 @@ code does — the code at least gets compiled.
 output, a count — run it and cite the corpus case, the file and line, or the command. "Measured" with no
 pointer is an assertion wearing a measurement's clothes.
 
-**Eight lines above a member.** Past that, the reasoning belongs in [`docs/decisions/`](docs/decisions/),
+**Two budgets, because the two kinds of prose sit in different places.** An inline comment stands between
+a reader and the code, so it gets **two lines** — a sentence, not a paragraph. XML documentation is the
+member's own interface, read by a caller who does not have the source and required on every public member,
+so it gets **eight**, counted over prose: a `<param>` or an `<exception>` that a well-formed member must
+carry does not spend the budget. Past either, the reasoning belongs in [`docs/decisions/`](docs/decisions/),
 cited from one line — or it needs cutting. `tools/check_comment_length.py` counts them.
 
 **A longer block carries a marker naming its reason**, as its first line:
