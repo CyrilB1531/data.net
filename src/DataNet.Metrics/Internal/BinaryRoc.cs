@@ -63,15 +63,8 @@ internal static class BinaryRoc
             ArrayPool<Point>.Shared.Return(_points);
         }
 
-        // _keys and _points never leave this class: only Compute and Return
-        // touch them, and Point is private to BinaryRoc, so exposing the
-        // array would be an inconsistent-accessibility error as well as a
-        // wider surface than anyone needs.
-        //
-        // Named Compute rather than Score: a method here named Score would
-        // shadow BinaryRoc.Score (SonarAnalyzer S3218), and Score is not part
-        // of the type's public contract — only the static BinaryRoc.Score
-        // overloads are, and both call through to this one.
+        // _keys/_points stay private (Point is private to BinaryRoc). Named
+        // Compute, not Score, so it doesn't shadow BinaryRoc.Score (S3218).
         internal double Compute(ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int posLabel, ReadOnlySpan<double> sampleWeight)
         {
             int n = Validate(yTrue, yScore, sampleWeight);
@@ -80,12 +73,8 @@ internal static class BinaryRoc
             return Accumulate(_keys, _points, n);
         }
 
-        // Validate, BuildPoints, Accumulate, IsLastOfGroup and
-        // RequireBothClassesPresent moved in here (SonarAnalyzer S3398): once
-        // Compute reads its buffers from Scratch's fields (rented by Rent, on
-        // construction) instead of allocating them locally, these five are
-        // reachable only from this nested class, and Sonar is right that a
-        // helper used by exactly one class belongs inside it.
+        // These five moved in here (S3398): once Compute reads its buffers from
+        // Scratch's own fields, all five are reachable only from this class.
         private static int Validate(ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, ReadOnlySpan<double> sampleWeight)
         {
             int n = yTrue.Length;
