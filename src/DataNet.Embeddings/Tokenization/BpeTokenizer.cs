@@ -129,21 +129,10 @@ public sealed class BpeTokenizer : ISubwordTokenizer
                     $"The merge at rank {rank} produces '{merged}', "
                     + "which the vocabulary does not contain.", nameof(vocabulary));
             }
-            // long-comment: an undocumented choice, and the caveat that nothing here
-            // can tell it apart from the alternative is part of what needs recording.
-            // If a pair is listed twice, the first (lowest) rank is kept rather than
-            // the last write winning. Neither tokenizer.json nor merges.txt defines
-            // what a duplicate pair should mean, so this is DataNet's own choice,
-            // made because rank is supposed to be the order a pair was learned in,
-            // and a pair cannot have been learned twice at two different ranks. It
-            // is a choice, not a verified fact about HuggingFace's own trainer or
-            // loader: tiny_bpe.json's 116 merges are 116 distinct pairs, so no
-            // corpus in this branch can tell this apart from "last write wins".
-            long key = Key(left, right);
-            if (!_ranks.ContainsKey(key))
-            {
-                _ranks[key] = rank;
-            }
+            // A pair listed twice keeps its LAST occurrence, which is what the
+            // reference does -- tests/oracles/bpe_duplicate_merge.json, model
+            // "duplicate": a+b at ranks 0 and 3 gives ['a', 'bc', 'd'].
+            _ranks[Key(left, right)] = rank;
             _merged[rank] = result;
         }
 
