@@ -153,6 +153,29 @@ than loses.
 The sequential path does none of this, which is the concrete content of "the
 default does not pay for the opt-in".
 
+### `ScoreSource` takes the sample count as a parameter, not `yTrue.Length`
+
+`ScoreSource`'s constructor is handed `sampleCount` explicitly and checks both
+`yTrue` and `scores` against it, rather than trusting `yTrue.Length` and
+checking only that `scores.Length == yTrue.Length * classCount`. The stricter
+form exists because the looser one cannot detect the one failure it exists to
+catch: two spans sliced to a **rented array's length** rather than the sample
+count, which `CopyForWorkers`'s callers must get right on every parallel call.
+
+`ArrayPool<T>.Shared`'s buckets are powers of two, so `Rent(n).Length * k`
+equals `Rent(n * k).Length` far more often than intuition suggests — verified
+with `ArrayPool<int>.Shared.Rent`/`ArrayPool<double>.Shared.Rent` (the bucket
+size does not depend on the element type) for every `n` in `[2, 4096]` against
+`k` in `{2, 4, 8}`: 4088 of the 4095 values of `n` collide for at least one
+`k`. (An inline version of this claim previously read "4079 of 4095", which
+this sweep re-measured and corrected; the source disagreed with the code it
+was explaining.) Two unsliced rented spans would then agree with each other on
+length and disagree with reality, `Offset(column)` would multiply by the
+bucket size instead of the sample count, and every column after the first
+would be read from the wrong place — silently, since both checks the looser
+form performs would still pass. Naming the sample count makes both spans
+answer to a fact neither of them supplies on its own.
+
 ### Only one-vs-rest and one-vs-one are parallelised
 
 The per-class loop and the per-pair loop are spread over workers. Nothing else
