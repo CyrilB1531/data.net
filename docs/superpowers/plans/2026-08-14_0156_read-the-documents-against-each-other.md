@@ -263,9 +263,75 @@ python3 tools/extract_doc_snippets.py
 
 ---
 
-### Task 6: Final verification
+### Task 6: The changelog becomes one sentence and two links
 
-**Depends on:** Tasks 1-5.
+**Files:** `CHANGELOG.md`, `CONTRIBUTING.md`.
+
+**Depends on:** Tasks 1-5, and on `main` carrying #122's merge — that lot inserts 26 lines into
+`CHANGELOG.md`, and rewriting all 766 before it lands would turn a small insertion into a whole-file
+conflict. **Rebase first, then start.**
+
+**Why it belongs to this lot.** `CHANGELOG.md`'s subject is *what changed, per release*. The **why** lives in
+the issue and the **how** in the commit; restating either here is the misplacement D1b describes, and 766
+lines for 91 entries — median entry 78 characters — says most of the file is the restating.
+
+- [ ] **Step 1: The shape**
+
+```markdown
+- The byte-level decode substitutes U+FFFD instead of throwing. ([#149](https://github.com/CyrilB1531/data.net/issues/149), [`5948a59`](https://github.com/CyrilB1531/data.net/commit/5948a59))
+```
+
+One sentence, the issue, the commit. Nothing else — no rationale, no measurement, no caveat. Those are in
+the two things the line links to.
+
+- [ ] **Step 2: Backfill only what git can prove**
+
+**Measured: 0 of the 91 entries carry an issue reference or a commit sha today.** So this is reconstruction,
+not compression, and it is bounded by what the repository can answer:
+
+- find each entry's commit with `git log --oneline --all --grep=<distinctive phrase>` and by reading
+  `git log --follow` over the file the entry describes;
+- accept a link **only when one commit matches unambiguously**. Two candidates means no link.
+- take the issue from that commit's message (`Closes #n`) or its pull request, never by guessing from the
+  subject.
+
+**Fabricate nothing.** An entry whose commit cannot be identified keeps its sentence and gets no links.
+
+- [ ] **Step 3: Mark the boundary, so a missing link reads as a date rather than an oversight**
+
+One line in the file, above the first release that predates the convention, saying that entries before it
+were written when the repository had neither an issue per lot nor this shape. A reader then knows what the
+absence means.
+
+- [ ] **Step 4: The convention goes in `CONTRIBUTING.md`**
+
+Where the process lives — not in `CHANGELOG.md`, which is not the place that explains how to fill it in.
+One example, the shape, and the rule that an entry carries no reasoning.
+
+- [ ] **Step 5: Verify and commit**
+
+```bash
+cd <repo>
+npx --yes --ignore-scripts markdownlint-cli2@0.23.2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
+python3 - <<'EOF'
+import pathlib, re
+lines = pathlib.Path("CHANGELOG.md").read_text().splitlines()
+bullets = [l for l in lines if re.match(r"^\s*[-*] ", l)]
+linked = [l for l in bullets if "issues/" in l or "commit/" in l]
+print(f"{len(bullets)} entries, {len(linked)} with at least one link")
+EOF
+git add CHANGELOG.md CONTRIBUTING.md
+git commit -m "Say what changed in one sentence, and link the issue and the commit"
+```
+
+Report the count: how many of the 91 got both links, how many one, how many none, and **why** for every
+entry that got none.
+
+---
+
+### Task 7: Final verification
+
+**Depends on:** Tasks 1-6.
 
 - [ ] **Step 1: Re-run the finder on the final tree**
 
@@ -298,7 +364,8 @@ a pull request.
 
 **Spec coverage.** D1 → Task 3. D1b → Tasks 1 and 2 Step 3. D2 → Task 3 Step 1's rule for who states what.
 D3 → Task 2. D4 → Task 4. D5's four content checks → Tasks 1, 3 and 4; its five form criteria → Task 5,
-which is deliberately last and deliberately committed on its own.
+committed on its own. The changelog's shape → Task 6, added after the maintainer asked for it: one
+sentence, the issue, the commit, and links backfilled only where git resolves them unambiguously.
 
 **Placeholders.** Task 1 Step 3 and Task 3 Step 2 are readings with no enumerable input — that is the lot's
 nature, and both say what to concentrate on and what the report must list. `<repo>` stands for a path that
