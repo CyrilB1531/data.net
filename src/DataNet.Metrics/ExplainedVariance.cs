@@ -10,21 +10,10 @@ namespace DataNet.Metrics;
 /// equivalent of <c>sklearn.metrics.explained_variance_score</c>.
 /// </summary>
 /// <remarks>
-/// <para>
-/// One term separates this from <see cref="R2"/>: the residuals are centred on
-/// their own mean before being squared, so a prediction that is wrong by the
-/// same constant everywhere still explains all of the variance and scores 1,
-/// where <see cref="R2"/> pays for the bias.
-/// </para>
-/// <para>
-/// That term is also why this metric takes no <see cref="ZeroDivision"/>, and
-/// the asymmetry is measured rather than assumed:
-/// <c>explained_variance_score([3], [5])</c> is <c>1.0</c>, because a single
-/// residual has zero variance and the metric is genuinely 1 by its own
-/// definition. There is no undefined case here to route — the single-sample
-/// call falls into the zero-denominator branch and <c>forceFinite</c> answers
-/// it, exactly as scikit-learn does.
-/// </para>
+/// One term separates this from <see cref="R2"/>: residuals are centred on
+/// their own mean before squaring, so a uniform bias still scores 1 here,
+/// where <see cref="R2"/> pays for it. That is also why this metric takes no
+/// <see cref="ZeroDivision"/> — see docs/decisions/0025.
 /// </remarks>
 public static class ExplainedVariance
 {
@@ -109,11 +98,8 @@ public static class ExplainedVariance
         return Outputs.ReduceByVariance(scores, denominators);
     }
 
-    // Shaped like R2.Compute, and returning the denominators for the same
-    // reason: VarianceWeighted weights each output by the variance of its own
-    // truth, which only this pass knows. The differences from R2 are the mean
-    // residual accumulated in the first pass and subtracted in the second, and
-    // a Resolve with no sample-count branch.
+    // Shaped like R2.Compute, plus a mean residual accumulated in the first
+    // pass and subtracted in the second — see AccumulateUnweighted below.
     private static (double[] Scores, double[] Denominators) Compute(
         ReadOnlySpan<double> yTrue,
         ReadOnlySpan<double> yPred,
@@ -144,28 +130,8 @@ public static class ExplainedVariance
         return (scores, denominators);
     }
 
-    // meanSums/meanResidualSums are not parameters here or on the weighted
-    // overload below: both are read only to compute means/meanResiduals,
-    // which are read only inside this method (Compute never sees them), so
-    // they are locals rather than caller-allocated arrays threaded through
-    // for no reason — the same simplification R2's version of this split
-    // applies. That also drops the four-array Accumulators struct the
-    // parameter count previously needed: numerators and centredSquares alone
-    // fit every overload here under S107's seven-parameter limit.
-    //
-    // No weight to multiply and no total to accumulate: the sum of n ones is
-    // exactly n for every n below 2^53, so the unweighted mean divides by
-    // samples directly rather than walking a weight column of 1.0s — the same
-    // reasoning Outputs.WeightedMean's unweighted path applies.
-    //
-    // outputCount == 1 is the common shape (a single target) and the only one
-    // where rows are contiguous in yTrue/yPred, so a SIMD lane can hold
-    // consecutive samples instead of columns of the same row. outputCount > 1
-    // keeps the scalar loop below rather than gathering a strided column into
-    // a Vector<T>. Vector.IsHardwareAccelerated also falls through to the
-    // scalar loop on a runtime where Vector<double> is software-emulated, the
-    // same guard Pooling.cs and EmbeddingIndex.Persistence.cs use
-    // (VectorMath.Dot predates it).
+    // meanSums/meanResidualSums stay local — the same simplification R2's
+    // split applies, dropping the four-array struct the old signature needed.
     private static void AccumulateUnweighted(
         ReadOnlySpan<double> yTrue,
         ReadOnlySpan<double> yPred,
@@ -175,6 +141,8 @@ public static class ExplainedVariance
     {
         int outputCount = numerators.Length;
 
+        // Vectorizes only for a single contiguous output; falls through to the
+        // scalar loop below otherwise. See docs/decisions/0026.
 #if NET5_0_OR_GREATER
         if (outputCount == 1 && Vector.IsHardwareAccelerated)
         {
@@ -195,6 +163,8 @@ public static class ExplainedVariance
             }
         }
 
+        // No total to accumulate: the sum of n ones is exactly n below 2^53,
+        // so both means divide by samples directly.
         double[] means = new double[outputCount];
         double[] meanResiduals = new double[outputCount];
         for (int col = 0; col < outputCount; col++)
@@ -208,10 +178,6 @@ public static class ExplainedVariance
             int offset = row * outputCount;
             for (int col = 0; col < outputCount; col++)
             {
-                // Explained variance subtracts the mean residual before
-                // squaring; R² does not. That single term is the whole
-                // difference between the two metrics, and it is why a biased
-                // prediction scores lower on R².
                 double residual = yTrue[offset + col] - yPred[offset + col] - meanResiduals[col];
                 double centred = yTrue[offset + col] - means[col];
                 numerators[col].Add(residual * residual);
@@ -221,10 +187,8 @@ public static class ExplainedVariance
     }
 
 #if NET5_0_OR_GREATER
-    // Not guaranteed bit-identical with the scalar loop above: see
-    // VectorCompensatedSum's remarks for why lane-wise summation can reorder
-    // the additions. Both stay Neumaier-compensated and the oracle corpus
-    // compares at 1e-9.
+    // Not guaranteed bit-identical with the scalar loop above — see
+    // VectorCompensatedSum's remarks for why.
     private static void AccumulateUnweightedVectorized(
         ReadOnlySpan<double> yTrue,
         ReadOnlySpan<double> yPred,

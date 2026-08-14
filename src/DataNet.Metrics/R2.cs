@@ -10,20 +10,9 @@ namespace DataNet.Metrics;
 /// <c>sklearn.metrics.r2_score</c>.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Two knobs answer two <em>different</em> undefined cases, and the
-/// implementation deliberately keeps them apart.
-/// </para>
-/// <para>
-/// <c>forceFinite</c> answers a truth whose variance is zero across two or more
-/// samples: scikit-learn reports 1 when the prediction was perfect and 0
-/// otherwise, or the unclamped <c>nan</c> and <c>-inf</c> when asked for them.
-/// <see cref="ZeroDivision"/> answers a call with fewer than two samples, where
-/// scikit-learn reports <c>nan</c> under <em>either</em> setting of
-/// <c>force_finite</c> — so it is not <c>forceFinite</c>'s case at all, and
-/// routing it through <c>forceFinite</c> would return <c>-inf</c> where
-/// scikit-learn returns <c>nan</c>.
-/// </para>
+/// <c>forceFinite</c> and <see cref="ZeroDivision"/> answer two different
+/// undefined cases and must not be merged into one. See
+/// docs/decisions/0025.
 /// </remarks>
 public static class R2
 {
@@ -112,10 +101,8 @@ public static class R2
     /// <see cref="ZeroDivision.Throw"/>.
     /// </exception>
     /// <remarks>
-    /// A method rather than a member of an averaging enum, because the weights
-    /// are the per-output denominators of this very computation: they come out
-    /// of the same pass that produced the scores and cannot be recovered from
-    /// the scores alone.
+    /// A method rather than a member of an averaging enum. See
+    /// docs/decisions/0021.
     /// </remarks>
     public static double VarianceWeighted(
         ReadOnlySpan<double> yTrue,
@@ -131,10 +118,8 @@ public static class R2
         return Outputs.ReduceByVariance(scores, denominators);
     }
 
-    // The single pass returns both arrays, because VarianceWeighted needs the
-    // denominators and cannot be layered on the scores alone. Returning a tuple
-    // rather than taking an "out double[] denominators" keeps the parameter
-    // count at seven, which is S107's limit.
+    // One pass returns both arrays: VarianceWeighted needs the denominators,
+    // which cannot be recovered from the scores alone.
     private static (double[] Scores, double[] Denominators) Compute(
         ReadOnlySpan<double> yTrue,
         ReadOnlySpan<double> yPred,
@@ -166,15 +151,8 @@ public static class R2
         return (scores, denominators);
     }
 
-    // meanSums is not a parameter here or on the weighted overload below: it
-    // is read only to compute means, which is read only inside this method
-    // (Compute never sees it), so it is a local rather than a caller-allocated
-    // array threaded through for no reason. Dropping it also keeps both
-    // overloads under S107's seven-parameter limit with room to spare.
-    //
-    // No weight to multiply and no total to accumulate: the sum of n ones is
-    // exactly n for every n below 2^53, so the unweighted mean divides by
-    // samples directly rather than walking a weight column of 1.0s.
+    // meanSums stays local: Compute never sees it, so threading it through as
+    // a parameter would only spend S107's budget for nothing.
     private static void AccumulateUnweighted(
         ReadOnlySpan<double> yTrue,
         ReadOnlySpan<double> yPred,
@@ -184,14 +162,8 @@ public static class R2
     {
         int outputCount = numerators.Length;
 
-        // outputCount == 1 is the common shape (a single target) and the only
-        // one where rows are contiguous in yTrue/yPred, so a SIMD lane can hold
-        // consecutive samples instead of columns of the same row. outputCount
-        // > 1 keeps the scalar loop below rather than gathering a strided
-        // column into a Vector<T>. Vector.IsHardwareAccelerated also falls
-        // through to the scalar loop on a runtime where Vector<double> is
-        // software-emulated, the same guard Pooling.cs and
-        // EmbeddingIndex.Persistence.cs use (VectorMath.Dot predates it).
+        // Vectorizes only for a single contiguous output; falls through to the
+        // scalar loop below otherwise. See docs/decisions/0026.
 #if NET5_0_OR_GREATER
         if (outputCount == 1 && Vector.IsHardwareAccelerated)
         {
@@ -210,6 +182,8 @@ public static class R2
             }
         }
 
+        // No total to accumulate: the sum of n ones is exactly n below 2^53,
+        // so the mean divides by samples directly.
         double[] means = new double[outputCount];
         for (int col = 0; col < outputCount; col++)
         {
@@ -230,10 +204,8 @@ public static class R2
     }
 
 #if NET5_0_OR_GREATER
-    // Not guaranteed bit-identical with the scalar loop above: see
-    // VectorCompensatedSum's remarks for why lane-wise summation can reorder
-    // the additions. Both stay Neumaier-compensated and the oracle corpus
-    // compares at 1e-9.
+    // Not guaranteed bit-identical with the scalar loop above — see
+    // VectorCompensatedSum's remarks for why.
     private static void AccumulateUnweightedVectorized(
         ReadOnlySpan<double> yTrue,
         ReadOnlySpan<double> yPred,
