@@ -104,7 +104,7 @@ def _is_comment_line(stripped: str, leaders: tuple[str, ...]) -> tuple[bool, str
     leader = _leader_for(stripped, leaders)
     if leader is None:
         return False, ""
-    if stripped.startswith("#!") or stripped.startswith("# -*-"):
+    if stripped.startswith(("#!", "# -*-")):
         return False, ""
     return True, stripped[len(leader):].strip()
 
@@ -198,19 +198,12 @@ def _parse_arguments(arguments: list[str]) -> int | None:
     return None
 
 
-def main(argv: list[str]) -> int:
-    arguments = argv[1:]
-    early_exit = _parse_arguments(arguments)
-    if early_exit is not None:
-        return early_exit
+Tally = namedtuple("Tally", "blocks lines long_blocks long_lines marked findings")
 
-    report = "--report" in arguments
 
-    total_blocks = 0
-    total_lines = 0
-    long_blocks = 0
-    long_lines = 0
-    marked_blocks = 0
+def _walk() -> Tally:
+    """Every tracked file the guard understands, counted once."""
+    blocks = lines = long_blocks = long_lines = marked = 0
     findings: list[Finding] = []
 
     for path in tracked_files():
@@ -223,23 +216,41 @@ def main(argv: list[str]) -> int:
             continue
 
         for block in blocks_in(text.split("\n"), suffix):
-            total_blocks += 1
-            total_lines += block.length
-            if block.prose > _budget(block):
-                long_blocks += 1
-                long_lines += block.prose
-                if block.marked:
-                    marked_blocks += 1
-                else:
-                    findings.append(Finding(path, block.line, block.prose))
+            blocks += 1
+            lines += block.length
+            if block.prose <= _budget(block):
+                continue
+            long_blocks += 1
+            long_lines += block.prose
+            if block.marked:
+                marked += 1
+            else:
+                findings.append(Finding(path, block.line, block.prose))
 
-    if report:
-        print(f"{total_blocks} comment blocks, {total_lines} comment lines")
-        print(f"{long_blocks} run past their budget ({THRESHOLD_INLINE} inline, "
-              f"{THRESHOLD_DOC} documentation), holding {long_lines} prose lines")
-        print(f"{marked_blocks} of those {long_blocks} carry a {MARKER} marker")
+    return Tally(blocks, lines, long_blocks, long_lines, marked, findings)
+
+
+def _print_report(tally: Tally) -> None:
+    """The counts, for a sweep that wants to know how much is left."""
+    print(f"{tally.blocks} comment blocks, {tally.lines} comment lines")
+    print(f"{tally.long_blocks} run past their budget ({THRESHOLD_INLINE} inline, "
+          f"{THRESHOLD_DOC} documentation), holding {tally.long_lines} prose lines")
+    print(f"{tally.marked} of those {tally.long_blocks} carry a {MARKER} marker")
+
+
+def main(argv: list[str]) -> int:
+    arguments = argv[1:]
+    early_exit = _parse_arguments(arguments)
+    if early_exit is not None:
+        return early_exit
+
+    tally = _walk()
+
+    if "--report" in arguments:
+        _print_report(tally)
         return 0
 
+    findings = tally.findings
     for finding in findings:
         print(f"{finding.path}:{finding.line}: {finding.length} lines, no {MARKER} marker")
 
