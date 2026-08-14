@@ -1022,28 +1022,69 @@ public sealed class TokenizerJsonLoaderTests
 
     /// <summary>
     /// The other side of <c>use_regex</c>. HuggingFace's <c>use_regex=false</c> hands
-    /// the whole normalized string to the model as a single piece; the null pattern
-    /// this used to be read as means <c>BpePreTokenizer</c>'s word-boundary fallback,
-    /// which drops the whitespace between the words outright and so cannot round trip.
-    /// Refused rather than silently tokenized as something else.
+    /// the whole normalized string to the model as a single piece, which is
+    /// <see cref="BpeVocabulary.NoPreTokenizer"/>; this shape was refused until #122
+    /// gave the vocabulary a way to say it. Both flags are pinned, since a pattern
+    /// left beside the mode is what <see cref="BpeTokenizer"/>'s constructor refuses.
     /// </summary>
     [Fact]
-    public void LoadBpe_refuses_a_byte_level_pre_tokenizer_with_use_regex_off()
+    public void LoadBpe_reads_a_byte_level_pre_tokenizer_with_use_regex_off_as_the_mode()
     {
         const string Json = """
         {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
-         "pre_tokenizer":{"type":"ByteLevel","use_regex":false}}
+         "pre_tokenizer":{"type":"ByteLevel","add_prefix_space":false,"use_regex":false}}
         """;
 
-        InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
-        Assert.Contains("use_regex", error.Message, StringComparison.Ordinal);
+        Assert.True(vocabulary.ByteLevel);
+        Assert.True(vocabulary.NoPreTokenizer);
+        Assert.Null(vocabulary.PreSplit);
+        Assert.Null(vocabulary.PreTokenizerPattern);
+    }
+
+    /// <summary>
+    /// An absent <c>pre_tokenizer</c>, the other shape that reaches the mode -- and
+    /// the one that used to load as <see cref="BpePatterns.Whitespace"/>, silently
+    /// giving a different token stream. Not byte-level: nothing here declares it.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_reads_an_absent_pre_tokenizer_as_the_mode()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]}}
+        """;
+
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
+
+        Assert.True(vocabulary.NoPreTokenizer);
+        Assert.False(vocabulary.ByteLevel);
+        Assert.Null(vocabulary.PreSplit);
+        Assert.Null(vocabulary.PreTokenizerPattern);
+    }
+
+    /// <summary>
+    /// The <c>Whitespace</c> arm says so explicitly now that absent no longer means
+    /// it -- the classic lineage's own pattern, which #119 made every shipped corpus
+    /// declare. Pinned because reading it as the mode would silently stop splitting.
+    /// </summary>
+    [Fact]
+    public void LoadBpe_reads_a_whitespace_pre_tokenizer_as_the_classic_pattern()
+    {
+        const string Json = """
+        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
+         "pre_tokenizer":{"type":"Whitespace"}}
+        """;
+
+        BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
+
+        Assert.False(vocabulary.NoPreTokenizer);
+        Assert.Equal(BpePatterns.Whitespace, vocabulary.PreTokenizerPattern);
     }
 
     /// <summary>
     /// The same flag inside a <c>Sequence</c> of <c>Split</c> then <c>ByteLevel</c> is
-    /// the opposite case and stays accepted, unlike a bare <c>ByteLevel</c>: the
+    /// the opposite case, and not the mode a bare <c>ByteLevel</c> reads as: the
     /// <c>Split</c> step still carries a pattern of its own -- read into
     /// <see cref="BpeVocabulary.PreSplit"/> -- so <c>use_regex: false</c> only
     /// means <c>ByteLevel</c> contributes no second pattern of its own, not that
@@ -1066,6 +1107,7 @@ public sealed class TokenizerJsonLoaderTests
         Assert.NotNull(vocabulary.PreSplit);
         Assert.Equal("\\w+", vocabulary.PreSplit.Pattern);
         Assert.Null(vocabulary.PreTokenizerPattern);
+        Assert.False(vocabulary.NoPreTokenizer);
     }
 
     /// <summary>

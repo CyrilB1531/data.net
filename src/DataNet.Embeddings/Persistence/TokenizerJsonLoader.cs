@@ -470,10 +470,10 @@ public static class TokenizerJsonLoader
     /// flags that decide how text reaches them.
     /// </summary>
     /// <remarks>
-    /// Unlike <see cref="ReadWordPiece"/> and <see cref="ReadUnigram"/>, the
-    /// pre-tokenizer here sets four fields, not one bit, differently for each of
-    /// <c>ByteLevel</c>, <c>Whitespace</c> and a <c>Split</c>/<c>ByteLevel</c>
-    /// <c>Sequence</c> — see <c>docs/equivalence.md</c>'s BPE loader row.
+    /// Unlike <see cref="ReadWordPiece"/> and <see cref="ReadUnigram"/>, the pre-tokenizer
+    /// here sets five fields, not one bit, differently for <c>ByteLevel</c>, <c>Whitespace</c>,
+    /// a <c>Split</c>/<c>ByteLevel</c> <c>Sequence</c> and an absent one — see
+    /// <c>docs/equivalence.md</c>'s BPE loader row.
     /// </remarks>
     private static BpeVocabulary ReadBpe(JsonElement root, in ArtifactLimits limits)
     {
@@ -485,7 +485,8 @@ public static class TokenizerJsonLoader
         RejectNonNull(root, "truncation", "DataNet tokenizers do not truncate");
         RejectNonNull(root, "padding", "DataNet tokenizers do not pad");
         RejectNonNull(root, "post_processor", "DataNet tokenizers do not insert special tokens such as [CLS] and [SEP]");
-        (bool byteLevel, bool addPrefixSpace, BpeSplitStep? preSplit, string? pattern) = ReadBpePreTokenizer(root);
+        (bool byteLevel, bool addPrefixSpace, BpeSplitStep? preSplit, string? pattern, bool noPreTokenizer) =
+            ReadBpePreTokenizer(root);
         EnsureDecoderMatchesModel(root, byteLevel);
         EnsureContinuingPrefixIsNotByteLevel(model, byteLevel);
 
@@ -507,6 +508,7 @@ public static class TokenizerJsonLoader
             UnkToken = OptionalString(model, "unk_token"),
             PreSplit = preSplit,
             PreTokenizerPattern = pattern,
+            NoPreTokenizer = noPreTokenizer,
             NormalizationForms = normalizationForms,
         };
     }
@@ -708,25 +710,26 @@ public static class TokenizerJsonLoader
     }
 
     /// <summary>
-    /// Validates the pre-tokenizer and derives the four values <see cref="BpeVocabulary"/>
+    /// Validates the pre-tokenizer and derives the five values <see cref="BpeVocabulary"/>
     /// carries independently: whether the model is byte-level, whether a space is
     /// prepended, the <c>Split</c> step text is split on first (its pattern,
-    /// behavior and invert together, not a bare pattern), and the pattern it is
-    /// split on again.
+    /// behavior and invert together, not a bare pattern), the pattern it is
+    /// split on again, and whether it is split at all.
     /// </summary>
-    private static (bool ByteLevel, bool AddPrefixSpace, BpeSplitStep? PreSplit, string? Pattern) ReadBpePreTokenizer(JsonElement root)
+    private static (bool ByteLevel, bool AddPrefixSpace, BpeSplitStep? PreSplit, string? Pattern, bool NoPreTokenizer)
+        ReadBpePreTokenizer(JsonElement root)
     {
         if (!root.TryGetProperty("pre_tokenizer", out JsonElement pre) || pre.ValueKind == JsonValueKind.Null)
         {
-            // Still the classic split, which is what an absent pre_tokenizer has always
-            // loaded as here; issue #122 owns correcting it and carries the measurement.
-            return (false, false, null, BpePatterns.Whitespace);
+            // Nothing is split: measured, "aZ Za" is ['a', '[UNK]', 'a'] here against the
+            // Whitespace split's four -- tests/oracles/bpe_no_split.json, cases 0 and 3.
+            return (false, false, null, null, true);
         }
 
         string type = OptionalString(pre, "type") ?? UntypedName;
         return type switch
         {
-            "Whitespace" => (false, false, null, BpePatterns.Whitespace),
+            "Whitespace" => (false, false, null, BpePatterns.Whitespace, false),
             "ByteLevel" => ReadByteLevelPreTokenizer(pre),
             "Sequence" => ReadBpeSequencePreTokenizer(pre),
             _ => throw Unsupported(
@@ -740,27 +743,24 @@ public static class TokenizerJsonLoader
     /// <c>Split</c> node: <see cref="BpePatterns.Gpt2"/> is the split pattern.
     /// </summary>
     /// <remarks>
-    /// <c>use_regex</c> defaults to <see langword="true"/> and stock GPT-2 omits it.
-    /// Off, HuggingFace hands the model one piece; refused, since the nearest
-    /// fallback (<see cref="BpePreTokenizer"/>'s word-boundary split) cannot round trip.
+    /// <c>use_regex</c> defaults to <see langword="true"/> and stock GPT-2 omits it. Off,
+    /// HuggingFace hands the model one piece and so does <see cref="BpeVocabulary.NoPreTokenizer"/>,
+    /// which the corpus's <c>oĠ</c> merge measures: it spans the space the pattern would
+    /// have cut at (<c>bpe_no_split.json</c>, cases 6 and 10).
     /// </remarks>
-    private static (bool ByteLevel, bool AddPrefixSpace, BpeSplitStep? PreSplit, string? Pattern) ReadByteLevelPreTokenizer(JsonElement pre)
+    private static (bool ByteLevel, bool AddPrefixSpace, BpeSplitStep? PreSplit, string? Pattern, bool NoPreTokenizer)
+        ReadByteLevelPreTokenizer(JsonElement pre)
     {
-        if (OptionalBoolean(pre, "use_regex") is false)
-        {
-            throw Unsupported(
-                "its ByteLevel pre_tokenizer has use_regex off",
-                "HuggingFace then passes the whole text to the model as one piece, where BpeTokenizer would split it on word boundaries and drop the whitespace between them");
-        }
         if (OptionalBoolean(pre, AddPrefixSpaceProperty) is not bool addPrefixSpace)
         {
             throw Unsupported(
                 "its ByteLevel pre_tokenizer declares no add_prefix_space",
                 "tokenizers 0.23.1 has no default for that field and refuses the file identically, where accepting it here would invent the value that decides whether a leading space is added");
         }
-        // A bare ByteLevel has no Split step in front of it, so there is nothing
-        // to carry as a first pattern -- ByteLevel's own is the only split there is.
-        return (true, addPrefixSpace, null, BpePatterns.Gpt2);
+        // No Split step in front of it, so there is no first pattern to carry: ByteLevel's
+        // own is the only split there could be, and use_regex says whether there is one.
+        bool useRegex = OptionalBoolean(pre, "use_regex") ?? true;
+        return (true, addPrefixSpace, null, useRegex ? BpePatterns.Gpt2 : null, !useRegex);
     }
 
     /// <summary>
@@ -771,7 +771,8 @@ public static class TokenizerJsonLoader
     /// is applied within that pipeline still diverges from HuggingFace's own placement;
     /// issue #122 owns closing it.
     /// </summary>
-    private static (bool ByteLevel, bool AddPrefixSpace, BpeSplitStep? PreSplit, string? Pattern) ReadBpeSequencePreTokenizer(JsonElement pre)
+    private static (bool ByteLevel, bool AddPrefixSpace, BpeSplitStep? PreSplit, string? Pattern, bool NoPreTokenizer)
+        ReadBpeSequencePreTokenizer(JsonElement pre)
     {
         if (!pre.TryGetProperty("pretokenizers", out JsonElement steps)
             || steps.ValueKind != JsonValueKind.Array
@@ -855,7 +856,8 @@ public static class TokenizerJsonLoader
         // row); absent means true, and before #143 this field went unread entirely.
         bool useRegex = OptionalBoolean(byteLevelStep, "use_regex") ?? true;
         var step = new BpeSplitStep(regexElement.GetString()!, behavior, invert);
-        return (true, addPrefixSpace, step, useRegex ? BpePatterns.Gpt2 : null);
+        // Never the mode, however useRegex reads: the Split step above is a split.
+        return (true, addPrefixSpace, step, useRegex ? BpePatterns.Gpt2 : null, false);
     }
 
     /// <summary>

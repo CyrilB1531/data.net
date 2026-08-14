@@ -3454,11 +3454,9 @@ def _fuse_unk_model(vocab, merges, fuse, *, unk=UNK_TOKEN, byte_level=False, eow
     """One tokenizer, built rather than trained, so the file is byte-stable.
 
     Every classic model declares Whitespace. A model declaring no pre-tokenizer
-    at all is a shape DataNet cannot currently express — `PreTokenizerPattern =
-    null` means "Whitespace" there by decision, while HuggingFace's absent
-    pre-tokenizer does not split at all, and the two disagree on any text with
-    a space. That gap is issue #129 and is not this lot's to close; declaring
-    the pre-tokenizer explicitly keeps this corpus about fuse_unk.
+    at all does not split at all, which DataNet reads as `NoPreTokenizer` since
+    issue #122 and `bpe_no_split.json` measures; declaring the pre-tokenizer
+    explicitly keeps this corpus about fuse_unk rather than about that split.
     """
     from tokenizers import Tokenizer, models, pre_tokenizers  # noqa: PLC0415
 
