@@ -6,16 +6,9 @@ namespace DataNet.Embeddings.Tokenization;
 /// truncated, the batch padded to its own longest row.
 /// </summary>
 /// <remarks>
-/// <para>
-/// The C# equivalent of calling a HuggingFace tokenizer on a list —
-/// <c>tokenizer(texts, padding=True, truncation=True, max_length=…)</c>. The three
-/// things that call does, and that a caller assembling ids by hand has to
-/// reproduce from memory, are done here: the <c>post_processor</c> that wraps the
-/// sequence in <c>[CLS]</c>/<c>[SEP]</c>, the truncation that keeps it inside the
-/// model's positional range, and the mask that tells the model which positions are
-/// padding.
-/// </para>
-/// <para>Thread-safe after construction, as the tokenizers it wraps are.</para>
+/// The C# equivalent of <c>tokenizer(texts, padding=True, truncation=True,
+/// max_length=…)</c> — see <c>docs/guides/embeddings.md</c>'s "Embed a batch".
+/// Thread-safe after construction, as the tokenizers it wraps are.
 /// </remarks>
 public sealed class BatchEncoder
 {
@@ -213,9 +206,7 @@ public sealed class BatchEncoder
     }
 
     // CA1845 (use span-based string.Concat): that overload does not exist on
-    // netstandard2.0 — the span argument binds to Concat(object, object) and the
-    // build fails. The Substring form is what makes this file compile there, the
-    // same reason PortugueseSnowballStemmer suppresses it.
+    // netstandard2.0. The Substring form is what makes this file compile there.
 #pragma warning disable CA1845
     private static string Preview(string text) =>
         text.Length <= 48 ? text : text.Substring(0, 45) + "...";

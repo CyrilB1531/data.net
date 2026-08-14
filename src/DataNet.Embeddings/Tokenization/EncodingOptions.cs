@@ -28,17 +28,10 @@ public enum TruncationStrategy
 /// and bucketing.
 /// </summary>
 /// <remarks>
-/// <para>
-/// The C# form of the keyword arguments to a HuggingFace tokenizer call —
-/// <c>tokenizer(texts, padding=True, truncation=True, max_length=…)</c> — plus the
-/// two knobs that only matter once inference is batched.
-/// </para>
-/// <para>
-/// Padding is always to the longest sequence <em>in the batch</em>, never to the
-/// model maximum: that is <c>padding=True</c> ("longest"), not
-/// <c>padding="max_length"</c>. Padding every batch to 512 when the median length
-/// is 30 wastes most of the compute.
-/// </para>
+/// The C# form of a HuggingFace <c>tokenizer(texts, padding=True, truncation=True,
+/// max_length=…)</c> call, plus two knobs that matter once batched. Padding is to
+/// the batch's own longest sequence, never <c>padding="max_length"</c>; see
+/// <c>docs/guides/embeddings.md</c>'s "Embed a batch".
 /// </remarks>
 public sealed record EncodingOptions
 {
@@ -50,13 +43,10 @@ public sealed record EncodingOptions
     /// <see langword="null"/> asks the model for its declared maximum.
     /// </summary>
     /// <remarks>
-    /// Matches <c>max_length</c>. As in HuggingFace, the budget covers the special
-    /// tokens: with <see cref="SpecialTokenTemplate.Bert"/> and
-    /// <c>MaxLength = 8</c>, at most six text tokens survive. When left
-    /// <see langword="null"/>, <c>OnnxTextEmbedder</c> substitutes the sequence
-    /// dimension the ONNX model declares, if that dimension is a fixed number
-    /// rather than a symbolic one; if the model declares no maximum, no limit is
-    /// applied.
+    /// Matches <c>max_length</c>; the budget covers the special tokens, so with
+    /// <see cref="SpecialTokenTemplate.Bert"/> and <c>MaxLength = 8</c> at most six
+    /// survive. Left <see langword="null"/>, see <c>docs/guides/embeddings.md</c>'s
+    /// "Embed a batch" for what <c>OnnxTextEmbedder</c> substitutes.
     /// </remarks>
     public int? MaxLength { get; init; }
 
@@ -68,12 +58,10 @@ public sealed record EncodingOptions
     /// caller's order on output. Defaults to <see langword="true"/>.
     /// </summary>
     /// <remarks>
-    /// Padding is per sub-batch, so sorting by length puts the long sequences
-    /// together and stops them dictating the width of every row they share a call
-    /// with. The output order is the input order regardless — the permutation is
-    /// inverted before returning, so this is a performance switch and never an
-    /// observable one. It only does anything when a batch spans more than one
-    /// sub-batch, i.e. when the input is larger than <see cref="BatchSize"/>.
+    /// A performance switch, never an observable one — the output order is always
+    /// the input order. See <c>docs/guides/embeddings.md</c>'s "Embed a batch" for
+    /// why sorting helps and when it does nothing (a batch no larger than
+    /// <see cref="BatchSize"/>).
     /// </remarks>
     public bool SortByLength { get; init; } = true;
 

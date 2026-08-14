@@ -5,19 +5,10 @@ namespace DataNet.Embeddings.Tokenization;
 /// resolve a special token by name.
 /// </summary>
 /// <remarks>
-/// <para>
 /// Matches the surface HuggingFace <c>tokenizers.Tokenizer</c> exposes as
-/// <c>encode(text)</c> and <c>token_to_id(token)</c>.
+/// <c>encode(text)</c> and <c>token_to_id(token)</c>, implemented by
 /// <see cref="WordPieceTokenizer"/>, <see cref="SentencePieceTokenizer"/> and
-/// <see cref="BpeTokenizer"/> all implement it, so <see cref="BatchEncoder"/> —
-/// and therefore <c>OnnxTextEmbedder.EmbedBatch</c> — works with any of them
-/// without knowing which.
-/// </para>
-/// <para>
-/// <see cref="TryGetId"/> is what makes the special-token template *data*: the
-/// template names <c>[CLS]</c> or <c>&lt;s&gt;</c>, and the tokenizer's own
-/// vocabulary decides what id that is. Nothing is hardcoded.
-/// </para>
+/// <see cref="BpeTokenizer"/> alike, so <see cref="BatchEncoder"/> works with any.
 /// </remarks>
 public interface ISubwordTokenizer
 {

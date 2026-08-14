@@ -5,17 +5,10 @@ namespace DataNet.Embeddings.Tokenization;
 /// int64 tensors a transformer encoder expects.
 /// </summary>
 /// <remarks>
-/// <para>
-/// The C# form of what HuggingFace's <c>tokenizer(texts, padding=True)</c> returns:
-/// <c>input_ids</c> and <c>attention_mask</c>, both <c>[Count × SequenceLength]</c>
-/// row-major. <see cref="AttentionMask"/> is built here rather than by the caller,
-/// which is the point — a hand-written mask that leaves padding at 1 produces an
-/// embedding that is wrong without being invalid.
-/// </para>
-/// <para>
-/// <see cref="SequenceLength"/> is the longest sequence in <em>this</em> batch, not
-/// the model maximum.
-/// </para>
+/// The C# form of <c>tokenizer(texts, padding=True)</c>: <c>input_ids</c> and
+/// <c>attention_mask</c>, row-major <c>[Count × SequenceLength]</c> — this
+/// batch's own longest sequence, not the model maximum. Built here, not by the
+/// caller, so padding cannot silently reach the pooled vector.
 /// </remarks>
 public sealed class EncodedBatch
 {

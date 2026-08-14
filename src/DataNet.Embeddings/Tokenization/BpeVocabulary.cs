@@ -30,21 +30,12 @@ public sealed record BpeVocabulary(
 {
     /// <summary>The whole <c>added_tokens</c> table: every token matched as literal text ahead of the merge loop.</summary>
     /// <remarks>
-    /// <para>
-    /// Not "the tokens <see cref="Vocab"/> lacks". HuggingFace lists a special token in
-    /// both tables at the same id — <c>&lt;|endoftext|&gt;</c> is 50256 in GPT-2's own
-    /// <c>model.vocab</c> as well as in its <c>added_tokens</c> — and this property is
-    /// the only input to <see cref="BpeTokenizer"/>'s pre-merge scan, so a token left
-    /// out of it here is a token that tokenizes character by character instead of being
-    /// matched whole. Overlap with <see cref="Vocab"/> is expected, and the two must
-    /// agree on the id where they overlap.
-    /// </para>
-    /// <para>
-    /// It is also what <c>skipSpecialTokens</c> drops in
-    /// <see cref="BpeTokenizer.Decode(IReadOnlyList{int}, bool)"/>. The
-    /// <c>special</c> flag a <c>tokenizer.json</c> records per entry is carried on
-    /// <see cref="AddedToken.Special"/>; see <c>docs/equivalence.md</c>.
-    /// </para>
+    /// Not "the tokens <see cref="Vocab"/> lacks" — overlap is expected and the two
+    /// must agree on the id where they overlap, since a token left out here
+    /// tokenizes character by character instead of being matched whole. See
+    /// <c>docs/guides/embeddings.md</c>'s "Loading vocabularies" for why the overlap
+    /// is kept rather than subtracted, and <c>docs/equivalence.md</c>'s
+    /// <c>tokenizer.decode(ids)</c> row for what <c>skipSpecialTokens</c> drops.
     /// </remarks>
     public IReadOnlyList<AddedToken> AddedTokens { get; init; } = [];
 
@@ -88,20 +79,12 @@ public sealed record BpeVocabulary(
 
     /// <summary>The marker opening a non-initial piece; <see langword="null"/> when there is none.</summary>
     /// <remarks>
-    /// <para>
-    /// An empty marker prefixes nothing, so it reads back as <see langword="null"/>: a
-    /// <c>tokenizer.json</c> may declare <c>"continuing_subword_prefix": ""</c>, and the two spellings
-    /// have to mean one thing on a public, constructible type — otherwise a loaded vocabulary and
-    /// a hand-built one compare unequal while behaving identically.
-    /// </para>
-    /// <para>
-    /// It cannot be paired with <see cref="ByteLevel"/>. Nothing forbids setting both
-    /// here — this record restates what a file declared and decides nothing — but
-    /// <see cref="BpeTokenizer"/>'s constructor refuses such a vocabulary, and
-    /// <see cref="Persistence.TokenizerJsonLoader"/> refuses the file that spells it,
-    /// because the prefix is applied to a byte-level model's merges and not to its
-    /// symbols.
-    /// </para>
+    /// An empty marker reads back as <see langword="null"/>, the same normalization
+    /// <see cref="EndOfWordSuffix"/> gets. Pairing a non-empty prefix with
+    /// <see cref="ByteLevel"/> is not forbidden on this record — it restates what a
+    /// file declared — but is refused by <see cref="BpeTokenizer"/>'s constructor and
+    /// by <see cref="Persistence.TokenizerJsonLoader"/>; see
+    /// <c>docs/equivalence.md</c>'s <c>continuing_subword_prefix</c> row for why.
     /// </remarks>
     public string? ContinuingSubwordPrefix
     {
@@ -114,52 +97,25 @@ public sealed record BpeVocabulary(
 
     /// <summary>
     /// The last pattern text is split on before merging; <see langword="null"/> to
-    /// split on word boundaries when <see cref="PreSplit"/> is also
-    /// <see langword="null"/>. There are two ways for a model to split text — this
-    /// pattern and <see cref="PreSplit"/> — and they can combine; see <em>Remarks</em>
-    /// for how.
+    /// split on word boundaries when <see cref="PreSplit"/> is too.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// A <see langword="null"/> <see cref="PreSplit"/> falls back to word boundaries,
-    /// isolating punctuation from letters and digits — HuggingFace's <c>Whitespace</c>
-    /// pre-tokenizer type, not the coarser <c>WhitespaceSplit</c> that only collapses
-    /// whitespace runs.
-    /// </para>
-    /// <para>
-    /// When <see cref="PreSplit"/> is set and this pattern is <em>not</em>
-    /// <see langword="null"/>, this pattern runs second, over every piece the
-    /// pre-split produced. When <see cref="PreSplit"/> is set and this pattern
-    /// <em>is</em> <see langword="null"/>, there is no word-boundary fallback: the
-    /// pre-split is the only split there is, the state
-    /// <see cref="Persistence.TokenizerJsonLoader"/> produces for a <c>Sequence</c>
-    /// whose <c>ByteLevel</c> step declares <c>use_regex: false</c>.
-    /// </para>
-    /// <para>
-    /// When this is the <em>only</em> pattern set (<see cref="PreSplit"/>
-    /// <see langword="null"/>), it is not run under <see cref="SplitBehavior.Isolated"/>:
-    /// the merge loop only ever sees the regex's own matches, with the gaps
-    /// between them dropped — <see cref="SplitBehavior.Removed"/> with invert
-    /// on — which is <see cref="BpePreTokenizer"/>'s own fallback rule when it
-    /// is built with no <see cref="BpeSplitStep"/>, not a choice this property
-    /// makes.
-    /// </para>
+    /// Set with <see cref="PreSplit"/>, re-splits each piece it produced, or — left
+    /// <see langword="null"/> — is the only split: <c>docs/equivalence.md</c>'s
+    /// <c>Sequence([Split(pattern), ByteLevel(…)])</c> row. With neither set,
+    /// <see cref="BpePreTokenizer"/>'s constructor decides the fallback.
     /// </remarks>
     public string? PreTokenizerPattern { get; init; }
 
     /// <summary>
-    /// The <c>Split</c> step a <c>Sequence</c> pre-tokenizer declares, applied
-    /// before <see cref="PreTokenizerPattern"/>; <see langword="null"/> when the
-    /// file declares no such step.
+    /// The <c>Split</c> step a <c>Sequence</c> pre-tokenizer declares, before
+    /// <see cref="PreTokenizerPattern"/>; <see langword="null"/> when none.
     /// </summary>
     /// <remarks>
-    /// HuggingFace's <c>Sequence</c> of <c>Split</c> then <c>ByteLevel</c> splits
-    /// twice: this step first, then <c>ByteLevel</c>'s own pattern over each
-    /// resulting piece, unless its <c>use_regex</c> is off. Measured against
-    /// <c>tokenizers</c> 0.23.1 under Llama-3's own <c>Split</c> pattern, where
-    /// <c>"aujourd'hui"</c> splits into <c>['aujourd', "'", 'hui']</c> with the
-    /// second split and <c>['aujourd', "'hui"]</c> without it
-    /// (<c>tests/oracles/bpe_sequence_split.json</c> cases 1 and 10).
+    /// Splits twice: this step, then <c>ByteLevel</c>'s own pattern per piece,
+    /// unless <c>use_regex</c> is off — measured under Llama-3's pattern:
+    /// <c>"aujourd'hui"</c> → <c>['aujourd', "'", 'hui']</c> with it,
+    /// <c>['aujourd', "'hui"]</c> without (<c>bpe_sequence_split.json</c> cases 1, 10).
     /// </remarks>
     public BpeSplitStep? PreSplit { get; init; }
 

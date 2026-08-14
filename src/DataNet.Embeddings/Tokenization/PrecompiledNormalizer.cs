@@ -4,34 +4,13 @@ namespace DataNet.Embeddings.Tokenization;
 
 /// <summary>
 /// The normalization a SentencePiece model carries in its
-/// <c>precompiled_charsmap</c>: a longest-match rewrite of the input, applied
-/// before the text is segmented.
+/// <c>precompiled_charsmap</c>, applied before the text is segmented.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Matches <c>sentencepiece</c>'s <c>Normalizer</c>. Every built-in rule —
-/// <c>nmt_nfkc</c> (the <c>spm_train</c> default), <c>nfkc</c>,
-/// <c>nmt_nfkc_cf</c>, <c>nfkc_cf</c> — and any custom
-/// <c>--normalization_rule_tsv</c> compiles to this one blob, so interpreting it
-/// covers all of them. <c>normalizer_spec.name</c> is only a record of which rule
-/// produced the map; nothing here trusts it.
-/// </para>
-/// <para>
-/// Interpreting the blob rather than reimplementing the named rules is what makes
-/// parity possible at all: the map is frozen at the Unicode version of the
-/// <c>sentencepiece</c> build that compiled it, while <c>string.Normalize</c>
-/// follows the runtime's ICU. On <c>nmt_nfkc</c> the two already disagree on 181
-/// of the 149 251 assigned code points, and that number grows with every Unicode
-/// release. See <c>docs/decisions/0014-precompiled-normalizer.md</c>.
-/// </para>
-/// <para>
-/// The blob is a darts-clone double-array trie over UTF-8 bytes followed by the
-/// NUL-terminated replacement strings its values index. Both are read with the
-/// same suspicion as the rest of a downloaded file: every traversal is bounds
-/// checked, and a malformed map raises <see cref="InvalidDataException"/> rather
-/// than reading past the end or looping.
-/// </para>
-/// <para>Thread-safe: immutable after construction.</para>
+/// Matches <c>sentencepiece</c>'s <c>Normalizer</c>. Interpreting the compiled
+/// blob, not reimplementing the named rules on <c>string.Normalize</c>, is what
+/// makes byte-exact parity possible — <c>docs/decisions/0014-precompiled-normalizer.md</c>
+/// has the measurement. A malformed map raises <see cref="InvalidDataException"/>.
 /// </remarks>
 public sealed class PrecompiledNormalizer : IEquatable<PrecompiledNormalizer>
 {

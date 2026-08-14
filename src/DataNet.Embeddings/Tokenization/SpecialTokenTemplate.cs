@@ -1,25 +1,12 @@
 namespace DataNet.Embeddings.Tokenization;
 
-/// <summary>
-/// The special tokens a model expects around a single sequence, and the token it
-/// pads with — as data, not as a hardcoded convention.
-/// </summary>
+/// <summary>The special tokens a model expects around a single sequence, and the token it pads with — as data, not a hardcoded convention.</summary>
 /// <remarks>
-/// <para>
-/// This is the C# form of a HuggingFace
-/// <c>tokenizers.processors.TemplateProcessing(single="[CLS] $A [SEP]", …)</c>
-/// together with the <c>pad_token</c> passed to <c>enable_padding</c>. The three
-/// families that cover almost every published encoder are provided as
-/// <see cref="Bert"/>, <see cref="Roberta"/> and <see cref="T5"/>; a model that
-/// wraps its input differently is configurable rather than unsupported, because
-/// the tokens are a list you can supply.
-/// </para>
-/// <para>
-/// The tokens are named, never numbered: the id comes from the model's own
-/// vocabulary through <see cref="ISubwordTokenizer.TryGetId"/>. A vocabulary that
-/// places <c>[CLS]</c> anywhere is handled; a vocabulary missing it fails loudly
-/// at encode time instead of embedding the wrong id.
-/// </para>
+/// The C# form of a HuggingFace <c>TemplateProcessing(single="[CLS] $A [SEP]", …)</c>
+/// plus <c>enable_padding</c>'s <c>pad_token</c> — see
+/// <c>docs/guides/embeddings.md</c>'s "Embed a batch" for the built-in families.
+/// Tokens are named, not numbered: <see cref="ISubwordTokenizer.TryGetId"/>
+/// resolves the id, so a vocabulary missing one fails loudly at encode time.
 /// </remarks>
 /// <param name="PrefixTokens">Tokens inserted before the text, e.g. <c>[CLS]</c>. May be empty.</param>
 /// <param name="SuffixTokens">Tokens appended after the text, e.g. <c>[SEP]</c>. May be empty.</param>
