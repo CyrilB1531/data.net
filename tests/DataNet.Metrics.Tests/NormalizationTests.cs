@@ -8,9 +8,8 @@ public sealed class NormalizationTests
     [Fact]
     public void The_loader_decodes_a_non_finite_oracle_value()
     {
-        // The corpus is strict JSON, so NaN travels as a string. Nothing else in
-        // this repository's oracles has ever needed that, which is why the
-        // decoding lives in one place instead of at each call site.
+        // The corpus is strict JSON, so NaN travels as a string, decoded here
+        // once rather than at each call site.
         using JsonDocument doc = JsonDocument.Parse("""{"a": "NaN", "b": 0.5, "c": "-Infinity"}""");
         JsonElement root = doc.RootElement;
 
@@ -56,9 +55,8 @@ public sealed class NormalizationTests
     [Fact]
     public void A_row_that_counted_nothing_normalises_to_zero_not_NaN()
     {
-        // scikit-learn runs nan_to_num over the result, so an absent class gives a
-        // row of zeros. Divide and forget that, and every invariant below breaks
-        // the moment a caller passes an explicit label that does not occur.
+        // scikit-learn runs nan_to_num over the result: an absent class gives a
+        // row of zeros, not NaN from an unguarded division.
         int[] yTrue = [0, 0, 1, 1];
         int[] yPred = [0, 0, 1, 1];
         ConfusionMatrix cm = ConfusionMatrix.Compute(yTrue, yPred, labels: [0, 1, 2]);

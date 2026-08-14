@@ -26,9 +26,8 @@ public sealed class WeightedPercentileMedianTests
         var data = new TheoryData<double[]>();
         var rng = new Random(Seed);
 
-        // Small, hand-picked shapes: every length from 1 to 5, odd and even,
-        // sorted, reverse-sorted, duplicated and all-equal. An off-by-one in
-        // the lower/upper index arithmetic shows up first here.
+        // Every length 1 to 5, odd/even, sorted, reverse-sorted, duplicated and
+        // all-equal: an off-by-one in the lower/upper index shows up first here.
         foreach (double[] fixture in new[]
         {
             new double[] { 5.0 },
@@ -47,12 +46,8 @@ public sealed class WeightedPercentileMedianTests
             new double[] { 5.0, 4.0, 3.0, 2.0, 1.0 },
             new double[] { 7.0, 7.0, 7.0, 7.0, 7.0 },
             new double[] { 1.0, 1.0, 1.0, 2.0, 2.0 },
-            // Negative-valued: PerOutput feeds these through Math.Abs(value - 0)
-            // before WeightedPercentile ever sees them, and ReferenceMedian
-            // mirrors that with its own Math.Abs, so these two rows are what
-            // proves the reference actually tracks the abs transform rather
-            // than agreeing with it by accident, the way an all-non-negative
-            // suite would.
+            // Negative-valued: PerOutput and ReferenceMedian both apply Math.Abs
+            // independently, so only these rows prove that transform is tracked.
             new double[] { -3.0, -1.0, -2.0 },
             new double[] { -1.0, 2.0, -3.0, 4.0 },
         })
@@ -67,9 +62,8 @@ public sealed class WeightedPercentileMedianTests
             data.Add(RandomArray(rng, n));
         }
 
-        // A larger shape with negative values too, so the abs transform is
-        // exercised past the insertion cutoff and not just on hand-picked
-        // small arrays.
+        // A larger negative-valued shape, exercising the abs transform past the
+        // insertion cutoff, not just on hand-picked small arrays.
         data.Add(RandomSignedArray(rng, 257));
 
         // Larger random shapes, with repeats frequent enough that the
@@ -79,11 +73,8 @@ public sealed class WeightedPercentileMedianTests
             data.Add(RandomArray(rng, n));
         }
 
-        // Shapes that specifically target the introselect fallback:
-        // already-sorted, reverse-sorted and all-equal defeat (or nearly
-        // defeat) a median-of-three pivot at sizes well past the insertion
-        // cutoff, which is exactly what the log2(n) partitioning budget
-        // exists to bound.
+        // Targets the introselect fallback: sorted/reverse-sorted/all-equal defeat
+        // a median-of-three pivot, which the log2(n) partitioning budget bounds.
         foreach (int n in new[] { 500, 2000 })
         {
             data.Add(SortedArray(n, descending: false));
@@ -100,9 +91,8 @@ public sealed class WeightedPercentileMedianTests
     {
         double[] zeros = new double[values.Length];
 
-        // MedianAbsoluteError.PerOutput is the public entry point that
-        // reaches WeightedPercentile.Median with an empty weight array —
-        // the internal type itself is not visible from this project.
+        // The public entry point that reaches WeightedPercentile.Median with an
+        // empty weight array; the internal type is not visible from here.
         double actual = MedianAbsoluteError.PerOutput(values, zeros)[0];
         double expected = ReferenceMedian(values);
 
@@ -110,26 +100,14 @@ public sealed class WeightedPercentileMedianTests
     }
 
     /// <summary>
-    /// The inputs a partition scheme gets wrong, on a size large enough to pass the
-    /// insertion cutoff and exercise the introselect loop rather than the sort
-    /// fallback. Written against the branchy partition and expected to pass there:
-    /// they exist to catch what a rewrite of the index arithmetic would break, and
-    /// a test added after a change cannot do that.
-    ///
-    /// Not all five shapes guard a wrong rank equally. "already sorted" and
-    /// "reverse sorted" hold every value distinct, so any off-by-one changes the
-    /// result. "organ pipe" is tied everywhere — its sorted form is 0, 1, 1, 2, 2,
-    /// … 2499, 2499, 2500 — and both selected ranks land on the same pair, 1250;
-    /// consecutive pairs differ by one, so a shifted rank moves the answer by 0.5.
-    /// All three have full teeth. "two distinct values" is
-    /// half zeros and half ones, so it only catches a rank shifted across that
-    /// boundary — a shift that stays inside one run returns the same value.
-    /// "all equal" cannot detect a wrong rank at all: every element is 3.0, so no
-    /// index error changes the result. It stays in the theory anyway because both
-    /// degenerate shapes still defeat a median-of-three pivot, which is where a
-    /// rewritten loop would hang or exhaust the introselect budget rather than
-    /// return a wrong number — a failure mode distinct from, and not covered by,
-    /// the three rank-guarding shapes.
+    /// Inputs a partition scheme gets wrong, sized past the insertion cutoff to
+    /// exercise introselect. Not all five shapes guard a wrong rank equally:
+    /// "already sorted", "reverse sorted" (every value distinct) and "organ pipe"
+    /// (tied pairs one apart, so a shifted rank moves the answer by 0.5) have full
+    /// teeth. "two distinct values" only catches a rank shifted across its
+    /// zero/one boundary. "all equal" catches no wrong rank at all, but stays:
+    /// both degenerate shapes also defeat a median-of-three pivot, where a
+    /// rewrite would hang or exhaust the budget instead of returning wrong.
     /// </summary>
     [Theory]
     [InlineData("all equal")]
@@ -156,9 +134,7 @@ public sealed class WeightedPercentileMedianTests
             yTrue[i] = residual;
         }
 
-        // MedianAbsoluteError.PerOutput is the public entry point used above,
-        // for the same reason: the internal WeightedPercentile type is not
-        // visible from this project.
+        // Same public entry point as above, for the same visibility reason.
         double actual = MedianAbsoluteError.PerOutput(yTrue, yPred)[0];
 
         Assert.Equal(ExpectedMedian(yTrue), actual, 12);

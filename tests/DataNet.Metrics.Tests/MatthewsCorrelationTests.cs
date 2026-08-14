@@ -17,11 +17,8 @@ public sealed class MatthewsCorrelationTests
             sampleWeight: MetricsCorpus.OptionalDoubles(c, "sample_weight"));
         double want = OracleLoader.Number(c.GetProperty("matthews"));
 
-        // Defensive, and unreachable on today's corpus: matthews_corrcoef
-        // hard-codes 0.0 for its undefined case rather than returning nan, so no
-        // fixture here is non-finite. Kept so this test reads the same as the
-        // balanced-accuracy and kappa ones next door, where the branch does fire,
-        // and so a future fixture cannot fail on NaN != NaN instead of on value.
+        // Defensive, and unreachable today: matthews_corrcoef hard-codes 0.0 for
+        // its undefined case, so a future fixture cannot fail on NaN != NaN.
         if (double.IsNaN(want))
         {
             Assert.True(double.IsNaN(actual), $"{MetricsCorpus.Describe(c)}: expected NaN, got {actual}");
@@ -71,23 +68,19 @@ public sealed class MatthewsCorrelationTests
         Assert.Equal(1.0, MatthewsCorrelation.Score(yTrue, yTrue), 12);
     }
 
+    /// <summary>
+    /// scikit-learn's <c>matthews_corrcoef</c> takes no <c>labels</c> argument, so
+    /// <c>Score(cm)</c> computes over exactly the classes the matrix holds —
+    /// following <see cref="BalancedAccuracy"/> and <see cref="CohenKappa"/>, not
+    /// <see cref="Precision"/>/<see cref="Recall"/>, which read the extended
+    /// column sums on purpose (<see cref="Prf"/>'s own remarks say why). The same
+    /// 7-sample, 3-class fixture the two tests above use scores 0.59375
+    /// unrestricted; restricting to labels [1, 2] drops every sample touching
+    /// label 0, leaving a diagonal matrix, so the restricted correlation is 1.0.
+    /// </summary>
     [Fact]
     public void A_restricted_label_set_reads_over_the_matrix_it_holds()
     {
-        // scikit-learn's matthews_corrcoef takes no labels argument, so it can
-        // never produce this number: Score(cm) computes over exactly the classes
-        // the matrix holds. That is the opposite of what Precision and Recall do
-        // with the same matrix — those read ConfusionMatrix.TrueSum and the
-        // extended column sums on purpose, so a sample whose predicted label fell
-        // outside the label set still counts in a denominator there (Prf.Support's
-        // own remarks say why). BalancedAccuracy and CohenKappa follow this rule,
-        // not that one. This is the same 7-sample, 3-class fixture the two tests
-        // above use, whose
-        // unrestricted correlation over all three classes is 0.59375.
-        // Restricting to labels [1, 2] drops every sample that touches label
-        // 0 (rows 0-1 of the pair below), and what is left of the matrix is
-        // diagonal - perfect agreement, so the restricted correlation is 1.0,
-        // not 0.59375.
         int[] yTrue = [0, 0, 1, 1, 2, 2, 2];
         int[] yPred = [0, 1, 1, 1, 2, 0, 2];
 
@@ -99,12 +92,8 @@ public sealed class MatthewsCorrelationTests
     [Fact]
     public void A_view_holding_no_weight_is_undefined_the_same_way_kappa_is()
     {
-        // The input CohenKappaTests.A_view_holding_no_weight_* pins: labels=[0]
-        // keeps one class and every sample was predicted as 1, so the view holds
-        // no weight. Matthews reaches its denominator == 0.0 guard on its own
-        // arithmetic, and always did — this is here so the two metrics are pinned
-        // to agree that the input is undefined rather than one of them quietly
-        // returning a number.
+        // Same input CohenKappaTests's A_view_holding_no_weight_* fixtures pin:
+        // labels=[0] leaves no weight, pinning the two metrics to agree.
         int[] yTrue = [0, 0];
         int[] yPred = [1, 1];
 

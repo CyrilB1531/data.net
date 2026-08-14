@@ -92,10 +92,8 @@ public sealed class MeanSquaredErrorTests
     [Fact]
     public void The_root_is_taken_per_output_not_on_the_reduced_value()
     {
-        // sqrt(mean(x)) != mean(sqrt(x)) for unequal outputs, and scikit-learn
-        // takes the root first. Measured (see task-2-report.md): 0.6454972243679028
-        // and 1.0 reduce to 0.8227486121839513, where rooting the reduced MSE
-        // gives 0.8416254115301732.
+        // sqrt(mean(x)) != mean(sqrt(x)) for unequal outputs; scikit-learn's
+        // multioutput RMSE takes the root first (verified in task-2-report.md).
         double[] yTrue = [0.5, 1.0, -1.0, 1.0, 7.0, -6.0];
         double[] yPred = [0.0, 2.0, -1.0, 2.0, 8.0, -5.0];
 

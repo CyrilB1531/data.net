@@ -19,9 +19,8 @@ public sealed class RegressionValidationTests
     [Fact]
     public void An_infinite_input_is_refused_with_the_other_message()
     {
-        // scikit-learn has two distinct messages here, not one. Collapsing them
-        // into a single "input is not finite" would still throw, and would still
-        // pass a test that only asserted the type.
+        // scikit-learn has two distinct messages, not one; a single "input is not
+        // finite" would still throw and still pass a type-only assertion.
         double[] yTrue = [1.0, double.PositiveInfinity];
         double[] yPred = [1.0, 1.0];
 
@@ -84,11 +83,8 @@ public sealed class RegressionValidationTests
     [Fact]
     public void A_sample_weight_that_is_zero_throughout_is_refused()
     {
-        // Measured against scikit-learn 1.9.0: mean_squared_error,
-        // median_absolute_error, r2_score and explained_variance_score all raise
-        // ValueError with this sentence. Returning a value instead is worse than
-        // an exception either way — mse gives NaN and median_ae gives a number,
-        // so a caller cannot even tell which of the two happened.
+        // Measured: scikit-learn 1.9.0 raises this on mse, median_ae, r2 and
+        // explained_variance alike; unguarded, mse gives NaN and median_ae a number.
         double[] yTrue = [1.0, 2.0, 3.0];
         double[] yPred = [1.0, 2.0, 4.0];
 
@@ -108,9 +104,8 @@ public sealed class RegressionValidationTests
     [Fact]
     public void A_sample_weight_that_merely_sums_to_zero_is_not_this_check_s_business()
     {
-        // The rule is "every weight is zero", not "the weights sum to zero".
-        // scikit-learn scores an all-negative weight happily, so refusing one
-        // here would be a divergence invented rather than reproduced.
+        // The rule is "every weight is zero", not "the weights sum to zero" —
+        // scikit-learn scores an all-negative weight happily.
         double[] yTrue = [1.0, 2.0, 3.0];
         double[] yPred = [1.0, 2.0, 4.0];
 
@@ -124,9 +119,8 @@ public sealed class RegressionValidationTests
     [Fact]
     public void Output_weights_that_sum_to_zero_are_refused_with_numpys_words()
     {
-        // numpy.average is what raises here, and its rule is the sum — so
-        // [1, -1] is refused although it is not all zero, and [-1, -1] is
-        // accepted although every weight is negative. Both measured.
+        // numpy.average's own rule is the sum: [1, -1] is refused though not all
+        // zero, and [-1, -1] is accepted though every weight is negative.
         double[] yTrue = [1.0, 2.0, 3.0, 4.0, 5.0, 7.0];
         double[] yPred = [1.0, 3.0, 2.0, 4.0, 5.0, 6.0];
 

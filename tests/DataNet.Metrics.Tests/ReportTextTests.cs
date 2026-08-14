@@ -38,36 +38,22 @@ public sealed class ReportTextTests
         int[] yPred = [0, 1, 0, 0];
         ClassificationReport report = ClassificationReport.Compute(yTrue, yPred);
 
-        // ToText() == ToString() alone would pass even if the "digits = 2" default
-        // silently drifted, since ToString forwards to ToText's default either way:
-        // pin the default explicitly against digits: 2 so a changed default fails.
+        // ToText() == ToString() alone would still pass if the "digits = 2" default
+        // silently drifted, since both forward to it; pin digits: 2 explicitly too.
         Assert.Equal(report.ToText(2), report.ToText());
         Assert.Equal(report.ToText(), report.ToString());
     }
 
+    /// <summary>
+    /// Every requested class (0, 1) is wrong; class 2 — not requested — is right,
+    /// so scikit-learn's own "was anything predicted correctly at all" check
+    /// still finds tp_bins non-empty and prints integers, not floats, although
+    /// <see cref="ClassificationReport.Accuracy"/> over the requested labels is
+    /// 0.0. Confirmed against scikit-learn 1.9.0 (transcript in task-2-report.md).
+    /// </summary>
     [Fact]
     public void Support_stays_integral_when_a_correct_prediction_falls_outside_the_requested_labels()
     {
-        // Every requested class (0, 1) is wrong; class 2 — not requested — is
-        // right. Accuracy.Score over the requested labels is 0.0, but
-        // scikit-learn's own "was anything predicted correctly at all" check
-        // runs over every observed label before the request narrows it, so it
-        // still finds tp_bins non-empty and prints plain integers, not floats.
-        // Confirmed directly against scikit-learn 1.9.0:
-        //
-        //   >>> from sklearn.metrics import classification_report
-        //   >>> y_true = [0, 1, 2, 2]
-        //   >>> y_pred = [1, 0, 2, 2]
-        //   >>> print(classification_report(y_true, y_pred, labels=[0, 1], zero_division=0))
-        //                 precision    recall  f1-score   support
-        //
-        //              0       0.00      0.00      0.00         1
-        //              1       0.00      0.00      0.00         1
-        //
-        //      micro avg       0.00      0.00      0.00         2
-        //      macro avg       0.00      0.00      0.00         2
-        //   weighted avg       0.00      0.00      0.00         2
-        //
         int[] yTrue = [0, 1, 2, 2];
         int[] yPred = [1, 0, 2, 2];
         ClassificationReport report = ClassificationReport.Compute(

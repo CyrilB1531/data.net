@@ -53,9 +53,7 @@ public sealed class PercentageAndMaxErrorTests
     [Fact]
     public void Max_error_theory_actually_ran_on_at_least_one_case()
     {
-        // Guards against the theory above silently passing by early-returning on
-        // every case: max_error|uniform is expected on the unweighted
-        // single-output fixtures, so at least one must carry it.
+        // Guards against the theory above passing by early-returning on every case.
         Assert.Contains(RegressionCorpus.Cases, c => RegressionCorpus.Has(c, "max_error|uniform"));
     }
 

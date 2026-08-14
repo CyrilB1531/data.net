@@ -34,9 +34,8 @@ public sealed class CohenKappaTests
             sampleWeight: MetricsCorpus.OptionalDoubles(c, "sample_weight"));
         double want = OracleLoader.Number(c.GetProperty(key));
 
-        // Four corpus fixtures really are nan here — cohen_kappa_score's own
-        // replace_undefined_by default — and NaN is never within Tolerance of
-        // itself, so the comparison has to branch.
+        // Four corpus fixtures really are nan here (replace_undefined_by's
+        // default), and NaN is never within Tolerance of itself.
         if (double.IsNaN(want))
         {
             Assert.True(double.IsNaN(actual), $"{MetricsCorpus.Describe(c)} {key}: expected NaN, got {actual}");
@@ -58,16 +57,18 @@ public sealed class CohenKappaTests
         }
     }
 
+    /// <summary>
+    /// The weighting is a distance between class indices, so reversing them
+    /// preserves every <c>abs(i - j)</c> and any other permutation does not — why
+    /// the matrix overload's result depends on <c>cm.Labels</c> order, and the
+    /// only test that would notice if the weighting were built from label values
+    /// instead of positions.
+    /// </summary>
     [Theory]
     [InlineData(KappaWeighting.Linear)]
     [InlineData(KappaWeighting.Quadratic)]
     public void Weighted_kappa_survives_a_reversal_and_not_another_permutation(KappaWeighting weighting)
     {
-        // The weighting is a distance between class indices, so reversing them
-        // preserves every abs(i - j) and any other permutation does not. This is
-        // why the matrix overload's result depends on cm.Labels order, and the
-        // only test that would notice if the weighting were built from label
-        // values instead of positions.
         double ascending = CohenKappa.Score(YTrue, YPred, weighting, labels: [0, 1, 2]);
         double reversed = CohenKappa.Score(YTrue, YPred, weighting, labels: [2, 1, 0]);
         double shuffled = CohenKappa.Score(YTrue, YPred, weighting, labels: [1, 0, 2]);
@@ -110,38 +111,36 @@ public sealed class CohenKappaTests
             () => CohenKappa.Score(YTrue, YPred, (KappaWeighting)99));
     }
 
+    /// <summary>
+    /// <c>Score(cm)</c> reads over exactly the classes the matrix holds — a
+    /// property of this package's matrix-consuming overload, not a gap in the
+    /// reference. The same 7-sample, 3-class fixture
+    /// <see cref="Matches_sklearn_cohen_kappa_score"/>'s "kappa" row covers scores
+    /// 0.575757575758 unrestricted; restricting to labels [1, 2] drops every
+    /// sample touching label 0, leaving a diagonal (perfect-agreement) matrix, so
+    /// the restricted kappa is 1.0 — exactly what
+    /// <c>cohen_kappa_score(y_true, y_pred, labels=[1, 2])</c> also returns.
+    /// </summary>
     [Fact]
     public void A_restricted_label_set_reads_over_the_matrix_it_holds()
     {
-        // Score(cm) reads over exactly the classes the matrix holds, whatever
-        // scikit-learn's own labels= would do with the same inputs - a property
-        // of this package's matrix-consuming overload, not a gap in the
-        // reference. This is the same 7-sample, 3-class fixture
-        // Matches_sklearn_cohen_kappa_score's "kappa" row covers, whose
-        // unrestricted kappa over all three classes is 0.575757575758.
-        // Restricting to labels [1, 2] drops every sample that touches label 0
-        // (indices 0, 1 and 5 below), and what is left of the matrix is
-        // diagonal - perfect agreement, so the restricted kappa is 1.0, not
-        // 0.575757575758 - which happens to be exactly what
-        // cohen_kappa_score(y_true, y_pred, labels=[1, 2]) also returns.
         ConfusionMatrix restricted = ConfusionMatrix.Compute(YTrue, YPred, labels: [1, 2]);
 
         Assert.Equal(1.0, CohenKappa.Score(restricted), 12);
     }
 
+    /// <summary>
+    /// labels=[0] keeps one class, all predicted 1, so the 1x1 view holds 0.0 and
+    /// expected agreement is 0.0/0.0 = NaN, never == 0.0 — without a guard on the
+    /// total, the expected==0.0 check never fires and every policy silently
+    /// returns NaN instead of the policy's value.
+    /// </summary>
     [Theory]
     [InlineData(ZeroDivision.Zero, 0.0)]
     [InlineData(ZeroDivision.One, 1.0)]
     [InlineData(ZeroDivision.NaN, double.NaN)]
     public void A_view_holding_no_weight_reads_the_zero_division_policy(ZeroDivision zeroDivision, double want)
     {
-        // labels=[0] keeps one class, and every sample was predicted as 1, so the
-        // 1x1 view holds 0.0 — nothing to correct for chance. The expected
-        // agreement is then 0.0 / 0.0 cell by cell, which is NaN, which is never
-        // == 0.0: without a guard on the total the expected == 0.0 test never
-        // fires and the method returns NaN for every policy, silently discarding
-        // this argument. scikit-learn tests the same sum before building its
-        // expected matrix and returns replace_undefined_by.
         int[] yTrue = [0, 0];
         int[] yPred = [1, 1];
 
@@ -170,9 +169,8 @@ public sealed class CohenKappaTests
     [Fact]
     public void An_all_zero_sample_weight_reaches_the_same_guard()
     {
-        // The other way to a view with no weight, and the one that needs no
-        // labels= at all: a perfectly ordinary two-class target whose every
-        // weight is zero. Kappa is as undefined here as above.
+        // The other way to a view with no weight, needing no labels= at all: an
+        // ordinary two-class target whose every weight is zero.
         int[] yTrue = [0, 1];
         int[] yPred = [0, 1];
         double[] weights = [0.0, 0.0];
@@ -186,9 +184,8 @@ public sealed class CohenKappaTests
     [Fact]
     public void An_out_of_range_weighting_is_refused_even_on_an_undefined_input()
     {
-        // The weighting is validated before the undefined-total shortcut, so the
-        // argument error wins over the policy — scikit-learn validates its
-        // parameters before it looks at the data too.
+        // Weighting is validated before the undefined-total shortcut, so the
+        // argument error wins — scikit-learn validates parameters first too.
         Assert.Throws<ArgumentOutOfRangeException>(
             () => CohenKappa.Score([0, 0], [1, 1], (KappaWeighting)99, labels: [0]));
     }
