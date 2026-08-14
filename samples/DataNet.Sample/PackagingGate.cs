@@ -10,33 +10,14 @@ namespace DataNet.Sample;
 
 /// <summary>
 /// Fails the build when a public type of the four packages is not reachable
-/// from this sample.
+/// from this sample (ADR 0009). The exported surface is read by reflection
+/// from the assemblies <em>NuGet resolved for this project</em> — the
+/// packaged ones, not the <c>src/</c> outputs — and matched against this
+/// assembly's own metadata: a <see cref="MemberReference"/>, not a
+/// <see cref="TypeReference"/>, since <c>typeof(T)</c> emits only the latter.
+/// An enum member is the documented exception — it never produces a member
+/// reference, so naming one is all a consumer can do.
 /// </summary>
-/// <remarks>
-/// <para>
-/// ADR 0009 gives the sample one job: catch "a type that is <c>public</c> in
-/// source but unreachable from outside the assembly". That guarantee only covers
-/// types the sample actually references, so for every other public type the CI
-/// job was green by construction — it cannot fail on a type it never mentions.
-/// At the time this landed, 14 of 58 exported types were covered, and #65 and #66
-/// had just added seven more without anyone noticing.
-/// </para>
-/// <para>
-/// Enumerating by hand closes the gap until the next type lands. This closes it
-/// permanently: the exported surface is read by reflection from the assemblies
-/// <em>NuGet resolved for this project</em> — the packaged ones, not the
-/// <c>src/</c> project outputs — and matched against what this assembly's own
-/// metadata references.
-/// </para>
-/// <para>
-/// The criterion is a <see cref="MemberReference"/>, not a
-/// <see cref="TypeReference"/>: <c>typeof(T)</c> emits the latter and not the
-/// former, so a type mentioned only to read an assembly attribute does not count
-/// as exercised. Enums are the documented exception — an enum member is a
-/// compile-time constant and never produces a member reference, so naming one is
-/// all a consumer can do.
-/// </para>
-/// </remarks>
 internal static class PackagingGate
 {
     /// <summary>
@@ -102,9 +83,8 @@ internal static class PackagingGate
                 continue;
             }
 
-            // An enum member is a compile-time constant, so referencing one
-            // leaves a type reference and no member reference. Everything else
-            // must show a member.
+            // Enum members leave a type reference, not a member one (see the
+            // class remarks above); everything else must show a member.
             if (type.IsEnum ? typeRefs.Contains(name) : memberRefParents.Contains(name))
             {
                 covered++;

@@ -37,9 +37,8 @@ public sealed class BpeFilesLoaderTests
     [Fact]
     public void A_merge_whose_left_symbol_starts_with_a_hash_is_kept()
     {
-        // GPT-2's byte-level alphabet leaves '#' as itself, so eight of its
-        // 50 000 merge lines start with one. '#' is a header marker on the
-        // first line only, never a comment marker.
+        // GPT-2's byte-level alphabet leaves '#' as itself, so eight of its 50 000 merge lines start
+        // with one. '#' is a header marker only on the first line, never a general comment marker.
         BpeVocabulary vocab = BpeFilesLoader.Load(
             Utf8("{\"#\":0,\"##\":1,\"####\":2}"),
             Utf8("#version: 0.2\n# #\n## ##\n"));
@@ -57,17 +56,13 @@ public sealed class BpeFilesLoaderTests
     }
 
     /// <summary>
-    /// A line with more than one space is refused, not split on the first one.
+    /// A line with more than one space is refused, not split on the first one. Python splits the whole
+    /// line and requires exactly two fields, so <c>"a b c"</c> and <c>" a b"</c> are both errors there --
+    /// checked against <c>tokenizers</c> 0.23.1, which reports "Merges text file invalid at line 1" for
+    /// each. Splitting on the first space instead would load them as <c>("a", "b c")</c> and
+    /// <c>("", "a b")</c>, a rank the model never had. Unreachable for a byte-level model, whose
+    /// alphabet has no symbol containing a literal space, and reachable for the classic lineage.
     /// </summary>
-    /// <remarks>
-    /// Python splits the whole line and refuses it unless it yields exactly two
-    /// fields, so <c>"a b c"</c> and <c>" a b"</c> are both errors there —
-    /// checked against <c>tokenizers</c> 0.23.1, which reports "Merges text file
-    /// invalid at line 1" for each. Splitting on the first space instead loaded them
-    /// as <c>("a", "b c")</c> and <c>("", "a b")</c>: a rank the model never had.
-    /// Unreachable for a byte-level model, whose alphabet leaves no symbol
-    /// containing a literal space, and reachable for the classic lineage.
-    /// </remarks>
     [Theory]
     [InlineData("a b c\n")]
     [InlineData("a  b\n")]
@@ -103,19 +98,16 @@ public sealed class BpeFilesLoaderTests
     [InlineData("""{"a":99999999999}""")]
     public void A_vocabulary_value_that_is_not_a_32_bit_integer_is_refused(string vocabJson)
     {
-        // GetInt32 would leak InvalidOperationException for a string value and
-        // FormatException for a non-integer or out-of-range number -- neither
-        // matches the InvalidDataException this loader documents.
+        // GetInt32 would leak InvalidOperationException (string value) or FormatException
+        // (non-integer/out-of-range) -- neither matches the InvalidDataException this loader documents.
         Assert.Throws<InvalidDataException>(() => BpeFilesLoader.Load(Utf8(vocabJson), Utf8(Merges)));
     }
 
     [Fact]
     public void A_byte_order_mark_on_merges_txt_does_not_shift_ranks()
     {
-        // Left undecoded, EF BB BF lands on the merges text as a leading U+FEFF,
-        // "#version" no longer matches at offset 0, and the header line is
-        // misread as a spurious rank-0 merge -- silently shifting every real
-        // merge's rank by one instead of throwing.
+        // Left undecoded, EF BB BF becomes a leading U+FEFF, so "#version" no longer matches at
+        // offset 0 and the header line is misread as a spurious rank-0 merge, shifting every rank.
         byte[] bom = [0xEF, 0xBB, 0xBF];
         Stream withBom = new MemoryStream([.. bom, .. Encoding.UTF8.GetBytes(Merges)]);
 

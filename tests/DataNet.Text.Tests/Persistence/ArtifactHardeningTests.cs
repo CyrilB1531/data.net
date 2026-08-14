@@ -170,9 +170,8 @@ public sealed class ArtifactHardeningTests
     [Fact]
     public void A_vocabulary_written_before_the_feature_count_still_loads()
     {
-        // The reader accepts reordered properties, so the vocabulary can arrive before
-        // the count that would have sized its buffer. That is the only path on which
-        // the buffer starts empty and has to grow from nothing.
+        // Reordered properties put the vocabulary before the count that would size
+        // its buffer -- the only path where the buffer grows from nothing.
         var original = new CountVectorizer().Fit(TinyCorpus);
         using var saved = new MemoryStream();
         original.Save(saved);
@@ -217,9 +216,8 @@ public sealed class ArtifactHardeningTests
     [Fact]
     public void Saving_an_unfitted_vectorizer_to_a_path_leaves_the_existing_file_intact()
     {
-        // OpenWrite truncates, and the fitted check only fires once the body starts
-        // being written — so a failed Save would destroy a good artifact and leave a
-        // half-written header in its place. The MemoryStream overload cannot see this.
+        // OpenWrite truncates before the fitted check fires, so a failed Save would
+        // destroy a good artifact. The MemoryStream overload cannot see this.
         string path = Path.Combine(Path.GetTempPath(), $"datanet-save-{Guid.NewGuid():N}.json");
         try
         {
@@ -245,10 +243,8 @@ public sealed class ArtifactHardeningTests
     [InlineData(double.NegativeInfinity)]
     public void An_idf_holding_a_non_finite_value_is_rejected(double poison)
     {
-        // Raw bits carry NaN and infinity perfectly well, so moving idf out of JSON
-        // numbers moved it out of reach of the non-finite check on the write path.
-        // Left unchecked, every Transform afterwards yields NaN scores — silently, and
-        // a long way from the file that caused it.
+        // Raw bits carry NaN, so moving idf out of JSON numbers moved it out of the
+        // write path's non-finite check -- and every later Transform scores NaN.
         var original = new TfidfVectorizer().Fit(TinyCorpus);
         using var saved = new MemoryStream();
         original.Save(saved);

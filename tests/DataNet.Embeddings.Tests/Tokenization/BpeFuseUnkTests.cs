@@ -89,10 +89,8 @@ public sealed class BpeFuseUnkTests
     [InlineData("ZZ", new[] { "q" })]
     public void A_covered_unknown_token_does_not_fuse_with_a_substitution(string text, string[] expected)
     {
-        // "q" is a letter, not punctuation, so it and "Z" land in the same
-        // `Whitespace` piece and can sit next to each other in one run —
-        // which the test needs, to tell a real "q" apart from a "Z"
-        // substituted to "q".
+        // "q" is a letter, so it and "Z" land in the same Whitespace piece and can sit next to each
+        // other in one run -- needed to tell a real "q" apart from a "Z" substituted to "q".
         BpeVocabulary vocabulary = Build(
             new Dictionary<string, int> { ["q"] = 0, ["a"] = 1 }, [], unk: "q", fuse: true);
 

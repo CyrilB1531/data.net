@@ -5,28 +5,15 @@ using Xunit;
 namespace DataNet.Embeddings.Tests;
 
 /// <summary>
-/// Checks the claim <c>Pooler</c> makes about itself: that vectorizing the
-/// accumulation changes how many components are added per instruction and never
-/// the order in which one component's tokens are summed, so the result is
-/// bit-identical to the scalar loop.
+/// Checks the claim <c>Pooler</c> makes about itself: that vectorizing the accumulation changes how
+/// many components are added per instruction and never the order in which one component's tokens are
+/// summed, so the result is bit-identical to the scalar loop -- checked with
+/// <see cref="Assert.Equal(object, object)"/>, not a tolerance, since a tolerance would pass for any
+/// reordering that stayed within rounding error. The netstandard2.0 build has no span constructor for
+/// <see cref="Vector{T}"/> and takes the scalar path, so these facts run in both projects: on
+/// <c>net10.0</c> they compare the vectorized result against the scalar reference, and on the
+/// netstandard2.0 mirror the scalar implementation against it, so one frozen corpus serves both builds.
 /// </summary>
-/// <remarks>
-/// <para>
-/// The comparison is <see cref="Assert.Equal(object, object)"/> on
-/// <see cref="float"/>, not a tolerance. A tolerance would pass for any
-/// reordering that stayed within rounding error, which is exactly the class of
-/// change the claim rules out.
-/// </para>
-/// <para>
-/// This matters beyond tidiness. The netstandard2.0 build has no span
-/// constructor for <see cref="Vector{T}"/> and takes the scalar path, so the
-/// library ships two implementations; the corpus is frozen once. These facts run
-/// in both projects, so on <c>net10.0</c> they compare the vectorized result
-/// against the scalar reference below, and on the netstandard2.0 mirror they
-/// compare the scalar implementation against it. Agreement on both sides is what
-/// makes one frozen corpus legitimate for two builds.
-/// </para>
-/// </remarks>
 public sealed class PoolingVectorizationTests
 {
     /// <summary>Dimensions either side of the SIMD width, so the tail loop is never the only path or never taken.</summary>
@@ -65,10 +52,8 @@ public sealed class PoolingVectorizationTests
     [Fact]
     public void The_vectorized_path_is_actually_taken_on_this_machine()
     {
-        // Skipped rather than failed on a machine without SIMD: the claim is about
-        // what the vectorized path produces, and there is nothing to compare where
-        // there is no vectorized path. The largest shape above is 64 wide, so any
-        // hardware-accelerated Vector<float> reaches the body several times over.
+        // Skipped, not failed, on a machine without SIMD -- nothing to compare where there is no
+        // vectorized path. The largest shape here is 64 wide, so any accelerated Vector reaches the body.
         Assert.True(!Vector.IsHardwareAccelerated || Vector<float>.Count <= 64,
             $"Vector<float>.Count is {Vector<float>.Count}; no shape in this suite reaches the vector body.");
     }

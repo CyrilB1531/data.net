@@ -25,9 +25,8 @@ public sealed class RegressionCorpusTests
     [Fact]
     public void The_corpus_carries_a_non_finite_value_and_the_reader_decodes_it()
     {
-        // r2 on one sample is nan under either force_finite. If this stops being
-        // true the corpus lost its only undefined case and Task 7's test would
-        // pass without ever exercising zeroDivision.
+        // r2 on one sample is nan under either force_finite; the corpus's only
+        // undefined case, and the only fixture that exercises zeroDivision here.
         JsonElement single = RegressionCorpus.Cases
             .First(c => c.GetProperty("fixture").GetString() == "single_sample");
 

@@ -6,30 +6,15 @@ using Xunit;
 namespace DataNet.Embeddings.Tests;
 
 /// <summary>
-/// Replays <c>xlmr_fairseq.json</c> against the XLM-R vocabulary itself — the
-/// corpus issue #63 asked for, and the one the id-based control filter could not
-/// have passed.
+/// Replays <c>xlmr_fairseq.json</c> against the real XLM-R vocabulary -- the corpus issue #63 asked
+/// for, which the id-based control filter could not have passed. <c>xlmr_fairseq.model</c> carries
+/// xlm-roberta-base's own 250 000 pieces at HuggingFace's own ids: <c>&lt;s&gt;</c>=0, <c>&lt;pad&gt;</c>=1,
+/// <c>&lt;/s&gt;</c>=2, <c>&lt;unk&gt;</c>=3 and <c>&lt;mask&gt;</c>=250001, every marker but one outside
+/// the 0-2 window the old constructor tested. Since #75 the fixture also carries XLM-R's own
+/// <c>nmt_nfkc</c> charsmap (docs/decisions/0014), so the last six oracle inputs -- full width forms,
+/// ligatures, decomposed accents, exotic spaces, control characters -- are segmented through a real
+/// normalization pass rather than an inert one.
 /// </summary>
-/// <remarks>
-/// <para>
-/// <c>xlmr_fairseq.model</c> carries xlm-roberta-base's own 250 000 pieces and
-/// scores, at the ids HuggingFace gives them, laid out the way
-/// <c>XLMRobertaTokenizer</c> lays them out: <c>&lt;s&gt;</c>=0,
-/// <c>&lt;pad&gt;</c>=1, <c>&lt;/s&gt;</c>=2, <c>&lt;unk&gt;</c>=3 and
-/// <c>&lt;mask&gt;</c>=250001. Every marker but one sits outside the 0-2 window
-/// the old constructor tested, and <c>&lt;mask&gt;</c> sits a quarter of a
-/// million ids away from it.
-/// </para>
-/// <para>
-/// Since #75 the fixture also carries XLM-R's own <c>nmt_nfkc</c> character map,
-/// which <c>tools/fetch_xlmr_vocab.py</c> used to overwrite with <c>identity</c>
-/// because the loader refused anything else. It is therefore the stock XLM-R
-/// pipeline with the vocabulary relabelled, and the last six oracle inputs — full
-/// width forms, ligatures, decomposed accents, exotic spaces, control characters
-/// — are segmented through a normalization pass rather than past an inert one.
-/// See <c>docs/decisions/0014-precompiled-normalizer.md</c>.
-/// </para>
-/// </remarks>
 public sealed class XlmRobertaFairseqTests
 {
     private const double ScoreTolerance = 1e-9;

@@ -36,11 +36,8 @@ public sealed class BpeTokenizerTests
             }
         }
 
-        // added_tokens is a sibling of "model", not nested inside it: HuggingFace
-        // records it at the top level of tokenizer.json, alongside the pipeline
-        // stages that consult it. "[UNK]" is both a plain vocabulary entry (id 0,
-        // in model.vocab above) and a declared added token, so BpeTokenizer.Encode
-        // recognizes it as a literal match rather than splitting it letter by letter.
+        // added_tokens sits beside "model" in tokenizer.json, not inside it. "[UNK]" is
+        // both a vocab entry and an added token here, so Encode must match it literally.
         var addedTokens = new List<AddedToken>();
         foreach (JsonElement added in doc.RootElement.GetProperty("added_tokens").EnumerateArray())
         {
@@ -196,12 +193,8 @@ public sealed class BpeTokenizerTests
         };
         var tokenizer = new BpeTokenizer(vocab);
 
-        // "the" -> "the</w>" (id 48) and "fox" -> "fox</w>" (id 144) are each a
-        // single token on their own, confirmed by bpe.json's
-        // "the quick brown fox ..." case. The added token sits between them, so
-        // its presence or absence is the only thing that can tell the two
-        // Decode calls below apart. It is marked special, which is what
-        // skipSpecialTokens now keys on.
+        // Ids 48 and 144 ("the" and "fox") come from bpe.json's "the quick brown fox ..." case.
+        // The added token between them is the only thing skipSpecialTokens can affect.
         int[] ids = [48, 3000, 144];
 
         Assert.Equal("the <sep>fox", tokenizer.Decode(ids));
@@ -274,28 +267,12 @@ public sealed class BpeTokenizerTests
     }
 
     /// <summary>
-    /// Two occurrences of the same pair share a rank, and the leftmost one is the
-    /// one applied — HuggingFace's rule, and what the merge loop's strict
-    /// "lower rank wins" comparison produces, since the first position found at
-    /// the winning rank is never displaced by a later one.
+    /// Two equally-ranked occurrences of a pair merge leftmost first (HuggingFace's rule): "abab" is
+    /// <c>a b a b</c> with rank-1 <c>(a, b)</c> at two positions. Merging the left one exposes rank-0
+    /// <c>(ab, a)</c> and ends at <c>aba b</c>; merging the right one first would end at <c>ab ab</c>
+    /// instead. The corpora cannot pin this down -- they only prove tokens match, never which
+    /// tie-break produced them -- so this case is asserted here by its ids.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The corpora cannot pin this down: they prove the tokens match, and the
-    /// vocabularies in them may simply never contain an input where the choice
-    /// between two equally-ranked positions is observable. Stated here instead,
-    /// so any reordering of the merge loop's candidate selection has to answer
-    /// to it.
-    /// </para>
-    /// <para>
-    /// "abab" starts as <c>a b a b</c>, with the rank-1 pair <c>(a, b)</c> at two
-    /// positions and nothing else applicable. Merging the left one first makes
-    /// <c>ab a b</c>, which exposes the rank-0 pair <c>(ab, a)</c> and ends at
-    /// <c>aba b</c>. Merging the right one first would make <c>a b ab</c>,
-    /// exposing nothing, and would end at <c>ab ab</c>. The two are told apart by
-    /// the ids alone.
-    /// </para>
-    /// </remarks>
     [Fact]
     public void Equal_ranked_pairs_merge_at_the_leftmost_position()
     {
@@ -328,20 +305,13 @@ public sealed class BpeTokenizerTests
     }
 
     /// <summary>
-    /// The merge rule, written out the slow and obvious way: scan every adjacent
-    /// pair, take the lowest-ranked one and the leftmost of those, apply it,
-    /// repeat. Deliberately not the shipped algorithm — it is the definition the
-    /// shipped algorithm is answerable to.
+    /// The merge rule, spelled out the slow and obvious way -- scan every adjacent pair, take the
+    /// lowest-ranked one and the leftmost of those, apply it, repeat -- as the definition the shipped
+    /// algorithm answers to, not as the shipped algorithm itself. The one shortcut, a rank lookup by
+    /// dictionary instead of a merge-list scan, changes no outcome: the dictionary keeps the first
+    /// rank a pair is listed at, exactly what a scan would find first, and it is what makes comparing
+    /// against a long piece affordable. What stays slow and obvious is the full rescan after every merge.
     /// </summary>
-    /// <remarks>
-    /// The rank of a pair is looked up in a dictionary rather than by scanning
-    /// the merge list, which is the one thing here that is not naive. It changes
-    /// no outcome — the dictionary keeps the first rank a pair is listed at,
-    /// which is what scanning for the first match would find — and it is what
-    /// makes the reference affordable on a piece long enough to be worth
-    /// comparing against. What has to stay slow and obvious is the rescan of
-    /// every pair after every merge, and that is exactly what is left.
-    /// </remarks>
     private static List<string> NaiveMerge(string piece, List<MergePair> merges)
     {
         var ranks = new Dictionary<(string Left, string Right), int>();
@@ -466,40 +436,15 @@ public sealed class BpeTokenizerTests
     }
 
     /// <summary>
-    /// The regime the priority queue was written for, which nothing else in the
-    /// suite reaches: one unsplittable piece of 1024 symbols, where the queue is
-    /// ten-odd levels deep and takes thousands of entries.
+    /// The regime the priority queue was built for: one unsplittable piece of 1024 symbols over a
+    /// two-letter alphabet, merging under a model where every pair at every level applies, so the
+    /// queue stays ten-odd levels deep instead of stalling early (a sparser, generated model stalled
+    /// at 552 tokens, which is why this one is built rather than generated). It ends at 322 tokens
+    /// after 702 merges, proven by the tokens themselves rather than a stopwatch. It does not pin
+    /// <c>QueueCapacity</c>: shrinking the bound found nothing that broke it, since the queue's size
+    /// is set by how many entries are live at once, not by how many are ever pushed. 1024 is set by
+    /// the naive reference's quadratic cost, not the shipped code: the whole case runs in about 40 ms.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Every other test here merges a handful of symbols, and a benchmark is not
-    /// a gate — it does not run in CI, and it asserts nothing about the tokens.
-    /// So the deep-queue regime, the one this whole algorithm exists for, was
-    /// proven only by a stopwatch. Here it is proven by the tokens: 1024 symbols
-    /// over a two-letter alphabet, against a model where every pair at every
-    /// level is applicable so the piece keeps merging instead of stalling. It
-    /// ends at 322 tokens, so 702 merges run, each one taking a candidate off a
-    /// queue ten levels deep and putting two more back. A sparser, generated
-    /// model was tried first and stalled at 552 tokens, which is why this one is
-    /// built rather than generated.
-    /// </para>
-    /// <para>
-    /// What this does <em>not</em> pin is <c>QueueCapacity</c>. That was the
-    /// intent, and measuring killed it: the queue is bounded by how many entries
-    /// are in it at once, not by how many are ever pushed, and each round takes
-    /// one before offering at most two. Even <c>count</c> entries — a third of
-    /// what is rented — carries this case, verified by shrinking the bound until
-    /// something broke and finding that nothing did. So the bound keeps its
-    /// slack, and no test claims to be guarding it.
-    /// </para>
-    /// <para>
-    /// Length was chosen against the reference, not the shipped code: the naive
-    /// scan is quadratic by construction, which is the whole point of it, so it
-    /// is what sets what the suite can afford. At 1024 the whole case runs in
-    /// about 40 ms, while sitting 25x past the longest piece any other test
-    /// merges.
-    /// </para>
-    /// </remarks>
     [Fact]
     public void Merging_agrees_with_a_naive_scan_over_a_long_unsplittable_piece()
     {
@@ -550,16 +495,12 @@ public sealed class BpeTokenizerTests
     }
 
     /// <summary>
-    /// <c>orphan_bpe_model.json</c> declares "abc" as a vocabulary entry without
-    /// registering the merge that would let the ordinary merge loop reach it --
-    /// "abc" is byte-for-byte what a tiktoken-to-tokenizer.json conversion (Llama-3,
-    /// Qwen) produces, and what GPT-2's own natively-trained table structurally
-    /// cannot (see <see cref="ByteLevelBpeTests.IgnoreMerges_is_behaviour_neutral_on_a_natively_trained_vocabulary"/>).
-    /// With the flag off, encoding "abc" merges greedily to ["ab", "c"], stepping
-    /// past the very entry that is sitting in the vocabulary; with it on, the whole
-    /// piece is looked up first and emitted as the single "abc" token instead. This
-    /// is the test that would still fail if <c>EncodePiece</c> never read
-    /// <c>_ignoreMerges</c>.
+    /// <c>orphan_bpe_model.json</c> vocabularies "abc" without the merge that would reach it -- mirroring
+    /// a tiktoken-to-tokenizer.json conversion (Llama-3, Qwen), unlike GPT-2's own natively-trained
+    /// table (see <see cref="ByteLevelBpeTests.IgnoreMerges_is_behaviour_neutral_on_a_natively_trained_vocabulary"/>).
+    /// With the flag off, "abc" merges greedily to ["ab", "c"], stepping past that entry; with it on,
+    /// the whole piece is looked up first and emitted whole. If <c>EncodePiece</c> never read
+    /// <c>_ignoreMerges</c>, this is the case that would catch it.
     /// </summary>
     [Fact]
     public void IgnoreMerges_emits_a_whole_piece_present_in_the_vocabulary()

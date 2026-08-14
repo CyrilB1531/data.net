@@ -8,18 +8,8 @@ using DataNet.Embeddings.Search;
 using DataNet.Metrics;
 using DataNet.Text.Distances;
 
-// Runs the shared benchmark bodies against the netstandard2.0 build.
-//
-// Two things make that claim true rather than merely intended.
-//
-// First, the in-process toolchain. BenchmarkDotNet's default toolchain generates
-// and builds its own project per run, which re-resolves the ProjectReference and
-// silently restores the net10.0 build — both suites then measure the same
-// assemblies while looking correct. Running in-process removes the generated
-// project, so the benchmarks execute against exactly what this process loaded.
-//
-// Second, the assertion below. An isolation failure is invisible in the numbers
-// unless you already know what to expect, so it is checked rather than eyeballed.
+// In-process, so BenchmarkDotNet cannot regenerate a project that silently
+// restores net10.0 instead; the assertion below checks that, rather than trusting it.
 
 if (!AssertLoaded(typeof(Levenshtein), ".NETStandard,Version=v2.0") ||
     !AssertLoaded(typeof(VectorMath), ".NETStandard,Version=v2.0") ||

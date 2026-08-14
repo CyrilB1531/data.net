@@ -8,25 +8,14 @@ using Xunit;
 namespace DataNet.Embeddings.Tests;
 
 /// <summary>
-/// Replays <c>bpe_no_op_settings.json</c>: one model per setting issue #118 stopped
-/// refusing, each beside a baseline built from the same vocabulary and merges with
-/// the setting absent.
+/// Replays <c>bpe_no_op_settings.json</c>: one model per setting issue #118 stopped refusing, each
+/// beside a baseline built from the same vocabulary and merges with the setting absent. The loader's
+/// own accept tests only prove a file loads, not that the value is a no-op, which is the claim the
+/// acceptance rests on -- this corpus measures it against <c>tokenizers</c> 0.23.1 rather than this
+/// library's own reading. Two contrast pairs keep the equalities from being a property of a model too
+/// small to notice: <c>end_of_word_suffix: "&lt;/w&gt;"</c> and the two <c>add_prefix_space</c>
+/// spellings each change the token stream over the same vocabulary.
 /// </summary>
-/// <remarks>
-/// <para>
-/// The loader tests for <c>continuing_subword_prefix: ""</c> and <c>dropout: 0.0</c>
-/// assert that a file loads. That proves nothing was thrown; it does not prove the
-/// value is a no-op, which is the claim the acceptance rests on. This corpus is
-/// where that claim is measured, on <c>tokenizers</c> 0.23.1 rather than on this
-/// library's reading of it.
-/// </para>
-/// <para>
-/// Two contrast pairs keep the equalities from being a property of a model too
-/// small to notice: <c>end_of_word_suffix: "&lt;/w&gt;"</c> and the two
-/// <c>add_prefix_space</c> spellings each change the token stream over the same
-/// vocabulary.
-/// </para>
-/// </remarks>
 public sealed class BpeNoOpSettingsTests
 {
     private const string Corpus = "bpe_no_op_settings.json";
@@ -95,17 +84,13 @@ public sealed class BpeNoOpSettingsTests
     }
 
     /// <summary>
-    /// The refusals issue #118 added, cited against the reference rather than against
-    /// this repository's word: the corpus carries the exact document
-    /// <c>tokenizers</c> was handed in each of the three positions a <c>ByteLevel</c>
-    /// block can appear in, and the error it answered with.
+    /// The refusals issue #118 added, cited against the reference rather than this repository's word: the
+    /// corpus carries the exact document <c>tokenizers</c> was handed in each of the three positions a
+    /// <c>ByteLevel</c> block can appear in, and the error it answered with. Only the two pre-tokenizer
+    /// positions name the field: the decoder is deserialized through an untagged enum, so Rust reports the
+    /// variant that failed to match rather than the field that was missing. The cause is the same absent
+    /// default, which is why the loader's own message names the field in all three.
     /// </summary>
-    /// <remarks>
-    /// Only the two pre-tokenizer positions name the field: the decoder is deserialized
-    /// through an untagged enum, so Rust reports the variant that failed to match rather
-    /// than the field that was missing. The cause is the same absent default, which is
-    /// why the loader's own message names the field in all three.
-    /// </remarks>
     [Fact]
     public void The_reference_refuses_every_byte_level_block_that_omits_add_prefix_space()
     {

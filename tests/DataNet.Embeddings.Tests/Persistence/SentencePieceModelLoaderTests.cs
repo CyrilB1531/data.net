@@ -168,7 +168,8 @@ public sealed class SentencePieceModelLoaderTests
         using JsonDocument doc = OracleLoader.Load("spiece_model.json");
         JsonElement meta = doc.RootElement.GetProperty("metadata");
 
-        // The loader refuses anything else, so the fixture must be the case it accepts.
+        // tiny_sp.model happens to use the identity normalizer; a compiled charsmap normalizer
+        // (which the loader also accepts) is exercised by PrecompiledNormalizerTests instead.
         Assert.Equal("identity", meta.GetProperty("normalizer_name").GetString());
         Assert.True(meta.GetProperty("add_dummy_prefix").GetBoolean());
         Assert.True(meta.GetProperty("remove_extra_whitespaces").GetBoolean());
@@ -179,12 +180,8 @@ public sealed class SentencePieceModelLoaderTests
 
     private static SentencePieceVocabulary LoadModel() => SentencePieceModelLoader.Load(ModelPath);
 
-    // ---- The trainer_spec settings that decide whether the file is reproducible ----
-    //
-    // tiny_sp.model is a plain unigram model without byte_fallback, so it sits on the
-    // accepting side of both checks and cannot catch either. These synthesize the
-    // rejecting side: a piece table alone looks perfectly valid, which is exactly what
-    // makes an unread model_type dangerous — the vocabulary loads and tokenizes wrong.
+    // trainer_spec settings deciding reproducibility. tiny_sp.model is unigram without byte_fallback, so
+    // these synthesize the rejecting side instead: a valid piece table with an unread model_type would tokenize wrong.
 
     [Theory]
     [InlineData(2, "BPE")]

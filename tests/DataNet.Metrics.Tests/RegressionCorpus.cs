@@ -53,17 +53,12 @@ internal static class RegressionCorpus
     /// <summary>
     /// The comparison rule for this corpus, which cannot be a single absolute
     /// tolerance: its values span 0.0 to 4.5e15, where an absolute 1e-9 is
-    /// meaningless.
+    /// meaningless. Scaling by <c>max(1, |expected|)</c> reduces to
+    /// <c>CONTRIBUTING.md</c>'s absolute 1e-9 at or below 1 — where scikit-learn
+    /// defines rather than approximates, 0.0 and 1.0 among them — and stays
+    /// meaningful above it. A non-finite expectation is matched by predicate, not
+    /// comparison, since <c>==</c> is false for <c>NaN</c> against itself.
     /// </summary>
-    /// <remarks>
-    /// Scaling by <c>max(1, |expected|)</c> reduces to <c>CONTRIBUTING.md</c>'s
-    /// absolute 1e-9 for everything at or below 1 — which is where the values
-    /// scikit-learn <em>defines</em> rather than approximates live, 0.0 and 1.0
-    /// among them — and stays meaningful above it. A non-finite expectation is
-    /// matched by predicate rather than by comparison, because it is defined
-    /// rather than approximated, and because <c>==</c> is false for
-    /// <c>NaN</c> against itself.
-    /// </remarks>
     public static void AssertClose(double expected, double actual, string because)
     {
         if (double.IsNaN(expected))
@@ -74,10 +69,8 @@ internal static class RegressionCorpus
 
         if (double.IsInfinity(expected))
         {
-            // Asked as two predicates rather than as an equality, which S1244
-            // would object to and would be right about: the question is whether
-            // the result is the *same* infinity, and these answer it without
-            // ever comparing two floating-point values.
+            // Two predicates, not an equality (S1244 would object): whether it is
+            // the *same* infinity, without comparing two floating-point values.
             bool matches = double.IsPositiveInfinity(expected)
                 ? double.IsPositiveInfinity(actual)
                 : double.IsNegativeInfinity(actual);

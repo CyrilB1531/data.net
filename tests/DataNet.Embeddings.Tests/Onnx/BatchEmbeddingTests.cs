@@ -5,29 +5,15 @@ using Xunit;
 namespace DataNet.Embeddings.Tests;
 
 /// <summary>
-/// The whole pipeline, end to end: text in, one normalized vector per text out.
+/// The whole pipeline, end to end: text in, one normalized vector per text out. Runs against
+/// <c>tiny_embedder.onnx</c> (a single-node Gather over a 64x4 table, <c>tools/build_tiny_models.py</c>),
+/// not <c>tiny_encoder.onnx</c>: that model maps every token to a multiple of one direction, so its
+/// pooled vector is the same for any input and is blind to what batching can get wrong. Here two
+/// different token sets pool to two different directions, and <c>[PAD]</c> gathers a non-zero row, so
+/// a padding leak moves the result. The replay of reference vectors is the only assertion using a
+/// tolerance, not 1e-9, since ONNX Runtime returns and normalizes in float32. Everything else exact
+/// (ids and mask, batched-vs-single-sequence equality, batching/bucketing invariance) is asserted exactly.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Run against <c>tiny_embedder.onnx</c>, a single-node Gather over a 64 × 4
-/// table (<c>tools/build_tiny_models.py</c>). It is the model this suite needs
-/// and <c>tiny_encoder.onnx</c> cannot be: that one maps every token to a
-/// multiple of one direction, so its pooled vector is the same whatever the
-/// input, and it is therefore blind by construction to the one thing batching
-/// can get wrong. Here two different token sets pool to two different
-/// directions, and <c>[PAD]</c> gathers a non-zero row, so a padding leak moves
-/// the result.
-/// </para>
-/// <para>
-/// The replay of the reference vectors is the one assertion in this file that
-/// uses a tolerance, and it is not 1e-9. ONNX Runtime returns float32 and the
-/// vector is normalized in float32, so agreement with an exact float64 reference
-/// is bounded by the format. Everything that can be exact is asserted exactly:
-/// the ids and the mask (<see cref="BatchEncoderOracleTests"/>), the equality of
-/// a batched vector with the single-sequence vector for the same text, and the
-/// invariance of the output under batching and bucketing.
-/// </para>
-/// </remarks>
 public sealed class BatchEmbeddingTests
 {
     /// <summary>
@@ -61,24 +47,13 @@ public sealed class BatchEmbeddingTests
     }
 
     /// <summary>
-    /// The table frozen in the corpus is the table the model gathers from.
+    /// The table frozen in the corpus is the table the model gathers from. <c>build_tiny_models.py</c>
+    /// and <c>generate_oracles.py</c> each spell it out separately -- they run in virtualenvs that
+    /// cannot import each other -- so this is what stops the two copies drifting apart unnoticed. What
+    /// is compared is each row's direction, not its magnitude: the public surface returns normalized
+    /// vectors, so a row that differed by anything but a positive scale -- a different entry, a
+    /// transposed table, an off-by-one id -- changes the direction and fails here.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <c>build_tiny_models.py</c> and <c>generate_oracles.py</c> each spell the
-    /// table out, because they run in virtualenvs that do not share a dependency
-    /// and neither can import the other. This is what stops the two copies from
-    /// drifting apart in silence: every reference vector in the corpus is computed
-    /// from a table that would otherwise only be assumed to be the model's.
-    /// </para>
-    /// <para>
-    /// What is compared is each row's <em>direction</em>, not its magnitude: the
-    /// public surface returns normalized vectors and nothing downstream of pooling
-    /// can observe a row's length. A row that differed by anything other than a
-    /// positive scale — a different entry, a transposed table, an off-by-one in
-    /// the id — changes the direction and fails here.
-    /// </para>
-    /// </remarks>
     [Fact]
     public void The_model_gathers_from_the_table_the_corpus_froze()
     {
@@ -123,17 +98,11 @@ public sealed class BatchEmbeddingTests
     }
 
     /// <summary>
-    /// A text embedded in a batch gets the same vector as the same text embedded
-    /// alone — bit for bit.
+    /// A text embedded in a batch gets the same vector as the same text embedded alone, bit for bit --
+    /// the property that catches a wrong attention mask. In the batch it is padded to the longest row
+    /// of <c>mixed_lengths</c> (eleven tokens); alone it is not padded at all. <c>[PAD]</c> gathers a
+    /// non-zero row, so a leaked padded position would show up as a visible difference, not a last-bit one.
     /// </summary>
-    /// <remarks>
-    /// This is the property that catches a wrong attention mask, and it needs no
-    /// reference implementation to state. In the batch the text is padded out to
-    /// the longest row of `mixed_lengths`, which is eleven tokens; alone it is
-    /// not padded at all. If a single padded position reached the pooled vector
-    /// the two would differ, and `[PAD]` gathers a non-zero row, so it would
-    /// differ visibly rather than in the last bit.
-    /// </remarks>
     [Fact]
     public void A_batched_vector_equals_the_single_sequence_vector()
     {
@@ -315,9 +284,8 @@ public sealed class BatchEmbeddingTests
     {
         double magnitude = Math.Sqrt(row.Sum(v => v * v));
 
-        // The table has no zero row — every entry is (((7i + 13d) mod 64) - 32)/64,
-        // and no id makes all four components vanish at once — so this guard is
-        // about the assertion staying honest if the table is ever changed.
+        // No table entry is ever zero, by construction (tools/build_tiny_models.py); this
+        // guard is about the assertion staying honest if the table's generator ever changes.
         Assert.True(magnitude > 0, "a zero row carries no direction to compare");
         return row.Select(v => v / magnitude).ToArray();
     }

@@ -8,27 +8,15 @@ using Xunit;
 namespace DataNet.Embeddings.Tests;
 
 /// <summary>
-/// Replays <c>bpe_added_token_flags.json</c>: GPT-2 with one added token per
-/// matching flag — <c>&lt;mask&gt;</c> <c>lstrip</c>, <c>&lt;pad&gt;</c>
-/// <c>rstrip</c>, <c>&lt;m&gt;</c> <c>single_word</c> — over the inputs each flag
-/// is visible on.
+/// Replays <c>bpe_added_token_flags.json</c>: GPT-2 with one added token per matching flag --
+/// <c>&lt;mask&gt;</c> <c>lstrip</c>, <c>&lt;pad&gt;</c> <c>rstrip</c>, <c>&lt;m&gt;</c>
+/// <c>single_word</c> -- over the inputs each flag is visible on. The corpus carries the whole
+/// <c>tokenizer.json</c> in its metadata, so the bytes parsed here are what <c>tokenizers</c> 0.23.1
+/// was handed; everything issue #104 added to <see cref="AddedTokenScanner"/> is otherwise only
+/// hand-written unit tests. A strip changes no id, only the piece the absorbed whitespace would have
+/// produced (a <c>Ġ</c> on a byte-level model) and the matched slice: <c>"a &lt;mask&gt; b"</c> is
+/// <c>['a', ' &lt;mask&gt;', 'Ġb']</c>. Token strings are asserted too, not just ids, which alone would pass with every strip ignored.
 /// </summary>
-/// <remarks>
-/// <para>
-/// The corpus carries the whole <c>tokenizer.json</c> in its metadata, so the
-/// bytes parsed here are the ones <c>tokenizers</c> 0.23.1 was handed. Everything
-/// issue #104 added to <see cref="AddedTokenScanner"/> is hand-written unit tests
-/// otherwise; this is the replayed evidence.
-/// </para>
-/// <para>
-/// A strip changes no id. What it changes is the piece the absorbed whitespace
-/// would have produced — a <c>Ġ</c> on a byte-level model — and the token string,
-/// which is the matched slice rather than the entry's content:
-/// <c>"a &lt;mask&gt; b"</c> is <c>['a', ' &lt;mask&gt;', 'Ġb']</c>, the space
-/// swallowed into the match. So the token strings are asserted too, not the ids
-/// alone: ids alone would pass with every strip ignored.
-/// </para>
-/// </remarks>
 public sealed class BpeAddedTokenFlagsTests
 {
     [Fact]

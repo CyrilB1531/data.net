@@ -8,29 +8,15 @@ using Xunit;
 namespace DataNet.Embeddings.Tests;
 
 /// <summary>
-/// Replays <c>wordpiece_added_tokens.json</c>: a lowercasing WordPiece model whose
-/// <c>added_tokens</c> table uses all four matching flags.
+/// Replays <c>wordpiece_added_tokens.json</c>: a lowercasing WordPiece model whose <c>added_tokens</c>
+/// table uses all four matching flags. No other committed WordPiece corpus adds a token at all --
+/// <c>tokenizer_json.json</c> and <c>vocab_txt.json</c> both carry an empty table -- so this is the only
+/// evidence <see cref="WordPieceTokenizer"/> reads one, and the only place <c>normalized</c> can be seen:
+/// a model without a normalizer cannot tell its two passes apart. Its four cases (ids 0-7): a raw entry
+/// (<c>[CLS]</c>) vs. un-lowercased text, a normalized one (<c>&lt;MASK&gt;</c>) vs. lowercased text
+/// emitting the lowercased form, <c>[SEP]</c> both <c>special</c> and <c>normalized</c> (proving the
+/// discriminator is <c>normalized</c>, not <c>special</c>), and <c>&lt;R&gt;</c>/<c>A&lt;R&gt;</c>, where the raw pass wins over a normalized match starting further left.
 /// </summary>
-/// <remarks>
-/// <para>
-/// No other committed WordPiece corpus adds a token at all — <c>tokenizer_json.json</c>
-/// and <c>vocab_txt.json</c> both carry an empty table — so this is the only
-/// replayed evidence that <see cref="WordPieceTokenizer"/> reads one, and the only
-/// place the <c>normalized</c> flag can be seen at all: it decides which of two
-/// passes an entry runs in, and a model without a normalizer cannot tell the
-/// passes apart.
-/// </para>
-/// <para>
-/// The four cases the corpus is named for are cases 0-7: a raw entry
-/// (<c>[CLS]</c>) matched against the un-lowercased text, a normalized one
-/// (<c>&lt;MASK&gt;</c>) matched against the lowercased text and emitting the
-/// lowercased form, <c>[SEP]</c> declared <c>special</c> <em>and</em>
-/// <c>normalized</c> — the combination that proves the discriminator is
-/// <c>normalized</c> rather than <c>special</c> — and the overlapping pair
-/// <c>&lt;R&gt;</c> (raw) / <c>A&lt;R&gt;</c> (normalized), where the raw pass wins
-/// over a normalized match that starts further left.
-/// </para>
-/// </remarks>
 public sealed class WordPieceAddedTokenTests
 {
     [Fact]
@@ -44,15 +30,11 @@ public sealed class WordPieceAddedTokenTests
 
     /// <summary>
     /// The table the corpus's own file declares, read through
-    /// <see cref="TokenizerJsonLoader.LoadWordPiece(Stream, ArtifactLoadOptions?)"/>.
+    /// <see cref="TokenizerJsonLoader.LoadWordPiece(Stream, ArtifactLoadOptions?)"/>. Asserted separately
+    /// from the encodings because <c>[SEP]</c> is the entry the natural implementation gets wrong, and it
+    /// would be lost in a wall of token diffs: an entry both <c>special</c> and <c>normalized</c> is one
+    /// the rule every <c>add_special_tokens</c> file obeys -- normalized as the opposite of special -- says cannot exist.
     /// </summary>
-    /// <remarks>
-    /// Asserted separately from the encodings because <c>[SEP]</c> is the entry the
-    /// natural implementation gets wrong, and it would be lost in a wall of token
-    /// diffs: an entry that is <c>special</c> and <c>normalized</c> at once is one
-    /// that <c>normalized = !special</c> — the rule every file
-    /// <c>add_special_tokens</c> wrote obeys — says cannot exist.
-    /// </remarks>
     [Fact]
     public void The_file_the_corpus_carries_declares_both_passes_and_every_flag()
     {

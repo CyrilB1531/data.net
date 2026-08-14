@@ -42,45 +42,30 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
-# Windows accepts either separator in a path -- cmd, PowerShell and the Win32
-# API all take "C:/Users/..." interchangeably with "C:\Users\..." -- while a
-# backslash written into a JSON or C# string literal comes out doubled. This
-# fragment matches one of: a single or doubled backslash, or a single forward
-# slash, which is never doubled because nothing escapes it.
+# Windows accepts either separator; a backslash in a JSON/C# string literal
+# comes out doubled. Matches single or doubled backslash, or a single slash.
 _WINDOWS_SEP = r"(?:\\{1,2}|/)"
 
 # A directory named after a person, under the place each platform keeps them.
-# The trailing separator is required: it is what distinguishes a path from a
-# mention of the directory itself in prose.
+# Trailing separator distinguishes a path from a prose mention.
 NAMED_SHAPES: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("a home directory under /home", re.compile(r"/home/[A-Za-z0-9._-]+/")),
     ("a home directory under /Users", re.compile(r"/Users/[A-Za-z0-9._-]+/")),
     ("a Windows home directory",
      re.compile(r"[A-Za-z]:" + _WINDOWS_SEP + r"Users" + _WINDOWS_SEP
                 + r"[A-Za-z0-9._-]+" + _WINDOWS_SEP)),
-    # A UNC path to a profile redirected onto a network share: a corporate-
-    # Windows shape with no drive letter, so the pattern above -- anchored on
-    # "[A-Za-z]:" -- cannot see it. "Users" is required for the same reason
-    # the drive-letter pattern requires it: a bare server share is not a home
-    # directory, and a share literally called "Users" with nobody's profile
-    # after it still is not one.
+    # A UNC path to a profile on a network share -- no drive letter, so the
+    # pattern above cannot see it. "Users" required, same reason as there.
     ("a Windows home directory on a network share",
      re.compile(r"\\{2,4}[A-Za-z0-9._-]+\\{1,2}Users\\{1,2}[A-Za-z0-9._-]+\\{1,2}")),
-    # A following path character is required, so that a mention of the
-    # directory in prose is not a finding and, more usefully, so that this
-    # very line does not match the pattern it defines.
+    # A following path character is required so a prose mention of /root
+    # isn't flagged, and so this line does not match its own pattern.
     ("the root user's home directory", re.compile(r"/root/[A-Za-z0-9._-]")),
-    # The session scratch directory, which names itself after the absolute
-    # path of the checkout it belongs to. This is the shape the four plans
-    # carried, and the one no slash-separated pattern sees.
-    #
-    # S5443 flags this hard-coded /tmp literal as a security hotspot. This
-    # string is never used the way the rule guards against: it is a search
-    # pattern matched against file *contents*, never passed to open(),
-    # joined into a path, or resolved against the filesystem -- the literal
-    # never leaves re.compile(). /tmp appears here only because that is
-    # where the session scratch directory this pattern hunts for actually
-    # lives.
+    # Named after the checkout's absolute path, dash-separated -- the shape
+    # #133's spec found in four plans, invisible to a slash pattern.
+
+    # S5443 false positive: this /tmp literal is a search pattern over file
+    # contents, never opened, joined into a path, or resolved.
     ("a session scratch directory", re.compile(r"/tmp/claude-\d+/")),  # NOSONAR S5443
 )
 
@@ -90,14 +75,8 @@ EXEMPT = frozenset({
 })
 
 
-# S8495 flags the empty-tuple returns below as inconsistent with the 3-tuple
-# case -- the rule is about a function whose callers positionally unpack a
-# fixed-arity result, where a shorter tuple raises a ValueError. The declared
-# return type is tuple[tuple[str, re.Pattern[str]], ...]: a variable-length
-# sequence, so no caller may positionally unpack it by length. Every call
-# site (scan_text's `for _, pattern in probes`, main's `probes +=
-# environment_probes(...)`, the tests' `== ()` checks) iterates, concatenates
-# or compares the result instead.
+# S8495 false positive: the return type is a variable-length tuple, not a
+# fixed 3-tuple -- every caller iterates, concatenates or compares it below, never unpacks by position.
 def environment_probes(home: str | None) -> tuple[tuple[str, re.Pattern[str]], ...]:  # NOSONAR S8495
     """Probes for *this* machine's home directory, in the forms it gets written.
 
@@ -131,12 +110,8 @@ def environment_probes(home: str | None) -> tuple[tuple[str, re.Pattern[str]], .
     if not home:
         return ()
 
-    # A trailing separator (as in "/home/name/" or "C:\Users\name\") would
-    # otherwise survive into the rsplit below and leave account == "",
-    # silently dropping all three probes -- including the plain home-path
-    # probe, which needs no account name at all. Both separators are
-    # stripped and split on, because the caller may hand this either a POSIX
-    # HOME or a Windows USERPROFILE.
+    # Stripped first: an unstripped trailing separator would survive into the
+    # rsplit below and leave account == "", dropping all three probes.
     home = home.rstrip("/\\")
     if not home:
         return ()

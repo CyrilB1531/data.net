@@ -38,9 +38,8 @@ public sealed class ClassificationReportTests
 
         double totalSupport = support.Sum();
 
-        // The full row, not just the two fields the brief singles out: a
-        // MacroAverage wired from the weighted aggregate, or a Support field
-        // left at the wrong total, has to break this.
+        // The full row, not just precision/recall: a MacroAverage wired from the
+        // weighted aggregate, or a wrong Support total, has to break this.
         JsonElement macro = c.GetProperty("averaged").GetProperty("macro|0");
         Assert.Equal("macro avg", report.MacroAverage.Name);
         Assert.Equal(macro.GetProperty("precision").GetDouble(), report.MacroAverage.Precision, MetricsCorpus.Tolerance);
@@ -59,9 +58,8 @@ public sealed class ClassificationReportTests
 
         if (c.GetProperty("labels").ValueKind == JsonValueKind.Null)
         {
-            // Without an explicit label set nothing can have been dropped, so the
-            // micro row must never appear, and the matrix kept every sample, so
-            // Accuracy must equal accuracy_score over the whole input.
+            // No explicit label set means nothing was dropped: no micro row, and
+            // Accuracy equals accuracy_score over the whole input.
             Assert.True(report.MicroAverage is null,
                 $"{what}: a micro row appeared without an explicit label set");
             Assert.Equal(c.GetProperty("accuracy").GetDouble(), report.Accuracy, MetricsCorpus.Tolerance);

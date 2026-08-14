@@ -15,9 +15,8 @@ import math
 import sys
 from pathlib import Path
 
-# These generators are standalone scripts run by hand, not a package. Adding the
-# repository root rather than tools/ is what lets the import below be spelled as
-# a path from the root, which is where every static analyser starts looking too.
+# Standalone script, not a package: puts the repository root on sys.path so the
+# import below resolves the way every static analyser expects it to.
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 from tools.seeded_random import SeededRandom  # noqa: E402
@@ -25,9 +24,8 @@ from tools.seeded_random import SeededRandom  # noqa: E402
 SEED = 20260806
 OUT = Path(__file__).resolve().parent / "metrics"
 
-# (samples, classes). The 10-class score matrix is only generated up to 100_000
-# rows: a million rows by ten classes is 200 MB of JSON, which measures the disk
-# rather than the metric.
+# (samples, classes). 10-class scores stop at 100_000 rows: a million rows by
+# ten classes is 200 MB of JSON, measuring the disk rather than the metric.
 SHAPES = [(1_000, 2), (1_000, 10), (100_000, 2), (100_000, 10), (1_000_000, 2), (1_000_000, 10)]
 SCORE_LIMIT = 100_000
 
@@ -64,17 +62,8 @@ def main() -> None:
                 rows.append([round(v, 9) for v in softmax(logits)])
             payload["scores"] = rows
 
-        # A separate SeededRandom, not more draws from `rng`: inserting into that
-        # sequence would change every classification array after this point, and
-        # the #61 and #93 benchmark rows were measured on the current ones.
-        #
-        # Seeded by `n` alone, deliberately: all four regression operations are
-        # single-output, so `k` is a property of the classification columns and
-        # of nothing here. The consequence is that metrics_n1000_k2 and
-        # metrics_n1000_k10 carry identical arrays, and the two benchmark rows
-        # that read them are one workload measured twice — docs/guides/
-        # performance.md says so where it prints them, and uses the pair as a
-        # bound on run-to-run spread rather than as an effect of k.
+        # A separate SeededRandom, not more `rng` draws, so #61/#93's already-measured
+        # arrays don't shift; seeded by `n` alone — see docs/guides/performance.md.
         real_rng = SeededRandom(SEED + 1_000 + n)
         truth = [round(real_rng.uniform(0.5, 100.0), 9) for _ in range(n)]
         payload["y_true_real"] = truth

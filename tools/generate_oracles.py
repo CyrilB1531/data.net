@@ -32,10 +32,8 @@ import warnings
 from importlib.metadata import version
 from pathlib import Path
 
-# CONTRIBUTING runs this with PYTHONSAFEPATH=1, which keeps the script's own
-# directory off sys.path, so the shared drawer has to be pointed at by hand.
-# Appended rather than prepended: nothing in tools/ may shadow an installed
-# package, which is the safeguard PYTHONSAFEPATH is there to provide.
+# PYTHONSAFEPATH=1 (CONTRIBUTING.md) keeps this script's own directory off
+# sys.path, so seeded_random is appended -- never prepended, so nothing here shadows an installed package.
 sys.path.append(str(Path(__file__).resolve().parent))
 
 from seeded_random import SeededRandom  # noqa: E402
@@ -75,12 +73,8 @@ MASK_TOKEN = "<mask>"
 BYTE_LEVEL_NO_MERGES = (
     "hand-built: the byte-level alphabet with no merges, defined in tools/generate_oracles.py")
 
-# The inputs byte-level pre-tokenization diverges from intuition on. Whitespace
-# runs first, because " a" and "a " are different tokens and a tokenizer that
-# trims either is wrong; then the scripts whose UTF-8 spans several bytes, which
-# is what turns one character into several byte-level symbols; then text naming
-# the special-token strings literally, which a tokenizer that special-cases them
-# by string rather than by table would get wrong.
+# Ordered: whitespace first (" a" vs "a " must stay distinct), then multi-byte
+# scripts, then the special-token strings written out literally.
 BPE_TEXTS = [
     "",
     " ",
@@ -113,24 +107,25 @@ RANGES = {
 }
 
 
-# Twelve significant digits, not the full float64 repr, for anything a BLAS
-# kernel reduced. numpy and scikit-learn sum in whatever order the SIMD kernel
-# scipy-openblas selects for the host CPU chooses, so the last bits of such a
-# value describe the machine that ran the generator rather than the metric —
-# committing them turns the drift gate into a hardware check, which is what
-# issue #97 is about.
-#
-# Significant digits rather than decimal places because the spread is always at
-# the last bit and therefore scales with the value: it measured ~1e-13 on
-# accuracy_count (~413) and ~1e-16 on the knn scores (~0.4), which is the same
-# sixteenth digit in both. Twelve leaves four orders of margin above it, and
-# costs at most 5e-13 against the tolerances the tests compare with — 1e-9 for
-# the metrics corpus, 1e-4f for the knn one.
+# Not the full float64 repr; see stable()'s docstring for why twelve.
 STABLE_DIGITS = 12
 
 
 def stable(value) -> float:
-    """A float the corpus can commit: rounded away from the host's last bits."""
+    """A float the corpus can commit: rounded away from the host's last bits.
+
+    numpy and scikit-learn sum in whatever order the SIMD kernel scipy-openblas
+    selects for the host CPU, so the last bits of anything a BLAS kernel reduced
+    describe the machine that ran the generator rather than the metric --
+    committing them turns the drift gate into a hardware check (issue #97).
+
+    Significant digits, not decimal places, because the spread is always at the
+    last bit and scales with the value: measured ~1e-13 on accuracy_count (~413)
+    and ~1e-16 on the knn scores (~0.4), the same sixteenth digit in both. Twelve
+    leaves four orders of margin above it, costing at most 5e-13 against the
+    tolerances the tests compare with -- 1e-9 for the metrics corpus, 1e-4f for
+    the knn one.
+    """
     return float(f"{float(value):.{STABLE_DIGITS}g}")
 
 
@@ -164,7 +159,14 @@ def mutate(rng: SeededRandom, s: str, edits: int, ranges) -> str:
 
 
 def build_pairs(rng: SeededRandom):
-    """Yield (category, a, b) tuples covering the corpus design."""
+    """Yield (category, a, b) tuples covering the corpus design.
+
+    long_ascii/long_latin are appended last so every existing case keeps its id
+    and value -- the RNG is consumed in order. They exist because "long" draws
+    from BMP ranges, so its patterns contain CJK and never reach the Latin-1
+    bit-parallel path: the blocked Myers code had no coverage at all until long
+    ASCII/Latin pairs were added.
+    """
     # Deterministic edge cases first.
     edge = [
         ("", ""),
@@ -200,11 +202,7 @@ def build_pairs(rng: SeededRandom):
         ("bmp", RANGES["bmp"], 200, (3, 16), (0, 7)),
         ("supplementary", RANGES["supplementary"], 150, (2, 10), (0, 6)),
         ("long", RANGES["bmp"], 60, (120, 400), (5, 40)),
-        # Appended last so every existing case keeps its id and value: the RNG is
-        # consumed in order. These exist because the "long" family above draws from
-        # BMP ranges, so its patterns contain CJK and never reach the Latin-1
-        # bit-parallel path — the blocked Myers code had no coverage at all until
-        # long ASCII/Latin pairs were added.
+        # See this function's docstring for why these two are appended last.
         ("long_ascii", RANGES["ascii"], 60, (80, 400), (5, 40)),
         ("long_latin", RANGES["latin"], 60, (80, 400), (5, 40)),
     ]
@@ -486,9 +484,11 @@ def generate_ratcliff() -> dict:
 
 
 def generate_set_similarity() -> dict:
-    # qval=1 (textdistance default) over non-empty pairs: textdistance raises on
-    # empty operands (its own edge quirk); DataNet defines those separately and
-    # covers them via unit tests. Multiset (bag) semantics.
+    """qval=1 (textdistance default), multiset (bag) semantics, over non-empty pairs.
+
+    textdistance raises on empty operands, which is its own edge quirk; DataNet
+    defines those separately and covers them via unit tests.
+    """
     rng = SeededRandom(SEED)
     cases = []
     for idx, (category, a, b) in enumerate(build_pairs(rng)):
@@ -881,9 +881,7 @@ def generate_snowball_fr() -> dict:
     }
 
 
-# --- Additional Snowball languages -----------------------------------------------
-# Word lists target that language's suffix families, plus short and irregular
-# words that exercise the region (RV/R1/R2) boundaries.
+# --- Additional Snowball languages, see _snowball_corpus's docstring ----------
 
 SNOWBALL_ES_WORDS = [
     # step 0: attached object pronouns
@@ -988,7 +986,11 @@ SNOWBALL_DE_WORDS = [
 
 
 def _snowball_corpus(language: str, algorithm: str, words: list[str]) -> dict:
-    """Freeze nltk's Snowball output for one language into an oracle payload."""
+    """Freeze nltk's Snowball output for one language into an oracle payload.
+
+    Each word list targets that language's own suffix families, plus short and
+    irregular words that exercise its region (RV/R1/R2) boundaries.
+    """
     from nltk.stem.snowball import SnowballStemmer  # noqa: PLC0415
 
     stemmer = SnowballStemmer(language)
@@ -1393,11 +1395,8 @@ def generate_spiece_model() -> dict:
     }
 
 
-# Text that names the markers themselves, which is the whole point: a piece only
-# ever matches where its literal characters occur, so an input without "<" in it
-# cannot tell a tokenizer that excludes the control pieces from one that does
-# not. The rest is ordinary multilingual text — the vocabulary is XLM-R's, and a
-# fixture that only ever saw Latin script would leave most of it unexercised.
+# Names the markers literally, plus ordinary multilingual text; see
+# generate_xlmr_fairseq's docstring.
 XLMR_TEXTS = [
     "le renard brun rapide saute par-dessus le chien paresseux",
     "el zorro marron rapido salta sobre el perro perezoso",
@@ -1410,10 +1409,8 @@ XLMR_TEXTS = [
     "<pad><pad> padding",
     MASK_TOKEN,
     "un texte avec <s>, </s>, <pad>, <unk> et <mask> dedans",
-    # Since #75 the fixture carries XLM-R's own nmt_nfkc charsmap, so these are
-    # no longer inert: each one is rewritten before it is segmented. Written with
-    # escapes where the character is invisible or easy to normalise by accident in
-    # an editor.
+    # Since #75 these are rewritten by XLM-R's own nmt_nfkc charsmap before
+    # segmentation; escaped so no editor can normalise them by accident.
     "\uff2c\uff25 \uff32\uff25\uff2e\uff21\uff32\uff24 \uff52\uff41\uff50\uff49\uff44\uff45",  # full-width LE RENARD rapide
     "\ufb01nancier, \ufb02amme et \u0153uvre",  # fi and fl ligatures
     "cafe\u0301 de\u0301ja\u0300 vu",  # decomposed accents, which nmt_nfkc recomposes
@@ -1438,6 +1435,12 @@ def generate_xlmr_fairseq() -> dict:
     This is the corpus the id-based control filter could not have passed: every
     marker sits outside 0-2 except <s>, and <mask> sits 250 000 ids away from
     where the guess looked.
+
+    XLMR_TEXTS names the marker strings literally -- a piece only ever matches
+    where its literal characters occur, so an input without "<" in it cannot tell
+    a tokenizer that excludes the control pieces from one that does not -- plus
+    ordinary multilingual text over XLM-R's own vocabulary, so a fixture that only
+    ever saw Latin script does not leave most of it unexercised.
     """
     import sentencepiece as spm  # noqa: PLC0415
     from sentencepiece import sentencepiece_model_pb2 as model_pb2  # noqa: PLC0415
@@ -1455,9 +1458,8 @@ def generate_xlmr_fairseq() -> dict:
         }
         for piece in XLMR_MARKERS
     ]
-    # Spot-checked pieces rather than all 250 002: the vocabulary itself is the
-    # committed .model, and repeating it as JSON would double a 5 MB fixture to
-    # prove nothing the file does not already say.
+    # Spot-checked rather than all 250 002: the vocabulary is the committed
+    # .model, and repeating it as JSON would double a 5 MB fixture for nothing.
     sampled = [
         {"id": i, "piece": sp.id_to_piece(i), "score": sp.get_score(i), "type": int(proto.pieces[i].type)}
         for i in (0, 1, 2, 3, 4, 5, 1000, 100_000, 250_000, 250_001)
@@ -1493,56 +1495,24 @@ def generate_xlmr_fairseq() -> dict:
     }
 
 
-# --- Batch encoding and batched embedding (issue #60) ----------------------------
-#
-# The chain `tokenize -> insert specials -> truncate -> pad -> infer -> pool` is
-# frozen in two halves, because the two admit very different standards of proof.
-#
-# The tokenization half is integers taken from HuggingFace `tokenizers` with the
-# post-processor and padding enabled, i.e. from the library the C# reproduces. The
-# replay compares them for *equality*: an id is right or it is not, and a
-# tolerance would only hide an off-by-one in the template.
-#
-# The embedding half is computed below in float64 from the same table that
-# `tools/build_tiny_models.py` bakes into `tiny_embedder.onnx`, whose only node is
-# a Gather. The reference is therefore the arithmetic the model performs, worked
-# out independently, and not a second copy of the C# code — which is the only
-# version of it worth freezing.
-#
-# The C# side does not replay that half to 1e-9. ONNX Runtime hands back float32
-# and the pooled vector is normalized in float32, so agreement with an exact
-# reference is bounded by the float32 epsilon, near 1e-7 relative, and by nothing
-# this repository can improve. Demanding 1e-9 would mean reproducing the C#
-# rounding sequence in numpy, at which point the corpus is a mirror and catches
-# nothing. What *is* asserted exactly lives in the C# suite, where it belongs:
-# the ids and the mask above, the equality of a batched vector with the
-# single-sequence vector for the same text, and the equality of the vectorized
-# net10.0 result with the scalar netstandard2.0 one.
+# --- Batch encoding and batched embedding (issue #60) --------------------------
+# See generate_batch_encoding's docstring for why the chain is frozen in two halves.
 
-# Appended after the WordPiece vocabulary rather than placed at the front, where
-# BERT keeps them. Nothing may assume `[CLS]` is id 101, or id 0, or even that the
-# special tokens are contiguous with each other: the template names a token and
-# the vocabulary is what answers with an id.
+# Appended after the WordPiece vocabulary; see _batch_tokenizer's docstring for why.
 CLS_TOKEN = "[CLS]"
 SEP_TOKEN = "[SEP]"
 PAD_TOKEN = "[PAD]"
 BATCH_VOCAB = [*WORDPIECE_VOCAB, CLS_TOKEN, SEP_TOKEN, PAD_TOKEN]
 
-# Mirrors tools/build_tiny_models.py. Duplication rather than an import, because
-# that script runs in a virtualenv carrying `onnx` and this one in a virtualenv
-# carrying scikit-learn, and neither has the other's dependency. The table is
-# frozen into the corpus and a C# test gathers a row through the ONNX model and
-# compares it, so the two copies cannot drift apart in silence.
+# Mirrors tools/build_tiny_models.py; see _batch_embedding_table's docstring for
+# why it is duplicated rather than imported.
 EMBEDDING_ROWS = 64
 EMBEDDING_DIM = 4
 
 BATCH_MAX_LENGTH = 8
 
-# Chosen so the four documented edges fall out of the same batch under
-# BATCH_MAX_LENGTH: nothing, one token, exactly the limit, one over it. The
-# generator asserts each of those below rather than trusting this comment, so a
-# vocabulary change that quietly stops exercising an edge fails here instead of
-# passing a test that has become vacuous.
+# The four documented edges (see _assert_batch_edges) fall out of one batch
+# under this limit.
 BATCH_EDGE_TEXTS = [
     "",
     "the",
@@ -1574,6 +1544,13 @@ def _batch_embedding_table():
     Every entry is a multiple of 1/64 with magnitude below 1/2, so a sum of a few
     dozen rows is exact in float32 and the only inexactness in the whole pipeline
     is the final division and the normalization.
+
+    EMBEDDING_ROWS/EMBEDDING_DIM mirror tools/build_tiny_models.py, duplicated
+    rather than imported: that script runs in a virtualenv carrying `onnx`, this
+    one in a virtualenv carrying scikit-learn, and neither has the other's
+    dependency. The table is frozen into the corpus and a C# test gathers a row
+    through the ONNX model and compares it, so the two copies cannot drift apart
+    in silence.
     """
     import numpy as np  # noqa: PLC0415
 
@@ -1585,7 +1562,14 @@ def _batch_embedding_table():
 
 
 def _batch_tokenizer(vocab: dict[str, int], max_length: int | None):
-    """A HuggingFace tokenizer configured the way `BatchEncoder` configures itself."""
+    """A HuggingFace tokenizer configured the way `BatchEncoder` configures itself.
+
+    CLS_TOKEN/SEP_TOKEN/PAD_TOKEN are appended after the WordPiece vocabulary
+    rather than placed at the front, where BERT keeps them: nothing may assume
+    [CLS] is id 101, or id 0, or that the special tokens are contiguous with each
+    other -- the template names a token and the vocabulary is what answers with
+    an id.
+    """
     from tokenizers.processors import TemplateProcessing  # noqa: PLC0415
 
     tokenizer = _wordpiece_tokenizer(vocab, lowercase=False)
@@ -1641,9 +1625,12 @@ def _batch_case(cid: int, name: str, texts: list[str], vocab: dict[str, int],
 def _assert_batch_edges(case: dict) -> None:
     """Fail generation if the edge fixture has stopped exercising its four edges.
 
+    BATCH_EDGE_TEXTS is chosen so the four edges checked below -- nothing, one
+    token, exactly BATCH_MAX_LENGTH, one over it -- fall out of the same batch.
     A vocabulary or template change can leave these texts encoding to lengths
     that no longer straddle the limit. The test replaying them would still pass,
-    having quietly become a test of nothing.
+    having quietly become a test of nothing, which is why each edge is asserted
+    here rather than left to this docstring.
     """
     lengths = [sum(row) for row in case["attention_mask"]]
     limit = case["max_length"]
@@ -1665,6 +1652,25 @@ def _assert_batch_edges(case: dict) -> None:
 
 
 def generate_batch_encoding() -> dict:
+    """Freeze `tokenize -> insert specials -> truncate -> pad -> infer -> pool`, in two halves.
+
+    Tokenization is integers taken from HuggingFace `tokenizers` with the
+    post-processor and padding enabled -- the library the C# reproduces -- and
+    replayed for exact equality: an id is right or it is not, and a tolerance
+    would only hide an off-by-one in the template.
+
+    The embedding half is float64 arithmetic over the same table
+    `tools/build_tiny_models.py` bakes into `tiny_embedder.onnx` (a lone Gather
+    node), worked out independently rather than as a second copy of the C# code
+    -- the only version of it worth freezing. ONNX Runtime hands back float32
+    and normalizes in float32, so agreement with this exact reference is bounded
+    by the float32 epsilon (~1e-7 relative) and by nothing this repository can
+    improve; demanding 1e-9 would mean reproducing the C# rounding sequence in
+    numpy, at which point the corpus mirrors the code and catches nothing. What
+    *is* asserted exactly lives in the C# suite: the ids and mask here, a
+    batched vector against the single-sequence one for the same text, and the
+    vectorized net10.0 result against the scalar netstandard2.0 one.
+    """
     vocab = {tok: i for i, tok in enumerate(BATCH_VOCAB)}
     table = _batch_embedding_table()
 
@@ -1706,9 +1712,8 @@ def generate_batch_encoding() -> dict:
     }
 
 
-# What normalization changes and `identity` hides, per the acceptance criteria of
-# #75: width forms, composition, ligatures, whitespace of every flavour, control
-# characters, case — plus the three rules only `custom_norm.model` performs.
+# What normalization changes and identity hides (#75); see generate_normalizer's
+# docstring.
 NORMALIZER_TEXTS = [
     "",
     "already normal text",
@@ -1734,9 +1739,7 @@ NORMALIZER_TEXTS = [
     "\u1e9b\u0323",                                              # long s with dot, plus dot below
 ]
 
-# Each fixture carries a different charsmap, which is the point: the same
-# interpreter must handle all of them. tiny_sp.model is in the list as the
-# control case — no charsmap at all.
+# Each carries a different charsmap (or none); see generate_normalizer's docstring.
 NORMALIZER_FIXTURES = [
     ("xlmr_fairseq.model", "xlm-roberta-base, nmt_nfkc (the spm_train default)"),
     ("nmt_nfkc_cf.model", "self-trained, nmt_nfkc_cf (case folding)"),
@@ -1759,6 +1762,21 @@ def generate_normalizer() -> dict:
 
     A test that only replayed the second could pass with the normalization and
     the whitespace handling wrong in compensating ways.
+
+    NORMALIZER_TEXTS covers what normalization changes and identity hides, per
+    the acceptance criteria of #75: width forms, composition, ligatures,
+    whitespace of every flavour, control characters, case -- plus the three
+    rules only custom_norm.model performs.
+
+    NORMALIZER_FIXTURES: each entry carries a different charsmap, which is the
+    point -- the same interpreter must handle all of them. tiny_sp.model is the
+    control case, with no charsmap at all.
+
+    custom_norm.model alone also carries charsmap_base64, the same blob
+    `tokenizers` writes into a tokenizer.json, in the same encoding, so the JSON
+    loader can be tested against a real map without a hand-pasted constant.
+    Base64 of the much larger nmt_nfkc map would add 300 KB to the corpus to say
+    nothing new.
     """
     import sentencepiece as spm  # noqa: PLC0415
     from sentencepiece import sentencepiece_model_pb2 as model_pb2  # noqa: PLC0415
@@ -1787,10 +1805,8 @@ def generate_normalizer() -> dict:
             "vocab_size": len(proto.pieces),
         }
         if filename == "custom_norm.model":
-            # The same blob as tokenizers writes into a tokenizer.json, in the same
-            # encoding, so the JSON loader can be tested against a real map without
-            # a hand-pasted constant. Only for this fixture: base64 of the nmt_nfkc
-            # map would add 300 KB to the corpus to say nothing new.
+            # Only for this fixture, so the JSON loader has a real map to test
+            # against; see this function's docstring for why not the others.
             entry["charsmap_base64"] = base64.b64encode(proto.normalizer_spec.precompiled_charsmap).decode("ascii")
         models.append(entry)
         for text in NORMALIZER_TEXTS:
@@ -1819,14 +1835,7 @@ def generate_normalizer() -> dict:
     }
 
 
-# --- Classification metrics (issue #61) --------------------------------------
-#
-# Fixtures target the cases where implementations actually diverge rather than
-# average behaviour: a class that is never predicted, a class absent from the
-# truth, a labels= subset (which drops samples and turns the report's accuracy
-# row into a micro-avg row), and non-contiguous label values that catch any
-# implementation assuming 0..k-1. Each fixture is emitted twice, unweighted and
-# weighted, because sample_weight changes the dtype of every count upstream.
+# --- Classification metrics (issue #61), see _metric_fixtures's docstring -----
 
 METRIC_SEED = SEED + 61
 ZERO_DIVISIONS = (0, 1)
@@ -1855,6 +1864,19 @@ def _finite_or_name(value: float) -> float | str:
 
 
 def _metric_fixtures() -> list[dict]:
+    """Fixtures chosen for where implementations diverge, not average behaviour.
+
+    A class never predicted, a class absent from the truth, a labels= subset
+    (which drops samples and turns the report's accuracy row into a micro-avg
+    row), and non-contiguous label values that catch any implementation
+    assuming 0..k-1. Each fixture is emitted twice, unweighted and weighted,
+    because sample_weight changes the dtype of every count upstream.
+
+    class_only_in_pred is small enough to move balanced accuracy off the naive
+    per-sample average: it is scored only over the classes present in y_true
+    (0.75), not over every class either array mentions (0.5), and the adjusted
+    form follows the same restriction.
+    """
     rng = SeededRandom(METRIC_SEED)
     fixtures: list[dict] = []
 
@@ -1908,10 +1930,7 @@ def _metric_fixtures() -> list[dict]:
     sparse = [rng.choice([-1, 5, 42]) for _ in range(120)]
     add("non_contiguous_labels", sparse, noisy(sparse, [-1, 5, 42], 0.4), pos_label=5)
 
-    # A class predicted but never true, on a fixture small enough that it moves
-    # balanced accuracy off the naive per-sample average: it is scored only over
-    # the classes present in y_true (0.75), not over every class either array
-    # mentions (0.5), and the adjusted form follows the same restriction.
+    # A class predicted but never true; see this function's docstring for why.
     add("class_only_in_pred", [0, 0, 1], [0, 2, 1])
 
     return fixtures
@@ -1925,6 +1944,17 @@ def _binary_average_applies(observed: list[int], pos_label: int) -> bool:
 
 
 def _metric_case(fx: dict, weighted: bool) -> dict:
+    """One fixture's full metric surface, unweighted or weighted.
+
+    ``case["normalized"]`` passes labels=labels so every mode's matrix keeps the
+    same shape and label ordering as ``case["confusion_matrix"]`` above it,
+    rather than falling back to the full observed label set for
+    labels_subset-style fixtures. Each entry goes through stable(), not bare
+    float(): normalize= divides by a row, column or grand sum that numpy
+    reduced, so it carries the same host-dependent last bits as every other
+    reduced value here. confusion_matrix's own nan_to_num keeps every entry
+    finite, so none needs _finite_or_name's string encoding.
+    """
     y_true, y_pred = fx["y_true"], fx["y_pred"]
     labels, pos_label = fx["labels"], fx["pos_label"]
     sw = fx["sample_weight"] if weighted else None
@@ -1989,15 +2019,7 @@ def _metric_case(fx: dict, weighted: bool) -> dict:
     for suffix, w in (("", None), ("_linear", "linear"), ("_quadratic", "quadratic")):
         case["kappa" + suffix] = _finite_or_name(
             skm.cohen_kappa_score(y_true, y_pred, weights=w, sample_weight=sw))
-    # labels=labels here so every mode's matrix has the same shape and label
-    # ordering as case["confusion_matrix"] above, rather than falling back to
-    # the full observed label set for labels_subset-style fixtures.
-    #
-    # stable(), not bare float(): normalize= divides by a row, column or grand
-    # sum that numpy reduced, so these carry the same host-dependent last bits
-    # as every other reduced value in the corpus, and the same rounding rule
-    # applies. nan_to_num inside confusion_matrix means none of them is
-    # non-finite, so they need no name encoding.
+    # See this function's docstring for labels=labels and stable() here.
     case["normalized"] = {
         mode: [[stable(x) for x in row]
                for row in skm.confusion_matrix(
@@ -2191,16 +2213,12 @@ def generate_bytelevel_bpe() -> dict:
         if table[byte] is None:
             table[byte] = chr(256 + spare)
             spare += 1
-    # ByteLevel.alphabet() returns a list in this tokenizers version, not a set,
-    # so both sides are coerced to sets: a bare `set(table) == ByteLevel.alphabet()`
-    # compares a set to a list and is False regardless of contents, which is not
-    # the check this line is for.
+    # Coerced to sets: ByteLevel.alphabet() returns a list here, so a bare
+    # set(table) == ByteLevel.alphabet() is False regardless of contents.
     assert set(table) == set(ByteLevel.alphabet()), "derived alphabet disagrees with tokenizers"
 
-    # A second tokenizer with ignore_merges on, to record what changes when a
-    # pre-tokenized piece that is itself a vocabulary entry is emitted whole
-    # instead of being merged up to. tokenizers reads the flag from the model,
-    # so it is set on the deserialized JSON rather than on the Python object.
+    # ignore_merges: emits a piece that is itself a vocab entry whole, rather
+    # than merged up to. Set on the deserialized JSON -- the flag lives on the model.
     import json as _json  # noqa: PLC0415
     from tokenizers import Tokenizer as _Tokenizer  # noqa: PLC0415
 
@@ -2256,15 +2274,8 @@ def generate_bpe() -> dict:
     }
 
 
-# The vendored GPT-2 model cannot exercise ignore_merges: checked over all
-# 50 257 of its vocabulary entries, none diverges, because a natively-trained
-# merge table always retraces to its own entries (see the ignore_merges task's
-# amended plan for the argument in full). The flag only rescues *orphaned*
-# entries -- present in a model's vocabulary but unreachable by replaying its
-# merges -- which is what a tiktoken-to-tokenizer.json conversion produces and
-# what training never does. orphan_bpe_model.json (tools/build_tiny_models.py)
-# holds exactly one such entry, on purpose, so this corpus is the only one in
-# the suite that can prove the flag does anything.
+# GPT-2's own vocabulary cannot exercise ignore_merges; see generate_orphan_bpe's
+# docstring for why this corpus exists instead.
 ORPHAN_BPE_TEXTS = [
     "abc",       # the orphan itself: ['ab', 'c'] normally, ['abc'] with the flag
     "x abc y",   # the orphan as one piece among ordinary ones
@@ -2275,7 +2286,19 @@ ORPHAN_BPE_TEXTS = [
 
 
 def generate_orphan_bpe() -> dict:
-    """Classic BPE over a model with one vocabulary entry the merge table cannot reach."""
+    """Classic BPE over a model with one vocabulary entry the merge table cannot reach.
+
+    The vendored GPT-2 model cannot exercise ignore_merges: checked over all
+    50 257 of its vocabulary entries, none diverges, because a natively-trained
+    merge table always retraces to its own entries (see the ignore_merges
+    task's amended plan for the argument in full). The flag only rescues
+    *orphaned* entries -- present in a model's vocabulary but unreachable by
+    replaying its merges -- which is what a tiktoken-to-tokenizer.json
+    conversion produces and what training never does. orphan_bpe_model.json
+    (tools/build_tiny_models.py) holds exactly one such entry, on purpose, so
+    this corpus is the only one in the suite that can prove the flag does
+    anything.
+    """
     import json as _json  # noqa: PLC0415
     from tokenizers import Tokenizer  # noqa: PLC0415
 
@@ -2308,6 +2331,8 @@ def generate_orphan_bpe() -> dict:
     }
 
 
+# long-comment: gated-model provenance a reviewer needs in order to trust that
+# cross-checking two mirrors substitutes for reading the original.
 # Transcribe each of these from the model's own tokenizer.json rather than from
 # memory: they differ from GPT-2 in newline handling and in the case-insensitive
 # contraction group, and from each other only in a quantifier on \p{N}.
@@ -2651,19 +2676,7 @@ def generate_bytelevel_decode_stream() -> dict:
 
 
 # The two settings the rest of the BPE corpus structurally cannot see, exercised
-# together because they interact.
-#
-#   1. `<|endoftext|>` is id 50256 in GPT-2's *own* model.vocab and is also listed
-#      in added_tokens. Every other BPE fixture here either registers no added
-#      token at all (`BPE.from_file` does not) or never names one in its text, so
-#      a loader that reads added_tokens as "the entries model.vocab lacks" passes
-#      the whole corpus while dropping every special token there is.
-#   2. `add_prefix_space` is HuggingFace's ByteLevel default and nothing on this
-#      branch had ever generated a corpus with it on. It is applied per
-#      added-token-delimited segment, not once to the whole input, and only when
-#      the segment does not already start with a space -- which is only
-#      observable when a text starts with a space, or when an added token sits
-#      between two segments, hence the extra texts below.
+# together because they interact; see generate_bpe_added_tokens's docstring.
 BPE_ADDED_TOKEN_TEXTS = BPE_TEXTS + [
     "hi<|endoftext|>bye",             # a segment after an added token, no space of its own
     END_OF_TEXT,                      # nothing but the token
@@ -2680,6 +2693,22 @@ def generate_bpe_added_tokens() -> dict:
     side parses the exact bytes HuggingFace was handed, as
     `generate_bpe_tokenizer_json` does, rather than a second fixture that could
     drift from it.
+
+    BPE_ADDED_TOKEN_TEXTS exercises two settings the rest of the BPE corpus
+    structurally cannot see, together because they interact:
+
+    1. `<|endoftext|>` is id 50256 in GPT-2's own model.vocab and is also
+       listed in added_tokens. Every other BPE fixture here either registers
+       no added token at all (`BPE.from_file` does not) or never names one in
+       its text, so a loader that reads added_tokens as "the entries
+       model.vocab lacks" passes the whole corpus while dropping every
+       special token there is.
+    2. `add_prefix_space` is HuggingFace's ByteLevel default and nothing on
+       this branch had ever generated a corpus with it on. It applies per
+       added-token-delimited segment, not once to the whole input, and only
+       when the segment does not already start with a space -- observable
+       only when a text starts with a space, or when an added token sits
+       between two segments, hence the extra texts below.
     """
     from tokenizers import AddedToken  # noqa: PLC0415
 
@@ -2720,6 +2749,16 @@ def _regression_fixtures() -> list[dict]:
 
     The ordinary ones exist to prove the arithmetic; the degenerate ones exist
     because every implementation agrees on the ordinary ones.
+
+    uniform_fractional_weights carries a uniform *fractional* weight, which is
+    where the weighted percentile's tolerance shows and nowhere else. 0.1 is
+    not representable in binary, so the cumulative sum overshoots half the
+    total by units in the last place; scikit-learn averages anyway (its test
+    is `fraction_above > eps`, not `> 0`) and returns 4.5 on these residuals,
+    where an exact test returns 4.0. Every other weighted fixture here is
+    exactly representable -- 1, 2, 3, 7 -- so none of them can tell the two
+    rules apart, and the residuals are distinct so the two averaged order
+    statistics differ.
     """
     rng = SeededRandom(REGRESSION_SEED)
 
@@ -2785,14 +2824,7 @@ def _regression_fixtures() -> list[dict]:
                      "y_true": [0.0, 2.0, 4.0, 10.0], "y_pred": [0.0, 0.0, 0.0, 0.0],
                      "sample_weight": [1.0, 1.0, 1.0, 7.0]})
 
-    # A uniform *fractional* weight, which is where the weighted percentile's
-    # tolerance shows and nowhere else. 0.1 is not representable in binary, so
-    # the cumulative sum overshoots half the total by units in the last place;
-    # scikit-learn averages anyway (its test is `fraction_above > eps`, not
-    # `> 0`) and returns 4.5 on these residuals, where an exact test returns
-    # 4.0. Every other weighted fixture here is exactly representable — 1, 2,
-    # 3, 7 — so none of them can tell the two rules apart, and the residuals
-    # are distinct so the two averaged order statistics differ.
+    # See this function's docstring for why 0.1 needs a fractional weight.
     fixtures.append({"name": "uniform_fractional_weights", "output_count": 1,
                      "y_true": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
                      "y_pred": [1.0] * 10,
@@ -2971,28 +3003,13 @@ def generate_regression() -> dict:
 
 
 # --- The conditioning the ordinary regression corpus cannot reach (issue #127) ---
-#
-# regression.json stores its arrays in full and caps at 450 values, over targets in
-# [0.5, 40] -- a range where a sequential sum and numpy's pairwise one agree to far
-# more digits than the corpus compares at. The defect #127 fixes needs the opposite:
-# many samples, and a large offset over a small spread, so that the low-order bits of
-# every term fall off the end of the accumulator.
-#
-# Storing 200 000 samples as JSON would be megabytes, so this case carries the closed
-# form instead. The C# side rebuilds the same arrays from the same expression, in the
-# same order -- both languages evaluate IEEE-754 doubles, so the two constructions are
-# identical value for value. PROBE_INDICES is how that stops being a matter of faith:
-# the raw bits at those positions are recorded and compared before anything is scored.
+# See generate_regression_conditioning's docstring.
 
 CONDITIONING_SAMPLES = 200_000
 CONDITIONING_OFFSET = 1e9
 CONDITIONING_SPREAD = 1e-2
-# 1e-6 and not the ramp's own 5e-8 step: the ULP at 1e9 is 2^-23, about 1.19e-7
-# (checked with math.ulp(1e9)), so a perturbation below half of that rounds straight
-# back onto the target. Measured: with 1e-8 every residual is exactly zero, mse is 0
-# and r2 is 1, and a fixture built that way passes while proving nothing. The ramp's
-# step stays below the ULP on purpose -- quantizing it is the ill-conditioning this
-# case exists to carry.
+# 1e-6, not the ramp's own 5e-8 step, so quantizing it carries the ill
+# conditioning; see generate_regression_conditioning's docstring for the ULP math.
 CONDITIONING_PERTURBATION = 1e-6
 PROBE_INDICES = [0, 1, CONDITIONING_SAMPLES // 2, CONDITIONING_SAMPLES - 2, CONDITIONING_SAMPLES - 1]
 
@@ -3014,7 +3031,30 @@ def _bits(value: float) -> str:
 
 
 def generate_regression_conditioning() -> dict:
-    """scikit-learn's answers on a target no committed array could carry."""
+    """scikit-learn's answers on a target no committed array could carry.
+
+    regression.json stores its arrays in full and caps at 450 values, over
+    targets in [0.5, 40] -- a range where a sequential sum and numpy's pairwise
+    one agree to far more digits than the corpus compares at. The defect #127
+    fixes needs the opposite: many samples, and a large offset over a small
+    spread, so that the low-order bits of every term fall off the end of the
+    accumulator.
+
+    Storing 200 000 samples as JSON would be megabytes, so this case carries
+    the closed form instead. The C# side rebuilds the same arrays from the
+    same expression, in the same order -- both languages evaluate IEEE-754
+    doubles, so the two constructions are identical value for value.
+    PROBE_INDICES is how that stops being a matter of faith: the raw bits at
+    those positions are recorded and compared before anything is scored.
+
+    CONDITIONING_PERTURBATION is 1e-6, not the ramp's own 5e-8 step: the ULP at
+    1e9 is 2^-23, about 1.19e-7 (checked with math.ulp(1e9)), so a
+    perturbation below half of that rounds straight back onto the target.
+    Measured: with 1e-8 every residual is exactly zero, mse is 0 and r2 is 1,
+    and a fixture built that way passes while proving nothing. The ramp's step
+    stays below the ULP on purpose -- quantizing it is the ill conditioning
+    this case exists to carry.
+    """
     y_true, y_pred = _conditioning_arrays()
     yt = np.asarray(y_true)
     yp = np.asarray(y_pred)
@@ -3053,21 +3093,8 @@ def generate_regression_conditioning() -> dict:
     }
 
 
-# The four matching flags an added_tokens entry carries beyond its content and
-# id, over a byte-level model (issue #104). One token per flag, because a flag
-# only shows in the pieces around the match: lstrip and rstrip make the space
-# beside a match disappear -- the id is unchanged, what is gone is the 'Ġ' the
-# whitespace would have produced -- and single_word makes a match not happen at
-# all, leaving the marker's own characters to the merge loop.
-#
-# add_prefix_space is off, unlike generate_bpe_added_tokens's tokenizer: a prefix
-# space is added per segment and would put a 'Ġ' beside every match, which is the
-# very piece the strips are read from. bpe_added_tokens.json is where that setting
-# is measured; this corpus keeps it out of the way.
-#
-# <m> is the one entry left non-special, so decoded_skip_specials shows the two
-# halves of the table apart: special is what a decoder drops, and it decides
-# nothing about where an entry matches.
+# Content/id matching flags over a byte-level model (issue #104); see
+# generate_bpe_added_token_flags's docstring.
 BPE_FLAG_TEXTS = [
     # lstrip, on <mask> -- roberta-base's own shape.
     "a <mask> b",
@@ -3097,10 +3124,8 @@ BPE_FLAG_TEXTS = [
     "é<m>é",
     "<m>",
     "a<m>b",
-    # Two matches with one space between them, so one entry's strip reaches for
-    # whitespace the entry beside it has a claim on. AddedTokenScanner stops a
-    # left-strip at the end of the previous match and its own comment records that
-    # as a design choice no probe had put to the test; these three are the probe.
+    # Two matches, one space apart: the probe for AddedTokenScanner's own
+    # left-strip-stops-at-the-previous-match choice (see the docstring).
     "<pad> <mask>",
     "<mask> <mask>",
     "a <pad> <mask> b",
@@ -3112,6 +3137,22 @@ def generate_bpe_added_token_flags() -> dict:
 
     Shaped after `generate_bpe_added_tokens`: the whole `tokenizer.json` rides in
     the metadata, so the C# side parses the exact bytes HuggingFace was handed.
+
+    BPE_FLAG_TEXTS carries one token per flag, because a flag only shows in the
+    pieces around the match: lstrip and rstrip make the space beside a match
+    disappear -- the id is unchanged, what is gone is the 'Ġ' the whitespace
+    would have produced -- and single_word makes a match not happen at all,
+    leaving the marker's own characters to the merge loop.
+
+    add_prefix_space is off here, unlike `generate_bpe_added_tokens`'s
+    tokenizer: a prefix space is added per segment and would put a 'Ġ' beside
+    every match, which is the very piece the strips are read from.
+    bpe_added_tokens.json is where that setting is measured; this corpus keeps
+    it out of the way.
+
+    <m> is the one entry left non-special, so decoded_skip_specials shows the
+    two halves of the table apart: special is what a decoder drops, and it
+    decides nothing about where an entry matches.
     """
     from tokenizers import AddedToken  # noqa: PLC0415
 
@@ -3146,26 +3187,11 @@ def generate_bpe_added_token_flags() -> dict:
     }
 
 
-# --- The BPE settings that change nothing, and the one with no default (issue #118) ---
-#
-# `LoadBpe` used to refuse `continuing_subword_prefix: ""` and `dropout: 0.0`, and
-# to crash on `end_of_word_suffix: ""`. Accepting them rests on a claim -- that
-# each of those values is a no-op -- which a load test cannot make: a file that
-# loads without throwing proves only that nothing was thrown. So each setting is
-# recorded here against a baseline built from the same vocabulary and merges with
-# the setting absent, and the equality of the two token streams is the evidence.
-#
-# The models are hand-built rather than vendored: the claim is about a value in
-# the file, not about a particular model, and a 7-entry vocabulary keeps the
-# whole corpus readable where GPT-2's would add two megabytes of noise.
-#
-# `end_of_word_suffix: "</w>"` is here as a contrast, not as a no-op: the same
-# vocabulary tokenizes differently under it, which is what makes the empty case's
-# equality a measurement rather than a property of a model too small to notice.
+# --- The BPE settings that change nothing, and the one with no default (issue
+# #118); see generate_bpe_no_op_settings's docstring. ---------------------------
 
-# 'a</w>', 'b</w>' and 'c</w>' exist so no symbol is ever dropped for want of a
-# vocabulary entry under the `</w>` contrast -- the model declares no unk_token,
-# and a dropped symbol would make the contrast a test of that instead.
+# 'a</w>' etc. exist so no symbol is dropped for want of a vocabulary entry
+# under the `</w>` contrast; see this section's docstring for why.
 NO_OP_VOCAB = {"a": 0, "b": 1, "c": 2, "ab": 3, "a</w>": 4, "b</w>": 5, "c</w>": 6}
 NO_OP_MERGES = [("a", "b")]
 NO_OP_TEXTS = ["ab", "abc", "ab c", "a b", "c"]
@@ -3269,7 +3295,28 @@ def _add_prefix_space_refusals() -> list[dict]:
 
 
 def generate_bpe_no_op_settings() -> dict:
-    """Each BPE setting that changes nothing, beside the baseline that proves it."""
+    """Each BPE setting that changes nothing, beside the baseline that proves it.
+
+    `LoadBpe` used to refuse `continuing_subword_prefix: ""` and `dropout: 0.0`,
+    and to crash on `end_of_word_suffix: ""`. Accepting them rests on a claim --
+    that each of those values is a no-op -- which a load test cannot make: a
+    file that loads without throwing proves only that nothing was thrown. So
+    each setting is recorded here against a baseline built from the same
+    vocabulary and merges with the setting absent, and the equality of the two
+    token streams is the evidence.
+
+    The models are hand-built rather than vendored: the claim is about a value
+    in the file, not about a particular model, and a 7-entry vocabulary keeps
+    the whole corpus readable where GPT-2's would add two megabytes of noise.
+
+    `end_of_word_suffix: "</w>"` is here as a contrast, not as a no-op: the
+    same vocabulary tokenizes differently under it, which is what makes the
+    empty case's equality a measurement rather than a property of a model too
+    small to notice. NO_OP_VOCAB's 'a</w>', 'b</w>' and 'c</w>' entries exist
+    so no symbol is ever dropped for want of a vocabulary entry under that
+    contrast -- the model declares no unk_token, and a dropped symbol would
+    make the contrast a test of that instead.
+    """
     carried = _no_op_models()
     cases = []
     for name, _, tokenizer, texts in carried:
@@ -3312,30 +3359,8 @@ def generate_bpe_no_op_settings() -> dict:
     }
 
 
-# The same four flags over a WordPiece model that has a normalizer, which is what
-# BPE structurally cannot show: `normalized` decides which of two passes an entry
-# runs in, and only a tokenizer that normalizes anything can tell the passes
-# apart. Named cases, because each one is here for a reason:
-#
-#   * a raw entry ([CLS], normalized=false) is matched against the un-lowercased
-#     text and emits its own casing;
-#   * a normalized entry (<MASK>) has its own content lowercased and is matched
-#     against the lowercased text, so both spellings match and both emit <mask>;
-#   * [SEP] is special *and* normalized, which every file add_special_tokens
-#     wrote makes look impossible -- it sets normalized = !special. It is the
-#     case that proves the discriminator is `normalized`, not `special`;
-#   * <R> (raw) and A<R> (normalized) overlap, with the normalized one starting
-#     further left. HuggingFace splits on the raw trie first and runs the
-#     normalized one over what is left, so the raw entry wins -- an outcome a
-#     single merged leftmost-wins scan cannot produce.
-#
-# Plus the strip and single_word shapes from the BPE corpus, with lstrip on a raw
-# entry and rstrip on a normalized one so both passes carry a strip.
-#
-# Note for anyone regenerating: `tokenizers` refuses a tokenizer.json that omits
-# `normalized`, so every entry below states it. The absent-field default is
-# therefore a decision this library makes rather than a behaviour it measured,
-# and a C# unit test covers it instead.
+# The same four flags over a WordPiece model that has a normalizer, named cases;
+# see generate_wordpiece_added_tokens's docstring for why each one is here.
 WORDPIECE_ADDED_TOKEN_TEXTS = [
     ("raw_entry_matches_its_own_casing", "the [CLS] cat"),
     ("raw_entry_ignores_the_lowercased_spelling", "the [cls] cat"),
@@ -3375,6 +3400,33 @@ def generate_wordpiece_added_tokens() -> dict:
     No other committed WordPiece corpus adds a token at all, so this is the only
     replayed evidence that the table is read and applied. The whole
     `tokenizer.json` rides in the metadata, as the BPE flag corpus does.
+
+    This is the same four flags as the BPE corpus, over a model that has a
+    normalizer, which is what BPE structurally cannot show: `normalized`
+    decides which of two passes an entry runs in, and only a tokenizer that
+    normalizes anything can tell the passes apart. WORDPIECE_ADDED_TOKEN_TEXTS
+    is named cases, because each one is here for a reason:
+
+    * a raw entry ([CLS], normalized=false) is matched against the
+      un-lowercased text and emits its own casing;
+    * a normalized entry (<MASK>) has its own content lowercased and is
+      matched against the lowercased text, so both spellings match and both
+      emit <mask>;
+    * [SEP] is special *and* normalized, which every file add_special_tokens
+      wrote makes look impossible -- it sets normalized = !special. It is the
+      case that proves the discriminator is `normalized`, not `special`;
+    * <R> (raw) and A<R> (normalized) overlap, with the normalized one
+      starting further left. HuggingFace splits on the raw trie first and
+      runs the normalized one over what is left, so the raw entry wins -- an
+      outcome a single merged leftmost-wins scan cannot produce.
+
+    Plus the strip and single_word shapes from the BPE corpus, with lstrip on
+    a raw entry and rstrip on a normalized one so both passes carry a strip.
+
+    Note for anyone regenerating: `tokenizers` refuses a tokenizer.json that
+    omits `normalized`, so every entry states it. The absent-field default is
+    therefore a decision this library makes rather than a behaviour it
+    measured, and a C# unit test covers it instead.
     """
     from tokenizers import AddedToken  # noqa: PLC0415
 
@@ -3423,34 +3475,14 @@ def generate_wordpiece_added_tokens() -> dict:
 _FUSE_VOCAB = {UNK_TOKEN: 0, "a": 1, "b": 2, "ab": 3}
 _FUSE_MERGES = [("a", "b")]
 
-# A merge whose LEFT side is the unknown token. Training never produces this;
-# it is stated so that "does fusing happen before or after merging" has an
-# answer a test can read. Fused, "ZZa" merges to [UNK]a; unfused it cannot,
-# because the second [UNK] sits between the first and the a.
+# A merge whose LEFT side is the unknown token; see _fuse_unk_models's docstring.
 _FUSE_MERGE_VOCAB = {UNK_TOKEN: 0, "a": 1, UNK_TOKEN + "a": 2}
 _FUSE_MERGE_MERGES = [(UNK_TOKEN, "a")]
 
-# The unknown token is ALSO a covered single character. This is the only shape
-# that tells "the previous symbol was substituted" from "the previous id equals
-# the unknown id", and the two disagree: "qZ" does not fuse, "ZZ" does.
-#
-# A letter, not punctuation: the pre-tokenizer isolates punctuation from
-# letters, so "?" and "Z" would land in different pieces and never meet. The
-# trap needs both characters inside one piece.
+# The unknown token is ALSO a covered character; see _fuse_unk_models's docstring.
 _FUSE_COVERED_UNK_VOCAB = {"q": 0, "a": 1}
 
-# D7: the end-of-word suffix is appended to a piece's last code point BEFORE
-# the vocabulary lookup, and only at the last position — there is no fallback
-# to the bare form there. "a" is covered both bare (the form looked up
-# everywhere but the last position) and suffixed (the form looked up at the
-# last position), so a run ending on a covered character still resolves and
-# does not fuse. "Z" is the distinguishing case: covered bare, but "Z</w>" is
-# deliberately absent, so a "Z" in last position is uncovered and substituted
-# even though the same character is a real token everywhere else in the
-# piece — an implementation that fell back to the bare lookup at the last
-# position would resolve it instead and never show the difference. Y is
-# covered in neither form, so a run it starts still extends across a "Z" the
-# suffix turns uncovered.
+# D7, the end-of-word suffix's own trap; see _fuse_unk_models's docstring.
 _FUSE_EOW_SUFFIX = "</w>"
 _FUSE_EOW_VOCAB = {UNK_TOKEN: 0, "a": 1, "a" + _FUSE_EOW_SUFFIX: 2, "Z": 3}
 
@@ -3465,9 +3497,8 @@ def _fuse_unk_model(vocab, merges, fuse, *, unk=UNK_TOKEN, byte_level=False, eow
     """
     from tokenizers import Tokenizer, models, pre_tokenizers  # noqa: PLC0415
 
-    # tokenizers 0.23.1 raises TypeError on unk_token=None and on
-    # end_of_word_suffix=None alike; both keywords have to be omitted rather
-    # than passed empty.
+    # tokenizers 0.23.1 raises TypeError on unk_token=None or
+    # end_of_word_suffix=None: both are omitted rather than passed empty.
     kwargs = {"fuse_unk": fuse}
     if unk is not None:
         kwargs["unk_token"] = unk
@@ -3480,17 +3511,52 @@ def _fuse_unk_model(vocab, merges, fuse, *, unk=UNK_TOKEN, byte_level=False, eow
 
 
 def _fuse_unk_models() -> list[tuple]:
-    """(name, declares, fuse, tokenizer, texts) for every shape the spec decided on."""
+    """(name, declares, fuse, tokenizer, texts) for every shape the spec decided on.
+
+    _FUSE_MERGE_VOCAB states a merge whose LEFT side is the unknown token.
+    Training never produces this; it is stated so that "does fusing happen
+    before or after merging" has an answer a test can read. Fused, "ZZa"
+    merges to [UNK]a; unfused it cannot, because the second [UNK] sits between
+    the first and the a.
+
+    _FUSE_COVERED_UNK_VOCAB makes the unknown token ALSO a covered character.
+    This is the only shape that tells "the previous symbol was substituted"
+    from "the previous id equals the unknown id", and the two disagree: "qZ"
+    does not fuse, "ZZ" does. It uses a letter, not punctuation: the
+    pre-tokenizer isolates punctuation from letters, so "?" and "Z" would land
+    in different pieces and never meet, and the trap needs both characters
+    inside one piece.
+
+    _FUSE_EOW_VOCAB is D7's trap: the end-of-word suffix is appended to a
+    piece's last code point BEFORE the vocabulary lookup, and only at the last
+    position -- there is no fallback to the bare form there. "a" is covered
+    both bare (the form looked up everywhere but the last position) and
+    suffixed (the form looked up at the last position), so a run ending on a
+    covered character still resolves and does not fuse. "Z" is the
+    distinguishing case: covered bare, but "Z</w>" is deliberately absent, so a
+    "Z" in last position is uncovered and substituted even though the same
+    character is a real token everywhere else in the piece -- an
+    implementation that fell back to the bare lookup at the last position
+    would resolve it instead and never show the difference. Y is covered in
+    neither form, so a run it starts still extends across a "Z" the suffix
+    turns uncovered.
+
+    plain_texts covers a run in the middle, at each end, the whole text, a
+    single unknown (where the two flags must agree), two runs split by a
+    covered character, an alternation (no run at all), and an astral run.
+    split_texts covers the same idea across a piece boundary: without a
+    pre-tokenizer the space is itself uncovered, so "aZ Za" is one run of
+    three; with Whitespace it is two pieces and must not fuse across.
+    across_split gets only split_texts, never plain_texts: none of the plain
+    ones contains a space, so Whitespace makes each one a single piece and the
+    run fuses inside it exactly as it does with no pre-tokenizer, which would
+    report `differs=True` for a reason that has nothing to do with boundaries.
+    """
     from tokenizers import pre_tokenizers  # noqa: PLC0415
 
     byte_vocab = {c: i for i, c in enumerate(sorted(pre_tokenizers.ByteLevel.alphabet()))}
 
-    # A run in the middle, at each end, the whole text, a single unknown (where
-    # the two flags must agree), two runs split by a covered character, an
-    # alternation (no run at all), and an astral run.
     plain_texts = ["aZZZa", "ZZa", "aZZ", "ZZZ", "aZa", "ZZaZZ", "ZaZaZ", "a\U0001F600\U0001F601a"]
-    # Without a pre-tokenizer the space is itself uncovered, so "aZ Za" is one
-    # run of three; with Whitespace it is two pieces and must not fuse across.
     split_texts = ["aZ Za", "Z a Z"]
 
     models_out = []
@@ -3499,12 +3565,7 @@ def _fuse_unk_models() -> list[tuple]:
         models_out.append((
             f"in_piece_{suffix}", "a run inside a single piece", fuse,
             _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse), plain_texts))
-        # Only the texts that HAVE a boundary. Handing this model the plain
-        # texts as well would make it report `differs=True` for a reason that
-        # has nothing to do with boundaries — none of them contains a space, so
-        # Whitespace makes each one a single piece and the run fuses inside it
-        # exactly as it does with no pre-tokenizer. The model exists to show a
-        # run *not* crossing a split, so it gets only texts that have one.
+        # Only the texts that HAVE a boundary; see this function's docstring.
         models_out.append((
             f"across_split_{suffix}", "a run interrupted by a piece boundary", fuse,
             _fuse_unk_model(_FUSE_VOCAB, _FUSE_MERGES, fuse), split_texts))
@@ -3583,11 +3644,7 @@ def generate_bpe_fuse_unk() -> dict:
 _COVERAGE_VOCAB = {UNK_TOKEN: 0, "a": 1, "b": 2, "ab": 3}
 _COVERAGE_MERGES = [("a", "b")]
 
-# The ignore_merges pair: "!!" is the added token, single_word so that
-# Whitespace's split of "a!!" into "a" / "!!" reaches the whole-piece shortcut
-# while still being an added token's exact content. One vocabulary omits
-# "!!"; the control carries it too, so the shortcut can fire from model.vocab
-# rather than from the fold.
+# The ignore_merges pair; see _added_coverage_models's docstring for "!!".
 _IGNORE_MERGES_VOCAB_WITHOUT_BANG = {UNK_TOKEN: 0, "a": 1, "!": 2}
 _IGNORE_MERGES_VOCAB_WITH_BANG = {UNK_TOKEN: 0, "a": 1, "!": 2, "!!": 3}
 
@@ -3616,17 +3673,22 @@ def _added_coverage_ignore_merges_model(vocab):
 
 
 def _added_coverage_models() -> list[tuple]:
-    """(name, declares, single_word, tokenizer, texts)."""
-    # aQa and ZQZ put the added token inside a word, where single_word decides
-    # whether the scanner may match it. Q and "a Q a" put it on its own, where
-    # the scanner matches under either flag and both sides already agree. aQ
-    # ends a piece with it, and QQ doubles it.
+    """(name, declares, single_word, tokenizer, texts).
+
+    texts: aQa and ZQZ put the added token inside a word, where single_word
+    decides whether the scanner may match it. Q and "a Q a" put it on its own,
+    where the scanner matches under either flag and both sides already agree.
+    aQ ends a piece with it, and QQ doubles it.
+
+    ignore_merges_texts: "!!" is the added token. a!! is split by Whitespace
+    into "a" / "!!"; single_word declines the scanner on "a" (a word
+    character), so "!!" reaches the ignore_merges shortcut while still being
+    an added token's exact content. One vocabulary omits "!!" from
+    model.vocab, the control carries it too so the shortcut can fire from
+    there instead of from the fold. Bare "!!" reaches the scanner directly
+    under either vocabulary, and is carried as the non-discriminating control.
+    """
     texts = ["aQa", "ZQZ", "QQ", "Q", "a Q a", "aQ"]
-    # a!! is split by Whitespace into "a" / "!!"; single_word declines the
-    # scanner on "a" (a word character), so "!!" reaches the ignore_merges
-    # shortcut while being an added token's exact content. Bare "!!" reaches
-    # the scanner directly under either vocabulary, and is carried as the
-    # non-discriminating control.
     ignore_merges_texts = ["a!!", "!!"]
     return [
         ("single_word", "an added token absent from model.vocab, matched only on its own",
@@ -3654,6 +3716,23 @@ def _added_coverage_refusals() -> list[dict]:
     None of the three can be an ordinary case, because two have no token
     stream and the third's is beside the point; recording the refusal is what
     makes "the reference refuses this too" a measurement rather than a claim.
+
+    unk_only_in_added_tokens: the unknown token exists only in added_tokens.
+    This one LOADS -- the reference defers the check to encode, and raises
+    only on text that needs a substitution. "ab" encodes fine; "aZb" does not.
+
+    merge_names_an_added_token: a merge names a token that only added_tokens
+    declares. Refused while the document is read.
+
+    merge_result_missing: a merge whose two sides are present but whose
+    result is not. The reference PANICS while reading rather than raising;
+    the panic is recorded as what it is, and DataNet refuses in its own words
+    (D6).
+
+    The reference does not refuse all three at the same moment: two fail
+    while the document is being read, the first loads and fails from encode
+    -- and only on text that needs a substitution, which is why each shape
+    carries the text that provokes it.
     """
     from tokenizers import Tokenizer  # noqa: PLC0415
 
@@ -3675,42 +3754,28 @@ def _added_coverage_refusals() -> list[dict]:
                 "rstrip": False, "normalized": False, "special": False}]
 
     # (shape, document, the text that provokes the failure if loading did not)
+    # -- see this function's docstring for what each shape is.
     shapes = [
-        # The unknown token exists only in added_tokens. This one LOADS: the
-        # reference defers the check to encode, and raises only on text that
-        # needs a substitution. "ab" encodes fine; "aZb" does not.
         ("unk_only_in_added_tokens",
          document({"a": 0, "b": 1}, [], UNK_TOKEN_LOWER,
                   [{"id": 2, "content": UNK_TOKEN_LOWER, "single_word": False, "lstrip": False,
                     "rstrip": False, "normalized": False, "special": True}]),
          "aZb"),
-        # A merge names a token that only added_tokens declares. Refused while
-        # the document is read.
         ("merge_names_an_added_token",
          document({UNK_TOKEN: 0, "a": 1, "Qa": 3}, [["Q", "a"]], UNK_TOKEN, added_q),
          "Qa"),
-        # A merge whose two sides are present but whose result is not. The
-        # reference PANICS while reading rather than raising; the panic is
-        # recorded as what it is, and DataNet refuses in its own words (D6).
         ("merge_result_missing",
          document({"a": 0, "b": 1}, [["a", "b"]], None, []),
          "ab"),
     ]
 
-    # The reference does not refuse all three at the same moment, and the corpus
-    # records which. Two fail while the document is being read; the first loads
-    # and fails from encode, and only on text that needs a substitution — which
-    # is why each shape carries the text that provokes it.
     refusals = []
     for shape, doc, provoking_text in shapes:
         try:
             tokenizer = Tokenizer.from_str(doc)
         except BaseException as exc:  # noqa: BLE001 - the refusal IS the measurement
-            # BaseException because a Rust panic surfaces as
-            # pyo3_runtime.PanicException, which does not inherit from
-            # Exception and whose module cannot be imported to name it here.
-            # Ctrl-C and a SystemExit are re-raised rather than recorded as
-            # measurements, which is also what S5754 asks for.
+            # BaseException: a Rust panic surfaces as unimportable
+            # pyo3_runtime.PanicException; Ctrl-C/SystemExit are re-raised (S5754).
             if isinstance(exc, (KeyboardInterrupt, SystemExit)):
                 raise
             refusals.append({"shape": shape, "document": doc, "raised_by": "load",
@@ -3809,10 +3874,8 @@ def _prefix_models() -> list[tuple]:
          _prefix_model({"a": 0, _PREFIX + "b": 1, _PREFIX + "c": 2, _PREFIX + "bc": 3},
                        [(_PREFIX + "b", _PREFIX + "c")]),
          ["abc", "ab"]),
-        # The right side of a merge carries both decorations at once, so the
-        # strip has to take the prefix off and leave the suffix on:
-        # ("a", "##b</w>") has to give "ab</w>", and the vocabulary holds only
-        # that. Stripping both, or neither, looks for a token that is absent.
+        # ("a", "##b</w>") must give "ab</w>": strip the prefix, keep the suffix.
+        # Stripping both, or neither, looks for a token that is absent.
         ("merge_suffixed_right", "a merge whose right side carries the prefix and the suffix at once",
          _prefix_model({"a": 0, _PREFIX + "b" + _PREFIX_EOW: 1, "ab" + _PREFIX_EOW: 2,
                         "a" + _PREFIX_EOW: 3},
@@ -3859,10 +3922,7 @@ def _prefix_refusals() -> list[dict]:
     try:
         Tokenizer.from_str(document)
     except BaseException as exc:  # noqa: BLE001 - the refusal IS the measurement
-        # Same reasoning as _added_coverage_refusals: BaseException because a
-        # Rust panic surfaces as pyo3_runtime.PanicException, which does not
-        # inherit from Exception. Ctrl-C and a SystemExit are re-raised rather
-        # than recorded as measurements, which is also what S5754 asks for.
+        # Same reasoning as _added_coverage_refusals's from_str handler.
         if isinstance(exc, (KeyboardInterrupt, SystemExit)):
             raise
         return [{"shape": "merge_result_not_stripped", "document": document,
@@ -3901,9 +3961,8 @@ def generate_bpe_continuing_prefix() -> dict:
 
 # --- Split + ByteLevel Sequence, both patterns (issue #143) -------------------
 
-# Llama-3's own Split pattern, from its tokenizer.json. The same string is in
-# BpePatterns.Llama3 on the C# side; it is repeated here rather than imported
-# because the generator must not depend on the library it is checking.
+# Llama-3's own Split pattern; mirrors BpePatterns.Llama3 in C#, repeated
+# rather than imported so the generator does not depend on the library under test.
 _SEQ_SPLIT = (
     r"(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}"
     r"| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+"
@@ -3953,26 +4012,30 @@ def _sequence_split_model(use_regex):
 
 
 def _sequence_split_models() -> list[tuple]:
-    """(name, declares, tokenizer, texts) — one per side of the divergence."""
+    """(name, declares, tokenizer, texts) — one per side of the divergence.
+
+    texts opens with the divergence itself, on five shapes of one cause rather
+    than five spellings of one shape: elision before a vowel, before an h, an
+    accented letter after the apostrophe, a capitalised name, and twice inside
+    one word.
+
+    "it's fine", "don't" and "the 'quoted' word" are cases that must NOT move:
+    without them the corpus proves something changed, not that the right thing
+    changed -- a fix that split on every apostrophe would pass the group above
+    and fail here. "hello123 don't" is a fourth must-not-move case covering a
+    reason the other three do not: Llama-3's pattern already parts letters
+    from digits and already isolates 't, so the second pass changes nothing
+    here even though it changes every elision above.
+    """
     texts = [
-        # The divergence, on five shapes of one cause rather than five spellings
-        # of one shape: elision before a vowel, before an h, an accented letter
-        # after the apostrophe, a capitalised name, and twice inside one word.
         "j'ai vu l'ami d'Anne",
         "aujourd'hui",
         "C'est l'été",
         "O'Brien and D'Angelo",
         "rock'n'roll",
-        # The cases that must NOT move. Without them the corpus proves something
-        # changed, not that the right thing changed: a fix that split on every
-        # apostrophe would pass the group above and fail here.
         "it's fine",
         "don't",
         "the 'quoted' word",
-        # A fourth must-not-move case, covering a reason the other three do
-        # not: Llama-3's pattern already parts letters from digits and
-        # already isolates 't, so the second pass changes nothing here even
-        # though it changes every elision above.
         "hello123 don't",
     ]
     return [
@@ -4020,17 +4083,13 @@ def generate_bpe_sequence_split() -> dict:
 
 # --- Split behavior and invert (issue #145) -----------------------------------
 
-# Twenty models: five behaviors x invert x two patterns. The behaviors are named
-# in the Python constructor's spelling; the file they serialize to uses
-# PascalCase, which is what the C# loader reads. Measured, spec D6.
+# Named in the Python constructor's spelling; see _split_behavior_models's
+# docstring, and D6.
 _SPLIT_BEHAVIORS = ["isolated", "removed", "merged_with_previous",
                     "merged_with_next", "contiguous"]
 
-# Two patterns, because one cannot separate every behavior. "\w+" leaves gaps in
-# most of these texts, which is what tells removed and the two merge directions
-# apart -- but it is greedy, so it never produces two ADJACENT matches, and
-# isolated and contiguous differ nowhere else (spec D4). "X" over "aXXb" is that
-# shape, and it is the only reason the second pattern exists.
+# Two patterns because one cannot separate every behavior; see
+# _split_behavior_models's docstring.
 _SPLIT_PATTERN = r"\w+"
 _SPLIT_ADJACENT_PATTERN = "X"
 
@@ -4085,7 +4144,19 @@ def _split_behavior_texts():
 
 
 def _split_behavior_models() -> list[tuple]:
-    """(name, declares, pattern, behavior, invert, tokenizer, texts)."""
+    """(name, declares, pattern, behavior, invert, tokenizer, texts).
+
+    Twenty models: five behaviors x invert x two patterns. _SPLIT_BEHAVIORS is
+    named in the Python constructor's spelling; the file it serializes to uses
+    PascalCase, which is what the C# loader reads (measured, spec D6).
+
+    Two patterns, because one cannot separate every behavior. _SPLIT_PATTERN
+    ("\\w+") leaves gaps in most texts, which is what tells removed and the two
+    merge directions apart -- but it is greedy, so it never produces two
+    ADJACENT matches, and isolated and contiguous differ nowhere else (spec
+    D4). _SPLIT_ADJACENT_PATTERN ("X") over "aXXb" is that shape, and it is
+    the only reason the second pattern exists.
+    """
     carried = []
     for behavior in _SPLIT_BEHAVIORS:
         for invert in (False, True):
@@ -4133,10 +4204,7 @@ def _split_behavior_refusals() -> list[dict]:
         try:
             Tokenizer.from_str(doc)
         except BaseException as exc:  # noqa: BLE001 - the refusal IS the measurement
-            # Same reasoning as _added_coverage_refusals: BaseException because a
-            # Rust panic surfaces as pyo3_runtime.PanicException, which does not
-            # inherit from Exception. Ctrl-C and a SystemExit are re-raised rather
-            # than recorded as measurements, which is also what S5754 asks for.
+            # Same reasoning as _added_coverage_refusals's from_str handler.
             if isinstance(exc, (KeyboardInterrupt, SystemExit)):
                 raise
             refusals.append({"shape": shape, "document": doc,
@@ -4149,9 +4217,7 @@ def _split_behavior_refusals() -> list[dict]:
 
 # --- a merge pair listed twice (issue #160) -----------------------------------
 
-# a+b is listed at rank 0 AND rank 3. Keeping the first makes it merge before
-# b+c; keeping the last makes it merge after. Nothing else distinguishes the
-# two readings, and no committed corpus contained a duplicated pair before this.
+# See _duplicate_merge_models's docstring for the a+b duplicate this backs.
 _DUPLICATE_VOCAB = {"a": 0, "b": 1, "c": 2, "d": 3, "ab": 4, "bc": 5, "cd": 6}
 
 
@@ -4178,7 +4244,13 @@ def _duplicate_merge_document(merges) -> str:
 
 
 def _duplicate_merge_models() -> list[tuple]:
-    """(name, declares, document, tokenizer, texts) -- the duplicate and both readings."""
+    """(name, declares, document, tokenizer, texts) -- the duplicate and both readings.
+
+    _DUPLICATE_VOCAB: a+b is listed at rank 0 AND rank 3. Keeping the first
+    makes it merge before b+c; keeping the last makes it merge after. Nothing
+    else distinguishes the two readings, and no committed corpus contained a
+    duplicated pair before this.
+    """
     from tokenizers import Tokenizer  # noqa: PLC0415
 
     first, second, third = ("a", "b"), ("b", "c"), ("c", "d")
@@ -4538,6 +4610,25 @@ def generate_bpe_split_literal() -> dict:
 
 
 def main() -> None:
+    """Write every oracle deterministically, byte for byte.
+
+    ``newline="\\n"``: these files are committed and CI's "Oracles are
+    reproducible" job compares them with a raw ``git diff``, not a text-mode
+    read. A contributor with core.autocrlf=false or unset who regenerates on
+    Windows would have the platform default translate every "\\n" to "\\r\\n"
+    on write, and that CRLF would reach the repository as-is and make the diff
+    nonempty forever, even though nothing semantic changed. (core.autocrlf=true
+    or =input is unaffected: git normalises CRLF back to LF on add/commit
+    regardless of what Python wrote to disk -- verified against all three
+    settings by committing an LF file, rewriting it as CRLF, and re-running
+    ``git diff --quiet``: true and input exit 0, false exits 1.)
+
+    ``allow_nan=False``: Python would otherwise write a bare NaN or Infinity,
+    which is not JSON and which System.Text.Json refuses at load time -- a
+    failure that would surface in CI as a broken test run rather than here as
+    a broken generation. Non-finite oracle values are encoded deliberately, as
+    the strings below.
+    """
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
         "levenshtein.json": generate_levenshtein,
@@ -4603,22 +4694,9 @@ def main() -> None:
     for filename, gen in generators.items():
         payload = gen()
         path = ORACLE_DIR / filename
-        # newline="\n": these files are committed and CI's "Oracles are reproducible"
-        # job compares them with a raw `git diff`, not a text-mode read. A contributor
-        # with core.autocrlf=false or unset who regenerates on Windows would have the
-        # platform default translate every "\n" to "\r\n" on write, and that CRLF would
-        # reach the repository as-is and make the diff nonempty forever, even though
-        # nothing semantic changed. (core.autocrlf=true or =input is unaffected: git
-        # normalises CRLF back to LF on add/commit regardless of what Python wrote to
-        # disk — verified against all three settings by committing an LF file, rewriting
-        # it as CRLF, and re-running `git diff --quiet`: true and input exit 0, false
-        # exits 1.)
+        # newline="\n": see this function's docstring for why.
         with path.open("w", encoding="utf-8", newline="\n") as f:
-            # allow_nan=False: Python would otherwise write a bare NaN or
-            # Infinity, which is not JSON and which System.Text.Json refuses at
-            # load time — a failure that would surface in CI as a broken test run
-            # rather than here as a broken generation. Non-finite oracle values
-            # are encoded deliberately, as the strings below.
+            # allow_nan=False: see this function's docstring for why.
             json.dump(payload, f, ensure_ascii=False, indent=1, allow_nan=False)
             f.write("\n")
         print(f"{filename}: {payload['metadata']['count']} cases -> {path}")

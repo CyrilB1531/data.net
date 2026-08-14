@@ -80,10 +80,8 @@ public sealed class AddedTokenScannerTests
     [Fact]
     public void Single_word_keeps_searching_past_a_rejected_position()
     {
-        // The literal "<m>" occurs at indices 1 and 5 in this text and nowhere
-        // else; the first is rejected because 'a' precedes it, so the only
-        // possible next match starts at 5, regardless of how far the scanner
-        // steps forward after a rejection.
+        // "<m>" occurs only at indices 1 and 5; the first is rejected because 'a' precedes it, so the
+        // only possible next match starts at 5, regardless of how far the scanner steps after a rejection.
         var scanner = Scanner(new AddedToken("<m>", 7) { SingleWord = true });
         Assert.Equal(5, Next(scanner, "a<m> <m> b").Start);
     }

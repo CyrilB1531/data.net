@@ -60,12 +60,8 @@ internal static class Lot3Embeddings
         WordPieceVocabulary fromJson = TokenizerJsonLoader.LoadWordPiece(Utf8(WordPieceJson), bounds);
         Console.WriteLine($"  tokenizer.json   : {fromJson.Count} WordPiece tokens");
 
-        // added_tokens rides outside the vocabulary above — matched as literal
-        // text before the model ever sees it, the way BERT's own [MASK] is. Its
-        // lstrip absorbs the whitespace immediately to its left into the match,
-        // so the token string below carries that space while the ids do not move:
-        // WordPiece's pre-tokenizer emits no whitespace piece for a strip to
-        // remove. Losing one — the Ġ — is the byte-level story, not this one.
+        // added_tokens matches literal text before the model ever sees it, like
+        // BERT's own [MASK]; lstrip absorbs the space into the token string, not the ids.
         AddedToken maskToken = fromJson.AddedTokens[0];
         Console.WriteLine($"  added token      : '{maskToken.Content}'->{maskToken.Id}, special={maskToken.Special}, "
             + $"lstrip={maskToken.Lstrip}, rstrip={maskToken.Rstrip}, singleWord={maskToken.SingleWord}, normalized={maskToken.Normalized}");
@@ -101,11 +97,8 @@ internal static class Lot3Embeddings
         SentencePieceVocabulary fromModel = SentencePieceModelLoader.Load(new MemoryStream(SpieceModel()), bounds);
         Console.WriteLine($"  spiece.model     : {fromModel.Count} pieces, unk={fromModel.UnkId}");
 
-        // A stock T5, ALBERT, camemBERT or XLM-R arrives with a character map in its
-        // normalizer_spec, and Normalizer is what applies it before segmentation.
-        // The model built below has none — a charsmap is compiled by sentencepiece,
-        // and this sample commits no artifacts — so what it shows is the shape:
-        // null means the text reaches the tokenizer as it was written.
+        // A stock T5/ALBERT/camemBERT/XLM-R ships a charsmap in normalizer_spec; this
+        // model has none (no artifacts committed), so null means the text reaches the tokenizer unchanged.
         PrecompiledNormalizer? normalizer = fromModel.Normalizer;
         Console.WriteLine($"  normalizer       : {(normalizer is null ? "identity, no charsmap" : $"{normalizer.CharsMapLength} bytes")}");
 
@@ -121,10 +114,8 @@ internal static class Lot3Embeddings
         {
             ByteLevel = true,
             PreTokenizerPattern = BpePatterns.Gpt2,
-            // Stock GPT-2 declares a bare ByteLevel, which does its own splitting
-            // and has no Split step in front of it. A Llama-3 or Qwen2 file sets
-            // one, and its behavior decides what happens to the text between the
-            // pattern's matches.
+            // Stock GPT-2 declares a bare ByteLevel with no Split step in front; a
+            // Llama-3/Qwen2 file sets one, whose behavior decides the text between matches.
             PreSplit = null,
         };
         var bpe = new BpeTokenizer(bpeModel);
@@ -134,11 +125,8 @@ internal static class Lot3Embeddings
         Console.WriteLine($"  merge rank 0     : {bpeModel.Merges[0].Left} + {bpeModel.Merges[0].Right}");
         Console.WriteLine($"  BPE normalizer   : {bpeModel.NormalizationForms.Count} forms");
 
-        // A Llama-3 or Qwen2 file's own Sequence declares a Split step ahead of
-        // ByteLevel, carrying the file's behavior and invert -- the two fields
-        // TokenizerJsonLoader now reads instead of assuming (issue #145). The
-        // vocabulary above stays stock GPT-2's shape; this only demonstrates the
-        // type BpeVocabulary.PreSplit carries.
+        // A Llama-3/Qwen2 file's Sequence puts a Split step ahead of ByteLevel
+        // (behavior + invert, read since #145); this only demonstrates what PreSplit carries.
         var llamaSplit = new BpeSplitStep(BpePatterns.Llama3, SplitBehavior.Isolated, Invert: false);
         Console.WriteLine($"  BpeSplitStep     : behavior={llamaSplit.Behavior}, invert={llamaSplit.Invert}");
 
@@ -167,10 +155,8 @@ internal static class Lot3Embeddings
             Utf8("#version: 0.2\nt o\nk e\nke n\n"));
         Console.WriteLine($"  BPE from files   : {fromFiles.Count} tokens, {fromFiles.Merges.Count} merges");
 
-        // Batch encoding: the special tokens, the truncation and the padding the
-        // caller used to have to reproduce from memory. Everything the model is
-        // fed comes out of the template and the vocabulary — nothing is a
-        // hardcoded id, which is why [CLS] can sit at 4 here.
+        // Special tokens, truncation and padding come from the template and the
+        // vocabulary — nothing hardcoded, which is why [CLS] can sit at id 4 here.
         var batchVocab = new Dictionary<string, int>(StringComparer.Ordinal)
         {
             [Unknown] = 0,
@@ -231,9 +217,8 @@ internal static class Lot3Embeddings
         Console.WriteLine($"  MeanPool+L2      : [{string.Join(", ", normalized.Select(v => v.ToString("F3", CultureInfo.InvariantCulture)))}]");
         Console.WriteLine($"  VectorMath       : dot={VectorMath.Dot(pooled, normalized):F3}, l2={VectorMath.L2Norm(pooled):F3}");
 
-        // The batched form, over the [batch, seq, dim] tensor an encoder returns:
-        // each row pooled against its own slice of the mask, so a shorter
-        // sequence's padding cannot reach its vector.
+        // Each row of the [batch, seq, dim] tensor pools against its own mask
+        // slice, so a shorter sequence's padding cannot reach its vector.
         float[] batchedEmbeddings = [1f, 0f, 0f, 9f, 9f, 9f, 0f, 1f, 0f, 0f, 0f, 1f];
         long[] batchedMask = [1, 0, 1, 1];
         float[][] batchPooled = Pooler.MeanPoolAndNormalizeBatch(

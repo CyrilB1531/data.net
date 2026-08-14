@@ -40,9 +40,8 @@ public sealed class PinballLossTests
     [Fact]
     public void Weights_theory_actually_ran_on_at_least_one_case()
     {
-        // Guards against the "pinball{a}|weights" branch above silently passing by
-        // never firing: only the multi-output fixtures carry it, so at least one
-        // case must, for at least one of the two measured alphas.
+        // Guards against the "pinball{a}|weights" branch above never firing: only
+        // the multi-output fixtures carry it.
         Assert.Contains(RegressionCorpus.Cases, c =>
             RegressionCorpus.Has(c, "pinball0.5|weights") || RegressionCorpus.Has(c, "pinball0.9|weights"));
     }

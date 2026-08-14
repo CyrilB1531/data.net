@@ -6,30 +6,14 @@ using DataNet.Embeddings.Tokenization;
 namespace DataNet.Text.Benchmarks;
 
 /// <summary>
-/// What batching an ONNX encoder buys over the loop of one-sequence calls the
-/// library used to force on the caller.
+/// What batching an ONNX encoder buys over one call per sequence. Uses
+/// <c>tiny_embedder.onnx</c> — no weights to commit, and free arithmetic — so
+/// this isolates per-call overhead (graph dispatch, thread-pool wake-up, tensor
+/// wrapping) as an upper bound on the speed-up: a real encoder pays the same
+/// overhead as a smaller share of a larger total. Measured numbers and caveats:
+/// docs/guides/performance.md. Run:
+/// <c>dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter *BatchEmbedding*</c>
 /// </summary>
-/// <remarks>
-/// <para>
-/// <strong>Read the number before quoting it.</strong> The model here is
-/// <c>tiny_embedder.onnx</c>: one Gather node over a 64 × 4 table, because
-/// CONTRIBUTING.md forbids committing weights and a real encoder is a hundred
-/// megabytes. Its arithmetic is free, so what this measures is almost entirely
-/// the per-call cost batching removes — graph dispatch, thread-pool wake-up,
-/// tensor wrapping — and none of the matrix multiplication a real encoder would
-/// add to both sides of the comparison.
-/// </para>
-/// <para>
-/// So this is an <em>upper bound</em> on the speed-up, not the speed-up. It
-/// answers "how much overhead does the unit loop pay per sequence", which is the
-/// question the issue asks and the one a synthetic model can answer honestly. On
-/// a real encoder the same overhead is paid, and is a smaller share of a much
-/// larger total.
-/// </para>
-/// <para>
-/// Run: <c>dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter *BatchEmbedding*</c>
-/// </para>
-/// </remarks>
 // CA1001 (owns a disposable field but is not IDisposable): BenchmarkDotNet owns
 // this type's lifecycle and calls [GlobalCleanup] below, which disposes
 // _embedder. IDisposable would advertise an ownership no caller ever takes.
@@ -41,12 +25,8 @@ public class BatchEmbeddingBenchmarks
     private static readonly string ModelPath =
         Path.Combine(AppContext.BaseDirectory, "oracles", "tiny_embedder.onnx");
 
-    // Deliberately not uniform, and deliberately wide: a corpus whose sequences
-    // are all the same length hides both what dynamic padding saves and what
-    // bucketing saves, which are two of the three things being measured. The
-    // spread below runs from 2 tokens to 65, roughly the shape the issue
-    // describes — a median near 30 against a tail that would otherwise dictate
-    // the width of every row it shares a call with.
+    // Not uniform, and wide (2-65 tokens): same-length rows would hide what
+    // padding and bucketing each save.
     private static readonly string[] Sentences = BuildCorpus();
 
     private static string[] BuildCorpus()
@@ -122,17 +102,11 @@ public class BatchEmbeddingBenchmarks
     public float[][] EmbedBatch() => _embedder.EmbedBatch(_corpus, Unsorted);
 
     /// <summary>
-    /// The same, with length bucketing — the switch the issue says is worth
-    /// measuring before committing to.
+    /// The same, with length bucketing. Only engages past one sub-batch, so with
+    /// <see cref="SubBatch"/> at 8 the rows at <c>CorpusSize</c> 1 and 8 run the
+    /// identical path to <see cref="EmbedBatch"/> — those two are the control;
+    /// a claim about 32 or 128 must clear their noise floor (docs/guides/performance.md).
     /// </summary>
-    /// <remarks>
-    /// Bucketing only engages when the corpus spans more than one sub-batch, so
-    /// with <see cref="SubBatch"/> at 8 the rows at <c>CorpusSize</c> 1 and 8 run
-    /// the identical code path to <see cref="EmbedBatch"/>. That is deliberate:
-    /// those two rows are the control, and whatever they differ by is this
-    /// harness's noise floor. Any claim about the rows at 32 and 128 has to clear
-    /// it.
-    /// </remarks>
     [Benchmark]
     public float[][] EmbedBatchBucketed() => _embedder.EmbedBatch(_corpus, Sorted);
 
@@ -149,18 +123,13 @@ public class BatchEmbeddingBenchmarks
         new() { BatchSize = SubBatch, SortByLength = true };
 
     /// <summary>
-    /// Lets the run proceed against the ONNX Runtime package, whose shipped
-    /// assembly is not marked as optimized.
+    /// Lets the run proceed against ONNX Runtime's shipped assembly, which is not
+    /// marked optimized. BenchmarkDotNet is right to refuse that in general — a
+    /// Debug build measures nothing — but <c>Microsoft.ML.OnnxRuntime</c> is a
+    /// managed shim over native code, consumed exactly as a user consumes it, and
+    /// the work measured happens in the native library the flag can't see. Only
+    /// this validator is disabled; the job, diagnosers and everything else stay default.
     /// </summary>
-    /// <remarks>
-    /// BenchmarkDotNet refuses to measure code that references a non-optimized
-    /// assembly, and it is right to: a Debug build measures nothing. The exception
-    /// is narrow and worth stating. `Microsoft.ML.OnnxRuntime` is a managed shim
-    /// over a native library, it is consumed from nuget.org exactly as a user
-    /// consumes it, and the work being measured happens in native code the flag
-    /// does not describe. Only this validator is disabled — the job, the
-    /// diagnosers and every other check stay at their defaults.
-    /// </remarks>
     // SonarLint S1144: the constructor is never called from this file. It is called
     // by BenchmarkDotNet, which instantiates the type named in [Config(typeof(…))]
     // by reflection — a call graph no analyzer can follow. Deleting the constructor

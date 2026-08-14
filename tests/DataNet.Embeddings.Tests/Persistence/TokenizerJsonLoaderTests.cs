@@ -268,11 +268,8 @@ public sealed class TokenizerJsonLoaderTests
         return TokenizerJsonLoader.LoadUnigram(stream, options);
     }
 
-    // ---- Configurations that change tokenization must be refused, not ignored ----
-    //
-    // Every one of these loaded cleanly before, and every one produces embeddings
-    // that do not match the model the file describes. The frozen corpora all sit on
-    // the accepting side of these settings, so only a synthetic document catches them.
+    // Configurations that change tokenization must be refused, not ignored: every one loaded cleanly
+    // before and produces wrong embeddings, but the frozen corpora all sit on the accepting side.
 
     [Theory]
     [InlineData("{\"type\":\"NFKC\"}", "NFKC")]
@@ -280,10 +277,8 @@ public sealed class TokenizerJsonLoaderTests
     [InlineData("{\"type\":\"Sequence\",\"normalizers\":[{\"type\":\"NFKC\"}]}", "Sequence")]
     public void A_unigram_model_with_a_normalizer_that_is_not_precompiled_is_rejected(string normalizer, string expectedName)
     {
-        // NFKC is the interesting refusal now: it asks for the runtime's Unicode
-        // tables where the model asked for a map frozen at the version that compiled
-        // it. The two already disagree on 181 code points and drift apart with every
-        // Unicode release — see docs/decisions/0014.
+        // NFKC asks for the runtime's Unicode tables where the model asked for a map frozen at
+        // compile time -- the two already disagree on 181 code points (docs/decisions/0014).
         InvalidDataException error = Assert.Throws<InvalidDataException>(
             () => LoadUnigramFrom(SyntheticUnigram(normalizer: normalizer)));
 
@@ -291,18 +286,13 @@ public sealed class TokenizerJsonLoaderTests
     }
 
     /// <summary>
-    /// The refusal #75 turned into a load: <c>Precompiled</c> is how
-    /// <c>tokenizers</c> writes the map a <c>spiece.model</c> carries as raw bytes,
-    /// so the two formats now describe the same model the same way.
+    /// The refusal #75 turned into a load: <c>Precompiled</c> is how <c>tokenizers</c> writes the map a
+    /// <c>spiece.model</c> carries as raw bytes, so the two formats now describe the same model the same
+    /// way. The map is <c>custom_norm.model</c>'s, taken from the oracle in <c>tokenizer.json</c>'s own
+    /// encoding rather than pasted in as a constant. Its three hand-written rules -- <c>ß</c> to <c>ss</c>,
+    /// <c>①</c> to <c>1</c>, <c>¤</c> to nothing -- match no built-in specification, so a normalizer
+    /// producing this output by any other route would be a surprise.
     /// </summary>
-    /// <remarks>
-    /// The map is the one from <c>custom_norm.model</c>, taken from the oracle in
-    /// the encoding <c>tokenizer.json</c> itself uses rather than pasted in as a
-    /// constant. Its three rules are hand-written — <c>ß</c> to <c>ss</c>,
-    /// <c>①</c> to <c>1</c>, <c>¤</c> to nothing — and no built-in specification
-    /// performs them, so a normalizer that produced this output by any other route
-    /// would be a surprise.
-    /// </remarks>
     [Fact]
     public void A_unigram_model_with_a_precompiled_normalizer_loads_and_applies_it()
     {
@@ -337,9 +327,8 @@ public sealed class TokenizerJsonLoaderTests
     [Fact]
     public void A_bert_normalizer_that_strips_accents_by_omission_is_rejected()
     {
-        // tokenizers strips accents when strip_accents is Some(true) OR when it is
-        // absent and lowercase is on. Reading the absent case as "off" accepted a file
-        // that strips accents in Python and does not here.
+        // Measured on tokenizers 0.23.1: it strips accents when strip_accents is Some(true),
+        // or absent with lowercase on -- reading "absent" as "off" accepted such a file.
         InvalidDataException error = Assert.Throws<InvalidDataException>(
             () => LoadWordPieceFrom(SyntheticWordPiece(
                 normalizer: "{\"type\":\"BertNormalizer\",\"handle_chinese_chars\":false,\"clean_text\":false,\"lowercase\":true}")));
@@ -361,9 +350,8 @@ public sealed class TokenizerJsonLoaderTests
     [InlineData(PipelineKindUnderTest.Unigram)]
     public void A_file_with_no_pre_tokenizer_is_rejected(PipelineKindUnderTest kind)
     {
-        // No pre_tokenizer means tokenizers hands the whole string to the model.
-        // DataNet instead applies Whitespace or Metaspace segmentation, so accepting
-        // the file would tokenize differently — quietly.
+        // Measured on tokenizers 0.23.1: no pre_tokenizer hands the model the whole string, where
+        // DataNet applies Whitespace or Metaspace -- accepting the file would diverge quietly.
         InvalidDataException error = Assert.Throws<InvalidDataException>(() => kind switch
         {
             PipelineKindUnderTest.WordPiece => (object)LoadWordPieceFrom(SyntheticWordPiece(preTokenizer: "null")),
@@ -451,9 +439,8 @@ public sealed class TokenizerJsonLoaderTests
         WordPieceVocabulary vocabulary = LoadWordPieceFrom(SyntheticWordPiece(
             addedTokens: "[{\"id\":3,\"content\":\"[EXTRA]\",\"special\":true}]"));
 
-        // model.vocab is what the file declared, entry for entry. [EXTRA] reaches
-        // the tokenizer through AddedTokens, which is scanned as literal text ahead
-        // of the model — folded in, it would be matchable as a whole word only.
+        // model.vocab is exactly what the file declared. [EXTRA] reaches the tokenizer through
+        // AddedTokens, scanned as literal text ahead of the model -- folded in, it would match whole words only.
         Assert.Equal(3, vocabulary.Count);
         Assert.False(vocabulary.Vocab.ContainsKey("[EXTRA]"));
         Assert.Equal(new AddedToken("[EXTRA]", 3) { Special = true }, Assert.Single(vocabulary.AddedTokens));
@@ -462,10 +449,8 @@ public sealed class TokenizerJsonLoaderTests
     [Fact]
     public void An_added_token_already_in_the_vocabulary_at_the_same_id_is_still_recorded()
     {
-        // What every stock BERT tokenizer.json looks like: the special tokens are
-        // listed in both tables, at the same ids. The overlap is not subtracted —
-        // the scan reads nothing but AddedTokens, so an entry left out of it is an
-        // entry that reaches the model as ordinary text.
+        // What every stock BERT tokenizer.json looks like: special tokens listed in both tables at the
+        // same ids. The overlap is not subtracted -- an entry left out of AddedTokens reaches the model as plain text.
         WordPieceVocabulary vocabulary = LoadWordPieceFrom(SyntheticWordPiece(
             addedTokens: "[{\"id\":0,\"content\":\"[UNK]\",\"special\":true}]"));
 
@@ -525,9 +510,8 @@ public sealed class TokenizerJsonLoaderTests
     [Fact]
     public void An_added_token_with_a_negative_id_is_rejected()
     {
-        // The id comes straight back out of Encode, into the caller's embedding
-        // lookup. A negative one is an out-of-range index in their code, blamed on
-        // them.
+        // The id comes straight back out of Encode into the caller's embedding lookup. A negative one
+        // is an out-of-range index in their code, wrongly blamed on them.
         InvalidDataException error = Assert.Throws<InvalidDataException>(
             () => LoadWordPieceFrom(SyntheticWordPiece(
                 addedTokens: "[{\"id\":-5,\"content\":\"[EXTRA]\"}]")));
@@ -699,25 +683,15 @@ public sealed class TokenizerJsonLoaderTests
     }
 
     /// <summary>
-    /// Replays GPT-2's own shape with the two settings the rest of the BPE corpus
-    /// structurally cannot see: <c>&lt;|endoftext|&gt;</c> registered as an added token
-    /// at the id <c>model.vocab</c> already gives it, and <c>add_prefix_space</c> on,
-    /// which is HuggingFace's <c>ByteLevel</c> default.
+    /// Replays GPT-2's own shape with two settings the rest of the BPE corpus cannot see:
+    /// <c>&lt;|endoftext|&gt;</c> registered as an added token at its <c>model.vocab</c> id, and
+    /// <c>add_prefix_space</c> on (HuggingFace's <c>ByteLevel</c> default). The two interact: fixing the
+    /// added-token table is what makes <c>Encode</c> cut the input into segments at all, and the prefix
+    /// space goes on each segment rather than once on the whole input --
+    /// <c>"hi&lt;|endoftext|&gt;bye"</c> is <c>['Ġhi', '&lt;|endoftext|&gt;', 'Ġbye']</c>, three pieces
+    /// each carrying their own space. Every other BPE fixture on this branch either registers no added
+    /// token or never names one in its text, and all were generated with <c>add_prefix_space=False</c>.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The two interact, which is why one corpus carries both. Fixing the added-token
-    /// table is what makes <c>Encode</c> cut the input into segments at all, and the
-    /// prefix space goes on each of those segments rather than once on the whole
-    /// input — <c>"hi&lt;|endoftext|&gt;bye"</c> is <c>['Ġhi', '&lt;|endoftext|&gt;',
-    /// 'Ġbye']</c>, three pieces each carrying their own space.
-    /// </para>
-    /// <para>
-    /// Every other BPE fixture on this branch either registers no added token at all
-    /// (<c>BPE.from_file</c> does not) or never names one in its text, and every one
-    /// of them was generated with <c>add_prefix_space=False</c>.
-    /// </para>
-    /// </remarks>
     [Fact]
     public void LoadBpe_matches_tokenizers_with_added_tokens_and_a_prefix_space_both_live()
     {
@@ -747,19 +721,14 @@ public sealed class TokenizerJsonLoaderTests
     }
 
     /// <summary>
-    /// A token listed in <c>added_tokens</c> <em>and</em> in <c>model.vocab</c> at the
-    /// same id — which is how HuggingFace writes every special token, GPT-2's
-    /// <c>&lt;|endoftext|&gt;</c> at id 50256 included — must still reach
-    /// <see cref="BpeVocabulary.AddedTokens"/>.
+    /// A token listed in <c>added_tokens</c> and in <c>model.vocab</c> at the same id -- how HuggingFace
+    /// writes every special token, GPT-2's <c>&lt;|endoftext|&gt;</c> at id 50256 included -- must still
+    /// reach <see cref="BpeVocabulary.AddedTokens"/>. That property is the only input to
+    /// <c>BpeTokenizer</c>'s pre-merge scan, so treating the table as "the tokens model.vocab lacks" and
+    /// subtracting the intersection removes exactly the tokens the scan exists for. The encode assertion
+    /// below tells the two apart: matched literally the whole marker is one id. Left unmatched, its
+    /// characters are not in this vocabulary at all and are dropped one by one, leaving [2, 2].
     /// </summary>
-    /// <remarks>
-    /// That property is the only input to <c>BpeTokenizer</c>'s pre-merge scan, so
-    /// treating the table as "the tokens model.vocab lacks" and subtracting the
-    /// intersection removes exactly the tokens the scan exists for. The encode
-    /// assertion below is what tells the two apart: with the token matched literally
-    /// the whole marker is one id, and without it the marker's characters are not in
-    /// this vocabulary at all and are dropped one by one, leaving [2, 2].
-    /// </remarks>
     [Fact]
     public void LoadBpe_keeps_an_added_token_that_model_vocab_also_declares()
     {
@@ -779,25 +748,21 @@ public sealed class TokenizerJsonLoaderTests
         var tokenizer = new BpeTokenizer(vocabulary);
         TokenizationResult encoded = tokenizer.Encode("ab<|eot|>ab");
 
-        // tokenizers 0.23.1 over the same file: ['ab', '<|eot|>', 'ab'], [2, 3, 2].
+        // Measured on tokenizers 0.23.1, same file: ['ab', '<|eot|>', 'ab'], [2, 3, 2].
         Assert.Equal(["ab", "<|eot|>", "ab"], encoded.Tokens);
         Assert.Equal([2, 3, 2], encoded.Ids);
         Assert.Equal("abab", tokenizer.Decode(encoded.Ids, skipSpecialTokens: true));
     }
 
     /// <summary>
-    /// An added token that <c>model.vocab</c> also declares still goes through the
-    /// matching-flags read -- the same one a token added for the first time goes
-    /// through. Fixture shaped after <c>roberta-base</c>'s own <c>tokenizer.json</c>,
-    /// whose <c>&lt;mask&gt;</c> is id 50264 in both tables with <c>lstrip: true</c>.
+    /// An added token that <c>model.vocab</c> also declares still goes through the matching-flags read --
+    /// the same one a token added for the first time goes through. Fixture shaped after
+    /// <c>roberta-base</c>'s own <c>tokenizer.json</c>, whose <c>&lt;mask&gt;</c> is id 50264 in both
+    /// tables with <c>lstrip: true</c>. Before the fold-in check landed, that file loaded with
+    /// <c>lstrip</c> silently ignored. Now <see cref="AddedTokenScanner"/> applies it, and this fixture
+    /// pins the fold-in branch specifically, separate code from the "new id" branch
+    /// <c>LoadBpe_reads_the_added_token_matching_flags</c> exercises.
     /// </summary>
-    /// <remarks>
-    /// Before the fold-in check moved onto this branch, that file loaded with
-    /// <c>lstrip</c> silently ignored. Now that <see cref="AddedTokenScanner"/>
-    /// applies the flag, this fixture pins the fold-in branch specifically: it is
-    /// separate code from the "new id" branch <c>LoadBpe_reads_the_added_token_matching_flags</c>
-    /// exercises.
-    /// </remarks>
     [Fact]
     public void LoadBpe_reads_lstrip_on_an_added_token_that_model_vocab_also_declares()
     {
@@ -816,20 +781,14 @@ public sealed class TokenizerJsonLoaderTests
     }
 
     /// <summary>
-    /// Issue #104's own acceptance criterion: the <c>added_tokens</c> table
-    /// <c>roberta-base</c> actually ships, loaded from a committed fixture
-    /// rather than asserted by hand against a string built inline.
-    /// <c>tests/oracles/roberta_shaped_model.json</c> is
-    /// <c>tools/build_tiny_models.py</c>'s <c>build_roberta_shaped()</c>,
-    /// reproducing the file's five entries verbatim: ids 0-3 for
-    /// <c>&lt;s&gt;</c>, <c>&lt;pad&gt;</c>, <c>&lt;/s&gt;</c>, <c>&lt;unk&gt;</c>
-    /// with every matching flag <see langword="false"/>, and id 50264 for
-    /// <c>&lt;mask&gt;</c> with <c>lstrip=true</c>. All five also sit in
-    /// <c>model.vocab</c> at the same ids, as <c>roberta-base</c> itself writes
-    /// them — 50264 nowhere near contiguous with the tiny vocabulary's own
-    /// handful of ids, which is deliberate: the loader must not assume an
-    /// added token's id sits next to the rest of the vocabulary just because
-    /// this fixture's does.
+    /// Issue #104's own acceptance criterion: the <c>added_tokens</c> table <c>roberta-base</c> actually
+    /// ships, loaded from a committed fixture (<c>tests/oracles/roberta_shaped_model.json</c>, built by
+    /// <c>tools/build_tiny_models.py</c>'s <c>build_roberta_shaped()</c>) rather than asserted by hand. Its
+    /// five entries: ids 0-3 for <c>&lt;s&gt;</c>, <c>&lt;pad&gt;</c>, <c>&lt;/s&gt;</c>, <c>&lt;unk&gt;</c>
+    /// with every matching flag false, and id 50264 for <c>&lt;mask&gt;</c> with <c>lstrip=true</c>. All
+    /// five also sit in <c>model.vocab</c> at the same ids, 50264 nowhere near the tiny vocabulary's own
+    /// handful of ids on purpose: the loader must not assume an added token's id sits next to the rest of
+    /// the vocabulary just because this fixture's does.
     /// </summary>
     [Fact]
     public void LoadBpe_accepts_the_roberta_added_token_table()
@@ -954,17 +913,13 @@ public sealed class TokenizerJsonLoaderTests
     }
 
     /// <summary>
-    /// A string-form merge with more than one space is refused, not split on the
-    /// first one -- the same rule <see cref="BpeFilesLoaderTests"/> pins for the
-    /// classic-lineage merges file.
+    /// A string-form merge with more than one space is refused, not split on the first one -- the same
+    /// rule <see cref="BpeFilesLoaderTests"/> pins for the classic-lineage merges file. Python splits the
+    /// whole line and refuses it unless it yields exactly two fields, checked against <c>tokenizers</c>
+    /// 0.23.1: <c>Tokenizer.from_str</c> on a BPE model whose merges are <c>["a b c"]</c> reports "Merges
+    /// text file invalid at line 1", where <c>["a b"]</c> loads. Splitting on the first space instead
+    /// would silently load <c>"a b c"</c> as <c>("a", "b c")</c>.
     /// </summary>
-    /// <remarks>
-    /// Python splits the whole line and refuses it unless it yields exactly two
-    /// fields, checked against <c>tokenizers</c> 0.23.1: <c>Tokenizer.from_str</c>
-    /// on a BPE model whose merges are <c>["a b c"]</c> reports "Merges text file
-    /// invalid at line 1", where <c>["a b"]</c> loads. Splitting on the first space
-    /// instead would silently load <c>"a b c"</c> as <c>("a", "b c")</c>.
-    /// </remarks>
     [Fact]
     public void LoadBpe_refuses_a_string_merge_that_is_not_two_symbols()
     {
@@ -1422,9 +1377,8 @@ public sealed class TokenizerJsonLoaderTests
     [Fact]
     public void A_model_that_is_silent_about_fuse_unk_does_not_fuse()
     {
-        // The default has to be false rather than "unset": every corpus this
-        // repository committed before issue #119 was generated without the
-        // field, and they are the regression proof for the untouched path.
+        // The default has to be false rather than "unset": every corpus committed before issue #119
+        // was generated without this field, and is the regression proof for the untouched path.
         const string Json = """
         {"model":{"type":"BPE","vocab":{"[UNK]":0,"a":1},"merges":[],"unk_token":"[UNK]"}}
         """;
@@ -1437,9 +1391,8 @@ public sealed class TokenizerJsonLoaderTests
     [Fact]
     public void Fuse_unk_without_an_unk_token_is_accepted_rather_than_refused()
     {
-        // Measured: tokenizers accepts {'unk_token': None, 'fuse_unk': True},
-        // serializes it, and the flag then has no observable effect. Refusing it
-        // here would be a divergence invented rather than reproduced.
+        // Verified against tokenizers 0.23.1: passing no unk_token alongside fuse_unk is accepted and
+        // serializes as such, with no observable effect -- refusing it here would be invented, not reproduced.
         const string Json = """
         {"model":{"type":"BPE","vocab":{"a":1},"merges":[],"fuse_unk":true}}
         """;

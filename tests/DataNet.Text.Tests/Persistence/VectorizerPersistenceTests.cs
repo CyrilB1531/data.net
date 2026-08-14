@@ -78,20 +78,16 @@ public sealed class VectorizerPersistenceTests
 
         TfidfVectorizer reloaded = RoundTrip(original);
 
-        // Behaviour is the observable proof the options survived: a vectorizer
-        // that lost Binary, the n-gram range or the stop words would produce a
-        // different matrix for the same documents.
+        // Behaviour is the observable proof: a vectorizer that lost Binary, the
+        // n-gram range or the stop words would matrix the same documents differently.
         AssertIdentical(original.Transform(HoldoutCorpus), reloaded.Transform(HoldoutCorpus));
     }
 
     [Fact]
     public void Tfidf_round_trip_preserves_the_document_frequency_bounds()
     {
-        // MinDf and MaxDf prune the vocabulary during Fit and have no effect on
-        // Transform, so the behavioural assertions above cannot see them: a Load that
-        // dropped both would leave every other test green. Re-fitting the reloaded
-        // vectorizer is what makes them observable — on a corpus chosen so the bound
-        // actually prunes, since the ratios above happen to keep every term.
+        // MinDf and MaxDf prune during Fit only, so a Load that dropped both leaves
+        // every other test green. Re-fitting on a corpus they prune is what shows it.
         string[] corpus = ["alpha beta", "alpha gamma", "alpha delta", "beta epsilon"];
         var options = new TfidfVectorizerOptions { Count = new CountVectorizerOptions { MinDf = 0.5 } };
         TfidfVectorizer reloaded = RoundTrip(new TfidfVectorizer(options).Fit(TrainingCorpus));
@@ -108,11 +104,8 @@ public sealed class VectorizerPersistenceTests
     [Fact]
     public void Tfidf_round_trip_survives_a_non_ascii_vocabulary()
     {
-        // The artifact is written with the relaxed JSON encoder, which emits non-ASCII
-        // as UTF-8 rather than \uXXXX. Every other corpus in this file is a-z, so this
-        // is the only test that would notice if that encoding were wrong — and this
-        // library ships Snowball stop-word lists for five languages that are full of
-        // exactly these characters.
+        // The relaxed JSON encoder emits non-ASCII as UTF-8, and every other corpus
+        // here is a-z: this is the only test that would notice if it were wrong.
         string[] corpus =
         [
             "ação français über señor niño",

@@ -12,10 +12,13 @@ So two more, trained here rather than downloaded:
     and case folding is the rule whose effect is impossible to mistake for a
     pass-through.
   * `custom_norm.model` — trained from a hand-written
-    `--normalization_rule_tsv`, three rules and nothing else. This is the case
-    Route B could never have covered: no name identifies it, and only the
-    compiled map says what it does. Its charsmap is a few hundred bytes, which
-    also gives the trie interpreter a small input to be exercised on.
+    `--normalization_rule_tsv`, three rules and nothing else: `ß` -> `ss` (one
+    character to two), `①` -> `1` (one to one), `¤` -> nothing (a deletion) —
+    deliberately none performed by any built-in spec, so a fixture claiming to
+    apply them cannot be passing by accident. This is the case Route B could
+    never have covered: no name identifies it, and only the compiled map says
+    what it does. Its charsmap is a few hundred bytes, which also gives the
+    trie interpreter a small input to be exercised on.
 
 Both are trained on a corpus written into this file, with a fixed vocabulary
 size and no randomness in the settings. They are *inputs* to
@@ -46,9 +49,8 @@ from sentencepiece import sentencepiece_model_pb2 as model_pb2
 
 ORACLE_DIR = pathlib.Path(__file__).resolve().parent.parent / "tests" / "oracles"
 
-# Enough text to train a small vocabulary on, in a few scripts. The content does
-# not matter to what is being tested — the charsmap is what is under test, and it
-# comes from the normalization rule, not from the corpus.
+# The content doesn't matter: the charsmap under test comes from the
+# normalization rule, not from the corpus.
 CORPUS = [
     "the quick brown fox jumps over the lazy dog",
     "le renard brun rapide saute par-dessus le chien paresseux",
@@ -62,12 +64,8 @@ CORPUS = [
     "sentencepiece normalizes before it segments",
 ]
 
-# from-code-points TAB to-code-points, the format spm_train reads. Deliberately
-# three rules that no built-in spec performs, so a fixture claiming to apply them
-# cannot be passing by accident:
-#   ß  -> ss      (one character to two)
-#   ①  -> 1       (one to one)
-#   ¤  -> nothing (a deletion)
+# from-code-points TAB to-code-points, the format spm_train reads. See the
+# custom_norm.model bullet in this module's docstring for what each rule proves.
 CUSTOM_TSV = "00DF\t0073 0073\n2460\t0031\n00A4\t\n"
 
 FIXTURES = {
@@ -77,14 +75,18 @@ FIXTURES = {
 
 
 def train(settings: dict) -> bytes:
-    """Train one tiny unigram model and return its serialized proto."""
+    """Train one tiny unigram model and return its serialized proto.
+
+    newline="\\n" on the corpus and rules files below: they are inputs to
+    spm_train, not its output, but the trained model this function returns is
+    committed and compared byte for byte by --check. Left to the platform
+    default, a stray "\\r" from a Windows-translated corpus or rules file could
+    feed the trainer different bytes than the ones the checked-in model was
+    trained on.
+    """
     with tempfile.TemporaryDirectory() as tmp:
         work = pathlib.Path(tmp)
-        # newline="\n": these are inputs to spm_train, not its output, but the
-        # trained model this function returns is committed and compared byte for
-        # byte by --check. Left to the platform default, a stray "\r" from a
-        # Windows-translated corpus or rules file could feed the trainer different
-        # bytes than the ones the checked-in model was trained on.
+        # newline="\n": see this function's docstring for why.
         corpus = work / "corpus.txt"
         corpus.write_text("\n".join(CORPUS) + "\n", encoding="utf-8", newline="\n")
 
