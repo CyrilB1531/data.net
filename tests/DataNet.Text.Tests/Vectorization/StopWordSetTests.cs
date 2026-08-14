@@ -50,11 +50,8 @@ public sealed class StopWordSetTests
     [Fact]
     public void Touching_one_list_does_not_build_the_others()
     {
-        // A fresh AssemblyLoadContext gives the assembly a second, private set of
-        // statics: every holder type starts uninitialised, whatever the rest of
-        // this suite has already touched in the default context. That is what makes
-        // the observation possible at all — reading a holder's field to check it is
-        // what runs its initialiser.
+        // A fresh AssemblyLoadContext gives the assembly private statics, so every
+        // holder starts uninitialised whatever the rest of this suite has touched.
         var context = new AssemblyLoadContext("stop-words-laziness", isCollectible: true);
         try
         {

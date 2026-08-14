@@ -37,9 +37,8 @@ public sealed class OptionsEqualityTests
     [Fact]
     public void A_repeated_stop_word_does_not_break_the_hash_contract()
     {
-        // Equals compares as a set, so these two are equal. GetHashCode must agree:
-        // equal objects are required to hash alike, and a Dictionary keyed on options
-        // would otherwise miss the entry it holds.
+        // Equals compares as a set, so these are equal -- and a Dictionary keyed on
+        // options would miss the entry it holds if GetHashCode disagreed.
         var a = new CountVectorizerOptions { StopWords = ["the", "the"] };
         var b = new CountVectorizerOptions { StopWords = ["the"] };
 

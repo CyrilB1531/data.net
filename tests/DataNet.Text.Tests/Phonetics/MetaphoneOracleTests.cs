@@ -6,9 +6,8 @@ namespace DataNet.Text.Tests.Phonetics;
 
 public sealed class MetaphoneOracleTests
 {
-    // Metaphone is validated over real words (its actual domain). jellyfish has
-    // implementation-specific quirks on adversarial letter-soup that DataNet does
-    // not reproduce; see docs/decisions/0007-metaphone-scope.md.
+    // Real words, which is Metaphone's domain: decision 0007 scopes out the
+    // letter-soup quirks jellyfish has and this does not reproduce.
     private static readonly OracleFile<PhoneticCase> Corpus =
         OracleCorpus.Load<PhoneticCase>("metaphone.json");
 
