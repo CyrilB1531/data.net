@@ -112,6 +112,25 @@ DataNet.slnx
 └── docs/                        guides, equivalence table, decision log
 ```
 
+## Where a fact belongs
+
+Each document below has one subject; content whose subject is another document's
+belongs there instead, with a link left behind. The source column is what tells
+you whether to correct the document itself or something upstream of it.
+
+| document | its source | its subject |
+| --- | --- | --- |
+| `bench/README.md` | the `bench/` harness projects and scripts, hand-maintained | **how to measure** — the harness, the corpus, the commands |
+| `docs/guides/performance.md` | a benchmark run on a named machine | **what was measured** — every number, with its machine and its window |
+| `tools/README.md` | the scripts under `tools/`, hand-maintained | what each tool does and how to run it |
+| `CONTRIBUTING.md` | the project's own process, hand-maintained | the process a contributor follows |
+| `CLAUDE.md` | what a session has found, hand-maintained | what a session needs to be productive, and the traps that cost time |
+| `docs/equivalence.md` | the oracle corpora in `tests/oracles/*.json`, replayed against the C# they compare | the Python call to C# counterpart mapping, with each divergence |
+| `docs/migration/` | the .NET package chosen for each need | what is delegated to another .NET library, and why |
+| `CHANGELOG.md` | the merged pull requests, per release | what changed, per release |
+| `docs/decisions/` | the ADRs' own `**Status:**` lines, indexed in `docs/decisions/README.md` | a decision, with its options and its loser |
+| root `README.md` | the project as it stands, hand-maintained | what the project is, and where to go next |
+
 ## Publishing
 
 Four NuGet packages are produced: `DataNet.Text`, `DataNet.Embeddings`,
