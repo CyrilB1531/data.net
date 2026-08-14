@@ -13,45 +13,12 @@ public static class CohenKappa
     /// <param name="weighting">How far apart two different classes count as being. Omit to weight every disagreement the same.</param>
     /// <param name="zeroDivision">What to return when the expected agreement is undefined.</param>
     /// <remarks>
-    /// <para>
-    /// Computed from the matrix's cells <c>C</c>, row sums <c>s1</c>, column
-    /// sums <c>s0</c> and total <c>n</c>: an expected cell is
-    /// <c>s0[row] * s1[col] / n</c> — scikit-learn's <c>outer(s0, s1) / n</c>,
-    /// the transpose of the intuitive <c>outer(s1, s0)</c>. Every
-    /// <see cref="KappaWeighting"/> is symmetric in <c>row</c> and <c>col</c>, so
-    /// the sum over the matrix is the same either way; written scikit-learn's way
-    /// on purpose, so nobody "corrects" the orientation later and changes nothing
-    /// but the comment.
-    /// </para>
-    /// <para>
-    /// <see cref="KappaWeighting.Linear"/> and <see cref="KappaWeighting.Quadratic"/>
-    /// measure a distance between class <em>positions</em> in <see cref="ConfusionMatrix.Labels"/>,
-    /// not between the class values themselves — so the weighted result depends
-    /// on that order. A full reversal of the label order preserves every
-    /// position distance and always gives back the same kappa; a permutation that
-    /// is not a reversal generally changes it, though a sufficiently symmetric
-    /// matrix can happen to be invariant under one.
-    /// <see cref="KappaWeighting.None"/> only asks whether two
-    /// positions are equal, so it does not depend on the order at all.
-    /// </para>
-    /// <para>
-    /// This overload scores exactly the classes <paramref name="cm"/> holds: cells,
-    /// sums and total all come from the <see cref="ConfusionMatrix.Labels"/>-sized
-    /// view, so a matrix built with an explicit label subset contributes none of
-    /// the samples it dropped. <c>cohen_kappa_score</c> does take a <c>labels</c>
-    /// argument, so a reference value exists for such a matrix — and on the
-    /// fixture the tests pin, restricting to <c>[1, 2]</c> gives <c>1.0</c> from
-    /// both. That is agreement measured on one case, not a general guarantee: the
-    /// rule here is "what the matrix holds is what is scored", stated without
-    /// reference to what any scikit-learn call over the full label set would say.
-    /// </para>
-    /// <para>
-    /// If that view carries no weight at all — every sample's true or predicted
-    /// label fell outside the label subset, or every <c>sampleWeight</c> was zero
-    /// — there is nothing to correct for chance and
-    /// <paramref name="zeroDivision"/> decides the answer, as it does when the
-    /// expected agreement itself collapses.
-    /// </para>
+    /// Scores exactly the classes <paramref name="cm"/> holds and keeps
+    /// scikit-learn's expected-matrix orientation; see docs/decisions/0030 for
+    /// both, including the label-order dependence <paramref name="weighting"/>
+    /// other than <see cref="KappaWeighting.None"/> carries. If the view holds
+    /// no weight at all, or the expected agreement collapses,
+    /// <paramref name="zeroDivision"/> decides the answer.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="cm"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="weighting"/> is not one of the three defined values.</exception>
@@ -61,11 +28,8 @@ public static class CohenKappa
     {
         Guard.NotNull(cm);
 
-        // Validated before the degenerate-total shortcut below, so an out-of-range
-        // weighting is refused on every input rather than only on the ones whose
-        // matrix carries weight — scikit-learn validates its parameters before it
-        // looks at the data. Weight throws on the first value it cannot map and
-        // reads no cell, so asking it for (0, 0) is the whole check.
+        // Validated before the degenerate-total shortcut below, on every input
+        // rather than only a weighted one — scikit-learn validates parameters first.
         _ = Weight(weighting, 0, 0);
 
         int k = cm.Size;
@@ -98,17 +62,14 @@ public static class CohenKappa
         {
             for (int col = 0; col < k; col++)
             {
-                // Already validated above, so this cannot throw; called per cell
-                // rather than tabulated because the switch inlines and a k × k
-                // weight table would allocate.
+                // Already validated above; called per cell rather than tabulated
+                // because a k × k weight table would allocate.
                 double weight = Weight(weighting, row, col);
 
                 observed += weight * cells[(row * stride) + col];
 
-                // scikit-learn's expected matrix is outer(columnSums, rowSums) / n,
-                // which is the transpose of the intuitive order. Every weighting
-                // above is symmetric, so the two sums agree — written this way so
-                // it matches the reference rather than to be corrected later.
+                // outer(columnSums, rowSums), scikit-learn's orientation — see
+                // docs/decisions/0030.
                 expected += weight * (colSums[row] * rowSums[col] / total);
             }
         }
