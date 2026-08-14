@@ -1275,14 +1275,9 @@ public sealed class TokenizerJsonLoaderTests
     }
 
     /// <summary>
-    /// <c>ReadBpe</c> now reads the four Unicode forms and a <c>Sequence</c> of
-    /// them, in declared order, empty when the file declares no normalizer at all
-    /// or an empty <c>Sequence</c> — the deepseek-coder shape. Asserting the full
-    /// sequence rather than just its length matters here: a reader that reversed a
-    /// <c>Sequence</c>, sorted it, or emitted a form twice would still pass a
-    /// count-only check, and <see cref="BpeVocabulary.NormalizationForms"/>'s own
-    /// documentation promises the declared order specifically. NFD-then-NFC and
-    /// NFC-then-NFD are both exercised below so a reversed reader cannot pass by
+    /// Asserts the full declared sequence, not just its count: a reader that
+    /// reversed, sorted, or repeated a form would still pass a count-only check.
+    /// NFD-then-NFC and NFC-then-NFD both run so a reversed reader cannot pass by
     /// accident.
     /// </summary>
     [Theory]

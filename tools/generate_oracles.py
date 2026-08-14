@@ -2394,21 +2394,16 @@ def generate_bpe_tokenizer_json() -> dict:
     }
 
 
-# Texts chosen so each form actually changes them, rather than passing through:
-# a combining sequence (NFC composes, NFD decomposes), a singleton whose
-# canonical form is another character (U+212B ANGSTROM SIGN -> U+00C5), and two
-# compatibility characters that only the K forms touch (U+FB01 LATIN SMALL
-# LIGATURE FI, U+2460 CIRCLED DIGIT ONE).
+# long-comment: three landmines here are each real and each silent -- reusing
+# the name NORMALIZER_TEXTS would overwrite a different generator's corpus at
+# call time, a literal already-normalized character would silently stop
+# testing the difference it exists to test, and dropping any one of the three
+# probe kinds below loses the form coverage this corpus's name promises.
 #
-# Named distinctly from the module-level NORMALIZER_TEXTS above (#75's corpus):
-# that name is a global read at call time by generate_normalizer(), so reusing
-# it here would silently overwrite it before generate_normalizer() runs from
-# main() and change normalizer.json -- the drift this lot must not cause.
-#
-# Written as \u escapes, not literal characters: several of these are the exact
-# code point a normalization form rewrites, and a source file holding the
-# already-normalized character by accident would silently stop testing what it
-# says it tests.
+# Combining sequence, singleton (U+212B ANGSTROM SIGN -> U+00C5), and two
+# compatibility characters the K forms alone touch (U+FB01 fi ligature,
+# U+2460 circled digit one) -- written as \u escapes so none of them is a
+# character a form has already normalized.
 BPE_NORMALIZER_TEXTS = [
     "école",            # e + COMBINING ACUTE
     "école",             # the precomposed form of the same word
@@ -2418,10 +2413,8 @@ BPE_NORMALIZER_TEXTS = [
     "hello world",            # unchanged by every form: the control
 ]
 
-# Code points whose normalization is where two implementations' Unicode tables
-# would disagree if they were going to. .NET normalizes through the platform's
-# tables and Rust through its own crate, so this corpus is the only thing that
-# can say whether the four forms are safe to reproduce -- see the spec's D5.
+# Code points chosen to expose a disagreement between .NET's Unicode tables
+# and Rust's crate, if the four forms have one -- see the spec's D5.
 UNICODE_FORM_PROBES = BPE_NORMALIZER_TEXTS + [
     "ẛ̣",   # LATIN SMALL LETTER LONG S WITH DOT ABOVE + DOT BELOW
     "İ",         # LATIN CAPITAL LETTER I WITH DOT ABOVE
@@ -2542,28 +2535,14 @@ def generate_bpe_normalizer() -> dict:
             "texts": text_cases,
         })
 
-    # Branch review of #121, finding 1: AddedToken.Normalized is read
-    # independently of whether a "normalizer" is declared at all
-    # (TokenizerJsonLoader.cs's ReadAddedTokenTable, around :411, defaults it
-    # to !Special) -- so a file with a non-special added token already takes the
-    # two-pass path today, with no normalizer in sight. bpe_added_token_flags.json's
-    # "<m>" is one such file. The "added_tokens" pipeline above never measured the
-    # two halves' precedence because café and <|endoftext|> never compete for the
-    # same span. These two make a raw entry and a normalized entry compete for one:
-    # HuggingFace's raw pass runs over the whole text first and claims its match
-    # unconditionally, so it wins even where the normalized entry starts earlier or
-    # is longer -- by the time the normalized scanner sees a gap, the raw match's
-    # characters are already gone from it.
+    # Branch review of #121, finding 1: a raw entry now beats an earlier or
+    # longer normalized one for the same span, HuggingFace's own precedence -- see spec D2.
     precedence_pipelines = [
-        # "ab" (normalized) starts at 0 and "b" (raw) at 1: if the two were
-        # compared together by earliest-start, "ab" would win. The raw pass runs
-        # first regardless and claims "b", leaving the gaps "xa" then "y" -- neither
-        # contains "ab" any more, so the normalized entry never gets a chance.
+        # "ab" (normalized) starts earlier but loses: the raw pass claims "b"
+        # first, leaving no gap that still contains "ab".
         ("precedence_raw_beats_normalized", [("ab", True), ("b", False)], ["xaby"]),
-        # "abc" (normalized) starts earlier (0) and is longer (3) than "cy" (raw,
-        # starts at 2, length 2) -- the shape a single earliest-start-then-longest
-        # scan would give to "abc". The raw pass still claims "cy" first, which
-        # removes the 'c' "abc" needed from the remaining gap.
+        # "abc" (normalized, earlier and longer) still loses: the raw pass
+        # claims "cy" first, removing the 'c' it needed.
         ("precedence_raw_beats_earlier_longer_normalized", [("abc", True), ("cy", False)], ["abcy"]),
     ]
     for name, tokens, texts in precedence_pipelines:
@@ -2586,13 +2565,8 @@ def generate_bpe_normalizer() -> dict:
             "texts": text_cases,
         })
 
-    # Branch review of #121, finding 2: every pipeline above carries
-    # add_prefix_space: false, so none of them measures BpeTokenizer.EncodeGap's
-    # claim that normalization runs before add_prefix_space is decided. U+3000
-    # IDEOGRAPHIC SPACE normalizes to U+0020 SPACE under NFKC, so a text starting
-    # with it does not begin with a literal space until after normalization --
-    # if add_prefix_space were (wrongly) decided on the raw text, it would prepend
-    # a second one.
+    # Branch review of #121, finding 2: normalization runs before
+    # add_prefix_space is decided -- U+3000 only becomes a literal space post-NFKC; see spec D2.
     prefix_space_tokenizer = _small_bytelevel_bpe_tokenizer(add_prefix_space=True)
     prefix_space_tokenizer.normalizer = normalizers.NFKC()
     prefix_space_texts = [

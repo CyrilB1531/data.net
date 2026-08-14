@@ -94,16 +94,12 @@ public sealed class BpeNormalizerTests
     }
 
     /// <summary>
-    /// What the round trip becomes once a normalizer is declared, for every text
-    /// DataNet can actually decode. It does not return the input -- it returns the
-    /// normalized input, in Python too -- so what is asserted is that it fails the
-    /// same way, against the reference's own decoded string rather than against a
-    /// rule this repository invented.
+    /// The round trip returns the normalized input, not the original, once a
+    /// normalizer is declared -- matched against the reference's own decoded string.
     /// </summary>
     /// <remarks>
-    /// A case whose <c>decoded</c> field itself contains U+FFFD is excluded here and
-    /// picked up by <see cref="Decode_throws_where_the_reference_is_lossy"/> instead
-    /// -- see that test for why DataNet cannot reproduce those three.
+    /// Excludes cases whose <c>decoded</c> field contains U+FFFD; see
+    /// <see cref="Decode_throws_where_the_reference_is_lossy"/> for those three.
     /// </remarks>
     [Fact]
     public void Decode_returns_what_the_reference_returns_normalizer_included()
@@ -139,22 +135,14 @@ public sealed class BpeNormalizerTests
     }
 
     /// <summary>
-    /// The one known, pre-existing divergence a normalizer can expose: DataNet's
-    /// byte-level <see cref="BpeTokenizer.Decode(IReadOnlyList{int}, bool)"/> throws
-    /// <see cref="DecoderFallbackException"/> on a byte sequence that is not
-    /// well-formed UTF-8, by that method's own documented contract -- while
-    /// HuggingFace's decoder is lossy and substitutes U+FFFD instead. Measured
-    /// against <c>tokenizers</c> 0.23.1 on this exact file:
-    /// <c>tok.decode([256])</c> answers <c>'caf�'</c> rather than raising.
+    /// DataNet's <see cref="BpeTokenizer.Decode(IReadOnlyList{int}, bool)"/> throws on a
+    /// byte sequence that is not well-formed UTF-8; HuggingFace substitutes U+FFFD
+    /// instead. Measured: <c>tokenizers</c> 0.23.1's <c>tok.decode([256])</c> answers
+    /// <c>'caf�'</c> rather than raising.
     /// </summary>
     /// <remarks>
-    /// Nothing about a normalizer causes this: it is what happens to any added token
-    /// whose content is not byte-level encodable end to end, and the pre-#121 added-
-    /// token corpora never exercised one because <c>&lt;|endoftext|&gt;</c> is ASCII.
-    /// Changing <c>Decode</c>'s exception contract is a public API change with its own
-    /// issue and ADR, out of scope here -- this test pins the divergence instead of
-    /// hiding it, so it fails the day <c>Decode</c> changes, which is when it needs
-    /// revisiting.
+    /// Pins the divergence rather than hiding it; changing <c>Decode</c>'s contract
+    /// is its own issue and ADR, out of scope here.
     /// </remarks>
     [Fact]
     public void Decode_throws_where_the_reference_is_lossy()
@@ -181,22 +169,18 @@ public sealed class BpeNormalizerTests
             }
         }
 
-        // Pins the known set at three, all from the added tokens pipeline, so a
-        // regenerated corpus that stops exercising this divergence, or starts
-        // exercising a different one, is noticed here rather than passing silently.
+        // Pins the known divergence count so a regenerated corpus that stops or
+        // changes what triggers it is noticed here, not silently.
         Assert.Equal(3, divergentCount);
     }
 
     /// <summary>
     /// Branch review of #121, finding 7: <see cref="string.Normalize(NormalizationForm)"/>
-    /// throws <see cref="ArgumentException"/> on a lone (unpaired) UTF-16 surrogate --
-    /// measured with a throwaway probe against every one of the four forms before this
-    /// test was written, not assumed. It fires from <c>EncodeGap</c>'s call to
-    /// <c>Normalize</c>, which runs before a byte-level model ever gets to re-encode the
-    /// gap to UTF-8, so it preempts <see cref="EncoderFallbackException"/>
-    /// rather than joining it. Reachable only once a normalizer is declared: with none,
-    /// <c>Normalize</c> is never called and the lone surrogate reaches the byte-level path
-    /// instead, as before this lot.
+    /// throws <see cref="ArgumentException"/> on a lone UTF-16 surrogate -- measured
+    /// against all four forms with a throwaway probe. It preempts
+    /// <see cref="EncoderFallbackException"/>, since <c>EncodeGap</c> normalizes before
+    /// a byte-level model re-encodes to UTF-8. Reachable only once a normalizer is
+    /// declared: with none, <c>Normalize</c> is never called.
     /// </summary>
     [Fact]
     public void Encode_throws_ArgumentException_on_a_lone_surrogate_once_a_normalizer_is_declared()

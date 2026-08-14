@@ -612,25 +612,14 @@ public static class TokenizerJsonLoader
     }
 
     /// <summary>
-    /// Reads the BPE normalizer: the four Unicode forms, a <c>Sequence</c> of them,
-    /// or nothing. The counterpart of <see cref="ReadLowercaseFrom"/> for WordPiece
-    /// and <see cref="ReadUnigramNormalizer"/> for Unigram.
+    /// Reads the BPE normalizer: the four Unicode forms, a <c>Sequence</c> of them, or
+    /// nothing -- the counterpart of <see cref="ReadLowercaseFrom"/> and <see cref="ReadUnigramNormalizer"/>.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// Measured across fifteen public BPE <c>tokenizer.json</c> files (one of which,
-    /// GPT-2, was fetched twice under two repository names): five declare a
-    /// normalizer, four of them <c>NFC</c> (Qwen2, GPT-NeoX, Pythia, OLMo) and one an
-    /// empty <c>Sequence</c> (deepseek-coder). None of the five declares
-    /// <c>byte_fallback</c> or uses <c>Metaspace</c>, so all five are the lineage
-    /// <see cref="BpeTokenizer"/> implements and the blanket refusal was the only
-    /// thing stopping them.
-    /// </para>
-    /// <para>
-    /// An empty <c>Sequence</c> yields an empty list and normalizes nothing, which is
-    /// the deepseek case: a declaration that provably changes nothing is accepted,
-    /// as <c>dropout: 0.0</c> and <c>end_of_word_suffix: ""</c> already are.
-    /// </para>
+    /// Five of fifteen surveyed <c>tokenizer.json</c> files declare a normalizer,
+    /// four of them <c>NFC</c>; an empty <c>Sequence</c> (deepseek-coder) is
+    /// accepted because it provably changes nothing, like <c>dropout: 0.0</c>. See
+    /// docs/superpowers/specs/2026-08-13_0121_give-readbpe-the-normalizer-treatment.md.
     /// </remarks>
     private static List<NormalizationForm> ReadBpeNormalizer(JsonElement root)
     {

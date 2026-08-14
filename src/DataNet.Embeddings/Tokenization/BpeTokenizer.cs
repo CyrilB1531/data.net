@@ -264,13 +264,10 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
     /// <summary>Builds the folded vocabulary, the model-only one, and the id-to-token table.</summary>
     /// <remarks>
-    /// <see cref="_tokens"/> is not simply <see cref="_vocab"/> inverted: for a
-    /// normalized added token the two disagree on purpose. Measured against
-    /// <c>tokenizers</c> 0.23.1 over an NFC normalizer with an added token whose
-    /// declared content decomposes under it, <c>token_to_id</c> answers only the raw
-    /// spelling, while <c>id_to_token</c> answers the normalized one -- an asymmetry
-    /// in the reference itself, not a choice made here. A call rather than the two
-    /// loops inline keeps the constructor under S3776's limit of 15.
+    /// <see cref="_tokens"/> is not simply <see cref="_vocab"/> inverted: for a normalized
+    /// added token the two disagree on purpose. Measured against <c>tokenizers</c> 0.23.1,
+    /// <c>token_to_id</c> answers the raw spelling and <c>id_to_token</c> the normalized
+    /// one for such an entry -- an asymmetry in the reference itself, not a choice made here.
     /// </remarks>
     private (Dictionary<string, int> Vocab, Dictionary<string, int> ModelVocab, string[] Tokens) BuildVocabulary(BpeVocabulary vocabulary)
     {
@@ -304,27 +301,16 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// <summary>Tokenizes <paramref name="text"/> into sub-word tokens and their ids.</summary>
     /// <remarks>Matches <c>tokenizers.Tokenizer.encode(text)</c>, without the post-processor.</remarks>
     /// <exception cref="System.Text.EncoderFallbackException">
-    /// A byte-level model (<see cref="BpeVocabulary.ByteLevel"/>) re-encodes
-    /// <paramref name="text"/> to UTF-8 using the same encoding artifacts are read and
-    /// written in, which throws rather than substitutes on an unpaired surrogate --
-    /// deliberately: byte-level BPE is lossless over any well-formed <see cref="string"/>,
-    /// valid UTF-8 or not, but a lone surrogate is not well-formed UTF-16 to begin with,
-    /// so there is no byte sequence for it to be lossless <em>about</em>. This cannot
-    /// happen on the classic (non-byte-level) path, which never encodes to UTF-8.
+    /// A byte-level model re-encodes <paramref name="text"/> to UTF-8; an unpaired
+    /// UTF-16 surrogate throws rather than substitutes, since byte-level BPE is
+    /// lossless only over well-formed UTF-16. The classic path never encodes to
+    /// UTF-8, so it cannot throw this.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// Two unrelated causes share this type. A byte-level model whose vocabulary is
-    /// missing one of the 256 byte-level alphabet characters, which is a vocabulary
-    /// that is not what <see cref="BpeVocabulary.ByteLevel"/> claims it is — thrown
-    /// from here rather than at construction because it is the input's own bytes
-    /// that decide which entries are looked up; see <see cref="ByteLevelSymbols"/>.
-    /// And, once <see cref="BpeVocabulary.NormalizationForms"/> is non-empty, a lone
-    /// (unpaired) UTF-16 surrogate anywhere in a gap: <see cref="string.Normalize(NormalizationForm)"/>
-    /// throws on one rather than substituting, measured across all four forms, and
-    /// it does so before a byte-level model ever gets to re-encode the gap to UTF-8
-    /// — so this preempts <see cref="EncoderFallbackException"/> below
-    /// rather than joining it. With no normalizer declared, <c>Normalize</c> is never
-    /// called and a lone surrogate reaches the byte-level path unchanged.
+    /// Either a byte-level vocabulary missing one of the 256 alphabet characters
+    /// (see <see cref="ByteLevelSymbols"/>), or, once a normalizer is declared, an
+    /// unpaired surrogate in a gap -- <see cref="string.Normalize(NormalizationForm)"/>
+    /// throws on that before the byte-level re-encoding above gets a chance to.
     /// </exception>
     public TokenizationResult Encode(string text)
     {
@@ -366,27 +352,12 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
     /// <summary>Normalizes <c>text[from..to]</c>, which holds no raw added token, then splits it at the normalized ones.</summary>
     /// <remarks>
-    /// <para>
-    /// Each gap is normalized <em>on its own</em>, rather than the whole input once
-    /// with the raw positions reused against it. <see cref="WordPieceTokenizer"/> can
-    /// do the latter because <c>ToLowerInvariant</c> maps char to char and preserves
-    /// length; all four normalization forms compose or decompose, so a position found
-    /// in the raw text means nothing in the normalized one. Per-gap normalization
-    /// removes the need for that correspondence instead of extending it.
-    /// </para>
-    /// <para>
-    /// Order: normalization first, then <c>add_prefix_space</c> and the split inside
-    /// <see cref="EncodeSegment"/>. The <c>add_prefix_space_after_normalize</c> pipeline
-    /// in <c>bpe_normalizer.json</c> is what measures it -- a normalizer that turns a
-    /// non-space leading character into U+0020 (U+3000 IDEOGRAPHIC SPACE under NFKC)
-    /// meets the "only when the segment does not already begin with one" rule the same
-    /// way a literal leading space does, which only holds if normalization ran first.
-    /// </para>
-    /// <para>
-    /// A file declaring no normalizer and no normalized added token takes the same
-    /// path it took before this method existed, allocating nothing extra: the guard
-    /// below is what keeps that true.
-    /// </para>
+    /// Each gap is normalized on its own rather than once for the whole input:
+    /// <see cref="WordPieceTokenizer"/> can reuse raw-text positions only because
+    /// <c>ToLowerInvariant</c> preserves length, and every form here changes it.
+    /// Order (normalize before <c>add_prefix_space</c>) and the no-op fast path
+    /// below are D2 of
+    /// docs/superpowers/specs/2026-08-13_0121_give-readbpe-the-normalizer-treatment.md.
     /// </remarks>
     private void EncodeGap(string text, int from, int to, List<string> tokens, List<int> ids, List<string> pieces)
     {
