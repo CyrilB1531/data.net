@@ -4305,11 +4305,11 @@ def _no_split_models() -> list[tuple]:
     byte_texts = [HELLO_WORLD, "  leading and trailing  ", "hello world  again", "café \U0001f600"]
     added_texts = ["o o<sep>o o", "o o"]
     return [
-        ("absent", "no pre_tokenizer at all -- the shape DataNet mis-loads today",
+        ("absent", "no pre_tokenizer at all -- the shape #122 found DataNet mis-loading",
          _no_split_classic(None), fuse_texts),
         ("whitespace", "the classic Whitespace split, for the row above to differ from",
          _no_split_classic(pre_tokenizers.Whitespace()), fuse_texts),
-        ("byte_level_no_regex", "ByteLevel with use_regex off -- refused today",
+        ("byte_level_no_regex", "ByteLevel with use_regex off -- refused before #122",
          _no_split_byte_level(False), byte_texts),
         ("byte_level_regex", "the same with it on, so the pair shows what the flag does",
          _no_split_byte_level(True), byte_texts),
