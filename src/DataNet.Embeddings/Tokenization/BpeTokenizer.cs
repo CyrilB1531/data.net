@@ -49,6 +49,15 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// </remarks>
     private const int End = -1;
 
+    /// <summary>UTF-8 for decoding only: a byte sequence that is not well-formed becomes U+FFFD.</summary>
+    /// <remarks>
+    /// Not <see cref="JsonArtifact.Utf8NoBom"/>, which throws and is shared with the
+    /// persistence layer and with <see cref="Encode"/>'s own byte conversion, where
+    /// refusing is right. The asymmetry is deliberate and matches the reference:
+    /// strict on the way in, forgiving on the way out. See decision 0023.
+    /// </remarks>
+    private static readonly UTF8Encoding Utf8Lossy = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: false);
+
     private readonly Dictionary<string, int> _vocab;
     /// <summary>
     /// The model's own vocabulary, without the added tokens <see cref="_vocab"/>
@@ -901,12 +910,9 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// write to check it.
     /// </para>
     /// <para>
-    /// For a byte-level model, <paramref name="ids"/> assembled by hand rather
-    /// than produced by <see cref="Encode"/> can concatenate byte symbols into a
-    /// sequence that is not valid UTF-8 -- e.g. a lone continuation byte with no
-    /// lead byte. <see cref="JsonArtifact.Utf8NoBom"/> throws rather than
-    /// substitutes on that, so this can raise <see cref="DecoderFallbackException"/>
-    /// in that case, the mirror of the surrogate case documented on <see cref="Encode"/>.
+    /// For a byte-level model, a byte sequence that is not well-formed UTF-8
+    /// becomes U+FFFD, as in the reference, which is what makes decoding one id
+    /// at a time possible. A caller who needs to know can test the result for U+FFFD.
     /// </para>
     /// </remarks>
     /// <param name="ids">Token ids, e.g. from <see cref="Encode"/>.</param>
@@ -917,10 +923,6 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// either way, matching Python's <c>skip_special_tokens</c>.
     /// </param>
     /// <exception cref="ArgumentOutOfRangeException">An id is outside the vocabulary.</exception>
-    /// <exception cref="DecoderFallbackException">
-    /// A byte-level model's <paramref name="ids"/> decode to bytes that are not
-    /// well-formed UTF-8.
-    /// </exception>
     public string Decode(IReadOnlyList<int> ids, bool skipSpecialTokens = false)
     {
         Guard.NotNull(ids);
@@ -939,10 +941,6 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// <see cref="Decode(IReadOnlyList{int}, bool)"/>.
     /// </param>
     /// <exception cref="ArgumentOutOfRangeException">An id is outside the vocabulary.</exception>
-    /// <exception cref="DecoderFallbackException">
-    /// A byte-level model's <paramref name="ids"/> decode to bytes that are not
-    /// well-formed UTF-8; see <see cref="Decode(IReadOnlyList{int}, bool)"/>.
-    /// </exception>
     public string Decode(ReadOnlySpan<int> ids, bool skipSpecialTokens = false)
     {
         var buffer = new StringBuilder();
@@ -990,6 +988,6 @@ public sealed class BpeTokenizer : ISubwordTokenizer
                 n++;
             }
         }
-        return JsonArtifact.Utf8NoBom.GetString(bytes, 0, n);
+        return Utf8Lossy.GetString(bytes, 0, n);
     }
 }
