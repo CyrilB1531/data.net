@@ -69,7 +69,7 @@ LEADERS: dict[str, tuple[str, ...]] = {
     ".py": ("#",),
 }
 
-Block = namedtuple("Block", "line length prose doc marked")
+Block = namedtuple("Block", "line length prose doc marked suppression")
 Finding = namedtuple("Finding", "path line length")
 
 
@@ -109,6 +109,18 @@ def _is_comment_line(stripped: str, leaders: tuple[str, ...]) -> tuple[bool, str
     return True, stripped[len(leader):].strip()
 
 
+def _justifies_a_suppression(lines: list[str], after: int) -> bool:
+    """Whether the block ending here is the reason above a #pragma.
+
+    CONTRIBUTING.md requires a suppression to carry one and CLAUDE.md refuses
+    a reason "a reviewer cannot disagree with", which is a stricter demand
+    than brevity and not one two lines usually meet. Such a block is governed
+    by that rule rather than by this budget -- measured, 63 blocks across the
+    tree are in this position.
+    """
+    return after < len(lines) and "#pragma warning disable" in lines[after]
+
+
 def blocks_in(lines: list[str], suffix: str) -> list[Block]:
     """Every run of consecutive comment lines in `lines`, as `Block`s.
 
@@ -140,11 +152,12 @@ def blocks_in(lines: list[str], suffix: str) -> list[Block]:
             if not STRUCTURAL.search(content):
                 prose += 1
         elif length:
-            result.append(Block(start, length, prose, doc, marked))
+            result.append(Block(start, length, prose, doc, marked,
+                                _justifies_a_suppression(lines, number - 1)))
             length = 0
 
     if length:
-        result.append(Block(start, length, prose, doc, marked))
+        result.append(Block(start, length, prose, doc, marked, False))
 
     return result
 
@@ -163,7 +176,7 @@ def findings_in(lines: list[str], suffix: str) -> list[Finding]:
     return [
         Finding("", block.line, block.prose)
         for block in blocks_in(lines, suffix)
-        if block.prose > _budget(block) and not block.marked
+        if block.prose > _budget(block) and not block.marked and not block.suppression
     ]
 
 
@@ -218,7 +231,7 @@ def _walk() -> Tally:
         for block in blocks_in(text.split("\n"), suffix):
             blocks += 1
             lines += block.length
-            if block.prose <= _budget(block):
+            if block.prose <= _budget(block) or block.suppression:
                 continue
             long_blocks += 1
             long_lines += block.prose

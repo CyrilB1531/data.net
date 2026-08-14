@@ -146,3 +146,21 @@ def test_a_bad_argument_exits_two():
 def test_report_exits_zero_even_with_findings(capsys):
     assert guard.main(["check_comment_length.py", "--report"]) == 0
     assert "comment blocks" in capsys.readouterr().out
+
+
+def test_a_reason_above_a_pragma_is_not_counted():
+    # CONTRIBUTING.md requires a suppression to carry a reason and CLAUDE.md
+    # refuses one a reviewer cannot disagree with -- a stricter demand than
+    # brevity, and not one two lines usually meet.
+    text = ("// S1244: whether the variance collapsed at all, not whether two\n"
+            "// computed quantities are close. scikit-learn tests the same\n"
+            "// quantity against exact zero.\n"
+            "#pragma warning disable S1244\n"
+            "if (x != 0.0) { }\n")
+    assert guard.findings_in(text.split("\n"), ".cs") == []
+
+
+def test_a_long_block_not_above_a_pragma_is_still_counted():
+    text = ("// one\n// two\n// three\n"
+            "int x = 1;\n")
+    assert len(guard.findings_in(text.split("\n"), ".cs")) == 1
