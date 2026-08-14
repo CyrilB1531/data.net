@@ -4356,7 +4356,9 @@ def generate_bpe_no_split() -> dict:
 
 # --- add_prefix_space per Split piece (issue #122) ----------------------------
 
-_PREFIX_SPACE_SPLIT = "|"
+# A Regex, not a bare string: tokenizers serializes a plain string as
+# {"String": ...} and TokenizerJsonLoader reads only {"Regex": ...}.
+_PREFIX_SPACE_SPLIT = r"\|"
 
 
 def _prefix_space_model(pre_split, add_prefix_space, use_regex):
@@ -4365,14 +4367,14 @@ def _prefix_space_model(pre_split, add_prefix_space, use_regex):
     No merges on purpose: this corpus is about where a space is inserted, and a
     merge would fold that evidence into a token whose spelling hides it.
     """
-    from tokenizers import Tokenizer, models, pre_tokenizers, decoders  # noqa: PLC0415
+    from tokenizers import Regex, Tokenizer, models, pre_tokenizers, decoders  # noqa: PLC0415
 
     vocab = {c: i for i, c in enumerate(sorted(pre_tokenizers.ByteLevel.alphabet()))}
     tokenizer = Tokenizer(models.BPE(vocab, []))
     byte_level = pre_tokenizers.ByteLevel(
         add_prefix_space=add_prefix_space, use_regex=use_regex)
     tokenizer.pre_tokenizer = pre_tokenizers.Sequence([
-        pre_tokenizers.Split(_PREFIX_SPACE_SPLIT, "isolated", invert=False),
+        pre_tokenizers.Split(Regex(_PREFIX_SPACE_SPLIT), behavior="isolated", invert=False),
         byte_level,
     ]) if pre_split else byte_level
     tokenizer.decoder = decoders.ByteLevel()
