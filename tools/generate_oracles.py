@@ -3908,11 +3908,11 @@ _SEQ_SPLIT = (
 def _sequence_split_model(use_regex):
     """A byte-level BPE behind Sequence[Split(Llama-3), ByteLevel].
 
-    add_prefix_space is off throughout, deliberately: HuggingFace prepends the
-    space BETWEEN the two splits and DataNet prepends it per segment, so with it
-    on every case here would measure that divergence on top of this one and none
-    would discriminate. ADR 0022 section 10 recorded the same reasoning when
-    bpe_added_token_flags.json was generated with it off.
+    add_prefix_space is off throughout, deliberately: it prepends a space to
+    every piece the Split step produces, so with it on each case here would
+    measure that rule on top of this one and none would discriminate. It is
+    bpe_prefix_space.json's subject instead. ADR 0022 section 10 recorded the
+    same reasoning when bpe_added_token_flags.json was generated with it off.
 
     The merges exist so the split is observable in the tokens and not only in the
     pieces: a merge never crosses a piece boundary, so "'ai" can only be reached
@@ -4033,10 +4033,10 @@ _SPLIT_ADJACENT_PATTERN = "X"
 def _split_behavior_model(pattern, behavior, invert):
     """One byte-level BPE behind Sequence[Split(pattern), ByteLevel].
 
-    add_prefix_space is off throughout, deliberately: HuggingFace prepends the
-    space between the two splits and DataNet prepends it per segment, so with
-    it on every case here would measure that divergence on top of this one.
-    ADR 0022 section 10 recorded the same reasoning.
+    add_prefix_space is off throughout, deliberately: it prepends a space to
+    every piece the Split step produces, so with it on each case here would
+    measure that rule on top of this one. It is bpe_prefix_space.json's
+    subject instead. ADR 0022 section 10 recorded the same reasoning.
 
     use_regex is off on the ByteLevel step so the Split step's arrangement
     reaches the model untouched -- with it on, GPT-2's pattern would re-split
@@ -4354,6 +4354,84 @@ def generate_bpe_no_split() -> dict:
     }
 
 
+# --- add_prefix_space per Split piece (issue #122) ----------------------------
+
+# A Regex, not a bare string: tokenizers serializes a plain string as
+# {"String": ...} and TokenizerJsonLoader reads only {"Regex": ...}.
+_PREFIX_SPACE_SPLIT = r"\|"
+
+
+def _prefix_space_model(pre_split, add_prefix_space, use_regex):
+    """A byte-level BPE with no merges, so every piece is one token per character.
+
+    No merges on purpose: this corpus is about where a space is inserted, and a
+    merge would fold that evidence into a token whose spelling hides it.
+    """
+    from tokenizers import Regex, Tokenizer, models, pre_tokenizers, decoders  # noqa: PLC0415
+
+    vocab = {c: i for i, c in enumerate(sorted(pre_tokenizers.ByteLevel.alphabet()))}
+    tokenizer = Tokenizer(models.BPE(vocab, []))
+    byte_level = pre_tokenizers.ByteLevel(
+        add_prefix_space=add_prefix_space, use_regex=use_regex)
+    tokenizer.pre_tokenizer = pre_tokenizers.Sequence([
+        pre_tokenizers.Split(Regex(_PREFIX_SPACE_SPLIT), behavior="isolated", invert=False),
+        byte_level,
+    ]) if pre_split else byte_level
+    tokenizer.decoder = decoders.ByteLevel()
+    return tokenizer
+
+
+def _prefix_space_models() -> list[tuple]:
+    """(name, declares, tokenizer, texts) -- one per thing no other model shows."""
+    # The last text has no "|": the four models with the space on agree on what it
+    # DECODES to; their pieces still differ, on use_regex rather than on the split.
+    texts = ["ab|cd", "a b|c d", "ab| cd", " ab|cd", "a| |b", "a|b|c|d", "no split here"]
+    return [
+        ("presplit_aps", "Sequence[Split, ByteLevel(aps on, use_regex off)] -- Llama-3's shape",
+         _prefix_space_model(True, add_prefix_space=True, use_regex=False), texts),
+        ("presplit_aps_regex", "the same with use_regex on, so both patterns and the space are measured together",
+         _prefix_space_model(True, add_prefix_space=True, use_regex=True), texts),
+        ("presplit_no_aps", "the same with aps off -- the control, and what every shipped model declares",
+         _prefix_space_model(True, add_prefix_space=False, use_regex=False), texts),
+        ("bare_aps", "a bare ByteLevel with aps on -- GPT-2's shape, which must not move",
+         _prefix_space_model(False, add_prefix_space=True, use_regex=True), texts),
+        ("no_split_aps", "a bare ByteLevel, aps on and use_regex off -- the no-split mode's boundary",
+         _prefix_space_model(False, add_prefix_space=True, use_regex=False), texts),
+    ]
+
+
+def generate_bpe_prefix_space() -> dict:
+    """Where add_prefix_space lands, per piece rather than per text."""
+    carried = _prefix_space_models()
+    cases = []
+    for name, _declares, tokenizer, texts in carried:
+        for text in texts:
+            enc = tokenizer.encode(text)
+            cases.append({
+                "id": len(cases), "model": name, "text": text,
+                # The pre-tokenizer's own output, which is where the space lands.
+                "pieces": [p for p, _span in tokenizer.pre_tokenizer.pre_tokenize_str(text)],
+                "tokens": enc.tokens, "ids": enc.ids,
+                # The divergence survives Decode, which is how a user meets it.
+                "decoded": tokenizer.decode(enc.ids, skip_special_tokens=False),
+            })
+
+    return {
+        "metadata": {
+            "algorithm": "BPE add_prefix_space placement",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "hand-built: the byte-level alphabet with no merges, defined in tools/generate_oracles.py",
+            "models": {
+                name: {"declares": declares, "tokenizer_json": tokenizer.to_str()}
+                for name, declares, tokenizer, _ in carried
+            },
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -4414,6 +4492,7 @@ def main() -> None:
         "bpe_duplicate_merge.json": generate_bpe_duplicate_merge,
         "bpe_no_split.json": generate_bpe_no_split,
         "wordpiece_added_tokens.json": generate_wordpiece_added_tokens,
+        "bpe_prefix_space.json": generate_bpe_prefix_space,
     }
     for filename, gen in generators.items():
         payload = gen()

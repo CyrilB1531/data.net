@@ -767,9 +767,7 @@ public static class TokenizerJsonLoader
     /// A <c>Sequence</c> of exactly a <c>Split</c> step then a <c>ByteLevel</c> step --
     /// what Llama-3 and Qwen2 declare. HuggingFace runs both: <c>Split</c> produces
     /// the pieces first, and <c>ByteLevel</c> re-splits each of them on its own
-    /// pattern unless the step's <c>use_regex</c> is off. Where <c>add_prefix_space</c>
-    /// is applied within that pipeline still diverges from HuggingFace's own placement;
-    /// issue #122 owns closing it.
+    /// pattern unless the step's <c>use_regex</c> is off.
     /// </summary>
     private static (bool ByteLevel, bool AddPrefixSpace, BpeSplitStep? PreSplit, string? Pattern, bool NoPreTokenizer)
         ReadBpeSequencePreTokenizer(JsonElement pre)

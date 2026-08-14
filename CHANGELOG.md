@@ -76,6 +76,7 @@ is one sentence, the issue and the commit; see
 - A `Sequence` of `Split` then `ByteLevel` now applies both patterns instead of only the `Split` step's, changing the tokens produced for Llama-3 and Qwen2 on ordinary text. ([#143](https://github.com/CyrilB1531/data.net/issues/143), [`9a8d15c`](https://github.com/CyrilB1531/data.net/commit/9a8d15c))
 - A `Sequence`'s `Split` step now honours its `behavior` and `invert` fields instead of always acting as `Removed` with `invert: true`. ([#145](https://github.com/CyrilB1531/data.net/issues/145), [`9546b1c`](https://github.com/CyrilB1531/data.net/commit/9546b1c))
 - A `tokenizer.json` declaring no `pre_tokenizer`, or a bare `ByteLevel` step with `use_regex` off, now loads as `BpeVocabulary.NoPreTokenizer` instead of the `Whitespace` split. ([#122](https://github.com/CyrilB1531/data.net/issues/122), [`545c51e`](https://github.com/CyrilB1531/data.net/commit/545c51e))
+- With a `Sequence` pre-tokenizer and `add_prefix_space` on, the space now goes on every piece the `Split` step produces instead of once per added-token segment, so `"a|b|c|d"` decodes to `" a | b | c | d"` where it decoded to `" a|b|c|d"`. ([#122](https://github.com/CyrilB1531/data.net/issues/122), [`26481a9`](https://github.com/CyrilB1531/data.net/commit/26481a9))
 
 ### DataNet.Fuzzy — 0.3.0
 

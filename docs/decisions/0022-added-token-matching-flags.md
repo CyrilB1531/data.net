@@ -368,6 +368,17 @@ shape, and a `decoder` whose byte-level-ness disagrees with the model's — are
 pipeline sections rather than model settings, and `docs/equivalence.md`'s
 `LoadBpe` row enumerates all of them without asserting a count.
 
+> **#122 update:** the second of the two bullets below still says the prefix
+> space is applied by `BpeTokenizer.EncodeSegment`, per added-token-delimited
+> segment. [#122](https://github.com/CyrilB1531/data.net/issues/122) moved it
+> into `BpePreTokenizer` and applies it once per piece handed to the
+> `ByteLevel` step, which is one piece per `Split`-produced piece when a
+> `Sequence` declares one — the rule this section hands to #105 is per piece
+> now, not per segment. Where no `Split` step runs, every shape
+> `bpe_added_token_flags.json` was generated in included, a segment is the one
+> piece and the bullet's reasoning stands untouched;
+> `tests/oracles/bpe_prefix_space.json` holds 35 cases across five models.
+
 Two things are settled here and are not #105's to decide again:
 
 - **The scan-versus-normalization order.** Added tokens are split out first, raw
