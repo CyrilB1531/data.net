@@ -34,7 +34,7 @@ Reference the issue from the pull request (`Closes #12`) so it closes on merge.
 ### Review, with a single maintainer
 
 The project currently has one maintainer, who reviews and merges every pull
-request. That constrains how `main` can be protected: **GitHub does not let you
+request. That constrains how `main` can be protected. **GitHub does not let you
 approve your own pull request**, so a rule requiring an approving review would
 block every PR here — there would be nobody able to give it.
 
@@ -57,8 +57,8 @@ is a visible act with a record, rather than a merge nobody would have noticed.
 
 `Build and analyze` is skipped on Dependabot and fork pull requests, where
 `SONAR_TOKEN` is unreachable. GitHub counts a skipped check as satisfied, so
-those pull requests are not stuck — which is also why the required check is this
-repository's own job and not SonarQube Cloud's `SonarCloud Code Analysis`: that
+those pull requests are not stuck. This is also why the required check is this
+repository's own job and not SonarQube Cloud's `SonarCloud Code Analysis`. That
 one is never posted at all on such a pull request, and a required check that
 never arrives stays pending forever.
 
@@ -114,7 +114,7 @@ dotnet build samples/DataNet.DocSnippets -c Release
 python tools/check_machine_paths.py
 ```
 
-`check_version_floor.py` is offline and instant; it catches the version numbers
+`check_version_floor.py` is offline and instant. It catches the version numbers
 that must agree drifting apart, which MSBuild is perfectly happy to let happen. CI runs it
 with `--check-feed`, which additionally proves the dependency floor is published
 — see [`tools/README.md`](tools/README.md). If you touched packaging, packing and
@@ -122,7 +122,7 @@ running `python3 tools/check_nuspec_dependencies.py ./artifacts --require-all` (
 Windows, per the split above) closes the loop.
 
 `check_machine_paths.py` refuses a tracked file that holds a path under someone's
-home directory; `/tmp` is deliberately allowed, other than the session
+home directory. `/tmp` is deliberately allowed, other than the session
 scratch-directory shape `/tmp/claude-<digits>/`, which is the one that carried
 eight of the ten paths this guard exists because of. `/usr`, `/etc`, `~/.nuget`
 and other system paths are allowed too. An ordinary account name can still
@@ -188,9 +188,9 @@ commands — `begin`, `dotnet build --no-incremental`, `end` — took **5 s**,
 **39 s** and **31 s** respectively (75 s total) against this repository's
 current size (17 192 lines of code: 13 361 C#, 3 815 Python, 16 XML). The server
 reported **0 findings for C# and 0 for Python** on that run — a clean tree, not
-a light one: duplication and coverage sensors both ran (2.0% duplicated lines,
-28 duplicated blocks; coverage reads 0.0% because this run's commands, matching
-the ones above, do not feed it a coverage report — CI's job does).
+a light one. Duplication and coverage sensors both ran (2.0% duplicated lines,
+28 duplicated blocks). Coverage reads 0.0% because this run's commands, matching
+the ones above, do not feed it a coverage report — CI's job does.
 
 This is not a rehearsal of `Build and analyze`, and saying otherwise would make
 the document worse than not writing it:
@@ -212,7 +212,7 @@ A finding it reports is real, a clean run promises nothing.
 
 ## Working across two packages
 
-The three libraries version and release independently, and `DataNet.Fuzzy`
+The four libraries version and release independently, and `DataNet.Fuzzy`
 reaches `DataNet.Text` through a `PackageReference` on the published package
 rather than a project reference — the reasoning is in
 [`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md).
@@ -259,8 +259,20 @@ Versions are declared per package in `src/<Package>/Version.props` and nowhere
 else. To release one: bump that file, land it on `main`, then tag
 `<PackageId>/v<Version>` (for example `DataNet.Fuzzy/v0.3.0`). The workflow
 compares the tag against the declared version and refuses to publish if they
-disagree — the tag chooses *which* release to cut, it does not set the number.
+disagree. The tag chooses *which* release to cut; it does not set the number.
 Add the entry under a per-package heading in `CHANGELOG.md`.
+
+Each entry is one sentence, the issue and the commit — nothing else. The why
+lives in the issue and the how in the commit; restating either in the
+changelog is the misplacement this shape exists to avoid, so an entry carries
+no rationale, no measurement and no caveat:
+
+```markdown
+- The byte-level decode substitutes U+FFFD instead of throwing. ([#149](https://github.com/CyrilB1531/data.net/issues/149), [`5948a59`](https://github.com/CyrilB1531/data.net/commit/5948a59))
+```
+
+An entry whose commit closed no issue keeps the sentence and the commit link
+alone, rather than a fabricated issue link.
 
 ## Oracle validation
 
@@ -324,7 +336,7 @@ dependency bump changed reference output — resolve that deliberately, in the s
 commit, rather than letting it land on someone else's pull request.
 
 Where behavior deliberately diverges from the Python reference, record it in
-[`docs/decisions/`](docs/decisions/) rather than in a code comment alone — see
+[`docs/decisions/`](docs/decisions/README.md) rather than in a code comment alone — see
 [`0005`](docs/decisions/0005-hamming-jellyfish-divergence.md) for the shape of
 one.
 
@@ -354,9 +366,9 @@ disabled, to `warning`. Regenerate it with
 [`tools/generate_sonar_globalconfig.py`](tools/generate_sonar_globalconfig.py) —
 see [`tools/README.md`](tools/README.md#generate_sonar_globalconfigpy) for the
 full command, including where it reads the SARIF error log from. `dotnet build` picks up
-`.globalconfig` at the repository root with no wiring — the SDK's
+`.globalconfig` at the repository root with no wiring. The SDK's
 `Microsoft.Managed.Core.targets` already globs every ancestor directory of every
-compiled file for a file with exactly that name — so nothing declares it, and
+compiled file for a file with exactly that name, so nothing declares it, and
 nothing should.
 
 CI's `Lint` job runs the same generator with `--check` on every pull request,
@@ -366,7 +378,7 @@ file was last generated: regenerate with the command above and commit the
 result, the same as any other generated file here.
 
 Regenerating is required, not optional, whenever `AnalysisLevel` is raised past
-`10.0` or `$(DataNetSonarAnalyzerVersion)` is bumped — either can change which
+`10.0` or `$(DataNetSonarAnalyzerVersion)` is bumped. Either can change which
 rules the package ships disabled, which changes the delta the file encodes. This
 applies whether the bump is a deliberate edit or an automated dependency update
 (a Dependabot pull request, should one ever be wired for this pin): skip the
@@ -382,9 +394,9 @@ for the same reason. See
 [`0015`](docs/decisions/0015-sonar-rules-in-the-build.md) and
 [`0019`](docs/decisions/0019-the-net-analysers-run-in-the-build-too.md).
 
-The command above does not reach `samples/`: the samples are outside
+The command above does not reach `samples/`. The samples are outside
 `DataNet.slnx` and consume the packages from a local feed, so they are analysed
-only when the samples themselves are built — which needs a `pack` first, and
+only when the samples themselves are built. That needs a `pack` first, and
 happens in three CI jobs: `Sample consumes the packages`, `Guide snippets
 compile`, and the samples build inside `Build and analyze`. Expect a finding
 there from CI rather than from `dotnet build DataNet.slnx`.
@@ -429,10 +441,10 @@ not one.
 method into a new file leaves the `#pragma` behind in the file the code left, and
 the rule reappears against the new one. This has already happened twice while
 extracting the shared Snowball framework — `CA1845`, then `S3267`. Both times the
-build stayed green, because nothing in it ran the analyzer; that is no longer
+build stayed green, because nothing in it ran the analyzer. That is no longer
 true for `src/`, `tests/` and `bench/`, where the rule now reappears as a build
-error at the moment of the extraction — nor for `samples/`, where it reappears
-when the samples are built.
+error at the moment of the extraction. Nor is it true for `samples/`, where it
+reappears when the samples are built.
 
 ## Licensing and provenance
 
@@ -476,11 +488,11 @@ pointer is an assertion wearing a measurement's clothes.
 **Two budgets, because the two kinds of prose sit in different places.** An inline comment stands between
 a reader and the code, so it gets **two lines** — a sentence, not a paragraph. XML documentation is the
 member's own interface, read by a caller who does not have the source and required on every public member,
-so it gets **eight**, counted over prose: a `<param>` or an `<exception>` that a well-formed member must
+so it gets **eight**, counted over prose. A `<param>` or an `<exception>` that a well-formed member must
 carry does not spend the budget. **The reason above a `#pragma warning disable` is not counted at all**:
 [Suppressions](#suppressions) below already demands a reason a reviewer can disagree with, which is a
 stricter requirement than brevity and rarely met in two lines. Past either budget, the reasoning belongs in
-[`docs/decisions/`](docs/decisions/),
+[`docs/decisions/`](docs/decisions/README.md),
 cited from one line — or it needs cutting. `tools/check_comment_length.py` counts them.
 
 **A longer block carries a marker naming its reason**, as its first line:

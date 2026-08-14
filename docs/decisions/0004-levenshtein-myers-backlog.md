@@ -1,6 +1,6 @@
 # 0004 — Levenshtein: bit-parallel (Myers) optimization
 
-**Status:** single-word and blocked shipped · **Date:** 2026-08-01 · **Revised:** 2026-08-05
+**Status:** accepted · **Date:** 2026-08-01 · **Revised:** 2026-08-05
 
 ## Context
 
@@ -14,6 +14,9 @@ Since performance is the project's central argument, this algorithmic gap must b
 closed for medium/long strings.
 
 ## Done
+
+Both the single-word and the blocked (multi-word) path shipped, the second in
+the 2026-08-05 revision below.
 
 - **Single-word Myers shipped** (`src/DataNet.Text/Distances/Myers.cs`), wired as
   the fast path of `Distance` on the `char` path for a pattern of length 16–64 in

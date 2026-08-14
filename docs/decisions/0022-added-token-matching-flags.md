@@ -337,6 +337,13 @@ and the comment naming it stays until a case changes it.
 > scan-versus-normalization order and what a strip does to a segment boundary
 > — is untouched by both and still holds.
 >
+> **#121 update:** the pipeline-section list below still names `normalizer`
+> among what `LoadBpe` refuses outright. It no longer does: `LoadBpe` now
+> reads `NFC`, `NFKC`, `NFD`, `NFKD` and a `Sequence` of those (empty
+> included) and refuses only a normalizer outside that set, by name —
+> `docs/equivalence.md`'s `LoadBpe` row has the current, full list. The four
+> `model` settings this paragraph enumerates are unaffected.
+>
 > **#122 update:** one more of that paragraph's clauses has gone stale, this
 > time outside `model`. [#122](https://github.com/CyrilB1531/data.net/issues/122)
 > stopped refusing a `ByteLevel` with `use_regex` off: it loads as
