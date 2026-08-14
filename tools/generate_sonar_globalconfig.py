@@ -150,6 +150,19 @@ def build() -> tuple[str, str]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Build the file (or check it), and give each failure its own exit code.
+
+    The two ``except`` clauses below both catch ``OSError``-family errors and
+    must not confuse one for the other. ``urllib.error.HTTPError`` -- raised
+    for a SonarCloud 5xx or 404 -- is itself a ``urllib.error.URLError``
+    subclass, and it sets ``.filename`` to the request URL with ``.strerror``
+    left ``None``. Catching ``OSError`` first would route a status error into
+    "cannot read <url>: None" at ``EXIT_INPUT_MISSING``, treating a live
+    network failure as a local one. Catching ``URLError`` first (with the
+    bare ``TimeoutError`` urlopen does not always wrap in it) keeps every
+    network failure at ``EXIT_UNREACHABLE``, and only a genuinely local
+    ``ERROR_LOG`` problem falls through to ``EXIT_INPUT_MISSING``.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="compare instead of writing")
     args = parser.parse_args(argv)
@@ -160,22 +173,13 @@ def main(argv: list[str] | None = None) -> int:
         print(str(error), file=sys.stderr)
         return EXIT_TRUNCATED
     except (urllib.error.URLError, TimeoutError) as error:
-        # Caught ahead of the generic OSError below, on purpose: urllib.error.HTTPError
-        # -- raised for a SonarCloud 5xx or 404 -- is itself a URLError subclass, and it
-        # sets .filename to the request URL with .strerror left None. Checking .filename
-        # there would route a status error into "cannot read <url>: None", the exact
-        # network-reported-as-local-file confusion this branch exists to avoid, only
-        # pointing the other way. Every URLError, HTTPError included, and a bare
-        # TimeoutError (urlopen does not always wrap one in URLError) are the network,
-        # never a local file: the failure that must not look like drift, because the
-        # file is fine and the network is not.
+        # Order matters: see this function's docstring for why URLError is
+        # caught ahead of OSError.
         print(f"could not reach {DEFAULT_API}: {error}", file=sys.stderr)
         return EXIT_UNREACHABLE
     except OSError as error:
-        # Reached only for a local ERROR_LOG problem: missing, unreadable, whatever
-        # strerror says. Never a URLError -- that is caught above -- so this is
-        # genuinely local, and must not read as "the API is down", which would send
-        # whoever is debugging it the wrong way.
+        # Reached only for a local ERROR_LOG problem -- see this function's
+        # docstring for why this is never a URLError.
         print(f"cannot read {error.filename}: {error.strerror}", file=sys.stderr)
         return EXIT_INPUT_MISSING
 

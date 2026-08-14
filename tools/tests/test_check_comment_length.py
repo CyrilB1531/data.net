@@ -149,9 +149,7 @@ def test_report_exits_zero_even_with_findings(capsys):
 
 
 def test_a_reason_above_a_pragma_is_not_counted():
-    # CONTRIBUTING.md requires a suppression to carry a reason and CLAUDE.md
-    # refuses one a reviewer cannot disagree with -- a stricter demand than
-    # brevity, and not one two lines usually meet.
+    # See _justifies_a_suppression's own docstring for why this is exempt.
     text = ("// S1244: whether the variance collapsed at all, not whether two\n"
             "// computed quantities are close. scikit-learn tests the same\n"
             "// quantity against exact zero.\n"
@@ -167,9 +165,8 @@ def test_a_long_block_not_above_a_pragma_is_still_counted():
 
 
 def test_documentation_above_a_pragma_keeps_its_own_budget():
-    # A /// run touching a // run is one block to the scanner and two things to
-    # the rules: only the // part can be a suppression's reason. Before this,
-    # 25 lines of <remarks> escaped whenever a pragma happened to follow.
+    # See _close()'s docstring for the // vs /// split; before this, 25 lines
+    # of <remarks> escaped whenever a pragma happened to follow.
     text = ("".join(f"/// prose {i}\n" for i in range(12)) +
             "// S1244: the reason the suppression needs\n"
             "#pragma warning disable S1244\n"

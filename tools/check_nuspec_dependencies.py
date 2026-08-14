@@ -18,6 +18,15 @@ Usage:  python tools/check_nuspec_dependencies.py <artifacts-directory> [--requi
 ``--require-all`` additionally fails when a known package is absent, which is
 what CI wants after packing all three. A release job packs exactly one package,
 so it omits the flag.
+
+``EXPECTED`` states the intended graph directly: ``DataNet.Text`` carries
+nothing on ``net10.0`` (the dependency-free core) and only
+``System.Text.Json`` on ``netstandard2.0`` (the one deliberate exception, so
+persisting a fitted model does not mean hand-rolling a JSON writer);
+``DataNet.Fuzzy`` depends on ``DataNet.Text`` because ``Fuzz.Ratio`` is built
+on ``Indel`` -- the only inter-package edge that exists. The ranges are
+asserted too, not only the ids: a bare ``"0.2.0"`` is NuGet's shorthand for
+``[0.2.0, )``, and an edge with the wrong floor is a different edge.
 """
 
 from __future__ import annotations
@@ -37,40 +46,19 @@ METRICS = "DataNet.Metrics"
 ONNX = "Microsoft.ML.OnnxRuntime"
 STJ = "System.Text.Json"
 
-# Span, Memory and Vector<T> are in-box on net10.0 and come from packages on
-# netstandard2.0, so every package carries this pair in that group and only
-# in that group. The floors are the ones System.Text.Json 10.0.x asks for:
-# pinning lower makes the restore a downgrade, which is an error here.
+# Span/Memory/Vector<T> are in-box on net10.0, packaged on netstandard2.0 --
+# every package carries this pair there only. Floors match what STJ 10.0.x needs.
 POLYFILLS = {"System.Memory": "4.6.3", "System.Numerics.Vectors": "4.6.1"}
 
-# The persistence layer's one deliberate runtime dependency, in-box from net8
-# onwards and therefore a package on netstandard2.0 only. It is carried by the
-# two packages that ship artifacts; DataNet.Fuzzy has no I/O and does not.
-# See docs/decisions/0011-persistence-format.md.
+# netstandard2.0-only, two-package status: docs/decisions/0011-persistence-format.md.
 PERSISTENCE = {STJ: "10.0.10"}
 
-# The floor DataNet.Fuzzy declares on DataNet.Text, which must stay equal to the
-# PackageVersion in src/Directory.Packages.props. Asserting it here is what makes
-# this check able to tell the two reference paths apart: a PackageReference emits
-# the floor, while the DataNetUseProjectRefs escape hatch emits DataNet.Text's
-# own current version. Same dependency id, different version — so a package built
-# with the escape hatch left on fails here instead of shipping.
+# Must equal Directory.Packages.props' PackageVersion: a PackageReference
+# emits this floor, but DataNetUseProjectRefs emits Text's own version instead -- catching the escape hatch left on.
 TEXT_FLOOR = "0.2.0"
 
 # package id -> target framework -> {dependency id: declared version range}.
-#
-# DataNet.Text carries nothing on net10.0: it is the dependency-free core of the
-# toolkit, and that claim is exact on the modern target. On netstandard2.0 it
-# also declares System.Text.Json, which is in-box everywhere else — the single
-# deliberate exception, taken so that persisting a fitted model does not mean
-# hand-rolling a JSON writer. DataNet.Fuzzy depends on DataNet.Text because
-# Fuzz.Ratio is built on Indel — a genuine transitive dependency, and the only
-# inter-package edge that exists.
-#
-# The ranges are asserted as well as the ids: the one edge this whole packaging
-# arrangement rests on is DataNet.Fuzzy -> DataNet.Text, and an edge whose floor
-# is wrong is a different edge. A bare "0.2.0" is NuGet's shorthand for [0.2.0, ),
-# a minimum rather than an exact pin.
+# See this module's docstring for what EXPECTED's shape and ranges prove.
 EXPECTED: dict[str, dict[str, dict[str, str]]] = {
     TEXT: {
         NET: {},
@@ -85,9 +73,8 @@ EXPECTED: dict[str, dict[str, dict[str, str]]] = {
         NETSTANDARD: {ONNX: "1.28.0", **POLYFILLS, **PERSISTENCE},
     },
     METRICS: {
-        # Nothing on net10.0 and nothing but the polyfills on netstandard2.0:
-        # metrics are pure computation over spans, with no I/O to serialise and
-        # therefore no System.Text.Json.
+        # Nothing on net10.0, only the polyfills on netstandard2.0: metrics
+        # are pure span computation, no I/O to serialise, so no System.Text.Json.
         NET: {},
         NETSTANDARD: {**POLYFILLS},
     },

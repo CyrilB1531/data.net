@@ -16,9 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import check_machine_paths as guard  # noqa: E402
 
-# argv[0] for the main() calls below -- its value is never read by main(),
-# only argv[1:], but a shared constant keeps python:S1192 quiet rather than
-# repeating the literal past the three occurrences it fires at.
+# argv[0], unused by main() (only argv[1:] matters) -- a shared constant
+# keeps python:S1192 quiet past three literal repeats.
 PROG = "check_machine_paths.py"
 
 
@@ -30,9 +29,8 @@ POSIX_HOME = "/home/" + "someone/Documents/devs/data.net"
 MAC_HOME = "/Users/" + "someone/src/data.net"
 WINDOWS_HOME = "C:\\\\Users\\\\someone\\\\src"
 
-# A generic Windows profile folder named in prose, with nothing after it: the
-# same "mention vs. path" distinction the POSIX patterns draw with their
-# trailing separator, checked here for the Windows one too.
+# A generic Windows profile mentioned in prose, nothing after it -- the same
+# mention-vs-path distinction the POSIX patterns draw, checked for Windows too.
 WINDOWS_PROSE = "C:" + "\\Users\\" + "Public"
 
 # The same folder as an actual path, with a trailing separator and a
@@ -44,9 +42,8 @@ WINDOWS_PATH_WITH_FILE = WINDOWS_PROSE + "\\file"
 WINDOWS_HOME_FORWARD_SLASH = "C:/Users/" + "someone/src/thing.cs"
 WINDOWS_PROSE_FORWARD_SLASH = "C:/Users/" + "Public"
 
-# A UNC path to a profile redirected onto a network share, assembled from
-# fragments for the same reason POSIX_HOME and WINDOWS_HOME are above: this
-# file must not contain a literal instance of the shape it tests for.
+# A UNC profile path, assembled from fragments for the same reason
+# POSIX_HOME/WINDOWS_HOME are: this file must not contain the literal shape it tests.
 UNC_HOME = chr(92) * 2 + "server" + chr(92) + "Users" + chr(92) + "someone"
 UNC_HOME_WITH_FILE = UNC_HOME + chr(92) + "file"
 
@@ -57,10 +54,8 @@ UNC_SHARE_BARE = chr(92) * 2 + "server" + chr(92) + "share"
 # the same "mention vs. path" distinction WINDOWS_PROSE draws above.
 UNC_USERS_SHARE_BARE = chr(92) * 2 + "server" + chr(92) + "Users"
 
-# Load-bearing paths that must never be flagged. The oracle generator has to
-# run from a neutral directory -- nltk refuses to import its dependencies when
-# they appear to live under the current one -- so /tmp appears in CLAUDE.md,
-# in CONTRIBUTING.md and in several plans.
+# Load-bearing: /tmp is required by the neutral-directory rule CLAUDE.md and
+# CONTRIBUTING.md give the oracle generator (nltk's cwd-import refusal).
 NEUTRAL = "cd /tmp && python tools/generate_oracles.py"
 SYSTEM = "/usr/bin/env python3"
 TILDE = "~/.nuget/packages"
@@ -87,9 +82,8 @@ def test_a_windows_home_directory_is_flagged():
 
 
 def test_a_bare_windows_profile_mention_is_not_flagged():
-    # "Public" here is a generic Windows profile folder, not someone's home --
-    # the same class of false positive the trailing separator rules out for
-    # the POSIX patterns above.
+    # "Public" is a generic Windows profile, not someone's home -- same
+    # false-positive class the trailing separator rules out for POSIX above.
     assert not scan("See " + WINDOWS_PROSE + " for shared files")
 
 
@@ -151,19 +145,14 @@ def test_the_guard_exempts_only_itself_and_its_tests():
     })
 
 
-# The scratchpad path as it appeared in four plans, with the name redacted the
-# way the spec redacts it -- the shape is what matters, and a whole one here
-# would put a home directory back into a tracked file. The id below is an
-# obviously fake stand-in, not the real one recovered from history: that
-# value is a stable machine identifier in its own right, and redacting it is
-# the same judgement call as redacting the account name.
+# The shape #133's spec found in four plans, name redacted the same way the
+# spec redacts it -- id below is a fake stand-in, not history's real one.
 SCRATCH = "/tmp/claude-" + "12345678/" + "-home-" + "someone-Documents-devs-data-net2/x/scratchpad"
 
 
 def test_the_named_shapes_alone_miss_the_dashed_form():
-    # The finding that shaped this guard: the scratchpad encodes the home
-    # directory with dashes, so nothing searching for a slash-separated one
-    # sees it. Only the /tmp/claude- prefix catches this string by shape.
+    # The finding that shaped this guard (#133's spec): dashes, not slashes,
+    # so only the /tmp/claude- prefix catches this string by shape.
     dashed_only = "-home-" + "someone-Documents-devs-data-net2"
 
     assert not guard.scan_text(dashed_only, guard.NAMED_SHAPES)
@@ -183,9 +172,8 @@ def test_an_environment_probe_catches_the_home_path_itself():
 
 
 def test_an_environment_probe_needs_a_boundary_around_the_name():
-    # A username that appears inside an unrelated word is not a path, and a
-    # guard that said otherwise would fire on prose for any contributor
-    # unlucky enough to be called something ordinary.
+    # A username inside an unrelated word isn't a path -- a guard that said
+    # otherwise would fire on prose for any ordinarily-named contributor.
     probes = guard.environment_probes("/home/" + "ed")
 
     assert not guard.scan_text("the edited plan", probes)
@@ -197,10 +185,8 @@ def test_no_home_means_no_environment_probes():
 
 
 def test_a_trailing_separator_on_home_does_not_disable_the_probes():
-    # environment_probes("/home/name/") used to split on the trailing "/" and
-    # get account == "", dropping all three probes -- including the plain
-    # home-path one, which needs no account name at all. Stripping first
-    # makes the trailing separator a no-op instead of a silent blind spot.
+    # Regression test: environment_probes("/home/name/") used to split on the
+    # trailing "/" and get account == "", silently dropping all three probes.
     with_slash = guard.environment_probes("/home/" + "someone" + "/")
     without_slash = guard.environment_probes("/home/" + "someone")
 
@@ -209,9 +195,8 @@ def test_a_trailing_separator_on_home_does_not_disable_the_probes():
 
 
 def test_home_of_only_a_separator_still_yields_no_probes():
-    # Stripping "/" from "/" leaves "", which the existing empty-account
-    # guard clause already catches -- this must keep returning no probes,
-    # not crash or derive an empty account name.
+    # Stripping "/" from "/" leaves "", caught by the existing empty-account
+    # clause -- must keep returning no probes, not crash.
     assert guard.environment_probes("/") == ()
 
 
@@ -239,10 +224,8 @@ def test_a_trailing_backslash_does_not_swallow_the_account_name():
 
 
 def test_tracked_files_is_independent_of_the_process_cwd(monkeypatch):
-    # tracked_files() used to inherit git's cwd from the process, so running
-    # the guard from a subdirectory silently scanned a fraction of the
-    # repository and still reported clean. Pinning cwd=ROOT on the subprocess
-    # is what this test guards.
+    # Regression test for tracked_files()'s own docstring: cwd used to leak
+    # from the process, silently scanning a fraction of the repository.
     baseline = guard.tracked_files()
 
     monkeypatch.chdir(guard.ROOT / "tools")
@@ -278,9 +261,8 @@ def test_an_unrecognised_argument_is_bad_usage_on_stderr(capsys):
 
 
 def test_the_failure_message_points_at_no_environment_for_a_derived_hit(tmp_path, monkeypatch, capsys):
-    # A derived probe (this machine's account name, most often) is the one
-    # that can fire on an ordinary word already in the tree. The escape
-    # hatch is undiscoverable unless the failure message names it.
+    # A derived probe (often the account name) is the one likeliest to fire
+    # on ordinary prose -- the escape hatch is undiscoverable unless named here.
     monkeypatch.setenv("HOME", "/home/" + "someone")
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(guard, "tracked_files", lambda: ["finding.txt"])
@@ -295,9 +277,8 @@ def test_the_failure_message_points_at_no_environment_for_a_derived_hit(tmp_path
 
 
 def test_the_failure_message_omits_no_environment_for_a_named_shape_hit(tmp_path, monkeypatch, capsys):
-    # A named-shape hit has no escape by design (spec D3): it is always a
-    # path under a home directory, never a false positive, so the message
-    # should not point a reader at a flag that would not have helped.
+    # By design (#133 spec D3): a named-shape hit is never a false positive,
+    # so the message should not point at a flag that would not help.
     monkeypatch.delenv("HOME", raising=False)
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(guard, "tracked_files", lambda: ["finding.txt"])

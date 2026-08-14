@@ -76,10 +76,8 @@ UNKNOWN = model_pb2.ModelProto.SentencePiece.UNKNOWN
 
 
 def download(url: str) -> bytes:
-    # S310: the only call site passes the https:// constant declared above, so the
-    # scheme cannot be steered to file:// or ftp://. The rationale goes in a comment
-    # of its own — a `# noqa` line carries codes and nothing else, and prose after
-    # them stops the suppression parsing at all.
+    # S310: the only call passes the https:// constant above, so the scheme
+    # can't be steered to file://. Reason lives here, not on the noqa line itself.
     with urllib.request.urlopen(url) as response:  # noqa: S310
         return response.read()
 
@@ -144,10 +142,8 @@ def main() -> int:
 
     fixture = build()
     if args.check:
-        # A verdict, not an abort: --check reports through the exit status the way
-        # fetch_stopwords.py does, so a caller can branch on it. What raises here
-        # is the pin mismatch in build(), which is a different kind of event —
-        # the upstream file moved, and no answer about the fixture is available.
+        # A verdict via exit status, like fetch_stopwords.py --check -- not an
+        # abort. build()'s pin mismatch is different: the upstream file moved, no answer available.
         if not OUTPUT.exists():
             print(f"{OUTPUT} does not exist; rerun without --check", file=sys.stderr)
             return 1
