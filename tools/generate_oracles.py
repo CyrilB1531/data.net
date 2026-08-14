@@ -4381,20 +4381,20 @@ def _prefix_space_model(pre_split, add_prefix_space, use_regex):
 
 def _prefix_space_models() -> list[tuple]:
     """(name, declares, tokenizer, texts) -- one per thing no other model shows."""
-    # The last text has no "|", so the four models with the space on agree on it
-    # -- what shows the shapes coincide unsplit. presplit_no_aps lacks that space.
+    # The last text has no "|": the four models with the space on agree on what it
+    # DECODES to; their pieces still differ, on use_regex rather than on the split.
     texts = ["ab|cd", "a b|c d", "ab| cd", " ab|cd", "a| |b", "a|b|c|d", "no split here"]
     return [
         ("presplit_aps", "Sequence[Split, ByteLevel(aps on, use_regex off)] -- Llama-3's shape",
-         _prefix_space_model(True, True, False), texts),
+         _prefix_space_model(True, add_prefix_space=True, use_regex=False), texts),
         ("presplit_aps_regex", "the same with use_regex on, so both patterns and the space are measured together",
-         _prefix_space_model(True, True, True), texts),
+         _prefix_space_model(True, add_prefix_space=True, use_regex=True), texts),
         ("presplit_no_aps", "the same with aps off -- the control, and what every shipped model declares",
-         _prefix_space_model(True, False, False), texts),
+         _prefix_space_model(True, add_prefix_space=False, use_regex=False), texts),
         ("bare_aps", "a bare ByteLevel with aps on -- GPT-2's shape, which must not move",
-         _prefix_space_model(False, True, True), texts),
+         _prefix_space_model(False, add_prefix_space=True, use_regex=True), texts),
         ("no_split_aps", "a bare ByteLevel, aps on and use_regex off -- the no-split mode's boundary",
-         _prefix_space_model(False, True, False), texts),
+         _prefix_space_model(False, add_prefix_space=True, use_regex=False), texts),
     ]
 
 
