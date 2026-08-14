@@ -5,18 +5,10 @@ namespace DataNet.Embeddings.Tokenization;
 /// matching HuggingFace <c>tokenizers</c>' <c>pre_tokenizers.Split(behavior=…)</c>.
 /// </summary>
 /// <remarks>
-/// <para>
-/// The names are the ones a <c>tokenizer.json</c> uses. The reference's Python
-/// constructor spells the same values in snake_case; the format does not, and a
-/// document declaring <c>"isolated"</c> is refused there with
-/// <c>unknown variant `isolated`</c> — measured against <c>tokenizers</c> 0.23.1.
-/// </para>
-/// <para>
-/// One rule applies under all five and is not repeated in each summary below: an
-/// empty piece — an empty match, or two boundaries with nothing between them —
-/// never reaches the output. A pattern that matches the whole input under
-/// <see cref="Removed"/>, for instance, produces no pieces at all, not one empty one.
-/// </para>
+/// The names are the ones a <c>tokenizer.json</c> uses, in PascalCase — the
+/// Python constructor's snake_case is refused, e.g. <c>"isolated"</c>; see
+/// <c>docs/equivalence.md</c>'s <c>Split(pattern, behavior=…, invert=…)</c> row.
+/// An empty piece never reaches the output, under any of the five.
 /// </remarks>
 public enum SplitBehavior
 {

@@ -47,19 +47,8 @@ internal sealed class AddedTokenScanner
             return false;
         }
 
-        // The winner is decided on the raw match position (bestAt above, compared
-        // in BestMatch), before either side's strip is applied. This matters only when two candidates
-        // compete and the one further right carries Lstrip: could its left-strip
-        // reach back far enough to beat an earlier candidate? A left-strip only
-        // crosses whitespace, and with ordinary non-whitespace added-token
-        // content an earlier candidate's own match is never whitespace, so it
-        // always blocks the expansion before it could cross — but that is not
-        // guaranteed: an added token whose own Content is whitespace (e.g. a
-        // single space) is representable and would not block it. No probed case
-        // ever put the two rules in conflict either way. Raw-position comparison,
-        // strip-after is therefore the untested fallback the design calls for,
-        // not a measured rule; if that changes, this comment should point at the
-        // case that changed it.
+        // Ties break on the raw match position, before either side's strip applies —
+        // untested for a whitespace-content candidate; see decision 0022 §9.
         start = bestAt;
         end = bestAt + best.Content.Length;
         if (best.Lstrip)
@@ -95,12 +84,8 @@ internal sealed class AddedTokenScanner
 
         foreach (AddedToken candidate in _tokens)
         {
-            // Once a candidate is found, only a match starting at or before it can
-            // still win, so later entries need a window reaching bestAt plus their
-            // own length -- just enough to still find a match starting exactly at
-            // bestAt. Llama-3 alone declares 256 added tokens; without this bound
-            // every one of them would rescan to the end of the remaining text on
-            // every match found.
+            // Bounded to bestAt + the candidate's own length: no candidate starting
+            // later than bestAt could still win, so nothing here needs to scan further.
             int windowEnd = bestAt < 0 ? text.Length : Math.Min(text.Length, bestAt + candidate.Content.Length);
             int found = FirstMatch(text, candidate, from, windowEnd);
             if (found < 0)

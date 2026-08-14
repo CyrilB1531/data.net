@@ -54,32 +54,21 @@ public sealed record TokenizationResult(IReadOnlyList<string> Tokens, IReadOnlyL
     }
 }
 
-// CA1308 (normalize to uppercase): this lowercasing is the `lowercase`
-// constructor option, mirroring HuggingFace's do_lower_case — true for an
-// uncased checkpoint, false for a cased one such as bert-base-cased.
+// long-comment: justifies the CA1308 pragma below, which needs its own reason.
+// This lowercasing is the `lowercase` constructor option, mirroring HuggingFace's
+// do_lower_case -- true for an uncased checkpoint, false for bert-base-cased.
 // ToUpperInvariant would match no vocabulary entry, producing wrong ids rather
 // than differently-cased tokens.
 #pragma warning disable CA1308
 
-/// <summary>
-/// WordPiece tokenizer (used by BERT-family models), reproducing the greedy
-/// longest-match algorithm of HuggingFace <c>tokenizers</c> WordPiece.
-/// </summary>
+/// <summary>WordPiece tokenizer (BERT family), reproducing HuggingFace <c>tokenizers</c>' greedy longest-match algorithm.</summary>
 /// <remarks>
-/// <para>
-/// Getting this exactly right matters: if the tokenization does not match the one
-/// the model was trained with, the embeddings are wrong. Pre-tokenization splits
-/// on whitespace and isolates punctuation (HuggingFace <c>Whitespace</c> pre-tokenizer,
-/// regex <c>\w+|[^\w\s]+</c>); each resulting word is then greedily matched against
-/// the vocabulary, with <c>##</c>-prefixed continuation pieces.
-/// </para>
-/// <para>
-/// Ahead of all of that runs the <c>added_tokens</c> scan: the entries
-/// <see cref="WordPieceVocabulary.AddedTokens"/> carries are matched as literal
-/// text, and only what is left between them reaches the pre-tokenizer. See
-/// <see cref="Encode"/> for the order the two normalization rules impose.
-/// </para>
-/// <para>Thread-safe after construction.</para>
+/// Pre-tokenization splits on whitespace and isolates punctuation (HuggingFace
+/// <c>Whitespace</c> pre-tokenizer, regex <c>\w+|[^\w\s]+</c>); each resulting word
+/// is then greedily matched against the vocabulary, with <c>##</c>-prefixed
+/// continuation pieces -- <c>docs/equivalence.md</c>'s <c>WordPiece(vocab)</c> row.
+/// The <c>added_tokens</c> scan runs ahead of all that; see <see cref="Encode"/>.
+/// Thread-safe after construction.
 /// </remarks>
 public sealed class WordPieceTokenizer : ISubwordTokenizer
 {
@@ -156,9 +145,8 @@ public sealed class WordPieceTokenizer : ISubwordTokenizer
         _maxCharsPerWord = maxCharsPerWord;
         _lowercase = lowercase;
 
-        // Two scanners because the two halves of the table are matched against two
-        // different strings; AddedToken.Normalized is what puts an entry in one or
-        // the other, and Special has nothing to do with it. See Encode.
+        // Two scanners: the two halves of added_tokens are matched against different
+        // strings, split by AddedToken.Normalized (Special plays no part). See Encode.
         _addedTokens = [.. addedTokens];
         _rawScanner = new AddedTokenScanner([.. addedTokens.Where(t => !t.Normalized)]);
         _normalizedScanner = new AddedTokenScanner(
@@ -167,33 +155,12 @@ public sealed class WordPieceTokenizer : ISubwordTokenizer
 
     /// <summary>Tokenizes <paramref name="text"/> into sub-word tokens and their ids.</summary>
     /// <remarks>
-    /// <para>
-    /// The <c>added_tokens</c> table is matched first, and the two halves of it are
-    /// not matched against the same string. <see cref="AddedToken.Normalized"/> is
-    /// what splits them: an entry that is <em>not</em> normalized is matched against
-    /// the <em>raw</em> text and emits the raw slice, while a normalized one has its
-    /// own content normalized and is matched against the normalized text, emitting
-    /// that. Measured against <c>tokenizers</c> 0.23.1 with a <c>Lowercase</c>
-    /// normalizer and <c>[CLS]</c> added: not normalized, it matches
-    /// <c>'a [CLS] b'</c> and emits <c>[CLS]</c> while <c>'a [cls] b'</c> does not
-    /// match at all and falls through to the model; normalized, both spellings match
-    /// and both emit <c>[cls]</c>. "Added tokens are matched before normalization" is
-    /// the natural summary and the wrong one.
-    /// </para>
-    /// <para>
-    /// <see cref="AddedToken.Special"/> decides none of this, though it looks as if
-    /// it does on every file <c>add_special_tokens</c> wrote, which sets
-    /// <c>normalized = !special</c>. A file may carry either combination, and a
-    /// special-but-normalized entry runs in the normalized pass like any other.
-    /// </para>
-    /// <para>
-    /// The raw half is matched in an outer pass, as HuggingFace's
-    /// <c>AddedVocabulary</c> does — it splits on the raw trie first and runs the
-    /// normalized trie over what is left — so what a raw entry consumes is never
-    /// offered to the normalized scanner, even where a normalized entry would have
-    /// matched further left. See
-    /// <c>docs/decisions/0022-added-token-matching-flags.md</c>.
-    /// </para>
+    /// The <c>added_tokens</c> table is matched first, by
+    /// <see cref="AddedToken.Normalized"/> rather than <see cref="AddedToken.Special"/> --
+    /// <c>docs/equivalence.md</c>'s <c>WordPiece(vocab)</c> row covers which pass an
+    /// entry runs in and which string it is matched against. "Added tokens are matched
+    /// before normalization" is the natural summary and the wrong one -- measured
+    /// (<c>wordpiece_added_tokens.json</c>), raw stays case-sensitive, normalized does not.
     /// </remarks>
     /// <param name="text">The text to tokenize.</param>
     public TokenizationResult Encode(string text)
@@ -202,11 +169,15 @@ public sealed class WordPieceTokenizer : ISubwordTokenizer
         var tokens = new List<string>();
         var ids = new List<int>();
 
+        // long-comment: BpeTokenizer.EncodeGap deliberately does not take this
+        // shortcut, because this warning is the reason it does not.
         // Normalized once, and indexed with positions found in the raw text. That is
         // sound only because ToLowerInvariant maps char to char and so preserves
         // length — an assumption about the scripts in scope, not a fact of Unicode,
         // and the reason this is ToLowerInvariant rather than ToLower: a
-        // culture-sensitive mapping is under no such obligation.
+        // culture-sensitive mapping is under no such obligation. See
+        // BpeTokenizer.EncodeGap, which normalizes each gap separately because its
+        // four normalization forms do not share this guarantee.
         string normalized = _lowercase ? text.ToLowerInvariant() : text;
 
         int pos = 0;
@@ -251,9 +222,8 @@ public sealed class WordPieceTokenizer : ISubwordTokenizer
         {
             return true;
         }
-        // A scan rather than a second dictionary: added_tokens tables are tiny —
-        // Llama-3's 256 is the largest in sight — and a copy of a thirty-thousand
-        // entry vocabulary to hold them would not be.
+        // A scan, not a second dictionary: added_tokens tables are tiny (Llama-3's
+        // 256 is the largest in sight), so copying the vocabulary to hold them would not be.
         AddedToken? added = Array.Find(_addedTokens, t => string.Equals(t.Content, token, StringComparison.Ordinal));
         if (added is null)
         {
@@ -271,21 +241,14 @@ public sealed class WordPieceTokenizer : ISubwordTokenizer
         return vocabulary;
     }
 
-    /// <summary>
-    /// Encodes <c>normalized[from..to]</c> — text no raw-matched added token claimed
-    /// — scanning it for normalized added tokens and handing what is left to the
-    /// model.
-    /// </summary>
+    /// <summary>Encodes <c>normalized[from..to]</c> -- text no raw-matched added token claimed -- scanning it for normalized added tokens and handing what is left to the model.</summary>
     /// <remarks>
-    /// The gap is scanned as a string of its own, so a strip cannot reach across the
-    /// entry that closed it and a <see cref="AddedToken.SingleWord"/> entry sees the
-    /// gap's edges as word boundaries. That is what HuggingFace's
-    /// <c>AddedVocabulary</c> does, which splits on the raw trie first and then runs
-    /// the normalized trie over each resulting slice — read from that type's
-    /// structure rather than measured. The corpus does cut a gap at a word
-    /// character (<c>'the A&lt;R&gt; cat'</c>), but its stripping and single-word
-    /// entries never share a case with a raw-pass one, so neither flag has a
-    /// committed case at a gap edge.
+    /// The gap is scanned as its own string, matching HuggingFace's
+    /// <c>AddedVocabulary</c> (read from its structure, not measured).
+    /// <c>wordpiece_added_tokens.json</c>'s
+    /// <c>the_raw_pass_wins_over_a_normalized_match_further_left</c> cuts a gap at a
+    /// word character; no committed case puts a <see cref="AddedToken.SingleWord"/>
+    /// or stripping entry at a gap edge.
     /// </remarks>
     private void EncodeGap(string normalized, int from, int to, List<string> tokens, List<int> ids)
     {

@@ -20,18 +20,10 @@ public sealed partial class EmbeddingIndex
     /// <paramref name="destination"/> as UTF-8 JSON.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// Building an index runs an encoder over every document in the corpus. This is
-    /// what makes that a one-off: the vectors are written as one base64 string of
-    /// raw little-endian IEEE-754 bits, so a reloaded index scores bit for bit what
-    /// the original scored.
-    /// </para>
-    /// <para>
-    /// A non-finite component is refused here even though <see cref="Add(ReadOnlySpan{float})"/> accepts
-    /// one. An artifact is read back by callers who will never see the code that
-    /// built it, and a score that is <c>NaN</c> forever is worse than a save that
-    /// failed at the point the broken vector was still in reach.
-    /// </para>
+    /// One-off: written as base64 raw little-endian bits (decision 0011's own
+    /// choice), so a reload scores bit for bit what was saved. Refuses a non-finite
+    /// component though <see cref="Add(ReadOnlySpan{float})"/> accepts one — a
+    /// permanently wrong <c>NaN</c> score outlives the code that built it.
     /// </remarks>
     /// <param name="destination">The stream to write to. Flushed but never disposed — the caller owns it.</param>
     /// <exception cref="InvalidDataException">A vector holds a non-finite component.</exception>
@@ -93,16 +85,10 @@ public sealed partial class EmbeddingIndex
     /// <see cref="Search"/> without embedding the corpus again.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// Vectors are restored exactly as they were stored, never replayed through
-    /// <see cref="Add(ReadOnlySpan{float})"/>: they were normalized on insertion if the index normalized
-    /// at all, and normalizing them a second time would move their bits.
-    /// </para>
-    /// <para>
-    /// The normalization flag comes from the file and cannot be supplied by the
-    /// caller. Reloading vectors under the other setting would produce scores that
-    /// are quietly wrong rather than obviously so.
-    /// </para>
+    /// Vectors are restored exactly as stored, never replayed through
+    /// <see cref="Add(ReadOnlySpan{float})"/> — normalizing a second time would move
+    /// their bits. The normalization flag itself travels in the file and cannot be
+    /// supplied by the caller; see the guide's "Index a corpus" section for why.
     /// </remarks>
     /// <param name="source">The stream to read from; never disposed by this method.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
@@ -203,10 +189,8 @@ public sealed partial class EmbeddingIndex
             throw JsonArtifact.Inconsistent(ArtifactName, $"'{CountProperty}' is negative ({count}).");
         }
 
-        // A count is a count of vectors — the vocabulary-adjacent scale
-        // MaxArrayLength was written for. Unlike the vectors block below, this
-        // value sizes nothing by itself until it is multiplied by the dimension
-        // (see Restore), so it keeps the bound the block deliberately no longer has.
+        // Count is vocabulary-scale (MaxArrayLength's domain); it sizes nothing
+        // alone until multiplied by dimension in Restore, unlike the vectors block.
         limits.CheckArrayLength(count, CountProperty);
         return count;
     }
@@ -232,9 +216,8 @@ public sealed partial class EmbeddingIndex
                 limits.CheckTokenLength(id.Length);
             }
 
-            // Checked against the prospective count before the array grows to hold
-            // it: doubling first and checking after would let the resize itself
-            // reach roughly twice the limit before the exception fires.
+            // Checked before the array grows: check-after-doubling would let a
+            // resize reach roughly twice the limit before the exception fires.
             limits.CheckArrayLength(read + 1L, IdsProperty);
             if (read == ids.Length)
             {
@@ -330,11 +313,8 @@ public sealed partial class EmbeddingIndex
     {
         int i = 0;
 #if NET5_0_OR_GREATER
-        // A whole-block scan on the load path — 3.8 M floats for a 10 000 x 384
-        // index, measured at 18% of what loading that artifact costs. The vector
-        // pass only answers "is anything non-finite in this block"; the scalar
-        // loop below is what locates it, so the message is unchanged and there is
-        // one description of what non-finite means.
+        // A whole-block SIMD scan on the load path answers only "is anything
+        // non-finite here"; the scalar loop below is what locates it for the message.
         if (Vector.IsHardwareAccelerated && data.Length >= Vector<float>.Count)
         {
             int width = Vector<float>.Count;

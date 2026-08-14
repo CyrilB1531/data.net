@@ -5,6 +5,9 @@ using DataNet.Internal.Persistence;
 
 namespace DataNet.Embeddings.Persistence;
 
+/// long-comment: the loader's own refused-pipeline citations, plus the worked
+/// example below that CONTRIBUTING.md requires on every public member, do not
+/// fit in eight lines together
 /// <summary>
 /// Reads a HuggingFace <c>tokenizer.json</c> — the WordPiece, Unigram or BPE
 /// model it declares, together with the settings that change tokenization.
@@ -12,54 +15,26 @@ namespace DataNet.Embeddings.Persistence;
 /// <remarks>
 /// <para>
 /// Matches the vocabulary side of
-/// <c>tokenizers.Tokenizer.from_file("tokenizer.json")</c>. What it deliberately
-/// does <em>not</em> do is interpret the whole normalizer / pre-tokenizer /
-/// post-processor graph: DataNet's tokenizers implement one fixed pipeline each,
-/// and a file describing a different one would tokenize differently here than in
-/// Python.
+/// <c>tokenizers.Tokenizer.from_file("tokenizer.json")</c>. DataNet's tokenizers
+/// implement one fixed pipeline each, so the whole normalizer / pre-tokenizer /
+/// post-processor graph is <em>checked</em> rather than ignored, and a file
+/// describing a different one fails to load with a message naming what it found
+/// — see <c>docs/guides/embeddings.md</c>'s "Models that are refused" for the
+/// list, including that a stock HuggingFace BERT file (<c>BertPreTokenizer</c>
+/// plus a full <c>BertNormalizer</c>) is one of them, with
+/// <see cref="VocabTxtLoader"/> the route for BERT instead. Unrecognized
+/// top-level properties, the file's own <c>version</c> included, are accepted in
+/// silence rather than refused — see <c>docs/equivalence.md</c>'s BPE loader row
+/// for why that asymmetry is deliberate.
 /// </para>
 /// <para>
-/// So the graph is <em>checked</em> rather than ignored. A normalizer or
-/// pre-tokenizer this library does not reproduce — <c>NFKC</c>, <c>Precompiled</c>,
-/// <c>BertPreTokenizer</c>, a <c>post_processor</c> that inserts
-/// <c>[CLS]</c>/<c>[SEP]</c> — makes loading fail with a message naming it. The
-/// alternative is a vocabulary that loads cleanly and produces embeddings for a
-/// model nobody trained.
-/// </para>
-/// <para>
-/// The <c>decoder</c> section is accepted unchecked for WordPiece and Unigram:
-/// it affects <c>decode</c> only, and <see cref="WordPieceTokenizer"/> and
-/// <see cref="SentencePieceTokenizer"/> only encode. <see cref="BpeTokenizer"/>
-/// does decode, so <see cref="LoadBpe(string, ArtifactLoadOptions?)"/> is the
-/// exception: it refuses a <c>decoder</c> whose byte-level-ness disagrees with
-/// the model's own, which would silently corrupt <see cref="BpeTokenizer.Decode(System.Collections.Generic.IReadOnlyList{int}, bool)"/>
+/// The <c>decoder</c> section is accepted unchecked for WordPiece and Unigram —
+/// <see cref="WordPieceTokenizer"/> and <see cref="SentencePieceTokenizer"/> only
+/// encode — where <see cref="LoadBpe(string, ArtifactLoadOptions?)"/> refuses one
+/// whose byte-level-ness disagrees with the model's own, since
+/// <see cref="BpeTokenizer"/> does decode and a silent mismatch would corrupt
+/// <see cref="BpeTokenizer.Decode(System.Collections.Generic.IReadOnlyList{int}, bool)"/>
 /// rather than merely go unused.
-/// </para>
-/// <para>
-/// Unrecognized <em>top-level</em> properties are likewise accepted in silence,
-/// where an artifact DataNet itself wrote would reject them. The asymmetry is
-/// deliberate: this is a foreign format that gains fields between <c>tokenizers</c>
-/// releases, and failing on every one of them would refuse files that tokenize
-/// identically. What is checked is the set of sections that <em>change
-/// tokenization</em>. The file's own <c>version</c> property is not among them and
-/// is not read.
-/// </para>
-/// <para>
-/// One consequence worth stating plainly: a stock HuggingFace BERT
-/// <c>tokenizer.json</c> — <c>BertPreTokenizer</c> plus a full
-/// <c>BertNormalizer</c> — <strong>is refused</strong>. That is the correct
-/// outcome, not a gap: DataNet does not reproduce those steps.
-/// <see cref="VocabTxtLoader"/> is the route for BERT, and
-/// <see cref="LoadWordPiece(string, ArtifactLoadOptions?)"/> is for files whose
-/// pipeline matches DataNet's.
-/// </para>
-/// <para>
-/// <see cref="LoadBpe(string, ArtifactLoadOptions?)"/> reads the third model
-/// type this file format can declare: GPT-2's byte-level BPE, the classic
-/// (non-byte-level) BPE lineage, and the <c>Split</c>-then-<c>ByteLevel</c>
-/// shape Llama-3 and Qwen2 use. See <see cref="BpeTokenizer"/> and
-/// <c>docs/decisions/0017-bpe-parity-scope.md</c> for what is and is not
-/// proven for each.
 /// </para>
 /// </remarks>
 /// <example>
@@ -193,10 +168,8 @@ public static class TokenizerJsonLoader
 
     private static JsonDocument ParseDocument(ReadOnlyMemory<byte> payload, in ArtifactLimits limits)
     {
-        // A node tree rather than a single reader pass: the shape of "model"
-        // depends on the "type" inside it, and HuggingFace does not guarantee an
-        // order that would let a forward-only reader decide in time. The tree is
-        // bounded by MaxTotalBytes, which is what keeps it affordable.
+        // A node tree, not a single forward pass: "model"'s shape depends on its
+        // own "type", and HuggingFace does not guarantee the key order to read it first.
         var documentOptions = new JsonDocumentOptions
         {
             MaxDepth = limits.MaxJsonDepth,
@@ -250,9 +223,8 @@ public static class TokenizerJsonLoader
         List<AddedToken> addedTokens = ReadAddedTokenTable(root, vocab, limits);
         if (!vocab.ContainsKey(unkToken))
         {
-            // model.vocab, not the added_tokens table: the table is matched as text
-            // ahead of the model, so an unknown token declared only there is one the
-            // model can never fall back to.
+            // model.vocab, not added_tokens: docs/equivalence.md's WordPiece loader
+            // row has why a table entry alone can't cover the fallback.
             throw new InvalidDataException($"The {SourceName} names '{unkToken}' as its unknown token but does not define it.");
         }
         return new WordPieceVocabulary(vocab, unkToken, continuationPrefix, ReadLowercase(root))
@@ -289,9 +261,8 @@ public static class TokenizerJsonLoader
         if (model.TryGetProperty("unk_id", out JsonElement unk) && unk.ValueKind == JsonValueKind.Number
             && !unk.TryGetInt32(out unkId))
         {
-            // A JSON number that is not a 32-bit integer — 1.5, or 10^20. Left to
-            // GetInt32 this surfaces as FormatException, which the loader does not
-            // document and a caller catching InvalidDataException would not see.
+            // Not a 32-bit integer (1.5, 10^20): GetInt32 would throw FormatException,
+            // uncaught by a caller expecting only InvalidDataException.
             throw new InvalidDataException($"The {SourceName} declares a 'unk_id' that is not a 32-bit integer.");
         }
         if (unkId < 0 || unkId >= pieces.Count)
@@ -330,9 +301,8 @@ public static class TokenizerJsonLoader
 
         string piece = pieceElement.GetString()!;
         limits.CheckTokenLength(piece.Length);
-        // A magnitude no double holds (1e999) does not fail to parse — since .NET Core
-        // 3.0 it widens to infinity — and an infinite log-probability silently wrecks
-        // the Viterbi decode rather than failing, so it is refused here.
+        // A magnitude no double holds (1e999) parses as infinity since .NET Core 3.0
+        // rather than failing, and an infinite log-probability would wreck Viterbi decoding silently.
         if (!scoreElement.TryGetDouble(out double score) || double.IsNaN(score) || double.IsInfinity(score))
         {
             throw new InvalidDataException(
@@ -342,33 +312,13 @@ public static class TokenizerJsonLoader
     }
 
     /// <summary>
-    /// Reads the whole <c>added_tokens</c> table: the entries both tokenizers match
-    /// as literal text ahead of the model, with the four flags that decide where
-    /// each one matches.
+    /// Reads the whole <c>added_tokens</c> table: matched as literal text ahead of
+    /// the model, with the four flags deciding where each entry matches.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The <em>whole</em> table, intersection with <c>model.vocab</c> included, and
-    /// folded into neither vocabulary. HuggingFace lists a special token in both
-    /// tables — <c>&lt;|endoftext|&gt;</c> is id 50256 in GPT-2's own <c>model.vocab</c>
-    /// <em>and</em> in its <c>added_tokens</c> — and the pre-model scan reads nothing
-    /// but this list, so subtracting the intersection would drop exactly the tokens
-    /// the scan exists for.
-    /// </para>
-    /// <para>
-    /// <c>Tokenizer.add_tokens</c> assigns ids <em>after</em> the model's own
-    /// vocabulary, so an entry may appear nowhere in <c>model.vocab</c>; that is not
-    /// an error, and it is not folded in either, because a folded entry is matchable
-    /// as a whole word only — a different tokenizer as soon as an entry carries a
-    /// matching flag, and not what <c>tokenizers</c> does even when none does. A
-    /// table that <em>contradicts</em> <c>model.vocab</c> is still refused rather
-    /// than resolved by guesswork.
-    /// </para>
-    /// <para>
-    /// <paramref name="vocab"/> is copied rather than written to, so the model's own
-    /// table stays what the file declared; the copy is what gives the id-agreement
-    /// check something to check against, entry after entry.
-    /// </para>
+    /// See <c>docs/guides/embeddings.md</c>'s "Loading vocabularies" and
+    /// <c>docs/equivalence.md</c>'s loader rows for why the <c>model.vocab</c>
+    /// intersection stays in and what a contradicting entry does.
     /// </remarks>
     /// <param name="root">The <c>tokenizer.json</c> root object.</param>
     /// <param name="vocab">The model's vocabulary, read but never written.</param>
@@ -408,12 +358,8 @@ public static class TokenizerJsonLoader
                 SingleWord = OptionalBoolean(token, "single_word") is true,
                 Special = OptionalBoolean(token, "special") is true,
             };
-            // Set only where the file says so. Absent falls to AddedToken's own
-            // default of !Special — Rust's AddedToken::from(content, special), and
-            // stated once, on the type, rather than here as well. Absent is not a
-            // shape tokenizers itself accepts (its deserializer requires the field
-            // and refuses a file without it); this loader tolerates an absent flag
-            // everywhere else and reads the abbreviated file rather than rejecting it.
+            // Absent falls to AddedToken's own !Special default, stated once, on the
+            // type; docs/equivalence.md's WordPiece row has why tokenizers never reaches this.
             table.Add(OptionalBoolean(token, "normalized") is bool normalized
                 ? parsed with { Normalized = normalized }
                 : parsed);
@@ -430,9 +376,8 @@ public static class TokenizerJsonLoader
     {
         if (id < 0)
         {
-            // The id comes straight back out of Encode, into the caller's embedding
-            // lookup. A negative one is an out-of-range index in their code, blamed
-            // on them.
+            // The id comes straight back out of Encode; see docs/guides/embeddings.md's
+            // refused-files list for why a negative one is refused here.
             throw new InvalidDataException(
                 $"The {SourceName} adds token '{content}' with the negative id {id}.");
         }
@@ -526,13 +471,9 @@ public static class TokenizerJsonLoader
     /// </summary>
     /// <remarks>
     /// Unlike <see cref="ReadWordPiece"/> and <see cref="ReadUnigram"/>, the
-    /// pre-tokenizer here is not merely accepted or refused: <c>ByteLevel</c>,
-    /// <c>Whitespace</c>, and a <c>Sequence</c> of <c>Split</c> then <c>ByteLevel</c>
-    /// each set <see cref="BpeVocabulary.ByteLevel"/>, <see cref="BpeVocabulary.AddPrefixSpace"/>,
-    /// <see cref="BpeVocabulary.PreSplit"/> and <see cref="BpeVocabulary.PreTokenizerPattern"/>
-    /// differently, because stock GPT-2 declares a bare <c>ByteLevel</c> node with no
-    /// <c>Split</c> at all, and because a <c>Sequence</c>'s <c>ByteLevel</c> step
-    /// contributes a second pattern of its own only when its <c>use_regex</c> is on.
+    /// pre-tokenizer here sets four fields, not one bit, differently for each of
+    /// <c>ByteLevel</c>, <c>Whitespace</c> and a <c>Split</c>/<c>ByteLevel</c>
+    /// <c>Sequence</c> — see <c>docs/equivalence.md</c>'s BPE loader row.
     /// </remarks>
     private static BpeVocabulary ReadBpe(JsonElement root, in ArtifactLimits limits)
     {
@@ -560,10 +501,8 @@ public static class TokenizerJsonLoader
             IgnoreMerges = OptionalBoolean(model, "ignore_merges") ?? false,
             FuseUnk = OptionalBoolean(model, "fuse_unk") ?? false,
             EndOfWordSuffix = OptionalString(model, "end_of_word_suffix"),
-            // BpeVocabulary.ContinuingSubwordPrefix normalises "" to null itself,
-            // the way EndOfWordSuffix above does -- so this passes the raw value
-            // straight through; see BpeContinuingPrefixTests for the measurement
-            // that an empty prefix's token stream equals a declared-none model's.
+            // Normalises "" to null itself, as EndOfWordSuffix does; BpeContinuingPrefixTests
+            // measures an empty prefix's token stream against a declared-none model's.
             ContinuingSubwordPrefix = OptionalString(model, "continuing_subword_prefix"),
             UnkToken = OptionalString(model, "unk_token"),
             PreSplit = preSplit,
@@ -577,28 +516,19 @@ public static class TokenizerJsonLoader
     /// <see cref="BpeTokenizer"/> does not apply.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// <c>dropout</c> is read out of a shipped <c>tokenizer.json</c> today and is
-    /// measurably not a no-op, so accepting it is a file that tokenizes differently
-    /// here than in Python without saying so. It is a training-time regularizer
-    /// that drops merges at random, which no deterministic tokenizer can reproduce
-    /// at all.
-    /// </para>
-    /// <para>
-    /// Refused by name rather than implemented: support is a feature, and a file
-    /// declaring it deserves to be told so rather than to be tokenized plausibly
-    /// and wrongly.
-    /// </para>
+    /// <c>dropout</c> is BPE-dropout's regularizer: it drops merges at random,
+    /// which no deterministic tokenizer can reproduce, so a file declaring it is
+    /// refused by name rather than tokenized plausibly and wrongly.
     /// </remarks>
     private static void EnsureBpeModelSettingsAreReproduced(JsonElement model)
     {
-        // At 0.0 no merge is ever skipped, which is the determinism this refusal
-        // protects, so a numeric zero is exempt. A dropout that is present, non-null
-        // and not a number is malformed rather than a reproduced zero, so it still
-        // falls into the throw below instead of being let through.
-        // SonarLint S1244: the exact value matters here, not a tolerance. 0.0 is what
-        // "no dropout" round-trips to and is exactly representable; a tolerance would
-        // instead accept small non-zero dropouts this loader cannot reproduce.
+        // long-comment: justifies the S1244 pragma below, which needs its own reason
+        // At 0.0 no merge is ever skipped, so a numeric zero is exempt; anything
+        // present, non-null and not a number is malformed, not a reproduced zero,
+        // and still falls into the throw below.
+        // SonarLint S1244: the exact value matters, not a tolerance -- 0.0 is what
+        // "no dropout" round-trips to and is exactly representable; a tolerance
+        // would instead accept small non-zero dropouts this loader cannot reproduce.
 #pragma warning disable S1244
         if (model.TryGetProperty("dropout", out JsonElement dropout)
             && dropout.ValueKind != JsonValueKind.Null
@@ -682,26 +612,9 @@ public static class TokenizerJsonLoader
     /// <c>continuing_subword_prefix</c>.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// <see cref="BpeTokenizer"/> does not apply the prefix on the byte-level path —
-    /// there, one symbol is one byte of the alphabet and nothing decorates it — while
-    /// the merge loop in its constructor strips the prefix from every merge's right
-    /// side without asking whether the model is byte-level. The two halves would
-    /// therefore disagree about the same setting, and the disagreement is silent: the
-    /// byte-level alphabet contains the characters a prefix is typically spelled with
-    /// (<c>#</c> is byte <c>0x23</c>), so a merge whose right side begins with them
-    /// can resolve to a different entry that exists rather than to a missing one.
-    /// </para>
-    /// <para>
-    /// Refused by name for the reason <see cref="EnsureBpeModelSettingsAreReproduced"/>
-    /// refuses <c>dropout</c> and <see cref="CollectNormalizationForms"/> refuses a
-    /// normalizer it does not reproduce: a file this loader cannot reproduce is told so, rather than
-    /// tokenized plausibly and wrongly. This says nothing about what the reference
-    /// produces for such a file — nothing here measured that, and the refusal does not
-    /// rest on it. An empty prefix prefixes nothing and normalises to absent on
-    /// <see cref="BpeVocabulary.ContinuingSubwordPrefix"/>, so it pairs harmlessly and
-    /// is not refused.
-    /// </para>
+    /// See <c>docs/guides/embeddings.md</c>'s refused-files list for why
+    /// <see cref="BpeTokenizer"/>'s two halves would silently disagree. An empty
+    /// prefix normalises to absent and is not refused.
     /// </remarks>
     private static void EnsureContinuingPrefixIsNotByteLevel(JsonElement model, bool byteLevel)
     {
@@ -756,21 +669,18 @@ public static class TokenizerJsonLoader
     /// Reads one merge, in either encoding <c>tokenizers</c> has used: a
     /// <c>[left, right]</c> pair of strings, or a single <c>"left right"</c> string.
     /// </summary>
+    /// <remarks>
+    /// The string form must split into exactly one space: <c>TokenizerJsonLoaderTests</c>
+    /// measures <c>tokenizers</c> 0.23.1 refusing <c>"a b c"</c> the same way. A
+    /// trailing space is not an error — <c>"a "</c> still splits into two fields.
+    /// </remarks>
     private static MergePair ReadBpeMerge(JsonElement entry, int index)
     {
         if (entry.ValueKind == JsonValueKind.String)
         {
             string line = entry.GetString()!;
-            // Exactly one space, not merely a first one. Python splits the whole line
-            // and refuses it unless it yields two fields, so "a b c" and " a b" are
-            // errors there where splitting on the first space would silently load
-            // them as ("a", "b c") and ("", "a b"). A trailing space is not an error:
-            // "a " splits into two fields, the second empty, and Python takes it.
-            // CA1307 (specify StringComparison): the overload it asks for —
-            // string.IndexOf(char, StringComparison) / string.Replace(string, string?,
-            // StringComparison) — does not exist on netstandard2.0, which this assembly
-            // targets. Both calls are ordinal on every runtime that has them, so the
-            // suggestion would change nothing but the compilation.
+            // CA1307: string.IndexOf(char, StringComparison) has no netstandard2.0
+            // overload, and both calls are ordinal on every runtime that has it anyway.
 #pragma warning disable CA1307
             int space = line.IndexOf(' ');
             if (space < 0)
@@ -808,11 +718,8 @@ public static class TokenizerJsonLoader
     {
         if (!root.TryGetProperty("pre_tokenizer", out JsonElement pre) || pre.ValueKind == JsonValueKind.Null)
         {
-            // Absent is the classic (non-byte-level) lineage's own default: BpeTokenizer
-            // falls back to word-boundary splitting only when both PreSplit and
-            // PreTokenizerPattern are null -- a Sequence whose ByteLevel step has
-            // use_regex off leaves PreTokenizerPattern null too, but PreSplit
-            // still carries the Split step itself, so no fallback happens there.
+            // Absent is the classic lineage's own default: BpeTokenizer falls back to
+            // word-boundary splitting only when both PreSplit and PreTokenizerPattern are null.
             return (false, false, null, null);
         }
 
@@ -830,16 +737,12 @@ public static class TokenizerJsonLoader
 
     /// <summary>
     /// A bare <c>ByteLevel</c> pre-tokenizer -- what stock GPT-2 declares, with no
-    /// <c>Split</c> node of its own: <c>ByteLevel</c> does the splitting, on the
-    /// pattern <see cref="BpePatterns.Gpt2"/> states.
+    /// <c>Split</c> node: <see cref="BpePatterns.Gpt2"/> is the split pattern.
     /// </summary>
     /// <remarks>
-    /// <c>use_regex</c> defaults to <see langword="true"/> and stock GPT-2 omits it, so
-    /// that pattern is what stock GPT-2 gets. Turned off, HuggingFace hands the whole
-    /// normalized string to the model as one piece -- refused here, because the nearest
-    /// thing this library has is <see cref="BpePreTokenizer"/>'s word-boundary
-    /// fallback, which discards the whitespace between the words and so cannot round
-    /// trip, the one guarantee byte-level BPE exists to make.
+    /// <c>use_regex</c> defaults to <see langword="true"/> and stock GPT-2 omits it.
+    /// Off, HuggingFace hands the model one piece; refused, since the nearest
+    /// fallback (<see cref="BpePreTokenizer"/>'s word-boundary split) cannot round trip.
     /// </remarks>
     private static (bool ByteLevel, bool AddPrefixSpace, BpeSplitStep? PreSplit, string? Pattern) ReadByteLevelPreTokenizer(JsonElement pre)
     {
@@ -900,17 +803,8 @@ public static class TokenizerJsonLoader
                 "BpeTokenizer reproduces a regex Split pattern only");
         }
 
-        // behavior and invert are REQUIRED fields, not defaulted ones: handed a
-        // document with either removed, tokenizers 0.23.1 refuses it with
-        // "missing field `behavior`" / "missing field `invert`". So there is
-        // nothing to default to here, and accepting one would invent the value
-        // that decides what the step does with the text around its matches.
-        // A present-but-wrongly-typed field (a number where behavior wants a
-        // string, a string where invert wants a boolean) is a distinct failure
-        // from an absent one -- Serde reports a type mismatch, not a missing
-        // field -- so it gets its own message rather than reusing "declares no
-        // behavior"/"declares no invert", which would misstate why the
-        // reference refuses it.
+        // behavior/invert are required, not defaulted (docs/equivalence.md's Split
+        // row). A wrongly-typed field gets its own message: Serde reports a mismatch, not a missing field.
         if (!split.TryGetProperty("behavior", out JsonElement behaviorElement))
         {
             throw Unsupported(
@@ -936,12 +830,8 @@ public static class TokenizerJsonLoader
                 "tokenizers 0.23.1 expects true or false there and refuses a file whose type disagrees");
         }
         bool invert = invertElement.ValueKind == JsonValueKind.True;
-        // The file spells these in PascalCase; the snake_case spellings are the
-        // reference's Python constructor API instead. The corpus's own
-        // behavior_unknown refusal freezes "Nonsense" refused with "unknown
-        // variant `Nonsense`, expected one of `Removed`, `Isolated`, ..."; that a
-        // lowercase "isolated" is refused the same way is measured in the spec
-        // (D6), not frozen in this corpus.
+        // behavior_unknown freezes "Nonsense" refused as "unknown variant `Nonsense`, ..." --
+        // a lowercase "isolated" refusing the same way is only spec 0145's D6, not frozen here.
         SplitBehavior behavior = behaviorElement.GetString() switch
         {
             "Isolated" => SplitBehavior.Isolated,
@@ -961,34 +851,22 @@ public static class TokenizerJsonLoader
                 "tokenizers 0.23.1 has no default for that field and refuses the file identically, where accepting it here would invent the value that decides whether a leading space is added");
         }
 
-        // ByteLevel re-splits every piece the Split step produced, on its own
-        // pattern, unless use_regex is off -- measured against tokenizers
-        // 0.23.1, where Split(" ") then ByteLevel over "hello123 don't" gives
-        // ['hello', '123', 'Ġ', 'don', "'t"] with it on and
-        // ['hello123', 'Ġ', "don't"] with it off. This step's use_regex was not
-        // read at all before issue #143, so every Sequence took the second row.
-        //
-        // Absent means true, which is the reference's default and what Llama-3
-        // and Qwen2 ship. The bare-ByteLevel reader refuses use_regex: false
-        // outright; here it is reproducible, because the Split step still
-        // carries a pattern when ByteLevel contributes none.
+        // Re-splits what Split produced unless off (docs/equivalence.md's Sequence
+        // row); absent means true, and before #143 this field went unread entirely.
         bool useRegex = OptionalBoolean(byteLevelStep, "use_regex") ?? true;
         var step = new BpeSplitStep(regexElement.GetString()!, behavior, invert);
         return (true, addPrefixSpace, step, useRegex ? BpePatterns.Gpt2 : null);
     }
 
     /// <summary>
-    /// Refuses a <c>decoder</c> that could not have produced the pre-tokenizer this
-    /// file also declares: a byte-level model whose decoder is not <c>ByteLevel</c>,
-    /// or the reverse.
+    /// Refuses a <c>decoder</c> that could not have produced this file's own
+    /// pre-tokenizer: a byte-level model whose decoder is not <c>ByteLevel</c>, or
+    /// the reverse.
     /// </summary>
     /// <remarks>
-    /// <c>DataNet</c>'s tokenizers encode, not decode, so this is checked rather than
-    /// applied -- but a mismatch here means the file will not round trip through
-    /// <c>tokenizers</c> itself either, which makes it worth catching at load time
-    /// rather than as corrupt text out of <see cref="BpeTokenizer.Decode(IReadOnlyList{int}, bool)"/>.
-    /// An absent <c>decoder</c> is fine: it is what <c>models.BPE</c> built in code
-    /// produces.
+    /// Checked, not applied -- DataNet only encodes -- but a mismatch means the file
+    /// won't round trip through <c>tokenizers</c> either, so it is caught here
+    /// rather than as corrupt text from <see cref="BpeTokenizer.Decode(IReadOnlyList{int}, bool)"/>.
     /// </remarks>
     private static void EnsureDecoderMatchesModel(JsonElement root, bool byteLevel)
     {
@@ -1003,28 +881,21 @@ public static class TokenizerJsonLoader
         {
             return;
         }
-        // Not routed through Unsupported(...): its fixed "would produce embeddings that
-        // do not match the model" tail would misdescribe this failure. Every other
-        // Unsupported(...) call in this file refuses something that changes what Encode
-        // produces; a decoder mismatch does not -- Encode is unaffected, only Decode
-        // would corrupt -- so this gets its own, accurate message instead.
+        // Not Unsupported(...): its fixed "embeddings that do not match the model" tail
+        // would misdescribe this -- Encode is unaffected, only Decode would corrupt.
         throw new InvalidDataException(
             $"The {SourceName} pre_tokenizer describes a {(byteLevel ? "byte-level" : "non-byte-level")} model but its decoder is '{type}', which would not decode the tokens it produces.");
     }
 
     /// <summary>
     /// The decoder-side counterpart of <see cref="ReadByteLevelPreTokenizer"/>'s own
-    /// check: a <c>ByteLevel</c> decoder shares the same struct <c>tokenizers</c>
-    /// deserializes for the pre-tokenizer, so it has no default for
-    /// <c>add_prefix_space</c> either and is refused identically -- worded through an
-    /// untagged enum on the Rust side, but the same field, the same absent default.
+    /// check -- see <c>docs/guides/embeddings.md</c>'s refused-files list for why
+    /// <c>add_prefix_space</c> has no default in any of its three positions.
     /// </summary>
     /// <remarks>
-    /// Not routed through <see cref="Unsupported(string, string)"/>, for the same
-    /// reason as the mismatch check above: <c>DataNet</c> never applies the decoder, so
-    /// its fixed "would produce embeddings that do not match the model" tail would
-    /// misdescribe this refusal too. The reason to refuse is that the reference cannot
-    /// even parse the file, not that this loader would tokenize it differently.
+    /// Not routed through <see cref="Unsupported(string, string)"/>: the reference
+    /// cannot even parse the file, which is a different reason to refuse than
+    /// tokenizing it differently.
     /// </remarks>
     private static void EnsureByteLevelDecoderDeclaresAddPrefixSpace(JsonElement decoder, bool decoderIsByteLevel)
     {
@@ -1053,9 +924,8 @@ public static class TokenizerJsonLoader
     {
         if (!root.TryGetProperty("pre_tokenizer", out JsonElement pre) || pre.ValueKind == JsonValueKind.Null)
         {
-            // Absent means tokenizers hands the whole string to the model. DataNet
-            // segments it — Whitespace or Metaspace — so accepting the file would
-            // tokenize differently, which is the failure this method exists to catch.
+            // Absent means tokenizers hands the whole string to the model; DataNet
+            // always segments it (Whitespace or Metaspace), so accepting it would tokenize differently.
             throw Unsupported(
                 "it declares no pre_tokenizer",
                 kind == PipelineKind.WordPiece
@@ -1122,19 +992,11 @@ public static class TokenizerJsonLoader
     /// Reads the Unigram normalizer: a <c>Precompiled</c> character map, or nothing.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// <c>Precompiled</c> is how <c>tokenizers</c> writes the very map a
-    /// <c>spiece.model</c> carries in <c>normalizer_spec.precompiled_charsmap</c> —
-    /// base64 instead of raw bytes, same blob. Since #75 that is read rather than
-    /// refused, by the same <see cref="PrecompiledNormalizer"/>, which is what keeps
-    /// the two formats from disagreeing about the same model.
-    /// </para>
-    /// <para>
-    /// Every other named type is still refused. <c>NFKC</c> asks for the runtime's
-    /// Unicode tables where the model asked for a frozen map;
-    /// <c>Lowercase</c> and <c>BertNormalizer</c> belong to the WordPiece pipeline
-    /// and mean something different there. Absent or <c>null</c> is identity.
-    /// </para>
+    /// See <c>docs/equivalence.md</c>'s Unigram loader row for what <c>Precompiled</c>
+    /// shares with <c>spiece.model</c> (read since #75, through the same
+    /// <see cref="PrecompiledNormalizer"/>) and why <c>NFKC</c> is still refused.
+    /// <c>Lowercase</c>/<c>BertNormalizer</c> belong to the WordPiece pipeline
+    /// instead; absent or <c>null</c> is identity.
     /// </remarks>
     private static PrecompiledNormalizer? ReadUnigramNormalizer(JsonElement root)
     {
@@ -1152,9 +1014,8 @@ public static class TokenizerJsonLoader
                 "SentencePieceTokenizer applies the model's own precompiled character map, and reproduces no other normalization");
         }
 
-        // `is null or { Length: 0 }` rather than string.IsNullOrEmpty: the netstandard2.0
-        // reference assembly does not annotate that method, so the compiler still
-        // believes the value may be null afterwards and the fix would be a `!`.
+        // `is null or { Length: 0 }`, not string.IsNullOrEmpty: netstandard2.0's reference
+        // assembly doesn't annotate that method, so the compiler would still want a `!` after.
         string? encoded = OptionalString(normalizer, "precompiled_charsmap");
         if (encoded is null or { Length: 0 })
         {
@@ -1228,9 +1089,8 @@ public static class TokenizerJsonLoader
         {
             throw Unsupported("its BertNormalizer pads CJK characters", "DataNet does not reproduce that step");
         }
-        // tokenizers strips accents when strip_accents is Some(true), and also when it
-        // is absent and lowercase is on — reading the absent case as "off" would accept
-        // a file that strips accents in Python and does not here.
+        // tokenizers strips accents when strip_accents is true, or absent with lowercase
+        // on -- reading an absent value as "off" would accept a file Python strips accents for.
         if (OptionalBoolean(normalizer, "strip_accents") ?? (OptionalBoolean(normalizer, "lowercase") ?? true))
         {
             throw Unsupported("its BertNormalizer strips accents", "DataNet does not reproduce that step");

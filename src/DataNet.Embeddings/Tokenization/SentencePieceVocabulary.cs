@@ -1,9 +1,7 @@
 namespace DataNet.Embeddings.Tokenization;
 
-// CA1008 (enums should have a zero value): the members mirror the piece types of
-// SentencePiece's own ModelProto, which are numbered from 1. A synthetic None = 0
-// would be a value no model file can carry. See
-// docs/decisions/0013-sentencepiece-parity-scope.md.
+// CA1008: these values mirror SentencePiece's own ModelProto.SentencePiece.Type
+// numbering (from 1, below); a synthetic None = 0 would carry no model file's value.
 #pragma warning disable CA1008
 
 /// <summary>
@@ -42,13 +40,10 @@ public enum SentencePieceType
 /// <c>spiece.model</c> or the <c>model</c> section of a <c>tokenizer.json</c>.
 /// </summary>
 /// <remarks>
-/// <para>
-/// The piece <em>types</em> are the point of this record. Without them a
-/// tokenizer has to guess which entries are control markers, and the only
-/// available guess is by id — which holds for the models that happen to put
-/// <c>&lt;unk&gt;</c>, <c>&lt;s&gt;</c> and <c>&lt;/s&gt;</c> at 0, 1 and 2, and
-/// silently fails for every model that does not.
-/// </para>
+/// The piece <em>types</em> are the point of this record: without them a
+/// tokenizer has to guess which entries are control markers by id, which fails
+/// silently for any model that does not happen to put <c>&lt;unk&gt;</c>,
+/// <c>&lt;s&gt;</c> and <c>&lt;/s&gt;</c> at 0, 1 and 2.
 /// </remarks>
 /// <param name="Pieces">The pieces with their scores, indexed by id.</param>
 /// <param name="Types">The type of each piece, aligned with <paramref name="Pieces"/>.</param>

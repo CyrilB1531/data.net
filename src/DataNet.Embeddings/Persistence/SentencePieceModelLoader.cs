@@ -9,28 +9,11 @@ namespace DataNet.Embeddings.Persistence;
 /// its scores, its piece types and the model's special-token ids.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Matches <c>sentencepiece.SentencePieceProcessor(model_file=…)</c>: the pieces
-/// and scores it exposes through <c>id_to_piece</c> / <c>get_score</c>, and the
-/// ids it exposes through <c>unk_id()</c>, <c>bos_id()</c>, <c>eos_id()</c> and
-/// <c>pad_id()</c>. Scores are stored as 32-bit floats in the file and widened,
-/// exactly as the Python binding does, so the values compare equal.
-/// </para>
-/// <para>
-/// <strong>Only identity-normalized models load.</strong>
-/// <see cref="SentencePieceTokenizer"/> reproduces the <c>identity</c> normalizer
-/// with <c>add_dummy_prefix</c>; a model trained with <c>nmt_nfkc</c> or any
-/// precompiled character map would tokenize differently here than it does in
-/// Python. Rather than return a vocabulary that silently produces the wrong
-/// embeddings, this loader refuses the file and names the normalizer it found.
-/// </para>
+/// Matches <c>sentencepiece.SentencePieceProcessor(model_file=…)</c>; see the
+/// guide's "Loading vocabularies" section for a worked example. The normalizer
+/// is read from its own compiled map, never assumed <c>identity</c> — see
+/// <see cref="ReadNormalizerSpec"/>.
 /// </remarks>
-/// <example>
-/// <code>
-/// SentencePieceVocabulary vocab = SentencePieceModelLoader.Load("spiece.model");
-/// var tokenizer = new SentencePieceTokenizer(vocab);
-/// </code>
-/// </example>
 public static class SentencePieceModelLoader
 {
     // ModelProto field numbers, from sentencepiece_model.proto.
@@ -142,9 +125,8 @@ public static class SentencePieceModelLoader
         }
         if (!sawNormalizerSpec)
         {
-            // Every model sentencepiece writes carries one. Treating "absent" as
-            // "identity" would make the normalizer check skippable by deleting a
-            // field, which is the one thing it exists to prevent.
+            // Every model sentencepiece writes carries one; see the guide's "Models
+            // that are refused" list for why "absent" cannot mean "identity".
             throw Unsupported(
                 "it declares no normalizer_spec",
                 "the normalizer decides how text is preprocessed and cannot be assumed");
@@ -195,10 +177,8 @@ public static class SentencePieceModelLoader
             if (field == PieceFieldPiece && wireType == ProtobufReader.WireLengthDelimited)
             {
                 ReadOnlySpan<byte> raw = reader.ReadLengthDelimited();
-                // UTF-8 spends at most three bytes per UTF-16 code unit, so a run
-                // this long cannot decode to a string within the limit. Checking it
-                // here refuses the hostile case before the decode allocates it.
-                // The exact check below is what the limit actually means.
+                // UTF-8 spends at most 3 bytes per UTF-16 code unit, so checking the
+                // raw byte length first refuses an oversized run before it decodes.
                 limits.CheckTokenLength((raw.Length + 2) / 3);
                 piece = DecodeUtf8(raw);
                 limits.CheckTokenLength(piece.Length);
@@ -306,20 +286,10 @@ public static class SentencePieceModelLoader
     /// for <c>identity</c>, which rewrites nothing.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The <em>charsmap decides</em>, not the name. Every rule <c>spm_train</c>
-    /// offers — <c>nmt_nfkc</c>, <c>nfkc</c>, their <c>_cf</c> variants, a custom
-    /// <c>--normalization_rule_tsv</c> — compiles to that one blob, and
-    /// <c>normalizer_spec.name</c> is a record of which one produced it. Reading
-    /// the blob covers them all; reading the name would cover the ones we happened
-    /// to enumerate, and would trust a file to describe itself honestly.
-    /// </para>
-    /// <para>
-    /// So the only refusal left is the case where the file claims a rule and hands
-    /// over nothing to apply: a name other than <c>identity</c> with an empty
-    /// charsmap. Reproducing that would mean reimplementing the rule from its name
-    /// — the very thing this design rejects.
-    /// </para>
+    /// The compiled map decides, never <c>normalizer_spec.name</c> — every rule
+    /// <c>spm_train</c> offers compiles to the same blob, so reading it covers them
+    /// all. Refusing only what carries no map to apply, rather than reimplementing
+    /// a rule from its name, is decision 0014's own choice, made here.
     /// </remarks>
     private static PrecompiledNormalizer? ReadNormalizerSpec(ReadOnlySpan<byte> message)
     {
@@ -394,10 +364,8 @@ public static class SentencePieceModelLoader
 
     private static string DecodeUtf8(ReadOnlySpan<byte> bytes)
     {
-        // JsonArtifact.Utf8NoBom throws on invalid bytes rather than substituting
-        // U+FFFD, matching VocabTxtLoader: a piece that is not valid UTF-8 means the
-        // file is corrupt, and a replacement character would silently become part of
-        // the vocabulary.
+        // Utf8NoBom throws on invalid bytes rather than substituting U+FFFD: a
+        // non-UTF-8 piece means the file is corrupt, not a token worth keeping.
 #if NETSTANDARD2_0
         byte[] copy = bytes.ToArray();
         return JsonArtifact.Utf8NoBom.GetString(copy, 0, copy.Length);

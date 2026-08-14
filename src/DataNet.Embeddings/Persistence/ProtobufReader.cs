@@ -5,17 +5,10 @@ namespace DataNet.Embeddings.Persistence;
 /// varints, length-delimited fields and 32-bit floats.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Hand-written on purpose. Reading four field types is a hundred lines; taking
-/// <c>protobuf-net</c> or <c>Google.Protobuf</c> would put a runtime dependency
-/// into a package whose selling point is not having any, to parse one file
-/// format. The wire format is also frozen, so this cannot rot.
-/// </para>
-/// <para>
-/// Every read is bounds-checked against the buffer: the input is a downloaded
-/// file, and a truncated length prefix must produce
-/// <see cref="InvalidDataException"/> rather than a read past the end.
-/// </para>
+/// Hand-written rather than taking a <c>protobuf-net</c>/<c>Google.Protobuf</c>
+/// dependency, for a fixed wire format in a package whose selling point is not
+/// having one. Bounds-checked throughout, so a truncated length prefix throws
+/// <see cref="InvalidDataException"/> rather than reading past the end.
 /// </remarks>
 internal ref struct ProtobufReader
 {
@@ -115,9 +108,8 @@ internal ref struct ProtobufReader
         }
 
 #if NETSTANDARD2_0
-        // netstandard2.0 has no Int32BitsToSingle, so the bytes go through a buffer.
-        // It is allocated once per reader — one per piece, which is why the modern
-        // target below composes the bits instead.
+        // netstandard2.0 has no Int32BitsToSingle; the buffer is allocated once per
+        // reader (one per piece) rather than per call, unlike the modern target below.
         _scratch[0] = _data[_position];
         _scratch[1] = _data[_position + 1];
         _scratch[2] = _data[_position + 2];

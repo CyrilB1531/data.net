@@ -7,35 +7,16 @@ namespace DataNet.Embeddings.Tokenization;
 /// Splits text into the pieces the merge loop runs over, independently.
 /// </summary>
 /// <remarks>
-/// <para>
-/// A byte-level model declares either one pattern or two. A bare
-/// <c>ByteLevel</c> step declares one, and the classic lineage declares none,
-/// splitting on word boundaries instead, isolating punctuation from letters
-/// and digits (HuggingFace's <c>Whitespace</c> pre-tokenizer type,
-/// <c>\w+|[^\w\s]+</c>). A <c>Sequence</c> of <c>Split</c> then <c>ByteLevel</c>
-/// declares two: the <c>Split</c> step's pattern runs first, and then
-/// <c>ByteLevel</c>'s own pattern re-splits every piece the first pass
-/// produced, unless the file turns its <c>use_regex</c> off. Measured against
-/// <c>tokenizers</c> 0.23.1; see issue #143. The split is not cosmetic — a
-/// merge can never cross a piece boundary, so it decides which tokens are
-/// reachable at all, and it is what puts an end-of-word suffix on
-/// <c>world</c> rather than on <c>world!</c>.
-/// </para>
-/// <para>
-/// Both patterns reach here from a model file, so they are caller-supplied in
-/// every sense that matters. Each is compiled with
-/// <see cref="RegexDefaults.MatchTimeout"/>, which turns unbounded backtracking
-/// into an exception instead of a hung thread.
-/// </para>
+/// A byte-level model declares one split pattern (<c>ByteLevel</c>) or two
+/// (<c>Sequence</c> of <c>Split</c> then <c>ByteLevel</c>); the classic lineage
+/// declares none. See <c>docs/equivalence.md</c>'s <c>Split(pattern, …)</c> and
+/// <c>Sequence(...)</c> rows. Both are caller-supplied, compiled with
+/// <see cref="RegexDefaults.MatchTimeout"/> against a hung thread.
 /// </remarks>
 internal sealed class BpePreTokenizer
 {
-    // HuggingFace's "Whitespace" pre-tokenizer type -- what the classic (non-byte-level)
-    // lineage declares -- splits on word boundaries, separating punctuation from
-    // letters/digits, rather than merely collapsing whitespace runs (that is a
-    // different type, "WhitespaceSplit", equivalent to \S+). A model whose last
-    // word character is followed by punctuation, e.g. "world!", needs the split so
-    // the end-of-word suffix lands on "world", not on "world!".
+    // HuggingFace's "Whitespace" pre-tokenizer type -- splits on word boundaries
+    // and isolates punctuation, unlike "WhitespaceSplit" (\S+, not implemented here).
     private static readonly Regex Whitespace =
         new(@"\w+|[^\w\s]+", RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexDefaults.MatchTimeout);
 
@@ -55,11 +36,12 @@ internal sealed class BpePreTokenizer
     private readonly Regex? _second;
     private readonly SplitRule _rule;
 
-    // RegexOptions.Compiled is deliberately not used here: compiling costs
-    // milliseconds per distinct pattern, and a tokenizer is built once per model,
-    // so that cost would be paid on a path that runs once.
+    // RegexOptions.Compiled is deliberately not used: a tokenizer is built once per
+    // model, so paying a compile cost here buys nothing on a path that runs once.
     public BpePreTokenizer(BpeSplitStep? preSplit, string? pattern)
     {
+        // long-comment: the default rule when no Split step is declared is not
+        // obvious, and the measured case is what keeps it from looking arbitrary.
         // Both absent is the classic Whitespace split. Otherwise the pre-split
         // runs first and the second pattern re-splits its pieces (issue #143).
         // Only the pre-split carries a declared behaviour; a null pre-split still
@@ -100,13 +82,8 @@ internal sealed class BpePreTokenizer
             return;
         }
 
-        // The second pattern runs over the pieces the first produced, on raw
-        // text -- the byte mapping happens later, per final piece, in
-        // BpeTokenizer. It always runs Isolated, invert off: the ByteLevel
-        // step's own pattern has no behavior field in the tokenizer.json
-        // format, and its arrangement is Isolated. A local list rather than a
-        // field: this type is used from a tokenizer documented as thread-safe
-        // after construction.
+        // Re-splits the first pattern's raw-text pieces, always Isolated/invert-off --
+        // docs/equivalence.md's Split(...) row. A local list: the type is thread-safe.
         List<string> staged = [];
         Apply(_first, _rule, text, staged);
         var isolated = new SplitRule(SplitBehavior.Isolated, Invert: false);
@@ -150,9 +127,8 @@ internal sealed class BpePreTokenizer
     {
         int cursor = 0;
         int carried = NoOpenPiece;   // start of a piece still open, or NoOpenPiece
-        // Not .Cast<Match>(): MatchCollection's own enumerator binds directly
-        // to Match on both target frameworks, and .Cast<Match>() allocates an
-        // iterator on a path this task claims the allocation budget of.
+        // Not .Cast<Match>(): MatchCollection's own enumerator binds directly to
+        // Match on both target frameworks, so .Cast<Match>() would only add an iterator.
         foreach (Match match in pattern.Matches(text))
         {
             carried = Step(text, cursor, match.Index, match.Length, rule, carried, pieces);
@@ -274,9 +250,8 @@ internal sealed class BpePreTokenizer
                 break;
             case SplitBehavior.Isolated:
             case SplitBehavior.Contiguous:
-                // A run left open by Contiguous closes here; Isolated never
-                // opens one, so carried is always NoOpenPiece and this only
-                // emits the trailing gap.
+                // A run left open by Contiguous closes here; Isolated never opens
+                // one, so this only ever emits the trailing gap for that behaviour.
                 if (carried != NoOpenPiece)
                 {
                     Emit(text, carried, gap.Start - carried, pieces);
@@ -298,11 +273,8 @@ internal sealed class BpePreTokenizer
         }
         else
         {
-            // The trailing gap has no following match to join: either the merge
-            // points backwards (MergedWithPrevious, after invert), which never
-            // carries a piece across calls, or it points forwards but nothing
-            // is open -- the text had no match at all. Either way it stands
-            // alone, the same way a leading gap does under MergedWithNext.
+            // Nothing follows the last match to join: the merge points backwards
+            // (after invert) or nothing is open at all -- either way the gap stands alone.
             Emit(text, gap, pieces);
         }
     }

@@ -5,21 +5,10 @@ namespace DataNet.Embeddings.Tokenization;
 /// that decide where it matches.
 /// </summary>
 /// <remarks>
-/// <para>
-/// The five flags are HuggingFace's, reproduced as measured against
-/// <c>tokenizers</c> 0.23.1 — see
-/// <c>docs/decisions/0022-added-token-matching-flags.md</c>.
-/// </para>
-/// <para>
-/// Four of them — <see cref="Lstrip"/>, <see cref="Rstrip"/>,
-/// <see cref="SingleWord"/> and <see cref="Special"/> — default to
-/// <see langword="false"/>, which is the plain literal match this library did
-/// before they existed. <see cref="Normalized"/> is the exception and defaults to
-/// <c>!</c><see cref="Special"/>, because that is the rule HuggingFace's own
-/// constructor applies and there is no value that would be inert: an entry is
-/// matched against either the raw text or the normalized one, and it has to be
-/// matched against something.
-/// </para>
+/// The five flags are HuggingFace's, measured against <c>tokenizers</c> 0.23.1. See
+/// <c>docs/decisions/0022-added-token-matching-flags.md</c> §1 for what the three
+/// span-shaping flags do, §5 for <see cref="Special"/>, and §4 for why
+/// <see cref="Normalized"/> alone defaults to something other than <see langword="false"/>.
 /// </remarks>
 /// <param name="Content">The text matched, exactly and ordinally.</param>
 /// <param name="Id">The id the match produces.</param>
@@ -38,23 +27,11 @@ public sealed record AddedToken(string Content, int Id)
 
     /// <summary>Matches only where both neighbours are non-word characters or the ends of the text.</summary>
     /// <remarks>
-    /// <para>
-    /// A word character is a letter, a digit or <c>_</c>, Unicode-aware:
-    /// <c>a</c>, <c>1</c>, <c>_</c> and <c>é</c> all block a match, while
-    /// <c>.</c>, <c>-</c> and whitespace do not.
-    /// </para>
-    /// <para>
-    /// This diverges from HuggingFace on the same boundary <c>docs/equivalence.md</c>
-    /// already records for the BPE split pattern: Rust's <c>char::is_alphanumeric</c>
-    /// is code-point-based and treats the <c>Nl</c>/<c>No</c> Unicode categories
-    /// (<c>²</c>, <c>Ⅷ</c>) as word characters, and a letter above the Basic
-    /// Multilingual Plane as one too. .NET's <see cref="char.IsLetterOrDigit(char)"/>
-    /// is <c>char</c>-based — it neither covers <c>Nl</c>/<c>No</c> nor recognizes an
-    /// above-BMP letter, which arrives as one half of a surrogate pair in category
-    /// <c>Cs</c>. Every case in the measured table agrees; this is a known,
-    /// unmeasured gap rather than something this library observed and chose to
-    /// diverge on.
-    /// </para>
+    /// A word character is a letter, digit or <c>_</c>: <c>a</c>, <c>1</c>, <c>_</c> and
+    /// <c>é</c> block a match; <c>.</c>, <c>-</c> and whitespace do not. Diverges from
+    /// HuggingFace's code-point-based test the way <c>docs/equivalence.md</c> records for
+    /// the BPE split pattern — measured and named as a known gap in
+    /// <c>docs/decisions/0022-added-token-matching-flags.md</c> §8.
     /// </remarks>
     public bool SingleWord { get; init; }
 
@@ -70,38 +47,12 @@ public sealed record AddedToken(string Content, int Id)
 
     /// <summary>Whether the model's normalizer applies to this entry, and to the text it is matched against.</summary>
     /// <remarks>
-    /// <para>
-    /// HuggingFace's own <c>normalized</c> field, and <strong>the</strong>
-    /// discriminator for which pass an entry runs in:
-    /// <see langword="false"/> matches the <em>raw</em> text, ahead of the
-    /// normalizer; <see langword="true"/> normalizes the entry's own
-    /// <see cref="Content"/> and matches it against the normalized text.
-    /// <c>tokenizers</c> keeps one trie for each, and splits on the raw one first.
-    /// </para>
-    /// <para>
-    /// It is not a synonym for <c>!</c><see cref="Special"/>, though every entry
-    /// <c>add_special_tokens</c> and <c>add_tokens</c> produce looks like one:
-    /// those set <c>normalized = !special</c>, and all four combinations are
-    /// representable and round-trip through a <c>tokenizer.json</c>. Measured
-    /// against <c>tokenizers</c> 0.23.1 over a <c>Lowercase</c> normalizer, with
-    /// <c>[CLS]</c> added and the input <c>'a [cls] b'</c>: <c>special=true,
-    /// normalized=true</c> matches and emits <c>[cls]</c>, while <c>special=true,
-    /// normalized=false</c> does not match at all. The <c>special</c> flag is the
-    /// same in both.
-    /// </para>
-    /// <para>
-    /// This changes nothing for <see cref="BpeTokenizer"/>, whose loader refuses
-    /// any normalizer at all: with nothing to normalize, both passes see the same
-    /// text. It is <see cref="WordPieceTokenizer"/>, which reads <c>lowercase</c>
-    /// from the file, where the two differ.
-    /// </para>
-    /// <para>
-    /// Unset, it reads <c>!</c><see cref="Special"/> — Rust's
-    /// <c>AddedToken::from(content, special)</c>, and the one place that rule
-    /// lives. A loader that read it from a file and a caller that wrote
-    /// <c>new AddedToken("&lt;x&gt;", 2)</c> by hand therefore describe the same
-    /// token, which they did not while the default sat in the loader alone.
-    /// </para>
+    /// <see langword="false"/> matches raw text, ahead of the normalizer;
+    /// <see langword="true"/> normalizes both <see cref="Content"/> and the text it
+    /// matches against. Not a synonym for <c>!</c><see cref="Special"/>, though every
+    /// entry HuggingFace's constructors produce looks like one — see
+    /// <c>docs/decisions/0022-added-token-matching-flags.md</c> §3 for the measurement
+    /// telling them apart, §4 for the unset-value default.
     /// </remarks>
     public bool Normalized
     {
@@ -114,13 +65,11 @@ public sealed record AddedToken(string Content, int Id)
     /// <summary>Compares the content and all five flags, defaults resolved.</summary>
     /// <remarks>
     /// The generated equality would compare the <em>backing field</em> of
-    /// <see cref="Normalized"/>, so a token that left it unset and one that set it
-    /// to the value the default already gives would be unequal while agreeing on
-    /// every observable property — and unequal in exactly the case that matters,
-    /// comparing a vocabulary read from a file against one written out by hand.
-    /// <see cref="BpeVocabulary"/> and <see cref="WordPieceVocabulary"/> both
-    /// compare their tables element-wise through this method, so that difference
-    /// would surface as two equal vocabularies reporting themselves unequal.
+    /// <see cref="Normalized"/> rather than its resolved value, so a token that left it
+    /// unset and one that set it explicitly to the default would disagree while
+    /// observably identical — exactly when comparing a vocabulary read from a file
+    /// against one written by hand, which <see cref="BpeVocabulary"/> and
+    /// <see cref="WordPieceVocabulary"/> both do element-wise through this method.
     /// </remarks>
     /// <param name="other">The token to compare against.</param>
     public bool Equals(AddedToken? other) =>

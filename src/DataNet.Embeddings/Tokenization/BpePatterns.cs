@@ -4,18 +4,11 @@ namespace DataNet.Embeddings.Tokenization;
 /// The pre-tokenization patterns the byte-level models split on.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Each is the <c>Split</c> pattern from that model's own <c>tokenizer.json</c>.
-/// They matter more than they look: the split decides where a token can begin,
-/// so a model tokenized with the wrong one produces plausible tokens and wrong
-/// embeddings.
-/// </para>
-/// <para>
-/// Exposed as properties rather than <c>const</c> fields on purpose. A
-/// <c>const</c> is a compile-time constant, so a consumer referencing it emits
-/// no member reference — and the sample's packaging gate, which proves the
-/// public surface is reachable, would be structurally unable to see it.
-/// </para>
+/// Each is the <c>Split</c> pattern from that model's own <c>tokenizer.json</c> —
+/// the split decides where a token can begin, so the wrong one produces plausible
+/// tokens and wrong embeddings. Exposed as properties, not <c>const</c> fields: a
+/// <c>const</c> is a compile-time constant, so a consumer referencing one emits no
+/// member reference, invisible to the sample's packaging gate.
 /// </remarks>
 public static class BpePatterns
 {

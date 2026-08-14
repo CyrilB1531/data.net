@@ -4,33 +4,12 @@ using DataNet.Internal.Persistence;
 
 namespace DataNet.Embeddings.Tokenization;
 
-/// <summary>
-/// Byte-pair-encoding tokenizer, in both the character-level and byte-level
-/// variants, reproducing HuggingFace <c>tokenizers</c>' <c>models.BPE</c>.
-/// </summary>
+/// <summary>Byte-pair-encoding tokenizer, character-level and byte-level, reproducing HuggingFace <c>tokenizers</c>' <c>models.BPE</c>.</summary>
 /// <remarks>
-/// <para>
-/// A pre-tokenized piece starts as one symbol per Unicode code point — a
-/// surrogate pair counts once, not twice — or, byte-level, one symbol per
-/// UTF-8 byte mapped through the byte-level alphabet. The lowest-ranked
-/// applicable merge is then applied repeatedly until none applies. Rank is
-/// the model: it is the order the pairs were learned in, and it is what a
-/// merge table is for.
-/// </para>
-/// <para>
-/// Before any of that, <see cref="Encode"/> looks for a literal occurrence of an
-/// added token — HuggingFace's <c>AddedVocabulary</c> stage — and emits it as a
-/// single resolved id when found. Only tokens the vocabulary actually declares
-/// qualify: text that merely looks like a special token, e.g.
-/// <c>&lt;|endoftext|&gt;</c> typed by a user of a vocabulary that never
-/// registered it, is tokenized the ordinary way instead.
-/// </para>
-/// <para>
-/// Merge pairs are resolved to pairs of ids once, at construction, so the merge
-/// loop compares integers in a rented buffer and allocates nothing. Looking
-/// candidates up by string in that loop is the cost this avoids.
-/// </para>
-/// <para>Thread-safe after construction: nothing here is mutable, and no result is cached.</para>
+/// The algorithm — symbol assignment, the added-token pre-pass, the merge loop — is the
+/// guide's BPE section and equivalence.md's BPE rows; this type does not restate it. Merge
+/// pairs are resolved to pairs of ids once, at construction, so the loop compares integers
+/// rather than looking candidates up by string. Thread-safe after construction.
 /// </remarks>
 public sealed class BpeTokenizer : ISubwordTokenizer
 {
@@ -38,14 +17,9 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
     /// <summary>No such neighbour: the ends of <see cref="Merge"/>'s list, and every symbol merged away.</summary>
     /// <remarks>
-    /// One sentinel serves both because a symbol that has been merged away never
-    /// needs a successor again. The two are therefore not distinguishable — a
-    /// live symbol at the tail of the list reads <see cref="End"/> just as a dead
-    /// one does — and they do not need to be: <see cref="Applies"/> asks only
-    /// whether a candidate still has a right-hand symbol to merge with, and the
-    /// answer is no in both cases. A pair needs a successor, so dropping the
-    /// candidate is the correct outcome for the live tail on its own terms, not
-    /// merely a tolerable one.
+    /// One sentinel serves both: a merged-away symbol never needs a successor again, so a
+    /// dead tail and a live one both correctly read <see cref="End"/> — <see cref="Applies"/>
+    /// asks only whether there is a right-hand symbol to merge with, which is no either way.
     /// </remarks>
     private const int End = -1;
 
@@ -64,12 +38,10 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// folds in — the map that answers "does the model cover this symbol".
     /// </summary>
     /// <remarks>
-    /// The two are not interchangeable and the difference is observable. An added
-    /// token that <c>model.vocab</c> does not declare has an id, decodes, and
-    /// answers <c>token_to_id</c> — so identity reads <see cref="_vocab"/> — but it
-    /// does not make the character it spells covered: HuggingFace substitutes that
-    /// character with the unknown token, and measured, <c>aQa</c> is
-    /// <c>['a', '[UNK]', 'a']</c> there. Coverage therefore reads this one.
+    /// The two are not interchangeable: an added token absent from <c>model.vocab</c> still
+    /// has an id and answers <c>token_to_id</c> via <see cref="_vocab"/>, but does not cover
+    /// the character it spells — equivalence.md's <c>tokenizer.add_tokens</c> row has the
+    /// measurement. Coverage therefore reads this one.
     /// </remarks>
     private readonly Dictionary<string, int> _modelVocab;
     private readonly string[] _tokens;          // id -> token, the inverse of _vocab
@@ -124,13 +96,8 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
         if (vocabulary.UnkToken is { } unk)
         {
-            // The model's vocabulary, not the folded one. The reference does
-            // not refuse such a file: it loads, answers token_to_id, and
-            // encodes text the model covers. It raises "Unk token `<unk>`
-            // not found in the vocabulary" from encode, and only on text that
-            // needs a substitution. Refusing at construction is earlier than
-            // that, deliberately — a failure that depends on which text a
-            // caller happens to pass is what loading exists to catch.
+            // The model's vocabulary, not the folded one; refusing at construction is
+            // earlier than the reference — see equivalence.md's refused row.
             if (!_modelVocab.TryGetValue(unk, out _unkId))
             {
                 throw new ArgumentException(
@@ -145,10 +112,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         {
             MergePair pair = vocabulary.Merges[rank];
             // Against the model's vocabulary, not the folded one, and refused
-            // rather than skipped. An earlier comment here said HuggingFace
-            // tolerates a merge naming an absent token; measured on both the
-            // constructor and the tokenizer.json load path, it raises
-            // "Token `x` out of vocabulary". It does not tolerate it.
+            // rather than skipped — see equivalence.md's refused row.
             if (!_modelVocab.TryGetValue(pair.Left, out int left)
                 || !_modelVocab.TryGetValue(pair.Right, out int right))
             {
@@ -156,22 +120,8 @@ public sealed class BpeTokenizer : ISubwordTokenizer
                     $"The merge at rank {rank} names '{pair.Left}' and '{pair.Right}', "
                     + "and the vocabulary does not contain both.", nameof(vocabulary));
             }
-            // The result is a third shape, and the reference does not raise on it
-            // — it panics, walking off the end of a slice. A panic is a bug, not
-            // behaviour to reproduce, so this message is DataNet's own.
-            //
-            // The result is the left side plus the right side WITHOUT its
-            // continuing prefix. Frozen in bpe_continuing_prefix.json rather
-            // than asserted here: ("a", "##b") produces "ab" and ("##b", "##c")
-            // produces "##bc" — the left keeps its own prefix and only the
-            // right loses one — under models merge_stripped_result and
-            // merge_both_prefixed. An end-of-word suffix is part of the string
-            // and rides along, ("a", "##b</w>") producing "ab</w>", under
-            // merge_suffixed_right.
-            //
-            // The reference does not merely prefer the stripped form. With the
-            // concatenated one in the vocabulary instead, it refuses to build:
-            // "Token `##bc` out of vocabulary".
+            // A third shape: the reference panics here rather than raising — see
+            // equivalence.md's refused row and the continuing-prefix row for the rest.
             string merged = pair.Left + StripContinuingPrefix(pair.Right);
             if (!_modelVocab.TryGetValue(merged, out int result))
             {
@@ -179,6 +129,8 @@ public sealed class BpeTokenizer : ISubwordTokenizer
                     $"The merge at rank {rank} produces '{merged}', "
                     + "which the vocabulary does not contain.", nameof(vocabulary));
             }
+            // long-comment: an undocumented choice, and the caveat that nothing here
+            // can tell it apart from the alternative is part of what needs recording.
             // If a pair is listed twice, the first (lowest) rank is kept rather than
             // the last write winning. Neither tokenizer.json nor merges.txt defines
             // what a duplicate pair should mean, so this is DataNet's own choice,
@@ -198,29 +150,12 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         _split = new BpePreTokenizer(vocabulary.PreSplit, vocabulary.PreTokenizerPattern);
     }
 
-    /// <summary>
-    /// Refuses a byte-level vocabulary that also declares a continuing subword
-    /// prefix, the one pairing whose two halves this class would answer
-    /// differently.
-    /// </summary>
+    /// <summary>Refuses a byte-level vocabulary that also declares a continuing subword prefix, the one pairing whose two halves this class would answer differently.</summary>
     /// <remarks>
-    /// <para>
-    /// <see cref="ByteLevelSymbols"/> decorates nothing, so the prefix is never
-    /// applied there, while the constructor's merge loop strips it from every
-    /// merge's right side without asking whether the model is byte-level. The
-    /// byte-level alphabet contains the characters a prefix is typically spelled
-    /// with — <c>#</c> is byte <c>0x23</c> — so on such a model a stripped right
-    /// side can land on another entry that exists, and the merge then silently
-    /// produces a different id instead of raising.
-    /// </para>
-    /// <para>
-    /// <see cref="Persistence.TokenizerJsonLoader"/> refuses the same pairing in a
-    /// file. This one is here as well because <see cref="BpeVocabulary"/> is public
-    /// and constructible: a caller can pair the two without going through a loader.
-    /// A method rather than an <c>if</c> in the constructor, which sits at 14 of
-    /// S3776's limit of 15 — a call carries no cognitive complexity where a branch
-    /// costs a point.
-    /// </para>
+    /// Why the disagreement would be silent is equivalence.md's <c>continuing_subword_prefix</c>
+    /// row. A method rather than an inline <c>if</c>: <see cref="Persistence.TokenizerJsonLoader"/>
+    /// already refuses the same pairing in a file, and this one exists only because
+    /// <see cref="BpeVocabulary"/> is public and constructible without going through a loader.
     /// </remarks>
     /// <param name="vocabulary">The vocabulary the constructor was handed.</param>
     private static void EnsureByteLevelDeclaresNoContinuingPrefix(BpeVocabulary vocabulary)
@@ -235,21 +170,13 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         }
     }
 
-    /// <summary>
-    /// Refuses a <see cref="BpeVocabulary.PreSplit"/> whose <see cref="SplitBehavior"/>
-    /// is not one of the five values the type defines.
-    /// </summary>
+    /// <summary>Refuses a <see cref="BpeVocabulary.PreSplit"/> whose <see cref="SplitBehavior"/> is not one of the five values the type defines.</summary>
     /// <remarks>
-    /// <see cref="SplitBehavior"/> is a public enum on <see cref="BpeSplitStep"/>, a public
-    /// record, so a hand-built <see cref="BpeVocabulary"/> can name a value outside it —
-    /// no loader can produce one, since <see cref="Persistence.TokenizerJsonLoader"/> maps
-    /// from a fixed set of strings, but nothing stops a caller building
-    /// <see cref="BpeVocabulary"/> directly. Left unchecked, that value surfaces only once
-    /// <see cref="Encode(string)"/> walks into <see cref="BpePreTokenizer"/>'s merge-loop
-    /// switch and throws <see cref="ArgumentOutOfRangeException"/> naming a parameter of
-    /// that internal type that no caller of this constructor can see. Refusing it here
-    /// instead names the vocabulary, the same way
-    /// <see cref="EnsureByteLevelDeclaresNoContinuingPrefix"/> does for the other hand-built
+    /// <see cref="SplitBehavior"/> is public on a public record, so a hand-built
+    /// <see cref="BpeVocabulary"/> can name a value no loader produces; left unchecked it
+    /// surfaces deep inside <see cref="BpePreTokenizer"/>'s merge-loop switch, naming an
+    /// internal parameter this constructor's own caller cannot see. Same reason as
+    /// <see cref="EnsureByteLevelDeclaresNoContinuingPrefix"/>, for the other hand-built
     /// shape no loader guards.
     /// </remarks>
     /// <param name="vocabulary">The vocabulary the constructor was handed.</param>
@@ -408,21 +335,11 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
     /// <summary>Splits and merges the plain-text slice <c>text[start..end]</c>, which contains no added token.</summary>
     /// <remarks>
-    /// <para>
-    /// This is where <see cref="BpeVocabulary.AddPrefixSpace"/> applies, and both
-    /// halves of where matter. HuggingFace prepends the space inside the
-    /// <c>ByteLevel</c> pre-tokenizer, which runs <em>after</em> <c>AddedVocabulary</c>
-    /// has cut the input at its added tokens — so the space goes on every segment,
-    /// not once on the whole input. And it prepends only when the segment does not
-    /// already begin with one: <c>' hello world'</c> and <c>'hello world'</c> both
-    /// give <c>['Ġhello', 'Ġworld']</c>, where an unconditional prepend would put a
-    /// bare <c>'Ġ'</c> in front of the first.
-    /// </para>
-    /// <para>
-    /// An empty segment produces nothing, which is why the prepend cannot be hoisted
-    /// out of this guard: prepending to one would emit a <c>'Ġ'</c> that Python does
-    /// not, e.g. for the empty string or for the gap between two adjacent added tokens.
-    /// </para>
+    /// Where <see cref="BpeVocabulary.AddPrefixSpace"/> applies, and why per segment rather
+    /// than once on the whole input — equivalence.md's <c>BPE(vocab, merges)</c> row. An
+    /// empty segment produces nothing, which is why the prepend cannot be hoisted out of the
+    /// length guard: prepending to one would emit a <c>'Ġ'</c> Python does not, e.g. between
+    /// two adjacent added tokens.
     /// </remarks>
     private void EncodeSegment(string text, int start, int end, List<string> tokens, List<int> ids, List<string> pieces)
     {
@@ -453,9 +370,8 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             return;
         }
 
-        // ignore_merges: a piece that is itself a vocabulary entry is emitted whole.
-        // Llama-3 declares this, and without it that family tokenizes differently
-        // while looking entirely plausible.
+        // ignore_merges: a piece that is itself a vocabulary entry is emitted whole,
+        // as Llama-3 declares it — see equivalence.md's `BPE(...)` row.
         if (_ignoreMerges)
         {
             string mapped = _byteLevel ? MapBytes(piece) : piece;
@@ -467,12 +383,8 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             }
         }
 
-        // One symbol per character is the upper bound for the classic path; a
-        // byte-level piece is sized by its UTF-8 byte count instead, because one
-        // character can become up to four symbols. The pool is rented before the
-        // span is built, rather than inside the conditional expression, so the
-        // rent is a statement of its own rather than an assignment buried in an
-        // expression.
+        // Byte-level sizes by UTF-8 byte count, not char count: one character can
+        // become up to four bytes, each becoming its own symbol.
         int capacity = _byteLevel ? JsonArtifact.Utf8NoBom.GetByteCount(piece) : piece.Length;
         bool small = capacity <= StackThreshold;
         int[]? rented = small ? null : ArrayPool<int>.Shared.Rent(capacity);
@@ -497,29 +409,21 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     }
 
     /// <summary>
-    /// Fills <paramref name="symbols"/> with one id per Unicode code point,
-    /// substituting the unknown-token id for a code point the vocabulary does not
-    /// cover — or, when no unknown token is declared, dropping it. Returns the
-    /// number of symbols written, which can be less than <c>piece.Length</c> both
-    /// because characters can be dropped and because a surrogate pair is one code
-    /// point, not two.
+    /// Fills <paramref name="symbols"/> with one id per Unicode code point, substituting the
+    /// unknown-token id for an uncovered one, or dropping it if none is declared. Returns
+    /// the count written, which can be less than <c>piece.Length</c>: characters can be
+    /// dropped, and a surrogate pair is one code point, not two.
     /// </summary>
     /// <remarks>
-    /// Splitting by <see cref="string"/> index would count a two-<see cref="char"/>
-    /// surrogate pair as two symbols where HuggingFace, iterating a Python
-    /// <c>str</c>'s code points, counts one — an astral character such as an emoji
-    /// would come back as two unknown tokens instead of one.
+    /// Splitting by <see cref="string"/> index would count a surrogate pair as two symbols
+    /// where HuggingFace, iterating a Python <c>str</c>'s code points, counts one.
     /// </remarks>
     private int InitialSymbols(string piece, Span<int> symbols)
     {
         int count = 0;
         int i = 0;
-        // Whether the previous code point was SUBSTITUTED, which is not the same
-        // question as whether the previous symbol's id is _unkId: an unknown
-        // token that is itself a covered character produces that id without
-        // having been substituted, and HuggingFace does not fuse across it.
-        // Measured with unk_token "q" over a vocabulary containing "q":
-        // "qZ" gives two tokens, "ZZ" gives one.
+        // SUBSTITUTED, not "id == _unkId": a covered character equal to unk_token
+        // is not fused across — BpeFuseUnkTests's "qZ" vs "ZZ" cases pin it.
         bool previousWasSubstituted = false;
         while (i < piece.Length)
         {
@@ -537,10 +441,8 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             }
             else if (_hasUnk)
             {
-                // fuse_unk: a run of uncovered code points is one unknown token,
-                // not one each. This happens before Merge runs, which is why a
-                // fused symbol can itself take part in a merge — as HuggingFace's
-                // does.
+                // fuse_unk: a run of uncovered points fuses to one unknown token,
+                // before Merge runs — see equivalence.md's fuse_unk row.
                 if (!_fuseUnk || !previousWasSubstituted)
                 {
                     symbols[count++] = _unkId;
@@ -552,24 +454,16 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         return count;
     }
 
-    /// <summary>
-    /// The vocabulary key for one code point of a piece: the characters
-    /// themselves, plus whatever decoration its position calls for.
-    /// </summary>
+    /// <summary>The vocabulary key for one code point of a piece: the characters themselves, plus whatever decoration its position calls for.</summary>
     /// <param name="piece">The pre-tokenized piece being walked.</param>
     /// <param name="at">The index of the code point's first <see cref="char"/>.</param>
     /// <param name="width">Its width in <see cref="char"/>s — two for a surrogate pair.</param>
     /// <param name="first">Whether it opens the piece.</param>
     /// <param name="last">Whether it ends the piece.</param>
     /// <remarks>
-    /// The two decorations compose, prefix then characters then suffix, and a
-    /// symbol that both continues a piece and ends it carries both — measured
-    /// against <c>tokenizers</c> 0.23.1, where <c>"ab"</c> under both settings
-    /// gives <c>['a', '##b&lt;/w&gt;']</c>. The prefix belongs to the piece and
-    /// not to the text, which costs nothing here: this runs once per code point
-    /// and only reads <paramref name="first"/>, and the caller computing it —
-    /// <see cref="InitialSymbols"/>, which is the once-per-piece one — already
-    /// knows where the piece starts.
+    /// Prefix then characters then suffix, composing on a symbol that is both — see
+    /// <c>BpeContinuingPrefixTests.The_prefix_and_the_suffix_compose</c>, which pins
+    /// <c>"ab"</c> to <c>['a', '##b&lt;/w&gt;']</c>.
     /// </remarks>
     private string Decorate(string piece, int at, int width, bool first, bool last)
     {
@@ -592,39 +486,14 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
     /// <summary>Fills <paramref name="symbols"/> with one id per UTF-8 byte of <paramref name="piece"/>.</summary>
     /// <remarks>
-    /// <para>
-    /// One byte, one symbol: a four-byte emoji enters the merge loop as four
-    /// symbols. That is where the round-trip guarantee comes from — every byte of
-    /// the input is represented, so decoding can put them back.
-    /// </para>
-    /// <para>
-    /// Unlike <see cref="InitialSymbols"/>, this never appends <c>_endOfWord</c>:
-    /// <see cref="BpeVocabulary.EndOfWordSuffix"/> and
-    /// <see cref="BpeVocabulary.ByteLevel"/> are independent properties, so a
-    /// vocabulary can declare both, and the suffix is then silently ignored on this
-    /// path rather than applied. Nothing here measured what the reference does with
-    /// that pairing, so it is a documented gap rather than a refusal.
-    /// </para>
-    /// <para>
-    /// <see cref="BpeVocabulary.ContinuingSubwordPrefix"/> was the same gap and is
-    /// not one any more: it is refused beside <see cref="BpeVocabulary.ByteLevel"/>,
-    /// by <see cref="EnsureByteLevelDeclaresNoContinuingPrefix"/> here and by
-    /// <see cref="Persistence.TokenizerJsonLoader"/> for a file. The prefix carries a
-    /// cost the suffix does not: <see cref="StripContinuingPrefix(string)"/>, in the
-    /// constructor's merge loop, strips it from a merge's right side without checking
-    /// <c>_byteLevel</c>, so the merge results would be computed as if the prefix
-    /// applied while the symbols here are built as if it did not. That disagreement is
-    /// silent — the byte-level alphabet contains the characters a prefix is typically
-    /// spelled with, so a stripped side can land on another entry that exists — which
-    /// is why the pairing is refused rather than documented.
-    /// </para>
+    /// Unlike <see cref="InitialSymbols"/>, <c>_endOfWord</c> is never appended here. A
+    /// byte-level model may still declare <see cref="BpeVocabulary.EndOfWordSuffix"/>; it is
+    /// silently ignored rather than refused — equivalence.md's <c>continuing_subword_prefix</c>
+    /// row records this beside the prefix's own, opposite choice.
     /// </remarks>
     /// <exception cref="ArgumentException">
-    /// A byte-level model's vocabulary is expected to contain all 256 byte-level
-    /// alphabet characters as base tokens -- that is what makes it byte-level.
-    /// A missing entry means the vocabulary is not what <see cref="BpeVocabulary.ByteLevel"/>
-    /// claims it is, which is a broken model, not ordinary uncovered input the way
-    /// an unmapped code point is on the classic path.
+    /// A byte-level vocabulary is missing one of the 256 base alphabet tokens —
+    /// a broken model, not ordinary uncovered input.
     /// </exception>
     /// <exception cref="System.Text.EncoderFallbackException">
     /// <paramref name="piece"/> contains an unpaired surrogate; see <see cref="Encode"/>.
@@ -659,38 +528,12 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
     /// <summary>Applies the lowest-ranked applicable merge until none applies. Returns the new symbol count.</summary>
     /// <remarks>
-    /// <para>
-    /// Rescanning every adjacent pair after every merge, and shifting the array
-    /// down to close the gap, costs the square of the symbol count: 3.80x, 3.91x
-    /// and 4.17x per doubling of a token with no split point in it, against the
-    /// 2.02x, 2.08x and 2.00x this costs instead. Those figures are one machine's
-    /// — an Intel Core i7-4770S (Haswell), Ubuntu 24.04.4, .NET SDK 10.0.110 —
-    /// and <c>BpeScalingBenchmarks</c> in <c>bench/</c> is what re-measures them
-    /// anywhere else. So the symbols are threaded on a doubly-linked list — a merge
-    /// unlinks one node and nothing moves — and the candidate merges are kept in
-    /// a priority queue, so each round takes the best one instead of looking for
-    /// it. Only the two pairs a merge actually creates are new candidates.
-    /// </para>
-    /// <para>
-    /// Positions are indices into <paramref name="symbols"/> and never change,
-    /// which is what lets the queue express the whole ordering rule: an entry is
-    /// the rank in the high 32 bits and the left position in the low 32, so
-    /// comparing the two packed <see cref="long"/>s <em>is</em> "lowest rank
-    /// first, leftmost occurrence on a tie". Both halves are non-negative, so the
-    /// natural ordering of the packed value is the lexicographic ordering of the
-    /// pair.
-    /// </para>
-    /// <para>
-    /// Entries are never removed when they go stale — a merge would otherwise
-    /// have to find the queue entries mentioning the two symbols it consumed.
-    /// They are validated when they come off the queue instead, by
-    /// <see cref="Applies"/>, and dropped in silence when they no longer describe
-    /// an adjacent pair of exactly their rank. The queue can therefore hold
-    /// entries no longer worth acting on, but never misses one that is: every
-    /// adjacency the merge table knows about is offered when it is created, and
-    /// an adjacency changes only when one of its two symbols is merged, which
-    /// either destroys it or produces the merge that offers it again.
-    /// </para>
+    /// Symbols are threaded on a doubly-linked list and candidate merges kept in a hand-rolled
+    /// binary heap, validated when they come off the queue and dropped in silence when stale
+    /// rather than hunted down at merge time — see decision 0017's "Merge loop" section for
+    /// the scaling measurements that justified the rewrite over a rescan-and-shift loop, and
+    /// for the leftmost-wins tie-break, which this reproduces from HuggingFace's own heap
+    /// ordering rather than inventing.
     /// </remarks>
     private int Merge(Span<int> symbols, int count)
     {
@@ -699,15 +542,8 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             return count;
         }
 
-        // Both buffers are always rented, never stackalloc'd below a threshold the
-        // way EncodePiece sizes symbols itself. That is a deliberate difference:
-        // the threshold would put two conditional rentals and two conditional
-        // returns around the loop that carries the algorithm, and the corpus
-        // benchmark -- 5000 documents of ordinary text, which is where short
-        // pieces dominate -- measures no cost to renting unconditionally. Each is
-        // still rented in a statement of its own and returned in a finally, so
-        // every path out of here gives both back. The links are one array holding
-        // two spans rather than two rentals, so there is one fewer to give back.
+        // Always rented, never stackalloc'd below a threshold, unlike EncodePiece: simpler
+        // control flow, and one array for both spans is one fewer rental to give back.
         int capacity = QueueCapacity(count);
         int[] links = ArrayPool<int>.Shared.Rent(2 * count);
         try
@@ -897,27 +733,15 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
     /// <summary>Reassembles the text <paramref name="ids"/> encode.</summary>
     /// <remarks>
-    /// <para>
-    /// Matches <c>tokenizers.Tokenizer.decode(ids, skip_special_tokens=…)</c>, and is
-    /// exact for a byte-level model: every byte mapped to a symbol comes back.
-    /// </para>
-    /// <para>
-    /// The default is the opposite of HuggingFace's, deliberately: a <c>Decode</c>
-    /// that silently drops tokens makes <c>Decode(Encode(x)) == x</c> false in the
-    /// case a caller would write to check it.
-    /// </para>
-    /// <para>
-    /// Bytes that are not well-formed UTF-8 become U+FFFD, as in the reference —
-    /// see decision 0023, which records what that costs a caller.
-    /// </para>
+    /// Matches <c>tokenizers.Tokenizer.decode(ids, skip_special_tokens=…)</c>. Byte-exact only
+    /// for a complete sequence <see cref="Encode"/> produced whole — decoded one id at a time,
+    /// a byte sequence that is not well-formed UTF-8 becomes U+FFFD rather than throwing,
+    /// matching the reference (decision 0023, which also covers what that costs a caller).
+    /// <c>skipSpecialTokens</c> defaults to <see langword="false"/>, the opposite of Python's,
+    /// so <c>Decode(Encode(x)) == x</c> holds without passing it.
     /// </remarks>
     /// <param name="ids">Token ids, e.g. from <see cref="Encode"/>.</param>
-    /// <param name="skipSpecialTokens">
-    /// Drop added tokens marked <c>special</c> instead of rendering them, the ones
-    /// <see cref="AddedToken.Special"/> carries from the file's <c>added_tokens</c>
-    /// entry. An ordinary added token -- <c>Special</c> unset -- is rendered
-    /// either way, matching Python's <c>skip_special_tokens</c>.
-    /// </param>
+    /// <param name="skipSpecialTokens">Drop tokens whose <c>added_tokens</c> entry is <c>special</c> (<see cref="AddedToken.Special"/>), matching Python's <c>skip_special_tokens</c>.</param>
     /// <exception cref="ArgumentOutOfRangeException">An id is outside the vocabulary.</exception>
     public string Decode(IReadOnlyList<int> ids, bool skipSpecialTokens = false)
     {
