@@ -32,8 +32,8 @@ internal sealed class BpePreTokenizer
     private readonly Regex? _second;
     private readonly SplitRule _rule;
 
-    // RegexOptions.Compiled is used for no pattern here, so one policy covers all four:
-    // measured, it buys 1.44x on matching for 6-26 ms per tokenizer built (issue #122).
+    // Compiled on none of the four patterns, so one policy covers them all: it buys
+    // 1.44x matching for 6-26 ms a build, on an i7-4770S over 976 KiB of prose (#122).
     public BpePreTokenizer(BpeSplitStep? preSplit, string? pattern, bool noSplit)
     {
         if (noSplit)
