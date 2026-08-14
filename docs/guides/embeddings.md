@@ -188,6 +188,12 @@ different one is **rejected**, with a message naming what was found:
   byte-level path, a
   `decoder` whose byte-level-ness disagrees with the model's own, which would
   not decode what it encodes;
+- for BPE, a `Sequence`'s `Split` step whose `pattern` declares neither
+  `Regex` nor `String` as a string, or declares **both** — `tokenizers` writes
+  exactly one of the two, so a node carrying both is not something the
+  reference produces and choosing a winner would invent behaviour. A `String`
+  is read as a literal and escaped, not interpreted: `\d` matches those two
+  characters and leaves a digit alone;
 - for BPE, a `Sequence`'s `Split` step declaring no `behavior`, no `invert`, or
   a `behavior` other than the five `tokenizers` defines — `Isolated`,
   `Removed`, `MergedWithPrevious`, `MergedWithNext`, `Contiguous`, spelled in

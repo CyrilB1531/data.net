@@ -4,7 +4,7 @@ namespace DataNet.Embeddings.Tokenization;
 /// A <c>Split</c> step of a <c>Sequence</c> pre-tokenizer: the pattern, what to do
 /// with the text around its matches, and whether the two roles are swapped.
 /// </summary>
-/// <param name="Pattern">The regex the step declares, from <c>pattern.Regex</c>.</param>
+/// <param name="Pattern">The regex the step declares: <c>pattern.Regex</c> as written, or <c>pattern.String</c>'s literal escaped into the regex matching exactly it.</param>
 /// <param name="Behavior">The step's <c>behavior</c>.</param>
 /// <param name="Invert">Swaps match and gap; see <c>docs/equivalence.md</c>'s <c>Split(pattern, behavior=…, invert=…)</c> row for which <see cref="SplitBehavior"/> values that is a no-op for.</param>
 /// <remarks>

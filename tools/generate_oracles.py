@@ -68,6 +68,11 @@ XLMR_FAIRSEQ_MODEL = "xlmr_fairseq.model"
 # declares lstrip on this one.
 MASK_TOKEN = "<mask>"
 
+# Named rather than repeated per corpus: three metadata blocks carry it, which is
+# python:S1192's threshold -- confirmed CRITICAL by the analyzer at that count.
+BYTE_LEVEL_NO_MERGES = (
+    "hand-built: the byte-level alphabet with no merges, defined in tools/generate_oracles.py")
+
 # Ordered: whitespace first (" a" vs "a " must stay distinct), then multi-byte
 # scripts, then the special-token strings written out literally.
 BPE_TEXTS = [
@@ -4318,7 +4323,7 @@ def generate_bpe_split_behavior() -> dict:
             "algorithm": "BPE Sequence Split step behavior and invert",
             "library": "tokenizers",
             "library_version": version("tokenizers"),
-            "model": "hand-built: the byte-level alphabet with no merges, defined in tools/generate_oracles.py",
+            "model": BYTE_LEVEL_NO_MERGES,
             "models": {
                 name: {"declares": declares, "pattern": pattern, "behavior": behavior,
                        "invert": invert, "tokenizer_json": tokenizer.to_str()}
@@ -4428,8 +4433,8 @@ def generate_bpe_no_split() -> dict:
 
 # --- add_prefix_space per Split piece (issue #122) ----------------------------
 
-# A Regex, not a bare string: tokenizers serializes a plain string as
-# {"String": ...} and TokenizerJsonLoader reads only {"Regex": ...}.
+# A Regex, not a bare string: the loader reads both spellings since #167, but
+# swapping this one would re-serialize the models and move a frozen corpus.
 _PREFIX_SPACE_SPLIT = r"\|"
 
 
@@ -4493,11 +4498,111 @@ def generate_bpe_prefix_space() -> dict:
             "algorithm": "BPE add_prefix_space placement",
             "library": "tokenizers",
             "library_version": version("tokenizers"),
-            "model": "hand-built: the byte-level alphabet with no merges, defined in tools/generate_oracles.py",
+            "model": BYTE_LEVEL_NO_MERGES,
             "models": {
                 name: {"declares": declares, "tokenizer_json": tokenizer.to_str()}
                 for name, declares, tokenizer, _ in carried
             },
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+# --- a Split step whose pattern is a literal (issue #167) ---------------------
+
+# Three of these prove the escape happened -- measured, dropping Regex.Escape
+# reddens backslash_d, metachar_dot and pipe; ab, the emoji and "" cannot.
+_SPLIT_LITERALS = {
+    "backslash_d": ("\\d", ["a\\db 7", "\\d\\d", "7\\d7"]),
+    "metachar_dot": ("a.c", ["abc a.c", "a.c.a", "aXc"]),
+    "pipe": ("|", ["ab|cd", "|ab", "a||b"]),
+    "multi_char": ("ab", ["xabyab", "ab", "aab"]),
+    "astral": ("\U0001f600", ["a\U0001f600b", "\U0001f600", "a\U0001f601b"]),
+    # Carried as a model rather than a divergence because the two agree:
+    # measured, BpePreTokenizer over "" gives ["a", "b", "c"] for "abc" too.
+    "empty": ("", ["abc", "", "a"]),
+}
+
+
+def _split_literal_model(pattern):
+    """A byte-level BPE with no merges, so every piece is one token per character.
+
+    The pattern is handed in already wrapped, as a str for the literal spelling
+    and a Regex for the escaped one -- which is the difference under test.
+    """
+    from tokenizers import Tokenizer, models, pre_tokenizers, decoders  # noqa: PLC0415
+
+    vocab = {c: i for i, c in enumerate(sorted(pre_tokenizers.ByteLevel.alphabet()))}
+    tokenizer = Tokenizer(models.BPE(vocab, []))
+    tokenizer.pre_tokenizer = pre_tokenizers.Sequence([
+        pre_tokenizers.Split(pattern, behavior="isolated", invert=False),
+        pre_tokenizers.ByteLevel(add_prefix_space=False, use_regex=False),
+    ])
+    tokenizer.decoder = decoders.ByteLevel()
+    return tokenizer
+
+
+def _split_literal_models() -> list[tuple]:
+    """(name, declares, literal, tokenizer, texts) -- each literal beside its escaped twin."""
+    import re  # noqa: PLC0415
+    from tokenizers import Regex  # noqa: PLC0415
+
+    carried = []
+    for name, (literal, texts) in _SPLIT_LITERALS.items():
+        carried.append((
+            f"{name}_literal", f"Split pattern spelled {{'String': {literal!r}}}",
+            literal, _split_literal_model(literal), texts))
+        carried.append((
+            f"{name}_escaped", f"the same literal as {{'Regex': {re.escape(literal)!r}}}",
+            None, _split_literal_model(Regex(re.escape(literal))), texts))
+    return carried
+
+
+def _split_literal_refusals() -> list[dict]:
+    """The two pattern shapes #167 decides to refuse: neither spelling, and both.
+
+    Not a measurement of either side. tokenizers builds neither shape, so there
+    is no reference error to capture, which is why both are carried as shapes
+    and not as recorded errors. The loader refuses each of them since 01c0de1 --
+    the both case on the two keys being present rather than on both values being
+    readable -- and the tests assert on those messages, not on anything here.
+    """
+    shapes = [
+        ("pattern_empty", {}),
+        ("pattern_both", {"Regex": "a", "String": "a"}),
+    ]
+    return [{"shape": shape, "pattern": pattern} for shape, pattern in shapes]
+
+
+def generate_bpe_split_literal() -> dict:
+    """What a literal Split pattern produces, beside its escaped-regex twin."""
+    carried = _split_literal_models()
+    cases = []
+    for name, _declares, _literal, tokenizer, texts in carried:
+        for text in texts:
+            enc = tokenizer.encode(text)
+            cases.append({
+                "id": len(cases), "model": name, "text": text,
+                # The pre-tokenizer's own output, which is where the pattern acts.
+                "pieces": [p for p, _span in tokenizer.pre_tokenizer.pre_tokenize_str(text)],
+                "tokens": enc.tokens, "ids": enc.ids,
+            })
+
+    return {
+        "metadata": {
+            "algorithm": "BPE Sequence Split step with a literal pattern",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": BYTE_LEVEL_NO_MERGES,
+            "models": {
+                name: {"declares": declares, "literal": literal,
+                       "tokenizer_json": tokenizer.to_str()}
+                for name, declares, literal, tokenizer, _ in carried
+            },
+            # DataNet's refusals, not the reference's: tokenizers builds neither
+            # shape, so there is no error to capture -- only the pattern node.
+            "refusals": _split_literal_refusals(),
             "count": len(cases),
         },
         "cases": cases,
@@ -4580,6 +4685,7 @@ def main() -> None:
         "bpe_continuing_prefix.json": generate_bpe_continuing_prefix,
         "bpe_sequence_split.json": generate_bpe_sequence_split,
         "bpe_split_behavior.json": generate_bpe_split_behavior,
+        "bpe_split_literal.json": generate_bpe_split_literal,
         "bpe_duplicate_merge.json": generate_bpe_duplicate_merge,
         "bpe_no_split.json": generate_bpe_no_split,
         "wordpiece_added_tokens.json": generate_wordpiece_added_tokens,
