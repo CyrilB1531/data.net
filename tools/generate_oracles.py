@@ -4181,8 +4181,8 @@ def generate_bpe_split_behavior() -> dict:
 
 # --- a pre-tokenizer that does not split (issue #122) -------------------------
 
-# fuse_unk on and Z uncovered is what makes D1 visible: unsplit, Z-space-Z is
-# one uncovered run and fuses to one token; split, the two Z's cannot meet.
+# fuse_unk is on so the unsplit side comes out SHORTER than the split one --
+# measured, 3 tokens against 4; with it off the pair still differs, 5 against 4.
 _NO_SPLIT_VOCAB = {UNK_TOKEN: 0, "a": 1, "b": 2, "ab": 3}
 
 
@@ -4200,11 +4200,9 @@ def _no_split_classic(pre_tokenizer):
 def _no_split_byte_level(use_regex, add_prefix_space=False, added=None):
     """A byte-level BPE whose alphabet covers every byte, so nothing is unknown.
 
-    The one merge spans a piece boundary on purpose: with use_regex on,
-    "hello world" is two pieces and the o and the space fall either side of the
-    cut, so the merge cannot apply. With it off there is one piece and it can.
-    Without such a merge the two models produce the same tokens -- one character
-    each -- and the corpus would show nothing.
+    The one merge spans a piece boundary on purpose: use_regex cuts "hello
+    world" between the o and the space, so only the unsplit model can apply it.
+    Without it both models emit one token per character and measure nothing.
     """
     from tokenizers import Tokenizer, models, pre_tokenizers, decoders  # noqa: PLC0415
 
