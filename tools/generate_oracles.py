@@ -4381,8 +4381,8 @@ def _prefix_space_model(pre_split, add_prefix_space, use_regex):
 
 def _prefix_space_models() -> list[tuple]:
     """(name, declares, tokenizer, texts) -- one per thing no other model shows."""
-    # The last text has no "|" in it, so every model must agree on it: that is
-    # what shows the three shapes coincide when there is nothing to split.
+    # The last text has no "|", so the four models with the space on agree on it
+    # -- what shows the shapes coincide unsplit. presplit_no_aps lacks that space.
     texts = ["ab|cd", "a b|c d", "ab| cd", " ab|cd", "a| |b", "a|b|c|d", "no split here"]
     return [
         ("presplit_aps", "Sequence[Split, ByteLevel(aps on, use_regex off)] -- Llama-3's shape",
