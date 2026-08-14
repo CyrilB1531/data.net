@@ -27,8 +27,8 @@ claim independently, one to a differential against a separately written referenc
 by a criterion that contradicted its measurement, and **none to careful reading**.
 
 That breakdown is tabulated in
-`docs/superpowers/specs/2026-08-14_0134_claims-and-comment-discipline.md`, section D2, which names each of
-the eight and how it fell. Cite it rather than this paragraph if you need to check the count — this file
+`docs/superpowers/specs/2026-08-14_0134_claims-and-comment-discipline.md`, section D2, which tabulates how the
+eight fell rather than naming them. Cite it rather than this paragraph if you need to check the count — this file
 states the conclusion, the spec carries the working.
 
 So the question is: **what would you run to check this, and did you run it?**

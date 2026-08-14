@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Refuse a comment block that runs past eight lines without saying why.
 
-Measured on 2026-08-14 across src/, tests/, tools/, bench/ and samples/: 2056
-comment blocks holding 10586 lines, of which 372 run past eight lines and hold
-5779 of those lines. About one block in five carries more than half the
+What set the two budgets, measured on 2026-08-14 over C# files: 1837 comment
+blocks holding 9803 lines, of which 354 ran past eight and held 5532 -- and
+316 of those 354 were XML documentation, which CLAUDE.md requires on every
+public member. A single eight-line cap would have been a cap on documenting
+the API. Run --report for what the tree holds now; a total pinned in this
+docstring would be false at the next commit. About one block in five carries more than half the
 prose, and the longest runs 63 lines
 (src/DataNet.Embeddings/Persistence/TokenizerJsonLoader.cs:7).
 
@@ -70,6 +73,13 @@ Block = namedtuple("Block", "line length prose doc marked")
 Finding = namedtuple("Finding", "path line length")
 
 
+def _is_marker(content: str) -> bool:
+    """A marker is the prefix AND a reason: an empty one is the cheapest rubber stamp."""
+    if not content.lower().startswith(MARKER):
+        return False
+    return bool(content[len(MARKER):].strip())
+
+
 def _leader_for(stripped: str, leaders: tuple[str, ...]) -> str | None:
     """The longest leader `stripped` starts with, or None.
 
@@ -123,7 +133,7 @@ def blocks_in(lines: list[str], suffix: str) -> list[Block]:
         if is_comment:
             if length == 0:
                 start = number
-                marked = content.startswith(MARKER)
+                marked = _is_marker(content)
                 prose = 0
                 doc = raw.strip().startswith("///")
             length += 1

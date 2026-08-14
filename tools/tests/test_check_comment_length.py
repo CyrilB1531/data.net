@@ -1,9 +1,11 @@
-"""The guard's own tests, over blocks taken from this repository.
+"""The guard's own tests, over the shapes the counter has to get right.
 
-Issue #134 measured 354 blocks running past eight lines, holding 5532 of the
-9803 comment lines in the tree. The fixtures below are shapes from that list
-rather than invented ones, which is what makes them evidence that the counter
-matches the thing that was counted.
+Issue #134 measured 354 C# blocks running past eight lines, holding 5532 of
+the 9803 comment lines in C# files -- the figure that set the documentation
+budget before it was split from the inline one. These fixtures are minimal
+constructions rather than excerpts: what needs pinning is the boundary
+between one block and two, and a real 34-line block exercises no boundary a
+three-line one does not.
 """
 import sys
 from pathlib import Path
@@ -105,3 +107,42 @@ def test_the_finding_names_the_line_and_the_prose_count():
     finding = guard.findings_in(nine.split("\n"), ".cs")[0]
     assert finding.line == 1
     assert finding.length == 9
+
+
+def test_a_marker_with_no_reason_is_not_a_marker():
+    # The cheapest possible rubber stamp, and the one a hurried author reaches
+    # for. The reason is what a review judges; without it there is nothing to.
+    text = "// long-comment:\n// one\n// two\nint x = 1;\n"
+    assert len(guard.findings_in(text.split("\n"), ".cs")) == 1
+
+
+def test_the_marker_is_case_insensitive():
+    text = "// LONG-COMMENT: shouting is still a reason\n// one\n// two\nint x = 1;\n"
+    assert guard.findings_in(text.split("\n"), ".cs") == []
+
+
+def test_tracked_files_is_independent_of_the_process_cwd():
+    # check_machine_paths.py shipped this bug and fixed it: run from tools/ it
+    # scanned 20 of 533 files and exited clean.
+    import os
+    here = os.getcwd()
+    try:
+        os.chdir(Path(__file__).resolve().parent)
+        from_tools = guard.tracked_files()
+    finally:
+        os.chdir(here)
+    assert len(from_tools) == len(guard.tracked_files()) > 100
+
+
+def test_help_goes_to_stdout_and_exits_zero(capsys):
+    assert guard.main(["check_comment_length.py", "--help"]) == 0
+    assert "Usage" in capsys.readouterr().out
+
+
+def test_a_bad_argument_exits_two():
+    assert guard.main(["check_comment_length.py", "--nonsense"]) == 2
+
+
+def test_report_exits_zero_even_with_findings(capsys):
+    assert guard.main(["check_comment_length.py", "--report"]) == 0
+    assert "comment blocks" in capsys.readouterr().out

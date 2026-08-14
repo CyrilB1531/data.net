@@ -19,16 +19,18 @@ tool. Four more came from #127, four from #140 and #121, three predate the issue
 blocks, holding **5532 lines, 56% of all the prose**. One block in five carries more than half the text.
 The longest is 63 lines.
 
-Counting the Python under `tools/` and `bench/` as well, which is what the guard does: **2065 blocks,
-10 616 lines**, and **629 past their budget holding 5586 prose lines** once the two budgets are applied —
-two for an inline block, eight for documentation prose.
+Counting the Python under `tools/` and `bench/` as well, which is what the guard does, and applying both
+budgets — two lines for an inline block, eight lines of prose for documentation — **629 blocks are past
+budget, holding 5586 prose lines**. The block and line totals move with every commit, so
+`python3 tools/check_comment_length.py --report` is the live figure rather than a number frozen here; it
+read 2065 blocks and 10 616 lines when the budgets were set.
 
 Splitting the 354 by kind is what set those budgets: **316 were pure XML documentation** (5017 lines) and
 only 38 were inline. A single eight-line cap would therefore have been, at 89%, a cap on documenting the
 public API — which `CLAUDE.md` separately requires. Excluding structural elements and tightening inline to
 two lines puts the work where the prose actually is. The first figures are the ones quoted throughout this spec; the second is
 the population the guard actually refuses, and the two were reconciled rather than averaged — the gap is
-242 Python blocks, not drift.
+228 Python blocks, not drift.
 
 ## What is measured
 
@@ -68,8 +70,8 @@ it and paste the output.
 | --- | ---: | ---: | ---: |
 | all comment blocks | 1837 | 9803 | 100% |
 | blocks over 8 lines | 354 | 5532 | **56%** |
-| **including Python** | **2079** | **10 615** | — |
-| of those, over 8 lines | 372 | — | — |
+| **including Python** | **2065** | **10 616** | — |
+| past budget, both kinds | 629 | 5586 prose | — |
 
 The ten longest run 35 to 63 lines. `src/DataNet.Embeddings/Tokenization/BpeTokenizer.cs` holds three of
 them; `TokenizerJsonLoader.cs:7` holds the longest.

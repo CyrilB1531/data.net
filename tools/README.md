@@ -11,7 +11,8 @@ commits them directly;
 `check_nuspec_dependencies.py` verifies what the packages *declare*;
 `check_version_floor.py` verifies that the version numbers the source tree keeps
 in three places still agree; `check_machine_paths.py` refuses a tracked file
-that holds a path under someone's home directory;
+that holds a path under someone's home directory; `check_comment_length.py`
+refuses a comment block that runs past its budget without saying why;
 `generate_sonar_globalconfig.py` writes the
 `.globalconfig` that raises the Sonar rules `SonarAnalyzer.CSharp` ships
 disabled, from the SonarCloud quality profile that gates the pull request; and
@@ -211,6 +212,32 @@ python tools/generate_sonar_globalconfig.py --check
 A regenerated file that differs means the SonarCloud profile moved; an
 unreachable API is reported separately and never as drift, so a network hiccup
 cannot make the check pass on a stale file.
+
+## `check_comment_length.py`
+
+Refuses a comment block that runs past its budget without saying why. Two
+budgets, because the two kinds of prose sit in different places: an inline
+comment stands between a reader and the code and gets **two lines**, while XML
+documentation is the member's own interface and gets **eight**, counted over
+prose — a `<param>` or an `<exception>` that a well-formed member must carry
+does not spend it.
+
+```bash
+python3 tools/check_comment_length.py           # findings, exit 1 if any
+python3 tools/check_comment_length.py --report  # counts only, always exit 0
+python3 tools/check_comment_length.py --help
+```
+
+Longer stays possible where it is necessary. A block past its budget carries
+`long-comment:` and a reason as its first line, which is the bargain a
+`#pragma warning disable` strikes — allowed, deliberate, reviewable. **The
+marker must carry a reason**; an empty one is refused, because it is the
+cheapest rubber stamp available. The guard sees only that a marker exists;
+whether the block deserved one is a code review's call, and
+`CONTRIBUTING.md`'s *Claims in comments* says so.
+
+A docstring is not a comment block. Python prose belongs in one, and the tools
+in this directory open with thirty-line docstrings on purpose.
 
 ## `check_machine_paths.py`
 
