@@ -1275,24 +1275,57 @@ public sealed class TokenizerJsonLoaderTests
     }
 
     /// <summary>
-    /// <c>ReadBpe</c> never looked at the normalizer at all, where the WordPiece and
-    /// Unigram readers both do, so a BPE file declaring <c>NFC</c> or <c>NFKC</c>
-    /// loaded and skipped the normalization silently. <see cref="BpeTokenizer"/>
-    /// normalizes nothing, so any normalizer is refused by name.
+    /// Asserts the full declared sequence, not just its count: a reader that
+    /// reversed, sorted, or repeated a form would still pass a count-only check.
+    /// NFD-then-NFC and NFC-then-NFD both run so a reversed reader cannot pass by
+    /// accident.
     /// </summary>
-    [Fact]
-    public void LoadBpe_refuses_a_normalizer()
+    [Theory]
+    [InlineData("{\"type\":\"NFC\"}", new[] { NormalizationForm.FormC })]
+    [InlineData("{\"type\":\"NFKD\"}", new[] { NormalizationForm.FormKD })]
+    [InlineData(
+        "{\"type\":\"Sequence\",\"normalizers\":[{\"type\":\"NFD\"},{\"type\":\"NFC\"}]}",
+        new[] { NormalizationForm.FormD, NormalizationForm.FormC })]
+    [InlineData(
+        "{\"type\":\"Sequence\",\"normalizers\":[{\"type\":\"NFC\"},{\"type\":\"NFD\"}]}",
+        new[] { NormalizationForm.FormC, NormalizationForm.FormD })]
+    [InlineData("{\"type\":\"Sequence\",\"normalizers\":[]}", new NormalizationForm[0])]
+    [InlineData("null", new NormalizationForm[0])]
+    public void LoadBpe_reads_the_normalization_forms_a_file_declares(string normalizer, NormalizationForm[] expected)
     {
-        const string Json = """
-        {"model":{"type":"BPE","vocab":{"a":0},"merges":[]},
-         "normalizer":{"type":"NFKC"}}
-        """;
+        BpeVocabulary vocab = TokenizerJsonLoader.LoadBpe(Bytes(MinimalBpeJson(normalizer)), OracleReplay.BpeBounds());
 
-        InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
-
-        Assert.Contains("NFKC", error.Message, StringComparison.Ordinal);
+        Assert.Equal(expected, vocab.NormalizationForms);
     }
+
+    /// <summary>
+    /// Every normalizer outside the reproduced set is refused <em>by name</em>, which
+    /// is the shape the sibling readers use: a message naming what was found is what
+    /// lets a reader tell "not supported" from "not understood".
+    /// </summary>
+    [Theory]
+    [InlineData("{\"type\":\"Replace\",\"pattern\":{\"String\":\" \"},\"content\":\"_\"}", "Replace")]
+    [InlineData("{\"type\":\"Prepend\",\"prepend\":\"X\"}", "Prepend")]
+    [InlineData("{\"type\":\"StripAccents\"}", "StripAccents")]
+    [InlineData("{\"type\":\"Lowercase\"}", "Lowercase")]
+    [InlineData("{\"type\":\"BertNormalizer\"}", "BertNormalizer")]
+    [InlineData("{\"type\":\"Sequence\",\"normalizers\":[{\"type\":\"NFC\"},{\"type\":\"Strip\"}]}", "Strip")]
+    public void LoadBpe_refuses_a_normalizer_it_does_not_reproduce_by_name(string normalizer, string named)
+    {
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(Bytes(MinimalBpeJson(normalizer)), OracleReplay.BpeBounds()));
+
+        Assert.Contains(named, error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>The smallest loadable byte-level BPE file, with <paramref name="normalizer"/> spliced in.</summary>
+    private static string MinimalBpeJson(string normalizer) =>
+        $$$"""
+        {"version":"1.0","normalizer":{{{normalizer}}},
+         "pre_tokenizer":{"type":"ByteLevel","add_prefix_space":false},
+         "decoder":{"type":"ByteLevel","add_prefix_space":false},
+         "model":{"type":"BPE","vocab":{"a":0,"b":1,"ab":2},"merges":["a b"]}}
+        """;
 
     /// <summary>
     /// A byte-level model whose decoder is not <c>ByteLevel</c> would decode its own

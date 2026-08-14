@@ -48,6 +48,16 @@ TokenizationResult t = bpe.Encode("Hello, world! 🎉");
 string back = bpe.Decode(t.Ids);   // == "Hello, world! 🎉", byte for byte
 ```
 
+A `tokenizer.json` that declares a normalizer — `NFC`, `NFKC`, `NFD`, `NFKD`, or a
+`Sequence` of those — has it applied before encoding, not after decoding: `Decode`
+applies no normalizer of its own, but since `Encode` already normalized the text it
+saw, `Decode(Encode(x))` returns the normalized text rather than `x`, matching Python.
+One case does not round-trip byte-exactly: a non-ASCII added token that is not
+byte-level encodable end to end decodes to U+FFFD, matching HuggingFace rather than
+throwing — [decision 0023](../decisions/0023-byte-level-decode-substitutes.md). That is
+also what makes decoding one token id at a time work, the normal way to consume a
+streamed model.
+
 See [Which tokenizer for which model family](#which-tokenizer-for-which-model-family)
 for the family-to-class mapping, including the one family this package refuses
 outright.
@@ -175,9 +185,12 @@ different one is **rejected**, with a message naming what was found:
   the file's own PascalCase, not the Python constructor's snake_case.
   `tokenizers` 0.23.1 has no default for either field and refuses the file
   identically;
-- for BPE, any `normalizer` at all (`BpeTokenizer` normalizes nothing), a
-  **non-zero** `dropout`, and a bare `ByteLevel` with `use_regex` off — each of
-  those changes what Python produces and none of them is applied here.
+- for BPE, a normalizer other than `NFC`, `NFKC`, `NFD`, `NFKD` or a `Sequence`
+  of those (empty included, which normalizes nothing) — `Replace` by name,
+  since its pattern may be a Rust regex whose flavour .NET does not share, and
+  anything else by name too. A **non-zero** `dropout`, and a bare `ByteLevel`
+  with `use_regex` off — each of those changes what Python produces and none
+  of them is applied here.
   `use_regex` off on the `ByteLevel` step of a `Split`-then-`ByteLevel`
   `Sequence` is a different thing, and is accepted — but not because `ByteLevel`
   contributes no split of its own there. On, it re-splits each piece the

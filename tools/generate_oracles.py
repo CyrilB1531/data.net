@@ -62,6 +62,7 @@ UNK_TOKEN = "[UNK]"
 UNK_TOKEN_LOWER = "<unk>"
 CAT_SENTENCE = "the cat sat on the mat"
 HELLO_WORLD = "hello world"
+END_OF_TEXT = "<|endoftext|>"
 TINY_SP_MODEL = "tiny_sp.model"
 EMBEDDING_SENTENCE = "tokenization is embedding embeddings"
 XLMR_FAIRSEQ_MODEL = "xlmr_fairseq.model"
@@ -2393,6 +2394,257 @@ def generate_bpe_tokenizer_json() -> dict:
     }
 
 
+# long-comment: three landmines here are each real and each silent -- reusing
+# the name NORMALIZER_TEXTS would overwrite a different generator's corpus at
+# call time, a literal already-normalized character would silently stop
+# testing the difference it exists to test, and dropping any one of the three
+# probe kinds below loses the form coverage this corpus's name promises.
+#
+# Combining sequence, singleton (U+212B ANGSTROM SIGN -> U+00C5), and two
+# compatibility characters the K forms alone touch (U+FB01 fi ligature,
+# U+2460 circled digit one) -- written as \u escapes so none of them is a
+# character a form has already normalized.
+BPE_NORMALIZER_TEXTS = [
+    "école",            # e + COMBINING ACUTE
+    "école",             # the precomposed form of the same word
+    "Ångstrom unit",     # ANGSTROM SIGN
+    "ﬁve o￦clock",  # the fi ligature, and a fullwidth macron
+    "① ② café",
+    HELLO_WORLD,              # unchanged by every form: the control
+]
+
+# Code points chosen to expose a disagreement between .NET's Unicode tables
+# and Rust's crate, if the four forms have one -- see the spec's D5.
+UNICODE_FORM_PROBES = BPE_NORMALIZER_TEXTS + [
+    "ẛ̣",   # LATIN SMALL LETTER LONG S WITH DOT ABOVE + DOT BELOW
+    "İ",         # LATIN CAPITAL LETTER I WITH DOT ABOVE
+    "Ω",         # OHM SIGN
+    "̈́",         # COMBINING GREEK DIALYTIKA TONOS, a singleton decomposition
+    "가한",   # Hangul syllables, algorithmic composition
+    "豈",         # a CJK compatibility ideograph
+    "ᾂ",         # a Greek letter with three stacked marks
+    "ﷺ",         # ARABIC LIGATURE SALLALLAHOU..., expands to 18 characters
+]
+
+
+def generate_unicode_forms() -> dict:
+    """What tokenizers' four normalization forms produce, character for character.
+
+    The C# side asserts String.Normalize gives the same answer. Nothing in this
+    corpus involves BPE: it isolates the one question the tokenizer corpus cannot
+    answer, which is whether the two runtimes' Unicode tables agree at all.
+    """
+    from tokenizers import normalizers  # noqa: PLC0415
+
+    forms = [("NFC", normalizers.NFC()), ("NFKC", normalizers.NFKC()),
+             ("NFD", normalizers.NFD()), ("NFKD", normalizers.NFKD())]
+    cases = []
+    for text in UNICODE_FORM_PROBES:
+        for name, normalizer in forms:
+            cases.append({
+                "id": len(cases),
+                "form": name,
+                "text": text,
+                "normalized": normalizer.normalize_str(text),
+            })
+    return {
+        "metadata": {
+            "algorithm": "Unicode normalization forms",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+def _small_bytelevel_bpe_tokenizer(add_prefix_space: bool = False):
+    """A byte-level BPE with full coverage and no merges.
+
+    Every one of the 256 alphabet characters is its own token, so any input
+    encodes with no unknown id -- all this corpus needs, since its subject is
+    the normalizer, not the size of the vocabulary the merges reach. Reuses the
+    bytes_to_unicode-derived alphabet generate_bytelevel_bpe already proves
+    against ByteLevel.alphabet(), rather than deriving it a second time.
+    """
+    from tokenizers import Tokenizer, decoders, models, pre_tokenizers  # noqa: PLC0415
+
+    vocab = {c: i for i, c in enumerate(sorted(pre_tokenizers.ByteLevel.alphabet()))}
+    tokenizer = Tokenizer(models.BPE(vocab, []))
+    tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=add_prefix_space)
+    tokenizer.decoder = decoders.ByteLevel()
+    return tokenizer
+
+
+def generate_bpe_normalizer() -> dict:
+    """A BPE pipeline with a normalizer, which LoadBpe refused wholesale.
+
+    Ten pipelines. Seven cover D1-D4 of the spec: one per form, a Sequence of
+    two, an empty Sequence -- the deepseek shape, which does nothing and was
+    refused for nothing -- and a normalizer beside both halves of the added
+    token table, the gpt-neox shape (23 of its 25 entries are normalized:
+    true). Three more, added by the branch review of #121: two where a raw
+    and a normalized added token compete for the same span (finding 1), and
+    one measuring add_prefix_space against a normalizer for the first time
+    (finding 2) -- see the comments at each for what they pin down.
+
+    Only "nfc" -- the form four of the five surveyed models actually declare --
+    runs on real GPT-2, so the corpus still proves the case that exists in the
+    wild against a real 50 257-entry vocabulary. Every other pipeline runs on
+    _small_bytelevel_bpe_tokenizer(): each case already carries its own whole
+    tokenizer.json (so the C# side parses the exact bytes HuggingFace was
+    handed), and ten copies of GPT-2's 1.8 MB model would have made this
+    corpus over 100 MB for a question that has nothing to do with vocabulary
+    size.
+    """
+    from tokenizers import AddedToken, normalizers  # noqa: PLC0415
+
+    pipelines = [
+        ("nfc", normalizers.NFC(), False, True),
+        ("nfkc", normalizers.NFKC(), False, False),
+        ("nfd", normalizers.NFD(), False, False),
+        ("nfkd", normalizers.NFKD(), False, False),
+        ("sequence", normalizers.Sequence([normalizers.NFD(), normalizers.NFC()]), False, False),
+        ("empty_sequence", normalizers.Sequence([]), False, False),
+        ("added_tokens", normalizers.NFC(), True, False),
+    ]
+
+    cases = []
+    for i, (name, normalizer, with_added, real_gpt2) in enumerate(pipelines):
+        tokenizer = _gpt2_tokenizer() if real_gpt2 else _small_bytelevel_bpe_tokenizer()
+        tokenizer.normalizer = normalizer
+        if with_added:
+            # One of each half. The normalized entry is written decomposed, so it
+            # can only match once its own content has been normalized too.
+            tokenizer.add_tokens([AddedToken("café", normalized=True)])
+            tokenizer.add_special_tokens([AddedToken(END_OF_TEXT, special=True, normalized=False)])
+        texts = BPE_NORMALIZER_TEXTS + (["a café<|endoftext|>b", "café tail"] if with_added else [])
+        text_cases = []
+        for text in texts:
+            enc = tokenizer.encode(text)
+            text_cases.append({
+                "text": text,
+                "tokens": enc.tokens,
+                "ids": enc.ids,
+                "decoded": tokenizer.decode(enc.ids, skip_special_tokens=False),
+            })
+        cases.append({
+            "id": i,
+            "name": name,
+            "tokenizer_json": tokenizer.to_str(),
+            "texts": text_cases,
+        })
+
+    # Branch review of #121, finding 1: a raw entry now beats an earlier or
+    # longer normalized one for the same span, HuggingFace's own precedence -- see spec D2.
+    precedence_pipelines = [
+        # "ab" (normalized) starts earlier but loses: the raw pass claims "b"
+        # first, leaving no gap that still contains "ab".
+        ("precedence_raw_beats_normalized", [("ab", True), ("b", False)], ["xaby"]),
+        # "abc" (normalized, earlier and longer) still loses: the raw pass
+        # claims "cy" first, removing the 'c' it needed.
+        ("precedence_raw_beats_earlier_longer_normalized", [("abc", True), ("cy", False)], ["abcy"]),
+    ]
+    for name, tokens, texts in precedence_pipelines:
+        tokenizer = _small_bytelevel_bpe_tokenizer()
+        for content, normalized in tokens:
+            tokenizer.add_tokens([AddedToken(content, normalized=normalized)])
+        text_cases = []
+        for text in texts:
+            enc = tokenizer.encode(text)
+            text_cases.append({
+                "text": text,
+                "tokens": enc.tokens,
+                "ids": enc.ids,
+                "decoded": tokenizer.decode(enc.ids, skip_special_tokens=False),
+            })
+        cases.append({
+            "id": len(cases),
+            "name": name,
+            "tokenizer_json": tokenizer.to_str(),
+            "texts": text_cases,
+        })
+
+    # Branch review of #121, finding 2: normalization runs before
+    # add_prefix_space is decided -- U+3000 only becomes a literal space post-NFKC; see spec D2.
+    prefix_space_tokenizer = _small_bytelevel_bpe_tokenizer(add_prefix_space=True)
+    prefix_space_tokenizer.normalizer = normalizers.NFKC()
+    prefix_space_texts = [
+        "　café",  # IDEOGRAPHIC SPACE + café: a leading space only after NFKC
+        " café",       # control: already begins with a literal space
+    ]
+    prefix_space_text_cases = []
+    for text in prefix_space_texts:
+        enc = prefix_space_tokenizer.encode(text)
+        prefix_space_text_cases.append({
+            "text": text,
+            "tokens": enc.tokens,
+            "ids": enc.ids,
+            "decoded": prefix_space_tokenizer.decode(enc.ids, skip_special_tokens=False),
+        })
+    cases.append({
+        "id": len(cases),
+        "name": "add_prefix_space_after_normalize",
+        "tokenizer_json": prefix_space_tokenizer.to_str(),
+        "texts": prefix_space_text_cases,
+    })
+
+    return {
+        "metadata": {
+            "algorithm": "BPE normalizer",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+# Two CJK texts, an emoji sequence and two controls: a byte-level token is a
+# fragment of a multi-byte character far more often than not.
+BYTELEVEL_STREAM_TEXTS = [
+    "東京 \U0001f44b",          # 東京 + waving hand
+    "日本語のテキスト",  # a Japanese sentence
+    "\U0001f1eb\U0001f1f7 emoji",       # a regional-indicator pair
+    "déjà vu",                # Latin-1: no fragment, the control
+    HELLO_WORLD,                        # ASCII: the other control
+]
+
+
+def generate_bytelevel_decode_stream() -> dict:
+    """Each id of a text decoded on its own, which is how a stream is consumed.
+
+    tokenizers substitutes U+FFFD for a byte sequence that is not well-formed
+    UTF-8; DataNet threw until issue #149. The `replacement_count` per case is
+    carried so a corpus that stopped exercising the substitution would be noticed
+    rather than pass silently.
+    """
+    tokenizer = _gpt2_tokenizer()
+
+    cases = []
+    for text in BYTELEVEL_STREAM_TEXTS:
+        enc = tokenizer.encode(text)
+        per_id = [tokenizer.decode([i]) for i in enc.ids]
+        cases.append({
+            "id": len(cases),
+            "text": text,
+            "ids": enc.ids,
+            "tokens": enc.tokens,
+            "per_id_decoded": per_id,
+            "replacement_count": sum(1 for s in per_id if "�" in s),
+            "decoded": tokenizer.decode(enc.ids),
+        })
+    return {
+        "metadata": {
+            "algorithm": "byte-level decode, one id at a time",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 # The two settings the rest of the BPE corpus structurally cannot see, exercised
 # together because they interact.
 #
@@ -2409,7 +2661,7 @@ def generate_bpe_tokenizer_json() -> dict:
 #      between two segments, hence the extra texts below.
 BPE_ADDED_TOKEN_TEXTS = BPE_TEXTS + [
     "hi<|endoftext|>bye",             # a segment after an added token, no space of its own
-    "<|endoftext|>",                  # nothing but the token
+    END_OF_TEXT,                      # nothing but the token
     "<|endoftext|>tail",              # an empty segment before it
     " <|endoftext|> ",                # segments that already start with a space
     "x<|endoftext|> y<|endoftext|>z",  # several, mixed
@@ -2427,7 +2679,7 @@ def generate_bpe_added_tokens() -> dict:
     from tokenizers import AddedToken  # noqa: PLC0415
 
     tokenizer = _gpt2_tokenizer(add_prefix_space=True)
-    tokenizer.add_special_tokens([AddedToken("<|endoftext|>", special=True)])
+    tokenizer.add_special_tokens([AddedToken(END_OF_TEXT, special=True)])
 
     cases = []
     for i, text in enumerate(BPE_ADDED_TOKEN_TEXTS):
@@ -3973,6 +4225,9 @@ def main() -> None:
         "bytelevel_bpe.json": generate_bytelevel_bpe,
         "bpe_pretokenize.json": generate_bpe_pretokenize,
         "bpe_tokenizer_json.json": generate_bpe_tokenizer_json,
+        "bpe_normalizer.json": generate_bpe_normalizer,
+        "bytelevel_decode_stream.json": generate_bytelevel_decode_stream,
+        "unicode_forms.json": generate_unicode_forms,
         "bpe_added_tokens.json": generate_bpe_added_tokens,
         "bpe_added_token_flags.json": generate_bpe_added_token_flags,
         "bpe_no_op_settings.json": generate_bpe_no_op_settings,
