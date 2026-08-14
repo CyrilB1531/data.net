@@ -7,13 +7,10 @@ public readonly record struct SearchResult(int Index, float Score);
 /// An exhaustive (brute-force) cosine-similarity index for semantic search.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Vectors are stored contiguously and, by default, L2-normalized on insertion so
-/// that cosine similarity reduces to a SIMD dot product. Exhaustive search is the
-/// right default up to hundreds of thousands of vectors; an approximate index
-/// (HNSW) is only worth adding once a real need is demonstrated (brief, Lot 3).
-/// </para>
-/// <para>Adding is not thread-safe; concurrent <see cref="Search"/> calls are.</para>
+/// Stored contiguously and, by default, L2-normalized on insertion so cosine
+/// similarity reduces to a SIMD dot product — see the guide's "Index a corpus"
+/// section for why exhaustive search is the default rather than HNSW.
+/// Adding is not thread-safe; concurrent <see cref="Search"/> calls are.
 /// </remarks>
 public sealed partial class EmbeddingIndex
 {
@@ -187,9 +184,8 @@ public sealed partial class EmbeddingIndex
         }
         double norm = Math.Sqrt(sum);
 
-        // SonarLint S1244: a zero vector has no direction, and exact zero is the only
-        // norm that makes the division below undefined. Comparing within a tolerance
-        // would leave short vectors unnormalized instead.
+        // SonarLint S1244: exact zero is the only norm that makes the division below
+        // undefined; a tolerance compare would leave short vectors unnormalized instead.
 #pragma warning disable S1244
         if (norm == 0)
 #pragma warning restore S1244

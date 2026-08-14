@@ -6,22 +6,10 @@ namespace DataNet.Embeddings.Pooling;
 /// Turns per-token model outputs into a single sentence embedding.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Mean pooling with an attention mask, then L2 normalization, is the standard
-/// recipe used by sentence-transformers: the masked token vectors are averaged
-/// (padding tokens excluded) and the result is scaled to unit length so cosine
-/// similarity reduces to a dot product.
-/// </para>
-/// <para>
-/// The accumulation is vectorized with <see cref="Vector{T}"/> on <c>net10.0</c>
-/// and falls back to a scalar loop on <c>netstandard2.0</c>, where the span-based
-/// constructor does not exist. The two produce <em>bit-identical</em> results:
-/// vectorizing changes how many components are added per instruction, never the
-/// order in which a component's own tokens are summed. That is deliberate — the
-/// oracle corpus is replayed against both builds, so a pooled vector that depended
-/// on the target framework, or on <c>Vector&lt;float&gt;.Count</c> and therefore on
-/// the CPU, could not be frozen at all.
-/// </para>
+/// Masked mean (padding excluded) then L2 normalization — sentence-transformers'
+/// own recipe; see <c>docs/equivalence.md</c>'s pooling rows for the bit-identical
+/// guarantee between the <see cref="Vector{T}"/> path and the
+/// <c>netstandard2.0</c> scalar one.
 /// </remarks>
 public static class Pooler
 {
@@ -105,11 +93,8 @@ public static class Pooler
         }
         double norm = Math.Sqrt(sum);
 
-        // SonarLint S1244: exact zero is exactly what this asks. The rule is right
-        // that a computed double rarely lands on a value you expected, but the value
-        // at issue here is the one that makes the division below undefined, and it is
-        // exactly representable. A tolerance would instead leave short vectors
-        // unnormalized, which is a different function.
+        // SonarLint S1244: exact zero is the only norm that makes the division below
+        // undefined; a tolerance compare would leave short vectors unnormalized instead.
 #pragma warning disable S1244
         if (norm == 0)
 #pragma warning restore S1244

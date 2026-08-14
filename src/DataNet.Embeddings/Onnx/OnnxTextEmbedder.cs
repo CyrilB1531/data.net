@@ -11,21 +11,10 @@ namespace DataNet.Embeddings.Onnx;
 /// single sentence embedding (mean pooling + L2 normalization).
 /// </summary>
 /// <remarks>
-/// <para>
-/// Loading and running the model is delegated to ONNX Runtime (the official
-/// package) — there is nothing to port. The model weights are <em>not</em> shipped
-/// with DataNet; supply a path to a model you downloaded (e.g. a sentence-transformers
-/// encoder exported to ONNX). Only the inputs the model declares are fed, so this
-/// works whether or not the model uses <c>token_type_ids</c>.
-/// </para>
-/// <para>
-/// Given a tokenizer, <see cref="EmbedBatch(IEnumerable{string}, EncodingOptions, CancellationToken)"/>
-/// is the whole pipeline: it is the equivalent of
-/// <c>sentence_transformers.SentenceTransformer.encode(texts, batch_size=…)</c>,
-/// inserting the model's special tokens, truncating, padding each sub-batch to its
-/// own longest row and pooling behind the mask it built itself.
-/// </para>
-/// <para>Dispose the instance to release the native session. Thread-safety follows ONNX Runtime's session.</para>
+/// Delegates to ONNX Runtime; weights are <em>not</em> shipped, supply a path you
+/// downloaded. Only declared inputs are fed, so a model with no
+/// <c>token_type_ids</c> still runs (<c>OnnxTextEmbedderTests.Embed_runs_model_and_pools</c>).
+/// See the guide's "Embed a batch" section for the pipeline.
 /// </remarks>
 public sealed class OnnxTextEmbedder : IDisposable
 {
@@ -121,13 +110,9 @@ public sealed class OnnxTextEmbedder : IDisposable
     /// <see langword="null"/>.
     /// </summary>
     /// <remarks>
-    /// This is what <see cref="EncodingOptions.MaxLength"/> falls back to. An export
-    /// with a dynamic axis — what <c>torch.onnx.export</c> produces with
-    /// <c>dynamic_axes</c>, and what most published encoders ship — declares a
-    /// symbolic dimension, reported here as a negative number and treated as "no
-    /// declared maximum". The model's real positional limit lives in its
-    /// <c>config.json</c>, not in the graph, so it cannot be read from here and must
-    /// be passed as <see cref="EncodingOptions.MaxLength"/>.
+    /// What <see cref="EncodingOptions.MaxLength"/> falls back to; see the guide's
+    /// "Embed a batch" section for why most exports report none (a symbolic axis
+    /// reads back negative here) and the real limit must be passed explicitly.
     /// </remarks>
     public int? MaxSequenceLength
     {

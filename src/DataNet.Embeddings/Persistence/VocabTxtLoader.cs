@@ -10,27 +10,11 @@ namespace DataNet.Embeddings.Persistence;
 /// line number.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Matches how <c>transformers.BertTokenizer</c> loads its vocabulary file —
-/// text mode with universal newlines, then <c>token.rstrip("\n")</c>, then
-/// <c>vocab[token] = index</c>. Two consequences of that loop are reproduced
-/// rather than improved on: a blank line is a token whose string is empty, and a
-/// token repeated on two lines keeps the <em>last</em> id, because the Python
-/// dictionary assignment overwrites.
-/// </para>
-/// <para>
-/// The file carries only the tokens. Whether the model was trained lowercased,
-/// and what marks a continuation piece, live in the model's configuration — pass
-/// them here, or use <see cref="TokenizerJsonLoader"/>, which reads them from the
-/// file.
-/// </para>
+/// Matches <c>transformers.BertTokenizer</c>'s vocabulary loading — see
+/// <c>docs/equivalence.md</c>'s loader row for the two Python-loop quirks
+/// reproduced, and the guide's "Loading vocabularies" section for a worked
+/// example and what stays a parameter (not in this file).
 /// </remarks>
-/// <example>
-/// <code>
-/// WordPieceVocabulary vocab = VocabTxtLoader.Load("bert-base-uncased/vocab.txt", lowercase: true);
-/// var tokenizer = new WordPieceTokenizer(vocab);
-/// </code>
-/// </example>
 public static class VocabTxtLoader
 {
     private const string SourceName = "vocab.txt";
@@ -110,14 +94,8 @@ public static class VocabTxtLoader
         int start = 0;
         while (start < text.Length)
         {
-            // Python opens the file in text mode, where "\n", "\r\n" and a bare "\r"
-            // all end a line. Splitting on "\n" alone would fold a classic-Mac file
-            // into one enormous token.
-            //
-            // IndexOfAny rather than a hand-written scan: it is vectorised, and
-            // measured at 0.27 ms against 0.50 ms for the scalar loop on a 30k-entry
-            // file — the same cost as the "\n"-only IndexOf it replaces, for a
-            // terminator set that is actually correct.
+            // Text mode: "\n", "\r\n" or bare "\r" end a line, so a classic-Mac file
+            // does not fold into one token. IndexOfAny is vectorized, unlike a hand scan.
             int terminator = text.IndexOfAny(LineTerminators, start);
             int stop = terminator < 0 ? text.Length : terminator;
             int length = stop - start;
@@ -154,15 +132,13 @@ public static class VocabTxtLoader
 
     private static string Decode(ReadOnlyMemory<byte> payload)
     {
-        // A vocab.txt written on Windows may carry a byte-order mark; Python's
-        // "utf-8" codec would keep it as part of the first token, but every real
-        // file that has one was meant to be read without it.
+        // A BOM survives in Python's "utf-8" codec (kept as part of the first
+        // token); stripped here instead -- equivalence.md's loader row records it.
         ReadOnlySpan<byte> span = payload.Span;
         int offset = span.Length >= 3 && span[0] == 0xEF && span[1] == 0xBB && span[2] == 0xBF ? 3 : 0;
 
-        // TryGetArray rather than ToArray: this memory always wraps an array — it
-        // comes from JsonArtifact.ReadAllBytes — and netstandard2.0's Encoding has
-        // no span overload to decode through instead.
+        // TryGetArray, not ToArray: this memory always wraps an array (from
+        // JsonArtifact.ReadAllBytes), and netstandard2.0's Encoding has no span overload.
         ReadOnlyMemory<byte> text = payload.Slice(offset);
         return MemoryMarshal.TryGetArray(text, out ArraySegment<byte> segment) && segment.Array is not null
             ? JsonArtifact.Utf8NoBom.GetString(segment.Array, segment.Offset, segment.Count)

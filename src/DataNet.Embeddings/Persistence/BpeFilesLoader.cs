@@ -10,24 +10,11 @@ namespace DataNet.Embeddings.Persistence;
 /// that predates <c>tokenizer.json</c>.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Matches <c>tokenizers.models.BPE.from_file(vocab, merges)</c>. The two files
-/// carry the model and nothing else: what pattern the text was split on, and
-/// whether the model is byte-level, live in the tokenizer configuration beside
-/// them. Pass them here, or use <see cref="TokenizerJsonLoader.LoadBpe(string, ArtifactLoadOptions?)"/>,
-/// which reads them from the file.
-/// </para>
-/// <para>
-/// The defaults describe GPT-2, because that is the model this layout is almost
-/// always found in.
-/// </para>
+/// Matches <c>tokenizers.models.BPE.from_file(vocab, merges)</c>; see the guide's
+/// "Loading vocabularies" section for a worked example and
+/// <c>docs/equivalence.md</c>'s <c>models.BPE.from_file</c> row for what stays a
+/// parameter.
 /// </remarks>
-/// <example>
-/// <code>
-/// BpeVocabulary vocab = BpeFilesLoader.Load("gpt2/vocab.json", "gpt2/merges.txt");
-/// var tokenizer = new BpeTokenizer(vocab);
-/// </code>
-/// </example>
 public static class BpeFilesLoader
 {
     private const string SourceName = "merges.txt";
@@ -104,9 +91,8 @@ public static class BpeFilesLoader
         {
             ByteLevel = byteLevel,
             PreTokenizerPattern = byteLevel ? BpePatterns.Gpt2 : null,
-            // A vocab.json and merges.txt pair declares no pre_tokenizer at all,
-            // so there is no Split step to carry -- the byte-level lineage that
-            // reaches here is stock GPT-2, whose ByteLevel does its own splitting.
+            // No pipeline in these files, per equivalence.md's models.BPE.from_file row --
+            // GPT-2's own ByteLevel step is the whole split, so there is no PreSplit.
             PreSplit = null,
         };
     }
@@ -118,11 +104,8 @@ public static class BpeFilesLoader
         {
             foreach (JsonProperty entry in doc.RootElement.EnumerateObject())
             {
-                // TryGetInt32, not GetInt32: a string value throws
-                // InvalidOperationException and an out-of-range or non-integer
-                // number throws FormatException, neither of which this loader
-                // documents. TokenizerJsonLoader.ReadWordPiece hits the same
-                // token-to-id shape and takes the same guard.
+                // TryGetInt32, not GetInt32: a string value leaks InvalidOperationException,
+                // an out-of-range/non-integer leaks FormatException, not InvalidDataException.
                 if (entry.Value.ValueKind != JsonValueKind.Number || !entry.Value.TryGetInt32(out int id))
                 {
                     throw new InvalidDataException($"The vocab.json maps token '{entry.Name}' to a value that is not an integer id.");
@@ -184,13 +167,8 @@ public static class BpeFilesLoader
 
     private static string DecodeMerges(ReadOnlyMemory<byte> payload)
     {
-        // A merges.txt written on Windows may carry a byte-order mark. Left in,
-        // it lands on the first line as U+FEFF, "#version" no longer matches at
-        // offset 0, and the header row is misread as a merge instead of being
-        // skipped -- silently shifting every real merge's rank by one rather
-        // than throwing. Mirrors VocabTxtLoader.Decode, down to the TryGetArray:
-        // this memory always wraps an array, and netstandard2.0's Encoding has no
-        // span overload to decode through instead.
+        // A leading BOM would misread the header line as a spurious rank-0 merge --
+        // A_byte_order_mark_on_merges_txt_does_not_shift_ranks pins it. TryGetArray: see VocabTxtLoader.Decode.
         ReadOnlySpan<byte> span = payload.Span;
         int offset = span.Length >= 3 && span[0] == 0xEF && span[1] == 0xBB && span[2] == 0xBF ? 3 : 0;
 
@@ -203,14 +181,8 @@ public static class BpeFilesLoader
     private static void ParseMergeLine(string text, int start, int stop, List<MergePair> merges, in ArtifactLimits limits, bool isFirstLine)
     {
         int length = stop - start;
-        // A blank line separates nothing, and a leading "#version: 0.2" states
-        // the file's format rather than a pair. Both are skipped, as in Python.
-        //
-        // The header test is anchored to the FIRST line and to "#version"
-        // specifically. '#' is not a comment marker in this format: GPT-2's
-        // byte-level alphabet leaves '#' as itself, so eight of its 50 000
-        // merge lines start with one ("# #", "## ##", "#### ####", ...). A
-        // `text[start] == '#'` predicate drops them silently.
+        // Blank / "#version" lines are skipped, as in Python; '#' is not a comment
+        // marker -- GPT-2 leaves it in its alphabet, see A_merge_whose_left_symbol_starts_with_a_hash_is_kept.
         if (length == 0)
         {
             return;
@@ -228,14 +200,8 @@ public static class BpeFilesLoader
             throw new InvalidDataException(
                 $"The {SourceName} has a line with no separator: '{text.Substring(start, length)}'. Each line is two symbols separated by a space.");
         }
-        // Exactly one space, not merely a first one. Python splits the whole line and
-        // refuses it unless it yields two fields, so "a b c" and " a b" are errors
-        // there where splitting on the first space would silently load them as
-        // ("a", "b c") and ("", "a b"). A trailing space is not an error: "a "
-        // splits into two fields, the second empty, and Python takes it.
-        // Unreachable for a byte-level model -- its alphabet maps 0x20 to U+0120, so
-        // no symbol contains a literal space -- and reachable for the classic lineage,
-        // whose symbols are ordinary characters.
+        // Exactly one space, or the line is refused (tokenizers 0.23.1 agrees) --
+        // BpeFilesLoaderTests pins both edge cases: too many spaces, and a trailing one.
         if (text.IndexOf(' ', space + 1, stop - space - 1) >= 0)
         {
             throw new InvalidDataException(
