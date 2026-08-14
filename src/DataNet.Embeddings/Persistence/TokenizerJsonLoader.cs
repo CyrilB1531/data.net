@@ -718,15 +718,15 @@ public static class TokenizerJsonLoader
     {
         if (!root.TryGetProperty("pre_tokenizer", out JsonElement pre) || pre.ValueKind == JsonValueKind.Null)
         {
-            // Absent is the classic lineage's own default: BpeTokenizer falls back to
-            // word-boundary splitting only when both PreSplit and PreTokenizerPattern are null.
-            return (false, false, null, null);
+            // Still the classic split, which is what an absent pre_tokenizer has always
+            // loaded as here; issue #122 owns correcting it and carries the measurement.
+            return (false, false, null, BpePatterns.Whitespace);
         }
 
         string type = OptionalString(pre, "type") ?? UntypedName;
         return type switch
         {
-            "Whitespace" => (false, false, null, null),
+            "Whitespace" => (false, false, null, BpePatterns.Whitespace),
             "ByteLevel" => ReadByteLevelPreTokenizer(pre),
             "Sequence" => ReadBpeSequencePreTokenizer(pre),
             _ => throw Unsupported(

@@ -18,7 +18,7 @@ public sealed class BpeSplitBehaviorTests
     private static string[] Split(BpeSplitStep step, string text)
     {
         List<string> pieces = [];
-        new BpePreTokenizer(step, null).Split(text, pieces);
+        new BpePreTokenizer(step, null, false).Split(text, pieces);
         return [.. pieces];
     }
 

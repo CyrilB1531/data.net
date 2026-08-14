@@ -1,7 +1,7 @@
 namespace DataNet.Embeddings.Tokenization;
 
 /// <summary>
-/// The pre-tokenization patterns the byte-level models split on.
+/// The pre-tokenization patterns a model splits on.
 /// </summary>
 /// <remarks>
 /// Each is the <c>Split</c> pattern from that model's own <c>tokenizer.json</c> —
@@ -12,6 +12,16 @@ namespace DataNet.Embeddings.Tokenization;
 /// </remarks>
 public static class BpePatterns
 {
+    /// <summary>The classic lineage's pattern. Matches <c>pre_tokenizers.Whitespace()</c>.</summary>
+    /// <remarks>
+    /// Splits on word boundaries and isolates punctuation, unlike
+    /// <c>WhitespaceSplit</c> (<c>\S+</c>, not implemented here). This is the
+    /// pattern <see cref="BpeTokenizer"/> used to supply when a vocabulary
+    /// declared none, which it now refuses instead — see
+    /// <see cref="BpeVocabulary.NoPreTokenizer"/>.
+    /// </remarks>
+    public static string Whitespace { get; } = @"\w+|[^\w\s]+";
+
     /// <summary>GPT-2's pattern. Matches <c>pre_tokenizers.ByteLevel(use_regex=True)</c>.</summary>
     public static string Gpt2 { get; } =
         @"'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+";

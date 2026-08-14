@@ -139,7 +139,10 @@ public sealed class BpeFilesLoaderTests
     {
         BpeVocabulary vocab = BpeFilesLoader.Load(Utf8(Vocab), Utf8(Merges), byteLevel: false);
         Assert.False(vocab.ByteLevel);
-        Assert.Null(vocab.PreTokenizerPattern);
+        // The classic lineage's own pattern, named rather than left null: null no
+        // longer stands for it, and BpeTokenizer refuses a vocabulary declaring neither.
+        Assert.Equal(BpePatterns.Whitespace, vocab.PreTokenizerPattern);
+        Assert.False(vocab.NoPreTokenizer);
     }
 
     /// <summary>The real files, which is the layout the loader exists for.</summary>

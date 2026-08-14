@@ -39,7 +39,7 @@ public sealed class BpePreTokenizeTests
             string text = c.GetProperty("text").GetString()!;
             string[] expected = c.GetProperty("pieces").EnumerateArray().Select(e => e.GetString()!).ToArray();
 
-            var splitter = new BpePreTokenizer(null, patterns.GetProperty(name).GetString());
+            var splitter = new BpePreTokenizer(null, patterns.GetProperty(name).GetString(), false);
             pieces.Clear();
             splitter.Split(text, pieces);
             string[] mapped = [.. pieces.Select(ToByteLevel)];
@@ -80,16 +80,16 @@ public sealed class BpePreTokenizeTests
     }
 
     /// <summary>
-    /// Proves the <see langword="null"/>-pattern default directly. It is otherwise
-    /// only exercised transitively through <c>BpeTokenizerTests</c> (its oracle,
+    /// Proves <see cref="BpePatterns.Whitespace"/> directly. It is otherwise only
+    /// exercised transitively through <c>BpeTokenizerTests</c> (its oracle,
     /// <c>tiny_bpe.json</c>, is the only fixture in this branch declaring
     /// HuggingFace's <c>Whitespace</c> pre-tokenizer type) — a failure there would
     /// report from the wrong file.
     /// </summary>
     [Fact]
-    public void The_null_pattern_splits_on_word_boundaries_not_on_whitespace_alone()
+    public void The_whitespace_pattern_splits_on_word_boundaries_not_on_whitespace_alone()
     {
-        var splitter = new BpePreTokenizer(null, null);
+        var splitter = new BpePreTokenizer(null, BpePatterns.Whitespace, false);
         var pieces = new List<string>();
         splitter.Split("world!", pieces);
         Assert.Equal(["world", "!"], pieces);
@@ -98,7 +98,7 @@ public sealed class BpePreTokenizeTests
     [Fact]
     public void A_pathological_pattern_times_out_rather_than_hanging()
     {
-        var splitter = new BpePreTokenizer(null, "(a+)+$");
+        var splitter = new BpePreTokenizer(null, "(a+)+$", false);
         var pieces = new List<string>();
         Assert.Throws<RegexMatchTimeoutException>(
             () => splitter.Split(new string('a', 40) + "!", pieces));

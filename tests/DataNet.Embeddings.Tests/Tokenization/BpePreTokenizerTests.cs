@@ -37,14 +37,14 @@ public sealed class BpePreTokenizerTests
     private static BpeSplitStep PreSplit(string pattern) => new(pattern, SplitBehavior.Removed, Invert: true);
 
     /// <summary>
-    /// Both patterns null is the classic word-boundary split, unchanged: this is
-    /// the default a hand-built <see cref="BpeVocabulary"/> gets, and every
-    /// classic-lineage model already relies on it.
+    /// The classic word-boundary split, unchanged: <see cref="BpePatterns.Whitespace"/>
+    /// is the pattern a classic-lineage model declares, and the one this class used to
+    /// invent when it was handed neither pattern (issue #122).
     /// </summary>
     [Fact]
-    public void Both_null_is_still_the_word_boundary_split()
+    public void The_whitespace_pattern_is_still_the_word_boundary_split()
     {
-        Assert.Equal(["world", "!"], Split(new BpePreTokenizer(null, null), "world!"));
+        Assert.Equal(["world", "!"], Split(new BpePreTokenizer(null, BpePatterns.Whitespace, false), "world!"));
     }
 
     /// <summary>
@@ -58,16 +58,26 @@ public sealed class BpePreTokenizerTests
     /// as a token-id match in <c>BpeTokenizerTests</c>.
     /// </summary>
     [Fact]
-    public void Both_null_drops_the_gap_between_words()
+    public void The_whitespace_pattern_drops_the_gap_between_words()
     {
-        Assert.Equal(["ab", "cd"], Split(new BpePreTokenizer(null, null), "ab cd"));
+        Assert.Equal(["ab", "cd"], Split(new BpePreTokenizer(null, BpePatterns.Whitespace, false), "ab cd"));
+    }
+
+    /// <summary>
+    /// The mode: no pattern at all, so the text arrives whole -- gap, punctuation and
+    /// all. The same input the two cases above split three ways.
+    /// </summary>
+    [Fact]
+    public void The_no_split_mode_produces_one_piece()
+    {
+        Assert.Equal(["ab cd!"], Split(new BpePreTokenizer(null, null, true), "ab cd!"));
     }
 
     /// <summary>One pattern and no pre-split is what a bare <c>ByteLevel</c> declares.</summary>
     [Fact]
     public void A_pattern_alone_is_the_only_split()
     {
-        Assert.Equal(["hello", "123"], Split(new BpePreTokenizer(null, BpePatterns.Gpt2), "hello123"));
+        Assert.Equal(["hello", "123"], Split(new BpePreTokenizer(null, BpePatterns.Gpt2, false), "hello123"));
     }
 
     /// <summary>
@@ -82,7 +92,7 @@ public sealed class BpePreTokenizerTests
     [Fact]
     public void A_pre_split_alone_is_the_only_split()
     {
-        Assert.Equal(["hello", "123"], Split(new BpePreTokenizer(PreSplit(BpePatterns.Llama3), null), "hello123"));
+        Assert.Equal(["hello", "123"], Split(new BpePreTokenizer(PreSplit(BpePatterns.Llama3), null, false), "hello123"));
     }
 
     /// <summary>
@@ -94,7 +104,7 @@ public sealed class BpePreTokenizerTests
     [Fact]
     public void Both_run_in_order_and_the_second_re_splits_the_first_s_pieces()
     {
-        var pre = new BpePreTokenizer(PreSplit(BpePatterns.Llama3), BpePatterns.Gpt2);
+        var pre = new BpePreTokenizer(PreSplit(BpePatterns.Llama3), BpePatterns.Gpt2, false);
 
         Assert.Equal(["j", "'", "ai"], Split(pre, "j'ai"));
         Assert.Equal(["hello", "123"], Split(pre, "hello123"));
@@ -118,8 +128,8 @@ public sealed class BpePreTokenizerTests
     [Fact]
     public void The_order_matters()
     {
-        Assert.Equal(["'", "T", "is"], Split(new BpePreTokenizer(PreSplit(BpePatterns.Llama3), BpePatterns.Gpt2), "'Tis"));
-        Assert.Equal(["'", "Tis"], Split(new BpePreTokenizer(PreSplit(BpePatterns.Gpt2), BpePatterns.Llama3), "'Tis"));
+        Assert.Equal(["'", "T", "is"], Split(new BpePreTokenizer(PreSplit(BpePatterns.Llama3), BpePatterns.Gpt2, false), "'Tis"));
+        Assert.Equal(["'", "Tis"], Split(new BpePreTokenizer(PreSplit(BpePatterns.Gpt2), BpePatterns.Llama3, false), "'Tis"));
     }
 
     /// <summary>
@@ -133,7 +143,7 @@ public sealed class BpePreTokenizerTests
     public void Every_recorded_piece_is_reproduced(string model, bool secondSplit)
     {
         using JsonDocument doc = OracleLoader.Load(Corpus);
-        var pre = new BpePreTokenizer(PreSplit(BpePatterns.Llama3), secondSplit ? BpePatterns.Gpt2 : null);
+        var pre = new BpePreTokenizer(PreSplit(BpePatterns.Llama3), secondSplit ? BpePatterns.Gpt2 : null, false);
         int checkedCases = 0;
 
         foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())

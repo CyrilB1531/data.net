@@ -90,9 +90,9 @@ public static class BpeFilesLoader
         return new BpeVocabulary(vocab, merges)
         {
             ByteLevel = byteLevel,
-            PreTokenizerPattern = byteLevel ? BpePatterns.Gpt2 : null,
-            // No pipeline in these files, per equivalence.md's models.BPE.from_file row --
-            // GPT-2's own ByteLevel step is the whole split, so there is no PreSplit.
+            // No pipeline in these files (equivalence.md's models.BPE.from_file row), so
+            // the split is the lineage's own -- named now that null no longer means it.
+            PreTokenizerPattern = byteLevel ? BpePatterns.Gpt2 : BpePatterns.Whitespace,
             PreSplit = null,
         };
     }
