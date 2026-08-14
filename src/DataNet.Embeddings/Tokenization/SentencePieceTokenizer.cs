@@ -11,41 +11,24 @@ public readonly record struct SentencePiece(string Piece, double Score, int Id);
 /// piece log-probabilities, via Viterbi over the vocabulary.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Reproduces the encoding of a trained SentencePiece unigram model. The stock
-/// ALBERT, T5, camemBERT and XLM-R models load and tokenize identically to
-/// <c>sentencepiece</c>: their <c>nmt_nfkc</c> character map is applied by
-/// <see cref="PrecompiledNormalizer"/>, and the corpus behind that claim replays
-/// XLM-R's own 250 002-piece vocabulary. What is still refused, and named when it
-/// is, is a model trained with <c>byte_fallback</c> or with an algorithm other
-/// than unigram.
-/// </para>
-/// <para>
-/// Preprocessing then follows the model's flags: the character map first, then
-/// <c>remove_extra_whitespaces</c> collapsing runs of U+0020 — that character and
-/// no other — then <c>add_dummy_prefix</c> and <c>escape_whitespaces</c>, which
-/// turn the remaining spaces into the meta symbol <c>▁</c> (U+2581) and prepend
-/// one. Getting this exactly right matters: a mismatch makes the downstream
-/// model's embeddings wrong while everything still looks like it works.
-/// </para>
-/// <para>Thread-safe after construction.</para>
+/// Reproduces <c>sentencepiece.SentencePieceProcessor(model_file=…).encode</c>; character
+/// map (<see cref="PrecompiledNormalizer"/>) and whitespace flags run first. See
+/// <c>docs/equivalence.md</c>'s Unigram rows and <c>docs/guides/embeddings.md</c>'s
+/// "Models that are refused" list. Thread-safe after construction.
 /// </remarks>
 public sealed class SentencePieceTokenizer : ISubwordTokenizer
 {
     private const char Meta = '▁'; // ▁
 
-    // escape_whitespaces maps this character, and only this one, to the meta
-    // symbol. Anything else a reader would call whitespace is either rewritten to
-    // it by the model's normalizer or left alone as ordinary text.
+    // escape_whitespaces maps only U+0020 to the meta symbol; anything else a
+    // reader would call whitespace is rewritten by the normalizer or left alone.
     private static readonly char[] Spaces = [' '];
 
     private readonly Dictionary<string, SentencePiece> _pieces;
     private readonly PrecompiledNormalizer? _normalizer;
 
-    // Control and unknown pieces are kept out of _pieces so they can never match
-    // text, but a special-token template names them by string and needs their ids.
-    // Only the non-matchable entries are duplicated here, so this costs a handful
-    // of slots rather than a second copy of a 250 000-piece vocabulary.
+    // Control/unknown pieces stay out of _pieces so they never match text; a
+    // special-token template still needs their ids, so only those few are duplicated.
     private readonly Dictionary<string, int> _nonMatchableIds;
     private readonly int _maxPieceLength;
     private readonly int _unkId;
@@ -56,14 +39,10 @@ public sealed class SentencePieceTokenizer : ISubwordTokenizer
     /// type to decide what may match text.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// Matches <c>sentencepiece.SentencePieceProcessor(model_file=…)</c> followed
-    /// by <c>encode</c>. Control and unknown pieces are excluded from matching
-    /// because <see cref="SentencePieceVocabulary.Types"/> says they are control
-    /// and unknown pieces — not because of where they happen to sit in the id
-    /// space. A model that places <c>&lt;s&gt;</c> anywhere other than id 1
-    /// tokenizes correctly here.
-    /// </para>
+    /// Matches <c>sentencepiece.SentencePieceProcessor(model_file=…)</c> followed by
+    /// <c>encode</c>. Control and unknown pieces are excluded because
+    /// <see cref="SentencePieceVocabulary.Types"/> says so, not because of id position --
+    /// see <c>docs/equivalence.md</c>'s <c>sp.IsControl(i)</c> row.
     /// </remarks>
     /// <param name="vocabulary">A vocabulary from <see cref="Persistence.SentencePieceModelLoader"/> or <see cref="Persistence.TokenizerJsonLoader"/>.</param>
     /// <exception cref="ArgumentException">The vocabulary's pieces and types disagree in length, or its unknown id is out of range.</exception>
@@ -196,9 +175,8 @@ public sealed class SentencePieceTokenizer : ISubwordTokenizer
             }
         }
 
-        // Backtrack. Walking right to left is also what makes the run of unknown
-        // characters below easy to fuse: the piece already emitted is the one to
-        // the right of the one being emitted now.
+        // Backtrack right to left: the run of unknown characters below fuses easily
+        // because the piece already emitted sits to the right of the one now emitted.
         var ids = new List<int>();
         var tokens = new List<string>();
         int runEnd = -1;
@@ -207,12 +185,8 @@ public sealed class SentencePieceTokenizer : ISubwordTokenizer
             int i = startAt[j];
             if (idAt[j] == _unkId && runEnd >= 0)
             {
-                // sentencepiece emits one unknown piece per *run* of uncovered
-                // characters, not one per character: "ＬＥ" comes back as a single
-                // token. Rewriting the run from its start rather than prepending to
-                // it keeps this to one substring per step. The unknown piece is
-                // never matchable, so an id equal to _unkId can only have come from
-                // the branch above.
+                // One unknown piece per run of uncovered characters -- docs/equivalence.md's
+                // Unigram row. Rewriting from the run's start keeps this to one substring per step.
                 tokens[tokens.Count - 1] = s.Substring(i, runEnd - i);
             }
             else
@@ -249,15 +223,12 @@ public sealed class SentencePieceTokenizer : ISubwordTokenizer
 
     private string Preprocess(string text)
     {
-        // The model's own normalization first: it is what turns a tab, a
-        // non-breaking space or an ideographic space into an ordinary space, among
-        // everything else it rewrites.
+        // The model's own normalization first -- it turns a tab, a non-breaking space
+        // or an ideographic space into an ordinary space, among what else it rewrites.
         string normalized = _normalizer is null ? text : _normalizer.Normalize(text);
 
-        // remove_extra_whitespaces: collapse runs of U+0020, trim. U+0020 and
-        // nothing else — sentencepiece splits on the space character, not on
-        // "whitespace", so a tab that no normalizer rewrote stays an ordinary
-        // character the vocabulary either covers or does not.
+        // remove_extra_whitespaces collapses runs of U+0020 only, then trims --
+        // docs/equivalence.md's Unigram row; a tab no normalizer rewrote stays as-is.
         string[] parts = normalized.Split(Spaces, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 0)
         {
