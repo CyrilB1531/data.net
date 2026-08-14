@@ -4,14 +4,13 @@
     DataNet.Embeddings owns its version here, independently of the other packages
     (see docs/decisions/0012-per-package-versioning.md).
 
-    0.3.0 rather than 0.2.1: the vocabulary loaders add public API (three
-    loaders, WordPieceVocabulary, SentencePieceVocabulary, and a
-    SentencePieceTokenizer constructor that supersedes the id-based one). Nothing
-    is removed — the old constructor still ships, marked [Obsolete] — so this
-    stays a minor bump rather than a major one.
+    0.3.0 shipped on 2026-08-14 — the vocabulary loaders, the BPE normalizer and
+    the lossy byte-level decode. This is the next declared version, and it must
+    stay ahead of the feed: a number already published would make two different
+    assemblies answer to the same identity.
   -->
   <PropertyGroup>
-    <DataNetEmbeddingsVersion>0.3.0</DataNetEmbeddingsVersion>
+    <DataNetEmbeddingsVersion>0.4.0</DataNetEmbeddingsVersion>
   </PropertyGroup>
 
 </Project>
