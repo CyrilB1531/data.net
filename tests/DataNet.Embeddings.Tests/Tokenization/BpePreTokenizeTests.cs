@@ -9,22 +9,15 @@ namespace DataNet.Embeddings.Tests.Tokenization;
 public sealed class BpePreTokenizeTests
 {
     /// <summary>
-    /// The split is claimed for three model families but the vocabulary is
-    /// vendored for one (ADR 0017), so this is the test carrying the Llama-3 and
-    /// Qwen2 rows of the parity table.
+    /// The split is claimed for three model families but the vocabulary is vendored for one (ADR 0017),
+    /// so this is the test carrying the Llama-3 and Qwen2 rows of the parity table. The oracle records
+    /// HuggingFace's full pre-tokenizer pipeline -- <c>Split</c> followed by <c>ByteLevel</c> -- so its
+    /// <c>pieces</c> are already byte-mapped (<c>"Ġworld"</c>, not <c>" world"</c>). <see cref="BpePreTokenizer"/>
+    /// is only the <c>Split</c> stage: the byte alphabet lives in exactly one place, <c>BpeTokenizer</c>,
+    /// which would otherwise re-encode an already-mapped piece and corrupt it. This test therefore maps
+    /// each produced piece forward through <see cref="ToByteLevel"/> before comparing, to reassemble the
+    /// pipeline the oracle actually recorded -- the mapping belongs to the test, not the type under test.
     /// </summary>
-    /// <remarks>
-    /// The oracle records HuggingFace's <em>full</em> pre-tokenizer pipeline —
-    /// <c>Split</c> followed by <c>ByteLevel</c> — so its <c>pieces</c> are
-    /// already byte-mapped (<c>"Ġworld"</c>, not <c>" world"</c>).
-    /// <see cref="BpePreTokenizer"/> is only the <c>Split</c> stage: the byte
-    /// alphabet lives in exactly one place, <c>BpeTokenizer</c> (Task 8), which
-    /// would otherwise re-encode an already-mapped piece and corrupt it. This
-    /// test therefore maps each produced piece forward through
-    /// <see cref="ToByteLevel"/> before comparing, to reassemble the pipeline
-    /// the oracle actually recorded — the mapping belongs to the test, not to
-    /// the type under test.
-    /// </remarks>
     [Fact]
     public void Split_matches_tokenizers_for_every_pattern()
     {
@@ -53,10 +46,8 @@ public sealed class BpePreTokenizeTests
         Assert.True(failures.Count == 0, string.Join("\n", failures));
     }
 
-    // Forward mapping (produced piece -> alphabet) is total: every byte has a
-    // mapped character, so a real split bug shows up as a piece mismatch, not
-    // as a mapping failure. The reverse (oracle -> bytes) can fail mid-string
-    // and would turn a split defect into a confusing test-infrastructure error.
+    // Forward mapping (piece -> alphabet) is total, so a split bug shows as a piece mismatch, not a
+    // mapping failure. The reverse (oracle -> bytes) can fail mid-string and confuse the two.
     private static string ToByteLevel(string piece)
     {
         byte[] bytes = Encoding.UTF8.GetBytes(piece);

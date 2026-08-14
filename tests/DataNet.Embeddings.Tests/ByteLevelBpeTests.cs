@@ -23,11 +23,8 @@ public sealed class ByteLevelBpeTests
 
         string[] lines = File.ReadAllLines(Path.Combine(dir, "gpt2_merges.txt"));
 
-        // Only the first line may be a header, and only when it is the
-        // "#version:" one. '#' cannot be used as a general comment marker here:
-        // GPT-2's byte-level alphabet leaves '#' as itself, so eight real merge
-        // lines start with it ("# #", "## ##", "#### ####", ...), and skipping
-        // them would silently drop eight of the model's 50 000 merges.
+        // Only a leading "#version:" line is a header. '#' is also GPT-2's own alphabet
+        // symbol, so eight real merges start with it ("# #", "## ##", ...) and must not be skipped.
         int first = lines.Length > 0 && lines[0].StartsWith("#version", StringComparison.Ordinal) ? 1 : 0;
 
         var merges = new List<MergePair>(lines.Length - first);
@@ -80,12 +77,8 @@ public sealed class ByteLevelBpeTests
         BpeVocabulary vocabulary = Gpt2Vocabulary();
         Assert.Equal(50257, vocabulary.Count);
 
-        // gpt2_merges.txt has 50 001 lines: the "#version: 0.2" header plus
-        // 50 000 merge lines, all of which must reach MergePair. The count
-        // reconciles the vocabulary's: 256 byte symbols + 50 000 merged
-        // symbols + <|endoftext|> = 50 257. A truncated merges.txt should
-        // surface as this count changing, not as a wall of token diffs from
-        // Encode_matches_tokenizers_over_the_gpt2_vocabulary.
+        // gpt2_merges.txt has 50 001 lines (header plus 50 000 merges); 256 byte symbols
+        // plus those merges plus <|endoftext|> reconciles to the vocabulary count above.
         Assert.Equal(50000, vocabulary.Merges.Count);
     }
 
@@ -152,18 +145,13 @@ public sealed class ByteLevelBpeTests
     }
 
     /// <summary>
-    /// Not proof that <c>ignore_merges</c> does anything -- <c>ids_ignore_merges</c>
-    /// equals <c>ids</c> for every one of these 20 cases, because every multi-symbol
-    /// entry in a natively-trained vocabulary like GPT-2's is reachable by replaying
-    /// its own creating merge (checked exhaustively over all 50 257 entries while
-    /// investigating this test; none diverges). What this pins instead is the
-    /// complementary fact: a short-circuit that misfired -- e.g. one keyed on the
-    /// wrong string, or applied before the byte-level mapping -- would turn some of
-    /// these 20 cases red even though the flag is supposed to be inert here. The test
-    /// that proves the flag does something is
-    /// <see cref="BpeTokenizerTests.IgnoreMerges_emits_a_whole_piece_present_in_the_vocabulary"/>,
-    /// run against a fixture built to hold a vocabulary entry GPT-2's own structurally
-    /// cannot.
+    /// Not proof <c>ignore_merges</c> does anything -- <c>ids_ignore_merges</c> equals <c>ids</c> for
+    /// all 20 cases, since every multi-symbol entry in a natively-trained vocabulary like GPT-2's is
+    /// reachable by replaying its own creating merge (checked exhaustively over all 50 257 entries;
+    /// none diverges). What it pins is the complement: a short-circuit keyed on the wrong string, or
+    /// applied before the byte-level mapping, would turn some of these 20 red even though the flag
+    /// should be inert here. The test proving the flag does something is
+    /// <see cref="BpeTokenizerTests.IgnoreMerges_emits_a_whole_piece_present_in_the_vocabulary"/>.
     /// </summary>
     [Fact]
     public void IgnoreMerges_is_behaviour_neutral_on_a_natively_trained_vocabulary()

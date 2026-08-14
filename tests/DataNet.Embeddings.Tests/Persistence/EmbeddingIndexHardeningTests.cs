@@ -37,13 +37,8 @@ public sealed class EmbeddingIndexHardeningTests
     [Fact]
     public void Trailing_content_is_rejected()
     {
-        // Utf8JsonReader.Read() itself throws JsonException the moment a second
-        // top-level token follows a complete value (confirmed directly against
-        // System.Text.Json, and matching the sibling artifact suite's
-        // Content_after_the_artifact_is_rejected). ArtifactIo.EnsureEndOfDocument's
-        // own "Trailing content" throw is a belt-and-braces guard for a reader that
-        // might one day report the condition instead of raising — its own remarks
-        // say as much — so it is never the branch that actually fires here.
+        // Utf8JsonReader itself throws on a second top-level token (verified directly, matching the
+        // sibling artifact suite) -- ArtifactIo's own "Trailing content" guard never actually fires here.
         Assert.Contains("not well-formed JSON", Load(Baseline() + "{}").Message, StringComparison.Ordinal);
     }
 
@@ -138,13 +133,8 @@ public sealed class EmbeddingIndexHardeningTests
     [Fact]
     public void A_non_finite_value_deep_in_a_large_block_is_rejected_and_located()
     {
-        // Six floats — the small case above — is below the SIMD width on every
-        // machine this runs on, so it cannot reach a vectorized scan. This one
-        // hides the NaN a million values in, where only the vector pass finds it,
-        // and checks the message still names the exact item and component: the
-        // vector pass detects, the scalar loop locates. The block is crafted
-        // rather than added through Add, whose normalization would spread one NaN
-        // across the whole item and move the reported component to zero.
+        // Six floats (the case above) is below the SIMD width, so only this million-value block reaches
+        // the vector pass; crafted rather than added via Add, whose normalization would erase the NaN.
         byte[] raw = new byte[3_000 * 384 * sizeof(float)];
         BitConverter.GetBytes(float.NaN).CopyTo(raw, (2_000 * 384 + 7) * sizeof(float));
 
@@ -206,11 +196,8 @@ public sealed class EmbeddingIndexHardeningTests
     [Fact]
     public void An_index_at_a_realistic_scale_loads_with_the_default_options()
     {
-        // 3 000 x 384 = 1 152 000 values: past the old 1 000 000-element
-        // MaxArrayLength that ReadSingles no longer applies to the vector block,
-        // and about 6 MB of artifact — comfortably past the old limit, quick to
-        // save and load. This is the case that failed: the default options
-        // refusing an ordinary corpus at the scale the library itself advertises.
+        // 3 000 x 384 (1 152 000 values, about 6 MB) is past the old 1 000 000-element MaxArrayLength
+        // that ReadSingles no longer applies to vectors -- the scale the library itself advertises.
         using var stream = new MemoryStream();
         RealisticIndex().Save(stream);
         stream.Position = 0;
@@ -224,11 +211,8 @@ public sealed class EmbeddingIndexHardeningTests
     [Fact]
     public void The_vector_block_is_bounded_by_MaxTotalBytes_before_it_is_allocated()
     {
-        // Cut the limit to half of a realistic (large) artifact rather than an
-        // arbitrary tiny number: the point of this test is that the vector block
-        // itself is caught by MaxTotalBytes, not merely that some byte cap exists
-        // somewhere — An_artifact_larger_than_the_byte_limit_is_rejected already
-        // covers that.
+        // Half of a realistic artifact, not an arbitrary tiny number: proves the vector block itself is
+        // caught by MaxTotalBytes, not just that some byte cap exists (An_artifact_larger_than_the_byte_limit_is_rejected).
         using var stream = new MemoryStream();
         RealisticIndex().Save(stream);
         long artifactSize = stream.Length;
@@ -258,11 +242,8 @@ public sealed class EmbeddingIndexHardeningTests
     [Fact]
     public void An_artifact_whose_ids_precede_its_count_still_loads()
     {
-        // Save always writes count before ids, so no round trip ever exercises this
-        // ordering — but the reader deliberately tolerates it, and ReadIds has a
-        // whole growth path (starting from a zero-length buffer) for exactly this
-        // case: ids sized from nothing because the count that would have sized it
-        // has not arrived yet.
+        // Save always writes count before ids, so no round trip exercises this ordering -- the reader
+        // tolerates it anyway, exercising ReadIds' growth path for ids sized before the count arrives.
         string json = "{\"ids\":[\"a\",\"b\"],\"vectors\":" + Extract(WithIds(), "\"vectors\":")
             + ",\"count\":2,\"normalize\":true,\"dimension\":3,"
             + "\"version\":1,\"$schema\":\"datanet/embedding-index\"}";

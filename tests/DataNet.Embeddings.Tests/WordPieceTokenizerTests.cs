@@ -84,10 +84,8 @@ public sealed class WordPieceTokenizerTests
         WordPieceTokenizer tokenizer = WithAdded(new AddedToken("[CLS]", 3) { Special = true });
 
         Assert.Equal(new TokenizationResult(["a", "[CLS]", "b"], [1, 3, 2]), tokenizer.Encode("a [CLS] b"));
-        // Measured against tokenizers 0.23.1: the entry is matched against the raw
-        // text, so lowercased input never reaches it and falls through to the model —
-        // where the Whitespace pre-tokenizer cuts '[cls]' into '[', 'cls' and ']',
-        // none of which the vocabulary holds. Three unknowns, not one.
+        // Measured against tokenizers 0.23.1: matched against raw text, so lowercased input falls
+        // through to the model, where Whitespace cuts '[cls]' into '[', 'cls', ']' -- three unknowns, not one.
         Assert.Equal(
             new TokenizationResult(["a", "[UNK]", "[UNK]", "[UNK]", "b"], [1, 0, 0, 0, 2]),
             tokenizer.Encode("a [cls] b"));

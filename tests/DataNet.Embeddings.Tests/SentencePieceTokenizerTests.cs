@@ -74,24 +74,13 @@ public sealed class SentencePieceTokenizerTests
 #pragma warning restore CS0618
 
     /// <summary>
-    /// A control marker sitting outside ids 0-2 — the failure the id-based guess
-    /// cannot see — must still never be emitted.
+    /// A control marker sitting outside ids 0-2 -- the failure the id-based guess cannot see -- must
+    /// still never be emitted. The input has to contain the marker's own string: encoding text with no
+    /// <c>&lt;</c> in it asserts nothing, since the marker could not have been emitted either way and the
+    /// test would pass just as happily with the exclusion removed. Feeding it <c>a&lt;s&gt;s</c> is what
+    /// makes the assertion able to fail. The score is deliberately the best in the vocabulary, so a
+    /// tokenizer that failed to exclude the marker would not merely be able to emit it -- Viterbi would prefer it.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The input has to <em>contain</em> the marker's own string, which is the
-    /// part that is easy to get wrong. A piece only ever matches where its literal
-    /// characters occur, so encoding text that has no <c>&lt;</c> in it asserts
-    /// nothing: the marker could not have been emitted either way, and the test
-    /// passes just as happily with the exclusion removed. Feeding it
-    /// <c>a&lt;s&gt;s</c> is what makes the assertion able to fail.
-    /// </para>
-    /// <para>
-    /// The score is deliberately the best in the vocabulary, so a tokenizer that
-    /// failed to exclude the marker would not merely be able to emit it — Viterbi
-    /// would prefer it.
-    /// </para>
-    /// </remarks>
     [Fact]
     public void Controls_outside_the_first_three_ids_are_still_excluded()
     {
@@ -120,18 +109,13 @@ public sealed class SentencePieceTokenizerTests
     }
 
     /// <summary>
-    /// The same guarantee for the unknown piece: <c>&lt;unk&gt;</c> is what the
-    /// tokenizer emits <em>for</em> uncovered text, so matching it as text would
-    /// let a document name its own unknown token.
+    /// The same guarantee for the unknown piece: <c>&lt;unk&gt;</c> is what the tokenizer emits for
+    /// uncovered text, so matching it as text would let a document name its own unknown token. The
+    /// vocabulary covers every character of the input on purpose: left uncovered, the run
+    /// <c>&lt;unk&gt;</c> comes back as a single unknown token whose surface is the same string, the same
+    /// tokens and ids a wrongly-matched piece would produce, so the assertion could not tell the two
+    /// apart. Covered, the two answers differ: five cheap pieces, or one matched marker scoring better.
     /// </summary>
-    /// <remarks>
-    /// The vocabulary covers every character of the input on purpose. Left
-    /// uncovered, the run <c>&lt;unk&gt;</c> comes back as a single unknown token
-    /// whose surface is the string <c>&lt;unk&gt;</c> — the same tokens and the
-    /// same ids a tokenizer that wrongly matched the piece would produce, so the
-    /// assertion could not tell the two apart. Covered, the two answers differ:
-    /// five cheap pieces, or one matched marker scoring better than all of them.
-    /// </remarks>
     [Fact]
     public void The_unknown_piece_is_never_matched_as_text()
     {
@@ -158,26 +142,15 @@ public sealed class SentencePieceTokenizerTests
     }
 
     /// <summary>
-    /// The fairseq layout, in one vocabulary: <c>&lt;s&gt;</c>=0,
-    /// <c>&lt;pad&gt;</c>=1, <c>&lt;/s&gt;</c>=2, <c>&lt;unk&gt;</c>=3 and
-    /// <c>&lt;mask&gt;</c> last — the numbering HuggingFace gives XLM-R, and the
-    /// one the id-based guess reads as "only <c>&lt;s&gt;</c>, <c>&lt;pad&gt;</c>
-    /// and <c>&lt;/s&gt;</c> are controls".
+    /// The fairseq layout, in one vocabulary: <c>&lt;s&gt;</c>=0, <c>&lt;pad&gt;</c>=1, <c>&lt;/s&gt;</c>=2,
+    /// <c>&lt;unk&gt;</c>=3 and <c>&lt;mask&gt;</c> last -- HuggingFace's numbering for XLM-R, which the
+    /// id-based guess reads as "only <c>&lt;s&gt;</c>, <c>&lt;pad&gt;</c> and <c>&lt;/s&gt;</c> are
+    /// controls". Every marker is scored 0, the best in the vocabulary, and every character of the input
+    /// is covered by a normal piece, so nothing here can come out as the unknown piece for want of an
+    /// alternative: an id from this set in the output means the marker was matched as text. This is the
+    /// fast, fixture-free mirror of <see cref="XlmRobertaFairseqTests"/>, which asserts the same property
+    /// over XLM-R's real 250 002-piece vocabulary, <c>&lt;mask&gt;</c> at 250001 included.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Every marker is scored 0 — the best in the vocabulary — and every
-    /// character of the input is covered by a normal piece, so nothing here can
-    /// come out as the unknown piece for want of an alternative: an id from this
-    /// set in the output means the marker was matched as text.
-    /// </para>
-    /// <para>
-    /// This is the fast, fixture-free mirror of
-    /// <see cref="XlmRobertaFairseqTests"/>, which asserts the same property over
-    /// XLM-R's real 250 002-piece vocabulary, <c>&lt;mask&gt;</c> at 250001
-    /// included.
-    /// </para>
-    /// </remarks>
     [Fact]
     public void A_fairseq_layout_matches_none_of_its_five_markers()
     {
