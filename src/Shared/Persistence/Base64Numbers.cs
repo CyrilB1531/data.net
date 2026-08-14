@@ -12,16 +12,9 @@ namespace DataNet.Internal.Persistence;
 /// nobody reads by eye.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Encoding and bounds only: what a value <em>means</em> — whether a non-finite
-/// entry is a broken model or the caller's own data — belongs to the artifact
-/// that owns the vector, and is checked there.
-/// </para>
-/// <para>
-/// Raw bits make the round trip exact by construction rather than by trusting a
-/// decimal formatter, on any framework. Little-endian is written explicitly so a
-/// file written on one architecture reads on another.
-/// </para>
+/// Encoding and bounds only: what a value <em>means</em> belongs to the artifact that owns the
+/// vector — see ADR 0011, "Doubles". Raw bits round-trip exact by construction, and little-endian is
+/// written explicitly so a file written on one architecture reads on another.
 /// </remarks>
 internal static class Base64Numbers
 {
@@ -78,24 +71,12 @@ internal static class Base64Numbers
 
     /// <summary>Reads a base64 property written by <see cref="WriteSingles"/>.</summary>
     /// <remarks>
-    /// <para>
-    /// Deliberately not bounded against <see cref="ArtifactLimits.MaxArrayLength"/>,
-    /// unlike <see cref="ReadDoubles"/>. That limit was written for a vocabulary —
-    /// a million strings is a lot of strings — and this block is a different
-    /// quantity by three orders of magnitude: applied to the decoded float count,
-    /// it refused a 384-dimensional embedding index past 2 604 vectors, two orders
-    /// of magnitude below the "up to a few hundred thousand vectors" this library's
-    /// own guide calls an ordinary exhaustive-search corpus.
-    /// </para>
-    /// <para>
-    /// The block is still bounded, just earlier and in bytes rather than in
-    /// elements: <see cref="JsonArtifact.ReadAllBytes"/> (and its async
-    /// counterpart) caps the entire artifact against
-    /// <see cref="ArtifactLimits.MaxTotalBytes"/> before any parsing — this method
-    /// included — ever runs, so the decoded block is bounded by construction. The
-    /// destination is sized from the token's own encoded length, which that gate
-    /// has already bounded, rather than from a count discovered after decoding.
-    /// </para>
+    /// Deliberately not bounded against <see cref="ArtifactLimits.MaxArrayLength"/> like
+    /// <see cref="ReadDoubles"/> — that vocabulary-scale limit, applied to a float count, refused a
+    /// realistic 384-dimensional index at 2 604 vectors, the case
+    /// <c>EmbeddingIndexHardeningTests.An_index_at_a_realistic_scale_loads_with_the_default_options</c>
+    /// now pins passing. Still bounded, just earlier and in bytes: <see cref="JsonArtifact.ReadAllBytes"/>
+    /// caps the whole artifact against <see cref="ArtifactLimits.MaxTotalBytes"/> before this runs.
     /// </remarks>
     public static float[] ReadSingles(
         ref Utf8JsonReader reader,
@@ -147,22 +128,9 @@ internal static class Base64Numbers
     /// buffer that is then copied.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The direct path takes the canonical token: unescaped, in one segment, a
-    /// multiple of four characters, decoding to a whole number of elements.
-    /// Anything else — an escape in a hand-edited file, a value split across
-    /// segments, a length base64 cannot have produced — falls through to
-    /// <see cref="DecodeBase64"/>, which is the path this type has always taken
-    /// and which raises the same exception, with the same message, for every
-    /// malformed token. Deciding by falling through rather than by inspecting is
-    /// deliberate: it keeps one description of what a bad token is.
-    /// </para>
-    /// <para>
-    /// A token that fails mid-decode has already had its destination allocated,
-    /// and the fallback allocates again. That costs a second buffer on a file that
-    /// is about to be rejected anyway, and the payload it is sized from is capped
-    /// by <see cref="ArtifactLimits.MaxTotalBytes"/> either way.
-    /// </para>
+    /// The canonical token — unescaped, one segment, a length base64 could have produced — decodes
+    /// directly into its destination. Anything else falls through to <see cref="DecodeBase64"/>, which
+    /// raises the same exception for every malformed token, at the cost of a second allocation.
     /// </remarks>
     private static T[] Decode<T>(ref Utf8JsonReader reader, string artifact, string propertyName, int elementSize)
         where T : struct

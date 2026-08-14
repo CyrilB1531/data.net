@@ -6,12 +6,10 @@ namespace DataNet.Internal;
 /// Shared regular-expression policy (compiled into each assembly).
 /// </summary>
 /// <remarks>
-/// Every <see cref="System.Text.RegularExpressions.Regex"/> in the libraries runs
-/// over caller-supplied text, and <c>TextAnalyzer</c> additionally accepts a
-/// caller-supplied <em>pattern</em>. Without a match timeout, backtracking is
-/// unbounded, so a pathological pattern/input pair hangs the calling thread
-/// instead of failing. A bounded match turns that into an exception the caller
-/// can handle.
+/// A caller-supplied pattern over caller-supplied text makes catastrophic
+/// backtracking reachable from the public API; without a bound it hangs the
+/// calling thread instead of throwing. See
+/// <c>TextAnalyzerRegexTimeoutTests.Pathological_pattern_times_out_instead_of_hanging</c>.
 /// </remarks>
 internal static class RegexDefaults
 {

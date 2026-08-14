@@ -49,6 +49,13 @@ jobs:
       # before anything looked for them.
       - name: No machine paths in tracked files
         run: python tools/check_machine_paths.py
+      # Wired once the tree could pass it (#155). The report line prints how many
+      # blocks carry a long-comment: marker -- nine when this landed -- and does not
+      # fail on that number: the marker is a judgment a review reads, not a quota.
+      - name: Comment budgets
+        run: |
+          python tools/check_comment_length.py
+          python tools/check_comment_length.py --report
       # The .globalconfig mirrors a profile that lives on a server, so it can go stale
       # without anything in this repository changing. One call to sonarcloud.io per run
       # buys learning about that on the pull request that first meets it. A profile that
@@ -312,6 +319,9 @@ jobs:
 
       - name: No machine paths in tracked files
         run: python tools/check_machine_paths.py
+
+      - name: Comment budgets
+        run: python tools/check_comment_length.py
 
       - name: The DataNet.Text floor is coherent
         run: python tools/check_version_floor.py

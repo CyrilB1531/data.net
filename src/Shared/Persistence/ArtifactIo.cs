@@ -31,9 +31,8 @@ internal static class ArtifactIo
     {
         Guard.NotNull(destination);
 
-        // Utf8JsonWriter flushes to its destination synchronously whenever its
-        // internal buffer fills, so writing straight to the stream would block
-        // regardless of the await. Compose in memory, then do one async write.
+        // Utf8JsonWriter flushes synchronously when its buffer fills, so writing
+        // straight to the stream would block despite the await; compose in memory first.
         using var buffer = new MemoryStream();
         using (var writer = new Utf8JsonWriter(buffer, JsonArtifact.WriterOptions))
         {

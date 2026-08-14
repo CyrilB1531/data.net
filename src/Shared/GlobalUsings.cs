@@ -1,4 +1,3 @@
-// The shared internal helpers (Guard, StringCompat) live in a named namespace so
-// they do not pollute the global one; this makes them visible everywhere without
-// a using directive in each file.
+// Named, not merged into the global namespace, so Guard and StringCompat do not
+// pollute it while still reaching every file through one using directive here.
 global using DataNet.Internal;
