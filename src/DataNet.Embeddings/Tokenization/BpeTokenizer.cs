@@ -369,7 +369,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// <see cref="BpeVocabulary.AddPrefixSpace"/> is applied inside
     /// <see cref="BpePreTokenizer"/> now, per piece rather than here per segment: only
     /// that type knows whether a <c>Split</c> step ran first — equivalence.md's
-    /// <c>BPE(vocab, merges)</c> row. The length check is a plain early return now;
+    /// <c>Sequence([Split(pattern), ByteLevel(…)])</c> row. The length check is a plain early return now;
     /// what keeps an empty segment between two adjacent added tokens from becoming a
     /// <c>'Ġ'</c> Python does not emit is that type's own length check.
     /// </remarks>

@@ -3908,11 +3908,11 @@ _SEQ_SPLIT = (
 def _sequence_split_model(use_regex):
     """A byte-level BPE behind Sequence[Split(Llama-3), ByteLevel].
 
-    add_prefix_space is off throughout, deliberately: HuggingFace prepends the
-    space BETWEEN the two splits and DataNet prepends it per segment, so with it
-    on every case here would measure that divergence on top of this one and none
-    would discriminate. ADR 0022 section 10 recorded the same reasoning when
-    bpe_added_token_flags.json was generated with it off.
+    add_prefix_space is off throughout, deliberately: it prepends a space to
+    every piece the Split step produces, so with it on each case here would
+    measure that rule on top of this one and none would discriminate. It is
+    bpe_prefix_space.json's subject instead. ADR 0022 section 10 recorded the
+    same reasoning when bpe_added_token_flags.json was generated with it off.
 
     The merges exist so the split is observable in the tokens and not only in the
     pieces: a merge never crosses a piece boundary, so "'ai" can only be reached
@@ -4033,10 +4033,10 @@ _SPLIT_ADJACENT_PATTERN = "X"
 def _split_behavior_model(pattern, behavior, invert):
     """One byte-level BPE behind Sequence[Split(pattern), ByteLevel].
 
-    add_prefix_space is off throughout, deliberately: HuggingFace prepends the
-    space between the two splits and DataNet prepends it per segment, so with
-    it on every case here would measure that divergence on top of this one.
-    ADR 0022 section 10 recorded the same reasoning.
+    add_prefix_space is off throughout, deliberately: it prepends a space to
+    every piece the Split step produces, so with it on each case here would
+    measure that rule on top of this one. It is bpe_prefix_space.json's
+    subject instead. ADR 0022 section 10 recorded the same reasoning.
 
     use_regex is off on the ByteLevel step so the Split step's arrangement
     reaches the model untouched -- with it on, GPT-2's pattern would re-split
