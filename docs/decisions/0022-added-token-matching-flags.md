@@ -336,6 +336,17 @@ and the comment naming it stays until a case changes it.
 > `EnsureContinuingPrefixIsNotByteLevel`. The rest of this section — the
 > scan-versus-normalization order and what a strip does to a segment boundary
 > — is untouched by both and still holds.
+>
+> **#122 update:** one more of that paragraph's clauses has gone stale, this
+> time outside `model`. [#122](https://github.com/CyrilB1531/data.net/issues/122)
+> stopped refusing a `ByteLevel` with `use_regex` off: it loads as
+> `BpeVocabulary.NoPreTokenizer`, the mode that hands the merge loop each
+> added-token segment whole. An absent `pre_tokenizer` reaches the same mode,
+> where it used to load as the `Whitespace` split and silently give a different
+> token stream — measured, `"aZ Za"` gave four tokens where the reference gives
+> three. So the list of what `LoadBpe` refuses *outside* `model` is one clause
+> shorter; `tests/oracles/bpe_no_split.json` holds 22 cases across seven models
+> for the shapes it now accepts.
 
 Issue #105 covers the `model` settings `LoadBpe` still refuses and the
 per-segment prefix-space rule. **Four** settings under `model` are refused by

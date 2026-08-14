@@ -1002,7 +1002,8 @@ public sealed class TokenizerJsonLoaderTests
     /// <c>Split</c> node at all. <see cref="BpeVocabulary.ByteLevel"/> and
     /// <see cref="BpeVocabulary.PreTokenizerPattern"/> are independent flags for
     /// exactly this shape: an earlier attempt on this branch inferred one from the
-    /// other and broke GPT-2 as a result. This pins both values for it directly,
+    /// other and broke GPT-2 as a result. This pins them, and the
+    /// <see cref="BpeVocabulary.NoPreTokenizer"/> #122 added beside them, directly
     /// rather than relying only on the end-to-end oracle replay to catch a regression.
     /// </summary>
     [Fact]
@@ -1016,6 +1017,7 @@ public sealed class TokenizerJsonLoaderTests
         BpeVocabulary vocabulary = TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds());
 
         Assert.True(vocabulary.ByteLevel);
+        Assert.False(vocabulary.NoPreTokenizer);
         Assert.Null(vocabulary.PreSplit);
         Assert.Equal(BpePatterns.Gpt2, vocabulary.PreTokenizerPattern);
     }

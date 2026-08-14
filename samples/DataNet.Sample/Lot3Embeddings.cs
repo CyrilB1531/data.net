@@ -142,6 +142,25 @@ internal static class Lot3Embeddings
         var llamaSplit = new BpeSplitStep(BpePatterns.Llama3, SplitBehavior.Isolated, Invert: false);
         Console.WriteLine($"  BpeSplitStep     : behavior={llamaSplit.Behavior}, invert={llamaSplit.Invert}");
 
+        // A file declaring no pre-tokenizer -- absent, or a ByteLevel with
+        // use_regex off -- hands the merge loop the whole text (issue #122).
+        var spanningVocab = new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["a"] = 0, [" "] = 1, ["b"] = 2, ["a "] = 3, ["a b"] = 4,
+        };
+        var spanningMerges = new List<MergePair> { new("a", " "), new("a ", "b") };
+        var noSplit = new BpeVocabulary(spanningVocab, spanningMerges) { NoPreTokenizer = true };
+        // The merge spanning the space is what tells the two modes apart: the
+        // classic split drops that space before the loop can ever see the pair.
+        var classicSplit = new BpeVocabulary(spanningVocab, spanningMerges)
+        {
+            PreTokenizerPattern = BpePatterns.Whitespace,
+        };
+        Console.WriteLine($"  no pre-tokenizer : \"a b\" -> "
+            + $"[{string.Join(", ", new BpeTokenizer(noSplit).Encode("a b").Tokens.Select(t => $"'{t}'"))}]");
+        Console.WriteLine($"  Whitespace split : \"a b\" -> "
+            + $"[{string.Join(", ", new BpeTokenizer(classicSplit).Encode("a b").Tokens.Select(t => $"'{t}'"))}]");
+
         // The same model as a consumer gets it: vocab.json + merges.txt.
         BpeVocabulary fromFiles = BpeFilesLoader.Load(
             Utf8("""{"Ġ":0,"t":1,"o":2,"k":3,"e":4,"n":5,"to":6,"ken":7,"token":8,"Ġtoken":9,"ke":10}"""),
