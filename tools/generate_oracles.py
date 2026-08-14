@@ -2410,7 +2410,7 @@ BPE_NORMALIZER_TEXTS = [
     "Ångstrom unit",     # ANGSTROM SIGN
     "ﬁve o￦clock",  # the fi ligature, and a fullwidth macron
     "① ② café",
-    "hello world",            # unchanged by every form: the control
+    HELLO_WORLD,              # unchanged by every form: the control
 ]
 
 # Code points chosen to expose a disagreement between .NET's Unicode tables
@@ -2592,6 +2592,51 @@ def generate_bpe_normalizer() -> dict:
     return {
         "metadata": {
             "algorithm": "BPE normalizer",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+# Two CJK texts, an emoji sequence and two controls: a byte-level token is a
+# fragment of a multi-byte character far more often than not.
+BYTELEVEL_STREAM_TEXTS = [
+    "東京 \U0001f44b",          # 東京 + waving hand
+    "日本語のテキスト",  # a Japanese sentence
+    "\U0001f1eb\U0001f1f7 emoji",       # a regional-indicator pair
+    "déjà vu",                # Latin-1: no fragment, the control
+    HELLO_WORLD,                        # ASCII: the other control
+]
+
+
+def generate_bytelevel_decode_stream() -> dict:
+    """Each id of a text decoded on its own, which is how a stream is consumed.
+
+    tokenizers substitutes U+FFFD for a byte sequence that is not well-formed
+    UTF-8; DataNet threw until issue #149. The `replacement_count` per case is
+    carried so a corpus that stopped exercising the substitution would be noticed
+    rather than pass silently.
+    """
+    tokenizer = _gpt2_tokenizer()
+
+    cases = []
+    for text in BYTELEVEL_STREAM_TEXTS:
+        enc = tokenizer.encode(text)
+        per_id = [tokenizer.decode([i]) for i in enc.ids]
+        cases.append({
+            "id": len(cases),
+            "text": text,
+            "ids": enc.ids,
+            "tokens": enc.tokens,
+            "per_id_decoded": per_id,
+            "replacement_count": sum(1 for s in per_id if "�" in s),
+            "decoded": tokenizer.decode(enc.ids),
+        })
+    return {
+        "metadata": {
+            "algorithm": "byte-level decode, one id at a time",
             "library": "tokenizers",
             "library_version": version("tokenizers"),
             "count": len(cases),
@@ -4181,6 +4226,7 @@ def main() -> None:
         "bpe_pretokenize.json": generate_bpe_pretokenize,
         "bpe_tokenizer_json.json": generate_bpe_tokenizer_json,
         "bpe_normalizer.json": generate_bpe_normalizer,
+        "bytelevel_decode_stream.json": generate_bytelevel_decode_stream,
         "unicode_forms.json": generate_unicode_forms,
         "bpe_added_tokens.json": generate_bpe_added_tokens,
         "bpe_added_token_flags.json": generate_bpe_added_token_flags,

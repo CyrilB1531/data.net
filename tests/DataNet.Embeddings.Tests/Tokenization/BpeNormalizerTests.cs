@@ -97,10 +97,6 @@ public sealed class BpeNormalizerTests
     /// The round trip returns the normalized input, not the original, once a
     /// normalizer is declared -- matched against the reference's own decoded string.
     /// </summary>
-    /// <remarks>
-    /// Excludes cases whose <c>decoded</c> field contains U+FFFD; see
-    /// <see cref="Decode_throws_where_the_reference_is_lossy"/> for those three.
-    /// </remarks>
     [Fact]
     public void Decode_returns_what_the_reference_returns_normalizer_included()
     {
@@ -117,11 +113,6 @@ public sealed class BpeNormalizerTests
             foreach (JsonElement t in c.GetProperty("texts").EnumerateArray())
             {
                 string expected = t.GetProperty("decoded").GetString()!;
-                if (expected.Contains('\uFFFD', StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
                 string actual = tokenizer.Decode([.. tokenizer.Encode(t.GetProperty("text").GetString()!).Ids]);
 
                 if (!string.Equals(expected, actual, StringComparison.Ordinal))
@@ -132,46 +123,6 @@ public sealed class BpeNormalizerTests
         }
 
         Assert.True(failures.Count == 0, string.Join("\n", failures));
-    }
-
-    /// <summary>
-    /// DataNet's <see cref="BpeTokenizer.Decode(IReadOnlyList{int}, bool)"/> throws on a
-    /// byte sequence that is not well-formed UTF-8; HuggingFace substitutes U+FFFD
-    /// instead. Measured: <c>tokenizers</c> 0.23.1's <c>tok.decode([256])</c> answers
-    /// <c>'caf�'</c> rather than raising.
-    /// </summary>
-    /// <remarks>
-    /// Pins the divergence rather than hiding it; changing <c>Decode</c>'s contract
-    /// is its own issue and ADR, out of scope here.
-    /// </remarks>
-    [Fact]
-    public void Decode_throws_where_the_reference_is_lossy()
-    {
-        using JsonDocument doc = OracleLoader.Load("bpe_normalizer.json");
-
-        int divergentCount = 0;
-        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
-        {
-            BpeVocabulary vocab = TokenizerJsonLoader.LoadBpe(
-                Bytes(c.GetProperty("tokenizer_json").GetString()!), OracleReplay.BpeBounds());
-            var tokenizer = new BpeTokenizer(vocab);
-
-            foreach (JsonElement t in c.GetProperty("texts").EnumerateArray())
-            {
-                if (!t.GetProperty("decoded").GetString()!.Contains('\uFFFD', StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                divergentCount++;
-                int[] ids = [.. tokenizer.Encode(t.GetProperty("text").GetString()!).Ids];
-                Assert.Throws<DecoderFallbackException>(() => tokenizer.Decode(ids));
-            }
-        }
-
-        // Pins the known divergence count so a regenerated corpus that stops or
-        // changes what triggers it is noticed here, not silently.
-        Assert.Equal(3, divergentCount);
     }
 
     /// <summary>

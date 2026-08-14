@@ -1,0 +1,163 @@
+{
+ "metadata": {
+  "algorithm": "byte-level decode, one id at a time",
+  "library": "tokenizers",
+  "library_version": "0.23.1",
+  "count": 5
+ },
+ "cases": [
+  {
+   "id": 0,
+   "text": "東京 👋",
+   "ids": [
+    30266,
+    109,
+    12859,
+    105,
+    50169,
+    233
+   ],
+   "tokens": [
+    "æĿ",
+    "±",
+    "äº",
+    "¬",
+    "ĠðŁĳ",
+    "ĭ"
+   ],
+   "per_id_decoded": [
+    "�",
+    "�",
+    "�",
+    "�",
+    " �",
+    "�"
+   ],
+   "replacement_count": 6,
+   "decoded": "東京 👋"
+  },
+  {
+   "id": 1,
+   "text": "日本語のテキスト",
+   "ids": [
+    33768,
+    98,
+    17312,
+    105,
+    45739,
+    252,
+    5641,
+    24336,
+    25084,
+    43302
+   ],
+   "tokens": [
+    "æĹ",
+    "¥",
+    "æľ",
+    "¬",
+    "èª",
+    "ŀ",
+    "ãģ®",
+    "ãĥĨ",
+    "ãĤŃ",
+    "ãĤ¹ãĥĪ"
+   ],
+   "per_id_decoded": [
+    "�",
+    "�",
+    "�",
+    "�",
+    "�",
+    "�",
+    "の",
+    "テ",
+    "キ",
+    "スト"
+   ],
+   "replacement_count": 6,
+   "decoded": "日本語のテキスト"
+  },
+  {
+   "id": 2,
+   "text": "🇫🇷 emoji",
+   "ids": [
+    8582,
+    229,
+    104,
+    8582,
+    229,
+    115,
+    44805
+   ],
+   "tokens": [
+    "ðŁ",
+    "ĩ",
+    "«",
+    "ðŁ",
+    "ĩ",
+    "·",
+    "Ġemoji"
+   ],
+   "per_id_decoded": [
+    "�",
+    "�",
+    "�",
+    "�",
+    "�",
+    "�",
+    " emoji"
+   ],
+   "replacement_count": 6,
+   "decoded": "🇫🇷 emoji"
+  },
+  {
+   "id": 3,
+   "text": "déjà vu",
+   "ids": [
+    67,
+    2634,
+    73,
+    24247,
+    410,
+    84
+   ],
+   "tokens": [
+    "d",
+    "Ã©",
+    "j",
+    "Ãł",
+    "Ġv",
+    "u"
+   ],
+   "per_id_decoded": [
+    "d",
+    "é",
+    "j",
+    "à",
+    " v",
+    "u"
+   ],
+   "replacement_count": 0,
+   "decoded": "déjà vu"
+  },
+  {
+   "id": 4,
+   "text": "hello world",
+   "ids": [
+    31373,
+    995
+   ],
+   "tokens": [
+    "hello",
+    "Ġworld"
+   ],
+   "per_id_decoded": [
+    "hello",
+    " world"
+   ],
+   "replacement_count": 0,
+   "decoded": "hello world"
+  }
+ ]
+}
