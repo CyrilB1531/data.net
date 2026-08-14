@@ -5,11 +5,8 @@ namespace DataNet.Embeddings.Tests;
 
 public sealed class OnnxTextEmbedderTests
 {
-    // A 294-byte synthetic encoder committed under tests/oracles: it maps each
-    // token to id * W where W = [0.1, 0.2, 0.3, 0.4], so the mean-pooled and
-    // L2-normalized sentence embedding is exactly W / ||W|| for any input. This
-    // exercises the full ONNX Runtime path (feeding int64 inputs, running the
-    // session, extracting [1, seq, dim], pooling) without shipping real weights.
+    // tiny_encoder.onnx maps every token to a multiple of one fixed direction (0.1, 0.2, 0.3, 0.4), so
+    // mean-pooling and L2-normalizing any input returns that direction -- exercising the full ONNX Runtime path.
     private static readonly string ModelPath =
         Path.Combine(AppContext.BaseDirectory, "oracles", "tiny_encoder.onnx");
 

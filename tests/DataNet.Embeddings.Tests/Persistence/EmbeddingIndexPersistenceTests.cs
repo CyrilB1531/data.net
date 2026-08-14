@@ -177,9 +177,8 @@ public sealed class EmbeddingIndexPersistenceTests
     [Fact]
     public void The_same_vectors_saved_under_each_flag_load_differently()
     {
-        // [2, 0] rather than [3, 4]: both its normalized form and its self-dot are
-        // exactly representable, so the assertion can be bitwise without depending
-        // on how the accumulation happened to round.
+        // [2, 0] rather than [3, 4]: its normalized form and self-dot are both exactly representable,
+        // so the assertion can be bitwise without depending on how the accumulation happened to round.
         var normalized = new EmbeddingIndex(dimension: 2, normalize: true);
         normalized.Add([2f, 0f]);
         var raw = new EmbeddingIndex(dimension: 2, normalize: false);
@@ -223,10 +222,8 @@ public sealed class EmbeddingIndexPersistenceTests
     [Fact]
     public void An_ids_section_of_nothing_but_nulls_still_reports_it_has_ids()
     {
-        // Add never leaves _ids allocated holding only null entries — it only
-        // allocates the array once a non-null id arrives. A file is the only way to
-        // reach this shape, and it must still set HasIds: the section was declared,
-        // even though every entry in it is absent.
+        // Add never leaves _ids holding only nulls -- only a hand-edited file reaches this shape, and
+        // it must still set HasIds: the section was declared, even though every entry in it is absent.
         var index = new EmbeddingIndex(dimension: 2);
         index.Add([1f, 0f]);
         index.Add([0f, 1f]);

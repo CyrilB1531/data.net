@@ -124,16 +124,13 @@ public sealed class BpeSplitBehaviorTests
         };
 
     /// <summary>
-    /// The loader reads the file's own <c>behavior</c> and <c>invert</c>, which it
-    /// ignored entirely before issue #145 — it took the pattern and applied
-    /// <see cref="SplitBehavior.Removed"/> inverted to everything. Looped over
-    /// all twenty models rather than a hand-picked few: the PascalCase switch
-    /// in <c>ReadBpeSequencePreTokenizer</c> has five arms, and
-    /// <see cref="The_ten_combinations"/> never goes through the loader at all
-    /// (it builds a <see cref="BpeSplitStep"/> directly), so a wrong mapping on
-    /// any one arm — <c>MergedWithPrevious</c> included — would otherwise go
-    /// unnoticed. A hand-written subset of rows could go stale the same way;
-    /// enumerating <c>metadata.models</c> cannot.
+    /// The loader reads the file's own <c>behavior</c> and <c>invert</c>, ignored entirely before issue
+    /// #145 -- it took the pattern and applied <see cref="SplitBehavior.Removed"/> inverted to everything.
+    /// Looped over all twenty models rather than a hand-picked few: the PascalCase switch in
+    /// <c>ReadBpeSequencePreTokenizer</c> has five arms, and <see cref="The_ten_combinations"/> never goes
+    /// through the loader at all, so a wrong mapping on any one arm -- <c>MergedWithPrevious</c> included --
+    /// would otherwise go unnoticed. A hand-written subset of rows could go stale the same way -- enumerating
+    /// <c>metadata.models</c> cannot.
     /// </summary>
     [Fact]
     public void The_loader_carries_the_step_every_model_declares()
@@ -190,17 +187,13 @@ public sealed class BpeSplitBehaviorTests
     }
 
     /// <summary>
-    /// End to end: the arrangement the file declares reaches the merge loop.
-    /// <c>Isolated</c> keeps the space and the <c>!</c> that the old rule dropped.
-    /// </summary>
-    /// <remarks>
-    /// The array is taken from the corpus's own <c>isolated</c> case for
-    /// <c>"ab cd!"</c> (case id 0), not from a prediction: that model's vocabulary
-    /// has no merges and no <c>"ab"</c>/<c>"cd"</c> entries, so
-    /// <see cref="BpeTokenizer.Encode(string)"/> emits one token per byte —
-    /// <c>["a", "b", "Ġ", "c", "d", "!"]</c> — rather than the whole pieces
+    /// End to end: the arrangement the file declares reaches the merge loop. <c>Isolated</c> keeps the
+    /// space and the <c>!</c> that the old rule dropped. The array is taken from the corpus's own
+    /// <c>isolated</c> case for <c>"ab cd!"</c> (case id 0), not a prediction: that model's vocabulary has
+    /// no merges and no <c>"ab"</c>/<c>"cd"</c> entries, so <see cref="BpeTokenizer.Encode(string)"/> emits
+    /// one token per byte -- <c>["a", "b", "Ġ", "c", "d", "!"]</c> -- rather than the whole pieces
     /// <c>["ab", "Ġ", "cd", "!"]</c> that <c>pre_tokenize_str</c> alone would show.
-    /// </remarks>
+    /// </summary>
     [Fact]
     public void An_isolated_split_keeps_the_text_between_the_matches()
     {

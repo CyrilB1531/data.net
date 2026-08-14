@@ -63,10 +63,8 @@ public sealed class RocAucParallelTests
     [Fact]
     public void Reports_the_lowest_offending_class_not_the_fastest_worker()
     {
-        // Classes 1 and 2 both hold a NaN score, class 1 in an earlier column.
-        // Sequential scoring meets class 1 first and names column 1's row; the
-        // parallel path must name the same one however the workers are
-        // scheduled, so an AggregateException or a race would fail here.
+        // Classes 1 and 2 both hold NaN, class 1 earlier: the parallel path must
+        // still name class 1 however workers are scheduled.
         int[] yTrue = [0, 1, 2, 0, 1, 2];
         double[] scores =
         [
@@ -107,19 +105,18 @@ public sealed class RocAucParallelTests
         Assert.Equal(sequential.ParamName, parallel.ParamName);
     }
 
+    /// <summary>
+    /// k=2, n=10 is the <c>ArrayPool</c> collision ADR 0018's <c>ScoreSource</c>
+    /// section measures (<c>Rent(10).Length * 2 == Rent(20).Length</c>): the
+    /// corpus's class counts, 3 and 5, do not collide, so only this fixture would
+    /// catch a span sliced to the rented length reading the wrong column. Both
+    /// strategies, because k=2 is also the only shape giving
+    /// <c>OneVsOneParallel</c> a single pair, collapsing <c>Math.Min(workers,
+    /// count)</c> to one worker regardless of what the caller asked for.
+    /// </summary>
     [Fact]
     public void A_power_of_two_class_count_is_bit_identical_in_parallel()
     {
-        // k=2 with n=10 is a shape where ArrayPool hands back Rent(10).Length * 2
-        // == Rent(20).Length, so a span sliced to the rented length instead of the
-        // sample count satisfies ScoreSource's length check and reads the wrong
-        // column silently. The corpus cannot catch this: its class counts are 3
-        // and 5, which do not collide.
-        //
-        // Both strategies, because k=2 is also the only shape that gives
-        // OneVsOneParallel a single pair: pairs.Length == 1, so the driver's
-        // Math.Min(workers, count) collapses to one worker whatever the caller
-        // asked for, and nothing else here exercises that.
         int[] yTrue = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1];
         double[] scores = [0.9, 0.1, 0.2, 0.8, 0.7, 0.3, 0.4, 0.6, 0.55, 0.45,
                            0.35, 0.65, 0.85, 0.15, 0.25, 0.75, 0.6, 0.4, 0.3, 0.7];
@@ -142,15 +139,17 @@ public sealed class RocAucParallelTests
         }
     }
 
+    /// <summary>
+    /// The parallel body must pass the <em>label</em> where <c>ClassScore</c>
+    /// wants a label and the <em>column</em> where it wants a column. With labels
+    /// 0..k-1 they are the same number, so every other test in this file passes
+    /// with the two swapped. <see cref="RocAucMultiClassTests"/>'s sequential
+    /// twin never sets <c>MaxDegreeOfParallelism</c>, so it guarded only the
+    /// sequential driver — this one closes the gap on the parallel path.
+    /// </summary>
     [Fact]
     public void Shifted_labels_are_bit_identical_in_parallel_too()
     {
-        // The parallel body must pass the *label* where ClassScore wants a label
-        // and the *column* where it wants a column. With labels 0..k-1 they are
-        // the same number, so every other test in this file passes with the two
-        // swapped. RocAucMultiClassTests has the sequential twin of this test,
-        // which never sets MaxDegreeOfParallelism and so guarded only the
-        // sequential driver — this one closes that gap on the parallel path.
         int[] shifted = [10, 20, 30, 30, 20, 10];
         double[] scores =
         [
@@ -187,29 +186,19 @@ public sealed class RocAucParallelTests
         }
     }
 
+    /// <summary>
+    /// ADR 0018's "does not stop early" hazard: a naive <c>Stop</c> would cancel
+    /// unstarted iterations and report whichever class a worker reached first.
+    /// <see cref="Reports_the_lowest_offending_class_not_the_fastest_worker"/>
+    /// cannot catch that — its lowest failing class, 1, is one trivial class into
+    /// the invoking thread's own range, so no cancellation could hide it. Here
+    /// class 7 fails six full curves in, and class 8 (the second worker's first
+    /// touch) fails immediately; at n=64 the loop was fast enough that the
+    /// invoking thread sometimes reached class 7 first and the mutation survived.
+    /// </summary>
     [Fact]
     public void An_early_failure_in_a_later_class_does_not_cancel_an_earlier_one()
     {
-        // Hazard: stopping the loop on the first failure would cancel iterations
-        // that had not started yet, and the caller would then be told about
-        // whichever class a worker happened to reach first.
-        //
-        // Reports_the_lowest_offending_class_not_the_fastest_worker cannot catch
-        // that, because its lowest failing class is 1 — its NaNs are in columns 1
-        // and 2, and column 0 holds none — which is one trivial class into the
-        // range the invoking thread always begins with, so no cancellation can
-        // hide it and the fixture proves nothing about ordering. Here the
-        // lowest failing class is 7, six full curves into the first worker's
-        // range, while class 8 is the first thing a second worker touches and
-        // fails on immediately. Two workers, so the ranges split at 8.
-        //
-        // The two NaNs sit in different rows on purpose: the message names the
-        // row, so class 7's failure and class 8's failure are distinguishable.
-        // n is large enough that a curve costs a sort worth measuring: the six
-        // curves before class 7 are what class 8's worker has to beat for early
-        // termination to skip class 7. At n=64 the whole loop was fast enough
-        // that the invoking thread sometimes finished class 7 first and the
-        // mutation survived.
         const int k = 16;
         const int n = 4096;
         (int[] yTrue, double[] scores) = NanColumns(n, k, (7, 5), (8, 3));
@@ -219,38 +208,26 @@ public sealed class RocAucParallelTests
         ArgumentException parallel = Assert.Throws<ArgumentException>(
             () => RocAuc.MultiClass(yTrue, scores, k, new MultiClassRocOptions { MaxDegreeOfParallelism = 2 }));
 
-        // The message up to the suffix only: ArgumentException appends
-        // "(Parameter 'yScore')" itself, from a localizable CoreLib resource, so
-        // asserting the composed string fails on a runtime with localized
-        // resources for a reason that has nothing to do with this code.
-        // RocAucBinaryTests documents that convention; ParamName carries the rest.
+        // Up to the suffix only: the "(Parameter 'x')" tail is a localizable
+        // CoreLib addition (RocAucBinaryTests documents the convention).
         Assert.StartsWith("yScore[5] is NaN; scores must be numbers.", sequential.Message, StringComparison.Ordinal);
         Assert.Equal("yScore", sequential.ParamName);
         Assert.Equal(sequential.Message, parallel.Message);
         Assert.Equal(sequential.ParamName, parallel.ParamName);
     }
 
+    /// <summary>
+    /// The one-vs-one twin of
+    /// <see cref="Reports_the_lowest_offending_class_not_the_fastest_worker"/>:
+    /// every other error-path test here drives <c>OneVsRestParallel</c>, so none
+    /// ever pushed a failure through <c>OneVsOneParallel</c>'s own handler before.
+    /// k=4, NaN at (row 3, col 2) and (row 5, col 3): yTrue[i] is i % 4, so pair
+    /// 5=(2,3) reaches the first and pair 4=(1,3) the second, making 4 the lowest
+    /// offending pair — not pair 0, the thread's own starting iteration.
+    /// </summary>
     [Fact]
     public void Reports_the_lowest_offending_pair_not_the_fastest_worker()
     {
-        // The one-vs-one twin of Reports_the_lowest_offending_class_not_the_
-        // fastest_worker. Every other error-path test in this file uses default
-        // options, so all of them drive OneVsRestParallel and none had ever
-        // pushed a failure through OneVsOneParallel. Deleting that driver's
-        // ArgumentException handler changed no test result anywhere in the
-        // solution, and the AggregateException it then let out crossed the
-        // public API unnoticed.
-        //
-        // k=4 with a NaN at (row 3, column 2) and another at (row 5, column 3).
-        // yTrue[i] is i % 4, so row 3 is a label-3 sample and row 5 a label-1
-        // one, and each NaN is read by exactly one pair — the one that both
-        // selects its row and scores its column: pair 5 = (2,3) reaches the
-        // first, pair 4 = (1,3) the second.
-        //
-        // The lowest offending pair is therefore 4, not 0. That is the point of
-        // this fixture: pair 0 is the iteration the invoking thread always
-        // begins with, so a failure there would be reported first however the
-        // workers were scheduled and would prove nothing about ordering.
         const int k = 4;
         const int n = 64;
         (int[] yTrue, double[] scores) = NanColumns(n, k, (2, 3), (3, 5));
@@ -261,21 +238,15 @@ public sealed class RocAucParallelTests
                 Strategy = MultiClassStrategy.OneVsOne,
             }));
 
-        // Pair 4's message and not pair 5's: both pairs compact their two
-        // classes' samples before scoring, and the NaN lands at index 2 of
-        // pair 4's column and index 1 of pair 5's. Naming the index is what
-        // distinguishes "the lowest pair won" from "a pair won".
-        //
-        // Asserted up to the framework-composed "(Parameter 'yScore')" suffix,
-        // which is localizable — see the note in the sibling class-loop test.
+        // Pair 4's message, not pair 5's: the NaN lands at index 2 of pair 4's
+        // compacted column, naming the index rather than just "a pair won".
         Assert.StartsWith("yScore[2] is NaN; scores must be numbers.", sequential.Message, StringComparison.Ordinal);
         Assert.Equal("yScore", sequential.ParamName);
 
         foreach (int workers in WorkerCounts)
         {
-            // Assert.Throws matches the exact type, so an AggregateException
-            // reaching the caller fails here rather than being unwrapped into a
-            // pass by a base-class match.
+            // Exact-type match: an AggregateException reaching the caller fails
+            // here instead of passing via a base-class match.
             ArgumentException parallel = Assert.Throws<ArgumentException>(
                 () => RocAuc.MultiClass(yTrue, scores, k, new MultiClassRocOptions
                 {
@@ -351,8 +322,7 @@ public sealed class RocAucParallelTests
             });
 
             // Bit equality alone would hold if both paths degenerated to the same
-            // NaN, so pin the value to the band a separable six-class problem
-            // belongs in first.
+            // NaN; pin the value to a separable problem's band first.
             Assert.InRange(sequential, 0.5, 1.0);
 
             foreach (int workers in WorkerCounts)

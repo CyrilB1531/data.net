@@ -64,10 +64,8 @@ public sealed class EmbeddingIndexReadPathTests
     [Fact]
     public void An_escaped_base64_token_loads_the_same_vectors()
     {
-        // One character of the base64 run written as its \u00XX escape. That is
-        // what makes the reader's ValueSpan differ from the decoded value, and it
-        // is the only reachable trigger for the fallback decode — a JSON string
-        // cannot hold a raw newline, and this reader never sees a split segment.
+        // One base64 character written as its \u00XX escape makes ValueSpan differ from the decoded
+        // value -- the only reachable trigger for the fallback decode, since a JSON string can't hold a raw newline.
         string json = Encoding.UTF8.GetString(Artifact());
         int start = json.IndexOf("\"vectors\":\"", StringComparison.Ordinal) + "\"vectors\":\"".Length;
         string escaped = string.Concat(

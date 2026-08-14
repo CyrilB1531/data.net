@@ -58,9 +58,8 @@ public sealed class StopWordsTests
         }
     }
 
-    // The words below are the measured Snowball/nltk divergence. They fail if the
-    // nltk corpus is ever vendored in place of the Snowball lists, which 0010
-    // rules out on licensing grounds.
+    // The measured Snowball/nltk divergence: these fail if the nltk corpus is ever
+    // vendored in place of the Snowball lists, which decision 0010 rules out.
     [Theory]
     [InlineData("ceci")]        // added to Snowball after the snapshot nltk froze
     [InlineData("cela")]
@@ -108,9 +107,8 @@ public sealed class StopWordsTests
     [Fact]
     public void French_produces_the_vocabulary_it_always_has()
     {
-        // Pinned before the lookup was rewritten (#80): the words removed are a
-        // property of the list, and no change to how the set is built or read may
-        // alter them.
+        // Pinned before #80 rewrote the lookup: which words are removed is a
+        // property of the list, not of how the set is built or read.
         var cv = new CountVectorizer(new CountVectorizerOptions { StopWords = StopWords.French });
 
         cv.Fit([
@@ -131,9 +129,8 @@ public sealed class StopWordsTests
     [Fact]
     public void A_word_a_stop_word_merely_starts_is_kept()
     {
-        // The net10 path tests a span of the document rather than a copy of the
-        // token, so a wrong length would silently match a prefix: "the" against
-        // "theatre", "for" against "forest".
+        // The net10 path spans the document rather than copying the token, so a
+        // wrong length would silently match a prefix -- "the" against "theatre".
         var cv = new CountVectorizer(new CountVectorizerOptions { StopWords = StopWords.English });
 
         cv.Fit(["the theatre", "for forest", "no nonetheless"]);
@@ -144,9 +141,8 @@ public sealed class StopWordsTests
     [Fact]
     public void A_caller_list_mutated_afterwards_does_not_reach_the_vectorizer()
     {
-        // The vectorizer copies a caller's set for exactly this reason: it is
-        // theirs to keep mutating, and a fitted model that quietly followed along
-        // would remove words its options never declared.
+        // The vectorizer copies a caller's set: a fitted model that followed their
+        // later mutations would remove words its options never declared.
         var mine = new HashSet<string>(StringComparer.Ordinal) { "the" };
         var cv = new CountVectorizer(new CountVectorizerOptions { StopWords = mine });
 
@@ -159,9 +155,8 @@ public sealed class StopWordsTests
     [Fact]
     public void Accented_stop_words_survive_accent_stripping()
     {
-        // Matching is ordinal against the analyzer's output, so "même" no longer
-        // matches once preprocessing has turned it into "meme". Documented on the
-        // StopWords class; scikit-learn behaves the same way.
+        // Ordinal against the analyzer's output, so "même" stops matching once
+        // preprocessing makes it "meme" -- as in scikit-learn; see StopWords.
         var cv = new CountVectorizer(new CountVectorizerOptions
         {
             StopWords = StopWords.French,

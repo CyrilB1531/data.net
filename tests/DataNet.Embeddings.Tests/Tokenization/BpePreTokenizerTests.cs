@@ -23,16 +23,13 @@ public sealed class BpePreTokenizerTests
     }
 
     /// <summary>
-    /// A pre-split step over <paramref name="pattern"/>, with the behaviour and
-    /// invert this file's #143 cascade always meant: keep the regex matches,
-    /// drop everything else. This is not a bridge built elsewhere — Task 3
-    /// removed <see cref="BpeTokenizer"/>'s bridge, and a real Llama-3 file now
-    /// reaches <see cref="BpePreTokenizer"/> declaring <see cref="SplitBehavior.Isolated"/>,
-    /// not <see cref="SplitBehavior.Removed"/> inverted. The rule lives in
-    /// <see cref="BpePreTokenizer"/>'s own constructor, in the branch taken when
-    /// its <c>preSplit</c> parameter is <see langword="null"/>; this helper exists
-    /// only because this suite builds <see cref="BpePreTokenizer"/> directly with a
-    /// non-null step, bypassing that branch.
+    /// A pre-split step over <paramref name="pattern"/>, with the behaviour and invert this file's #143
+    /// cascade always meant: keep the regex matches, drop everything else. Not a bridge built elsewhere --
+    /// a real Llama-3 file reaches <see cref="BpePreTokenizer"/> declaring <see cref="SplitBehavior.Isolated"/>,
+    /// not <see cref="SplitBehavior.Removed"/> inverted. The rule lives in <see cref="BpePreTokenizer"/>'s
+    /// own constructor, in the branch taken when its <c>preSplit</c> parameter is
+    /// <see langword="null"/>. This helper exists only because this suite builds
+    /// <see cref="BpePreTokenizer"/> directly with a non-null step, bypassing that branch.
     /// </summary>
     private static BpeSplitStep PreSplit(string pattern) => new(pattern, SplitBehavior.Removed, Invert: true);
 
@@ -111,19 +108,13 @@ public sealed class BpePreTokenizerTests
     }
 
     /// <summary>
-    /// The order is not symmetric, so a swap has to be visible. <c>j'ai</c>
-    /// will not do here -- both orders land on <c>["j", "'", "ai"]</c> for it,
-    /// because GPT-2 alone already isolates the apostrophe and Llama-3 then
-    /// leaves that isolated piece alone. <c>'Tis</c> does separate the two
-    /// orders: Llama-3's contraction list is case-insensitive, so run first it
-    /// consumes <c>'T</c> as the <c>'t</c> contraction, leaving GPT-2 (whose
-    /// list is case-sensitive) to split that into <c>'</c> and <c>T</c> --
-    /// <c>["'", "T", "is"]</c>. Run second, GPT-2 never gets the chance: alone
-    /// it already isolates the apostrophe from <c>Tis</c>, and Llama-3 applied
-    /// to that lone apostrophe has no contraction to find -- <c>["'", "Tis"]</c>.
-    /// Verified directly with <c>Regex.Matches</c> against both patterns, not
-    /// through this class, so the example is checked independently of the code
-    /// under test.
+    /// The order is not symmetric, so a swap has to be visible. <c>j'ai</c> will not do -- both orders
+    /// land on <c>["j", "'", "ai"]</c>, since GPT-2 alone already isolates the apostrophe and Llama-3 then
+    /// leaves it alone. <c>'Tis</c> does separate the two: Llama-3's contraction list is case-insensitive,
+    /// so run first it consumes <c>'T</c> as the <c>'t</c> contraction, leaving GPT-2 (case-sensitive) to
+    /// split it into <c>["'", "T", "is"]</c>. Run second, GPT-2 already isolates the apostrophe from
+    /// <c>Tis</c> alone, and Llama-3 finds no contraction in that lone apostrophe --
+    /// <c>["'", "Tis"]</c>. Verified directly with <c>Regex.Matches</c> against both patterns, independent of the code under test.
     /// </summary>
     [Fact]
     public void The_order_matters()
@@ -155,13 +146,8 @@ public sealed class BpePreTokenizerTests
             checkedCases++;
             string text = c.GetProperty("text").GetString()!;
             string[] expected = [.. c.GetProperty("pieces").EnumerateArray().Select(p => p.GetString()!)];
-            // The corpus records byte-mapped pieces; the split runs before the
-            // mapping, so the comparison is over the mapping of what we produce.
-            // ToArray() rather than a collection expression: with a named
-            // string[] on the left, a collection expression on the right makes
-            // Assert.Equal<T>(T, T) and Assert.Equal<T>(ReadOnlySpan<T>,
-            // ReadOnlySpan<T>) equally applicable (CS0121). A concrete array on
-            // both sides removes the ambiguity without changing what is compared.
+            // The corpus records byte-mapped pieces (split runs before mapping), so this compares
+            // against the mapping of what we produce. ToArray() avoids Assert.Equal's CS0121 array/span overload ambiguity.
             Assert.Equal(expected, Split(pre, text).Select(ByteMapped).ToArray());
         }
 

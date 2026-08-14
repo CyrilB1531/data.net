@@ -4,16 +4,11 @@ using Xunit;
 namespace DataNet.Embeddings.Tests;
 
 /// <summary>
-/// Replays <c>batch_encoding.json</c>: the ids and the mask
-/// <c>tokenizers.Tokenizer.encode_batch</c> produces, with the post-processor,
-/// padding and truncation enabled.
+/// Replays <c>batch_encoding.json</c>: the ids and the mask <c>tokenizers.Tokenizer.encode_batch</c>
+/// produces, with the post-processor, padding and truncation enabled. Compared for equality, never a
+/// tolerance -- these are integers, an id is the right one or it is not, and the only thing a tolerance
+/// could absorb here is an off-by-one in the template, the defect this exercise exists to catch.
 /// </summary>
-/// <remarks>
-/// Compared for equality, never within a tolerance. These are integers; an id is
-/// the right one or it is not, and the only thing a tolerance could absorb here
-/// is an off-by-one in the template — the defect the whole exercise exists to
-/// prevent.
-/// </remarks>
 public sealed class BatchEncoderOracleTests
 {
     public static TheoryData<string> CaseNames()

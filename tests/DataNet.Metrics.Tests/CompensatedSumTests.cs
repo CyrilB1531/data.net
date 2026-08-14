@@ -3,18 +3,14 @@ using Xunit;
 namespace DataNet.Metrics.Tests;
 
 /// <summary>
-/// The accumulation itself, on the shape issue #127 measured: a large offset over a
-/// small spread, where a sequential sum loses the spread in the offset's low bits.
+/// The accumulation itself, on the shape issue #127 measured: a large offset over
+/// a small spread, where a sequential sum loses the spread in the offset's low
+/// bits. Asserted through <see cref="R2"/>, since <c>DataNet.Metrics</c> exposes
+/// no internals to test directly. The reference is computed in
+/// <see cref="decimal"/> — 28 significant digits against <see cref="double"/>'s 17
+/// — so the expected value comes from genuinely more precise arithmetic, not a
+/// second implementation of the thing under test.
 /// </summary>
-/// <remarks>
-/// Asserted through <see cref="R2"/> rather than against the internal accumulator,
-/// because <c>DataNet.Metrics</c> exposes no internals to its tests and adding that
-/// exposure for one test would be a larger change than the fix. The reference is
-/// computed in <see cref="decimal"/> — 28 significant digits against
-/// <see cref="double"/>'s 17 — so the expected value comes from a genuinely more
-/// precise arithmetic rather than from a second implementation of the thing under
-/// test.
-/// </remarks>
 public sealed class CompensatedSumTests
 {
     private const int Samples = 200_000;
@@ -23,17 +19,14 @@ public sealed class CompensatedSumTests
     private const int MagnitudeDisparitySamples = 1_000_000;
 
     /// <summary>
-    /// The measured shape: a ramp of 83 887 distinct values over an offset that swamps
-    /// it, and a prediction perturbed by a multiple of 1e-6.
+    /// The measured shape: a ramp of 83 887 distinct values over an offset that
+    /// swamps it, perturbed by a multiple of 1e-6 — not smaller, since the ULP at
+    /// 1e9 is about 1.19e-7 (<c>Math.BitIncrement(1e9) - 1e9</c>) and a smaller
+    /// perturbation rounds back onto the target, scoring a perfect R² and proving
+    /// nothing. The ramp's own step is 5e-8, below the ULP and deliberately so:
+    /// quantizing it onto ULP multiples is what makes the target ill-conditioned
+    /// in the first place.
     /// </summary>
-    /// <remarks>
-    /// 1e-6 and not smaller: the ULP at 1e9 is about 1.19e-7
-    /// (<c>Math.BitIncrement(1e9) - 1e9</c>), so a perturbation below half of that
-    /// rounds back onto the target and every residual becomes exactly zero — which
-    /// scores a perfect R² and proves nothing. The ramp's own step is 5e-8, below
-    /// the ULP and deliberately so: quantizing it onto ULP multiples is what makes
-    /// the target ill-conditioned in the first place.
-    /// </remarks>
     private static (double[] YTrue, double[] YPred) IllConditioned()
     {
         double step = Spread / Samples;
@@ -83,28 +76,15 @@ public sealed class CompensatedSumTests
     }
 
     /// <summary>
-    /// R² in <see cref="decimal"/>, which carries eleven more digits than <see cref="double"/> —
-    /// computed on <c>value - Offset</c> rather than on <paramref name="yTrue"/> and
-    /// <paramref name="yPred"/> directly.
+    /// R² in <see cref="decimal"/> (28 significant digits against
+    /// <see cref="double"/>'s 17), computed on <c>value - Offset</c> rather than on
+    /// <paramref name="yTrue"/>/<paramref name="yPred"/> directly:
+    /// <c>(decimal)double</c> rounds to 15 significant digits, and at this array's
+    /// ~1e9 magnitude that budget is spent entirely on the offset, discarding the
+    /// sub-1e-5 detail this test exists to see. Subtracting <see cref="Offset"/>
+    /// first is exact (Sterbenz's lemma) and R² is shift-invariant, so the shifted
+    /// array's R² is the unshifted one's, exactly.
     /// </summary>
-    /// <remarks>
-    /// <c>(decimal)double</c> is not the higher-precision widening it looks like: the .NET
-    /// conversion rounds to 15 significant digits, and at this array's magnitude — around
-    /// <c>1e9</c> — that budget is spent entirely on the offset, discarding exactly the
-    /// sub-1e-5 detail this test exists to see. Subtracting <see cref="Offset"/> first fixes
-    /// that, and does so exactly rather than approximately, for two independent reasons:
-    /// <list type="bullet">
-    /// <item><c>value - Offset</c> is exact in <see cref="double"/>. <see cref="Offset"/> is a
-    /// power of ten small enough to be exactly representable, and every <c>value</c> here is
-    /// within a factor of two of it, so Sterbenz's lemma applies: the subtraction rounds
-    /// nowhere and the shifted double carries the full information the original held.</item>
-    /// <item>R² is shift-invariant. Its numerator is <c>Σ(y − ŷ)²</c>, a difference a common
-    /// shift cancels out of before the square ever sees it; its denominator is
-    /// <c>Σ(y − ȳ)²</c>, a variance, equally blind to where the data sits on the number line.
-    /// So the R² of the shifted array is not an approximation of the unshifted one's R² — it
-    /// is the same number.</item>
-    /// </list>
-    /// </remarks>
     private static decimal ExactR2(double[] yTrue, double[] yPred)
     {
         decimal mean = 0m;
@@ -222,36 +202,15 @@ public sealed class CompensatedSumTests
     }
 
     /// <summary>
-    /// The shape that catches <c>Outputs.WeightedMean</c>, the walk
-    /// <see cref="MeanSquaredError"/> shares with six other metrics: one huge residual
-    /// among many small ones, no shared offset anywhere.
+    /// The shape that catches <c>Outputs.WeightedMean</c>'s compensation: one huge
+    /// residual (<c>1e20</c>) among a million small ones (<c>10000</c> each), with
+    /// no shared offset to cancel — unlike <see cref="IllConditioned"/>, measured
+    /// bit-identical either way and so unable to discriminate. The large residual
+    /// sits first, so a sequential sum accumulates the small terms on top of it
+    /// (Neumaier's magnitude-compared branch): measured, a plain <c>+=</c> loop
+    /// lands 6.38e9 from the exact sum of 100000000009999990000, while
+    /// <see cref="CompensatedSum"/> lands 784 away — inside one ULP.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Neither existing fixture can tell a compensated walk from a reverted one here.
-    /// <see cref="A_uniform_weight_changes_no_shared_mean"/>'s kernel returns a constant, so
-    /// both paths give the same answer regardless of accumulation. <see cref="IllConditioned"/>
-    /// cannot either, for a more specific reason: <c>MeanSquaredError</c> and its siblings
-    /// average a <em>difference</em> (<c>yTrue[i] - yPred[i]</c>), and on that fixture the
-    /// 1e9 offset cancels out of every difference before <c>Outputs.WeightedMean</c> ever adds
-    /// anything — measured directly, the naive and compensated sums of its squared residuals
-    /// are bit-identical. A test built on that shape would pass unchanged whether or not the
-    /// walk is compensated, which is exactly the kind of test this branch has already deleted
-    /// once.
-    /// </para>
-    /// <para>
-    /// This shape has no offset to cancel: the squared residuals themselves — <c>1e20</c>
-    /// once, <c>10000</c> a million times minus one — are what a sequential sum mishandles. The
-    /// large residual sits first, so a sequential sum accumulates the small terms on top of it,
-    /// the case Neumaier's magnitude-compared branch exists for. Measured independently: a
-    /// plain <c>+=</c> loop over these squared residuals lands 6.38e9 away from the exact sum
-    /// of 100000000009999990000 — about 64% of the mass the 999 999 small residuals
-    /// contribute — while <see cref="CompensatedSum"/> lands on the correctly rounded
-    /// <see cref="double"/>, 784 away from that integer and inside a single ULP of it: the
-    /// strongest result any <see cref="double"/> accumulator can produce, and what makes this
-    /// test discriminate.
-    /// </para>
-    /// </remarks>
     private static (double[] YTrue, double[] YPred) MagnitudeDisparity()
     {
         double[] yTrue = new double[MagnitudeDisparitySamples];

@@ -6,24 +6,15 @@ using Xunit;
 namespace DataNet.Embeddings.Tests.Tokenization;
 
 /// <summary>
-/// Replays <c>normalizer.json</c> against four models that carry four different
-/// <c>precompiled_charsmap</c> blobs — including none at all.
+/// Replays <c>normalizer.json</c> against four models carrying four different
+/// <c>precompiled_charsmap</c> blobs, including none at all. The corpus answers two questions
+/// separately: <c>normalized</c> is the charsmap alone, frozen with the whitespace flags off;
+/// <c>pieces</c>/<c>ids</c> are the whole pipeline, so a test replaying only the second could pass
+/// with normalization and whitespace handling both wrong in ways that cancel out. Four blobs and not
+/// one: <c>nmt_nfkc</c> from stock XLM-R, its case-folding variant, a hand-written three-rule map named
+/// only <c>user_defined</c>, and <c>tiny_sp.model</c>, which has no charsmap and must leave every input
+/// exactly as it was.
 /// </summary>
-/// <remarks>
-/// <para>
-/// The corpus answers two questions separately. <c>normalized</c> is the charsmap
-/// alone, frozen from a copy of each model with the whitespace flags off;
-/// <c>pieces</c>/<c>ids</c> are the whole pipeline. A test that replayed only the
-/// second could pass with the normalization and the whitespace handling wrong in
-/// ways that cancel out.
-/// </para>
-/// <para>
-/// Four blobs and not one: <c>nmt_nfkc</c> from stock XLM-R, its case-folding
-/// variant, a hand-written three-rule map whose <c>name</c> is only
-/// <c>user_defined</c>, and <c>tiny_sp.model</c>, which has no charsmap and must
-/// therefore leave every input exactly as it was.
-/// </para>
-/// </remarks>
 public sealed class PrecompiledNormalizerTests
 {
     private static readonly Dictionary<string, SentencePieceVocabulary> Loaded = [];
@@ -55,9 +46,8 @@ public sealed class PrecompiledNormalizerTests
             string expected = c.GetProperty("normalized").GetString()!;
 
             PrecompiledNormalizer? normalizer = Vocabulary(fixture).Normalizer;
-            // No charsmap means no rewriting: the identity model's reference values
-            // are the inputs themselves, and that is worth asserting rather than
-            // skipping.
+            // No charsmap means no rewriting: the identity model's reference values are the inputs
+            // themselves, worth asserting rather than skipping.
             string actual = normalizer is null ? text : normalizer.Normalize(text);
             if (!string.Equals(expected, actual, StringComparison.Ordinal))
             {

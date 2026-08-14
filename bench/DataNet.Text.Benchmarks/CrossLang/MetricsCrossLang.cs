@@ -6,50 +6,14 @@ namespace DataNet.Text.Benchmarks.CrossLang;
 
 /// <summary>
 /// Cross-language throughput harness for the #61 metrics work, mirroring
-/// <c>bench/python/bench_metrics.py</c> exactly: same corpus files
-/// (<c>bench/corpus/metrics/</c>, from <c>generate_metrics.py</c>), same
-/// operations in the same order, same auto-scaling best-of-N methodology via
-/// the shared <see cref="Harness"/>.
+/// <c>bench/python/bench_metrics.py</c>: same corpus files
+/// (<c>bench/corpus/metrics/</c>), same operations in the same order, same
+/// auto-scaling best-of-N methodology via <see cref="Harness"/>. Thirteen
+/// operations from #61, #93 and #92; none takes <c>sample_weight</c>, so the
+/// corpus's weight column is unused on both sides. <c>roc_auc_binary</c> and
+/// <c>roc_auc_ovr_macro</c> only run on the matching two-/ten-class shapes, and
+/// every name carries its shape (<c>_n{samples}_k{classes}</c>) to pair unambiguously.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Thirteen operations are named in total: the six from issue #61 —
-/// <c>confusion_matrix</c>, <c>accuracy</c>, <c>precision_recall_f1_macro</c>,
-/// <c>classification_report</c>, <c>roc_auc_binary</c> and
-/// <c>roc_auc_ovr_macro</c> — plus <c>balanced_accuracy</c>, <c>matthews</c> and
-/// <c>cohen_kappa</c> from issue #93, plus <c>mse</c>, <c>mae</c>,
-/// <c>median_ae</c> and <c>r2</c> from issue #92, which (unlike the two ROC-AUC
-/// rows) run over every shape. None takes <c>sample_weight</c> — the Python
-/// calls this mirrors do not either — so the weight column the corpus carries
-/// is unused here, on both sides.
-/// </para>
-/// <para>
-/// <c>roc_auc_binary</c> only runs over the two-class files, and
-/// <c>roc_auc_ovr_macro</c> only over the ten-class files whose <c>scores</c>
-/// matrix the generator actually wrote (it stops at 100 000 rows — see the
-/// generator's own comment on why). Every operation name carries its shape
-/// (<c>_n{samples}_k{classes}</c>) so the two sides can be paired unambiguously
-/// without a second field.
-/// </para>
-/// <para>
-/// <c>precision_recall_f1_macro</c> matches scikit-learn's single
-/// <c>precision_recall_fscore_support</c> call, which builds the confusion
-/// matrix once and reads three averages off it. The DataNet side does the same:
-/// one <see cref="ConfusionMatrix.Compute(ReadOnlySpan{int},ReadOnlySpan{int},ReadOnlySpan{int},ReadOnlySpan{double})"/>
-/// call, then <see cref="Precision"/>, <see cref="Recall"/> and <see cref="F1"/>
-/// each read that same matrix rather than recomputing it.
-/// </para>
-/// <para>
-/// <c>mse</c>, <c>mae</c>, <c>median_ae</c> and <c>r2</c> cover the four
-/// distinct cost shapes among the eleven regression metrics landed for issue
-/// #92 — a squared mean, an absolute mean, a sort, and a two-pass centred sum —
-/// so the other seven are one of those four with a different arithmetic kernel
-/// and are not separately timed. They run over <c>y_true_real</c>/
-/// <c>y_pred_real</c>, continuous targets the generator draws from a
-/// separate seeded random instance and attaches to each shape's corpus file,
-/// independent of the classification columns above.
-/// </para>
-/// </remarks>
 public static class MetricsCrossLang
 {
     private static readonly (int Samples, int Classes)[] Shapes =
@@ -62,15 +26,11 @@ public static class MetricsCrossLang
     /// <c>--shapes</c>.
     /// </summary>
     /// <param name="args">
-    /// The process arguments. Two optional filters, both comma-separated:
-    /// <c>--only mse,median_ae</c> keeps the operations whose name starts with
-    /// one of the given prefixes, and <c>--shapes 1000000x2</c> keeps the corpus
-    /// files of those <c>samples</c>×<c>classes</c> shapes. A filtered run writes
-    /// the same file in the same format, holding fewer rows — which is what makes
-    /// it a before/after instrument rather than a comparison against Python: the
-    /// full matrix takes over eight minutes a campaign on a four-core desktop, and
-    /// an interleaved before/after needs four of them. Ask for the operation under
-    /// test and a control, and it takes about one.
+    /// Two optional comma-separated filters: <c>--only mse,median_ae</c> keeps
+    /// operations whose name starts with one of the given prefixes; <c>--shapes
+    /// 1000000x2</c> keeps only those corpus shapes. A filtered run writes the
+    /// same file with fewer rows — a before/after instrument, not a comparison
+    /// against Python, since the full matrix takes over eight minutes a campaign.
     /// </param>
     public static void Run(string[] args)
     {
@@ -93,9 +53,8 @@ public static class MetricsCrossLang
 
         foreach ((int n, int k) in Shapes)
         {
-            // Skipped before the corpus file is read, not after: the largest is
-            // 40 MB of JSON, and deserializing a shape nobody asked for would
-            // cost more than the measurement it is not making.
+            // Skipped before the corpus file is read: the largest is 40 MB of
+            // JSON, more than the skipped measurement is worth deserializing.
             if (shapes.Length > 0 && Array.IndexOf(shapes, $"{n}x{k}") < 0)
             {
                 continue;
@@ -174,10 +133,8 @@ public static class MetricsCrossLang
 
         if (k > 2 && file.Scores is { } scores)
         {
-            // Flattened outside the lambda, as before: the reshape is corpus
-            // preparation, and timing it would make this row measure the wrong
-            // thing. It costs a copy when the filter drops the row, which is
-            // cheaper than getting the one number this file exists to report wrong.
+            // Flattened outside the lambda: timing the reshape would measure
+            // corpus prep, not the metric, at the cost of a wasted copy if filtered out.
             double[] flat = Flatten(scores, k);
             Add($"roc_auc_ovr_macro_{suffix}", () => RocAuc.MultiClass(yTrue, flat, k));
         }
@@ -194,10 +151,8 @@ public static class MetricsCrossLang
         return results;
     }
 
-    // Boxed as a tuple so the shared Harness.Measure(Func<object>) signature — the
-    // same one every other operation here and in PersistenceCrossLang uses — does
-    // not need a second overload just for this one call that returns three
-    // numbers instead of one.
+    // Boxed as a tuple so Harness.Measure(Func<object>) — shared with every
+    // other operation here and in PersistenceCrossLang — needs no second overload.
     private static object PrecisionRecallF1Macro(int[] yTrue, int[] yPred)
     {
         ConfusionMatrix cm = ConfusionMatrix.Compute(yTrue, yPred);

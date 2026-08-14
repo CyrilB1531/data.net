@@ -94,10 +94,8 @@ def metrics() -> None:
     py = load("python", "metrics")
     cs = load("csharp", "metrics")
 
-    # A filtered C# run writes this same file with fewer rows, and the loop below
-    # skips every operation it cannot pair. The gate would then print "every
-    # operation, every size" over whatever survived, and a three-row table would
-    # read as green. Refuse instead of comparing part of the matrix.
+    # A filtered C# run has fewer rows; comparing only what's there would print
+    # a partial table as if it were a green, full-matrix gate. Refuse instead.
     filtered = cs["metadata"].get("filtered")
     if filtered:
         raise SystemExit(

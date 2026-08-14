@@ -262,9 +262,8 @@ public sealed class ValueEqualityTests
     [Fact]
     public void BpeVocabulary_compares_and_hashes_FuseUnk()
     {
-        // BpeVocabulary is a positional record: Vocab and Merges are
-        // constructor parameters, and only the rest are object-initializer
-        // properties. `new BpeVocabulary { Vocab = … }` does not compile.
+        // BpeVocabulary is a positional record: Vocab and Merges are constructor parameters, the rest
+        // are object-initializer properties -- an object initializer alone cannot set Vocab or Merges.
         Dictionary<string, int> vocab = new() { ["a"] = 0 };
         var fused = new BpeVocabulary(vocab, []) { FuseUnk = true };
         var plain = new BpeVocabulary(vocab, []);

@@ -158,11 +158,8 @@ public sealed class RocAucMultiClassTests
     [Fact]
     public void Labels_that_are_not_zero_based_score_identically_to_zero_based_ones()
     {
-        // A column's position in the score matrix and its label value are the
-        // same number only when the labels happen to be 0..k-1. Scoring the same
-        // matrix under both spellings must produce the same bits: if a call site
-        // ever passes a label where a column index belongs, or the reverse, this
-        // is the only test that would notice.
+        // A column index and its label value coincide only for labels 0..k-1; the
+        // only test that would notice a call site swapping the two.
         int[] zeroBased = [0, 1, 2, 2, 1, 0];
         int[] shifted = [10, 20, 30, 30, 20, 10];
         double[] scores = Rows([[0.70, 0.20, 0.10], [0.10, 0.60, 0.30], [0.15, 0.25, 0.60],

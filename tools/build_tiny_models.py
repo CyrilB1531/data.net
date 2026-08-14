@@ -66,9 +66,8 @@ ORACLE_DIR = Path(__file__).resolve().parent.parent / "tests" / "oracles"
 IR_VERSION = 9
 OPSET = 13
 
-# Kept in step with generate_oracles.py, which freezes the same table into
-# batch_encoding.json; a C# test compares one gathered row against it, so the two
-# cannot drift silently.
+# Kept in step with generate_oracles.py's batch_encoding.json table -- a C#
+# test compares one gathered row against it, so the two must not drift.
 EMBEDDING_ROWS = 64
 EMBEDDING_DIM = 4
 
@@ -128,10 +127,8 @@ def build_tiny_embedder() -> onnx.ModelProto:
                              opset_imports=[helper.make_opsetid("", OPSET)])
 
 
-# A character-level BPE, the subword-nmt lineage: no byte alphabet, an explicit
-# end-of-word marker, and a vocabulary small enough to read in a diff. It exists
-# to exercise the merge loop on its own, with none of the byte-level mapping the
-# GPT-2 fixture brings.
+# A character-level BPE corpus, consumed by build_tiny_bpe() below -- see its
+# docstring for what this shape proves.
 BPE_CORPUS = [
     "the quick brown fox jumps over the lazy dog",
     "tokenization is embedding embeddings",
@@ -146,6 +143,11 @@ BPE_CORPUS = [
 
 def build_tiny_bpe() -> str:
     """A trained character-level BPE, serialized as a tokenizer.json.
+
+    ``BPE_CORPUS`` is the subword-nmt lineage: no byte alphabet, an explicit
+    end-of-word marker, and a vocabulary small enough to read in a diff. It
+    exists to exercise the merge loop on its own, with none of the byte-level
+    mapping the GPT-2 fixture brings.
 
     ``BpeTrainer`` is not byte-reproducible across process runs: tokens and
     merges that tie in frequency break ties differently each time, because the
@@ -177,24 +179,27 @@ def build_tiny_bpe() -> str:
     return tokenizer.to_str(pretty=True)
 
 
-# A hand-constructed BPE, the shape ``ignore_merges`` exists for: a vocabulary
-# entry unreachable by replaying the merge table. Three base characters (a, b,
-# c) give two ordinary two-symbol entries via registered merges -- "ab" from
-# (a, b), "bc" from (b, c) -- the same rule ``build_tiny_bpe()``'s trainer would
-# have applied. A third, longer entry, "abc", is then added straight to the
-# vocabulary, skipping the merge that would make it reachable: neither ("ab",
-# "c") nor ("a", "bc") is registered, so encoding "abc" greedily lands on
-# ["ab", "c"], not on the single token that is sitting right there in the
-# vocabulary. That is the orphan, and it is the only reason this fixture
-# exists. Two more base characters, x and y, round it out with pieces that
-# never touch the orphan, for a corpus that can show the flag changing nothing
-# where there is nothing to rescue.
+# The shape ``ignore_merges`` exists for -- see build_orphan_bpe()'s docstring
+# for what each entry proves.
 ORPHAN_VOCAB = {"a": 0, "b": 1, "c": 2, "x": 3, "y": 4, "ab": 5, "bc": 6, "abc": 7}
 ORPHAN_MERGES = [("a", "b"), ("b", "c")]  # neither ("ab","c") nor ("a","bc") is registered
 
 
 def build_orphan_bpe() -> str:
     """A hand-constructed BPE with one orphaned vocabulary entry, serialized as a tokenizer.json.
+
+    ``ORPHAN_VOCAB``/``ORPHAN_MERGES`` state the shape ``ignore_merges`` exists
+    for: a vocabulary entry unreachable by replaying the merge table. Three base
+    characters (a, b, c) give two ordinary two-symbol entries via registered
+    merges -- "ab" from (a, b), "bc" from (b, c) -- the same rule
+    ``build_tiny_bpe()``'s trainer would have applied. A third, longer entry,
+    "abc", is then added straight to the vocabulary, skipping the merge that
+    would make it reachable: neither ("ab", "c") nor ("a", "bc") is registered,
+    so encoding "abc" greedily lands on ["ab", "c"], not on the single token
+    that is sitting right there in the vocabulary. That is the orphan, and it
+    is the only reason this fixture exists. Two more base characters, x and y,
+    round it out with pieces that never touch the orphan, for a corpus that can
+    show the flag changing nothing where there is nothing to rescue.
 
     Unlike ``build_tiny_bpe()``, this model is **constructed, not trained**:
     ``ORPHAN_VOCAB`` and ``ORPHAN_MERGES`` are stated directly rather than
@@ -219,13 +224,8 @@ def build_orphan_bpe() -> str:
     return tokenizer.to_str(pretty=True)
 
 
-# roberta-base's own added_tokens table, reproduced verbatim: ids 0-3 for <s>,
-# <pad>, </s>, <unk> with every matching flag false, and id 50264 for <mask>
-# with lstrip=True and every other flag false. All five sit in model.vocab at
-# the same ids, which is how roberta-base itself writes them -- and 50264 is
-# nowhere near contiguous with a tiny vocabulary's handful of ids, on purpose:
-# the loader must not assume added-token ids are contiguous with the rest of
-# the vocabulary just because this fixture's are small numbers.
+# roberta-base's own added_tokens table, reproduced verbatim -- see
+# build_roberta_shaped()'s docstring for what each id proves.
 ROBERTA_UNK_TOKEN = "<unk>"
 ROBERTA_VOCAB = {
     "<s>": 0, "<pad>": 1, "</s>": 2, ROBERTA_UNK_TOKEN: 3, "a": 4, "b": 5, "ab": 6, "<mask>": 50264,
@@ -238,9 +238,15 @@ def build_roberta_shaped() -> str:
 
     Issue #104's own acceptance criterion: the library must load the
     added_tokens table roberta-base actually ships, not a synthetic stand-in
-    for it. ``ROBERTA_VOCAB`` and ``ROBERTA_MERGES`` are stated directly, so
-    -- like ``build_orphan_bpe()`` and unlike ``build_tiny_bpe()`` -- this is
-    byte-reproducible across runs.
+    for it. ``ROBERTA_VOCAB`` states ids 0-3 for <s>, <pad>, </s>, <unk> with
+    every matching flag false, and id 50264 for <mask> with lstrip=True and
+    every other flag false -- all five at the ids roberta-base itself writes
+    them at, with 50264 deliberately nowhere near contiguous with the tiny
+    vocabulary's handful of ids: the loader must not assume added-token ids
+    are contiguous with the rest of the vocabulary just because this fixture's
+    are small numbers. ``ROBERTA_VOCAB`` and ``ROBERTA_MERGES`` are stated
+    directly, so -- like ``build_orphan_bpe()`` and unlike ``build_tiny_bpe()``
+    -- this is byte-reproducible across runs.
 
     The five entries are added through ``Tokenizer.add_special_tokens`` with
     every flag stated explicitly, which is what makes ``tokenizers`` itself
@@ -269,6 +275,18 @@ def build_roberta_shaped() -> str:
 
 
 def main() -> None:
+    """Rebuild and write all five fixtures.
+
+    newline="\\n" on the three text fixtures below: they are committed, and
+    generate_oracles.py reads tiny_bpe.json and orphan_bpe_model.json back in
+    turn. A contributor with core.autocrlf=false or unset who rebuilds on
+    Windows would have the platform default translate "\\n" to "\\r\\n" on
+    write, and that CRLF would reach the repository as-is, leaving the
+    checked-in file permanently different from what a Linux rebuild produces,
+    for no semantic reason. (core.autocrlf=true or =input is unaffected: git
+    normalises CRLF back to LF on add/commit regardless of what Python wrote
+    to disk.)
+    """
     for filename, build in (("tiny_encoder.onnx", build_tiny_encoder),
                             ("tiny_embedder.onnx", build_tiny_embedder)):
         model = build()
@@ -277,14 +295,7 @@ def main() -> None:
         path.write_bytes(model.SerializeToString())
         print(f"{filename}: {path.stat().st_size} bytes -> {path}")
 
-    # newline="\n" on all three: these fixtures are committed, and generate_oracles.py
-    # reads tiny_bpe.json and orphan_bpe_model.json back in turn (ORACLE_DIR / "...").
-    # A contributor with core.autocrlf=false or unset who rebuilds on Windows would
-    # have the platform default translate "\n" to "\r\n" on write, and that CRLF would
-    # reach the repository as-is, leaving the checked-in file permanently different
-    # from what a Linux rebuild produces, for no semantic reason. (core.autocrlf=true
-    # or =input is unaffected: git normalises CRLF back to LF on add/commit regardless
-    # of what Python wrote to disk.)
+    # newline="\n" on all three: see this function's docstring for why.
     path = ORACLE_DIR / "tiny_bpe.json"
     path.write_text(build_tiny_bpe() + "\n", encoding="utf-8", newline="\n")
     print(f"tiny_bpe.json: {path.stat().st_size} bytes -> {path}")

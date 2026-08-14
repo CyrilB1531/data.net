@@ -8,28 +8,14 @@ namespace DataNet.Text.Benchmarks.CrossLang;
 
 /// <summary>
 /// The before-and-after for issue #86: multiclass ROC-AUC at several worker
-/// counts, wall and processor time from the same run.
+/// counts, wall and processor time from the same run. Not a <c>compare-*</c>
+/// mode — this is C# against itself with more threads, so there is no Python
+/// side to keep in step. Inputs are generated here from a fixed seed rather
+/// than read from <c>bench/corpus/metrics/</c> (which stops at 100 000 rows and
+/// only holds k=2/k=10): same data on both sides is all a C#-vs-C# comparison
+/// needs, and a seeded generator guarantees that without touching #61's
+/// published corpus. Processor time rising with worker count is expected, not a failure.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Not a <c>compare-*</c> mode. Those are the matched face-offs against Python;
-/// this is C# against C#, the sequential path against itself with more threads,
-/// so there is no Python side and no shared corpus file to keep in step.
-/// </para>
-/// <para>
-/// The inputs are generated here from a fixed seed rather than read from
-/// <c>bench/corpus/metrics/</c>, which holds k=2 and k=10 only and stops its
-/// score matrix at 100 000 rows. For a C#-against-C# comparison the only property
-/// that matters is the same data on both sides, and a seeded generator guarantees
-/// that more firmly than a committed file — while leaving #61's published corpus
-/// and its table untouched.
-/// </para>
-/// <para>
-/// Processor time is expected to rise with the worker count. That is not the
-/// measurement failing; elapsed time is what this issue is about, and the ratio
-/// of the two is printed so the cost is visible rather than implied.
-/// </para>
-/// </remarks>
 internal static class RocParallelBench
 {
     private static readonly (int Samples, int Classes)[] Shapes =
@@ -41,18 +27,8 @@ internal static class RocParallelBench
 
     private static readonly int[] WorkerCounts = [1, 2, 4, 8];
 
-    // One-vs-one at n=100 000, k=10 is 45 pairs and 90 curves — the heaviest cell
-    // in the whole matrix, and it is measured: about 127 ms for one sequential
-    // call, published in docs/guides/performance.md. So this budget has three
-    // orders of magnitude of slack for every shape in Shapes above, and never
-    // fires for any of them.
-    //
-    // It is kept for the shape that has not been measured yet. Shapes is the one
-    // thing a reader of this file is likely to edit, and one-vs-one is quadratic
-    // in k while each curve is O(n log n): adding n=1 000 000 or k=20 is the case
-    // where a single cell can run long enough to strand every worker count and
-    // shape queued behind it. Past this budget the cell is named and skipped
-    // instead.
+    // The heaviest committed shape measures about 127 ms, per docs/guides/performance.md.
+    // This guards a future, quadratic-in-k Shapes entry that runs long instead.
     private static readonly TimeSpan OneVsOnePatience = TimeSpan.FromSeconds(60);
 
     public static void Run()
@@ -76,13 +52,8 @@ internal static class RocParallelBench
 
                     if (heaviest)
                     {
-                        // One probe call, timed outside Harness.Measure's own
-                        // auto-scaling repeats, so that the patience budget is spent
-                        // on a single call rather than on Measure's five best-of-N
-                        // ones. At the shapes committed above the probe always
-                        // passes — this cell is about 127 ms — and its only effect is
-                        // to warm the path before the measured repeats. It earns its
-                        // place if Shapes grows: see OneVsOnePatience.
+                        // Timed outside Harness.Measure's own repeats, so the patience
+                        // budget lands on one call; harmless today, and warms the path.
                         var single = Stopwatch.StartNew();
                         double auc = RocAuc.MultiClass(yTrue, scores, k, new MultiClassRocOptions
                         {

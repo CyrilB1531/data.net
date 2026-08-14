@@ -111,13 +111,11 @@ public sealed class R2Tests
     public void Explained_variance_is_one_on_a_single_wrong_sample()
     {
         // Its own definition, not a rounding accident: one residual has zero
-        // variance. This is why ExplainedVariance takes no zeroDivision, and the
-        // test exists so a later attempt to harmonise the two signatures fails.
+        // variance. This is why ExplainedVariance takes no zeroDivision.
         Assert.Equal(1.0, ExplainedVariance.Score([3.0], [5.0]), 12);
 
-        // The unclamped answer to the same case is nan, not -inf: the numerator
-        // vanished with the denominator, which is the "perfect" side of the
-        // zero-variance branch.
+        // Unclamped, the same case is nan, not -inf: the "perfect" side of the
+        // zero-variance branch, numerator and denominator both vanished.
         Assert.True(double.IsNaN(ExplainedVariance.Score([3.0], [5.0], forceFinite: false)));
     }
 
@@ -159,10 +157,8 @@ public sealed class R2Tests
     [Fact]
     public void Explained_variance_beats_r2_on_a_biased_prediction()
     {
-        // The one term that separates the two metrics: explained variance
-        // subtracts the mean residual before squaring, so a prediction that is
-        // uniformly off by a constant explains all the variance and scores 1,
-        // while R² pays for the bias.
+        // Explained variance subtracts the mean residual before squaring, so a
+        // constant bias explains all the variance and scores 1; R² pays for it.
         double[] yTrue = [1.0, 2.0, 3.0, 4.0];
         double[] biased = [3.0, 4.0, 5.0, 6.0];
 

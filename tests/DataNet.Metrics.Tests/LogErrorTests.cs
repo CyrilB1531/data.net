@@ -74,11 +74,8 @@ public sealed class LogErrorTests
     [Fact]
     public void The_corpus_actually_carries_log_family_keys_on_at_least_one_case()
     {
-        // Guards against the two "if (Has(...)) return" checks above turning into
-        // a silent no-op if the corpus ever stopped freezing the log family —
-        // this fails loudly instead of the theories above quietly asserting
-        // nothing. positive_three_outputs is also the only fixture that carries
-        // the |weights variant of either key.
+        // Guards against the "if (Has(...)) return" checks above degrading into a
+        // silent no-op if the corpus ever stopped freezing the log family.
         Assert.Contains(RegressionCorpus.Cases, c => RegressionCorpus.Has(c, "msle|uniform"));
         Assert.Contains(RegressionCorpus.Cases, c => RegressionCorpus.Has(c, "msle|raw"));
         Assert.Contains(RegressionCorpus.Cases, c => RegressionCorpus.Has(c, "msle|weights"));
@@ -133,19 +130,19 @@ public sealed class LogErrorTests
         Assert.Throws<ArgumentException>(() => MeanSquaredLogError.Score([-1.0, 1.0], [1.0, 1.0]));
     }
 
+    /// <summary>
+    /// The corpus cannot police this: its comparison rule scales by
+    /// <c>max(1, |expected|)</c>, so at 3e-18 it reduces to an absolute 1e-9 and
+    /// every implementation passes, including one that returns zero — hence the
+    /// relative assertion here. Measured against scikit-learn 1.9.0:
+    /// <c>mean_squared_log_error([1e-9, 2e-9, 3e-9], [2e-9, 4e-9, 1e-9])</c> is
+    /// 2.9999999856666664e-18, while <c>Math.Log(1.0 + x)</c> gives
+    /// 3.000000038019698e-18 — out by 1.7e-8 relative, about 17 000 times the
+    /// 1e-12 bound asserted below.
+    /// </summary>
     [Fact]
     public void A_tiny_target_keeps_the_bits_that_one_plus_x_would_round_away()
     {
-        // The corpus cannot police this: its comparison rule scales by
-        // max(1, |expected|), so at 3e-18 it reduces to an absolute 1e-9 and
-        // every implementation passes, including one that returns zero. The
-        // assertion here is therefore relative.
-        //
-        // Measured against scikit-learn 1.9.0:
-        //   mean_squared_log_error([1e-9, 2e-9, 3e-9], [2e-9, 4e-9, 1e-9])
-        //     = 2.9999999856666664e-18
-        // Math.Log(1.0 + x) gives 3.000000038019698e-18 — out by 1.7e-8
-        // relative, about 17 000 times the 1e-12 bound asserted below.
         const double Expected = 2.9999999856666664e-18;
 
         double actual = MeanSquaredLogError.Score([1e-9, 2e-9, 3e-9], [2e-9, 4e-9, 1e-9]);

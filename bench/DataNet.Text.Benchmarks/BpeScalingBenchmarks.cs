@@ -5,30 +5,14 @@ using DataNet.Embeddings.Tokenization;
 namespace DataNet.Text.Benchmarks;
 
 /// <summary>
-/// How the pathological-token cost scales with length -- the measurement the
-/// #59 plan reserved before deciding whether the linear scan in
-/// <c>BpeTokenizer.Merge</c> needs a priority queue.
+/// How the pathological-token cost scales with length — the #59 measurement
+/// deciding whether <c>BpeTokenizer.Merge</c>'s linear scan needs a priority
+/// queue. Each length is one repeated-character run, one piece to <c>Merge</c>:
+/// cost should roughly quadruple per doubling of <see cref="Length"/> if the
+/// scan is the bottleneck, roughly double if not. Split from
+/// <see cref="BpeBenchmarks"/> so these four lengths don't also rerun its two
+/// benchmarks, which don't depend on <see cref="Length"/>.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Each length is a single run of the same repeated character, with no split
-/// point for <c>Merge</c> to find, so the whole run is one piece to the
-/// pre-tokenizer and one merge loop to <c>Merge</c>. A linear scan repeated
-/// once per merge costs roughly the square of the symbol count; a doubling
-/// of <see cref="Length"/> should then roughly quadruple the measured cost.
-/// A cost that instead roughly doubles per doubling says the scan is not the
-/// bottleneck it looks like on paper. Neither reading is assumed here --
-/// <see cref="Length"/> is stepped so the ratio can be read from the table
-/// rather than inferred from a single point.
-/// </para>
-/// <para>
-/// Split from <see cref="BpeBenchmarks"/> so <see cref="Length"/>'s four
-/// values do not also rerun <see cref="BpeBenchmarks.Unigram"/> and
-/// <see cref="BpeBenchmarks.Bpe"/> four times each: neither depends on
-/// <see cref="Length"/>, so multiplying them would only lengthen the run
-/// without adding information.
-/// </para>
-/// </remarks>
 [MemoryDiagnoser]
 public class BpeScalingBenchmarks
 {

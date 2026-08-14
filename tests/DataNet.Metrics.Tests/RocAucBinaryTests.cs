@@ -25,11 +25,8 @@ public sealed class RocAucBinaryTests
         int[] yTrue = [1, 1, 1];
         double[] scores = [0.1, 0.4, 0.9];
 
-        // Assert.Throws<ArgumentException> alone would pass even if the
-        // guard's ParamName (and therefore its Message, which appends
-        // "(Parameter 'x')" whenever ParamName is set) silently changed —
-        // exactly what happened when BinaryRoc.Score was split and the
-        // single-class check's throw lost its second argument. Pin both.
+        // Assert.Throws alone missed it once: when BinaryRoc.Score was split, the
+        // single-class throw silently lost its ParamName argument. Pin both.
         ArgumentException ex = Assert.Throws<ArgumentException>(() => RocAuc.Score(yTrue, scores));
         Assert.Equal("yTrue", ex.ParamName);
         Assert.Contains("Only one class is present", ex.Message, StringComparison.Ordinal);
@@ -50,12 +47,8 @@ public sealed class RocAucBinaryTests
         int[] yTrue = [];
         double[] scores = [];
 
-        // Without the dedicated n == 0 guard, an empty input still throws:
-        // the loop and sort become no-ops and the single-class check at the
-        // end also sees zero true positives and zero false positives. So the
-        // assertion has to pin the message the empty-input guard actually
-        // produces, not merely that *some* ArgumentException was thrown —
-        // otherwise this test cannot tell the two guards apart.
+        // Without the dedicated n == 0 guard, an empty input still throws, from
+        // the single-class check; pin the message to tell the two guards apart.
         ArgumentException ex = Assert.Throws<ArgumentException>(() => RocAuc.Score(yTrue, scores));
         Assert.Contains("there is nothing to score", ex.Message, StringComparison.Ordinal);
     }
@@ -105,9 +98,8 @@ public sealed class RocAucBinaryTests
         int[] yTrue = [0, 0, 1, 1];
         double[] scores = [0.1, 0.2, 0.8, 0.9];
 
-        // Label 1 ranks highest: treating 1 as positive gives a perfect score,
-        // but treating 0 as positive reverses which end of the ranking counts,
-        // so it must come out as the worst possible score, not the same value.
+        // Label 1 ranks highest, so posLabel 0 must reverse which end of the
+        // ranking counts and score the worst case, not repeat the same value.
         Assert.Equal(1.0, RocAuc.Score(yTrue, scores, posLabel: 1), MetricsCorpus.Tolerance);
         Assert.Equal(0.0, RocAuc.Score(yTrue, scores, posLabel: 0), MetricsCorpus.Tolerance);
     }

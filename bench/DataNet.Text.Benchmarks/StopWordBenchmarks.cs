@@ -8,16 +8,12 @@ namespace DataNet.Text.Benchmarks;
 
 /// <summary>
 /// Fit+transform throughput with stop-word removal on, over a corpus whose
-/// stop-word density matches running English prose.
+/// stop-word density matches running English prose (~40%, the point of the
+/// benchmark: stop words are by definition the most frequent tokens, so the
+/// filter's per-token cost lands on most of the work). <see cref="StopWordDensity"/>
+/// is checked against the corpus actually built, so a quietly-drifted corpus
+/// cannot print confident numbers for a path it stopped exercising.
 /// </summary>
-/// <remarks>
-/// The density is the point of the benchmark. Stop words are by definition the
-/// tokens that occur most — around 40% of an English document — so the filter's
-/// per-token cost is paid on the majority of the work, and a corpus that barely
-/// contains any would measure nothing. <see cref="StopWordDensity"/> is checked
-/// against the corpus actually built, because a benchmark that quietly stopped
-/// exercising the path it is named for still prints confident numbers.
-/// </remarks>
 [MemoryDiagnoser]
 public class StopWordBenchmarks
 {
@@ -40,9 +36,8 @@ public class StopWordBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        // The default token pattern (\b\w\w+\b) drops single-character tokens, so a
-        // one-letter stop word would never reach the filter and would dilute the
-        // density it is meant to produce.
+        // \b\w\w+\b drops single-character tokens, so a one-letter stop word would
+        // never reach the filter and would dilute the density it is meant to produce.
         string[] stopWords = [.. StopWords.English.Where(w => w.Length > 1).OrderBy(w => w, StringComparer.Ordinal)];
 
         var rng = new Random(20260806);

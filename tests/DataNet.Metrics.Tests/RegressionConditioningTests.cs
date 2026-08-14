@@ -8,14 +8,12 @@ namespace DataNet.Metrics.Tests;
 /// <summary>
 /// Replays <c>regression_conditioning.json</c>: 200 000 samples of a target with a
 /// large offset over a small spread, which is where a sequential sum and numpy's
-/// pairwise one part company. Issue #127.
+/// pairwise one part company (issue #127). The corpus carries no arrays — they
+/// would be megabytes — but the closed form that builds them, and the raw bits of
+/// five values along the way, compared before anything is scored: two sides that
+/// built slightly different arrays would otherwise compare their scores happily
+/// and prove nothing.
 /// </summary>
-/// <remarks>
-/// The corpus carries no arrays — they would be megabytes — but the closed form that
-/// builds them, and the raw bits of five values along the way. Those bits are compared
-/// before anything is scored: two sides that build slightly different arrays would
-/// otherwise compare their scores happily and prove nothing.
-/// </remarks>
 public sealed class RegressionConditioningTests
 {
     private static readonly JsonDocument Corpus = OracleLoader.Load("regression_conditioning.json");
@@ -61,26 +59,14 @@ public sealed class RegressionConditioningTests
 
     /// <summary>
     /// A pure relative bound, in place of <see cref="RegressionCorpus.AssertClose"/>'s
-    /// <c>1e-9 * max(1, |expected|)</c> for this corpus specifically.
+    /// <c>1e-9 * max(1, |expected|)</c>: this fixture's own <c>mse</c> (3.97e-12)
+    /// and <c>mae</c> (1.70e-6) sit far below 1, where the shared floor turns into
+    /// an absolute 1e-9 — 250× the <c>mse</c> itself, so <c>0.0</c> would still
+    /// pass. Dropped here only, not in the shared helper other corpora rely on at
+    /// their own scale. The NaN/infinity branches carry over unused today, but
+    /// share a generator with <c>tests/oracles/regression.json</c>, which already
+    /// stores them, so a fifth row landing on one here is not hypothetical.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// This fixture's own <c>mse</c> (<c>3.97e-12</c>) and <c>mae</c> (<c>1.70e-6</c>) sit far
-    /// below 1, where the shared bound's floor turns into an <em>absolute</em> <c>1e-9</c> —
-    /// 250× the <c>mse</c> value itself, so returning <c>0.0</c> would still pass. Dropping the
-    /// floor here (not in the shared helper, which other corpora rely on at their own scale)
-    /// keeps the same 1e-9 relative precision every other row on this page compares at, and it
-    /// costs nothing on <c>r2</c>/<c>explained_variance</c>: both sit near 1, where the floored
-    /// and floor-free bounds already agree.
-    /// </para>
-    /// <para>
-    /// The <c>NaN</c>/infinity branches are carried over from <see cref="RegressionCorpus.AssertClose"/>
-    /// rather than dropped as dead weight: this corpus's four rows are finite by construction
-    /// today, but <c>regression_conditioning.json</c> shares a generator with
-    /// <c>tests/oracles/regression.json</c>, which already stores <c>nan</c>/<c>inf</c> for
-    /// undefined metrics, so a fifth row here landing on one is not hypothetical.
-    /// </para>
-    /// </remarks>
     private static void AssertRelative(double expected, double actual, string because)
     {
         if (double.IsNaN(expected))

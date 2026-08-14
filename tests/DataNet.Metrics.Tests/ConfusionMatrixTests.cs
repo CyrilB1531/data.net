@@ -106,11 +106,8 @@ public sealed class ConfusionMatrixTests
     [Fact]
     public void Explicit_wide_range_labels_use_the_binary_search_fallback()
     {
-        // Label values 5,000,000 apart exceed LabelIndex.MaxDirectTableSize (1<<22,
-        // ~4.19M), so LabelIndex's constructor and IndexOf both take the sorted-array
-        // / binary-search path instead of the direct offset table. Keep the values
-        // this far apart if you ever "tidy" the magic numbers, or this coverage goes
-        // silently dead again.
+        // 5,000,000 apart exceeds LabelIndex.MaxDirectTableSize (~4.19M), forcing
+        // the binary-search path instead of the direct offset table.
         int[] yTrue = [0, 5_000_000, 0, 5_000_000];
         int[] yPred = [0, 5_000_000, 5_000_000, 0];
         int[] labels = [5_000_000, 0];
@@ -125,11 +122,8 @@ public sealed class ConfusionMatrixTests
     [Fact]
     public void Implicit_union_over_wide_range_values_uses_the_full_sort_fallback()
     {
-        // Same MaxDirectTableSize threshold, this time reached through
-        // LabelIndex.SortedUnion: the label range (7,000,001) exceeds the table
-        // limit, so the union is built by sorting and deduplicating rather than by
-        // marking a dense presence array. The ascending result is exactly what
-        // proves that path ran, not the dense one — do not shrink the range.
+        // Same threshold, reached through LabelIndex.SortedUnion: a 7,000,001 range
+        // forces sort-and-dedup instead of a dense presence array.
         int[] yTrue = [4_000_000, -3_000_000, 0];
         int[] yPred = [0, 4_000_000, -3_000_000];
 
@@ -141,9 +135,8 @@ public sealed class ConfusionMatrixTests
     [Fact]
     public void Rejects_duplicate_labels_on_the_binary_search_fallback_path()
     {
-        // Wide range again, so the duplicate check exercised here is the sorted
-        // adjacent-pair check in LabelIndex's fallback constructor branch, not the
-        // dense path's slot check already covered by Rejects_duplicate_labels.
+        // Wide range again: exercises the sorted adjacent-pair check in the
+        // fallback branch, not the dense path's slot check covered above.
         int[] yTrue = [0, 5_000_000];
         int[] yPred = [0, 5_000_000];
         int[] labels = [0, 5_000_000, 0];

@@ -38,15 +38,12 @@ SOURCES = ["README.md", "docs/guides/*.md"]
 
 FENCE = re.compile(r"^```csharp[ \t]*\n(.*?)^```[ \t]*$", re.S | re.M)
 
-# A trailing comment is common in a guide ("using DataNet.Text;  // TextElement"),
-# and must not stop the line being recognised as a directive to hoist -- left in
-# a method body it would parse as a `using` statement.
+# A trailing comment ("using DataNet.Text;  // TextElement") must not stop
+# the line being recognised as a directive to hoist.
 USING = re.compile(r"^using +[A-Za-z_][A-Za-z0-9_.]* *; *(//.*)?$")
 
-# The reason is bounded by the literal "-->" rather than by "\s*". A lazy
-# quantifier sitting between two optional-whitespace groups makes every split of
-# the line a candidate match, which is super-linear on backtracking; trimming the
-# capture in Python instead costs nothing and keeps the match linear.
+# Bounded by the literal "-->", not "\s*": a lazy quantifier between two
+# optional-whitespace groups is super-linear on backtracking; trim in Python instead.
 SKIP = re.compile(r"^<!--\s*docs-compile:\s*skip\b(?P<reason>.*?)-->\s*$")
 REASON_SEPARATORS = " \t-—:"
 

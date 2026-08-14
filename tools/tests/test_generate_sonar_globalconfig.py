@@ -74,12 +74,8 @@ def test_disabled_rules_reads_the_sarif_rule_table():
 def test_active_rules_keeps_only_csharpsquid_ids():
     active = gen.active_rules(RULES_SEARCH)
 
-    # S100 is deliberately absent: it is disabled-but-not-active (see the fixture
-    # generation note in the implementation plan), so it never reaches the profile's
-    # activation=true response and must not appear here either.
-    # csharpsecurity:S2076 is present in the fixture and deliberately absent here:
-    # it exercises the REPOSITORY filter, which the other four rules -- all
-    # csharpsquid: -- never did on their own.
+    # S100 is deliberately absent (disabled-but-not-active, #109's plan); it
+    # never reaches the profile response. csharpsecurity:S2076 tests the REPOSITORY filter alone.
     assert active == {"S107", "S1192", "S2245", "S3776"}
 
 
@@ -105,11 +101,8 @@ def test_render_declares_a_global_config():
 
 
 def test_render_carries_no_timestamp():
-    # Asserted directly, on the text itself: calling render() twice in the same
-    # process and comparing would pass even if a second-granularity timestamp were
-    # embedded, since both calls would land in the same second. A file that changes
-    # every day cannot be drift-checked (D3 of the 0109 spec), so what matters is
-    # that no date or time ever appears, not that two nearly-simultaneous calls agree.
+    # Asserted on the text directly, not by comparing two render() calls: both
+    # could land in the same second. No timestamp ever, per 0109 spec D3.
     text = gen.render(["S107"], profile_key="P", analyzer_version="1.2.3")
 
     assert not re.search(r"\d{4}-\d{2}-\d{2}", text)
@@ -124,11 +117,8 @@ def test_render_is_a_pure_function_of_its_arguments():
 
 
 def test_active_rules_raises_when_rules_search_is_truncated():
-    # ps=500 against a profile with more than 500 active rules would silently drop
-    # the overflow from the intersection: --check would then regenerate the same
-    # truncated file and report a match, and the build would enforce less than the
-    # quality gate with every gate staying green. total > len(rules) is the one
-    # signal available to catch that from the response alone.
+    # ps=500 truncation would silently drop rules from the intersection, and
+    # --check would report a false match -- total > len(rules) is the only signal.
     payload = {"p": 1, "ps": 4, "total": 500, "rules": [{"key": "csharpsquid:S107"}]}
 
     with pytest.raises(gen.TruncatedResponse, match="total=500"):
@@ -190,12 +180,8 @@ class _ServiceUnavailableHandler(http.server.BaseHTTPRequestHandler):
 
 
 def test_check_exits_two_not_three_on_an_http_status_error(tmp_path, monkeypatch, capsys):
-    # urllib.error.HTTPError -- raised here by a real 503 response, not a stub --
-    # is a urllib.error.URLError subclass, and it sets .filename to the request URL
-    # with .strerror left None. Before the fix, checking .filename alone routed it
-    # into the local-file branch and printed "cannot read <url>: None" at exit 3: a
-    # SonarCloud outage reported as an unreadable file. It must stay a network
-    # failure, exit 2, same as a refused connection.
+    # Regression test for main()'s URLError-before-OSError ordering (see its
+    # docstring) -- a real 503, not a stub, so HTTPError's own .filename quirk fires.
     monkeypatch.setattr(gen, "ERROR_LOG", FIXTURES / "error_log.sarif")
     monkeypatch.setattr(gen, "OUTPUT", tmp_path / ".globalconfig")
 
@@ -243,8 +229,8 @@ def test_check_names_the_path_and_does_not_report_the_api_as_unreachable_when_a_
         code = gen.main(["--check"])
 
     captured = capsys.readouterr()
-    # A local path typo is not a network failure: it must not be reported as
-    # one, and it must not reuse the "API unreachable" exit code.
+    # A local path typo is not a network failure -- must not be reported as
+    # one, nor reuse the API-unreachable exit code.
     assert code == gen.EXIT_INPUT_MISSING
     assert code != gen.EXIT_UNREACHABLE
     assert "could not reach" not in captured.err
@@ -252,16 +238,14 @@ def test_check_names_the_path_and_does_not_report_the_api_as_unreachable_when_a_
 
 
 def test_check_reports_an_unreadable_local_file_as_a_local_failure_not_the_network(tmp_path, monkeypatch, capsys):
+    # long-comment: the technique's portability, not just its result, needs stating
     # A directory, not a chmod'd file: os.chmod(0o000) only clears POSIX
-    # permission bits, which os.geteuid() == 0 already ignores, and on Windows
-    # chmod cannot remove the owner's read access at all -- it only toggles the
-    # read-only attribute, so the file there still opens fine and the test
-    # would pass without ever reaching the branch under test. Opening a
-    # directory as a file fails on both: confirmed on this machine as
-    # IsADirectoryError, and PermissionError is Windows' documented equivalent
-    # (Windows has no directory-as-file read at all, so CPython's os module
-    # reports it as a permission failure) -- both are OSError subclasses,
-    # which is what the branch under test catches.
+    # permission bits, ignored when os.geteuid() == 0, and Windows chmod cannot
+    # remove owner read access at all -- either would let the file open fine
+    # and the test pass without reaching the branch under test. Opening a
+    # directory as a file fails on both: IsADirectoryError here, PermissionError
+    # on Windows (its os module reports the no-such-read-mode as a permission
+    # failure) -- both are OSError subclasses, which is what the branch catches.
     unreadable = tmp_path / "unreadable.sarif"
     unreadable.mkdir()
     monkeypatch.setattr(gen, "ERROR_LOG", unreadable)
@@ -272,9 +256,8 @@ def test_check_reports_an_unreadable_local_file_as_a_local_failure_not_the_netwo
         code = gen.main(["--check"])
 
     captured = capsys.readouterr()
-    # The local server above answers every call, so this exercises exactly what it
-    # is meant to: a PermissionError on a local file must not be reported as "could
-    # not reach" the API, because the network is not what failed.
+    # The local server above answers every call: a PermissionError here must
+    # not be reported as "could not reach" the API -- the network isn't what failed.
     assert code == gen.EXIT_INPUT_MISSING
     assert code != gen.EXIT_UNREACHABLE
     assert "could not reach" not in captured.err
@@ -282,10 +265,8 @@ def test_check_reports_an_unreadable_local_file_as_a_local_failure_not_the_netwo
 
 
 def test_committed_globalconfig_raises_s107():
-    # The permanent half of D6 in the 0109 spec: every other test here runs against
-    # trimmed fixtures, so none of them would notice a regenerated file that lost a
-    # rule the issue's acceptance criteria named. This one reads the file the build
-    # actually uses.
+    # The permanent half of D6 (0109 spec): trimmed fixtures elsewhere wouldn't
+    # notice a regenerated file losing a named rule; this reads the file the build uses.
     text = (Path(__file__).resolve().parents[2] / ".globalconfig").read_text(encoding="utf-8")
 
     assert "dotnet_diagnostic.S107.severity = warning" in text

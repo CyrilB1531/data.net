@@ -76,9 +76,8 @@ public sealed class AbsoluteErrorTests
     }
 
     [Theory]
-    // Residuals [0, 2, 4, 10] against a zero prediction, one row per measured
-    // weighting. The uniform rows are the ones a "value at the 50% point"
-    // implementation gets wrong, and only because the count is even.
+    // Residuals [0, 2, 4, 10], one row per measured weighting: the uniform rows
+    // are what a naive "value at the 50% point" median gets wrong, since the count is even.
     [InlineData(new double[] { 1, 1, 1, 1 }, 3.0)]
     [InlineData(new double[] { 2, 2, 2, 2 }, 3.0)]
     [InlineData(new double[] { 0.5, 0.5, 0.5, 0.5 }, 3.0)]
@@ -98,20 +97,17 @@ public sealed class AbsoluteErrorTests
         Assert.Equal(expected, MedianAbsoluteError.Score(residuals, zeros, 1, weights), 12);
     }
 
+    /// <summary>
+    /// The uniform weights above (1, 2, 0.5, 7) are all exact in binary, so none
+    /// exercises scikit-learn's epsilon tolerance on the cumulative-weight
+    /// comparison. 0.1 is not exact: at n = 6, 8, 10 the rounding error pushes
+    /// the cumulative sum past half by less than one epsilon, and scikit-learn
+    /// still averages there. The 0.7 rows overshoot by more than an epsilon, so
+    /// scikit-learn does not average — they fail an implementation that reads
+    /// "uniform weight" as an unconditional average. Rows that passed before
+    /// the tolerance landed stay as the regression guard.
+    /// </summary>
     [Theory]
-    // Residuals 0…n-1 against a zero prediction, under a *fractional* uniform
-    // weight — the shape none of the rows above can reach, because 1, 2, 0.5
-    // and 7 are all exactly representable in binary and 0.1 is not. The
-    // cumulative weight then overshoots half the total by units in the last
-    // place, and scikit-learn compares that overshoot against one machine
-    // epsilon rather than against zero. An exact `cumulative <= half` refuses
-    // to average and returns half a unit less at n = 6, 8 and 10.
-    //
-    // The 0.7 rows are here for the opposite reason: their overshoot is larger
-    // than an epsilon, so scikit-learn does *not* average, and they fail any
-    // implementation that reads the tolerance as "a uniform weight always
-    // averages". Rows that already passed before the tolerance landed are kept
-    // as the regression guard.
     [InlineData(0.1, 4, 1.5)]
     [InlineData(0.1, 6, 2.5)]
     [InlineData(0.1, 8, 3.5)]
@@ -139,9 +135,8 @@ public sealed class AbsoluteErrorTests
     }
 
     [Theory]
-    // A shorter, three-value fixture, and the two-value fixture where the
-    // weighted percentile collapses to whichever endpoint holds the majority
-    // weight — or the plain average when the two are tied.
+    // A three-value fixture, plus the two-value one where the weighted percentile
+    // collapses to the majority-weight endpoint, or averages when the weights tie.
     [InlineData(new double[] { 1, 1, 1 }, new double[] { 0, 2, 4 }, 2.0)]
     [InlineData(new double[] { 1, 3 }, new double[] { 0, 10 }, 10.0)]
     [InlineData(new double[] { 3, 1 }, new double[] { 0, 10 }, 0.0)]
@@ -156,9 +151,8 @@ public sealed class AbsoluteErrorTests
     [Fact]
     public void Uniform_weights_give_the_unweighted_median()
     {
-        // Invariant 1 of the spec: the weighted path and the unweighted path must
-        // not disagree where they have no reason to, including on the average of
-        // the two middle values that an even count produces.
+        // Invariant 1 of the spec: the weighted and unweighted paths must agree,
+        // including on the even-count average of the two middle values.
         double[] residuals = [0.0, 2.0, 4.0, 10.0];
         double[] zeros = [0.0, 0.0, 0.0, 0.0];
 
@@ -168,16 +162,17 @@ public sealed class AbsoluteErrorTests
             12);
     }
 
+    /// <summary>
+    /// The invariant above holds for a weight of 1, not for uniform weights in
+    /// general — more than scikit-learn promises. Measured against scikit-learn
+    /// 1.9.0: residuals 0…9 under a uniform weight of 0.7 give 5.0 weighted and
+    /// 4.5 unweighted, because the cumulative weight there overshoots half the
+    /// total by more than a machine epsilon and the averaging branch does not
+    /// fire. Reproducing that disagreement is parity; removing it would not be.
+    /// </summary>
     [Fact]
     public void A_uniform_weight_is_not_a_promise_of_the_unweighted_median()
     {
-        // The invariant above holds for a weight of 1, and the spec states it
-        // for uniform weights generally — which is more than scikit-learn does.
-        // Measured against scikit-learn 1.9.0: residuals 0…9 under [0.7] * 10
-        // give 5.0 on the weighted path and 4.5 on the unweighted one, because
-        // there the cumulative weight overshoots half the total by more than a
-        // machine epsilon and the averaging branch does not fire. Reproducing
-        // that disagreement is parity; removing it would not be.
         double[] residuals = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
         double[] zeros = new double[10];
         double[] weights = [0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 0.7];

@@ -20,20 +20,13 @@ internal static class Harness
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
     /// <summary>
-    /// Times one operation, recording both elapsed time and processor time.
+    /// Times one operation, recording both elapsed time and processor time. Wall
+    /// time alone flatters this runtime: .NET's background collector works on
+    /// other threads, so a heavily-allocating operation finishes in less elapsed
+    /// time than it costs. Both figures come from the same run — the one with the
+    /// lowest elapsed time — so the pair is internally consistent rather than two
+    /// separate best-ofs.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Wall time alone flatters this runtime. .NET's background collector does its
-    /// work on other threads, so an operation that allocates heavily finishes in
-    /// less elapsed time than it costs. Comparing only elapsed time would report a
-    /// parity that disappears the moment two operations run at once.
-    /// </para>
-    /// <para>
-    /// Both figures come from the same run — the one with the lowest elapsed time —
-    /// so the pair is internally consistent rather than two separate best-ofs.
-    /// </para>
-    /// </remarks>
     public static OperationResult Measure(string operation, Func<object> action)
     {
         Process process = Process.GetCurrentProcess();

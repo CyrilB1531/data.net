@@ -76,9 +76,8 @@ public sealed class PersistenceOverloadTests : IDisposable
         original.Save(_path);
         HashingVectorizer reloaded = HashingVectorizer.Load(_path);
 
-        // Hashing learns nothing, so its options are the whole artifact: a reloaded
-        // vectorizer with a different NumFeatures produces different columns and
-        // nothing downstream would notice.
+        // Hashing learns nothing, so its options are the whole artifact: a different
+        // NumFeatures produces different columns and nothing downstream notices.
         AssertIdentical(original.Transform(Holdout), reloaded.Transform(Holdout));
     }
 
