@@ -252,9 +252,12 @@ PY
 
 Each of these is a decision the spec records; check them one by one:
 
-- `presplit_aps` and `presplit_no_aps` **differ on every text containing `"|"`** and **agree on
-  `"no split here"`**. A pair that agrees everywhere measures nothing; a pair that differs on the last
-  text means the `Split` matched something it should not have.
+- `presplit_aps` and `presplit_no_aps` **differ on every text containing `"|"`**, and differ on
+  `"no split here"` **by exactly one leading space** — they declare the flag differently, so they cannot
+  agree on any non-empty text. A pair that differs by more than that leading space on the last text means
+  the `Split` matched something it should not have.
+- the **four models declaring the space** — everything but `presplit_no_aps` — **agree on
+  `"no split here"`**. That is the check that shows the shapes coincide when nothing is split.
 - `presplit_aps` gives three pieces each carrying a space for `"ab|cd"`.
 - for `"ab| cd"` the third piece's space is the text's own, not an added one — the piece count is 3, not 4.
 - for `"a| |b"` the piece that is a single space stays one `Ġ`.
@@ -371,19 +374,22 @@ public sealed class BpePrefixSpaceTests
 
     /// <summary>
     /// With nothing for the <c>Split</c> pattern to match there is one piece, so
-    /// all five models agree — which is what makes the other tests about placement
-    /// rather than about the models differing in general.
+    /// the four models declaring the space agree — which is what makes the other
+    /// tests about placement rather than about the models differing in general.
+    /// The fifth declares no space and differs by exactly that.
     /// </summary>
     [Fact]
-    public void Every_model_agrees_on_a_text_the_split_never_matches()
+    public void The_models_declaring_a_prefix_space_agree_where_the_split_never_matches()
     {
         using JsonDocument doc = OracleLoader.Load(Corpus);
-        string[] decoded = [.. doc.RootElement.GetProperty("cases").EnumerateArray()
+        Dictionary<string, string> decoded = doc.RootElement.GetProperty("cases").EnumerateArray()
             .Where(c => c.GetProperty("text").GetString() == "no split here")
-            .Select(c => c.GetProperty("decoded").GetString()!)];
+            .ToDictionary(c => c.GetProperty("model").GetString()!, c => c.GetProperty("decoded").GetString()!);
 
-        Assert.Equal(5, decoded.Length);
-        Assert.Single(decoded.Distinct(StringComparer.Ordinal));
+        Assert.Equal(5, decoded.Count);
+        Assert.Single(decoded.Where(e => e.Key != "presplit_no_aps").Select(e => e.Value)
+            .Distinct(StringComparer.Ordinal));
+        Assert.Equal(" " + decoded["presplit_no_aps"], decoded["presplit_aps"]);
     }
 
     [Fact]
