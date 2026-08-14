@@ -27,31 +27,17 @@ internal static class JsonArtifact
 
     /// <summary>Writer options for artifacts: compact, and validated as it is written.</summary>
     /// <remarks>
-    /// <para>
-    /// The relaxed encoder is the deliberate choice here. The default one escapes
-    /// every non-ASCII character as <c>\uXXXX</c> — six bytes where UTF-8 needs two —
-    /// and a vectorizer's vocabulary is exactly where non-ASCII lives: this library
-    /// ships Snowball stop-word lists for French, German, Italian, Portuguese and
-    /// Spanish, 258 of whose entries are accented. It also escapes characters JSON
-    /// never required, so a token pattern came out as <c>\b\w\w+\b</c>.
-    /// </para>
-    /// <para>
-    /// "Unsafe" names an HTML-injection concern: the default encoder exists so JSON
-    /// can be dropped into a <c>&lt;script&gt;</c> block unescaped. An artifact is
-    /// read back by this library's own parser and never embedded in a page, so that
-    /// protection buys nothing here and costs size on every accented token. The
-    /// escaping JSON itself requires — quotes, backslashes, control characters — is
-    /// still applied.
-    /// </para>
+    /// The relaxed encoder is deliberate: the default escapes every non-ASCII character as
+    /// <c>\uXXXX</c>, and this library ships accented Snowball stop-word lists. "Unsafe" names an
+    /// HTML-injection concern that does not apply — an artifact is read back by this library's own
+    /// parser, never dropped into a <c>&lt;script&gt;</c> block. See ADR 0011, "Escaping".
     /// </remarks>
     public static JsonWriterOptions WriterOptions => new()
     {
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         Indented = false,
-        // Measured: turning validation off saved nothing on a 30k-feature artifact
-        // (7.35 -> 7.95 ms, inside run-to-run noise), so the structural check the
-        // writer performs is kept. It costs nothing and catches a malformed
-        // artifact at the point a writer bug produces it.
+        // Kept on: the structural check is cheap for a writer to perform, and catches
+        // a malformed artifact at the point a writer bug would produce one.
         SkipValidation = false,
     };
 
@@ -68,27 +54,11 @@ internal static class JsonArtifact
     /// <see cref="double"/>, bit for bit.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The two targets get there differently, because "exact" is cheap on one and
-    /// not guaranteed on the other.
-    /// </para>
-    /// <para>
-    /// From <c>net8.0</c>, <see cref="Utf8JsonWriter.WriteNumberValue(double)"/>
-    /// emits the <em>shortest</em> representation that still round-trips — exact
-    /// since .NET Core 3.0 — straight into the UTF-8 buffer. That is about a
-    /// quarter fewer characters than <c>"G17"</c> and allocates no intermediate
-    /// string, which shows up twice over: a smaller artifact to write, and fewer
-    /// bytes for the reader to scan back.
-    /// </para>
-    /// <para>
-    /// A <c>netstandard2.0</c> build may run on .NET Framework, where that
-    /// shortest-round-trippable behaviour is not guaranteed. There the value keeps
-    /// the invariant <c>"G17"</c> form, which is exact on every framework at the
-    /// cost of longer numbers. The two builds therefore write different bytes for
-    /// the same model — both read back identically, and each build is
-    /// byte-reproducible against itself, which is what the artifact contract
-    /// actually promises.
-    /// </para>
+    /// From <c>net8.0</c>, <see cref="Utf8JsonWriter.WriteNumberValue(double)"/> emits the shortest
+    /// round-tripping form, exact since .NET Core 3.0. A <c>netstandard2.0</c> build may run on .NET
+    /// Framework, where that is not guaranteed, so it keeps invariant <c>"G17"</c> instead — exact
+    /// everywhere, at the cost of longer numbers. See ADR 0011, "Doubles", for what the contract
+    /// actually promises: each build byte-reproducible against itself, not the two against each other.
     /// </remarks>
     public static void WriteExactDouble(Utf8JsonWriter writer, double value)
     {
@@ -113,15 +83,10 @@ internal static class JsonArtifact
 
     /// <summary>Reads <paramref name="stream"/> to its end, failing past <c>MaxTotalBytes</c>.</summary>
     /// <remarks>
-    /// <para>The stream is never disposed — ownership stays with the caller.</para>
-    /// <para>
-    /// The result is a window onto a buffer this method owns, and on the growable
-    /// path that buffer is longer than the payload. Read it as the
-    /// <see cref="ReadOnlyMemory{T}"/> it comes back as: reaching for the array
-    /// behind it, or for <c>.ToArray()</c>, both reintroduces the copy this return
-    /// type exists to remove and exposes an over-length tail of zeroes as if it
-    /// were part of the artifact.
-    /// </para>
+    /// Never disposed — ownership stays with the caller. On the growable path the returned buffer
+    /// is longer than the payload, so read it as the <see cref="ReadOnlyMemory{T}"/> it comes back
+    /// as: reaching for the array behind it, or for <c>.ToArray()</c>, both reintroduce the copy this
+    /// return type exists to remove and expose a tail of zeroes past the payload's end.
     /// </remarks>
     public static ReadOnlyMemory<byte> ReadAllBytes(Stream stream, in ArtifactLimits limits)
     {
@@ -184,11 +149,9 @@ internal static class JsonArtifact
     /// <see cref="MemoryStream"/>.
     /// </summary>
     /// <remarks>
-    /// Returns <c>false</c> when there is no length to size a buffer from, when
-    /// that length is past what a single array can hold, or when the stream turns
-    /// out to hold more than it declared. In that last case the position is put
-    /// back first, so the caller's growable path reads the whole thing rather than
-    /// the prefix this one would have truncated it to.
+    /// Returns <c>false</c> when there is no length to size from, that length exceeds what a single array
+    /// can hold, or the stream holds more than declared — the position is then put back so the caller's
+    /// growable path reads the whole thing rather than the prefix this would have truncated it to.
     /// </remarks>
     private static bool TryReadDeclaredLength(Stream stream, out byte[] buffer, out int filled)
     {
