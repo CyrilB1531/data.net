@@ -147,6 +147,21 @@ def _doc_prefix(lines: list[str], start: int, length: int) -> tuple[int, int]:
     return count, prose
 
 
+def _close(lines: list[str], after: int, start: int, length: int,
+           prose: int, doc: bool, marked: bool) -> Block:
+    """The block that just ended, with the suppression rule applied to it.
+
+    A /// run touching a // run is one run to the scanner and two things to the
+    rules: only the // part can be a suppression's reason, so the documentation
+    above it keeps its own budget rather than riding the exemption out.
+    """
+    suppression = _justifies_a_suppression(lines, after)
+    documented, documented_prose = _doc_prefix(lines, start, length)
+    if suppression and 0 < documented < length:
+        return Block(start, documented, documented_prose, True, marked, False)
+    return Block(start, length, prose, doc, marked, suppression)
+
+
 def blocks_in(lines: list[str], suffix: str) -> list[Block]:
     """Every run of consecutive comment lines in `lines`, as `Block`s.
 
@@ -178,13 +193,7 @@ def blocks_in(lines: list[str], suffix: str) -> list[Block]:
             if not STRUCTURAL.search(content):
                 prose += 1
         elif length:
-            suppression = _justifies_a_suppression(lines, number - 1)
-            documented, documented_prose = _doc_prefix(lines, start, length)
-            if suppression and 0 < documented < length:
-                # Split: the documentation keeps its budget, the reason is exempt.
-                result.append(Block(start, documented, documented_prose, True, marked, False))
-            else:
-                result.append(Block(start, length, prose, doc, marked, suppression))
+            result.append(_close(lines, number - 1, start, length, prose, doc, marked))
             length = 0
 
     if length:

@@ -19,7 +19,7 @@ the honest figure is 12%.
 Usage:  python3 tools/count_cited_claims.py [path-prefix ...]
         python3 tools/count_cited_claims.py --help
 
-Exit:   0 always; this reports, it does not gate.
+Exit:   0. This reports; #155 wires the gate that blocks.
 """
 
 from __future__ import annotations
@@ -44,6 +44,21 @@ EVIDENCE = re.compile(
 CROSS_REFERENCE = re.compile(r"<see\s+cref=\"[^\"]*\"\s*/?>")
 
 
+def _claiming_blocks(path: str):
+    """Every block in one file that names a reference library, with its body."""
+    suffix = pathlib.Path(path).suffix
+    if suffix not in guard.LEADERS:
+        return
+    try:
+        lines = (guard.ROOT / path).read_text(encoding="utf-8").split("\n")
+    except (OSError, UnicodeDecodeError):
+        return
+    for block in guard.blocks_in(lines, suffix):
+        body = "\n".join(lines[block.line - 1:block.line - 1 + block.length])
+        if LIBRARY.search(body):
+            yield block, body
+
+
 def survey(prefixes: tuple[str, ...]) -> tuple[int, int, list[str]]:
     """Blocks naming a library, how many cite, and where the uncited ones are."""
     claimed = cited = 0
@@ -51,17 +66,7 @@ def survey(prefixes: tuple[str, ...]) -> tuple[int, int, list[str]]:
     for path in guard.tracked_files():
         if prefixes and not path.startswith(prefixes):
             continue
-        suffix = pathlib.Path(path).suffix
-        if suffix not in guard.LEADERS:
-            continue
-        try:
-            lines = (guard.ROOT / path).read_text(encoding="utf-8").split("\n")
-        except (OSError, UnicodeDecodeError):
-            continue
-        for block in guard.blocks_in(lines, suffix):
-            body = "\n".join(lines[block.line - 1:block.line - 1 + block.length])
-            if not LIBRARY.search(body):
-                continue
+        for block, body in _claiming_blocks(path):
             claimed += 1
             if EVIDENCE.search(CROSS_REFERENCE.sub("", body)):
                 cited += 1
@@ -70,10 +75,11 @@ def survey(prefixes: tuple[str, ...]) -> tuple[int, int, list[str]]:
     return claimed, cited, uncited
 
 
-def main(argv: list[str]) -> int:
+def main(argv: list[str]) -> None:
+    """Prints the survey. There is no verdict here, so there is none to return."""
     if len(argv) > 1 and argv[1] in ("--help", "-h"):
         print(__doc__)
-        return 0
+        return
     claimed, cited, uncited = survey(tuple(argv[1:]))
     scope = " ".join(argv[1:]) or "the whole tree"
     share = f"{100 * cited // claimed}%" if claimed else "n/a"
@@ -83,8 +89,7 @@ def main(argv: list[str]) -> int:
         print(f"    uncited: {place}")
     if len(uncited) > 20:
         print(f"    ... and {len(uncited) - 20} more")
-    return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    main(sys.argv)
