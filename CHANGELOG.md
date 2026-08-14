@@ -9,11 +9,18 @@ The four packages (`DataNet.Text`, `DataNet.Embeddings`, `DataNet.Fuzzy`,
 `DataNet.Metrics`) version and release **independently**, each from its own
 `src/<Package>/Version.props`, so entries are grouped per package. Releases up to
 and including `0.2.0` predate the split and covered all three at once — see
-[`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md). Each entry
+[`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md). From the
+2026-08-14 release the heading carries the date alone, because the four packages
+no longer share a number: `DataNet.Metrics` shipped its first `0.1.0` while the
+other three shipped `0.3.0`. Each entry
 is one sentence, the issue and the commit; see
 [`CONTRIBUTING.md`](CONTRIBUTING.md#releasing) for the shape and why.
 
 ## [Unreleased]
+
+Nothing yet.
+
+## Released — 2026-08-14
 
 ### DataNet.Text — 0.3.0
 
@@ -186,6 +193,6 @@ the canonical Python libraries — see [`docs/equivalence.md`](docs/equivalence.
 - A decision log records the deliberate divergences from the Python references. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
 - Publishing to nuget.org via Trusted Publishing (keyless, OIDC) and to GitHub Packages. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
 
-[Unreleased]: https://github.com/CyrilB1531/data.net/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/CyrilB1531/data.net/compare/DataNet.Text/v0.3.0...HEAD
 [0.2.0]: https://github.com/CyrilB1531/data.net/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/CyrilB1531/data.net/releases/tag/v0.1.0
