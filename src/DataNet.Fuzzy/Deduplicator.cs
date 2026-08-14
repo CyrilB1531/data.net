@@ -8,11 +8,10 @@ namespace DataNet.Fuzzy;
 /// comparisons.
 /// </summary>
 /// <remarks>
-/// Records are first partitioned by a blocking key (e.g. first letter, Soundex
-/// code, postal code); pairwise similarity is then computed only within each
-/// block. Records whose similarity meets a threshold are linked, and the
-/// transitive closure forms clusters. Blocking trades a little recall (true
-/// duplicates in different blocks are missed) for a large speed-up.
+/// Records are partitioned by a blocking key — first letter, Soundex code, postal
+/// code — and similarity is computed only within a block. Those meeting the
+/// threshold are linked, and the transitive closure forms the clusters. Blocking
+/// trades recall for speed: a true duplicate in another block is missed.
 /// </remarks>
 public static class Deduplicator
 {

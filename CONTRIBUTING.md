@@ -493,7 +493,8 @@ carry does not spend the budget. **The reason above a `#pragma warning disable` 
 [Suppressions](#suppressions) below already demands a reason a reviewer can disagree with, which is a
 stricter requirement than brevity and rarely met in two lines. Past either budget, the reasoning belongs in
 [`docs/decisions/`](docs/decisions/README.md),
-cited from one line — or it needs cutting. `tools/check_comment_length.py` counts them.
+cited from one line — or it needs cutting. `tools/check_comment_length.py` counts them, and CI runs
+it in the `Lint` job: a block past its budget with no marker fails the build.
 
 **A longer block carries a marker naming its reason**, as its first line:
 
