@@ -87,7 +87,10 @@ The plan below is written for the agreeing branch and tells you exactly what to 
 
 - Produces, for Task 2:
   - `metadata.models` — `{name: {"declares": str, "literal": str|null, "tokenizer_json": str}}`
-  - `metadata.refusals` — `[{"shape": str, "document": str, "error": str}]`
+  - `metadata.refusals` — `[{"shape": str, "pattern": dict}]`. **Not** the
+    `{"shape", "document", "error"}` shape the other corpora use: those record an error the *reference*
+    raised, and `tokenizers` builds neither of these shapes, so there is nothing to capture. This carries
+    the pattern node a test splices into a working document.
   - `cases` — `[{"id": int, "model": str, "text": str, "pieces": [str], "tokens": [str], "ids": [int]}]`
 
 - [ ] **Step 1: Read the two sections you are modelling on**

@@ -4488,7 +4488,14 @@ def _split_literal_models() -> list[tuple]:
 
 
 def _split_literal_refusals() -> list[dict]:
-    """The two pattern shapes DataNet refuses -- neither spelling, and both at once."""
+    """The two pattern shapes #167 decides to refuse: neither spelling, and both.
+
+    Not a measurement of either side. tokenizers builds neither shape, so there
+    is no reference error to capture; and only the first is refused today --
+    with both present the loader finds pattern.Regex and reads it, which is the
+    silent acceptance #167 closes. A test asserting both throw will fail on the
+    second until the loader changes.
+    """
     shapes = [
         ("pattern_empty", {}),
         ("pattern_both", {"Regex": "a", "String": "a"}),
