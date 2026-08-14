@@ -4144,6 +4144,88 @@ def _split_behavior_refusals() -> list[dict]:
     return refusals
 
 
+# --- a merge pair listed twice (issue #160) -----------------------------------
+
+# a+b is listed at rank 0 AND rank 3. Keeping the first makes it merge before
+# b+c; keeping the last makes it merge after. Nothing else distinguishes the
+# two readings, and no committed corpus contained a duplicated pair before this.
+_DUPLICATE_VOCAB = {"a": 0, "b": 1, "c": 2, "d": 3, "ab": 4, "bc": 5, "cd": 6}
+
+
+def _duplicate_merge_document(merges) -> str:
+    """A tokenizer.json written by hand, so a duplicate survives into the file.
+
+    Round-tripping through Tokenizer.to_str() cannot be used here: the
+    reference collapses a repeated pair while serializing, so the document it
+    writes for the duplicate is byte-identical to the one it writes for
+    last_kept. A corpus built that way hands the loader under test a file with
+    no duplicate in it and passes while measuring nothing.
+    """
+    return json.dumps({
+        "version": "1.0", "truncation": None, "padding": None, "added_tokens": [],
+        "normalizer": None, "pre_tokenizer": {"type": "Whitespace"},
+        "post_processor": None, "decoder": None,
+        "model": {
+            "type": "BPE", "dropout": None, "unk_token": None,
+            "continuing_subword_prefix": None, "end_of_word_suffix": None,
+            "fuse_unk": False, "byte_fallback": False, "ignore_merges": False,
+            "vocab": dict(_DUPLICATE_VOCAB), "merges": [list(pair) for pair in merges],
+        },
+    })
+
+
+def _duplicate_merge_models() -> list[tuple]:
+    """(name, declares, document, tokenizer, texts) -- the duplicate and both readings."""
+    from tokenizers import Tokenizer  # noqa: PLC0415
+
+    first, second, third = ("a", "b"), ("b", "c"), ("c", "d")
+    shapes = [
+        ("duplicate", "a+b listed at rank 0 and again at rank 3",
+         [first, second, third, first]),
+        ("first_kept", "the same table with only the rank-0 occurrence",
+         [first, second, third]),
+        ("last_kept", "the same table with only the rank-3 occurrence",
+         [second, third, first]),
+    ]
+    carried = []
+    for name, declares, merges in shapes:
+        document = _duplicate_merge_document(merges)
+        carried.append((name, declares, document, Tokenizer.from_str(document),
+                        ["abcd", "abc", "ab"]))
+    return carried
+
+
+def generate_bpe_duplicate_merge() -> dict:
+    """Which occurrence of a repeated merge pair the reference keeps."""
+    carried = _duplicate_merge_models()
+    cases = []
+    for name, _declares, _document, tokenizer, texts in carried:
+        for text in texts:
+            enc = tokenizer.encode(text)
+            cases.append({"id": len(cases), "model": name, "text": text,
+                          "tokens": enc.tokens, "ids": enc.ids})
+
+    return {
+        "metadata": {
+            "algorithm": "BPE merge table with a duplicated pair",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "hand-built: seven entries and four merges, defined in tools/generate_oracles.py",
+            # tokenizer_json is written here rather than by Tokenizer.to_str(),
+            # which collapses the duplicate and would make this corpus vacuous.
+            "models": {
+                name: {"declares": declares, "tokenizer_json": document}
+                for name, declares, document, _, _ in carried
+            },
+            # Read as: the duplicate's stream equals one of these two, and which
+            # one it is is the whole measurement.
+            "candidates": ["first_kept", "last_kept"],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def generate_bpe_split_behavior() -> dict:
     """Every Split behavior and invert, pieces as well as tokens."""
     carried = _split_behavior_models()
@@ -4236,6 +4318,7 @@ def main() -> None:
         "bpe_continuing_prefix.json": generate_bpe_continuing_prefix,
         "bpe_sequence_split.json": generate_bpe_sequence_split,
         "bpe_split_behavior.json": generate_bpe_split_behavior,
+        "bpe_duplicate_merge.json": generate_bpe_duplicate_merge,
         "wordpiece_added_tokens.json": generate_wordpiece_added_tokens,
     }
     for filename, gen in generators.items():

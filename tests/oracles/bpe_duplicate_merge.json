@@ -1,0 +1,144 @@
+{
+ "metadata": {
+  "algorithm": "BPE merge table with a duplicated pair",
+  "library": "tokenizers",
+  "library_version": "0.23.1",
+  "model": "hand-built: seven entries and four merges, defined in tools/generate_oracles.py",
+  "models": {
+   "duplicate": {
+    "declares": "a+b listed at rank 0 and again at rank 3",
+    "tokenizer_json": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [], \"normalizer\": null, \"pre_tokenizer\": {\"type\": \"Whitespace\"}, \"post_processor\": null, \"decoder\": null, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": null, \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"b\": 1, \"c\": 2, \"d\": 3, \"ab\": 4, \"bc\": 5, \"cd\": 6}, \"merges\": [[\"a\", \"b\"], [\"b\", \"c\"], [\"c\", \"d\"], [\"a\", \"b\"]]}}"
+   },
+   "first_kept": {
+    "declares": "the same table with only the rank-0 occurrence",
+    "tokenizer_json": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [], \"normalizer\": null, \"pre_tokenizer\": {\"type\": \"Whitespace\"}, \"post_processor\": null, \"decoder\": null, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": null, \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"b\": 1, \"c\": 2, \"d\": 3, \"ab\": 4, \"bc\": 5, \"cd\": 6}, \"merges\": [[\"a\", \"b\"], [\"b\", \"c\"], [\"c\", \"d\"]]}}"
+   },
+   "last_kept": {
+    "declares": "the same table with only the rank-3 occurrence",
+    "tokenizer_json": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [], \"normalizer\": null, \"pre_tokenizer\": {\"type\": \"Whitespace\"}, \"post_processor\": null, \"decoder\": null, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": null, \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"b\": 1, \"c\": 2, \"d\": 3, \"ab\": 4, \"bc\": 5, \"cd\": 6}, \"merges\": [[\"b\", \"c\"], [\"c\", \"d\"], [\"a\", \"b\"]]}}"
+   }
+  },
+  "candidates": [
+   "first_kept",
+   "last_kept"
+  ],
+  "count": 9
+ },
+ "cases": [
+  {
+   "id": 0,
+   "model": "duplicate",
+   "text": "abcd",
+   "tokens": [
+    "a",
+    "bc",
+    "d"
+   ],
+   "ids": [
+    0,
+    5,
+    3
+   ]
+  },
+  {
+   "id": 1,
+   "model": "duplicate",
+   "text": "abc",
+   "tokens": [
+    "a",
+    "bc"
+   ],
+   "ids": [
+    0,
+    5
+   ]
+  },
+  {
+   "id": 2,
+   "model": "duplicate",
+   "text": "ab",
+   "tokens": [
+    "ab"
+   ],
+   "ids": [
+    4
+   ]
+  },
+  {
+   "id": 3,
+   "model": "first_kept",
+   "text": "abcd",
+   "tokens": [
+    "ab",
+    "cd"
+   ],
+   "ids": [
+    4,
+    6
+   ]
+  },
+  {
+   "id": 4,
+   "model": "first_kept",
+   "text": "abc",
+   "tokens": [
+    "ab",
+    "c"
+   ],
+   "ids": [
+    4,
+    2
+   ]
+  },
+  {
+   "id": 5,
+   "model": "first_kept",
+   "text": "ab",
+   "tokens": [
+    "ab"
+   ],
+   "ids": [
+    4
+   ]
+  },
+  {
+   "id": 6,
+   "model": "last_kept",
+   "text": "abcd",
+   "tokens": [
+    "a",
+    "bc",
+    "d"
+   ],
+   "ids": [
+    0,
+    5,
+    3
+   ]
+  },
+  {
+   "id": 7,
+   "model": "last_kept",
+   "text": "abc",
+   "tokens": [
+    "a",
+    "bc"
+   ],
+   "ids": [
+    0,
+    5
+   ]
+  },
+  {
+   "id": 8,
+   "model": "last_kept",
+   "text": "ab",
+   "tokens": [
+    "ab"
+   ],
+   "ids": [
+    4
+   ]
+  }
+ ]
+}
