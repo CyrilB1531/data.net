@@ -4563,10 +4563,10 @@ def _split_literal_refusals() -> list[dict]:
     """The two pattern shapes #167 decides to refuse: neither spelling, and both.
 
     Not a measurement of either side. tokenizers builds neither shape, so there
-    is no reference error to capture; and only the first is refused today --
-    with both present the loader finds pattern.Regex and reads it, which is the
-    silent acceptance #167 closes. A test asserting both throw will fail on the
-    second until the loader changes.
+    is no reference error to capture, which is why both are carried as shapes
+    and not as recorded errors. The loader refuses each of them since 01c0de1 --
+    the both case on the two keys being present rather than on both values being
+    readable -- and the tests assert on those messages, not on anything here.
     """
     shapes = [
         ("pattern_empty", {}),
