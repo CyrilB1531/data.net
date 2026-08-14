@@ -48,21 +48,13 @@ internal static class Prf
     };
 
     /// <summary>
-    /// The support of each requested class, counted against every observed
-    /// label, not only the other requested ones — scikit-learn's <c>true_sum</c>.
-    /// Only when an explicit label subset left some observed label out
-    /// (<see cref="ConfusionMatrix.DroppedSamples"/>) does this differ from
-    /// summing across just the requested labels: that left-out label's samples
-    /// still count here the same as a requested one's would.
+    /// The support of each requested class — scikit-learn's <c>true_sum</c>,
+    /// counted against every observed label; see <see cref="ConfusionMatrix.Stride"/>.
     /// </summary>
     /// <remarks>
     /// Returns <see cref="ConfusionMatrix.TrueSum"/> directly rather than
-    /// re-deriving it by summing <see cref="ConfusionMatrix.Cells"/>: the two are
-    /// mathematically the same total, but summing already-built cells adds in a
-    /// different grouping than scikit-learn's own <c>np.bincount</c> over the
-    /// samples, and floating-point addition is not associative — the two orders
-    /// can and do disagree in the last bit, which matters when a caller
-    /// (<c>ClassificationReport.ToText</c>) prints the value verbatim.
+    /// summing <see cref="ConfusionMatrix.Cells"/> — the two totals agree
+    /// mathematically but not always in the last bit; see <see cref="ConfusionMatrix.TrueSum"/>'s own remarks.
     /// </remarks>
     public static double[] Support(ConfusionMatrix cm) => cm.TrueSum.ToArray();
 
@@ -109,9 +101,8 @@ internal static class Prf
     public static double[] PerClass(ConfusionMatrix cm, PrfMetric metric, double beta, ZeroDivision zeroDivision) =>
         PerClass(cm, metric, beta, zeroDivision, out _);
 
-    // Same computation, plus the support it already has to build along the
-    // way, out for Aggregate's Weighted branch to reuse instead of paying for
-    // a second O(k*stride) pass over the matrix.
+    // Same computation, support out for Aggregate's Weighted branch to reuse
+    // instead of a second O(k*stride) pass.
     private static double[] PerClass(
         ConfusionMatrix cm, PrfMetric metric, double beta, ZeroDivision zeroDivision, out double[] support)
     {
@@ -205,14 +196,8 @@ internal static class Prf
         };
     }
 
-    // scikit-learn derives F-beta from the raw tp/predicted/support counts, not
-    // from the already-divided precision and recall: substituting P = tp/predicted
-    // and R = tp/support into (1+beta^2)*P*R / (beta^2*P + R) and cancelling tp
-    // leaves "score = (1 + beta^2) * tp / (predicted + beta^2 * support)". Going
-    // through precision and recall first would apply the zero-division policy
-    // twice — once for each of them, and once more for a denominator that looks
-    // like zero but is not — and produce a different answer whenever tp is zero
-    // but predicted or support is not.
+    // Derived from the raw counts, not the already-divided precision and
+    // recall — see docs/decisions/0032 for why the two diverge.
     private static double FScore(double tp, double predicted, double support, double beta, ZeroDivision zeroDivision)
     {
         // SonarLint S1244 warns against comparing floating point for exact
@@ -236,9 +221,8 @@ internal static class Prf
 
     private static int BinaryOrdinal(ConfusionMatrix cm, int posLabel)
     {
-        // scikit-learn refuses average="binary" as soon as the *observed* target
-        // has more than two classes. A matrix that dropped samples is exactly a
-        // matrix whose label set did not cover what was observed.
+        // scikit-learn refuses average="binary" once the *observed* target has
+        // more than two classes — which a dropped-samples matrix also implies.
         if (cm.Size > 2 || (cm.ExplicitLabels && cm.DroppedSamples))
         {
             throw new ArgumentException(
