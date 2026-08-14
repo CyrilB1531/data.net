@@ -64,9 +64,8 @@ public sealed class BpeNormalizerTests
         {
             string name = c.GetProperty("name").GetString()!;
 
-            // One tokenizer per pipeline, reused across its texts: the corpus carries
-            // the file once per pipeline rather than once per text, which is what
-            // keeps it near two megabytes instead of seventy-eight.
+            // One tokenizer per pipeline: the corpus carries the file once per
+            // pipeline rather than once per text, which is what keeps it small.
             BpeVocabulary vocab = TokenizerJsonLoader.LoadBpe(
                 Bytes(c.GetProperty("tokenizer_json").GetString()!), OracleReplay.BpeBounds());
             var tokenizer = new BpeTokenizer(vocab);

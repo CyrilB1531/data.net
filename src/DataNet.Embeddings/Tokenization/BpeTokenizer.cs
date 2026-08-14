@@ -68,12 +68,8 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private readonly int[] _merged;             // rank -> the id the pair becomes
     private readonly BpePreTokenizer _split;
     private readonly bool _addPrefixSpace;
-    // Two scanners because the two halves of the added-token table are matched
-    // against two different strings, exactly as WordPieceTokenizer does it:
-    // AddedToken.Normalized is what puts an entry in one or the other, and Special
-    // has nothing to do with it. Measured across the files that declare a
-    // normalizer at all, the normalized half is the majority -- 23 of gpt-neox's 25
-    // entries, 22 of 22 in deepseek-coder -- so this is not a rare path.
+    // Two scanners: AddedToken.Normalized decides which one an entry joins, and
+    // the two are matched against different strings. See EncodeGap.
     private readonly AddedTokenScanner _rawScanner;
     private readonly AddedTokenScanner _normalizedScanner;
     private readonly NormalizationForm[] _forms;
