@@ -868,16 +868,18 @@ public static class TokenizerJsonLoader
         string? literal = null;
         if (split.TryGetProperty("pattern", out JsonElement pattern) && pattern.ValueKind == JsonValueKind.Object)
         {
+            // Both keys, not both readable: {"Regex": null, "String": "|"} names the two
+            // spellings just as much, and Serde refuses that node rather than reading one.
+            if (pattern.TryGetProperty("Regex", out _) && pattern.TryGetProperty("String", out _))
+            {
+                throw Unsupported(
+                    "its Sequence's Split step declares both pattern.Regex and pattern.String",
+                    "tokenizers writes exactly one of the two, so a file carrying both is not something the reference produces and choosing a winner would invent behaviour rather than reproduce it");
+            }
             regex = OptionalString(pattern, "Regex");
             literal = OptionalString(pattern, "String");
         }
 
-        if (regex is not null && literal is not null)
-        {
-            throw Unsupported(
-                "its Sequence's Split step declares both pattern.Regex and pattern.String",
-                "tokenizers writes exactly one of the two, so a file carrying both is not something the reference produces and choosing a winner would invent behaviour rather than reproduce it");
-        }
         if (regex is not null)
         {
             return regex;

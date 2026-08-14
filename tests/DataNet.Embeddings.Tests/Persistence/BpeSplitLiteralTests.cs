@@ -55,17 +55,12 @@ public sealed class BpeSplitLiteralTests
     public void Encode_matches_tokenizers_for_every_model_the_corpus_carries()
     {
         using JsonDocument doc = OracleLoader.Load(Corpus);
-        JsonElement models = doc.RootElement.GetProperty("metadata").GetProperty("models");
-        int replayed = 0;
 
-        foreach (JsonProperty model in models.EnumerateObject())
+        foreach (JsonProperty model in doc.RootElement.GetProperty("metadata").GetProperty("models").EnumerateObject())
         {
-            replayed++;
             var tokenizer = new BpeTokenizer(Vocabulary(model.Value));
             OracleReplay.AssertEncodings(doc, tokenizer.Encode, "tokens", model.Name, nameProperty: "model");
         }
-
-        Assert.Equal(models.EnumerateObject().Count(), replayed);
     }
 
     /// <summary>
@@ -100,12 +95,33 @@ public sealed class BpeSplitLiteralTests
         Assert.Contains("Regex", error.Message, StringComparison.Ordinal);
     }
 
-    /// <summary>Both spellings at once is refused: the reference writes exactly one.</summary>
+    /// <summary>
+    /// Both spellings at once is refused: the reference writes exactly one. Asserted
+    /// on the wording, not only the type — a message naming one spelling is the very
+    /// defect #167 closes, and the type alone would stay green through it.
+    /// </summary>
     [Fact]
     public void A_pattern_declaring_both_spellings_is_refused()
     {
-        Assert.Throws<InvalidDataException>(
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
             () => TokenizerJsonLoader.LoadBpe(Refusal("pattern_both"), OracleReplay.BpeBounds()));
+
+        Assert.Contains("both pattern.Regex and pattern.String", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A null beside a literal is still both spellings. Keyed on the value being a
+    /// string, this loaded as the escaped <c>\|</c>; keyed on the key being there, it
+    /// is the refusal above, which is what the reference's Serde does with the node.
+    /// </summary>
+    [Fact]
+    public void A_pattern_declaring_a_null_beside_a_literal_is_refused()
+    {
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => TokenizerJsonLoader.LoadBpe(
+                DocumentWithPattern("{\"Regex\":null,\"String\":\"|\"}"), OracleReplay.BpeBounds()));
+
+        Assert.Contains("both pattern.Regex and pattern.String", error.Message, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -139,8 +155,15 @@ public sealed class BpeSplitLiteralTests
             .EnumerateArray().Single(r => r.GetProperty("shape").GetString() == shape)
             .GetProperty("pattern");
 
+        return DocumentWithPattern(pattern.GetRawText());
+    }
+
+    private static MemoryStream DocumentWithPattern(string patternNode)
+    {
+        using JsonDocument doc = OracleLoader.Load(Corpus);
         JsonNode document = JsonNode.Parse(ModelJson(doc, "pipe_literal"))!;
-        document["pre_tokenizer"]!["pretokenizers"]![0]!["pattern"] = JsonNode.Parse(pattern.GetRawText());
+
+        document["pre_tokenizer"]!["pretokenizers"]![0]!["pattern"] = JsonNode.Parse(patternNode);
         return Bytes(document.ToJsonString());
     }
 
