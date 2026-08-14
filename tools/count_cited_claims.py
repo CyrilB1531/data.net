@@ -37,7 +37,9 @@ LIBRARY = re.compile(
     r"|tokenizers|sentencepiece|difflib|nltk")
 EVIDENCE = re.compile(
     r"tests/oracles|\.json\b|docs/decisions/\d{4}|ADR \d{4}|#\d{2,}"
-    r"|measured|[A-Za-z]+Tests\b"
+    # [Mm]easured, because a sentence that opens on the word did not count and a
+    # sweep's own citations went missing from the figure it was reported against.
+    r"|[Mm]easured|[A-Za-z]+Tests\b"
     # A line in the reference's own source is something a reader can open, and
     # leaving it out undercounted a sweep that had cited four of them.
     r"|[\w/]+\.py:\d+")

@@ -327,8 +327,8 @@ public sealed class TokenizerJsonLoaderTests
     [Fact]
     public void A_bert_normalizer_that_strips_accents_by_omission_is_rejected()
     {
-        // tokenizers strips accents when strip_accents is Some(true), or absent with lowercase on --
-        // reading "absent" as "off" accepted a file that strips accents in Python but not here.
+        // Measured on tokenizers 0.23.1: it strips accents when strip_accents is Some(true),
+        // or absent with lowercase on -- reading "absent" as "off" accepted such a file.
         InvalidDataException error = Assert.Throws<InvalidDataException>(
             () => LoadWordPieceFrom(SyntheticWordPiece(
                 normalizer: "{\"type\":\"BertNormalizer\",\"handle_chinese_chars\":false,\"clean_text\":false,\"lowercase\":true}")));
@@ -350,8 +350,8 @@ public sealed class TokenizerJsonLoaderTests
     [InlineData(PipelineKindUnderTest.Unigram)]
     public void A_file_with_no_pre_tokenizer_is_rejected(PipelineKindUnderTest kind)
     {
-        // No pre_tokenizer means tokenizers hands the whole string to the model. DataNet applies
-        // Whitespace or Metaspace instead, so accepting the file would tokenize differently, quietly.
+        // Measured on tokenizers 0.23.1: no pre_tokenizer hands the model the whole string, where
+        // DataNet applies Whitespace or Metaspace -- accepting the file would diverge quietly.
         InvalidDataException error = Assert.Throws<InvalidDataException>(() => kind switch
         {
             PipelineKindUnderTest.WordPiece => (object)LoadWordPieceFrom(SyntheticWordPiece(preTokenizer: "null")),
@@ -748,7 +748,7 @@ public sealed class TokenizerJsonLoaderTests
         var tokenizer = new BpeTokenizer(vocabulary);
         TokenizationResult encoded = tokenizer.Encode("ab<|eot|>ab");
 
-        // tokenizers 0.23.1 over the same file: ['ab', '<|eot|>', 'ab'], [2, 3, 2].
+        // Measured on tokenizers 0.23.1, same file: ['ab', '<|eot|>', 'ab'], [2, 3, 2].
         Assert.Equal(["ab", "<|eot|>", "ab"], encoded.Tokens);
         Assert.Equal([2, 3, 2], encoded.Ids);
         Assert.Equal("abab", tokenizer.Decode(encoded.Ids, skipSpecialTokens: true));
