@@ -9,7 +9,9 @@ The four packages (`DataNet.Text`, `DataNet.Embeddings`, `DataNet.Fuzzy`,
 `DataNet.Metrics`) version and release **independently**, each from its own
 `src/<Package>/Version.props`, so entries are grouped per package. Releases up to
 and including `0.2.0` predate the split and covered all three at once — see
-[`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md).
+[`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md). Each entry
+is one sentence, the issue and the commit; see
+[`CONTRIBUTING.md`](CONTRIBUTING.md#releasing) for the shape and why.
 
 ## [Unreleased]
 
@@ -17,398 +19,69 @@ and including `0.2.0` predate the split and covered all three at once — see
 
 #### Added
 
-- **Stop-word lists for French, German, Italian, Portuguese and Spanish** —
-  `StopWords.French` and friends, one per language that already has a Snowball
-  stemmer. They are Snowball's lists (BSD-3-Clause), vendored by
-  `tools/fetch_stopwords.py` against a pinned SHA-256, and attributed in `NOTICE`.
-  The nltk corpus is deliberately not used: `nltk_data` classifies it as having
-  no stated licence, so it cannot be redistributed. That makes these lists the
-  one place where the library knowingly diverges from nltk — the gap is measured
-  per language in [`docs/equivalence.md`](docs/equivalence.md) and the reasoning
-  is in [`docs/decisions/0010`](docs/decisions/0010-stop-word-list-provenance.md).
-  `StopWords.English` is unchanged, still scikit-learn's 318-word list.
-- **Fitted models survive the process.** `TfidfVectorizer`, `CountVectorizer` and
-  `HashingVectorizer` gain `Save`/`Load` over a stream or a path, plus native
-  async counterparts. Training on a corpus and scoring later — the normal split
-  in any real pipeline — no longer requires reimplementing serialization over
-  `GetFeatureNames()` and `Idf`. The round trip is bit-exact: idf weights are
-  written as raw IEEE-754 bits, so a reloaded model produces a
-  `CsrMatrix` identical element by element, not "within a tolerance".
-  `HashingVectorizer` has no vocabulary to learn but its **options** round-trip
-  too — a pipeline reloaded with a different `NumFeatures` produces different
-  columns for the same document, and nothing downstream would notice.
-- **`ArtifactLoadOptions`** bounds what a loaded file may declare — vocabulary
-  size, token length, JSON depth, total bytes, array length. A malformed or
-  hostile artifact raises `InvalidDataException` naming the limit and the value,
-  never `OutOfMemoryException`. Unlike `pickle.load`, the format reads data and
-  never code.
+- Stop-word lists for French, German, Italian, Portuguese and Spanish join the existing English list, one per language with a Snowball stemmer. ([#13](https://github.com/CyrilB1531/data.net/issues/13), [`58c5ed5`](https://github.com/CyrilB1531/data.net/commit/58c5ed5))
+- `TfidfVectorizer`, `CountVectorizer` and `HashingVectorizer` gain `Save`/`Load` so a fitted model survives the process. ([#58](https://github.com/CyrilB1531/data.net/issues/58), [`d147abd`](https://github.com/CyrilB1531/data.net/commit/d147abd))
+- `ArtifactLoadOptions` bounds what a loaded artifact may declare, so a malformed or hostile file raises `InvalidDataException` instead of `OutOfMemoryException`. ([#58](https://github.com/CyrilB1531/data.net/issues/58), [`d147abd`](https://github.com/CyrilB1531/data.net/commit/d147abd))
 
 #### Changed
 
-- **The idf vector is stored as base64, not as JSON numbers.** It was the most
-  expensive thing in the file — parsing it cost four times what materialising the
-  whole vocabulary cost, and it made the artifact a quarter larger. It is now one
-  base64 string of raw little-endian IEEE-754 bits. The vocabulary, the options
-  and the header stay plain readable JSON, because those are the parts anyone
-  actually reads; nobody inspects thirty thousand floats by eye. Exactness
-  *improves*: raw bits round-trip by construction, with no decimal formatter
-  involved. On a 30 000-feature model, saving went from 8.7 ms to 2.0 ms, loading
-  from 12.6 ms to 5.0 ms, and the file from 782 KB to 589 KB.
-- **Artifacts are written with the relaxed JSON encoder.** The default one
-  escapes every non-ASCII character as `\uXXXX` — six bytes where UTF-8 needs
-  two — which matters because this library ships Snowball stop-word lists for
-  five languages, 258 of whose entries are accented. On an accented vocabulary
-  that removed 9 201 escape sequences, shrank the artifact 18%, and made saving
-  2.09× and loading 1.84× faster. The escaping JSON requires is still applied;
-  what is dropped is the HTML-injection hardening an artifact never needed.
-- **Single doubles use the shortest round-trippable form** on `net8.0` and later,
-  keeping `"G17"` under `netstandard2.0` where .NET Framework does not guarantee
-  it. Both read back identically and each build stays byte-reproducible against
-  itself.
-- Measured against scikit-learn with `pickle`, `Save` is now 2.09× faster and
-  `Load` matches it on elapsed time. See [`bench/README.md`](bench/README.md) §4
-  for the numbers, including processor time — which is the honest column, and
-  where `Load` still costs 22% more than `pickle` because of background garbage
-  collection.
-- **Loading an artifact stopped copying the payload around.** The shared read
-  path used to accumulate the file into a growable buffer, copy it out again, and
-  then decode each base64 block into a scratch array before copying that into its
-  final one. It now reads into a single buffer sized from the stream's own length
-  before it is filled, and decodes straight into the array that keeps the values.
-  `TfidfLoad` went from 6.44 ms to 5.44 ms and from 4.34 MB allocated to 2.86 MB;
-  every vocabulary loader allocates 15% to 52% less. `Save` is untouched and does
-  not move. This is internal: no public signature changed, and files written by
-  earlier versions load unchanged — the artifact is identical byte for byte.
-- **`CsrMatrix`'s public constructor now validates its arrays.** `RowPointers`
-  must be non-decreasing, start at 0 and end at `Values.Length`, and every column
-  index must be in range. This was caller discipline while the arrays could only
-  come from the vectorizers; deserialization makes an out-of-range column index
-  an out-of-bounds read. The vectorizers build their own arrays and keep an
-  internal unchecked path, so the validation costs them nothing.
-- **Stop-word removal no longer allocates the tokens it discards.** On `net10.0`
-  the shipped lists are frozen sets and the analyzer asks about each token as a
-  span of the document, so a word that is about to be dropped is never
-  materialised — and stop words are by definition the tokens that occur most. Two
-  costs around it go with it: the six lists now initialise one at a time, so
-  reading `StopWords.English` hashes its 318 words instead of all 1 493 across
-  the six; and a vectorizer handed one of the shipped lists reuses it instead of
-  re-hashing it. On a 1 000-document corpus at the ~40% stop-word density of
-  English prose, `CountVectorizer.FitTransform` allocates 30.99 MB where it
-  allocated 32.35 MB — the 1.36 MB saved is the corpus's 40 241 stop-word tokens,
-  at the ~35 bytes a five-character string costs — and runs in 32.7 ms instead
-  of 34.4 ms on an i7-4770S. `netstandard2.0` has neither a frozen set nor a span
-  lookup and keeps the path it always had. Nothing about which words are removed
-  changes, and the lists stay `IReadOnlyCollection<string>`.
-- **`DataNet.Text` declares `System.Text.Json` on `netstandard2.0`.** It is
-  in-box from `net8.0` onwards, so the `net10.0` package is still dependency-free
-  and consumers on the modern target gain nothing new. This is the one place the
-  "no external dependencies" rule is knowingly bent, and it is bent rather than
-  hand-rolling a JSON reader for untrusted input. See
-  [`docs/decisions/0011`](docs/decisions/0011-persistence-format.md).
+- The idf vector is stored as base64 raw IEEE-754 bits instead of JSON numbers. ([#58](https://github.com/CyrilB1531/data.net/issues/58), [`d147abd`](https://github.com/CyrilB1531/data.net/commit/d147abd))
+- Artifacts are written with the relaxed JSON encoder instead of escaping every non-ASCII character. ([#58](https://github.com/CyrilB1531/data.net/issues/58), [`d147abd`](https://github.com/CyrilB1531/data.net/commit/d147abd))
+- Single doubles use the shortest round-trippable form on `net8.0` and later, keeping `"G17"` on `netstandard2.0`. ([#58](https://github.com/CyrilB1531/data.net/issues/58), [`d147abd`](https://github.com/CyrilB1531/data.net/commit/d147abd))
+- Measured against scikit-learn with `pickle`, `Save` is now 2.09× faster and `Load` matches it on elapsed time. ([#58](https://github.com/CyrilB1531/data.net/issues/58), [`d147abd`](https://github.com/CyrilB1531/data.net/commit/d147abd))
+- Loading an artifact stopped copying the payload around: the read path sizes one buffer from the stream's length and decodes straight into the destination array. ([#100](https://github.com/CyrilB1531/data.net/issues/100), [`114245f`](https://github.com/CyrilB1531/data.net/commit/114245f))
+- `CsrMatrix`'s public constructor now validates its arrays — `RowPointers` non-decreasing and in range, every column index in range. ([#58](https://github.com/CyrilB1531/data.net/issues/58), [`d147abd`](https://github.com/CyrilB1531/data.net/commit/d147abd))
+- Stop-word removal no longer allocates the tokens it discards, since a dropped token is checked as a span rather than materialised. ([#80](https://github.com/CyrilB1531/data.net/issues/80), [`74f741b`](https://github.com/CyrilB1531/data.net/commit/74f741b))
+- `DataNet.Text` declares `System.Text.Json` on `netstandard2.0`, where it is not in-box until `net8.0`. ([#58](https://github.com/CyrilB1531/data.net/issues/58), [`d147abd`](https://github.com/CyrilB1531/data.net/commit/d147abd))
 
 ### DataNet.Embeddings — 0.3.0
 
 #### Added
 
-- **Vocabulary loaders for the three formats a pretrained tokenizer ships in**:
-  `VocabTxtLoader` (`vocab.txt`), `TokenizerJsonLoader` (`tokenizer.json`, both
-  WordPiece and Unigram) and `SentencePieceModelLoader` (`spiece.model`). The
-  guides previously told readers to parse a 30 000-entry vocabulary — or a
-  protobuf — by hand. `SentencePieceModelLoader` carries a minimal hand-written
-  protobuf reader: four wire types against a frozen format, rather than a runtime
-  dependency in a package whose selling point is not having one.
-- **`WordPieceVocabulary` and `SentencePieceVocabulary`**, carrying the settings
-  that change tokenization and that a caller building the table by hand would
-  have to guess — the unknown token, the continuation prefix, the lowercasing
-  flag, and for SentencePiece the *type* of every piece.
-- **`SentencePieceTokenizer(SentencePieceVocabulary)`**, which decides what may
-  match text from each piece's declared type.
-- The loaders **refuse** a file whose pipeline they do not reproduce — an `NFKC`
-  or precompiled normalizer, a `BertPreTokenizer`, a `post_processor` that
-  inserts `[CLS]`/`[SEP]` — naming what they found. A vocabulary that loads
-  cleanly and produces embeddings for a model nobody trained is the worse outcome.
-  The refusal covers what the file was *trained* as, not only its pipeline
-  sections: a `spiece.model` built with `BPE`, `WORD` or `CHAR` rather than
-  unigram, `byte_fallback` in either format, and a `Metaspace` whose
-  `prepend_scheme` (or the older `add_prefix_space`) or `split` is away from the
-  default. Each of those changes tokenization while leaving the vocabulary
-  looking perfectly valid.
-  A `spiece.model` carrying no `normalizer_spec`, and any special-token id
-  (`unk_id`, `bos_id`, `eos_id`, `pad_id`) pointing outside the vocabulary, are
-  refused for the same reason — the tokenizer never indexes by the sentence
-  markers, but a caller naming them does, and would meet the bad id far from the
-  file that carried it.
-- **`added_tokens` are read rather than dropped.** `Tokenizer.add_tokens` assigns
-  ids after the model's own vocabulary, so those entries appear nowhere in
-  `model.vocab`; they now reach both tokenizers instead of tokenizing to the
-  unknown token. An entry that contradicts `model.vocab` — the same content at a
-  different id — or that carries a negative id, is still refused.
-- **The `added_tokens` matching flags — the four that decide where an entry
-  matches — on both tokenizers.**
-  `AddedToken` is a public record carrying `Content`, `Id` and five flags, shared
-  by `BpeVocabulary.AddedTokens` and the new `WordPieceVocabulary.AddedTokens`
-  (both `IReadOnlyList<AddedToken>`; the BPE property was an
-  `IReadOnlyDictionary<string, int>`, which had nowhere to put a flag).
-  `lstrip` and `rstrip` absorb *all* the contiguous whitespace on their side of a
-  match into it, `single_word` matches only between non-word characters, and
-  `normalized` — not `special` — decides whether an entry is matched against the
-  raw text or the normalized one. `TokenizerJsonLoader` refused the first three
-  outright before, which meant `roberta-base` could not be loaded at all: it
-  declares `lstrip` on `<mask>`, and `SpecialTokenTemplate.Roberta` was already
-  advertising the family. Every rule here is replayed against `tokenizers`
-  0.23.1 rather than read off the file format, which is how the `special`-versus-
-  `normalized` distinction surfaced — see
-  [decision 0022](docs/decisions/0022-added-token-matching-flags.md), which also
-  records the two consequences worth knowing in advance: an `lstrip`ped token
-  breaks the byte-exact `Decode` round trip (`'a <mask> b'` comes back as
-  `'a<mask> b'`, in HuggingFace too), and `Count` on either vocabulary now
-  under-counts what `Encode` can emit.
-- **WordPiece added tokens are matched as text, not folded into the vocabulary.**
-  `WordPieceTokenizer` gains the added-token concept it had none of, through the
-  same internal scanner `BpeTokenizer` uses, so a flag cannot mean two things.
-  **This changes tokenization for every `tokenizer.json` carrying a non-empty
-  `added_tokens` table, flags or no flags** — a folded entry was matchable as a
-  whole word only, and was matched against the lowercased text whatever its
-  `normalized` field said.
-- **`BpeTokenizer`, `BpeVocabulary`, `BpeFilesLoader` and `TokenizerJsonLoader.LoadBpe`** —
-  a third sub-word tokenizer, matching `tokenizers.models.BPE` in both the
-  classic (character-level) lineage and the byte-level one GPT-2 introduced.
-  `LoadBpe` carries the whole `added_tokens` table into `BpeVocabulary.AddedTokens`
-  — the entries `model.vocab` also declares included, which is where every special
-  token lives — because `BpeTokenizer` matches them as literal text ahead of the
-  merge loop rather than looking them up as ordinary entries.
-  Byte-level `Encode`/`Decode` round-trips any well-formed `string` exactly,
-  valid UTF-8 or not: every byte becomes one symbol before merging starts, so
-  every byte comes back. Proven end to end against GPT-2's real 50 257-entry
-  vocabulary and merge table; `BpePatterns.Llama3` and `BpePatterns.Qwen2` are
-  proven at the split level only, against a vocabulary the caller supplies.
-  `TokenizerJsonLoader.LoadBpe` **refuses `byte_fallback` by name** — Llama-2
-  and Mistral v0.1 are SentencePiece BPE with `Metaspace` and `byte_fallback`,
-  a third pipeline this package does not implement — rather than tokenizing
-  them to a plausible-looking wrong answer. It refuses any
-  `normalizer` and a **non-zero** `dropout` by name too — each of those changes
-  what HuggingFace produces and none of them is applied here. The values that change nothing are
-  accepted rather than refused with them: a zero dropout skips no merge, and an
-  `end_of_word_suffix` declared as `""` reads back as absent on
-  `BpeVocabulary`, since an empty marker marks nothing — it used to load cleanly
-  and then throw out of `Decode`. `tests/oracles/bpe_no_op_settings.json` records
-  `tokenizers` 0.23.1 producing the same tokens with each of those two declared
-  as with it absent; a file that loads is not evidence that a value is a no-op.
-  A `ByteLevel` block declaring no `add_prefix_space` **is** refused, wherever it
-  appears — top-level `pre_tokenizer`, a `Sequence` step, or the `decoder`:
-  `tokenizers` has no default for that field and refuses such a file itself, so
-  accepting it here would mean inventing the value that decides whether a leading
-  space is added. An omitted `use_regex` stays accepted, and an omitted
-  `trim_offsets` too — the first has a default in the reference, the second is
-  never read here. `BpeFilesLoader` has no such check
-  to make: its `vocab.json`/`merges.txt` pair carries no pipeline flags at all.
-  [Decision 0017](docs/decisions/0017-bpe-parity-scope.md) records the scope,
-  including a known split divergence from HuggingFace on letters and digits
-  above the Basic Multilingual Plane.
-- **`continuing_subword_prefix`** — a `tokenizer.json` declaring one loads instead of being refused, and
-  on the classic, non-byte-level lineage every symbol after the first of each pre-tokenized piece is
-  looked up with the prefix applied. `BpeVocabulary.ContinuingSubwordPrefix` stops being a name with
-  nothing behind it. A merge's result is its left side plus its right side without the prefix — the left
-  keeps its own, and an `end_of_word_suffix` on that right side stays on — and an empty prefix reads as
-  absent, as an empty `EndOfWordSuffix` has since the loader stopped refusing one. All of it measured
-  against `tokenizers` 0.23.1 rather than assumed, including the absence of any fallback to the bare
-  form. The byte-level pairing is **refused** by name instead, by `BpeTokenizer`'s constructor and by
-  `TokenizerJsonLoader.LoadBpe`: byte-level symbols are never prefixed while a merge's right side is
-  still stripped, and the byte-level alphabet spells `0x23` as `#`, so the two halves would disagree and
-  can land on another existing id rather than raise. Nothing here measures what `tokenizers` does with such
-  a file; the refusal says only that DataNet does not reproduce it.
-- **`fuse_unk`** — a `tokenizer.json` declaring it loads instead of being
-  refused, and a run of consecutive characters the vocabulary does not cover
-  becomes one unknown token rather than one each. The run stops at a
-  pre-tokenizer boundary, and fusing happens before merging, so a fused symbol
-  can itself take part in a merge. The flag has no effect without an unknown
-  token, or on a byte-level model where every character is covered — both
-  measured against `tokenizers` 0.23.1 rather than assumed.
-- **The merge loop threads symbols on a doubly-linked list and a hand-rolled
-  priority queue**, after a benchmark measured the rescan-and-shift loop it
-  replaced as quadratic on a token with no split point — cost roughly
-  quadrupling per doubling of length from 512 to 4096 characters (3.80×,
-  3.91×, 4.17×), reaching 443.203 ms at 4096. The rewrite costs 2.02×, 2.08×
-  and 2.00× per doubling instead — linear per symbol — and is up to 320×
-  faster on that shape (443.203 ms → 1.383 ms at 4096), while ordinary corpus
-  text is unaffected: 1.08× `SentencePieceTokenizer` before the rewrite, 1.10×
-  after, both inside that baseline's own run-to-run noise. The tokens produced
-  are unchanged — the full oracle corpus passes on both target frameworks with
-  no assertion touched. Measured on an Intel Core i7-4770S (Haswell), Ubuntu
-  24.04.4, .NET SDK 10.0.110, BenchmarkDotNet 0.14.0.
-
-- **A batch encoding pipeline: `BatchEncoder`, `EncodingOptions`,
-  `SpecialTokenTemplate`, `EncodedBatch`, `ISubwordTokenizer`.** The guide used
-  to say the tokenization must match the model's *exactly, otherwise the
-  embeddings are wrong*, and then hand the reader
-  `/* with [CLS]/[SEP] if the model expects them */`. Getting it wrong does not
-  throw; it produces an embedding that is silently, subtly wrong. The library now
-  owns it. `SpecialTokenTemplate` carries the wrapping as data — `Bert`,
-  `Roberta`, `T5`, `None`, or one you write — and names its tokens rather than
-  numbering them, so the id comes from the model's own vocabulary and a
-  vocabulary missing `[CLS]` fails at construction instead of embedding a
-  plausible wrong id. Truncation is a `MaxLength` counted the way HuggingFace
-  counts it, with the special tokens inside the budget, plus a
-  `TruncationStrategy.None` that refuses rather than dropping the tail of a
-  document. The attention mask is built here, with padding zeroed.
-- **`OnnxTextEmbedder.EmbedBatch`** — text in, one normalized vector per text
-  out, in the input order. The equivalent of
-  `SentenceTransformer.encode(texts, batch_size=…, normalize_embeddings=True)`.
-  Each sub-batch is padded to its own longest row rather than to `MaxLength`, and
-  `SortByLength` groups similar lengths together so the long sequences stop
-  dictating the width of every row they share a call with; the permutation is
-  inverted before returning, so bucketing is a performance switch and never an
-  observable one. On this repository's corpus and machine it halves the wall
-  clock against the loop of one-sequence calls (ratio 0.50 at 8, 32 and 128
-  texts) — the figures, the caveats and what they do *not* prove are in
-  [`docs/guides/performance.md`](docs/guides/performance.md).
-- **`CancellationToken` on every batch entry point.** There was none anywhere in
-  `src/`, and a batch inference call over a corpus is the clearest place one
-  belongs.
-- **`Pooler.MeanPoolBatch` and `MeanPoolAndNormalizeBatch`**, pooling a
-  `[batch, seq, dim]` tensor with each row against its own slice of the mask. The
-  accumulation is vectorized with `Vector<float>` on `net10.0` and scalar on
-  `netstandard2.0`, and the two results are **bit-identical** — asserted with
-  `float` equality rather than a tolerance, since one frozen corpus has to serve
-  both builds.
-- **`EmbeddingIndex.Save` / `EmbeddingIndex.Load`**, with `SaveAsync` /
-  `LoadAsync` counterparts for the same round trip, so a corpus is embedded
-  once. Building an index runs an encoder over every document — seconds for a
-  demo, hours for anything real — and that work used to die with the process.
-  The artifact is the versioned JSON of
-  [decision 0011](docs/decisions/0011-persistence-format.md) with the vector
-  block as base64 raw IEEE-754 bits: a reloaded index scores bit for bit what
-  the original scored. The normalization flag travels in the file rather than
-  being supplied again on load, because an index reloaded under the other
-  setting ranks a corpus wrongly without ever looking wrong. The vector block is
-  the one array `ArtifactLoadOptions.MaxArrayLength` does not bound —
-  `MaxTotalBytes` caps it in bytes before parsing instead. A limit sized for a
-  vocabulary is the wrong unit for a corpus of embeddings: the default 1 000 000
-  elements is a large vocabulary and only 2 604 vectors of 384 dimensions.
-- **`EmbeddingIndex.Add(vector, id)`, `GetId` and `HasIds`** — an opaque id per
-  vector, kept off `SearchResult` so the array `Search` scores into stays eight
-  bytes per hit and free of references for the collector to chase.
+- Vocabulary loaders cover the three formats a pretrained tokenizer ships in: `vocab.txt`, `tokenizer.json` and `spiece.model`. ([#58](https://github.com/CyrilB1531/data.net/issues/58), [`d147abd`](https://github.com/CyrilB1531/data.net/commit/d147abd))
+- `WordPieceVocabulary` and `SentencePieceVocabulary` carry the settings that change tokenization: the unknown token, the continuation prefix, lowercasing, and piece type. ([#58](https://github.com/CyrilB1531/data.net/issues/58), [`d147abd`](https://github.com/CyrilB1531/data.net/commit/d147abd))
+- `SentencePieceTokenizer(SentencePieceVocabulary)` decides what may match text from each piece's declared type. ([#58](https://github.com/CyrilB1531/data.net/issues/58), [`d147abd`](https://github.com/CyrilB1531/data.net/commit/d147abd))
+- The loaders refuse a file whose pipeline they do not reproduce — an `NFKC` or precompiled normalizer, a `BertPreTokenizer`, a `post_processor` inserting `[CLS]`/`[SEP]` — naming what they found. ([#58](https://github.com/CyrilB1531/data.net/issues/58), [`d147abd`](https://github.com/CyrilB1531/data.net/commit/d147abd))
+- `added_tokens` are read rather than dropped, reaching both tokenizers instead of tokenizing to the unknown token. ([#58](https://github.com/CyrilB1531/data.net/issues/58), [`d147abd`](https://github.com/CyrilB1531/data.net/commit/d147abd))
+- The four `added_tokens` matching flags that decide where an entry matches now apply on both tokenizers. ([#104](https://github.com/CyrilB1531/data.net/issues/104), [`21f808b`](https://github.com/CyrilB1531/data.net/commit/21f808b))
+- WordPiece added tokens are matched as text, not folded into the vocabulary, changing tokenization for any `tokenizer.json` carrying a non-empty `added_tokens` table. ([#104](https://github.com/CyrilB1531/data.net/issues/104), [`96b1b6b`](https://github.com/CyrilB1531/data.net/commit/96b1b6b))
+- `BpeTokenizer`, `BpeVocabulary`, `BpeFilesLoader` and `TokenizerJsonLoader.LoadBpe` add a third sub-word tokenizer, matching `tokenizers.models.BPE` in both its classic and byte-level lineages, with byte-level `Encode`/`Decode` round-tripping any well-formed string exactly. ([`b46c474`](https://github.com/CyrilB1531/data.net/commit/b46c474))
+- `continuing_subword_prefix` loads instead of being refused, applied to every symbol after the first of each pre-tokenized piece on the classic, non-byte-level lineage. ([#120](https://github.com/CyrilB1531/data.net/issues/120), [`dfa7639`](https://github.com/CyrilB1531/data.net/commit/dfa7639))
+- `fuse_unk` loads instead of being refused: a run of consecutive uncovered characters becomes one unknown token rather than one each. ([#119](https://github.com/CyrilB1531/data.net/issues/119), [`c91f3ef`](https://github.com/CyrilB1531/data.net/commit/c91f3ef))
+- The merge loop threads symbols on a doubly-linked list and a hand-rolled priority queue, replacing a rescan-and-shift loop that was quadratic on a token with no split point. ([`b46c474`](https://github.com/CyrilB1531/data.net/commit/b46c474))
+- A batch encoding pipeline — `BatchEncoder`, `EncodingOptions`, `SpecialTokenTemplate`, `EncodedBatch`, `ISubwordTokenizer` — now owns matching a model's special-token wrapping instead of leaving it to the caller. ([#60](https://github.com/CyrilB1531/data.net/issues/60), [`c67b6c5`](https://github.com/CyrilB1531/data.net/commit/c67b6c5))
+- `OnnxTextEmbedder.EmbedBatch` takes text in and returns one normalized vector per text out, in input order, mirroring `SentenceTransformer.encode`. ([#60](https://github.com/CyrilB1531/data.net/issues/60), [`c67b6c5`](https://github.com/CyrilB1531/data.net/commit/c67b6c5))
+- `CancellationToken` is now accepted on every batch entry point. ([#60](https://github.com/CyrilB1531/data.net/issues/60), [`c67b6c5`](https://github.com/CyrilB1531/data.net/commit/c67b6c5))
+- `Pooler.MeanPoolBatch` and `MeanPoolAndNormalizeBatch` pool a `[batch, seq, dim]` tensor with each row against its own mask slice. ([#60](https://github.com/CyrilB1531/data.net/issues/60), [`c67b6c5`](https://github.com/CyrilB1531/data.net/commit/c67b6c5))
+- `EmbeddingIndex.Save`/`Load`, with `SaveAsync`/`LoadAsync` counterparts, round-trip a built index so embedding a corpus is not lost with the process. ([#62](https://github.com/CyrilB1531/data.net/issues/62), [`7e093c9`](https://github.com/CyrilB1531/data.net/commit/7e093c9))
+- `EmbeddingIndex.Add(vector, id)`, `GetId` and `HasIds` attach an opaque id to each vector, kept off `SearchResult`. ([#62](https://github.com/CyrilB1531/data.net/issues/62), [`c06b472`](https://github.com/CyrilB1531/data.net/commit/c06b472))
 
 #### Changed
 
-- **`EmbeddingIndex.Load` moves a vector block in three passes instead of five.**
-  Loading 10 000 × 384 floats used to copy the payload through a growable buffer,
-  copy it out, decode the base64 into a scratch array, copy that into the
-  `float[]`, and scan it — 90 MB allocated to restore 15 MB of floats. The read
-  path now sizes one buffer from the stream's length and decodes into the
-  destination, and the non-finite scan is vectorized on `net10.0`. `Load` went
-  from 36.9 ms to 12.9 ms and from 90 MB to 35.35 MB (2.88× on `net10.0`, 2.39×
-  on `netstandard2.0`, which keeps the scalar scan); against `numpy.load` that is
-  0.08× before and 0.21× after. `Save` runs the same scan and falls with it,
-  16.96 ms to 13.57 ms, overtaking `numpy.save`. The artifact is unchanged — the
-  same index saves to the same bytes as before, verified by hash in both
-  directions — and no public signature moved. Numbers in
-  [`bench/README.md`](bench/README.md) §6.
-- **`OnnxTextEmbedder.Embed` takes `ReadOnlySpan<long>`** where it took
-  `IReadOnlyList<long>`. This is a source break. An array still binds, so most
-  call sites are untouched; a caller passing a `List<long>` needs
-  `CollectionsMarshal.AsSpan(list)` or `.ToArray()`. It removes two defensive
-  copies per call, which on the unit-call path was most of the allocation.
-- **The default output is chosen deterministically.** It was
-  `OutputMetadata.Keys.First()`; dictionary key order is not part of ONNX
-  Runtime's contract, so on a multi-output model "the model's first output" was a
-  coin toss. It is now the only output when there is one, else the first declared
-  of `last_hidden_state`, `token_embeddings`, `sentence_embedding` and `output`,
-  else the ordinally first name.
-- **An output of unexpected rank throws.** Only rank 2 was recognised; rank 1 or
-  4 produced an out-of-range access or a silently wrong result. An input or
-  output name the model does not declare is now an `ArgumentException` naming
-  what it *does* declare, rather than an opaque failure inside the runtime.
-- The zero `token_type_ids` buffer is thread-static and never written to instead
-  of being allocated per call, and the model output is read through the tensor's
-  own buffer instead of `ToArray()`.
-- **An added token is a token, not a vocabulary entry.** A single-character added token that
-  `model.vocab` does not declare no longer makes the character it spells look covered: it is substituted
-  with the unknown token, as `tokenizers` substitutes it. Identity is unchanged — `TryGetId` and `Decode`
-  still resolve added tokens, matching `token_to_id` and `decode`. Two shapes the reference also refuses
-  while reading the document are now refused here too: a merge naming a token the model does not declare,
-  and a merge whose result is absent — that one with a message of DataNet's own, since the reference
-  panics there instead of raising. A third shape, an `unk_token` present only in `added_tokens`, is
-  refused here at construction, earlier than the reference: `tokenizers` loads such a file and raises only
-  from `encode`, and only on text needing a substitution the vocabulary cannot supply — a divergence in
-  timing, not in outcome. `BpeVocabulary.SkippedMerges` is removed with them — it counted a case the
-  reference makes impossible, on the strength of a comment saying HuggingFace tolerated it, which
-  measurement contradicted. Not a breaking change: `SkippedMerges` shipped in no release — the last tag is
-  0.2.0, and this is unreleased 0.3.0.
-- **`BpeVocabulary.PreSplitPattern` becomes `PreSplit`**, a `BpeSplitStep` carrying the pattern, the
-  `behavior` and the `invert` flag together — the three fields a `tokenizer.json` requires together, so
-  none of them can be set without the others. `SplitBehavior` is the accompanying enum, spelled as the
-  file spells it.
-- **A `BpeVocabulary` has to say how its text is split, and is refused when it does not.** One declaring
-  no `PreSplit`, no `PreTokenizerPattern` and no `NoPreTokenizer` used to be handed the classic
-  word-boundary split by `BpeTokenizer`'s constructor; it is now an `ArgumentException`. That shape became
-  ambiguous — it is also what a model splitting nothing at all looks like — and reading it either way
-  would have handed a caller a different token stream with nothing to say so. Write
-  `PreTokenizerPattern = BpePatterns.Whitespace`, a new member carrying the pattern the constructor used
-  to supply, for the classic lineage; `PreSplit` for a `Split` step; or `NoPreTokenizer = true` for a
-  model whose text reaches the merge loop unsplit. Declaring `NoPreTokenizer` beside either pattern is
-  refused too, the two contradicting each other. A vocabulary from `TokenizerJsonLoader.LoadBpe` or
-  `BpeFilesLoader.Load` is unaffected — both name the pattern themselves. This breaks source
-  compatibility with no release: BPE ships first in this unreleased 0.3.0.
+- `EmbeddingIndex.Load` now moves a vector block in three passes instead of five. ([#100](https://github.com/CyrilB1531/data.net/issues/100), [`114245f`](https://github.com/CyrilB1531/data.net/commit/114245f))
+- `OnnxTextEmbedder.Embed` takes `ReadOnlySpan<long>` where it took `IReadOnlyList<long>`, a source break that removes two defensive copies per call. ([#60](https://github.com/CyrilB1531/data.net/issues/60), [`c67b6c5`](https://github.com/CyrilB1531/data.net/commit/c67b6c5))
+- The default output is chosen deterministically instead of by dictionary key order. ([#60](https://github.com/CyrilB1531/data.net/issues/60), [`c67b6c5`](https://github.com/CyrilB1531/data.net/commit/c67b6c5))
+- An output of unexpected rank now throws instead of producing an out-of-range access or a silently wrong result. ([#60](https://github.com/CyrilB1531/data.net/issues/60), [`c67b6c5`](https://github.com/CyrilB1531/data.net/commit/c67b6c5))
+- The zero `token_type_ids` buffer is thread-static and never written to, instead of being allocated per call. ([#60](https://github.com/CyrilB1531/data.net/issues/60), [`c67b6c5`](https://github.com/CyrilB1531/data.net/commit/c67b6c5))
+- An added token is a token, not a vocabulary entry: a single-character added token `model.vocab` does not declare no longer makes that character look covered. ([#130](https://github.com/CyrilB1531/data.net/issues/130), [`d785b86`](https://github.com/CyrilB1531/data.net/commit/d785b86))
+- `BpeVocabulary.PreSplitPattern` becomes `PreSplit`, a `BpeSplitStep` carrying the pattern, the `behavior` and the `invert` flag together. ([#145](https://github.com/CyrilB1531/data.net/issues/145), [`9546b1c`](https://github.com/CyrilB1531/data.net/commit/9546b1c))
+- A `BpeVocabulary` has to say how its text is split, and is refused when it declares none of `PreSplit`, `PreTokenizerPattern` or `NoPreTokenizer`. ([#122](https://github.com/CyrilB1531/data.net/issues/122), [`545c51e`](https://github.com/CyrilB1531/data.net/commit/545c51e))
 
 #### Deprecated
 
-- **`SentencePieceTokenizer(IReadOnlyList<SentencePiece>, int)`** — the id-based
-  constructor. It inferred which pieces were control markers from "ids 0, 1 and 2
-  starting with `<`", which is right for the models that happen to lay out that
-  way and silently wrong for the rest. It still ships unchanged and will be
-  removed in `2.0.0`; a test proves it agrees with the type-based constructor on
-  a model where the guess held. Migration is one line: build a
-  `SentencePieceVocabulary` with a loader and pass that instead.
+- `SentencePieceTokenizer(IReadOnlyList<SentencePiece>, int)`, the id-based constructor, is deprecated in favor of building a `SentencePieceVocabulary` with a loader. ([#58](https://github.com/CyrilB1531/data.net/issues/58), [`d147abd`](https://github.com/CyrilB1531/data.net/commit/d147abd))
 
 #### Fixed
 
-- **A `Sequence` of `Split` then `ByteLevel` now applies both patterns.** The loader took the `Split`
-  step's pattern and never read the `ByteLevel` step's `use_regex`, so DataNet split once where
-  HuggingFace splits twice — the `Split` step's pattern, then `ByteLevel`'s own over each resulting
-  piece. **This changes the tokens produced for Llama-3 and Qwen2 on ordinary text**, which is the point:
-  GPT-2's pattern knows only the contractions `'s`, `'t`, `'re`, `'ve`, `'m`, `'ll`, `'d`, so `it's` and
-  `don't` were already right while every French elision, and Irish and Italian names, were not —
-  `aujourd'hui` came out as two pieces where `tokenizers` 0.23.1 gives three. Ids stored by an earlier
-  build of this unreleased package will not be reproduced. `BpeVocabulary` gains `PreSplit` to
-  carry the first of the two.
-- **A `Sequence`'s `Split` step now does what its `behavior` says.** The loader read the step's pattern and
-  nothing else, so every file got the one arrangement `BpePreTokenizer` implemented — which, measured, is
-  exactly `behavior: Removed` with `invert: true`. Every shipped model declares `Isolated`, and their
-  patterns match every character, so the two agreed and the divergence needed a pattern narrower than its
-  input to appear: with a `Split` of `\w+`, `"ab cd!"` produced `['ab', 'cd']` where `tokenizers` 0.23.1
-  gives `['ab', 'Ġ', 'cd', '!']` — the space and the `!` dropped before the merge loop, and for a
-  byte-level model a round trip that could not return them. All five behaviours and both `invert` values
-  are reproduced now, and an absent or unknown `behavior` or `invert` is refused by name, as the reference
-  refuses it.
-- **A `tokenizer.json` declaring no `pre_tokenizer` loaded as the `Whitespace` split.** The loader read an
-  absent `pre_tokenizer` as the classic word-boundary split, so a model whose text is meant to reach the
-  merge loop whole was tokenized as though it were split — measured against `tokenizers` 0.23.1, `"aZ Za"`
-  came out `['a', '[UNK]', '[UNK]', 'a']` where the reference gives `['a', '[UNK]', 'a']`, with no
-  exception and nothing to say a fallback had been picked. Both file shapes that mean "nothing is split"
-  now load as `BpeVocabulary.NoPreTokenizer`: an absent `pre_tokenizer`, and a bare `ByteLevel` whose
-  `use_regex` is off — the second was refused by name until now, on the ground that it could not round
-  trip, which it does. The text reaches the merge loop one added-token segment at a time rather than all
-  at once, and `add_prefix_space` applies once to the segment rather than to each piece.
-  `tests/oracles/bpe_no_split.json` replays 22 cases over 7 models.
+- A `Sequence` of `Split` then `ByteLevel` now applies both patterns instead of only the `Split` step's, changing the tokens produced for Llama-3 and Qwen2 on ordinary text. ([#143](https://github.com/CyrilB1531/data.net/issues/143), [`9a8d15c`](https://github.com/CyrilB1531/data.net/commit/9a8d15c))
+- A `Sequence`'s `Split` step now honours its `behavior` and `invert` fields instead of always acting as `Removed` with `invert: true`. ([#145](https://github.com/CyrilB1531/data.net/issues/145), [`9546b1c`](https://github.com/CyrilB1531/data.net/commit/9546b1c))
+- A `tokenizer.json` declaring no `pre_tokenizer`, or a bare `ByteLevel` step with `use_regex` off, now loads as `BpeVocabulary.NoPreTokenizer` instead of the `Whitespace` split. ([#122](https://github.com/CyrilB1531/data.net/issues/122), [`545c51e`](https://github.com/CyrilB1531/data.net/commit/545c51e))
 
 ### DataNet.Fuzzy — 0.3.0
 
 #### Changed
 
-- **Depends on `DataNet.Text` as a published NuGet package** rather than as a
-  project reference. Nothing changes for consumers: a project reference between
-  two packable projects already produced exactly this `<dependency>`, and
-  `Fuzz.Ratio` is still `Indel.NormalizedSimilarity × 100`. What changes is that
-  the build graph now matches the release graph, so a package can now ship
-  without dragging the other two with it. All three happen to move to `0.3.0`
-  here, each for its own reasons — that they agree is a coincidence of timing,
-  not a constraint any longer. The dependency floor is
-  pinned in `src/Directory.Packages.props`; the developer loop for editing both
-  libraries at once is documented in
-  [`CONTRIBUTING.md`](CONTRIBUTING.md#working-across-two-packages), and the whole
-  decision in
-  [`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md).
+- `DataNet.Fuzzy` depends on `DataNet.Text` as a published NuGet package rather than a project reference, so a package can ship without dragging the other two with it. ([#64](https://github.com/CyrilB1531/data.net/issues/64), [`96286ac`](https://github.com/CyrilB1531/data.net/commit/96286ac))
 
 ### DataNet.Metrics — 0.1.0
 
@@ -416,251 +89,34 @@ First release of a fourth package.
 
 #### Added
 
-- **Classification metrics at scikit-learn parity** — `ConfusionMatrix`,
-  `Accuracy`, `Precision`, `Recall`, `F1`, `FBeta`, `ClassificationReport` and
-  `RocAuc`, validated against frozen corpora generated from scikit-learn rather
-  than against hand-written expectations. Every function has a row in
-  [`docs/equivalence.md`](docs/equivalence.md) naming its sklearn call and its
-  deliberate divergences.
-- **All four averaging modes**, as an enum instead of a string:
-  `Averaging.Binary`, `Micro`, `Macro` and `Weighted`. `average=None` becomes a
-  separate `PerClass` method on each metric — it returns one value per class, not
-  a scalar, and an enum member cannot change its method's return type.
-  `Averaging.Binary` throws on a target with more than two classes rather than
-  guess which class was meant. The three averages disagree by a factor of two on
-  imbalanced data, which
-  [`docs/migration/sklearn.md`](docs/migration/sklearn.md) now works through with
-  real numbers instead of telling the reader to "check the definitions".
-- **`ClassificationReport` in both shapes** — structured rows a program can read
-  (`Classes`, `MacroAverage`, `WeightedAverage`, `MicroAverage`, `Accuracy`) and
-  `ToText(digits)`, which reproduces what `classification_report` prints
-  character for character, padding included.
-- **ROC-AUC, binary and multiclass** — `RocAuc.Score` mirrors
-  `_binary_clf_curve`'s sort-and-accumulate, and `RocAuc.MultiClass` covers both
-  `ovr` and Hand & Till's `ovo`. `sampleWeight` is refused for `ovo`, as
-  scikit-learn refuses it.
-- **An explicit answer for 0/0.** scikit-learn returns 0 and emits an
-  `UndefinedMetricWarning`, which is easy to miss in a log and has no natural
-  .NET equivalent. `ZeroDivision.Zero` (sklearn's value), `One`, `NaN` or
-  `Throw` — the last raising `UndefinedMetricException` — make the choice the
-  caller's.
-- **`sampleWeight` throughout**, which is why matrix cells and support figures
-  are `double` rather than `int`. Adding it later would have been a breaking
-  change to every cell of the public surface; the reasoning, along with why this
-  is a separate package and why `ConfusionMatrix` is public, is in
-  [`docs/decisions/0016`](docs/decisions/0016-metrics-package-placement.md).
-- **Measured, not asserted.** Against scikit-learn on the same corpora, all 29
-  operations are at or above 1× on processor time — the merge gate for the work
-  — with the narrowest margin at 2.74×. net10 and netstandard2.0 are at parity
-  at every size that supports the claim. Both tiers, and what their error bars do
-  and do not cover, are in [`bench/README.md`](bench/README.md).
-- **Opt-in parallelism for multiclass ROC-AUC.**
-  `RocAuc.MultiClass(yTrue, yScore, classCount, new MultiClassRocOptions { … })`
-  gathers the strategy, averaging, labels and sample weights that used to be
-  trailing parameters, and adds `MaxDegreeOfParallelism`. One-vs-rest spreads its
-  per-class loop and one-vs-one its per-pair loop over that many workers; the
-  result is bit-identical, because each class and each pair writes its own slot
-  and the averaging happens afterwards in array order. The default is 0, and 0 and
-  1 both mean sequential — reading the caller's spans directly, with no private
-  copy of them — because a library that spawns threads a caller did not ask for
-  is hostile inside a server already running one request per core, and
-  scikit-learn does not parallelise `roc_auc_score` either. Above 1 the inputs are
-  copied, `samples × classes × 8` bytes for the transposed score matrix, which is
-  why the default does not pay for it. Either way the per-curve buffers come from
-  `ArrayPool<T>.Shared` and are reused across every class and pair rather than
-  allocated per curve. There is no `-1` sentinel and no internal size threshold:
-  the caller writes the number, and it is honoured at every input size.
-- **What that parallelism is worth, measured on elapsed time.** At n=100 000 and
-  k=10, on four physical cores: one-vs-rest 75.991 / 75.779 ms sequential →
-  26.648 / 26.379 at eight workers, and one-vs-one 127.375 / 126.810 →
-  37.162 / 36.875 at four. At n=1000 and k=10 it is a gain rather than the
-  expected dispatch cost — one-vs-one 0.745 / 0.741 ms → 0.297 / 0.279. Processor
-  time rises as elapsed time falls, which is what spending cores means, and both
-  columns are published for all 24 measured cells, two passes each, in
-  [the performance guide](docs/guides/performance.md) — along with the three
-  shapes where eight workers lose to four on a 4-core / 8-thread machine. The
-  reasoning is in
-  [`docs/decisions/0018`](docs/decisions/0018-multiclass-roc-auc-parallelism-is-opt-in.md).
-- **Balanced accuracy, Matthews correlation and Cohen's kappa** —
-  `BalancedAccuracy.Score`, `MatthewsCorrelation.Score` and `CohenKappa.Score`,
-  each in two overloads: from labels, or off a `ConfusionMatrix` already built.
-  Balanced accuracy averages recall over the classes that have a true sample, not
-  over every class, and `adjusted` divides by that same kept count — which is
-  scikit-learn's rule and the whole of the metric's degenerate case. Cohen's kappa
-  takes `KappaWeighting.None`, `Linear` or `Quadratic`. All of it is validated
-  against scikit-learn 1.9.0 through the frozen corpus, including the first
-  non-finite value any oracle here has held: kappa's `nan` on a single-label
-  input, which travels as the string `"NaN"` because JSON has no literal for it.
-- **`confusion_matrix(…, normalize=…)`, as a projection** —
-  `ConfusionMatrix.ToArray(Normalization.None/True/Pred/All)` returns scaled
-  cells; the matrix itself is never normalized and never remembers having been.
-  It is deliberately *not* a parameter on `Compute`: several metrics in this
-  package read a `ConfusionMatrix`, and a normalized one handed to
-  `Accuracy.Score` would return a plausible number that is neither accuracy nor
-  detectably wrong. A `double[,]` cannot be handed to them at all, so the
-  compiler refuses the mistake instead of the library reporting it.
-- **`ZeroDivision` keeps a faithful default per metric, not one across the
-  package** — `Zero` for precision, recall, F1, F-beta and the report; `Zero` for
-  Matthews correlation, matching a value scikit-learn hard-codes rather than
-  exposes; `NaN` for Cohen's kappa, matching `replace_undefined_by=nan`. Each
-  default call returns scikit-learn's own number for its own metric, which is why
-  they disagree with each other. `matthews_corrcoef` has no such keyword at all,
-  so `ZeroDivision` there — `Throw` included — is an extension beyond parity, not
-  a divergence in value. `weights` is spelled `weighting`, because `sampleWeight`
-  sits in the same signature meaning something unrelated. The reasoning for all of
-  it, and for the projection above, is in
-  [`docs/decisions/0020`](docs/decisions/0020-normalize-is-a-projection-not-a-parameter.md).
-- **Measured too, on the same gate.** All 18 new cross-language rows —
-  three operations over six shapes — are at or above 1× on processor time against
-  scikit-learn, narrowest margin 16.59× on `balanced_accuracy` at n=1 000 000,
-  k=10. They were taken in their own window under a much heavier load than the
-  original 29 rows, which is recorded beside them rather than inherited, in
-  [the performance guide](docs/guides/performance.md).
-- **Regression metrics at scikit-learn parity** — `MeanSquaredError`,
-  `RootMeanSquaredError`, `MeanAbsoluteError`, `MedianAbsoluteError`,
-  `MeanAbsolutePercentageError`, `MeanSquaredLogError`,
-  `RootMeanSquaredLogError`, `MaxError`, `R2`, `ExplainedVariance` and
-  `PinballLoss`, each replaying a frozen corpus generated from scikit-learn
-  rather than hand-written expectations, and each with a row in
-  [`docs/equivalence.md`](docs/equivalence.md) naming its sklearn call and its
-  deliberate divergences. `RootMeanSquaredError` and `RootMeanSquaredLogError`
-  are types of their own rather than a `squared: false` flag, because
-  scikit-learn removed `mean_squared_error(squared=False)` in 1.6 — and the root
-  is taken per output, before the reduction, as it is there. The six remaining
-  functions (the three D² scores and the three deviances) are deliberately a
-  second change, and why is in
-  [`docs/decisions/0021`](docs/decisions/0021-multioutput-is-a-method-not-an-enum.md).
-- **`multioutput=` is spelled by choosing a method.** `Score(…)` is
-  `uniform_average`, and takes an optional `outputWeights` span for
-  `multioutput=[…]`; `PerOutput(…)` is `raw_values`; `VarianceWeighted(…)` is
-  `variance_weighted`, and exists on `R2` and `ExplainedVariance` alone because
-  those are the only two scikit-learn accepts it for. It is not an enum for
-  three separate reasons — `raw_values` changes the return type, which
-  [`docs/decisions/0016`](docs/decisions/0016-metrics-package-placement.md)
-  already ruled out for `average=None`; `variance_weighted` would be a member
-  nine of the eleven metrics reject at run time; and an array of weights is data
-  an enum member cannot carry. The result is that every call that compiles is a
-  call that runs. Two-dimensional targets arrive row-major with an
-  `outputCount`, since a span cannot carry a rectangular array.
-- **The undefined cases are two knobs, not one.** `forceFinite` answers a truth
-  of zero variance over two or more samples — scikit-learn's `force_finite`, `1`
-  when the prediction was perfect and `0` otherwise, or the unclamped `nan` and
-  `-inf`. `R2` additionally takes `ZeroDivision`, defaulting to `NaN`, for the
-  unrelated case of fewer than two samples, which scikit-learn answers `nan`
-  under either setting of `force_finite`. `ExplainedVariance` takes no
-  `ZeroDivision` at all, because it has no such case:
-  `explained_variance_score([3], [5])` is `1.0`. `MeanAbsolutePercentageError`
-  clamps its denominator at numpy's machine epsilon, `2**-52` — not
-  `double.Epsilon`, which is 292 orders of magnitude smaller — and
-  `MeanSquaredLogError` refuses a target at or below −1, naming which side
-  carried it.
-- **The weighted median averages within one machine epsilon, not exactly.**
-  `MedianAbsoluteError` under `sampleWeight` is scikit-learn's averaged weighted
-  percentile, and whether it averages two order statistics or takes one is
-  decided by comparing the overshoot past the halfway point against
-  `np.finfo(float64).eps` — scikit-learn's own test, and load-bearing: on
-  `[0.1] * 10`, which is `np.ones(n) / n`, an exact comparison answers `4.0`
-  where scikit-learn answers `4.5`. It does not follow that a uniform weight
-  reproduces the unweighted median; where the overshoot is wider than an epsilon
-  it does not, in scikit-learn either, and `[0.7] * 10` over the residuals `0…9`
-  gives `5.0` against the unweighted `4.5`. Both are reproduced.
-- **Two refusals taken from `check_array` and from `numpy.average`.** A
-  `sampleWeight` that is zero throughout is refused with scikit-learn's sentence
-  — the rule is *every* weight zero, not the sum, so an all-negative weight still
-  scores — and `outputWeights` that sum to zero are refused with numpy's, where
-  the rule *is* the sum, so `[1, -1]` is refused and `[-1, -1]` scores. The two
-  differ because two different layers raise them, and both were measured rather
-  than assumed.
-- **`log(1 + x)` is computed as `log1p`.** `MeanSquaredLogError` — and through
-  it `RootMeanSquaredLogError` — uses Kahan's identity rather than spelling the
-  addition out, which on targets around `1e-9` is the difference between
-  agreeing with scikit-learn to a unit in the last place and being out by 1.7e-8
-  relative. `netstandard2.0` has no `log1p` under any name, and one
-  implementation for both targets is what keeps them from disagreeing.
-- **Accumulation is compensated, not sequential.** `R2`'s two passes,
-  `ExplainedVariance`'s five accumulations, and `Outputs.WeightedMean` — the
-  walk `MeanSquaredError`, `RootMeanSquaredError`, `MeanAbsoluteError`,
-  `MeanAbsolutePercentageError`, `MeanSquaredLogError`,
-  `RootMeanSquaredLogError` and `PinballLoss` all share — sum with Neumaier
-  compensation rather than a running total. A plain sequential sum divides its
-  rounding error differently from numpy's pairwise reduction, and on an
-  ill-conditioned target — a large offset over a small spread — that
-  difference compounds through `R2`'s two passes into an answer measured
-  **357× outside** the oracle's `1e-9` tolerance (issue #127). The
-  unweighted paths were then optimised back down rather than left at
-  compensation's first cost: an unweighted fast path at all three sites, and,
-  for `R2` and `ExplainedVariance`'s single-output case, a `Vector<double>`
-  reduction on `net10.0`. At n = 1 000 000, `r2` now runs at **0.55×** the
-  cost of the original uncompensated loop — faster, not merely recovered —
-  and 2.15× faster than numpy on the same corpus; `mse` and `mae` sit close
-  to unchanged, within measurement noise of that round. Numbers, the
-  optimisation, and the noise caveat are in
-  [the performance guide](docs/guides/performance.md).
-- **Measured, and one row honestly under the gate.** `mse`, `mae`, `median_ae`
-  and `r2` were benchmarked against scikit-learn over six shapes. `median_ae` is
-  the one operation in the package below the 1× processor-time gate, at
-  0.80–0.90× at n=100 000 and n=1 000 000 — after a rewrite that took it from
-  0.19×, by selecting the one or two order statistics the median needs with an
-  introselect-bounded quickselect instead of sorting the whole residual array.
-  The remaining gap is reported rather than rounded away; every row, both
-  passes, and the load the machine was under are in
-  [the performance guide](docs/guides/performance.md).
+- Classification metrics at scikit-learn parity: `ConfusionMatrix`, `Accuracy`, `Precision`, `Recall`, `F1`, `FBeta`, `ClassificationReport` and `RocAuc`. ([`3355f94`](https://github.com/CyrilB1531/data.net/commit/3355f94))
+- All four averaging modes — `Averaging.Binary`, `Micro`, `Macro` and `Weighted` — are an enum instead of a string, with `average=None` becoming a separate `PerClass` method. ([`3355f94`](https://github.com/CyrilB1531/data.net/commit/3355f94))
+- `ClassificationReport` comes in both shapes: structured rows a program can read, and `ToText(digits)` reproducing `classification_report`'s printed output character for character. ([`3355f94`](https://github.com/CyrilB1531/data.net/commit/3355f94))
+- `RocAuc.Score` mirrors `_binary_clf_curve`'s sort-and-accumulate, and `RocAuc.MultiClass` covers both `ovr` and Hand & Till's `ovo`. ([`3355f94`](https://github.com/CyrilB1531/data.net/commit/3355f94))
+- `ZeroDivision.Zero`, `One`, `NaN` or `Throw` give an explicit, caller-chosen answer for the 0/0 case scikit-learn silently defaults and warns on. ([`3355f94`](https://github.com/CyrilB1531/data.net/commit/3355f94))
+- `sampleWeight` is threaded throughout, which is why matrix cells and support figures are `double` rather than `int`. ([`3355f94`](https://github.com/CyrilB1531/data.net/commit/3355f94))
+- All 29 operations are measured at or above 1× scikit-learn's processor time rather than merely asserted, narrowest margin 2.74×. ([`3355f94`](https://github.com/CyrilB1531/data.net/commit/3355f94))
+- Opt-in parallelism for multiclass ROC-AUC: `RocAuc.MultiClass(…, new MultiClassRocOptions { MaxDegreeOfParallelism = … })`, sequential by default and bit-identical either way. ([#86](https://github.com/CyrilB1531/data.net/issues/86), [`a2cae2b`](https://github.com/CyrilB1531/data.net/commit/a2cae2b))
+- At n=100 000, k=10, on four physical cores, one-vs-rest drops from 76 ms sequential to 27 ms at eight workers, and one-vs-one from 127 ms to 37 ms at four. ([#86](https://github.com/CyrilB1531/data.net/issues/86), [`a2cae2b`](https://github.com/CyrilB1531/data.net/commit/a2cae2b))
+- Balanced accuracy, Matthews correlation and Cohen's kappa — `BalancedAccuracy.Score`, `MatthewsCorrelation.Score` and `CohenKappa.Score` — each from labels or from an already-built `ConfusionMatrix`. ([`d00294a`](https://github.com/CyrilB1531/data.net/commit/d00294a))
+- `confusion_matrix(…, normalize=…)` is a projection: `ConfusionMatrix.ToArray(Normalization.None/True/Pred/All)` returns scaled cells without the matrix itself remembering it was normalized. ([`d00294a`](https://github.com/CyrilB1531/data.net/commit/d00294a))
+- `ZeroDivision` keeps a faithful default per metric rather than one across the package — `Zero` for precision, recall, F1, F-beta, the report and Matthews correlation; `NaN` for Cohen's kappa. ([`d00294a`](https://github.com/CyrilB1531/data.net/commit/d00294a))
+- 18 new cross-language rows — three operations over six shapes — are at or above 1× scikit-learn's processor time, narrowest margin 16.59× on `balanced_accuracy` at n=1 000 000. ([`d00294a`](https://github.com/CyrilB1531/data.net/commit/d00294a))
+- Regression metrics at scikit-learn parity: `MeanSquaredError`, `RootMeanSquaredError`, `MeanAbsoluteError`, `MedianAbsoluteError`, `MeanAbsolutePercentageError`, `MeanSquaredLogError`, `RootMeanSquaredLogError`, `MaxError`, `R2`, `ExplainedVariance` and `PinballLoss`. ([#92](https://github.com/CyrilB1531/data.net/issues/92), [`641f098`](https://github.com/CyrilB1531/data.net/commit/641f098))
+- `multioutput=` is spelled by choosing a method: `Score(…)` is `uniform_average`, `PerOutput(…)` is `raw_values`, and `VarianceWeighted(…)` is `variance_weighted` on `R2` and `ExplainedVariance`. ([#92](https://github.com/CyrilB1531/data.net/issues/92), [`641f098`](https://github.com/CyrilB1531/data.net/commit/641f098))
+- The undefined cases are two knobs, not one: `forceFinite` answers zero variance over two or more samples, and `R2`'s `ZeroDivision` separately answers fewer than two samples. ([#92](https://github.com/CyrilB1531/data.net/issues/92), [`641f098`](https://github.com/CyrilB1531/data.net/commit/641f098))
+- The weighted median averages within one machine epsilon rather than exactly, matching scikit-learn's own overshoot test against `np.finfo(float64).eps`. ([`859da5c`](https://github.com/CyrilB1531/data.net/commit/859da5c))
+- Two refusals taken from `check_array` and from `numpy.average`: a `sampleWeight` that is zero throughout, and `outputWeights` that sum to zero. ([`2216d5b`](https://github.com/CyrilB1531/data.net/commit/2216d5b))
+- `log(1 + x)` is computed as `log1p`, using Kahan's identity, in `MeanSquaredLogError` and `RootMeanSquaredLogError`. ([`2216d5b`](https://github.com/CyrilB1531/data.net/commit/2216d5b))
+- `R2`'s two passes, `ExplainedVariance`'s five accumulations, and `Outputs.WeightedMean` now sum with Neumaier compensation rather than a running total. ([#127](https://github.com/CyrilB1531/data.net/issues/127), [`fcb705b`](https://github.com/CyrilB1531/data.net/commit/fcb705b))
+- `mse`, `mae`, `median_ae` and `r2` were benchmarked against scikit-learn over six shapes; `median_ae` is the one operation below the 1× processor-time gate, at 0.80–0.90×. ([#92](https://github.com/CyrilB1531/data.net/issues/92), [`641f098`](https://github.com/CyrilB1531/data.net/commit/641f098))
 
 #### Changed
 
-- **`DataNet.Metrics`'s long comment blocks became ten decision records**
-  (issue #151), so the reasoning lives where it can be cited and the call site
-  keeps a pointer instead of a second copy that can drift. The package now
-  reports nothing under `tools/check_comment_length.py`, which is the checkable
-  form of that claim. What moved, and where: the weighted median's agreement with scikit-learn's
-  interpolation into
-  [`0024`](docs/decisions/0024-weighted-median-averages-within-scikit-learns-epsilon.md)
-  and the quickselect that replaced the full sort into
-  [`0025`](docs/decisions/0025-quickselect-replaces-a-full-sort-for-the-median.md),
-  both out of `Internal/WeightedPercentile.cs`; `R2.cs` and
-  `ExplainedVariance.cs`'s differing undefined cases into
-  [`0026`](docs/decisions/0026-r2-and-explainedvariance-split-their-undefined-cases-differently.md)
-  and their single-output-only vectorisation into
-  [`0027`](docs/decisions/0027-r2-and-explainedvariance-vectorize-only-a-single-output.md);
-  `MeanSquaredLogError.cs`'s `Log1P` into
-  [`0028`](docs/decisions/0028-log1p-is-kahans-identity-not-math-log-1-plus-x.md);
-  `BalancedAccuracy.cs`'s `adjusted` edge case into
-  [`0029`](docs/decisions/0029-balanced-accuracy-adjusted-is-left-to-ieee-754-at-the-edge.md);
-  `CohenKappa.cs`'s expected-matrix orientation and position-based weighting
-  into
-  [`0030`](docs/decisions/0030-cohen-kappa-keeps-scikit-learns-expected-matrix-orientation.md);
-  `ConfusionMatrix.cs`'s `NoSampleCorrect` into
-  [`0031`](docs/decisions/0031-nosamplecorrect-mirrors-numpys-float64-upcast.md);
-  `Internal/Prf.cs`'s F-beta derivation into
-  [`0032`](docs/decisions/0032-fbeta-substitutes-tp-predicted-and-support-algebraically.md);
-  and `Internal/CompensatedSum.cs` into `0033` below. Two claims were
-  re-measured against scikit-learn 1.9.0 while being moved and came out
-  different from the prose that had been carrying them: `Log1P`'s error on a
-  `1e-9` target is `1.7e-8` relative and not `1.4e-8` (corrected here, in
-  `docs/equivalence.md` and in `0028`), and the F-beta route through precision
-  and recall applies the zero-division policy three times, not twice (`0032`).
-  Nothing the package computes changed.
-- **The Neumaier-versus-Kahan argument for `CompensatedSum` moved into a
-  record of its own** —
-  [`docs/decisions/0033`](docs/decisions/0033-compensated-sum-is-neumaiers-variant.md)
-  — instead of living only as two long comments in
-  `Internal/CompensatedSum.cs`. It now also covers why
-  `VectorCompensatedSum`'s SIMD lanes are not guaranteed bit-identical to the
-  scalar sum, a fact `docs/decisions/0001` and `docs/decisions/0027` each
-  referenced but never argued. Both types keep a short pointer at the call
-  site instead of restating the measurements.
-- **`MultiClassRocOptions`'s doc comments no longer restate
-  `docs/decisions/0018`.** The `ref struct` rationale and the parallelism
-  defaults were fully argued there already; the type now points at it rather
-  than carrying a second, longer copy of the same reasoning that could drift
-  from the original. `Normalization`'s "projection, not a state" comment
-  gets the same treatment against `docs/decisions/0020`.
-- **The rest of the package's remaining long comments were trimmed to their
-  reason**, in `Internal/Inputs.cs`, `Internal/LabelIndex.cs`,
-  `Internal/MatrixSums.cs`, `Internal/Outputs.cs`, `Internal/ReportText.cs`,
-  `KappaWeighting.cs`, `MatthewsCorrelation.cs` and `MaxError.cs` — no
-  behaviour changed, and every function keeps its XML documentation naming
-  the scikit-learn function it matches.
+- `DataNet.Metrics`'s long comment blocks became ten decision records, so the reasoning lives where it can be cited instead of duplicated at each call site. ([#151](https://github.com/CyrilB1531/data.net/issues/151), [`d4d9326`](https://github.com/CyrilB1531/data.net/commit/d4d9326))
+- The Neumaier-versus-Kahan argument for `CompensatedSum` moved into a record of its own instead of living only as comments in the source. ([#151](https://github.com/CyrilB1531/data.net/issues/151), [`4abb609`](https://github.com/CyrilB1531/data.net/commit/4abb609))
+- `MultiClassRocOptions`'s doc comments no longer restate `docs/decisions/0018`, and `Normalization`'s comment points at `0020` instead of repeating it. ([#151](https://github.com/CyrilB1531/data.net/issues/151), [`4abb609`](https://github.com/CyrilB1531/data.net/commit/4abb609))
+- The rest of the package's remaining long comments were trimmed to their reason, with no behaviour changed. ([#151](https://github.com/CyrilB1531/data.net/issues/151), [`4abb609`](https://github.com/CyrilB1531/data.net/commit/4abb609))
 
 ## [0.2.0] — 2026-08-05
 
@@ -669,87 +125,46 @@ removed or renamed, so upgrading from `0.1.0` is a version bump.
 
 ### Added
 
-- **`netstandard2.0` as a second target framework.** The packages now also run on
-  .NET Framework 4.6.1+, Mono, Xamarin and Unity. One package carries both
-  frameworks. The net10 fast paths are unchanged — netstandard2.0 reaches
-  equivalent behavior through conditional compilation, never a reduced API.
-  See [`docs/decisions/0001`](docs/decisions/0001-target-framework.md).
-- **Four Snowball stemmers**: `SpanishSnowballStemmer`,
-  `PortugueseSnowballStemmer`, `ItalianSnowballStemmer`, `GermanSnowballStemmer`.
-  With the existing English and French, that is 758 frozen reference words
-  replayed against `nltk`.
-- **Blocked (multi-word) Myers** for `Levenshtein.Distance`, removing the
-  64-character cap on the bit-parallel path.
-- A benchmark suite comparing the `net10.0` and `netstandard2.0` builds of the
-  same library — see [`bench/README.md`](bench/README.md).
-- Mirror test projects that replay the entire suite against the `netstandard2.0`
-  assemblies, so the build shipped to .NET Framework, Mono and Unity consumers is
-  executed rather than only compiled. 339 tests across both builds.
-- A sample under [`samples/`](samples/DataNet.Sample) that consumes the packages
-  by `PackageReference` from a locally packed feed, and runs in CI. Nothing
-  previously exercised the packaging, so a defect in it would have reached
-  consumers before CI. See
-  [`docs/decisions/0009`](docs/decisions/0009-sample-consumes-a-local-feed.md).
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) and this changelog.
-- SonarQube Cloud analysis, a `lint` CI job (markdownlint and `dotnet format`),
-  and Dependabot for GitHub Actions.
+- `netstandard2.0` becomes a second target framework, reaching .NET Framework 4.6.1+, Mono, Xamarin and Unity through conditional compilation rather than a reduced API. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
+- Four Snowball stemmers join English and French: `SpanishSnowballStemmer`, `PortugueseSnowballStemmer`, `ItalianSnowballStemmer` and `GermanSnowballStemmer`. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
+- Blocked (multi-word) Myers removes the 64-character cap on `Levenshtein.Distance`'s bit-parallel path. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
+- A benchmark suite compares the `net10.0` and `netstandard2.0` builds of the same library. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
+- Mirror test projects replay the entire suite against the `netstandard2.0` assemblies, 339 tests across both builds. ([#17](https://github.com/CyrilB1531/data.net/issues/17), [`48b7d05`](https://github.com/CyrilB1531/data.net/commit/48b7d05))
+- A sample under `samples/DataNet.Sample` consumes the packages by `PackageReference` from a locally packed feed, and runs in CI. ([#50](https://github.com/CyrilB1531/data.net/issues/50), [`391a71c`](https://github.com/CyrilB1531/data.net/commit/391a71c))
+- `CONTRIBUTING.md` and this changelog are added. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
+- SonarQube Cloud analysis, a `lint` CI job (markdownlint and `dotnet format`), and Dependabot for GitHub Actions are added. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
 
 ### Changed
 
-- **Long-string `Levenshtein.Distance` is 20–33× faster.** At 512 characters,
-  684 µs → 21 µs; at 128, 36 µs → 1.8 µs. Patterns over 64 characters previously
-  fell back to the `O(n·m)` DP. The bit-parallel path still requires a Latin-1
-  pattern, so CJK and emoji inputs continue to use the DP.
-- **Regular expressions are bounded by a match timeout.** `TextAnalyzer` accepts a
-  caller-supplied pattern and runs it over caller-supplied text, so catastrophic
-  backtracking was reachable from the public API. A pathological pair now raises
-  `RegexMatchTimeoutException` instead of hanging the calling thread. This is the
-  one behavioural change in the release: input that previously hung will now throw.
-- Warnings are errors across the whole repository, covering `src`, `tests` and
-  `bench` rather than the libraries alone.
+- Long-string `Levenshtein.Distance` is 20–33× faster: 684 µs to 21 µs at 512 characters. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
+- Regular expressions are bounded by a match timeout: a pathological pattern now raises `RegexMatchTimeoutException` instead of hanging the calling thread. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
+- Warnings are errors across the whole repository, covering `src`, `tests` and `bench` rather than the libraries alone. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
 
 ### Fixed
 
-- Static-analysis defects, each verified against the oracle corpora: an `int`
-  division result widened to `double` in `Jaro`; nested classes shadowing their
-  outer type in the Snowball stemmers; step methods returning a value no caller
-  read; nested ternaries in `Nysiis`, `EnglishSnowballStemmer` and
-  `HashingVectorizer`.
-- **Code coverage was never collected.** CI passed `--collect:"XPlat Code Coverage"`
-  with no `coverlet.collector` package referenced, so the collector was absent and
-  the step silently did nothing.
+- Static-analysis defects fixed and verified against the oracle corpora: an `int` division widened to `double` in `Jaro`, nested classes shadowing their outer type in the Snowball stemmers, unread step-method return values, and nested ternaries in three files. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
+- Code coverage was never collected: CI referenced `coverlet.collector` without depending on it, so the collection step silently did nothing. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
 
 ### Security
 
-- **Script injection in the release workflows.** A `workflow_dispatch` input was
-  interpolated directly into a shell command, in a job holding `id-token: write`
-  that can mint a nuget.org publishing key. Values now reach the shell through the
-  environment.
-- GitHub Actions pinned to full commit SHAs, so a moved tag cannot change what
-  runs in CI.
-- CI dependency installation hardened: markdownlint pinned with lifecycle scripts
-  disabled, `pip install --only-binary :all: --require-hashes` against a generated
-  lock file that pins all 29 packages — the transitive graph included, since the
-  oracle corpora are those libraries' output.
+- A `workflow_dispatch` input was interpolated directly into a shell command in a job holding `id-token: write`, letting it mint a nuget.org publishing key; values now reach the shell through the environment. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
+- GitHub Actions are pinned to full commit SHAs, so a moved tag cannot change what runs in CI. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
+- CI dependency installation is hardened: markdownlint pinned with lifecycle scripts disabled, and `pip install --require-hashes` against a generated lock file pinning all 29 packages. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
 
 ### Documentation
 
-- Package metadata now attributes the project to Cyril BRUNET (`Authors`,
-  `Company`, `Copyright`), and `NOTICE` and `LICENSE` no longer carry the
-  project's former name.
-- `THIRD-PARTY-NOTICES.md` records the shipped dependencies. It previously said
-  "None yet", which stopped being true once `DataNet.Embeddings` took ONNX
-  Runtime and the `netstandard2.0` target added `System.Memory` and
-  `System.Numerics.Vectors`. The development-only table was likewise missing
-  `nltk`, `tokenizers`, `sentencepiece` and `numpy`.
+- Package metadata now attributes the project to Cyril BRUNET (`Authors`, `Company`, `Copyright`). ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`7523f34`](https://github.com/CyrilB1531/data.net/commit/7523f34))
+- `THIRD-PARTY-NOTICES.md` now records the shipped dependencies instead of saying "None yet". ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`7523f34`](https://github.com/CyrilB1531/data.net/commit/7523f34))
 
 ### Notes
 
-- Deliberate analyzer suppressions live in the source as `#pragma warning disable`
-  with their justification. SonarLint reads neither `.editorconfig` nor a workspace
-  `.vscode/settings.json`, so those do not work.
-- The `netstandard2.0` build is behavior-verified: the whole suite is replayed
-  against those assemblies, not only against the `net10.0` ones.
+- Deliberate analyzer suppressions live in the source as `#pragma warning disable` with their justification, since SonarLint reads neither `.editorconfig` nor workspace settings. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
+- The `netstandard2.0` build is behavior-verified: the whole suite is replayed against those assemblies, not only compiled. ([#17](https://github.com/CyrilB1531/data.net/issues/17), [`48b7d05`](https://github.com/CyrilB1531/data.net/commit/48b7d05))
+
+> Entries below predate the per-lot issue convention and this shape: this
+> repository had not yet adopted filing one issue per change, so several point
+> at the same issue rather than one each. A missing link is a date, not an
+> oversight.
 
 ## [0.1.0] — 2026-08-01
 
@@ -759,27 +174,13 @@ the canonical Python libraries — see [`docs/equivalence.md`](docs/equivalence.
 
 ### Added
 
-- **Lot 1 — string distances and similarity** (`DataNet.Text`): Levenshtein
-  (with a Myers bit-parallel fast path), OSA, Damerau-Levenshtein, Hamming,
-  Jaro, Jaro-Winkler, Indel, LCS, Ratcliff-Obershelp, Jaccard, Dice, Overlap,
-  Tversky, Cosine, Soundex, Metaphone, NYSIIS.
-- **Lot 2 — tokenization and sparse vectorization** (`DataNet.Text`): CSR
-  matrix, word/char/char_wb tokenizers, `CountVectorizer`, `TfidfVectorizer`,
-  `HashingVectorizer` (MurmurHash3-32), Porter and Snowball EN/FR stemmers,
-  English stop words.
-- **Lot 3 — embeddings and semantic search** (`DataNet.Embeddings`): WordPiece
-  and SentencePiece (unigram Viterbi) tokenizers, pooling, SIMD kNN, ONNX
-  inference — with ONNX Runtime isolated to this package.
-- **Lot 4 — applied fuzzy matching** (`DataNet.Fuzzy`): `fuzz.*`
-  (ratio / partial / token_sort / token_set / WRatio), `process.extract` and
-  `extractOne`, blocking deduplication.
-- Migration guides for NumPy, pandas, scikit-learn, statsmodels, PyTorch,
-  matplotlib and seaborn, plus the three-column inventory that maps each need to
-  use / build / decide — [`docs/migration/`](docs/migration/README.md).
-- A decision log recording the deliberate divergences from the Python
-  references — [`docs/decisions/`](docs/decisions/).
-- Publishing to nuget.org via Trusted Publishing (keyless, OIDC) and to GitHub
-  Packages.
+- Lot 1 — string distances and similarity (`DataNet.Text`): Levenshtein (with a Myers bit-parallel fast path), OSA, Damerau-Levenshtein, Hamming, Jaro, Jaro-Winkler, Indel, LCS, Ratcliff-Obershelp, Jaccard, Dice, Overlap, Tversky, Cosine, Soundex, Metaphone, NYSIIS. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
+- Lot 2 — tokenization and sparse vectorization (`DataNet.Text`): CSR matrix, word/char/char_wb tokenizers, `CountVectorizer`, `TfidfVectorizer`, `HashingVectorizer` (MurmurHash3-32), Porter and Snowball EN/FR stemmers, English stop words. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
+- Lot 3 — embeddings and semantic search (`DataNet.Embeddings`): WordPiece and SentencePiece (unigram Viterbi) tokenizers, pooling, SIMD kNN, ONNX inference, with ONNX Runtime isolated to this package. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
+- Lot 4 — applied fuzzy matching (`DataNet.Fuzzy`): `fuzz.*` (ratio / partial / token_sort / token_set / WRatio), `process.extract` and `extractOne`, blocking deduplication. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
+- Migration guides for NumPy, pandas, scikit-learn, statsmodels, PyTorch, matplotlib and seaborn, plus a three-column inventory mapping each need to use / build / decide. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
+- A decision log records the deliberate divergences from the Python references. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
+- Publishing to nuget.org via Trusted Publishing (keyless, OIDC) and to GitHub Packages. ([#8](https://github.com/CyrilB1531/data.net/issues/8), [`0a321f1`](https://github.com/CyrilB1531/data.net/commit/0a321f1))
 
 [Unreleased]: https://github.com/CyrilB1531/data.net/compare/v0.2.0...HEAD
 [0.2.0]: https://github.com/CyrilB1531/data.net/compare/v0.1.0...v0.2.0

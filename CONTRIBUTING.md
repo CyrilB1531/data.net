@@ -262,6 +262,18 @@ compares the tag against the declared version and refuses to publish if they
 disagree. The tag chooses *which* release to cut; it does not set the number.
 Add the entry under a per-package heading in `CHANGELOG.md`.
 
+Each entry is one sentence, the issue and the commit — nothing else. The why
+lives in the issue and the how in the commit; restating either in the
+changelog is the misplacement this shape exists to avoid, so an entry carries
+no rationale, no measurement and no caveat:
+
+```markdown
+- The byte-level decode substitutes U+FFFD instead of throwing. ([#149](https://github.com/CyrilB1531/data.net/issues/149), [`5948a59`](https://github.com/CyrilB1531/data.net/commit/5948a59))
+```
+
+An entry whose commit closed no issue keeps the sentence and the commit link
+alone, rather than a fabricated issue link.
+
 ## Oracle validation
 
 New algorithms are validated by replaying reference outputs captured from the
