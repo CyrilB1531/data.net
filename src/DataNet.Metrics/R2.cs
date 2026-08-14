@@ -101,8 +101,9 @@ public static class R2
     /// <see cref="ZeroDivision.Throw"/>.
     /// </exception>
     /// <remarks>
-    /// A method rather than a member of an averaging enum. See
-    /// docs/decisions/0021.
+    /// A method rather than a member of an averaging enum: the weights are this
+    /// computation's own per-output variances, produced by the same pass as the
+    /// scores and not recoverable from them. See docs/decisions/0021.
     /// </remarks>
     public static double VarianceWeighted(
         ReadOnlySpan<double> yTrue,

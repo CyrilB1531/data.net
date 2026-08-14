@@ -15,8 +15,9 @@ small `value` in the addition itself, before the logarithm ever sees them.
 Measured against scikit-learn 1.9.0 on targets around `1e-9`
 (`mean_squared_log_error([1e-9, 2e-9, 3e-9], [2e-9, 4e-9, 1e-9])`, expected
 `2.9999999856666664e-18`), that spelling returns `3.000000038019698e-18` —
-out by `1.4e-8` relative, 7000 times the tolerance the corpus otherwise
-holds to. The frozen oracle corpus does not catch this itself: its
+out by `1.7e-8` relative, about 17 000 times the `1e-12` relative bound
+`LogErrorTests.A_tiny_target_keeps_the_bits_that_one_plus_x_would_round_away`
+asserts. The frozen oracle corpus does not catch this itself: its
 comparison rule scales by `max(1, |expected|)`, so at `3e-18` it reduces to
 an absolute `1e-9` and every implementation passes, including one that
 returns zero.

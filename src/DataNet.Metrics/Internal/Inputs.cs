@@ -78,10 +78,10 @@ internal static class Inputs
     /// throughout, with its message.
     /// </summary>
     /// <remarks>
-    /// The test is "every weight is zero", not "the weights sum to zero":
-    /// scikit-learn scores <c>[-1, -2, -3]</c> happily, so a sum would refuse an
-    /// input it accepts. See <see cref="Outputs.Validate"/>'s
-    /// <c>RequireNormalizable</c> for the sum-based rule this is not.
+    /// The test is <c>_check_sample_weight</c>'s own — <c>all(sample_weight == 0)</c>
+    /// at <c>sklearn/utils/validation.py:2198</c> — not "the weights sum to zero":
+    /// it accepts <c>[1, -1, 0]</c>, which numpy refuses one layer later instead.
+    /// <see cref="Outputs.Validate"/>'s <c>RequireNormalizable</c> is that other rule.
     /// </remarks>
     private static void RequireAnyNonZero(ReadOnlySpan<double> sampleWeight)
     {

@@ -405,8 +405,8 @@ internal static class MultiClassRoc
         {
             RunPerIndex(k, workers, n, (c, scratch) =>
             {
-                // ScoreSource is built here — spans cannot cross into a lambda —
-                // and above the try, for the reason docs/decisions/0018 gives.
+                // Per worker (a span cannot cross into a lambda), and above the try
+                // so a slicing bug escapes instead of being reported as bad input.
                 ScoreSource source = new(
                     copy.YTrue.AsSpan(0, n), copy.ColumnMajor.AsSpan(0, n * k), n, k, columnMajor: true);
 
@@ -460,8 +460,8 @@ internal static class MultiClassRoc
         {
             RunPerIndex(pairs.Length, workers, n, (pair, scratch) =>
             {
-                // Built here, above the try, for the same reason as in
-                // OneVsRestParallel — see docs/decisions/0018.
+                // Per worker, and above the try so a slicing bug escapes instead
+                // of being reported as bad input — as in OneVsRestParallel.
                 ScoreSource source = new(
                     copy.YTrue.AsSpan(0, n), copy.ColumnMajor.AsSpan(0, n * k), n, k, columnMajor: true);
 

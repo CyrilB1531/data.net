@@ -276,7 +276,9 @@ internal static class Outputs
     /// <param name="variances">The weighted variance of the truth, per output.</param>
     /// <remarks>
     /// When every variance is zero there is nothing to weight by, and
-    /// scikit-learn falls back to the plain mean rather than dividing by zero.
+    /// scikit-learn falls back to the plain mean rather than dividing by zero:
+    /// <c>if not xp.any(nonzero_denominator): avg_weights = None</c>,
+    /// <c>sklearn/metrics/_regression.py:982-986</c> (scikit-learn 1.9.0).
     /// </remarks>
     public static double ReduceByVariance(double[] perOutput, double[] variances)
     {

@@ -1,14 +1,14 @@
 namespace DataNet.Metrics;
 
 /// <summary>
-/// The optional settings of <see cref="RocAuc.MultiClass"/>, plus the
-/// parallelism scikit-learn has no equivalent for.
+/// The optional settings of <see cref="RocAuc.MultiClass"/> — <c>roc_auc_score</c>'s
+/// <c>multi_class</c>, <c>average</c>, <c>labels</c> and <c>sample_weight</c> —
+/// plus the parallelism scikit-learn has no equivalent for.
 /// </summary>
 /// <remarks>
-/// A <c>ref struct</c>: <see cref="Labels"/> and <see cref="SampleWeight"/> are
-/// spans, built at the call site. <c>default</c> reproduces scikit-learn's own
-/// defaults. Both argued in
-/// <c>docs/decisions/0018-multiclass-roc-auc-parallelism-is-opt-in.md</c>.
+/// A <c>ref struct</c>, because <see cref="Labels"/> and
+/// <see cref="SampleWeight"/> are spans: build it at the call site. <c>default</c>
+/// reproduces scikit-learn's own defaults. Both argued in <c>docs/decisions/0018</c>.
 /// </remarks>
 public readonly ref struct MultiClassRocOptions
 {

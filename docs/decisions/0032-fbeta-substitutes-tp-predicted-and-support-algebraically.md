@@ -17,7 +17,11 @@ nonzero, but not the same *computation*.
 Going through `P` and `R` first applies `Prf.Divide`'s zero-division policy up
 to three times for one F-beta value: once for `P`, once for `R`, and once more
 for the combined denominator, which can itself look like zero even when the
-uncombined one is not. It also fails to reproduce scikit-learn whenever `tp`
+uncombined one is not. (The inline version of this claim read "twice — once
+for each of them, and once more for a denominator", counting two where it then
+listed three; this sweep re-counted against `Prf.FScore` and corrected it to
+three, the same kind of correction `docs/decisions/0018` records for its
+4079→4088 figure.) It also fails to reproduce scikit-learn whenever `tp`
 is zero but `predicted` or `support` is not: the textbook route replaces an
 undefined `P` or `R` with the zero-division policy's value (`0`, `1` or `NaN`)
 before combining, while `scikit-learn` — and the direct-substitution formula —

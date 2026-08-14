@@ -36,7 +36,11 @@ case does not exist for this metric.
 
 The two R² branches must not be merged: routing the fewer-than-two-samples
 case through `forceFinite` would return `-inf` where scikit-learn returns
-`nan`, on every fixture that reaches it with `forceFinite: false`.
+`nan`. Not on *every* fixture that reaches it with `forceFinite: false`,
+though — the `forceFinite: false` branch is `perfect ? nan : -inf`
+(`src/DataNet.Metrics/R2.cs:337-343`), so a single sample predicted exactly
+right already yields `nan` and would hide the merge. Only a single *wrong*
+sample exposes it.
 
 ## Consequences
 

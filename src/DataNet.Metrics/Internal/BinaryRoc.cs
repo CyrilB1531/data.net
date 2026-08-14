@@ -73,8 +73,8 @@ internal static class BinaryRoc
             return Accumulate(_keys, _points, n);
         }
 
-        // These five moved in here (S3398): once Compute reads its buffers from
-        // Scratch's own fields, all five are reachable only from this class.
+        // These five — Validate, BuildPoints, Accumulate, IsLastOfGroup,
+        // RequireBothClassesPresent — are reachable only from Scratch (S3398).
         private static int Validate(ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, ReadOnlySpan<double> sampleWeight)
         {
             int n = yTrue.Length;
@@ -152,7 +152,8 @@ internal static class BinaryRoc
             // equality, which is right for arithmetic and wrong here: ties in a
             // score column are bit-identical doubles, and grouping them is the
             // whole point. scikit-learn's _binary_clf_curve locates its own
-            // thresholds the same way, with np.diff(y_score) != 0. A tolerance
+            // thresholds the same way — nonzero(diff(y_score)) at
+            // sklearn/metrics/_ranking.py:917, scikit-learn 1.9.0. A tolerance
             // would merge scores that are genuinely distinct and change the
             // curve — the approximate version is the wrong answer here, not a
             // safer one.

@@ -68,8 +68,8 @@ public static class CohenKappa
 
                 observed += weight * cells[(row * stride) + col];
 
-                // outer(columnSums, rowSums), scikit-learn's orientation — see
-                // docs/decisions/0030.
+                // outer(colSums, rowSums), scikit-learn's term order — symmetric
+                // weights make it untestable here. See docs/decisions/0030.
                 expected += weight * (colSums[row] * rowSums[col] / total);
             }
         }

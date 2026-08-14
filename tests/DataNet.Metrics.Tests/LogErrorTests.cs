@@ -144,8 +144,8 @@ public sealed class LogErrorTests
         // Measured against scikit-learn 1.9.0:
         //   mean_squared_log_error([1e-9, 2e-9, 3e-9], [2e-9, 4e-9, 1e-9])
         //     = 2.9999999856666664e-18
-        // Math.Log(1.0 + x) gives 3.000000038019698e-18 — out by 1.4e-8
-        // relative, which is 7 000 times this test's bound.
+        // Math.Log(1.0 + x) gives 3.000000038019698e-18 — out by 1.7e-8
+        // relative, about 17 000 times the 1e-12 bound asserted below.
         const double Expected = 2.9999999856666664e-18;
 
         double actual = MeanSquaredLogError.Score([1e-9, 2e-9, 3e-9], [2e-9, 4e-9, 1e-9]);

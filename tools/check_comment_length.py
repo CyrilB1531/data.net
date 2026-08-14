@@ -122,19 +122,29 @@ def _justifies_a_suppression(lines: list[str], after: int) -> bool:
     return after < len(lines) and "#pragma warning disable" in lines[after]
 
 
-def _doc_prefix(lines: list[str], start: int, length: int) -> int:
-    """How many of the block's opening lines are XML documentation.
+def _doc_prefix(lines: list[str], start: int, length: int) -> tuple[int, int]:
+    """The block's opening XML documentation lines, and how many are prose.
 
     A /// run and a // run touching each other are one block to the scanner but
     two things to the rules: only the // part can be a suppression's reason, and
     the /// part keeps its own budget however the block ends.
+
+    The prose count is returned alongside because the split path below cannot
+    reuse the whole block's: STRUCTURAL is exempt wherever it appears, and a
+    member whose /// run is nothing but a <summary> and eight <param> lines --
+    FBeta.Score, whose eight parameters are what its S107 suppression is about
+    -- spends none of the budget on them.
     """
     count = 0
+    prose = 0
     for offset in range(length):
-        if not lines[start - 1 + offset].strip().startswith("///"):
+        stripped = lines[start - 1 + offset].strip()
+        if not stripped.startswith("///"):
             break
         count += 1
-    return count
+        if not STRUCTURAL.search(stripped[len("///"):].strip()):
+            prose += 1
+    return count, prose
 
 
 def blocks_in(lines: list[str], suffix: str) -> list[Block]:
@@ -169,10 +179,10 @@ def blocks_in(lines: list[str], suffix: str) -> list[Block]:
                 prose += 1
         elif length:
             suppression = _justifies_a_suppression(lines, number - 1)
-            documented = _doc_prefix(lines, start, length)
+            documented, documented_prose = _doc_prefix(lines, start, length)
             if suppression and 0 < documented < length:
                 # Split: the documentation keeps its budget, the reason is exempt.
-                result.append(Block(start, documented, documented, True, marked, False))
+                result.append(Block(start, documented, documented_prose, True, marked, False))
             else:
                 result.append(Block(start, length, prose, doc, marked, suppression))
             length = 0

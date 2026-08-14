@@ -17,7 +17,8 @@ namespace DataNet.Metrics.Internal;
 /// <remarks>
 /// The format strings are transcribed from <c>classification_report</c>: a name
 /// column as wide as the longest heading, then four columns of width 9 each
-/// preceded by a space. The frozen oracle is what proves the transcription.
+/// preceded by a space. <c>ReportTextTests.Renders_the_sklearn_table_character_for_character</c>
+/// string-compares every corpus case's <c>reports</c> field against the result.
 /// </remarks>
 internal static class ReportText
 {

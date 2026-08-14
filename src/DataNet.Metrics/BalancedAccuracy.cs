@@ -17,7 +17,7 @@ public static class BalancedAccuracy
     /// see docs/decisions/0029. Each recall divides by its own row sum in the
     /// <see cref="ConfusionMatrix.Labels"/>-sized view, unlike <see cref="Recall"/>,
     /// whose denominator is scikit-learn's <c>true_sum</c> over every observed
-    /// label (see <see cref="ConfusionMatrix.Stride"/>); the two agree when
+    /// label, including labels that view does not expose; the two agree when
     /// nothing was dropped.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="cm"/> is null.</exception>

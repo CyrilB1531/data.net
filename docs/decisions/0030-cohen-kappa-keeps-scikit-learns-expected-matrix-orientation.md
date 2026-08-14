@@ -53,9 +53,15 @@ exists for the same call shape.
 - `CohenKappa.Score(ConfusionMatrix, ...)`'s `<remarks>` and the `Weight`
   loop's inline comment both carry a pointer here instead of restating the
   orientation and order-dependence arguments.
-- Verified by `CohenKappaTests.Matches_sklearn_cohen_kappa_score` (the oracle
-  theory, unweighted and both weightings),
+- **The orientation is not verified by anything, and cannot be.** All three
+  weightings are symmetric, so the two orientations return the same kappa on
+  all 78 corpus fixture × weighting combinations the theory runs — the choice
+  rests on term-for-term correspondence with `cohen_kappa_score`'s
+  `outer(s0, s1)`, not on a test that would fail if it were transposed. Only
+  an asymmetric weighting could tell them apart, and this package defines none.
+- Value parity is verified by `CohenKappaTests.Matches_sklearn_cohen_kappa_score`
+  (the oracle theory, unweighted and both weightings),
   `Unweighted_kappa_is_invariant_under_any_permutation_of_the_labels`,
   `A_restricted_label_set_reads_over_the_matrix_it_holds` (the `[1, 2]` → `1.0`
-  case above), and the permutation-dependence tests around
-  `tests/DataNet.Metrics.Tests/CohenKappaTests.cs:60-75` for `Linear`/`Quadratic`.
+  case above), and the permutation-dependence test at
+  `tests/DataNet.Metrics.Tests/CohenKappaTests.cs:61-77` for `Linear`/`Quadratic`.

@@ -44,7 +44,8 @@ public static class MatthewsCorrelation
         // S1244: this asks whether the denominator collapsed at all, not whether
         // two computed quantities are close. A tolerance would refuse legitimate
         // inputs whose weights are merely small, and scikit-learn tests the same
-        // quantity against exact zero.
+        // quantity against exact zero: `if cov_ypyp_ytyt == 0` at
+        // sklearn/metrics/_classification.py:1337 (scikit-learn 1.9.0).
 #pragma warning disable S1244
         if (denominator == 0.0)
 #pragma warning restore S1244

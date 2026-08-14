@@ -8,11 +8,14 @@
 column as plain integers or as floats by asking `multilabel_confusion_matrix`
 whether *any* prediction anywhere in the dataset was correct —
 `y_true[i] == y_pred[i]` for some `i` — checked over every observed label, not
-only the labels a `labels=` argument requested. When nothing at all matched,
-scikit-learn's C implementation takes what its own source calls the
-"pathological case" branch and seeds `tp_sum`/`pred_sum`/`true_sum` with
-`np.zeros(...)`, a NumPy float64 array, in place of the int64 array
-`np.bincount` would otherwise have produced. NumPy then upcasts the whole
+only the labels a `labels=` argument requested. `multilabel_confusion_matrix`
+is pure Python — `sklearn/metrics/_classification.py` — and normally fills
+`tp_sum`/`pred_sum`/`true_sum` from `_bincount`, whose result is int64. When
+nothing at all matched, `tp_bins` is empty and the branch its own comment
+labels `# Pathological case`
+(`sklearn/metrics/_classification.py:786`, scikit-learn 1.9.0) seeds all
+three with `xp.zeros(...)` instead — a NumPy float64 array. NumPy then
+upcasts the whole
 assembled matrix to float64, so every support value downstream prints with a
 decimal point — `15.0`, not `15` — even though nothing was weighted. The
 frozen oracle's `all_wrong` fixture pins exactly this: its `reports` field

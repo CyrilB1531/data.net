@@ -39,15 +39,22 @@ two order statistics `Average` needs:
   `value < pivot` — is correct too (when the element does not belong left, the
   store index already points at another element that also does not, so the
   swap is harmless either way) but carries a data-dependent branch that issue
-  #140 measured at 4.39 ns per element touched on random residuals against
-  2.15 ns on already-sorted ones, isolating misprediction from pass count by
-  counting inner-loop iterations rather than timing wall clock. `DOTNET_JitDisasm`
+  #140 measured at 4.39 ns per element touched on random residuals, 2.15 ns on
+  already-sorted ones and 2.65 ns on an alternating 0/1 shape. The third datum
+  is the one that makes the other two mean anything: random against sorted
+  alone is confounded, because sorted input also needs fewer partition passes,
+  while the alternating shape varies as much as random and still costs 2.65 —
+  so what separates the shapes is predictability, not pass count. The
+  measurement counts inner-loop iterations rather than wall clock for the same
+  reason. See [the performance guide](../guides/performance.md) for the full
+  table and the guess it corrected. `DOTNET_JitDisasm`
   on a verbatim copy of the loop confirmed RyuJIT on x64 compiles the
   branchless form to `seta`/`movzx`/`add`, no branch; unverified on the other
   runtimes the `netstandard2.0` assembly reaches, where only the gain and not
   the correctness depends on it.
 
-Below a width of 12 elements (`QuickSelect.InsertionCutoff`), the range is
+Below a width of 12 elements (`InsertionCutoff`, a constant local to
+`QuickSelect` at `src/DataNet.Metrics/Internal/WeightedPercentile.cs:87`), the range is
 sorted outright rather than selected: a full sort is cheap at that size and
 sidesteps the edge cases a three-point pivot has on ranges that barely hold
 three positions.
