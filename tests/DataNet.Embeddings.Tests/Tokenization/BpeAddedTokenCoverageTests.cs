@@ -147,7 +147,12 @@ public sealed class BpeAddedTokenCoverageTests
     {
         var vocabulary = new BpeVocabulary(
             new Dictionary<string, int> { ["a"] = 0, ["b"] = 1, ["ab"] = 2 },
-            [new MergePair("a", "b"), new MergePair("x", "y")]);
+            [new MergePair("a", "b"), new MergePair("x", "y")])
+        {
+            // The classic split, so the merge table is the only thing wrong with this
+            // vocabulary -- an undeclared pre-tokenizer would be refused ahead of it.
+            PreTokenizerPattern = BpePatterns.Whitespace,
+        };
 
         ArgumentException error = Assert.Throws<ArgumentException>(() => new BpeTokenizer(vocabulary));
 

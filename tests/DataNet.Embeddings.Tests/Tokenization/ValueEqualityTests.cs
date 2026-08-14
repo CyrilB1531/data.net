@@ -273,6 +273,22 @@ public sealed class ValueEqualityTests
         Assert.NotEqual(fused.GetHashCode(), plain.GetHashCode());
     }
 
+    /// <summary>
+    /// The mode is a flag like the others: two vocabularies that split differently
+    /// are different models, and a hand-built one is compared without ever reaching
+    /// <see cref="BpeTokenizer"/>, which is why the pattern is dropped here rather
+    /// than kept beside the mode it contradicts.
+    /// </summary>
+    [Fact]
+    public void BpeVocabulary_compares_and_hashes_NoPreTokenizer()
+    {
+        BpeVocabulary split = SampleBpe();
+        BpeVocabulary unsplit = split with { NoPreTokenizer = true, PreTokenizerPattern = null };
+
+        Assert.NotEqual(split, unsplit);
+        Assert.NotEqual(split.GetHashCode(), unsplit.GetHashCode());
+    }
+
     [Fact]
     public void BpeVocabularies_differing_only_in_normalization_forms_are_not_equal_and_do_not_share_a_hash()
     {

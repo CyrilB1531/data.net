@@ -96,16 +96,27 @@ public sealed record BpeVocabulary(
     public string? UnkToken { get; init; }
 
     /// <summary>
-    /// The last pattern text is split on before merging; <see langword="null"/> to
-    /// split on word boundaries when <see cref="PreSplit"/> is too.
+    /// The last pattern text is split on before merging; <see langword="null"/> when
+    /// <see cref="PreSplit"/> or <see cref="NoPreTokenizer"/> says what happens instead.
     /// </summary>
     /// <remarks>
     /// Set with <see cref="PreSplit"/>, re-splits each piece it produced, or — left
-    /// <see langword="null"/> — is the only split: <c>docs/equivalence.md</c>'s
-    /// <c>Sequence([Split(pattern), ByteLevel(…)])</c> row. With neither set,
-    /// <see cref="BpePreTokenizer"/>'s constructor decides the fallback.
+    /// <see langword="null"/> — that pre-split is the only split: <c>docs/equivalence.md</c>'s
+    /// <c>Sequence([Split(pattern), ByteLevel(…)])</c> row. The classic lineage's own is
+    /// <see cref="BpePatterns.Whitespace"/>, which a caller now writes rather than omits.
     /// </remarks>
     public string? PreTokenizerPattern { get; init; }
+
+    /// <summary>Whether the model declares no pre-tokenizer, so each added-token segment reaches the merge loop whole; <see langword="false"/> unless the file says so.</summary>
+    /// <remarks>
+    /// Two file shapes mean this and they are not otherwise alike: an absent
+    /// <c>pre_tokenizer</c>, and a <c>ByteLevel</c> whose <c>use_regex</c> is off.
+    /// Measured against <c>tokenizers</c> 0.23.1, a model declaring no pre-tokenizer
+    /// encodes <c>"aZ Za"</c> to <c>['a', '[UNK]', 'a']</c> where the <c>Whitespace</c>
+    /// split gives four tokens — see <c>tests/oracles/bpe_no_split.json</c>, models
+    /// <c>absent</c> and <c>whitespace</c>.
+    /// </remarks>
+    public bool NoPreTokenizer { get; init; }
 
     /// <summary>
     /// The <c>Split</c> step a <c>Sequence</c> pre-tokenizer declares, before
@@ -154,6 +165,7 @@ public sealed record BpeVocabulary(
             || AddPrefixSpace != other.AddPrefixSpace
             || IgnoreMerges != other.IgnoreMerges
             || FuseUnk != other.FuseUnk
+            || NoPreTokenizer != other.NoPreTokenizer
             || !string.Equals(EndOfWordSuffix, other.EndOfWordSuffix, StringComparison.Ordinal)
             || !string.Equals(ContinuingSubwordPrefix, other.ContinuingSubwordPrefix, StringComparison.Ordinal)
             || !string.Equals(UnkToken, other.UnkToken, StringComparison.Ordinal)
@@ -203,6 +215,7 @@ public sealed record BpeVocabulary(
             hash = (hash * 31) + (AddPrefixSpace ? 1 : 0);
             hash = (hash * 31) + (IgnoreMerges ? 1 : 0);
             hash = (hash * 31) + (FuseUnk ? 1 : 0);
+            hash = (hash * 31) + (NoPreTokenizer ? 1 : 0);
             hash = (hash * 31) + (EndOfWordSuffix is null ? 0 : StringComparer.Ordinal.GetHashCode(EndOfWordSuffix));
             hash = (hash * 31) + (ContinuingSubwordPrefix is null ? 0 : StringComparer.Ordinal.GetHashCode(ContinuingSubwordPrefix));
             hash = (hash * 31) + (UnkToken is null ? 0 : StringComparer.Ordinal.GetHashCode(UnkToken));

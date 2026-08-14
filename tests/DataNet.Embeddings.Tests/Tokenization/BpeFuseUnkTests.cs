@@ -105,7 +105,9 @@ public sealed class BpeFuseUnkTests
     /// </summary>
     private static BpeVocabulary Build(
         Dictionary<string, int> vocab, IReadOnlyList<MergePair> merges, string? unk, bool fuse) =>
-        new(vocab, merges) { UnkToken = unk, FuseUnk = fuse };
+        // The split these cases are written against: the theory below reasons about
+        // what lands in one `Whitespace` piece, so the pattern is part of the claim.
+        new(vocab, merges) { UnkToken = unk, FuseUnk = fuse, PreTokenizerPattern = BpePatterns.Whitespace };
 
     private static BpeVocabulary Vocabulary(JsonElement model)
     {

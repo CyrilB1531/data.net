@@ -7,19 +7,14 @@ namespace DataNet.Embeddings.Tokenization;
 /// Splits text into the pieces the merge loop runs over, independently.
 /// </summary>
 /// <remarks>
-/// A byte-level model declares one split pattern (<c>ByteLevel</c>) or two
-/// (<c>Sequence</c> of <c>Split</c> then <c>ByteLevel</c>); the classic lineage
-/// declares none. See <c>docs/equivalence.md</c>'s <c>Split(pattern, …)</c> and
-/// <c>Sequence(...)</c> rows. Both are caller-supplied, compiled with
-/// <see cref="RegexDefaults.MatchTimeout"/> against a hung thread.
+/// A model declares two split patterns (<c>Sequence</c> of <c>Split</c> then
+/// <c>ByteLevel</c>), one (<c>ByteLevel</c>, or the classic lineage's
+/// <see cref="BpePatterns.Whitespace"/>), or none at all — <c>docs/equivalence.md</c>'s
+/// <c>Split(pattern, …)</c> and <c>Sequence(...)</c> rows. Each is caller-supplied,
+/// compiled with <see cref="RegexDefaults.MatchTimeout"/> against a hung thread.
 /// </remarks>
 internal sealed class BpePreTokenizer
 {
-    // HuggingFace's "Whitespace" pre-tokenizer type -- splits on word boundaries
-    // and isolates punctuation, unlike "WhitespaceSplit" (\S+, not implemented here).
-    private static readonly Regex Whitespace =
-        new(@"\w+|[^\w\s]+", RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexDefaults.MatchTimeout);
-
     private const int NoOpenPiece = -1;
 
     /// <summary>A behaviour and its invert flag, bundled so <see cref="Step"/> and
@@ -32,33 +27,45 @@ internal sealed class BpePreTokenizer
     /// package that leans on spans elsewhere.</remarks>
     private readonly record struct Run(int Start, int Length);
 
-    private readonly Regex _first;
+    /// <summary>The first pattern, or <see langword="null"/> when nothing is split at all.</summary>
+    private readonly Regex? _first;
     private readonly Regex? _second;
     private readonly SplitRule _rule;
 
-    // RegexOptions.Compiled is deliberately not used: a tokenizer is built once per
-    // model, so paying a compile cost here buys nothing on a path that runs once.
-    public BpePreTokenizer(BpeSplitStep? preSplit, string? pattern)
+    // Compiled on none of the four patterns, so one policy covers them all: 1.44x matching for
+    // 6-26 ms a build, i7-4770S over 976 KiB -- docs/superpowers/specs/2026-08-14_0122_no-split-mode.md.
+    public BpePreTokenizer(BpeSplitStep? preSplit, string? pattern, bool noSplit)
     {
+        if (noSplit)
+        {
+            // No pattern to match, so no rule to arrange matches with: Split emits
+            // the text whole. The behaviour rules below have nothing to govern here.
+            _first = null;
+            _second = null;
+            _rule = default;
+            return;
+        }
+
         // long-comment: the default rule when no Split step is declared is not
         // obvious, and the measured case is what keeps it from looking arbitrary.
-        // Both absent is the classic Whitespace split. Otherwise the pre-split
-        // runs first and the second pattern re-splits its pieces (issue #143).
-        // Only the pre-split carries a declared behaviour; a null pre-split still
-        // needs one to drive Apply, and it is Removed with invert on -- "keep the
-        // regex matches, drop everything else" -- not Isolated. The two are
-        // interchangeable only when the pattern never leaves a gap,
+        // A pre-split runs first and the second pattern re-splits its pieces
+        // (issue #143). Only the pre-split carries a declared behaviour; a null
+        // pre-split still needs one to drive Apply, and it is Removed with invert
+        // on -- "keep the regex matches, drop everything else" -- not Isolated.
+        // The two are interchangeable only when the pattern never leaves a gap,
         // which is true of every shipped byte-level pattern (Gpt2/Llama3/Qwen2)
-        // but false of Whitespace's own \w+|[^\w\s]+, which never matches a run
-        // of whitespace: under Isolated that whitespace would surface as its own
-        // piece and reach the merge loop as an uncovered symbol, where measured
+        // but false of BpePatterns.Whitespace's \w+|[^\w\s]+, which never matches
+        // a run of whitespace: under Isolated that whitespace would surface as its
+        // own piece and reach the merge loop as an uncovered symbol, where measured
         // (bpe.json, e.g. " leading space") the reference produces no such piece
         // and no substituted token for one. Removed+invert keeps that path
         // byte-for-byte unchanged; BpeSplitBehaviorTests never exercises this
         // branch at all, since every corpus case supplies its own BpeSplitStep.
         if (preSplit is null)
         {
-            _first = pattern is null ? Whitespace : Compile(pattern);
+            // Not null here: BpeTokenizer.EnsurePreTokenizerIsDeclared refuses a
+            // vocabulary declaring no pre-split, no pattern and not the mode.
+            _first = Compile(pattern!);
             _second = null;
             _rule = new SplitRule(SplitBehavior.Removed, Invert: true);
         }
@@ -76,6 +83,14 @@ internal sealed class BpePreTokenizer
     /// <summary>Appends the pieces of <paramref name="text"/> to <paramref name="pieces"/>.</summary>
     public void Split(string text, List<string> pieces)
     {
+        // The mode: no pattern, so there are no matches, and #145's SplitBehavior
+        // and invert have nothing to arrange -- the text is the one piece.
+        if (_first is null)
+        {
+            Emit(text, 0, text.Length, pieces);
+            return;
+        }
+
         if (_second is null)
         {
             Apply(_first, _rule, text, pieces);

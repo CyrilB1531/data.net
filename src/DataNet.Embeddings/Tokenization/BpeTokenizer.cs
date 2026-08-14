@@ -67,18 +67,20 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// <param name="vocabulary">A vocabulary from <see cref="Persistence.BpeFilesLoader"/> or <see cref="Persistence.TokenizerJsonLoader"/>.</param>
     /// <exception cref="ArgumentException">
     /// The declared unknown token is not in the vocabulary; or a merge names a
-    /// token the vocabulary does not declare; or a merge's result is not itself
-    /// a vocabulary entry; or a byte-level vocabulary declares a continuing
-    /// subword prefix, which this tokenizer would apply to its merges and not to
-    /// its symbols — see <see cref="EnsureByteLevelDeclaresNoContinuingPrefix"/>;
-    /// or <see cref="BpeVocabulary.PreSplit"/> declares a <see cref="SplitBehavior"/>
-    /// outside its five defined values — see <see cref="EnsureSplitBehaviorIsDefined"/>.
+    /// token the vocabulary does not declare, or produces one it does not; or a
+    /// byte-level vocabulary declares a continuing subword prefix, which this
+    /// tokenizer would apply to its merges and not to its symbols — see
+    /// <see cref="EnsureByteLevelDeclaresNoContinuingPrefix"/>; or <see cref="BpeVocabulary.PreSplit"/>
+    /// declares a <see cref="SplitBehavior"/> outside its five defined values — see
+    /// <see cref="EnsureSplitBehaviorIsDefined"/>; or the vocabulary does not say how it
+    /// is split, or says it two ways at once — see <see cref="EnsurePreTokenizerIsDeclared"/>.
     /// </exception>
     public BpeTokenizer(BpeVocabulary vocabulary)
     {
         Guard.NotNull(vocabulary);
         EnsureByteLevelDeclaresNoContinuingPrefix(vocabulary);
         EnsureSplitBehaviorIsDefined(vocabulary);
+        EnsurePreTokenizerIsDeclared(vocabulary);
         _addPrefixSpace = vocabulary.AddPrefixSpace;
         _endOfWord = vocabulary.EndOfWordSuffix;
         _continuingPrefix = vocabulary.ContinuingSubwordPrefix;
@@ -136,7 +138,47 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             _merged[rank] = result;
         }
 
-        _split = new BpePreTokenizer(vocabulary.PreSplit, vocabulary.PreTokenizerPattern);
+        _split = new BpePreTokenizer(vocabulary.PreSplit, vocabulary.PreTokenizerPattern, vocabulary.NoPreTokenizer);
+    }
+
+    /// <summary>Refuses a vocabulary that does not say how its text is split, or says it two ways at once.</summary>
+    /// <remarks>
+    /// Declaring nothing used to mean <see cref="BpePatterns.Whitespace"/>, and that
+    /// spelling is now needed for the mode that splits nothing at all. Reinterpreting
+    /// it would hand an existing caller a different token stream with nothing to say
+    /// so, so it is refused instead — issue #122, and the spec's "three legal shapes"
+    /// table. Same reason as <see cref="EnsureByteLevelDeclaresNoContinuingPrefix"/>:
+    /// <see cref="BpeVocabulary"/> is public and constructible without a loader.
+    /// </remarks>
+    /// <param name="vocabulary">The vocabulary the constructor was handed.</param>
+    private static void EnsurePreTokenizerIsDeclared(BpeVocabulary vocabulary)
+    {
+        bool declaresAPattern = vocabulary.PreSplit is not null || vocabulary.PreTokenizerPattern is not null;
+        if (!declaresAPattern && !vocabulary.NoPreTokenizer)
+        {
+            throw new ArgumentException(
+                "The vocabulary declares no PreSplit, no PreTokenizerPattern and no NoPreTokenizer, "
+                + "so it does not say how its text is split. That shape used to mean the classic "
+                + "word-boundary split: write PreTokenizerPattern = BpePatterns.Whitespace for it, "
+                + "PreSplit for a Split step, or NoPreTokenizer = true for a model whose text reaches "
+                + "the merge loop unsplit.",
+                nameof(vocabulary));
+        }
+
+        if (declaresAPattern && vocabulary.NoPreTokenizer)
+        {
+            string declared = (vocabulary.PreSplit, vocabulary.PreTokenizerPattern) switch
+            {
+                (null, _) => "PreTokenizerPattern",
+                (_, null) => "PreSplit",
+                _ => "PreSplit and PreTokenizerPattern",
+            };
+            throw new ArgumentException(
+                $"The vocabulary declares NoPreTokenizer and {declared} together, which contradict each "
+                + "other: NoPreTokenizer means nothing is split, and a pattern is a split. Keep the "
+                + "pattern and drop NoPreTokenizer, or drop the pattern and keep NoPreTokenizer.",
+                nameof(vocabulary));
+        }
     }
 
     /// <summary>Refuses a byte-level vocabulary that also declares a continuing subword prefix, the one pairing whose two halves this class would answer differently.</summary>

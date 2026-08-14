@@ -181,6 +181,9 @@ public sealed class BpeContinuingPrefixTests
         {
             ByteLevel = true,
             ContinuingSubwordPrefix = "##",
+            // What a byte-level model declares, so the prefix is the only illegal
+            // thing here rather than one of two.
+            PreTokenizerPattern = BpePatterns.Gpt2,
         };
 
         ArgumentException error = Assert.Throws<ArgumentException>(() => new BpeTokenizer(vocabulary));

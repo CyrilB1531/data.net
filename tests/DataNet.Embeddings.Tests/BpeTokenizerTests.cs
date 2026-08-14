@@ -54,6 +54,9 @@ public sealed class BpeTokenizerTests
             AddedTokens = addedTokens,
             EndOfWordSuffix = model.GetProperty("end_of_word_suffix").GetString(),
             UnkToken = model.GetProperty("unk_token").GetString(),
+            // The file's own pre_tokenizer: tiny_bpe.json declares "Whitespace", the
+            // only fixture on this branch that does, so this restates it rather than defaulting.
+            PreTokenizerPattern = BpePatterns.Whitespace,
         };
     }
 
@@ -217,6 +220,7 @@ public sealed class BpeTokenizerTests
                 new AddedToken("<s>", 1) { Special = true },
                 new AddedToken("<x>", 2),
             ],
+            PreTokenizerPattern = BpePatterns.Whitespace,
         };
         var tokenizer = new BpeTokenizer(vocabulary);
 
@@ -234,7 +238,7 @@ public sealed class BpeTokenizerTests
         var vocabulary = new BpeVocabulary(
             new Dictionary<string, int>(StringComparer.Ordinal) { ["a"] = 0, ["b"] = 1 },
             [])
-        { EndOfWordSuffix = "" };
+        { EndOfWordSuffix = "", PreTokenizerPattern = BpePatterns.Whitespace };
         var tokenizer = new BpeTokenizer(vocabulary);
 
         string decoded = tokenizer.Decode([0, 1]);
@@ -248,6 +252,11 @@ public sealed class BpeTokenizerTests
     /// Small enough that the merge order it produces can be worked out by hand,
     /// which is the point — the oracle corpora prove parity, not invariants.
     /// </summary>
+    /// <remarks>
+    /// The classic split, which is what these cases have always merged under: every
+    /// text they encode is one word, so it produces one piece and the merge loop
+    /// sees the whole of it.
+    /// </remarks>
     private static BpeVocabulary HandBuiltVocabulary(string[] tokens, params string[] merges)
     {
         var vocab = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -261,7 +270,7 @@ public sealed class BpeTokenizerTests
             string[] parts = merge.Split(' ');
             pairs.Add(new MergePair(parts[0], parts[1]));
         }
-        return new BpeVocabulary(vocab, pairs);
+        return new BpeVocabulary(vocab, pairs) { PreTokenizerPattern = BpePatterns.Whitespace };
     }
 
     /// <summary>
@@ -536,7 +545,8 @@ public sealed class BpeTokenizerTests
             merges.Add(new MergePair(merge[0].GetString()!, merge[1].GetString()!));
         }
 
-        return new BpeVocabulary(vocab, merges);
+        // orphan_bpe_model.json declares "Whitespace" too, like tiny_bpe.json.
+        return new BpeVocabulary(vocab, merges) { PreTokenizerPattern = BpePatterns.Whitespace };
     }
 
     /// <summary>

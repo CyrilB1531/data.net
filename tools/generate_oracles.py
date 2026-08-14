@@ -3454,11 +3454,9 @@ def _fuse_unk_model(vocab, merges, fuse, *, unk=UNK_TOKEN, byte_level=False, eow
     """One tokenizer, built rather than trained, so the file is byte-stable.
 
     Every classic model declares Whitespace. A model declaring no pre-tokenizer
-    at all is a shape DataNet cannot currently express — `PreTokenizerPattern =
-    null` means "Whitespace" there by decision, while HuggingFace's absent
-    pre-tokenizer does not split at all, and the two disagree on any text with
-    a space. That gap is issue #129 and is not this lot's to close; declaring
-    the pre-tokenizer explicitly keeps this corpus about fuse_unk.
+    at all does not split at all, which DataNet reads as `NoPreTokenizer` since
+    issue #122 and `bpe_no_split.json` measures; declaring the pre-tokenizer
+    explicitly keeps this corpus about fuse_unk rather than about that split.
     """
     from tokenizers import Tokenizer, models, pre_tokenizers  # noqa: PLC0415
 
@@ -4261,6 +4259,101 @@ def generate_bpe_split_behavior() -> dict:
     }
 
 
+# --- a pre-tokenizer that does not split (issue #122) -------------------------
+
+# fuse_unk is on so the unsplit side comes out SHORTER than the split one --
+# measured, 3 tokens against 4; with it off the pair still differs, 5 against 4.
+_NO_SPLIT_VOCAB = {UNK_TOKEN: 0, "a": 1, "b": 2, "ab": 3}
+
+
+def _no_split_classic(pre_tokenizer):
+    """A classic BPE, built rather than trained, so the file is byte-stable."""
+    from tokenizers import Tokenizer, models, pre_tokenizers  # noqa: PLC0415
+
+    tokenizer = Tokenizer(models.BPE(
+        dict(_NO_SPLIT_VOCAB), [("a", "b")], unk_token=UNK_TOKEN, fuse_unk=True))
+    if pre_tokenizer is not None:
+        tokenizer.pre_tokenizer = pre_tokenizer
+    return tokenizer
+
+
+def _no_split_byte_level(use_regex, add_prefix_space=False, added=None):
+    """A byte-level BPE whose alphabet covers every byte, so nothing is unknown.
+
+    The one merge spans a piece boundary on purpose: use_regex cuts "hello
+    world" between the o and the space, so only the unsplit model can apply it.
+    Without it both models emit one token per character and measure nothing.
+    """
+    from tokenizers import Tokenizer, models, pre_tokenizers, decoders  # noqa: PLC0415
+
+    vocab = {c: i for i, c in enumerate(sorted(pre_tokenizers.ByteLevel.alphabet()))}
+    vocab["oĠ"] = len(vocab)
+    tokenizer = Tokenizer(models.BPE(vocab, [("o", "Ġ")]))
+    tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(
+        add_prefix_space=add_prefix_space, use_regex=use_regex)
+    tokenizer.decoder = decoders.ByteLevel()
+    if added:
+        tokenizer.add_tokens(added)
+    return tokenizer
+
+
+def _no_split_models() -> list[tuple]:
+    """(name, declares, tokenizer, texts) -- one per thing no other model shows."""
+    from tokenizers import AddedToken, pre_tokenizers  # noqa: PLC0415
+
+    fuse_texts = ["aZ Za", "ab", "Z Z"]
+    byte_texts = [HELLO_WORLD, "  leading and trailing  ", "hello world  again", "café \U0001f600"]
+    added_texts = ["o o<sep>o o", "o o"]
+    return [
+        ("absent", "no pre_tokenizer at all -- the shape #122 found DataNet mis-loading",
+         _no_split_classic(None), fuse_texts),
+        ("whitespace", "the classic Whitespace split, for the row above to differ from",
+         _no_split_classic(pre_tokenizers.Whitespace()), fuse_texts),
+        ("byte_level_no_regex", "ByteLevel with use_regex off -- refused before #122",
+         _no_split_byte_level(False), byte_texts),
+        ("byte_level_regex", "the same with it on, so the pair shows what the flag does",
+         _no_split_byte_level(True), byte_texts),
+        ("no_regex_prefix_space", "no split and add_prefix_space on -- one space, at the front",
+         _no_split_byte_level(False, add_prefix_space=True), byte_texts),
+        ("no_regex_added_token", "no split, with an added token the text spans",
+         _no_split_byte_level(False, added=[AddedToken("<sep>", special=True)]),
+         added_texts),
+        ("regex_added_token", "the split counterpart the row above is measured against",
+         _no_split_byte_level(True, added=[AddedToken("<sep>", special=True)]),
+         added_texts),
+    ]
+
+
+def generate_bpe_no_split() -> dict:
+    """What a pre-tokenizer that does not split produces, and what it decodes to."""
+    carried = _no_split_models()
+    cases = []
+    for name, _declares, tokenizer, texts in carried:
+        for text in texts:
+            enc = tokenizer.encode(text)
+            cases.append({
+                "id": len(cases), "model": name, "text": text,
+                "tokens": enc.tokens, "ids": enc.ids,
+                # D5 is about the input coming back; a token list proves itself.
+                "decoded": tokenizer.decode(enc.ids, skip_special_tokens=False),
+            })
+
+    return {
+        "metadata": {
+            "algorithm": "BPE with a pre-tokenizer that does not split",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "hand-built: a 4-entry classic BPE and a byte-level one, defined in tools/generate_oracles.py",
+            "models": {
+                name: {"declares": declares, "tokenizer_json": tokenizer.to_str()}
+                for name, declares, tokenizer, _ in carried
+            },
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -4319,6 +4412,7 @@ def main() -> None:
         "bpe_sequence_split.json": generate_bpe_sequence_split,
         "bpe_split_behavior.json": generate_bpe_split_behavior,
         "bpe_duplicate_merge.json": generate_bpe_duplicate_merge,
+        "bpe_no_split.json": generate_bpe_no_split,
         "wordpiece_added_tokens.json": generate_wordpiece_added_tokens,
     }
     for filename, gen in generators.items():
