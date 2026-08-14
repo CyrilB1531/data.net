@@ -52,9 +52,11 @@ A `tokenizer.json` that declares a normalizer — `NFC`, `NFKC`, `NFD`, `NFKD`, 
 `Sequence` of those — has it applied before encoding, not after decoding: `Decode`
 applies no normalizer of its own, but since `Encode` already normalized the text it
 saw, `Decode(Encode(x))` returns the normalized text rather than `x`, matching Python.
-One case does not round-trip at all: a non-ASCII added token that is not byte-level
-encodable end to end makes `Decode` throw where HuggingFace substitutes U+FFFD instead
-— [#149](https://github.com/CyrilB1531/data.net/issues/149).
+One case does not round-trip byte-exactly: a non-ASCII added token that is not
+byte-level encodable end to end decodes to U+FFFD, matching HuggingFace rather than
+throwing — [decision 0023](../decisions/0023-byte-level-decode-substitutes.md). That is
+also what makes decoding one token id at a time work, the normal way to consume a
+streamed model.
 
 See [Which tokenizer for which model family](#which-tokenizer-for-which-model-family)
 for the family-to-class mapping, including the one family this package refuses
