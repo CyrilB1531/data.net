@@ -4179,6 +4179,99 @@ def generate_bpe_split_behavior() -> dict:
     }
 
 
+# --- a pre-tokenizer that does not split (issue #122) -------------------------
+
+# fuse_unk on and Z uncovered is what makes D1 visible: unsplit, Z-space-Z is
+# one uncovered run and fuses to one token; split, the two Z's cannot meet.
+_NO_SPLIT_VOCAB = {UNK_TOKEN: 0, "a": 1, "b": 2, "ab": 3}
+
+
+def _no_split_classic(pre_tokenizer):
+    """A classic BPE, built rather than trained, so the file is byte-stable."""
+    from tokenizers import Tokenizer, models, pre_tokenizers  # noqa: PLC0415
+
+    tokenizer = Tokenizer(models.BPE(
+        dict(_NO_SPLIT_VOCAB), [("a", "b")], unk_token=UNK_TOKEN, fuse_unk=True))
+    if pre_tokenizer is not None:
+        tokenizer.pre_tokenizer = pre_tokenizer
+    return tokenizer
+
+
+def _no_split_byte_level(use_regex, add_prefix_space=False, added=None):
+    """A byte-level BPE whose alphabet covers every byte, so nothing is unknown.
+
+    The one merge spans a piece boundary on purpose: with use_regex on,
+    "hello world" is two pieces and the o and the space fall either side of the
+    cut, so the merge cannot apply. With it off there is one piece and it can.
+    Without such a merge the two models produce the same tokens -- one character
+    each -- and the corpus would show nothing.
+    """
+    from tokenizers import Tokenizer, models, pre_tokenizers, decoders  # noqa: PLC0415
+
+    vocab = {c: i for i, c in enumerate(sorted(pre_tokenizers.ByteLevel.alphabet()))}
+    vocab["oĠ"] = len(vocab)
+    tokenizer = Tokenizer(models.BPE(vocab, [("o", "Ġ")]))
+    tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(
+        add_prefix_space=add_prefix_space, use_regex=use_regex)
+    tokenizer.decoder = decoders.ByteLevel()
+    if added:
+        tokenizer.add_tokens(added)
+    return tokenizer
+
+
+def _no_split_models() -> list[tuple]:
+    """(name, declares, tokenizer, texts) -- one per thing no other model shows."""
+    from tokenizers import AddedToken, pre_tokenizers  # noqa: PLC0415
+
+    fuse_texts = ["aZ Za", "ab", "Z Z"]
+    byte_texts = ["hello world", "  leading and trailing  ", "café \U0001f600"]
+    return [
+        ("absent", "no pre_tokenizer at all -- the shape DataNet mis-loads today",
+         _no_split_classic(None), fuse_texts),
+        ("whitespace", "the classic Whitespace split, for the row above to differ from",
+         _no_split_classic(pre_tokenizers.Whitespace()), fuse_texts),
+        ("byte_level_no_regex", "ByteLevel with use_regex off -- refused today",
+         _no_split_byte_level(False), byte_texts),
+        ("byte_level_regex", "the same with it on, so the pair shows what the flag does",
+         _no_split_byte_level(True), byte_texts),
+        ("no_regex_prefix_space", "no split and add_prefix_space on -- one space, at the front",
+         _no_split_byte_level(False, add_prefix_space=True), byte_texts),
+        ("no_regex_added_token", "no split, with an added token the text spans",
+         _no_split_byte_level(False, added=[AddedToken("<sep>", special=True)]),
+         ["a b<sep>a b", "a b"]),
+    ]
+
+
+def generate_bpe_no_split() -> dict:
+    """What a pre-tokenizer that does not split produces, and what it decodes to."""
+    carried = _no_split_models()
+    cases = []
+    for name, _declares, tokenizer, texts in carried:
+        for text in texts:
+            enc = tokenizer.encode(text)
+            cases.append({
+                "id": len(cases), "model": name, "text": text,
+                "tokens": enc.tokens, "ids": enc.ids,
+                # D5 is about the input coming back; a token list proves itself.
+                "decoded": tokenizer.decode(enc.ids),
+            })
+
+    return {
+        "metadata": {
+            "algorithm": "BPE with a pre-tokenizer that does not split",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "model": "hand-built: a 4-entry classic BPE and a byte-level one, defined in tools/generate_oracles.py",
+            "models": {
+                name: {"declares": declares, "tokenizer_json": tokenizer.to_str()}
+                for name, declares, tokenizer, _ in carried
+            },
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     ORACLE_DIR.mkdir(parents=True, exist_ok=True)
     generators = {
@@ -4236,6 +4329,7 @@ def main() -> None:
         "bpe_continuing_prefix.json": generate_bpe_continuing_prefix,
         "bpe_sequence_split.json": generate_bpe_sequence_split,
         "bpe_split_behavior.json": generate_bpe_split_behavior,
+        "bpe_no_split.json": generate_bpe_no_split,
         "wordpiece_added_tokens.json": generate_wordpiece_added_tokens,
     }
     for filename, gen in generators.items():
