@@ -26,19 +26,11 @@ namespace DataNet.Text.Stemming;
 /// The Portuguese Snowball stemming algorithm.
 /// </summary>
 /// <remarks>
-/// <para>
 /// Reference behavior: <c>nltk.stem.snowball.SnowballStemmer("portuguese")</c>. An
-/// original implementation of the published Snowball algorithm, using the RV/R1/R2
-/// regions and the standard step ordering. Input is lowercased. Thread-safe.
-/// </para>
-/// <para>
-/// Two quirks distinguish it from the Spanish algorithm. Nasal <c>ã</c> and
-/// <c>õ</c> are expanded to <c>a~</c> and <c>o~</c> for the duration of the run so
-/// the tilde is not treated as a vowel — which is why <c>geração</c> stems to
-/// <c>geraçã</c> and not <c>geraç</c>. And acute accents are *kept*: unlike
-/// Spanish, there is no final accent-stripping step, so <c>país</c> stems to
-/// itself.
-/// </para>
+/// original implementation of the published Snowball algorithm, using RV/R1/R2.
+/// Nasal <c>ã</c>/<c>õ</c> expand to <c>a~</c>/<c>o~</c> so the tilde is not a
+/// vowel, and accents are kept, unlike Spanish — see
+/// <c>tests/oracles/snowball_pt.json</c> cases 23 and 93. Lowercased, thread-safe.
 /// </remarks>
 public static class PortugueseSnowballStemmer
 {

@@ -71,9 +71,8 @@ public sealed class TfidfTransformer
         }
         if (_idf is not null && counts.ColumnCount != _idf.Length)
         {
-            // CsrMatrix guarantees its column indices are inside its own ColumnCount,
-            // but nothing tied that count to the idf vector — so a wider matrix reached
-            // the indexing below and came back as a bare IndexOutOfRangeException.
+            // CsrMatrix bounds its own columns, but nothing ties that count to the
+            // idf vector — unchecked, a mismatch throws deep in the loop below.
             throw new ArgumentException(
                 $"The matrix has {counts.ColumnCount} columns but this transformer was fitted on {_idf.Length} features.",
                 nameof(counts));

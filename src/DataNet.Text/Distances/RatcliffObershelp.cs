@@ -4,22 +4,14 @@ using DataNet.Text.Internal;
 namespace DataNet.Text.Distances;
 
 /// <summary>
-/// Ratcliff-Obershelp similarity (Gestalt pattern matching): <c>2·M / T</c>, where
-/// <c>M</c> is the total number of matched characters found by recursively pairing
-/// the longest common substring and <c>T</c> is the sum of the two lengths.
+/// Ratcliff-Obershelp similarity (Gestalt pattern matching): <c>2·M / T</c> over
+/// the longest common substring, recursively paired.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Reference behavior: <c>difflib.SequenceMatcher(None, a, b).ratio()</c>. Two
-/// empty inputs give <c>1</c>. The longest-match tie-break matches difflib
-/// (earliest in <c>a</c>, then earliest in <c>b</c>).
-/// </para>
-/// <para>
-/// difflib's default "autojunk" heuristic is <em>not</em> replicated — see
-/// <c>docs/decisions/0006-ratcliff-autojunk.md</c>. It only affects sequences
-/// longer than 200 elements, so results are identical to difflib for shorter
-/// inputs. See <see cref="TextElement"/> for the UTF-16 vs code-point choice.
-/// </para>
+/// Reference behavior: <c>difflib.SequenceMatcher(None, a, b).ratio()</c>;
+/// <c>autojunk</c> is not replicated — see
+/// <c>docs/decisions/0006-ratcliff-autojunk.md</c>. See <see cref="TextElement"/>
+/// for the UTF-16 vs code-point choice.
 /// </remarks>
 public static class RatcliffObershelp
 {

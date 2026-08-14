@@ -20,18 +20,11 @@ namespace DataNet.Text.Stemming;
 /// The German Snowball stemming algorithm.
 /// </summary>
 /// <remarks>
-/// <para>
 /// Reference behavior: <c>nltk.stem.snowball.SnowballStemmer("german")</c>. An
-/// original implementation of the published Snowball algorithm. Input is
-/// lowercased. Thread-safe.
-/// </para>
-/// <para>
-/// German is structurally apart from the Romance stemmers, so it builds on
-/// <see cref="SnowballWorkerBase"/> rather than <see cref="RomanceSnowballWorker"/>:
-/// there is no RV region at all, R1 is floored so the region before it holds at
-/// least three letters, and the suffix conditions turn on the preceding
-/// <em>letter</em> rather than on a region alone.
-/// </para>
+/// original implementation of the published Snowball algorithm: no RV region, R1
+/// floored so the region before it holds at least three letters, and suffix
+/// conditions test the preceding letter rather than a region alone — see
+/// <c>docs/equivalence.md</c>'s stemming row. Input is lowercased. Thread-safe.
 /// </remarks>
 public static class GermanSnowballStemmer
 {

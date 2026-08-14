@@ -115,9 +115,8 @@ internal sealed class TextAnalyzer
         foreach (Match m in _tokenPattern.Matches(s))
         {
 #if NET9_0_OR_GREATER
-            // Judge the token where it already is, as a span over the document: a
-            // stop word is discarded without ever being allocated, and those are
-            // the tokens the filter exists for — the most frequent ones.
+            // Judged as a span over the document, so a filtered-out (and by
+            // definition frequent) stop word is never allocated as a string.
             if (_stopWords is null || !_stopWords.Contains(s.AsSpan(m.Index, m.Length)))
             {
                 tokens.Add(m.Value);

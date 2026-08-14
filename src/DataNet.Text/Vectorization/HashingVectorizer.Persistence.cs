@@ -11,14 +11,10 @@ public sealed partial class HashingVectorizer
 
     /// <summary>Writes the vectorizer's configuration to <paramref name="destination"/> as UTF-8 JSON.</summary>
     /// <remarks>
-    /// <para>
-    /// The DataNet equivalent of <c>joblib.dump</c> on a
-    /// <c>sklearn.feature_extraction.text.HashingVectorizer</c>. Hashing is
-    /// stateless — there is no vocabulary to learn — but the configuration is not:
-    /// a pipeline reloaded with a different <c>NumFeatures</c>, <c>AlternateSign</c>
-    /// or analyzer produces different columns for the same document, and nothing
-    /// downstream would notice. That is what this persists.
-    /// </para>
+    /// The DataNet equivalent of <c>joblib.dump</c> on a <c>sklearn.feature_extraction.text.HashingVectorizer</c>
+    /// (format: see <see cref="CountVectorizer.Save(Stream)"/>). Hashing has no vocabulary to learn, but the
+    /// configuration still matters: a pipeline reloaded with a different <c>NumFeatures</c>,
+    /// <c>AlternateSign</c> or analyzer silently produces different columns for the same document.
     /// </remarks>
     /// <param name="destination">The stream to write to. It is flushed but never disposed — the caller owns it.</param>
     public void Save(Stream destination) =>

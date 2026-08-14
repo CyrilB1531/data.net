@@ -17,13 +17,11 @@ namespace DataNet.Text.Stemming;
 /// The English Snowball ("Porter2") stemming algorithm.
 /// </summary>
 /// <remarks>
-/// <para>
-/// A refinement of <see cref="PorterStemmer"/> with cleaner handling of regions
-/// R1/R2 and numerous special cases. Reference behavior:
-/// <c>nltk.stem.snowball.SnowballStemmer("english")</c>. This is an original
-/// implementation of the published Snowball algorithm.
-/// </para>
-/// <para>English-oriented; input is lowercased. Thread-safe.</para>
+/// A refinement of <see cref="PorterStemmer"/>. Reference behavior:
+/// <c>nltk.stem.snowball.SnowballStemmer("english")</c>; an original
+/// implementation of the published Snowball algorithm — see
+/// <c>docs/equivalence.md</c>'s stemming row for the region/exception details.
+/// English-oriented; input is lowercased. Thread-safe.
 /// </remarks>
 public static class EnglishSnowballStemmer
 {

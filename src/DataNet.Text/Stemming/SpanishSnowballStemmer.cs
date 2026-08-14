@@ -18,17 +18,11 @@ namespace DataNet.Text.Stemming;
 /// The Spanish Snowball stemming algorithm.
 /// </summary>
 /// <remarks>
-/// <para>
 /// Reference behavior: <c>nltk.stem.snowball.SnowballStemmer("spanish")</c>. An
-/// original implementation of the published Snowball algorithm, using the RV/R1/R2
-/// regions and the standard step ordering. Input is lowercased. Thread-safe.
-/// </para>
-/// <para>
-/// Spanish adds a step the English algorithm has no equivalent for: attached
-/// object pronouns (<c>dá<b>melo</b></c>, <c>hacién<b>dola</b></c>) are removed
-/// before any suffix stripping. Acute accents are dropped at the very end, so
-/// intermediate steps still see them.
-/// </para>
+/// original implementation of the published Snowball algorithm, using RV/R1/R2 and
+/// the standard step order — see <c>docs/equivalence.md</c>'s stemming row for the
+/// attached-pronoun step and the accent-stripping order. Input is lowercased,
+/// thread-safe.
 /// </remarks>
 public static class SpanishSnowballStemmer
 {
@@ -57,9 +51,8 @@ public static class SpanishSnowballStemmer
 
         public string Run()
         {
-            // Steps 0 and 1 always run. Step 2a only if step 1 removed nothing,
-            // step 2b only if step 2a removed nothing (Snowball semantics: what
-            // matters is whether the word ALTERED, not whether a suffix matched).
+            // Steps 0-1 always run; 2a only if 1 altered nothing, 2b only if 2a
+            // didn't — Snowball semantics: altered, not merely suffix-matched.
             Step0();
 
             string before = S;

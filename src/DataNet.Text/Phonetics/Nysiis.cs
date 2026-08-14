@@ -9,12 +9,10 @@ namespace DataNet.Text.Phonetics;
 /// NYSIIS (New York State Identification and Intelligence System) phonetic encoding.
 /// </summary>
 /// <remarks>
-/// <para>
 /// Reference behavior: <c>jellyfish.nysiis</c> — the modern, non-truncated variant
 /// (the original 6-character limit is not applied). Non-letters are ignored; the
-/// empty string encodes to the empty string.
-/// </para>
-/// <para>English-oriented heuristic, not Unicode-aware; thread-safe.</para>
+/// empty string encodes to the empty string. English-oriented heuristic, not
+/// Unicode-aware; thread-safe.
 /// </remarks>
 public static class Nysiis
 {
@@ -122,9 +120,8 @@ public static class Nysiis
             }
             else if (c == 'H')
             {
-                // Between two vowels H is kept. After a vowel that is followed by a
-                // consonant it becomes the letter A. After a consonant it takes the
-                // previous letter, usually a duplicate that then collapses away.
+                // Kept between two vowels; after vowel+consonant it becomes A; after
+                // a consonant it repeats that consonant, which then collapses away.
                 if (!IsVowel(prev))
                 {
                     replacement = prev.ToString();

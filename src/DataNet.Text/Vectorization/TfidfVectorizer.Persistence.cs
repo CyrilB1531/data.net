@@ -14,15 +14,10 @@ public sealed partial class TfidfVectorizer
     /// to <paramref name="destination"/> as UTF-8 JSON.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The DataNet equivalent of <c>pickle.dump(vectorizer, f)</c> or
-    /// <c>joblib.dump</c> on a fitted
-    /// <c>sklearn.feature_extraction.text.TfidfVectorizer</c>. Reloading and
-    /// transforming reproduces the original matrix element for element: idf
-    /// weights are written as raw IEEE-754 bits, which round-trip a
-    /// <see cref="double"/> exactly.
-    /// </para>
-    /// <para>The idf vector is always written, even when <c>UseIdf</c> is off, so the artifact stays lossless.</para>
+    /// The DataNet equivalent of <c>pickle.dump</c> / <c>joblib.dump</c> on a fitted
+    /// <c>sklearn.feature_extraction.text.TfidfVectorizer</c> (format: see <see cref="CountVectorizer.Save(Stream)"/>).
+    /// The idf vector round-trips bit-exact — raw IEEE-754, not a decimal <see cref="double"/> — and is
+    /// always written, even when <c>UseIdf</c> is off, so the artifact stays lossless.
     /// </remarks>
     /// <param name="destination">The stream to write to. It is flushed but never disposed — the caller owns it.</param>
     /// <exception cref="InvalidOperationException">The vectorizer has not been fitted.</exception>
@@ -34,9 +29,8 @@ public sealed partial class TfidfVectorizer
     /// <exception cref="InvalidOperationException">The vectorizer has not been fitted.</exception>
     public void Save(string path)
     {
-        // Before opening: OpenWrite truncates, and the fitted check would otherwise
-        // fire only once the body starts being written — destroying a good artifact
-        // and leaving a half-written header where it was.
+        // Checked before opening: OpenWrite truncates, so a check any later would
+        // destroy a good artifact and leave a half-written header behind.
         EnsureSavable();
         using FileStream file = JsonArtifact.OpenWrite(path);
         Save(file);

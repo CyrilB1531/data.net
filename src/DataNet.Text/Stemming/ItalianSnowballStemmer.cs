@@ -15,18 +15,11 @@ namespace DataNet.Text.Stemming;
 /// The Italian Snowball stemming algorithm.
 /// </summary>
 /// <remarks>
-/// <para>
 /// Reference behavior: <c>nltk.stem.snowball.SnowballStemmer("italian")</c>. An
-/// original implementation of the published Snowball algorithm, sharing the
-/// RV/R1/R2 machinery of the other Romance stemmers via
-/// <see cref="RomanceSnowballWorker"/>. Input is lowercased. Thread-safe.
-/// </para>
-/// <para>
-/// Two pieces of preprocessing shape everything after them. Acute accents are
-/// folded to grave, so <c>perché</c> and <c>perchè</c> stem alike. And <c>u</c>
-/// after <c>q</c>, plus <c>u</c>/<c>i</c> between vowels, are upper-cased so the
-/// regions treat them as consonants; they are lower-cased again at the end.
-/// </para>
+/// original implementation of the published Snowball algorithm, sharing
+/// <see cref="RomanceSnowballWorker"/>'s RV/R1/R2 machinery — see
+/// <c>docs/equivalence.md</c>'s stemming row for the preprocessing and the nltk
+/// divergence. Lowercased, thread-safe.
 /// </remarks>
 public static class ItalianSnowballStemmer
 {
@@ -179,9 +172,8 @@ public static class ItalianSnowballStemmer
             new(S1DeleteThenIc, n => DeleteInR2ThenStrip(n, ["ic"])),
             new(S1Logia, n => ReplaceIfInR2(n, "log")),
             new(S1Uzione, n => ReplaceIfInR2(n, "u")),
-            // nltk replaces "enza"/"enze" with "te", not "ente" as the published
-            // description reads: esistenza -> esistte, trimmed by step 3a to esistt.
-            // nltk is the reference the corpus is frozen from; see decision 0008.
+            // enza/enze -> "te", not the published "ente": nltk is the corpus's
+            // reference here, not the description — see decision 0008.
             new(S1Enza, n => ReplaceIfInR2(n, "te")),
             // The only step-1 group gated on RV rather than R2.
             new(S1Amento, DeleteIfInRv),
