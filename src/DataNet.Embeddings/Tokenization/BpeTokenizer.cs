@@ -48,7 +48,6 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private readonly Dictionary<long, int> _ranks;   // (left << 32 | right) -> rank
     private readonly int[] _merged;             // rank -> the id the pair becomes
     private readonly BpePreTokenizer _split;
-    private readonly bool _addPrefixSpace;
     // Two scanners: AddedToken.Normalized decides which one an entry joins, and
     // the two are matched against different strings. See EncodeGap.
     private readonly AddedTokenScanner _rawScanner;
@@ -81,7 +80,6 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         EnsureByteLevelDeclaresNoContinuingPrefix(vocabulary);
         EnsureSplitBehaviorIsDefined(vocabulary);
         EnsurePreTokenizerIsDeclared(vocabulary);
-        _addPrefixSpace = vocabulary.AddPrefixSpace;
         _endOfWord = vocabulary.EndOfWordSuffix;
         _continuingPrefix = vocabulary.ContinuingSubwordPrefix;
         _byteLevel = vocabulary.ByteLevel;
@@ -138,7 +136,9 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             _merged[rank] = result;
         }
 
-        _split = new BpePreTokenizer(vocabulary.PreSplit, vocabulary.PreTokenizerPattern, vocabulary.NoPreTokenizer);
+        _split = new BpePreTokenizer(
+            vocabulary.PreSplit, vocabulary.PreTokenizerPattern, vocabulary.NoPreTokenizer,
+            vocabulary.AddPrefixSpace);
     }
 
     /// <summary>Refuses a vocabulary that does not say how its text is split, or says it two ways at once.</summary>
@@ -366,11 +366,12 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
     /// <summary>Splits and merges the plain-text slice <c>text[start..end]</c>, which contains no added token.</summary>
     /// <remarks>
-    /// Where <see cref="BpeVocabulary.AddPrefixSpace"/> applies, and why per segment rather
-    /// than once on the whole input — equivalence.md's <c>BPE(vocab, merges)</c> row. An
-    /// empty segment produces nothing, which is why the prepend cannot be hoisted out of the
-    /// length guard: prepending to one would emit a <c>'Ġ'</c> Python does not, e.g. between
-    /// two adjacent added tokens.
+    /// <see cref="BpeVocabulary.AddPrefixSpace"/> is applied inside
+    /// <see cref="BpePreTokenizer"/> now, per piece rather than here per segment: only
+    /// that type knows whether a <c>Split</c> step ran first — equivalence.md's
+    /// <c>BPE(vocab, merges)</c> row. The length check is a plain early return now;
+    /// what keeps an empty segment between two adjacent added tokens from becoming a
+    /// <c>'Ġ'</c> Python does not emit is that type's own length check.
     /// </remarks>
     private void EncodeSegment(string text, int start, int end, List<string> tokens, List<int> ids, List<string> pieces)
     {
@@ -380,14 +381,8 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             return;
         }
 
-        string segment = text.Substring(start, length);
-        if (_addPrefixSpace && segment[0] != ' ')
-        {
-            segment = " " + segment;
-        }
-
         pieces.Clear();
-        _split.Split(segment, pieces);
+        _split.Split(text.Substring(start, length), pieces);
         foreach (string piece in pieces)
         {
             EncodePiece(piece, tokens, ids);

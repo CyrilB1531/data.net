@@ -32,10 +32,23 @@ internal sealed class BpePreTokenizer
     private readonly Regex? _second;
     private readonly SplitRule _rule;
 
+    /// <summary>Whether a <c>Split</c> step declared <see cref="_first"/>, rather than <c>ByteLevel</c>'s own pattern.</summary>
+    /// <remarks>
+    /// Not <c>_second is not null</c>: <c>Sequence[Split, ByteLevel(use_regex: false)]</c>
+    /// -- Llama-3's and Qwen2's shape, and <c>bpe_prefix_space.json</c>'s
+    /// <c>presplit_aps</c> -- declares a pre-split and no second pattern. It takes
+    /// the space once per piece where the corpus's <c>bare_aps</c>, which has a
+    /// pattern and no pre-split, takes it once for the whole text.
+    /// </remarks>
+    private readonly bool _preSplit;
+    private readonly bool _addPrefixSpace;
+
     // Compiled on none of the four patterns, so one policy covers them all: 1.44x matching for
     // 6-26 ms a build, i7-4770S over 976 KiB -- docs/superpowers/specs/2026-08-14_0122_no-split-mode.md.
-    public BpePreTokenizer(BpeSplitStep? preSplit, string? pattern, bool noSplit)
+    public BpePreTokenizer(BpeSplitStep? preSplit, string? pattern, bool noSplit, bool addPrefixSpace)
     {
+        _preSplit = preSplit is not null;
+        _addPrefixSpace = addPrefixSpace;
         if (noSplit)
         {
             // No pattern to match, so no rule to arrange matches with: Split emits
@@ -87,13 +100,28 @@ internal sealed class BpePreTokenizer
         // and invert have nothing to arrange -- the text is the one piece.
         if (_first is null)
         {
-            Emit(text, 0, text.Length, pieces);
+            Emit(Prefixed(text), pieces);
+            return;
+        }
+
+        // Nothing ran before the ByteLevel step, so the whole text is the one thing
+        // it is handed, and the space lands on it once.
+        if (!_preSplit)
+        {
+            Apply(_first, _rule, Prefixed(text), pieces);
             return;
         }
 
         if (_second is null)
         {
+            // Prefixed in place rather than through a staging list: with the space
+            // off this is one comparison a piece and no allocation at all.
+            int from = pieces.Count;
             Apply(_first, _rule, text, pieces);
+            for (int at = from; at < pieces.Count; at++)
+            {
+                pieces[at] = Prefixed(pieces[at]);
+            }
             return;
         }
 
@@ -104,9 +132,21 @@ internal sealed class BpePreTokenizer
         var isolated = new SplitRule(SplitBehavior.Isolated, Invert: false);
         foreach (string piece in staged)
         {
-            Apply(_second, isolated, piece, pieces);
+            Apply(_second, isolated, Prefixed(piece), pieces);
         }
     }
+
+    /// <summary>What a <c>ByteLevel</c> step declaring <c>add_prefix_space</c> is handed for <paramref name="piece"/>.</summary>
+    /// <remarks>
+    /// Once per piece handed to that step, not once per input: measured,
+    /// <c>Sequence[Split("|"), ByteLevel(add_prefix_space)]</c> over <c>"a|b|c|d"</c>
+    /// decodes to <c>" a | b | c | d"</c>, not <c>" a|b|c|d"</c> -- corpus
+    /// bpe_prefix_space.json, model presplit_aps, whose "ab| cd" also pins that a
+    /// piece already opening on a space gains nothing. No case reaches the length
+    /// check: Emit drops empty pieces and EncodeSegment refuses an empty segment.
+    /// </remarks>
+    private string Prefixed(string piece) =>
+        _addPrefixSpace && piece.Length > 0 && piece[0] != ' ' ? " " + piece : piece;
 
     /// <summary>Appends one piece, unless it is empty.</summary>
     /// <remarks>
@@ -127,6 +167,10 @@ internal sealed class BpePreTokenizer
     /// <summary>Emits a <see cref="Run"/> the same way <see cref="Emit(string, int, int, List{string})"/> does.</summary>
     private static void Emit(string text, Run run, List<string> pieces) =>
         Emit(text, run.Start, run.Length, pieces);
+
+    /// <summary>Emits a whole string the same way, so an already-built piece keeps the drop-if-empty rule.</summary>
+    private static void Emit(string piece, List<string> pieces) =>
+        Emit(piece, 0, piece.Length, pieces);
 
     /// <summary>
     /// Splits <paramref name="text"/> into alternating gaps and matches, swaps the
