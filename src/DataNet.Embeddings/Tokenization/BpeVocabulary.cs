@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace DataNet.Embeddings.Tokenization;
 
 /// <summary>One line of a merge table: the two symbols it joins.</summary>
@@ -161,6 +163,18 @@ public sealed record BpeVocabulary(
     /// </remarks>
     public BpeSplitStep? PreSplit { get; init; }
 
+    /// <summary>
+    /// The normalization forms the file declared, in the order it declared them,
+    /// empty when it declared no normalizer.
+    /// </summary>
+    /// <remarks>
+    /// A list rather than a single form because a <c>Sequence</c> may name several,
+    /// and applied in order rather than collapsed to the last one: composing these
+    /// four does reduce to the last through NFKC's idempotence, but a reader would
+    /// have to verify that identity to trust the code, and the loop costs nothing.
+    /// </remarks>
+    public IReadOnlyList<NormalizationForm> NormalizationForms { get; init; } = [];
+
     /// <summary>Number of entries in the vocabulary.</summary>
     public int Count => Vocab.Count;
 
@@ -191,7 +205,8 @@ public sealed record BpeVocabulary(
             || PreSplit != other.PreSplit
             || Vocab.Count != other.Vocab.Count
             || Merges.Count != other.Merges.Count
-            || AddedTokens.Count != other.AddedTokens.Count)
+            || AddedTokens.Count != other.AddedTokens.Count
+            || NormalizationForms.Count != other.NormalizationForms.Count)
         {
             return false;
         }
@@ -209,6 +224,13 @@ public sealed record BpeVocabulary(
                 return false;
             }
         }
+        for (int i = 0; i < NormalizationForms.Count; i++)
+        {
+            if (NormalizationForms[i] != other.NormalizationForms[i])
+            {
+                return false;
+            }
+        }
         return SameEntries(Vocab, other.Vocab);
     }
 
@@ -220,6 +242,7 @@ public sealed record BpeVocabulary(
             int hash = (17 * 31) + Vocab.Count;
             hash = (hash * 31) + Merges.Count;
             hash = (hash * 31) + AddedTokens.Count;
+            hash = (hash * 31) + NormalizationForms.Count;
             hash = (hash * 31) + (ByteLevel ? 1 : 0);
             hash = (hash * 31) + (AddPrefixSpace ? 1 : 0);
             hash = (hash * 31) + (IgnoreMerges ? 1 : 0);

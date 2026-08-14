@@ -68,7 +68,11 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private readonly int[] _merged;             // rank -> the id the pair becomes
     private readonly BpePreTokenizer _split;
     private readonly bool _addPrefixSpace;
-    private readonly AddedTokenScanner _scanner;
+    // Two scanners: AddedToken.Normalized decides which one an entry joins, and
+    // the two are matched against different strings. See EncodeGap.
+    private readonly AddedTokenScanner _rawScanner;
+    private readonly AddedTokenScanner _normalizedScanner;
+    private readonly NormalizationForm[] _forms;
     private readonly HashSet<int> _addedIds;
     private readonly string? _endOfWord;
     private readonly string? _continuingPrefix;
@@ -101,27 +105,12 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         _ignoreMerges = vocabulary.IgnoreMerges;
         _fuseUnk = vocabulary.FuseUnk;
 
-        _vocab = new Dictionary<string, int>(vocabulary.Vocab.Count, StringComparer.Ordinal);
-        int maxId = -1;
-        foreach (KeyValuePair<string, int> entry in vocabulary.Vocab)
-        {
-            _vocab[entry.Key] = entry.Value;
-            maxId = Math.Max(maxId, entry.Value);
-        }
-        _modelVocab = new Dictionary<string, int>(_vocab, StringComparer.Ordinal);
-        foreach (AddedToken added in vocabulary.AddedTokens)
-        {
-            _vocab[added.Content] = added.Id;
-            maxId = Math.Max(maxId, added.Id);
-        }
+        _forms = [.. vocabulary.NormalizationForms];
+        (_vocab, _modelVocab, _tokens) = BuildVocabulary(vocabulary);
 
-        _tokens = new string[maxId + 1];
-        foreach (KeyValuePair<string, int> entry in _vocab)
-        {
-            _tokens[entry.Value] = entry.Key;
-        }
-
-        _scanner = new AddedTokenScanner(vocabulary.AddedTokens);
+        _rawScanner = new AddedTokenScanner([.. vocabulary.AddedTokens.Where(t => !t.Normalized)]);
+        _normalizedScanner = new AddedTokenScanner(
+            [.. vocabulary.AddedTokens.Where(t => t.Normalized).Select(t => t with { Content = Normalize(t.Content) })]);
         _addedIds = [.. vocabulary.AddedTokens.Where(a => a.Special).Select(a => a.Id)];
 
         if (vocabulary.UnkToken is { } unk)
@@ -273,23 +262,55 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         }
     }
 
+    /// <summary>Builds the folded vocabulary, the model-only one, and the id-to-token table.</summary>
+    /// <remarks>
+    /// <see cref="_tokens"/> is not simply <see cref="_vocab"/> inverted: for a normalized
+    /// added token the two disagree on purpose. Measured against <c>tokenizers</c> 0.23.1,
+    /// <c>token_to_id</c> answers the raw spelling and <c>id_to_token</c> the normalized
+    /// one for such an entry -- an asymmetry in the reference itself, not a choice made here.
+    /// </remarks>
+    private (Dictionary<string, int> Vocab, Dictionary<string, int> ModelVocab, string[] Tokens) BuildVocabulary(BpeVocabulary vocabulary)
+    {
+        var vocab = new Dictionary<string, int>(vocabulary.Vocab.Count, StringComparer.Ordinal);
+        int maxId = -1;
+        foreach (KeyValuePair<string, int> entry in vocabulary.Vocab)
+        {
+            vocab[entry.Key] = entry.Value;
+            maxId = Math.Max(maxId, entry.Value);
+        }
+        var modelVocab = new Dictionary<string, int>(vocab, StringComparer.Ordinal);
+        foreach (AddedToken added in vocabulary.AddedTokens)
+        {
+            vocab[added.Content] = added.Id;
+            maxId = Math.Max(maxId, added.Id);
+        }
+
+        var tokens = new string[maxId + 1];
+        foreach (KeyValuePair<string, int> entry in vocabulary.Vocab)
+        {
+            tokens[entry.Value] = entry.Key;
+        }
+        foreach (AddedToken added in vocabulary.AddedTokens)
+        {
+            tokens[added.Id] = added.Normalized ? Normalize(added.Content) : added.Content;
+        }
+
+        return (vocab, modelVocab, tokens);
+    }
+
     /// <summary>Tokenizes <paramref name="text"/> into sub-word tokens and their ids.</summary>
     /// <remarks>Matches <c>tokenizers.Tokenizer.encode(text)</c>, without the post-processor.</remarks>
     /// <exception cref="System.Text.EncoderFallbackException">
-    /// A byte-level model (<see cref="BpeVocabulary.ByteLevel"/>) re-encodes
-    /// <paramref name="text"/> to UTF-8 using the same encoding artifacts are read and
-    /// written in, which throws rather than substitutes on an unpaired surrogate --
-    /// deliberately: byte-level BPE is lossless over any well-formed <see cref="string"/>,
-    /// valid UTF-8 or not, but a lone surrogate is not well-formed UTF-16 to begin with,
-    /// so there is no byte sequence for it to be lossless <em>about</em>. This cannot
-    /// happen on the classic (non-byte-level) path, which never encodes to UTF-8.
+    /// A byte-level model re-encodes <paramref name="text"/> to UTF-8; an unpaired
+    /// UTF-16 surrogate throws rather than substitutes, since byte-level BPE is
+    /// lossless only over well-formed UTF-16. The classic path never encodes to
+    /// UTF-8, so it cannot throw this.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// A byte-level model whose vocabulary is missing one of the 256 byte-level
-    /// alphabet characters, which is a vocabulary that is not what
-    /// <see cref="BpeVocabulary.ByteLevel"/> claims it is. Thrown from here rather
-    /// than at construction because it is the input's own bytes that decide which
-    /// entries are looked up; see <see cref="ByteLevelSymbols"/>.
+    /// Either a byte-level vocabulary missing one of the 256 alphabet characters
+    /// (see <see cref="ByteLevelSymbols"/>), or, once a normalizer is declared, an
+    /// unpaired surrogate in a gap -- <see cref="string.Normalize(NormalizationForm)"/>
+    /// throws on that before the byte-level re-encoding above gets a chance to.
     /// </exception>
     public TokenizationResult Encode(string text)
     {
@@ -301,14 +322,14 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         int pos = 0;
         while (pos < text.Length)
         {
-            if (!_scanner.TryNext(text, pos, out int start, out int end, out var added))
+            if (!_rawScanner.TryNext(text, pos, out int start, out int end, out var added))
             {
-                EncodeSegment(text, pos, text.Length, tokens, ids, pieces);
+                EncodeGap(text, pos, text.Length, tokens, ids, pieces);
                 break;
             }
             if (start > pos)
             {
-                EncodeSegment(text, pos, start, tokens, ids, pieces);
+                EncodeGap(text, pos, start, tokens, ids, pieces);
             }
             tokens.Add(text.Substring(start, end - start));
             ids.Add(added.Id);
@@ -328,6 +349,53 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     }
 
     private static long Key(int left, int right) => ((long)left << 32) | (uint)right;
+
+    /// <summary>Normalizes <c>text[from..to]</c>, which holds no raw added token, then splits it at the normalized ones.</summary>
+    /// <remarks>
+    /// Each gap is normalized on its own rather than once for the whole input:
+    /// <see cref="WordPieceTokenizer"/> can reuse raw-text positions only because
+    /// <c>ToLowerInvariant</c> preserves length, and every form here changes it.
+    /// Order (normalize before <c>add_prefix_space</c>) and the no-op fast path
+    /// below are D2 of
+    /// docs/superpowers/specs/2026-08-13_0121_give-readbpe-the-normalizer-treatment.md.
+    /// </remarks>
+    private void EncodeGap(string text, int from, int to, List<string> tokens, List<int> ids, List<string> pieces)
+    {
+        if (_forms.Length == 0 && _normalizedScanner.IsEmpty)
+        {
+            EncodeSegment(text, from, to, tokens, ids, pieces);
+            return;
+        }
+
+        string gap = Normalize(text.Substring(from, to - from));
+        int pos = 0;
+        while (pos < gap.Length)
+        {
+            if (!_normalizedScanner.TryNext(gap, pos, out int start, out int end, out var added))
+            {
+                EncodeSegment(gap, pos, gap.Length, tokens, ids, pieces);
+                break;
+            }
+            if (start > pos)
+            {
+                EncodeSegment(gap, pos, start, tokens, ids, pieces);
+            }
+            tokens.Add(gap.Substring(start, end - start));
+            ids.Add(added.Id);
+            pos = end;
+        }
+    }
+
+    /// <summary>Applies the declared forms in their declared order.</summary>
+    private string Normalize(string text)
+    {
+        string normalized = text;
+        foreach (NormalizationForm form in _forms)
+        {
+            normalized = normalized.Normalize(form);
+        }
+        return normalized;
+    }
 
     /// <summary>Splits and merges the plain-text slice <c>text[start..end]</c>, which contains no added token.</summary>
     /// <remarks>

@@ -132,6 +132,7 @@ internal static class Lot3Embeddings
         Console.WriteLine($"  BPE byte-level   : [{string.Join(", ", bpeEncoded.Tokens)}] -> [{string.Join(", ", bpeEncoded.Ids)}]");
         Console.WriteLine($"  BPE round trip   : \"{bpe.Decode(bpeEncoded.Ids)}\"");
         Console.WriteLine($"  merge rank 0     : {bpeModel.Merges[0].Left} + {bpeModel.Merges[0].Right}");
+        Console.WriteLine($"  BPE normalizer   : {bpeModel.NormalizationForms.Count} forms");
 
         // A Llama-3 or Qwen2 file's own Sequence declares a Split step ahead of
         // ByteLevel, carrying the file's behavior and invert -- the two fields
