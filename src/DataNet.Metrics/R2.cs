@@ -12,7 +12,7 @@ namespace DataNet.Metrics;
 /// <remarks>
 /// <c>forceFinite</c> and <see cref="ZeroDivision"/> answer two different
 /// undefined cases and must not be merged into one. See
-/// docs/decisions/0025.
+/// docs/decisions/0026.
 /// </remarks>
 public static class R2
 {
@@ -163,7 +163,7 @@ public static class R2
         int outputCount = numerators.Length;
 
         // Vectorizes only for a single contiguous output; falls through to the
-        // scalar loop below otherwise. See docs/decisions/0026.
+        // scalar loop below otherwise. See docs/decisions/0027.
 #if NET5_0_OR_GREATER
         if (outputCount == 1 && Vector.IsHardwareAccelerated)
         {

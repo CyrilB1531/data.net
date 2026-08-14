@@ -1,4 +1,4 @@
-# 0025 — R² and ExplainedVariance split their undefined cases differently
+# 0026 — R² and ExplainedVariance split their undefined cases differently
 
 **Status:** accepted · **Date:** 2026-08-14
 

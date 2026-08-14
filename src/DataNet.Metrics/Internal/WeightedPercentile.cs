@@ -8,14 +8,14 @@ namespace DataNet.Metrics.Internal;
 /// Not "the value at the halfway point": <see cref="Average"/> always averages
 /// two order statistics, coinciding on one when they land on the same index,
 /// chosen within scikit-learn's own epsilon tolerance rather than exactly at
-/// half. See docs/decisions/0023 for the measured divergence that produces.
+/// half. See docs/decisions/0024 for the measured divergence that produces.
 /// </remarks>
 internal static class WeightedPercentile
 {
     /// <summary>
     /// numpy's machine epsilon, <c>np.finfo(np.float64).eps</c> — the tolerance
     /// scikit-learn allows the cumulative weight to overshoot the halfway point
-    /// by before it stops averaging. See docs/decisions/0023.
+    /// by before it stops averaging. See docs/decisions/0024.
     /// </summary>
     /// <remarks>
     /// Not <see cref="double.Epsilon"/>, the smallest positive subnormal and 292
@@ -94,7 +94,7 @@ internal static class WeightedPercentile
         }
 
         // Median-of-three still degrades to O(n^2) on adversarial input (organ
-        // pipe, many repeats); this budget bounds it. See docs/decisions/0024.
+        // pipe, many repeats); this budget bounds it. See docs/decisions/0025.
         int budget = (2 * FloorLog2(width)) + 4;
 
         while (true)
@@ -158,7 +158,7 @@ internal static class WeightedPercentile
         for (int i = from; i < to; i++)
         {
             // Unconditional swap, then advance by the comparison, not a branch —
-            // see docs/decisions/0024. `value` must be read before the swap.
+            // see docs/decisions/0025. `value` must be read before the swap.
             double value = values[i];
             values[i] = values[storeIndex];
             values[storeIndex] = value;
@@ -231,7 +231,7 @@ internal static class WeightedPercentile
                 lowerFound = true;
             }
             // Within one epsilon of half, not exactly at or below it: see
-            // docs/decisions/0023 for why an exact test picks the wrong pair.
+            // docs/decisions/0024 for why an exact test picks the wrong pair.
             if (cumulative - half <= MachineEpsilon)
             {
                 weightedUpper = i + 1;

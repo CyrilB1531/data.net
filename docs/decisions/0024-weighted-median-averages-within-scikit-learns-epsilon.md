@@ -1,4 +1,4 @@
-# 0023 — The weighted median averages two order statistics within scikit-learn's epsilon, not exactly at half
+# 0024 — The weighted median averages two order statistics within scikit-learn's epsilon, not exactly at half
 
 **Status:** accepted · **Date:** 2026-08-14
 

@@ -77,7 +77,7 @@ public static class MeanSquaredLogError
         /// </summary>
         /// <remarks>
         /// Kahan's identity, not <c>Math.Log(1.0 + value)</c>: see
-        /// docs/decisions/0027 for the measurement and the derivation.
+        /// docs/decisions/0028 for the measurement and the derivation.
         /// </remarks>
         private static double Log1P(double value)
         {
