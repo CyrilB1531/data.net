@@ -131,7 +131,7 @@ python tools/check_nuspec_dependencies.py artifacts
 
 A package's dependency graph is a *build output*, derived from whatever restore
 resolved, so nobody writes it down and nothing notices when it drifts. This
-script is where it is written down. It matters more since the three packages
+script is where it is written down. It matters more since the four packages
 version independently: `DataNet.Fuzzy` reaches `DataNet.Text` through a
 `PackageReference`, and that edge is now the one thing holding the two together.
 See [`../docs/decisions/0012-per-package-versioning.md`](../docs/decisions/0012-per-package-versioning.md).

@@ -8,14 +8,14 @@ for traceability.
 
 ## Runtime / shipped dependencies
 
-`DataNet.Text` and `DataNet.Fuzzy` have **no** runtime dependencies on `net10.0`,
-by design (§3).
+`DataNet.Text`, `DataNet.Fuzzy` and `DataNet.Metrics` have **no** runtime
+dependencies on `net10.0`, by design (§3).
 
 | Component | License | Shipped by | Target |
 | --- | --- | --- | --- |
 | Microsoft.ML.OnnxRuntime | MIT | `DataNet.Embeddings` | both |
-| System.Memory | MIT | all three packages | `netstandard2.0` only |
-| System.Numerics.Vectors | MIT | all three packages | `netstandard2.0` only |
+| System.Memory | MIT | all four packages | `netstandard2.0` only |
+| System.Numerics.Vectors | MIT | all four packages | `netstandard2.0` only |
 | System.Text.Json | MIT | `DataNet.Text`, `DataNet.Embeddings` | `netstandard2.0` only |
 
 `System.Memory` and `System.Numerics.Vectors` supply `Span`, `Memory`,

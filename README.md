@@ -26,7 +26,7 @@ removes that reason.
    which, for each need (NumPy, pandas, scikit-learn, statsmodels, PyTorch,
    matplotlib, seaborn), points to the right .NET building block and the pitfalls.
 
-See the [**three-column migration inventory**](docs/migration/README.md): it's the
+See the [**four-column migration inventory**](docs/migration/README.md): it's the
 project map (use / build / decide).
 
 > Targets: **.NET 10** (`net10.0`, all fast paths) and **.NET Standard 2.0**

@@ -9,7 +9,7 @@ exists in .NET, and Python's dense linear algebra relies on Fortran BLAS/LAPACK
 kernels there's no point reimplementing. We **use** what exists, and only **write**
 native code where .NET has a real gap: **text** (similarity, vectorization).
 
-## The three columns
+## The four columns
 
 | Python | Role | .NET recommendation | Verdict |
 | --- | --- | --- | --- |

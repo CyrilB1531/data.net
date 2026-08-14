@@ -212,7 +212,7 @@ A finding it reports is real, a clean run promises nothing.
 
 ## Working across two packages
 
-The three libraries version and release independently, and `DataNet.Fuzzy`
+The four libraries version and release independently, and `DataNet.Fuzzy`
 reaches `DataNet.Text` through a `PackageReference` on the published package
 rather than a project reference — the reasoning is in
 [`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md).

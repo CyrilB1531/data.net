@@ -249,8 +249,9 @@ GitHub flow, one concern per branch, `<type>/<issue>-<kebab-summary>`
 (`feat/`, `fix/`, `perf/`, `docs/`, `chore/`). Reference the issue with
 `Closes #n`. Everything written in English — code, comments, ADRs, commit
 messages, PR bodies. Comments are held to four rules — say why not what, carry
-what would check the claim, eight lines above a member, and a marker with its
-reason past that. `CONTRIBUTING.md`'s *Claims in comments* is the statement;
+what would check the claim, two lines inline or eight of prose in XML
+documentation, and a marker with its reason past that. `CONTRIBUTING.md`'s
+*Claims in comments* is the statement;
 `tools/check_comment_length.py` counts the lines and
 `.github/instructions/comment_claims.instructions.md` carries what a review
 asks about one. Commit messages carry no `feat:`/`fix:` prefix.
