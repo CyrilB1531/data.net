@@ -10,22 +10,13 @@ namespace DataNet.Text.Distances;
 // hot path: helper calls here cost measurably.
 #pragma warning disable S3776
 /// <summary>
-/// Myers' bit-parallel edit-distance algorithm (single machine word).
+/// Myers' bit-parallel edit-distance algorithm: a single machine word for
+/// patterns up to 64 characters, <see cref="TryBlocked"/> beyond that.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Computes the Levenshtein distance in O(n·⌈m/w⌉) rather than the DP's O(n·m),
-/// following Hyyrö's formulation. This single-word variant applies when the
-/// shorter operand (the "pattern") has length ≤ 64 and lies within Latin-1, which
-/// covers the overwhelmingly common short-string case (names, identifiers) with
-/// zero allocation.
-/// </para>
-/// <para>
-/// It is a self-contained implementation of the published algorithm (Myers, JACM
-/// 1999; Hyyrö 2003), not a transcription of any library source. The multi-word
-/// (blocked) variant for long patterns is tracked in
+/// <c>O(n·⌈m/w⌉)</c> against the DP's <c>O(n·m)</c> (Myers 1999; Hyyrö 2003),
+/// restricted to Latin-1 patterns; remaining backlog in
 /// <c>docs/decisions/0004-levenshtein-myers-backlog.md</c>.
-/// </para>
 /// </remarks>
 internal static class Myers
 {
@@ -57,9 +48,8 @@ internal static class Myers
         distance = 0;
         int m = pattern.Length;
 
-        // Peq[c] has bit i set where pattern[i] == c. A 256-entry table keeps the
-        // pattern within Latin-1; any text character ≥ 256 cannot occur in such a
-        // pattern, so its equality mask is simply zero.
+        // Peq[c] has bit i set where pattern[i] == c; a 256-entry table covers Latin-1,
+        // so any text character above it has an all-zero (no-match) mask.
         Span<ulong> peq = stackalloc ulong[256];
         peq.Clear();
         for (int i = 0; i < m; i++)
@@ -110,18 +100,10 @@ internal static class Myers
     /// The blocked (multi-word) variant, for patterns longer than one machine word.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The bit vectors span <c>⌈m/64⌉</c> words, and the horizontal deltas are
-    /// carried from each word into the next, which is the only real difference from
-    /// the single-word formulation. Cost is <c>O(n·⌈m/64⌉)</c> against the DP's
-    /// <c>O(n·m)</c>: at a 512-character pattern that is 64 machine operations
-    /// replaced by one.
-    /// </para>
-    /// <para>
-    /// Only the last block's bit at position <c>(m-1) mod 64</c> moves the score;
-    /// bits above it in that word are never read, so leaving them set costs nothing
-    /// — carries propagate upward only.
-    /// </para>
+    /// The bit vectors span <c>⌈m/64⌉</c> words with horizontal deltas carried
+    /// between them — the only real difference from <see cref="TrySingleWord"/>;
+    /// only the last word's bit at <c>(m-1) mod 64</c> moves the score. See
+    /// <c>docs/decisions/0004-levenshtein-myers-backlog.md</c> for the measured cost.
     /// </remarks>
     private static bool TryBlocked(ReadOnlySpan<char> pattern, ReadOnlySpan<char> text, out int distance)
     {

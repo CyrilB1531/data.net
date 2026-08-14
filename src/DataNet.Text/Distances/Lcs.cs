@@ -10,14 +10,11 @@ namespace DataNet.Text.Distances;
 /// Longest common subsequence and longest common substring lengths.
 /// </summary>
 /// <remarks>
-/// <para>
-/// A <em>subsequence</em> keeps relative order but need not be contiguous
-/// (<c>"ace"</c> in <c>"abcde"</c>); a <em>substring</em> is contiguous
-/// (<c>"Dupon"</c> in <c>"Dupont"</c>). The substring length matches the size of
-/// <c>difflib.SequenceMatcher.find_longest_match</c>; the subsequence length is the
-/// classic LCS that also underlies <see cref="Indel"/>.
-/// </para>
-/// <para>See <see cref="TextElement"/> for the UTF-16 vs code-point choice. All members are thread-safe.</para>
+/// Subsequence: order-preserving, not necessarily contiguous. Substring:
+/// contiguous, matching <c>difflib.SequenceMatcher.find_longest_match</c>'s
+/// size. Subsequence length is the classic LCS underlying <see cref="Indel"/>.
+/// See <see cref="TextElement"/> for the UTF-16 vs code-point choice. All
+/// members are thread-safe.
 /// </remarks>
 public static class Lcs
 {

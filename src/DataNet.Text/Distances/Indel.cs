@@ -11,15 +11,10 @@ namespace DataNet.Text.Distances;
 /// transform one sequence into another — equivalently <c>len(a) + len(b) - 2·LCS</c>.
 /// </summary>
 /// <remarks>
-/// <para>
-/// This is the basis of <c>rapidfuzz.fuzz.ratio</c>: that ratio is the Indel
-/// <see cref="NormalizedSimilarity"/> multiplied by 100. Confusing it with
-/// Levenshtein is the single most common error on this topic (see the brief §5).
-/// </para>
-/// <para>
-/// Reference behavior: <c>rapidfuzz.distance.Indel</c>. See <see cref="TextElement"/>
-/// for the UTF-16 vs code-point choice. All members are stateless and thread-safe.
-/// </para>
+/// Reference behavior: <c>rapidfuzz.distance.Indel</c>; <see cref="NormalizedSimilarity"/>
+/// ×100 is <c>rapidfuzz.fuzz.ratio</c> — not Levenshtein, the most common
+/// confusion on this topic (see the brief §5). See <see cref="TextElement"/> for
+/// the UTF-16 vs code-point choice. All members are stateless and thread-safe.
 /// </remarks>
 public static class Indel
 {

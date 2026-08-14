@@ -11,16 +11,10 @@ namespace DataNet.Text.Distances;
 /// sliding window and the number of transpositions among them.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Reference behavior: <c>jellyfish.jaro_similarity</c>. Note that jellyfish
-/// returns <c>0</c> when either input is empty (including two empty strings). The
-/// match window half-width is <c>max(⌊max(len)/2⌋ - 1, 0)</c>.
-/// </para>
-/// <para>
-/// jellyfish operates on code points; pass <see cref="TextElement.CodePoint"/> for
-/// exact parity on supplementary-plane input. All members are stateless and
-/// thread-safe.
-/// </para>
+/// Reference behavior: <c>jellyfish.jaro_similarity</c>, empty ⇒ <c>0</c>; see
+/// <c>docs/decisions/0005-hamming-jellyfish-divergence.md</c> for the divergence.
+/// Pass <see cref="TextElement.CodePoint"/> for supplementary-plane parity
+/// (jellyfish operates on code points). All members are stateless and thread-safe.
 /// </remarks>
 public static class Jaro
 {
@@ -114,9 +108,8 @@ public static class Jaro
                 k++;
             }
 
-            // The number of mismatched positions among matched characters is always
-            // even, so halving it is exact; integer division here is deliberate and
-            // mirrors the reference implementations (jellyfish, rapidfuzz).
+            // Matched-character mismatches always come in pairs (published Jaro
+            // property), so halving with integer division is exact, matching jellyfish and rapidfuzz.
             int half = transpositions / 2;
             double m = matches;
             return (m / len1 + m / len2 + (m - half) / m) / 3.0;
