@@ -42,7 +42,7 @@ public sealed record BpeVocabulary(
     /// <summary>Whether text is mapped through the byte alphabet before merging.</summary>
     public bool ByteLevel { get; init; }
 
-    /// <summary>Whether a space is prepended to the input.</summary>
+    /// <summary>Whether a space is prepended to each piece the <c>ByteLevel</c> step is handed.</summary>
     public bool AddPrefixSpace { get; init; }
 
     /// <summary>Whether a whole pre-tokenized piece present in the vocabulary skips merging.</summary>
