@@ -18,10 +18,12 @@ cut it as the opinion it is — and every block that loses a fact keeps a line n
 
 ## Global Constraints
 
-- Branch `docs/153-sweep-text-comments`, based on `main` at `b81eac5`. Do not push, do not open a pull
+- Branch `docs/153-sweep-text-comments`, rebased onto `main` at `ad732e0` — issue #160, which
+  #152's sweep surfaced, merged in the meantime and added eight tests. Its answer: the reference keeps the
+  **last** occurrence of a repeated merge pair, so the comment that claimed the first was a real divergence. Do not push, do not open a pull
   request without asking.
 - **No behaviour changes.** Comments, `docs/equivalence.md`, `docs/guides/migrating-from-rapidfuzz.md` and
-  `docs/guides/vectorization.md` only. The suite is **3 147 passing, 0 failed** across eight assemblies
+  `docs/guides/vectorization.md` only. The suite is **3 155 passing, 0 failed** across eight assemblies
   before and after every task, and no byte of `tests/oracles/` moves.
 - **Every `dotnet` invocation goes through `./.dotnet-guarded`**, never bare `dotnet`. It blocks with no
   deadline; let it wait.
@@ -65,7 +67,7 @@ Written once; every task below follows it.
 1. **List your blocks**: `python3 tools/check_comment_length.py | grep '<your prefix>'`.
 2. **Triage and edit** by the five rules above.
 3. **Verify**: `./.dotnet-guarded dotnet build DataNet.slnx -c Release --no-incremental` (0 warnings), then
-   `./.dotnet-guarded dotnet test DataNet.slnx -c Release` — **3 147 passing** — and
+   `./.dotnet-guarded dotnet test DataNet.slnx -c Release` — **3 155 passing** — and
    `git status --porcelain tests/oracles/` empty.
 4. **Confirm** the same `grep` now prints nothing for your files. If Markdown changed, run markdownlint over
    the documented glob and `python3 tools/extract_doc_snippets.py`.
