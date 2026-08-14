@@ -324,7 +324,7 @@ dependency bump changed reference output — resolve that deliberately, in the s
 commit, rather than letting it land on someone else's pull request.
 
 Where behavior deliberately diverges from the Python reference, record it in
-[`docs/decisions/`](docs/decisions/) rather than in a code comment alone — see
+[`docs/decisions/`](docs/decisions/README.md) rather than in a code comment alone — see
 [`0005`](docs/decisions/0005-hamming-jellyfish-divergence.md) for the shape of
 one.
 
@@ -480,7 +480,7 @@ so it gets **eight**, counted over prose: a `<param>` or an `<exception>` that a
 carry does not spend the budget. **The reason above a `#pragma warning disable` is not counted at all**:
 [Suppressions](#suppressions) below already demands a reason a reviewer can disagree with, which is a
 stricter requirement than brevity and rarely met in two lines. Past either budget, the reasoning belongs in
-[`docs/decisions/`](docs/decisions/),
+[`docs/decisions/`](docs/decisions/README.md),
 cited from one line — or it needs cutting. `tools/check_comment_length.py` counts them.
 
 **A longer block carries a marker naming its reason**, as its first line:

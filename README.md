@@ -128,7 +128,7 @@ you whether to correct the document itself or something upstream of it.
 | `docs/equivalence.md` | the oracle corpora in `tests/oracles/*.json`, replayed against the C# they compare | the Python call to C# counterpart mapping, with each divergence |
 | `docs/migration/` | the .NET package chosen for each need | what is delegated to another .NET library, and why |
 | `CHANGELOG.md` | the merged pull requests, per release | what changed, per release |
-| `docs/decisions/` | the ADRs' own `**Status:**` lines, indexed in `docs/decisions/README.md` | a decision, with its options and its loser |
+| `docs/decisions/` | the ADRs' own `**Status:**` lines, indexed in [`docs/decisions/README.md`](docs/decisions/README.md) | a decision, with its options and its loser |
 | root `README.md` | the project as it stands, hand-maintained | what the project is, and where to go next |
 
 ## Publishing

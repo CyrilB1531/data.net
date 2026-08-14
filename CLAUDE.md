@@ -27,7 +27,7 @@ you whether to correct the document itself or something upstream of it.
 | `docs/equivalence.md` | the oracle corpora in `tests/oracles/*.json`, replayed against the C# they compare | the Python call to C# counterpart mapping, with each divergence |
 | `docs/migration/` | the .NET package chosen for each need | what is delegated to another .NET library, and why |
 | `CHANGELOG.md` | the merged pull requests, per release | what changed, per release |
-| `docs/decisions/` | the ADRs' own `**Status:**` lines, indexed in `docs/decisions/README.md` | a decision, with its options and its loser |
+| `docs/decisions/` | the ADRs' own `**Status:**` lines, indexed in [`docs/decisions/README.md`](docs/decisions/README.md) | a decision, with its options and its loser |
 | root `README.md` | the project as it stands, hand-maintained | what the project is, and where to go next |
 
 ## Commands
@@ -188,10 +188,9 @@ Three traps, each of which has already cost a session:
   corpora as an artefact so the comparison can be made off the runner.
 
 Where behaviour deliberately diverges from the Python reference, it goes in
-`docs/decisions/` — nineteen ADRs so far, and they are the fastest way to
-understand why something looks wrong. `docs/equivalence.md` maps each Python call
-to its C# counterpart; **a row lands in the same commit as the function**, not
-afterwards.
+[`docs/decisions/`](docs/decisions/README.md), the fastest way to understand why
+something looks wrong. `docs/equivalence.md` maps each Python call to its C#
+counterpart; **a row lands in the same commit as the function**, not afterwards.
 
 ### 4. The analyzers gate the build, not the pull request
 
