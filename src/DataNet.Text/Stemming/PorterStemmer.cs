@@ -14,13 +14,11 @@ namespace DataNet.Text.Stemming;
 /// The Porter stemming algorithm (Martin Porter, 1980) for English.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Reduces a word to a stem by stripping common morphological endings in five
-/// steps. Reference behavior: the original algorithm as implemented by
-/// <c>nltk.stem.porter.PorterStemmer(mode=ORIGINAL_ALGORITHM)</c>. This is an
-/// original implementation of the published algorithm, not a transcription.
-/// </para>
-/// <para>Input is lowercased; only ASCII letters are treated as such. Thread-safe.</para>
+/// Reference behavior: the original five-step algorithm as implemented by
+/// <c>nltk.stem.porter.PorterStemmer(mode=ORIGINAL_ALGORITHM)</c>. An original
+/// implementation of the published algorithm, not a transcription — see
+/// <c>docs/equivalence.md</c>'s stemming row. Input is lowercased; only ASCII
+/// letters are treated as such. Thread-safe.
 /// </remarks>
 public static class PorterStemmer
 {
