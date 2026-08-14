@@ -204,7 +204,7 @@ generated rather than committed, so re-measuring after issue #100 meant
 generating it again, and the untouched rows moved with it — `SpieceModel` reads
 5.7 ms here against the 4.2 ms published before, on identical code. Every figure
 in this section, and in the two below it, comes from one session against one
-corpus; what issue #100 was worth is measured against `main` on that same corpus
+corpus. What issue #100 was worth is measured against `main` on that same corpus
 and reported in the paragraph after next, not by subtracting these numbers from
 the previous edition's.
 
@@ -224,7 +224,7 @@ the previous edition's.
 write path changed. Every loader allocates less, by 15% to 52%, which is the
 counted column and does not move between runs — that is the intermediate buffers
 disappearing. Time follows allocation everywhere except `VocabTxt`, which reads
-3% *slower* both times on both targets: a 224 KB file is small enough that one
+3% *slower* both times on both targets. A 224 KB file is small enough that one
 sized allocation buys back less than the extra work of getting to it, and 3% is
 close enough to this harness's spread that it is reported rather than explained.
 
@@ -236,7 +236,7 @@ case. It is deliberate — the question on this axis is what the two *targets* c
 each other, not what a caller pays — but it is not a general "cost of Save".
 
 Four rows are noise, which is what equivalent IL should produce, and two runs per
-side say so more convincingly than one: those four scatter between 0.98× and
+side say so more convincingly than one. Those four scatter between 0.98× and
 1.03× and **change sign between rounds** — `VocabTxt` reads 0.98× then 1.00×,
 `TfidfLoad` 0.99× then 1.03×. A single run per side cannot distinguish that from
 a small consistent penalty, which is what this table used to report.
@@ -253,8 +253,8 @@ piece where net10 allocates nothing, once for the `byte[4]` scratch buffer in
 `ProtobufReader.ReadFloat` and once for the array copy in `DecodeUtf8` that
 `netstandard2.0` needs because it has no span overload. Across 29 861 pieces that
 is the whole 1.95 MB difference — unchanged by issue #100, which took the same
-1.25 MB off both targets and left the gap between them exactly where it was — and
-it costs 1.83×–1.84× the time. The allocation column is counted rather than
+1.25 MB off both targets and left the gap between them exactly where it was. It
+costs 1.83×–1.84× the time. The allocation column is counted rather than
 sampled and does not move between runs at all.
 
 **What the toolchain mismatch was worth here.** Measured in the session that
@@ -460,7 +460,7 @@ before: **BenchmarkDotNet's ± margin describes dispersion *within* one process
 and says nothing about reproducibility *across* processes.** An earlier version
 published `AccuracyScore` at n=1 000, k=10 reading 2.59× and explained it as
 the short job's noise floor — implying a longer job would settle it. A longer
-job did not: the 2.59× vanished, and k=2 came back at 0.64× with a ±0.3%
+job did not. The 2.59× vanished, and k=2 came back at 0.64× with a ±0.3%
 margin on the net10 side, which is to say a tight interval around a figure
 that a re-run then contradicted outright (1 331 ns, then 833 ns). A
 `MatrixWeighted` gap of 1.06×–1.18×, apparently systematic across all six

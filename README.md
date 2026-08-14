@@ -11,8 +11,10 @@ A **data-science toolkit for C#/.NET**, built on an honest premise:
 ## Why
 
 Python dominates data analysis through its ecosystem and its exploratory notebook
-workflow — not through the language itself; its performance comes from C/Fortran
-kernels. C# brings static typing, real parallelism without a global interpreter
+workflow, not through the language itself. Its performance comes from C/Fortran
+kernels.
+
+C# brings static typing, real parallelism without a global interpreter
 lock, safe refactoring, and simple deployment. The only objective reason to stay
 on Python for this domain was the lack of an equivalent .NET library. DataNet
 removes that reason.
@@ -89,9 +91,9 @@ policy are in [`CONTRIBUTING.md`](CONTRIBUTING.md); release history is in
 
 ### Oracle validation
 
-Conformance to Python behavior is **proven**, not assumed (§4 of the brief):
+Conformance to Python behavior is **proven**, not assumed (§4 of the brief).
 `tools/generate_oracles.py` freezes a few thousand reference cases from
-rapidfuzz/jellyfish/etc. into `tests/oracles/*.json` (versioned); the C# suite
+rapidfuzz/jellyfish/etc. into `tests/oracles/*.json` (versioned). The C# suite
 replays them with a `1e-9` tolerance. Python is a development-only dependency. See
 [`tools/README.md`](tools/README.md).
 
@@ -141,7 +143,7 @@ on `DataNet.Text` as a published package, not as a project reference — see
 [`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md).
 
 **GitHub Packages** (no nuget.org account needed — uses GitHub's automatic token).
-Bump the version, then tag it with the package name; the
+Bump the version, then tag it with the package name. The
 [`release`](.github/workflows/release.yml) workflow packs and publishes that
 package alone:
 
@@ -152,14 +154,14 @@ git tag DataNet.Fuzzy/v0.3.0
 git push origin DataNet.Fuzzy/v0.3.0
 ```
 
-The tag does not set the version, it names which declared version to release: the
+The tag does not set the version; it names which declared version to release. The
 workflow refuses the job if the tag and `Version.props` disagree. Repository-wide
 `v*` tags are retired — there is no single version left for one to designate.
 
 **Step 1 is not optional.** Because the tag only confirms the declared version,
 tagging without bumping first is a tag that agrees with `Version.props` and names
-a version the feed already has. The push is then rejected rather than absorbed —
-the workflows do not pass `--skip-duplicate`, which used to report that case as a
+a version the feed already has. The push is then rejected rather than absorbed.
+The workflows do not pass `--skip-duplicate`, which used to report that case as a
 successful release that shipped nothing. Keeping a declared version off the feed
 is also checked directly in CI by `tools/check_version_floor.py`.
 

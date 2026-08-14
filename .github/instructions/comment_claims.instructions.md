@@ -22,9 +22,12 @@ inherits the first's framing from the diff.
 
 On 2026-08-13, in issue #140, a false claim survived two reviews that were both looking at it: a task
 reviewer wrote it, an implementer transcribed it, and the whole-branch reviewer caught it only because it
-re-derived the shape from scratch. Of the eight failures that day, six fell to someone re-deriving the
-claim independently, one to a differential against a separately written reference, one to an agent blocked
-by a criterion that contradicted its measurement, and **none to careful reading**.
+re-derived the shape from scratch. Of the eight failures that day:
+
+- six fell to someone re-deriving the claim independently;
+- one fell to a differential against a separately written reference;
+- one fell to an agent blocked by a criterion that contradicted its measurement;
+- **none fell to careful reading**.
 
 That breakdown is tabulated in
 `docs/superpowers/specs/2026-08-14_0134_claims-and-comment-discipline.md`, section D2, which tabulates how the

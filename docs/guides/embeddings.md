@@ -56,7 +56,7 @@ string back = bpe.Decode(t.Ids);   // == "Hello, world! 🎉", byte for byte
 ```
 
 A `tokenizer.json` that declares a normalizer — `NFC`, `NFKC`, `NFD`, `NFKD`, or a
-`Sequence` of those — has it applied before encoding, not after decoding: `Decode`
+`Sequence` of those — has it applied before encoding, not after decoding. `Decode`
 applies no normalizer of its own, but since `Encode` already normalized the text it
 saw, `Decode(Encode(x))` returns the normalized text rather than `x`, matching Python.
 One case does not round-trip byte-exactly: a non-ASCII added token that is not
@@ -260,7 +260,7 @@ The **whole** `added_tokens` table is carried into `AddedTokens` on the loaded
 vocabulary — `BpeVocabulary.AddedTokens` and `WordPieceVocabulary.AddedTokens`,
 both `IReadOnlyList<AddedToken>` — and folded into neither vocabulary. The
 entries `model.vocab` also declares are included, because that is where every
-special token lives: `<|endoftext|>` is id 50256 in GPT-2's own `model.vocab`
+special token lives. `<|endoftext|>` is id 50256 in GPT-2's own `model.vocab`
 *and* in its `added_tokens`, and the pre-model scan reads nothing but this list,
 so subtracting the intersection would drop exactly the tokens the scan exists
 for. A token added with `Tokenizer.add_tokens` gets an id after the model's own
@@ -345,7 +345,7 @@ float[] single = embedder.Embed(ids, mask);   // mean pooling + L2 built in
 masked mean pooling and L2-normalizes. It takes the token-embeddings output —
 the only output when the model has one, else the first of `last_hidden_state`,
 `token_embeddings`, `sentence_embedding` and `output` that it declares, unless
-you name one — and refuses an output whose rank is neither
+you name one. It refuses an output whose rank is neither
 `[batch, sequence, dim]` nor the `[batch, dim]` of a model that pools
 internally.
 
@@ -376,7 +376,7 @@ Console.WriteLine($"{reloaded.GetId(best.Index)}  score={best.Score:F3}");
 ```
 
 The vectors are stored as raw IEEE-754 bits, so a reloaded index scores bit for
-bit what the original scored — and the normalization flag travels in the file
+bit what the original scored. The normalization flag travels in the file
 rather than being supplied again on load, because an index reloaded under the
 other setting would rank a corpus wrongly without ever looking wrong. The reader
 bounds every count it reads against `ArtifactLoadOptions` before that count sizes

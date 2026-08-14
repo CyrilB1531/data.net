@@ -126,7 +126,7 @@ The **vocabulary and merge table only** — the 50 257 token-to-id entries of
 The files are compiled into no package: they live under `tests/`, are copied to
 the test output, and exist so `ByteLevelBpeTests`' claim of byte-exact parity
 with HuggingFace `tokenizers` is checked against GPT-2's real 50 257-entry
-vocabulary — a self-trained toy model could never exercise a merge table with
+vocabulary. A self-trained toy model could never exercise a merge table with
 50 000 ranks. They are downloaded verbatim by `tools/fetch_gpt2_bpe.py`, which
 pins the upstream SHA-256 of each file.
 
