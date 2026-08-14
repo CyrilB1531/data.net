@@ -7,7 +7,7 @@ This is a handover, not a design. It exists so the lot that takes #123 does not 
 
 ## What the issue asks, and what is answered
 
-#123 names four questions. Three are answered below; the fourth is a decision nobody has taken.
+Issue #123 names four questions. Three are answered below; the fourth is a decision nobody has taken.
 
 | question | answer |
 | --- | --- |
@@ -21,7 +21,7 @@ This is a handover, not a design. It exists so the lot that takes #123 does not 
 One tokenizer, vocabulary `{a, b, c, ab, abc}`, merges `(a,b)` then `(ab,c)`, `dropout=0.5`,
 `Whitespace` pre-tokenizer. Twelve `encode("abc")` calls on the **same** object:
 
-```
+```text
 distinct results: ('a', 'b', 'c'), ('ab', 'c'), ('abc',)
 ```
 
@@ -32,7 +32,7 @@ So the refusal cannot rest on "a load-time setting we cannot represent". The ran
 
 ## D2 — `tokenizers` 0.23.1 exposes no seed, anywhere
 
-```
+```text
 tokenizers 0.23.1
 seed-ish attrs on tokenizers: []
 seed-ish attrs on models.BPE: []
@@ -116,7 +116,7 @@ for repo in REPOS:                      # try /raw/main first; /resolve/main for
     url = f"https://huggingface.co/{repo}/raw/main/tokenizer.json"
     doc = json.loads(urllib.request.urlopen(url, timeout=120).read())
     print(repo, (doc.get("model") or {}).get("type"), (doc.get("model") or {}).get("dropout"))
-```
+```text
 
 A 404 means the repository ships no `tokenizer.json`; a 401 means it is gated; an unparseable body from
 `/raw/` means the file is LFS-backed and needs `/resolve/`.

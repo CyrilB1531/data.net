@@ -1198,9 +1198,8 @@ public sealed class TokenizerJsonLoaderTests
     }
 
     /// <summary>
-    /// <c>dropout</c> drops merges at random, so a file declaring it does not have one
-    /// tokenization to match. Rare in shipped files and read by nothing here, which is
-    /// exactly why it went unrejected.
+    /// Refused because no model asks for it -- zero of the 23 read for decision 0034 --
+    /// and not because it cannot be reproduced, which that decision rejects as a reason.
     /// </summary>
     [Fact]
     public void LoadBpe_refuses_dropout()
