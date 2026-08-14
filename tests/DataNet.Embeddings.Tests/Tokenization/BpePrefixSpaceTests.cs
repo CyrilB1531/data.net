@@ -48,17 +48,13 @@ public sealed class BpePrefixSpaceTests
         Assert.Equal(" a|b|c|d", tokenizer.Decode(tokenizer.Encode("a|b|c|d").Ids));
     }
 
-    /// <summary>
-    /// The four models declaring the space decode the text the <c>Split</c> never
-    /// matches identically, which is what makes the tests above about placement
-    /// rather than about the models differing in general. The fifth declares no
-    /// space and differs by exactly that.
-    /// </summary>
+    /// <summary>The four models declaring the space decode the text the <c>Split</c> never matches identically, and the fifth differs by exactly that space.</summary>
     /// <remarks>
-    /// On <c>decoded</c> and not on <c>pieces</c>: the same four disagree there,
-    /// <c>presplit_aps</c> and <c>no_split_aps</c> giving one piece where
-    /// <c>presplit_aps_regex</c> and <c>bare_aps</c> give three -- on
-    /// <c>use_regex</c> rather than on the split.
+    /// Which is what makes the tests above about placement rather than about the
+    /// models differing in general. On <c>decoded</c> and not on <c>pieces</c>:
+    /// the same four disagree there, <c>presplit_aps</c> and <c>no_split_aps</c>
+    /// giving one piece where <c>presplit_aps_regex</c> and <c>bare_aps</c> give
+    /// three -- on <c>use_regex</c> rather than on the split.
     /// </remarks>
     [Fact]
     public void The_models_declaring_a_prefix_space_agree_where_the_split_never_matches()
@@ -157,23 +153,7 @@ public sealed class BpePrefixSpaceTests
 
     private static BpeVocabulary Vocabulary(JsonElement model)
     {
-        using var stream = new MemoryStream(
-            Encoding.UTF8.GetBytes(WithARegexSplitPattern(model.GetProperty("tokenizer_json").GetString()!)));
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(model.GetProperty("tokenizer_json").GetString()!));
         return TokenizerJsonLoader.LoadBpe(stream, OracleReplay.BpeBounds());
     }
-
-    /// <summary>The same file with its <c>Split</c> pattern spelled as a regex.</summary>
-    /// <remarks>
-    /// The corpus's three <c>Sequence</c> models declare <c>pattern: {"String": "|"}</c>,
-    /// which <see cref="TokenizerJsonLoader"/> refuses -- it reads <c>pattern.Regex</c>
-    /// only. The substitution moves no split: HuggingFace matches a String pattern
-    /// literally, and <c>\|</c> is that same literal as a regex, so the pieces,
-    /// tokens and decodings the corpus records still apply unchanged. The loader
-    /// gap outlives this lot and wants its own issue -- widening the loader here
-    /// would be a second concern, with its own equivalence.md row.
-    /// </remarks>
-    private static string WithARegexSplitPattern(string json) =>
-        string.Join(
-            "\"pattern\":{\"Regex\":\"\\\\|\"}",
-            json.Split(["\"pattern\":{\"String\":\"|\"}"], StringSplitOptions.None));
 }
