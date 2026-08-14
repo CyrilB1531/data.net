@@ -9,22 +9,10 @@ namespace DataNet.Text.Vectorization;
 /// filter: built once, then read once per token.
 /// </summary>
 /// <remarks>
-/// <para>
-/// That ratio is the whole reason this type exists. On net10 a
-/// <c>FrozenSet&lt;string&gt;</c> pays more to build than a
-/// <see cref="HashSet{T}"/> and less to read, which is the right side of the trade
-/// here; and its <c>AlternateLookup&lt;ReadOnlySpan&lt;char&gt;&gt;</c> answers from
-/// a span over the document, so a stop word — by definition among the tokens that
-/// occur most — is never materialised as a string before being discarded.
-/// netstandard2.0 has neither type, and keeps the <see cref="HashSet{T}"/> and the
-/// string lookup it always had. The single <c>#if</c> below is the only place
-/// either build is named.
-/// </para>
-/// <para>
-/// Sets are always ordinal: matching is against the analyzer's output, which is
-/// already lowercased (and possibly accent-stripped) by preprocessing, so culture
-/// plays no part.
-/// </para>
+/// Built-once-read-often is why this type exists: on net10 a <c>FrozenSet&lt;string&gt;</c> answers a stop
+/// word from a span, never materialising it as a string. netstandard2.0 keeps the plain
+/// <see cref="HashSet{T}"/> it always had — the single <c>#if</c> below is the only place either build is
+/// named. Matching is always ordinal, against the analyzer's already-lowercased output.
 /// </remarks>
 internal sealed class StopWordSet
 {

@@ -6,28 +6,12 @@ namespace DataNet.Text.Persistence;
 /// The bounds applied when loading a persisted DataNet artifact.
 /// </summary>
 /// <remarks>
-/// <para>
-/// A saved model is a file, and a file can come from anywhere: every count it
-/// declares sizes a buffer on load. These limits turn a hostile or corrupt
-/// artifact into an <see cref="InvalidDataException"/> naming the limit and the
-/// offending value, instead of an <see cref="OutOfMemoryException"/> or a hang.
-/// The defaults are generous enough for real models — a 1 000 000-term
-/// vocabulary is far past what scikit-learn users fit in practice — so raising
-/// them should be a deliberate act.
-/// </para>
-/// <para>
-/// There is no Python equivalent: <c>pickle.load</c>, the usual way a fitted
-/// scikit-learn model is restored, executes arbitrary code by design and has no
-/// such bounds. This type is the reason DataNet's format can be pointed at an
-/// untrusted file at all.
-/// </para>
+/// See the guide's "Reading a file you did not write" section
+/// (<c>docs/guides/vectorization.md</c>) for the defaults and a worked example,
+/// and <c>docs/decisions/0011-persistence-format.md</c> for the <c>pickle.load</c>
+/// comparison and why this type is declared separately from
+/// <c>DataNet.Embeddings</c>'s rather than shared.
 /// </remarks>
-/// <example>
-/// <code>
-/// var strict = new ArtifactLoadOptions { MaxVocabularySize = 50_000, MaxTotalBytes = 8L * 1024 * 1024 };
-/// TfidfVectorizer model = TfidfVectorizer.Load("model.json", strict);
-/// </code>
-/// </example>
 public sealed record ArtifactLoadOptions
 {
     /// <summary>Maximum number of vocabulary entries accepted. Default 1 000 000.</summary>

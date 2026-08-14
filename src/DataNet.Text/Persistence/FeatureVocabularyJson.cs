@@ -33,27 +33,19 @@ internal static class FeatureVocabularyJson
     /// Writes the idf vector as one base64 string of raw little-endian IEEE-754 bits.
     /// </summary>
     /// <remarks>
-    /// <para>
     /// The vocabulary stays plain text, because that is the half of an artifact a
-    /// human reads. The idf vector is thirty thousand floats that nobody inspects by
-    /// eye, and writing it as JSON numbers was measurably the most expensive part of
-    /// the format: parsing them cost four times what materialising the whole
-    /// vocabulary cost, and they made the file a quarter larger.
-    /// </para>
-    /// <para>
-    /// Raw bits also make the round trip exact <em>by construction</em> rather than
-    /// by trusting a decimal formatter — no shortest-round-trippable versus
-    /// <c>"G17"</c> question arises, on any framework.
-    /// </para>
+    /// human reads; the idf vector does not, because nobody reads thirty thousand
+    /// floats by eye. See <c>docs/decisions/0011-persistence-format.md</c>, "The
+    /// idf vector is base64, and the vocabulary is not", for the measurements and
+    /// the exactness argument for raw bits over a decimal formatter.
     /// </remarks>
     public static void WriteIdf(Utf8JsonWriter writer, IReadOnlyList<double> idf)
     {
         for (int i = 0; i < idf.Count; i++)
         {
             double value = idf[i];
-            // Raw bits would carry these happily, where a JSON number could not. The
-            // format's promise is that what it holds is a usable model, so the refusal
-            // that WriteExactDouble applies to every other double applies here too.
+            // Refused before write: JSON has no NaN/infinity, and a model carrying
+            // one is broken already (0011-persistence-format.md, "Doubles").
             if (double.IsNaN(value) || double.IsInfinity(value))
             {
                 throw new InvalidDataException(
@@ -86,9 +78,8 @@ internal static class FeatureVocabularyJson
         {
             string name = reader.GetString()!;
             limits.CheckTokenLength(name.Length);
-            // Ordering is checked here rather than in a second pass over the finished
-            // array: the predecessor is still in cache, and 30k strings are not worth
-            // walking twice.
+            // Checked inline, not in a second pass: the predecessor is already in
+            // cache, and 30k strings do not need walking twice.
             if (previous is not null && string.CompareOrdinal(previous, name) >= 0)
             {
                 throw OutOfOrder(artifact, previous, name);
@@ -126,9 +117,8 @@ internal static class FeatureVocabularyJson
         double[] values = Base64Numbers.ReadDoubles(ref reader, artifact, IdfProperty, limits);
         for (int i = 0; i < values.Length; i++)
         {
-            // Raw bits carry NaN and infinity perfectly well, where JSON numbers could
-            // not. Left through, they turn every later Transform into NaN scores —
-            // silently, and a long way from the file that caused it.
+            // Checked on read too, matching the write-side refusal (see WriteIdf,
+            // and 0011-persistence-format.md's "Doubles" section, for why).
             if (double.IsNaN(values[i]) || double.IsInfinity(values[i]))
             {
                 throw JsonArtifact.Inconsistent(
@@ -154,18 +144,10 @@ internal static class FeatureVocabularyJson
     /// How large to make the vocabulary buffer before reading it.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// Sized from the count the file declares, so the common case is one allocation
-    /// of exactly the right length and no copy at all — where growing from a small
-    /// clamp cost four reallocations plus a final <c>ToArray</c> for a 30k-feature
-    /// artifact, all of it garbage on a path whose remaining cost is collection.
-    /// </para>
-    /// <para>
-    /// The ceiling is what keeps a declared count from sizing the allocation on its
-    /// own: a file claiming a million features gets 64k entries and has to actually
-    /// deliver the rest before the buffer grows. <c>CheckVocabularySize</c> still
-    /// bounds the total.
-    /// </para>
+    /// Sized from the declared count, so the common case allocates once at the
+    /// right length instead of growing and copying as items arrive. The 64k
+    /// ceiling then keeps a declared count from sizing the allocation on its own;
+    /// <c>CheckVocabularySize</c> still bounds the total actually accepted.
     /// </remarks>
     private static int InitialCapacity(int declaredCount) =>
         declaredCount > 0 ? Math.Min(declaredCount, MaxPreallocatedEntries) : 0;

@@ -7,21 +7,14 @@ namespace DataNet.Text.Distances;
 #pragma warning disable S4136
 
 /// <summary>
-/// Hamming distance: the number of positions at which two sequences differ.
+/// Hamming distance: the number of positions at which two sequences differ,
+/// plus the absolute length difference when they are unequal.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Definition used: mismatches over the common prefix, plus the absolute length
-/// difference (so, unlike the strict textbook version, unequal lengths are
-/// tolerated). This is the standard behavior and coincides with
-/// <c>jellyfish.hamming_distance</c> for all normal inputs; jellyfish has a
-/// documented quirk on degenerate combining-mark strings that DataNet does not
-/// reproduce — see <c>docs/decisions/0005-hamming-jellyfish-divergence.md</c>.
-/// </para>
-/// <para>
-/// Pass <see cref="TextElement.CodePoint"/> for code-point semantics on
+/// Matches <c>jellyfish.hamming_distance</c> except on combining-mark input; see
+/// <c>docs/decisions/0005-hamming-jellyfish-divergence.md</c>. Pass
+/// <see cref="TextElement.CodePoint"/> for code-point semantics on
 /// supplementary-plane input. All members are stateless and thread-safe.
-/// </para>
 /// </remarks>
 public static class Hamming
 {

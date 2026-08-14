@@ -7,18 +7,11 @@ namespace DataNet.Text.Distances;
 /// Jaro-Winkler similarity: <see cref="Jaro"/> boosted for a shared prefix.
 /// </summary>
 /// <remarks>
-/// <para>
-/// <c>jaroWinkler = jaro + prefix · p · (1 - jaro)</c>, where <c>prefix</c> is the
-/// length of the common prefix capped at 4 and <c>p</c> is the prefix weight
-/// (default 0.1). Reference behavior: <c>jellyfish.jaro_winkler_similarity</c>,
-/// which applies the prefix boost only when the base Jaro similarity exceeds 0.7
-/// (the classic Winkler threshold) and does not use long-tolerance by default.
-/// </para>
-/// <para>
-/// jellyfish operates on code points; pass <see cref="TextElement.CodePoint"/> for
-/// exact parity on supplementary-plane input. All members are stateless and
-/// thread-safe.
-/// </para>
+/// Reference behavior: <c>jellyfish.jaro_winkler_similarity</c>; see
+/// <c>docs/equivalence.md</c> for the threshold, weight and cap. Long-tolerance
+/// is not applied (jellyfish's default). jellyfish operates on code points —
+/// pass <see cref="TextElement.CodePoint"/> for supplementary-plane parity. All
+/// members are stateless and thread-safe.
 /// </remarks>
 public static class JaroWinkler
 {

@@ -14,13 +14,10 @@ public enum SparseNorm
 /// A compressed sparse row (CSR) matrix of <see cref="double"/> values.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Stores only non-zero entries, row by row: <see cref="Values"/> and
-/// <see cref="ColumnIndices"/> hold the non-zeros, and <see cref="RowPointers"/>
-/// (length <c>RowCount + 1</c>) delimits each row. This is the layout produced by
-/// the vectorizers and consumed by cosine-similarity search.
-/// </para>
-/// <para>Instances are immutable except for <see cref="NormalizeRows"/>, which mutates values in place.</para>
+/// Stores only non-zero entries, row by row: <see cref="Values"/> and <see cref="ColumnIndices"/> hold the
+/// non-zeros, and <see cref="RowPointers"/> (length <c>RowCount + 1</c>) delimits each row — the layout
+/// <c>CsrMatrixValidationTests</c> checks the constructor enforces. Instances are immutable except for
+/// <see cref="NormalizeRows"/>, which mutates values in place.
 /// </remarks>
 public sealed class CsrMatrix
 {
@@ -29,19 +26,9 @@ public sealed class CsrMatrix
     /// describe a structurally valid matrix.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The arrays are validated in full: <paramref name="rowPointers"/> must be
-    /// non-decreasing, start at 0 and end at <c>values.Length</c>, and every entry
-    /// of <paramref name="columnIndices"/> must fall inside
-    /// <paramref name="columnCount"/>. This costs one linear pass, and it is what
-    /// makes the type safe to build from a file: without it, a single out-of-range
-    /// column index turns <see cref="Multiply"/> or <see cref="ToDense"/> into an
-    /// out-of-bounds write.
-    /// </para>
-    /// <para>
-    /// The vectorizers build their arrays themselves and bypass this pass through
-    /// an internal path — they cannot produce an invalid one.
-    /// </para>
+    /// This constructor is the boundary a deserialized matrix crosses, so it validates in full — every
+    /// rejected shape is a case in <c>CsrMatrixValidationTests</c>. The vectorizers build their own arrays
+    /// and bypass this pass through <see cref="CreateUnchecked"/>: they cannot produce an invalid one.
     /// </remarks>
     /// <exception cref="ArgumentException">The arrays do not describe a valid CSR matrix.</exception>
     public CsrMatrix(int rowCount, int columnCount, double[] values, int[] columnIndices, int[] rowPointers)

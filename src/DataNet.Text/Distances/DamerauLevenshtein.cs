@@ -9,20 +9,13 @@ namespace DataNet.Text.Distances;
 
 /// <summary>
 /// Unrestricted Damerau-Levenshtein distance (insertions, deletions,
-/// substitutions and transpositions of adjacent characters).
+/// substitutions and transpositions of adjacent characters); a substring may
+/// be edited more than once, unlike <see cref="Osa"/>. Not a proper metric.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Unlike <see cref="Osa"/>, a substring may take part in more than one edit, so
-/// <c>"CA"</c> → <c>"ABC"</c> costs 2 here (transpose + insert) versus 3 under OSA.
-/// It is implemented with the classic Lowrance-Wagner dynamic program using a
-/// "last seen row" table over the alphabet; it is not a proper metric.
-/// </para>
-/// <para>
-/// Reference behavior: <c>rapidfuzz.distance.DamerauLevenshtein</c>. See
-/// <see cref="TextElement"/> for the UTF-16 vs code-point choice. All members are
-/// stateless and thread-safe.
-/// </para>
+/// Reference behavior: <c>rapidfuzz.distance.DamerauLevenshtein</c>; see
+/// <c>docs/equivalence.md</c>. See <see cref="TextElement"/> for the UTF-16
+/// vs code-point choice. All members are stateless and thread-safe.
 /// </remarks>
 public static class DamerauLevenshtein
 {

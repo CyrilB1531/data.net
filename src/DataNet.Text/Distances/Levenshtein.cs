@@ -7,30 +7,19 @@ namespace DataNet.Text.Distances;
 #pragma warning disable S4136
 
 /// <summary>
-/// The Levenshtein edit distance and its normalized forms.
+/// The Levenshtein edit distance and its normalized forms: the minimum number
+/// of single-element insertions, deletions and substitutions (unit cost) to
+/// transform one sequence into another. A true metric.
 /// </summary>
 /// <remarks>
-/// <para>
-/// The distance is the minimum number of single-element insertions, deletions
-/// and substitutions (each of unit cost) required to transform one sequence into
-/// another. It is a true metric.
-/// </para>
-/// <para>
-/// Reference behavior: <c>rapidfuzz.distance.Levenshtein</c> with default weights
-/// <c>(1, 1, 1)</c>. rapidfuzz operates on Python <c>str</c>, i.e. code points, so
-/// pass <see cref="TextElement.CodePoint"/> for exact parity on
-/// supplementary-plane input; the default <see cref="TextElement.Utf16Unit"/>
-/// agrees for all Basic-Multilingual-Plane text and avoids a decode pass.
-/// </para>
-/// <para>
-/// All members are stateless and thread-safe.
-/// </para>
+/// Reference behavior: <c>rapidfuzz.distance.Levenshtein</c>, weights
+/// <c>(1, 1, 1)</c>; see <c>docs/equivalence.md</c> for the UTF-16 vs
+/// code-point choice. All members are stateless and thread-safe.
 /// </remarks>
 public static class Levenshtein
 {
-    // Below this pattern length the DP beats Myers: the equality-table setup
-    // dominates. There is no upper bound any more — patterns longer than one
-    // machine word take the blocked variant.
+    // Below this length the DP beats Myers (equality-table setup dominates); no
+    // upper bound remains since longer patterns take the blocked path.
     private const int MyersMinPatternLength = 16;
 
     /// <summary>
@@ -139,10 +128,8 @@ public static class Levenshtein
             b = tmp;
         }
 
-        // b is the shorter operand (the Myers "pattern"); a is the text. Myers
-        // wins from a modest pattern length up: below it, building the equality
-        // table costs more than the tiny DP, so we stay on the DP. (Measured
-        // crossover ~16; see docs/guides/performance.md.)
+        // b is the shorter operand (Myers' "pattern"); below MyersMinPatternLength the
+        // DP wins because building the equality table costs more than it saves.
         if (b.Length >= MyersMinPatternLength && Myers.TryDistance(b, a, out int d))
         {
             return d;

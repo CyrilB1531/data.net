@@ -8,21 +8,14 @@ namespace DataNet.Text.Distances;
 #pragma warning disable S3776, S4136
 
 /// <summary>
-/// Optimal String Alignment distance (restricted Damerau-Levenshtein).
+/// Optimal String Alignment distance (restricted Damerau-Levenshtein): adjacent
+/// transpositions allowed, but no substring edited more than once. Not a metric.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Like Levenshtein, but also allows transposition of two <em>adjacent</em>
-/// characters at unit cost, with the restriction that no substring is edited more
-/// than once. This restriction makes it differ from the unrestricted
-/// <see cref="DamerauLevenshtein"/> (e.g. <c>"CA"</c> → <c>"ABC"</c> is 3 under
-/// OSA but 2 under full Damerau-Levenshtein). OSA is <em>not</em> a metric: it can
-/// violate the triangle inequality.
-/// </para>
-/// <para>
-/// Reference behavior: <c>rapidfuzz.distance.OSA</c>. See <see cref="TextElement"/>
-/// for the UTF-16 vs code-point choice. All members are stateless and thread-safe.
-/// </para>
+/// Reference behavior: <c>rapidfuzz.distance.OSA</c>; see
+/// <c>docs/equivalence.md</c> for the divergence from
+/// <see cref="DamerauLevenshtein"/>. See <see cref="TextElement"/> for the
+/// UTF-16 vs code-point choice. All members are stateless and thread-safe.
 /// </remarks>
 public static class Osa
 {

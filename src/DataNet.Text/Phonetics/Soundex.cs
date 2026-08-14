@@ -9,13 +9,11 @@ namespace DataNet.Text.Phonetics;
 /// American Soundex phonetic encoding: an initial letter followed by three digits.
 /// </summary>
 /// <remarks>
-/// <para>
 /// Reference behavior: <c>jellyfish.soundex</c>. Non-letters are ignored; the empty
 /// string encodes to the empty string. Codes: <c>bfpv→1</c>, <c>cgjkqsxz→2</c>,
 /// <c>dt→3</c>, <c>l→4</c>, <c>mn→5</c>, <c>r→6</c>; vowels (and <c>y</c>) separate
-/// equal codes, while <c>h</c>/<c>w</c> are transparent.
-/// </para>
-/// <para>Soundex is an English-oriented heuristic and is not Unicode-aware; it is thread-safe.</para>
+/// equal codes, <c>h</c>/<c>w</c> are transparent. English-oriented heuristic, not
+/// Unicode-aware; thread-safe.
 /// </remarks>
 public static class Soundex
 {

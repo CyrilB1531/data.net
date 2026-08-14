@@ -10,13 +10,11 @@ namespace DataNet.Text.Phonetics;
 /// Metaphone phonetic encoding (Lawrence Philips, 1990).
 /// </summary>
 /// <remarks>
-/// <para>
-/// Reference behavior: <c>jellyfish.metaphone</c>. Codes use the symbols
-/// <c>B X S K J T F H L M N P R 0 W Y</c> (where <c>X</c> is the "sh" sound and
-/// <c>0</c> the "th" sound); vowels appear only when they start the word.
-/// Non-letters are ignored; the empty string encodes to the empty string.
-/// </para>
-/// <para>English-oriented heuristic, not Unicode-aware; thread-safe.</para>
+/// Reference behavior: <c>jellyfish.metaphone</c>, on real words — see
+/// <c>docs/decisions/0007-metaphone-scope.md</c> for the non-word divergence this
+/// does not reproduce. Codes: <c>B X S K J T F H L M N P R 0 W Y</c> (<c>X</c> is
+/// "sh", <c>0</c> is "th"); vowels appear only word-initial. English-oriented,
+/// not Unicode-aware; thread-safe.
 /// </remarks>
 public static class Metaphone
 {
