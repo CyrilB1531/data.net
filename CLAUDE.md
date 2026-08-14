@@ -231,7 +231,12 @@ local build is not a green quality gate.
 GitHub flow, one concern per branch, `<type>/<issue>-<kebab-summary>`
 (`feat/`, `fix/`, `perf/`, `docs/`, `chore/`). Reference the issue with
 `Closes #n`. Everything written in English — code, comments, ADRs, commit
-messages, PR bodies. Commit messages carry no `feat:`/`fix:` prefix.
+messages, PR bodies. Comments are held to four rules — say why not what, carry
+what would check the claim, eight lines above a member, and a marker with its
+reason past that. `CONTRIBUTING.md`'s *Claims in comments* is the statement;
+`tools/check_comment_length.py` counts the lines and
+`.github/instructions/comment_claims.instructions.md` carries what a review
+asks about one. Commit messages carry no `feat:`/`fix:` prefix.
 
 `main` is protected by four required checks with no bypass list; "require
 approvals" is off because a single maintainer cannot approve their own PR. Do not

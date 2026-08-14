@@ -456,3 +456,37 @@ Benchmarks live in [`bench/`](bench/README.md). Attach before/after figures to a
 Verify what you are actually measuring before quoting a result. A benchmark that
 silently exercises the wrong build or the wrong code path will still produce
 confident-looking numbers.
+
+## Claims in comments
+
+A comment here often carries the reason a divergence from the Python reference exists, which is what makes
+that divergence reviewable. That is what makes them load-bearing, and it is also what makes them dangerous:
+nothing checks them, and they go stale when the code beside them moves. Four rules, and they bind every
+tracked file — `src/`, `tests/`, `tools/`, `bench/`, `samples/`, `docs/` and `docs/superpowers/` alike. A
+spec that overclaims what its corpus proves is the same defect as a comment that overclaims what the
+reference does.
+
+**A comment says why, never what.** Restating the line below it is noise, and it goes stale faster than the
+code does — the code at least gets compiled.
+
+**A claim carries what would check it.** Where it is executable — a measurement, a reference library's
+output, a count — run it and cite the corpus case, the file and line, or the command. "Measured" with no
+pointer is an assertion wearing a measurement's clothes.
+
+**Two budgets, because the two kinds of prose sit in different places.** An inline comment stands between
+a reader and the code, so it gets **two lines** — a sentence, not a paragraph. XML documentation is the
+member's own interface, read by a caller who does not have the source and required on every public member,
+so it gets **eight**, counted over prose: a `<param>` or an `<exception>` that a well-formed member must
+carry does not spend the budget. Past either, the reasoning belongs in [`docs/decisions/`](docs/decisions/),
+cited from one line — or it needs cutting. `tools/check_comment_length.py` counts them.
+
+**A longer block carries a marker naming its reason**, as its first line:
+
+```csharp
+// long-comment: <why this one needs the room>
+```
+
+Longer is allowed where it is necessary; the marker is what stops it becoming the norm. It is held to the
+bar a `#pragma warning disable` is held to — a reason a reviewer can disagree with, and "it felt useful" is
+not one. A code review judges whether the marker was deserved, because the guard can only see that one
+exists.
