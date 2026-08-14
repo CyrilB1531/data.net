@@ -43,6 +43,7 @@ a later decision uses instead.
 | [`0031`](0031-nosamplecorrect-mirrors-numpys-float64-upcast.md) | `NoSampleCorrect` mirrors NumPy's float64 upcast, not requested-label accuracy | accepted | 2026-08-14 | — |
 | [`0032`](0032-fbeta-substitutes-tp-predicted-and-support-algebraically.md) | `FScore` substitutes tp/predicted/support algebraically, not via precision and recall | accepted | 2026-08-14 | — |
 | [`0033`](0033-compensated-sum-is-neumaiers-variant.md) | `CompensatedSum` is Neumaier's variant, and its SIMD lanes are not bit-identical to it | accepted | 2026-08-14 | — |
+| [`0034`](0034-dropout-is-refused-for-want-of-a-user.md) | Distributional proof is admissible, and `dropout` is still refused | accepted | 2026-08-14 | — |
 
 ## What `accepted` means here
 
