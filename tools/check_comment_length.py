@@ -115,10 +115,26 @@ def _justifies_a_suppression(lines: list[str], after: int) -> bool:
     CONTRIBUTING.md requires a suppression to carry one and CLAUDE.md refuses
     a reason "a reviewer cannot disagree with", which is a stricter demand
     than brevity and not one two lines usually meet. Such a block is governed
-    by that rule rather than by this budget -- measured, 63 blocks across the
-    tree are in this position.
+    by that rule rather than by this budget. Measured: 94 blocks across the tree
+    are a suppression's reason, and 63 of those would be reported if this budget
+    governed them.
     """
     return after < len(lines) and "#pragma warning disable" in lines[after]
+
+
+def _doc_prefix(lines: list[str], start: int, length: int) -> int:
+    """How many of the block's opening lines are XML documentation.
+
+    A /// run and a // run touching each other are one block to the scanner but
+    two things to the rules: only the // part can be a suppression's reason, and
+    the /// part keeps its own budget however the block ends.
+    """
+    count = 0
+    for offset in range(length):
+        if not lines[start - 1 + offset].strip().startswith("///"):
+            break
+        count += 1
+    return count
 
 
 def blocks_in(lines: list[str], suffix: str) -> list[Block]:
@@ -152,8 +168,13 @@ def blocks_in(lines: list[str], suffix: str) -> list[Block]:
             if not STRUCTURAL.search(content):
                 prose += 1
         elif length:
-            result.append(Block(start, length, prose, doc, marked,
-                                _justifies_a_suppression(lines, number - 1)))
+            suppression = _justifies_a_suppression(lines, number - 1)
+            documented = _doc_prefix(lines, start, length)
+            if suppression and 0 < documented < length:
+                # Split: the documentation keeps its budget, the reason is exempt.
+                result.append(Block(start, documented, documented, True, marked, False))
+            else:
+                result.append(Block(start, length, prose, doc, marked, suppression))
             length = 0
 
     if length:

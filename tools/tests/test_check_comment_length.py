@@ -164,3 +164,25 @@ def test_a_long_block_not_above_a_pragma_is_still_counted():
     text = ("// one\n// two\n// three\n"
             "int x = 1;\n")
     assert len(guard.findings_in(text.split("\n"), ".cs")) == 1
+
+
+def test_documentation_above_a_pragma_keeps_its_own_budget():
+    # A /// run touching a // run is one block to the scanner and two things to
+    # the rules: only the // part can be a suppression's reason. Before this,
+    # 25 lines of <remarks> escaped whenever a pragma happened to follow.
+    text = ("".join(f"/// prose {i}\n" for i in range(12)) +
+            "// S1244: the reason the suppression needs\n"
+            "#pragma warning disable S1244\n"
+            "int x = 1;\n")
+    findings = guard.findings_in(text.split("\n"), ".cs")
+    assert len(findings) == 1
+    assert findings[0].length == 12
+
+
+def test_a_pragma_reason_alone_is_still_exempt():
+    text = ("// S1244: three lines of reason, which the suppression rule\n"
+            "// requires and which this budget does not govern, so nothing\n"
+            "// is reported here.\n"
+            "#pragma warning disable S1244\n"
+            "int x = 1;\n")
+    assert guard.findings_in(text.split("\n"), ".cs") == []
