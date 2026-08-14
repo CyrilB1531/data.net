@@ -161,9 +161,10 @@ $env:DataNetUseProjectRefs = 'true'   # local developer loop only; CI never sets
 ```
 
 Unset it before measuring anything — with it on you are building a graph that will
-never ship. A branch whose `DataNet.Fuzzy` needs new `DataNet.Text` API **cannot
-go green**; release `DataNet.Text` first, raise the floor, then land the other
-side. Release tags are `<PackageId>/v<Version>`.
+never ship. CONTRIBUTING.md's
+[*Working across two packages*](CONTRIBUTING.md#working-across-two-packages) has
+the release order that gets a branch with it on to green. Release tags are
+`<PackageId>/v<Version>`.
 
 ### 3. Conformance is proven by frozen oracles, not by hand-written expectations
 
@@ -175,10 +176,9 @@ Python is a **development dependency only**.
 
 Three traps, each of which has already cost a session:
 
-- **Run the generator from a neutral working directory.** `nltk` refuses to import
-  its dependencies when they appear to live under the current directory, so a run
-  from the repository root fails with `ImportError: Blocked import of regex from
-  current working directory` even with `PYTHONSAFEPATH` set.
+- **Run the generator from a neutral working directory** — CONTRIBUTING.md's
+  [*Oracle validation*](CONTRIBUTING.md#oracle-validation) has why and the exact
+  error `nltk` raises otherwise.
 - **Read the generator's own exit code**, never a pipeline's. `python … | tail`
   reports `tail`'s status, so a failed generation looks successful — and the drift
   check that follows then proves nothing, because nothing was regenerated.
@@ -196,11 +196,11 @@ counterpart; **a row lands in the same commit as the function**, not afterwards.
 
 `SonarAnalyzer.CSharp` is referenced by every project under `src/`, `tests/`,
 `bench/` and `samples/`, and the .NET code-quality rules run at
-`AnalysisMode=All` with `AnalysisLevel` pinned to `10.0`. Warnings are errors
-repository-wide, so **a Sonar or `CAxxxx` finding is a compile error on your
-machine**. The analyzer version is pinned once as
-`$(DataNetSonarAnalyzerVersion)` in the root `Directory.Build.props`; raising it
-or `AnalysisLevel` surfaces new rules and is its own change.
+`AnalysisMode=All` with `AnalysisLevel` pinned to `10.0` — CONTRIBUTING.md's
+[*Analyzers*](CONTRIBUTING.md#analyzers) has what that costs a finding. The
+analyzer version is pinned once as `$(DataNetSonarAnalyzerVersion)` in the root
+`Directory.Build.props`; raising it or `AnalysisLevel` surfaces new rules and is
+its own change.
 
 - A rule an *area* trips by being that area (xunit's underscored names,
   BenchmarkDotNet's reflection-instantiated types, a sample printing to the
@@ -229,18 +229,17 @@ local build is not a green quality gate.
   `NUGET_PACKAGES`, or they judge the published packages instead of the working
   tree (ADR 0009).
 - **The doc-snippets gate.** Every ` ```csharp ` fence in `README.md` and
-  `docs/guides/` is extracted from the Markdown and compiled against the packed
-  packages — there is no second copy, so a renamed method fails CI. A fence that
-  genuinely cannot compile opts out with
-  `<!-- docs-compile: skip - reason -->` above it.
+  `docs/guides/` is compiled against the packed packages, so a renamed method
+  fails CI — CONTRIBUTING.md's [*Definition of
+  done*](CONTRIBUTING.md#definition-of-done), item 5, has the opt-out syntax.
 
 ## Provenance — two hard rules
 
-- **Never transcribe GPL-licensed code.** The stemmers and phonetic encoders are
-  original implementations written from the *published algorithm description*.
-  Reading a reference implementation to diagnose one failing case is diagnosis and
-  is fine; deriving the implementation from it is not. The oracle is what proves
-  behaviour matches, so the source never needs to be copied. See ADR 0003.
+- **Never transcribe GPL-licensed code** — CONTRIBUTING.md's
+  [*Licensing and provenance*](CONTRIBUTING.md#licensing-and-provenance) has the
+  rule, and ADR 0003 the reasoning. Reading a reference implementation to
+  diagnose one failing case is diagnosis and is fine; deriving the
+  implementation from it is not.
 - **Never commit model weights.** Test fixtures are small and synthetic; vocabularies
   are fetched against a pinned SHA-256 by `tools/fetch_*.py`.
 

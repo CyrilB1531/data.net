@@ -215,12 +215,11 @@ cannot make the check pass on a stale file.
 
 ## `check_comment_length.py`
 
-Refuses a comment block that runs past its budget without saying why. Two
-budgets, because the two kinds of prose sit in different places: an inline
-comment stands between a reader and the code and gets **two lines**, while XML
-documentation is the member's own interface and gets **eight**, counted over
-prose — a `<param>` or an `<exception>` that a well-formed member must carry
-does not spend it.
+Refuses a comment block that runs past its budget without saying why —
+**two lines** for an inline comment, **eight** for XML documentation, counted
+over prose. `CONTRIBUTING.md`'s
+[*Claims in comments*](../CONTRIBUTING.md#claims-in-comments) has why the two
+budgets differ.
 
 ```bash
 python3 tools/check_comment_length.py           # findings, exit 1 if any
@@ -229,12 +228,9 @@ python3 tools/check_comment_length.py --help
 ```
 
 Longer stays possible where it is necessary. A block past its budget carries
-`long-comment:` and a reason as its first line, which is the bargain a
-`#pragma warning disable` strikes — allowed, deliberate, reviewable. **The
-marker must carry a reason**; an empty one is refused, because it is the
-cheapest rubber stamp available. The guard sees only that a marker exists;
-whether the block deserved one is a code review's call, and
-`CONTRIBUTING.md`'s *Claims in comments* says so.
+`long-comment:` and a reason as its first line; an empty marker is refused. The
+guard sees only that a marker exists — whether the block deserved one is a
+code review's call, per `CONTRIBUTING.md`'s *Claims in comments*.
 
 A docstring is not a comment block. Python prose belongs in one, and the tools
 in this directory open with thirty-line docstrings on purpose.
