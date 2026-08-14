@@ -25,6 +25,13 @@ var wp = new WordPieceTokenizer(vocab);
 TokenizationResult t = wp.Encode("playing");   // pieces: play ##ing
 ```
 
+A stock HuggingFace BERT `tokenizer.json` — `BertPreTokenizer` plus a full
+`BertNormalizer` — **is refused** by `TokenizerJsonLoader.LoadWordPiece`; that is
+the correct outcome, not a gap, since DataNet does not reproduce those steps.
+`VocabTxtLoader` is the route for BERT, and `LoadWordPiece` is for a `tokenizer.json`
+whose pipeline already matches DataNet's own (see
+[Models that are refused](#models-that-are-refused)).
+
 **SentencePiece** (ALBERT, T5, camemBERT, XLM-R) — unigram Viterbi segmentation,
 from the trained `spiece.model`. The model's own `precompiled_charsmap` is
 applied before segmentation, so a stock file — all four families ship `nmt_nfkc`
