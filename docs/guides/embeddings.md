@@ -182,8 +182,10 @@ different one is **rejected**, with a message naming what was found:
   and a `Metaspace` whose `replacement`, `prepend_scheme` (or the older
   `add_prefix_space`) or `split` is away from the default;
 - for BPE, a pre-tokenizer other than a bare `ByteLevel` (stock GPT-2),
-  `Whitespace` (the classic, non-byte-level lineage), or a `Sequence` of exactly
-  `Split` then `ByteLevel` (Llama-3, Qwen2) — and, on the byte-level path, a
+  `Whitespace` (the classic, non-byte-level lineage), a `Sequence` of exactly
+  `Split` then `ByteLevel` (Llama-3, Qwen2), or none at all — which is read as
+  `BpeVocabulary.NoPreTokenizer` rather than refused, below — and, on the
+  byte-level path, a
   `decoder` whose byte-level-ness disagrees with the model's own, which would
   not decode what it encodes;
 - for BPE, a `Sequence`'s `Split` step declaring no `behavior`, no `invert`, or
@@ -195,12 +197,21 @@ different one is **rejected**, with a message naming what was found:
 - for BPE, a normalizer other than `NFC`, `NFKC`, `NFD`, `NFKD` or a `Sequence`
   of those (empty included, which normalizes nothing) — `Replace` by name,
   since its pattern may be a Rust regex whose flavour .NET does not share, and
-  anything else by name too. A **non-zero** `dropout`, and a bare `ByteLevel`
-  with `use_regex` off — each of those changes what Python produces and none
-  of them is applied here.
+  anything else by name too. A **non-zero** `dropout` is refused as well — it
+  changes what Python produces and is not applied here. A bare `ByteLevel`
+  with `use_regex` off is **not**: it says the model splits nothing, which is
+  what `BpeVocabulary.NoPreTokenizer` carries, and a file declaring no
+  `pre_tokenizer` at all says the same and loads the same way. A vocabulary
+  built by hand has to say which it means — one declaring no `PreSplit`, no
+  `PreTokenizerPattern` and no `NoPreTokenizer` is refused by `BpeTokenizer`'s
+  constructor rather than given the classic word-boundary split it used to
+  get, that shape being what a no-split model would look like too. Write
+  `PreTokenizerPattern = BpePatterns.Whitespace` for that split, `PreSplit`
+  for a `Split` step, or `NoPreTokenizer = true` for a model whose text
+  reaches the merge loop unsplit.
   `use_regex` off on the `ByteLevel` step of a `Split`-then-`ByteLevel`
-  `Sequence` is a different thing, and is accepted — but not because `ByteLevel`
-  contributes no split of its own there. On, it re-splits each piece the
+  `Sequence` is a different thing again — the `Split` step is still a split,
+  so such a file is not the mode. On, `ByteLevel` re-splits each piece the
   `Split` step already produced, on its own GPT-2 pattern; off, that second
   split does not happen, and the `Split` step's pattern is genuinely the only
   one applied. It is how Llama-3 and Qwen2 are written. A `dropout`

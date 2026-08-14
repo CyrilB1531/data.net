@@ -186,9 +186,8 @@ and including `0.2.0` predate the split and covered all three at once — see
   and Mistral v0.1 are SentencePiece BPE with `Metaspace` and `byte_fallback`,
   a third pipeline this package does not implement — rather than tokenizing
   them to a plausible-looking wrong answer. It refuses any
-  `normalizer`, a `ByteLevel` pre-tokenizer with `use_regex` off, and a
-  **non-zero** `dropout` by name too — each of those changes what HuggingFace
-  produces and none of them is applied here. The values that change nothing are
+  `normalizer` and a **non-zero** `dropout` by name too — each of those changes
+  what HuggingFace produces and none of them is applied here. The values that change nothing are
   accepted rather than refused with them: a zero dropout skips no merge, and an
   `end_of_word_suffix` declared as `""` reads back as absent on
   `BpeVocabulary`, since an empty marker marks nothing — it used to load cleanly
@@ -340,6 +339,17 @@ and including `0.2.0` predate the split and covered all three at once — see
   `behavior` and the `invert` flag together — the three fields a `tokenizer.json` requires together, so
   none of them can be set without the others. `SplitBehavior` is the accompanying enum, spelled as the
   file spells it.
+- **A `BpeVocabulary` has to say how its text is split, and is refused when it does not.** One declaring
+  no `PreSplit`, no `PreTokenizerPattern` and no `NoPreTokenizer` used to be handed the classic
+  word-boundary split by `BpeTokenizer`'s constructor; it is now an `ArgumentException`. That shape became
+  ambiguous — it is also what a model splitting nothing at all looks like — and reading it either way
+  would have handed a caller a different token stream with nothing to say so. Write
+  `PreTokenizerPattern = BpePatterns.Whitespace`, a new member carrying the pattern the constructor used
+  to supply, for the classic lineage; `PreSplit` for a `Split` step; or `NoPreTokenizer = true` for a
+  model whose text reaches the merge loop unsplit. Declaring `NoPreTokenizer` beside either pattern is
+  refused too, the two contradicting each other. A vocabulary from `TokenizerJsonLoader.LoadBpe` or
+  `BpeFilesLoader.Load` is unaffected — both name the pattern themselves. This breaks source
+  compatibility with no release: BPE ships first in this unreleased 0.3.0.
 
 #### Deprecated
 
@@ -371,6 +381,16 @@ and including `0.2.0` predate the split and covered all three at once — see
   byte-level model a round trip that could not return them. All five behaviours and both `invert` values
   are reproduced now, and an absent or unknown `behavior` or `invert` is refused by name, as the reference
   refuses it.
+- **A `tokenizer.json` declaring no `pre_tokenizer` loaded as the `Whitespace` split.** The loader read an
+  absent `pre_tokenizer` as the classic word-boundary split, so a model whose text is meant to reach the
+  merge loop whole was tokenized as though it were split — measured against `tokenizers` 0.23.1, `"aZ Za"`
+  came out `['a', '[UNK]', '[UNK]', 'a']` where the reference gives `['a', '[UNK]', 'a']`, with no
+  exception and nothing to say a fallback had been picked. Both file shapes that mean "nothing is split"
+  now load as `BpeVocabulary.NoPreTokenizer`: an absent `pre_tokenizer`, and a bare `ByteLevel` whose
+  `use_regex` is off — the second was refused by name until now, on the ground that it could not round
+  trip, which it does. The text reaches the merge loop one added-token segment at a time rather than all
+  at once, and `add_prefix_space` applies once to the segment rather than to each piece.
+  `tests/oracles/bpe_no_split.json` replays 22 cases over 7 models.
 
 ### DataNet.Fuzzy — 0.3.0
 

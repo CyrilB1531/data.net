@@ -32,8 +32,8 @@ internal sealed class BpePreTokenizer
     private readonly Regex? _second;
     private readonly SplitRule _rule;
 
-    // Compiled on none of the four patterns, so one policy covers them all: it buys
-    // 1.44x matching for 6-26 ms a build, on an i7-4770S over 976 KiB of prose (#122).
+    // Compiled on none of the four patterns, so one policy covers them all: 1.44x matching for
+    // 6-26 ms a build, i7-4770S over 976 KiB -- specs/2026-08-14_0122_no-split-mode.md, #122.
     public BpePreTokenizer(BpeSplitStep? preSplit, string? pattern, bool noSplit)
     {
         if (noSplit)
