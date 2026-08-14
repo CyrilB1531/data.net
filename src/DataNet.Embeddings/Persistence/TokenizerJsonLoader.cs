@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using DataNet.Embeddings.Tokenization;
 using DataNet.Internal.Persistence;
 
@@ -793,14 +794,7 @@ public static class TokenizerJsonLoader
                 "BpeTokenizer reproduces a Sequence of Split then ByteLevel only");
         }
 
-        if (!split.TryGetProperty("pattern", out JsonElement pattern)
-            || !pattern.TryGetProperty("Regex", out JsonElement regexElement)
-            || regexElement.ValueKind != JsonValueKind.String)
-        {
-            throw Unsupported(
-                "its Sequence's Split step has no pattern.Regex",
-                "BpeTokenizer reproduces a regex Split pattern only");
-        }
+        string pattern = ReadSplitPattern(split);
 
         // behavior/invert are required, not defaulted (docs/equivalence.md's Split
         // row). A wrongly-typed field gets its own message: Serde reports a mismatch, not a missing field.
@@ -853,9 +847,50 @@ public static class TokenizerJsonLoader
         // Re-splits what Split produced unless off (docs/equivalence.md's Sequence
         // row); absent means true, and before #143 this field went unread entirely.
         bool useRegex = OptionalBoolean(byteLevelStep, "use_regex") ?? true;
-        var step = new BpeSplitStep(regexElement.GetString()!, behavior, invert);
+        var step = new BpeSplitStep(pattern, behavior, invert);
         // Never the mode, however useRegex reads: the Split step above is a split.
         return (true, addPrefixSpace, step, useRegex ? BpePatterns.Gpt2 : null, false);
+    }
+
+    /// <summary>
+    /// The pattern a <c>Split</c> step declares, in either spelling: <c>{"Regex": ...}</c>
+    /// as written, or <c>{"String": ...}</c> -- the literal <c>pre_tokenizers.Split("|",
+    /// "isolated")</c> writes -- escaped into the regex matching exactly it.
+    /// </summary>
+    /// <remarks>
+    /// Its own method so <see cref="ReadBpeSequencePreTokenizer"/> keeps the cognitive
+    /// complexity the build enforces: it already reads behavior and invert, and three
+    /// more branches in place take it past the limit.
+    /// </remarks>
+    private static string ReadSplitPattern(JsonElement split)
+    {
+        string? regex = null;
+        string? literal = null;
+        if (split.TryGetProperty("pattern", out JsonElement pattern) && pattern.ValueKind == JsonValueKind.Object)
+        {
+            regex = OptionalString(pattern, "Regex");
+            literal = OptionalString(pattern, "String");
+        }
+
+        if (regex is not null && literal is not null)
+        {
+            throw Unsupported(
+                "its Sequence's Split step declares both pattern.Regex and pattern.String",
+                "tokenizers writes exactly one of the two, so a file carrying both is not something the reference produces and choosing a winner would invent behaviour rather than reproduce it");
+        }
+        if (regex is not null)
+        {
+            return regex;
+        }
+        if (literal is not null)
+        {
+            // A literal has no regex flavour to lose, so escaping reproduces it exactly
+            // where a Replace normalizer's Rust pattern above cannot -- bpe_split_literal.json.
+            return Regex.Escape(literal);
+        }
+        throw Unsupported(
+            "its Sequence's Split step declares neither pattern.Regex nor pattern.String",
+            "tokenizers spells a Split pattern as one of those two and nothing else, so a node carrying neither names no pattern to reproduce");
     }
 
     /// <summary>
