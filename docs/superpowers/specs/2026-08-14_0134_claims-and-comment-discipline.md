@@ -226,19 +226,42 @@ a marked block, and a block interrupted by a blank line, which is where a naive 
 The rule's own text is checked by the thing it describes: this spec and its plan are inside the scope it
 declares.
 
-## What done looks like
+## What this lot delivers, and what it hands on
 
-This lot is large enough that "finished" has to be a state rather than a list of tasks completed:
+The rule and its instruments ship here. The sweep does not, and that is a decision taken after measuring
+it rather than a scope guessed at the start.
 
-- `tools/check_comment_length.py` runs in `Lint` **and passes**, which means every block over eight lines
-  carries a marker whose reason a reviewer accepted.
-- Every comment naming a reference library either cites what would check it or has been rewritten as the
-  opinion it was. The count that is 46 of 504 today is the measure, and it is checkable the same way it was
-  measured.
-- No comment paraphrases the line below it.
-- `CONTRIBUTING.md` states the rule, `CLAUDE.md` points at it, and `.github/instructions/` carries the
-  review step.
-- The prose documents say each thing once, and nothing in them contradicts anything else in them.
+**Delivered:**
+
+- `CONTRIBUTING.md` states the rule; `CLAUDE.md` points at it; `.github/instructions/` carries the review
+  step, phrased as derivation rather than re-reading because re-reading was measured not to work (D2).
+- `tools/check_comment_length.py` counts both budgets, refuses an unmarked block past its own, refuses a
+  marker with no reason, and reports. 67 tests in `tools/tests`.
+- **The inventory**, which is the part that makes the rest schedulable: `--report` gives the live total,
+  and a bare run names every block with its file, line and prose count.
+
+**Handed on**, one issue per zone, sized from that run:
+
+| zone | blocks past budget |
+| --- | ---: |
+| `src/DataNet.Embeddings` | 126 |
+| `src/DataNet.Metrics` | 98 |
+| `tools/` | 82 |
+| `tests/DataNet.Metrics.Tests` | 77 |
+| `tests/DataNet.Embeddings.Tests` | 70 |
+| `src/DataNet.Text` | 70 |
+| `samples/`, `tools/tests/` | 41 |
+
+629 blocks holding 5586 prose lines, plus the 504 comment lines naming a reference library of which 46
+cite anything. Each zone also carries its share of those.
+
+**The guard is not wired into CI**, and cannot be until a zone passes it. Wiring it is the last of those
+issues, not this lot's to claim.
+
+**Why split it here.** Each block needs a judgement — paraphrase to cut, reasoning to move to an ADR, or
+room genuinely earned and marked — and doing 629 of them quickly is how the 5586 lines of measured
+reasoning get destroyed rather than relocated. A rule that holds, with a counter that says exactly how much
+is left, is worth more than a sweep nobody can tell the end of.
 
 ## Out of scope
 
