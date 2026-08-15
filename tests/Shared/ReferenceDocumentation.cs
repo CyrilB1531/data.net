@@ -6,12 +6,12 @@ using System.Text.Json;
 
 namespace DataNet.Tests.Documentation;
 
+/// long-comment: the rule this file enforces is four separate checks, and a
+/// reader needs to know which one failed before they can fix a page
 /// <summary>
 /// Checks a reference page against the assembly it documents.
 /// </summary>
 /// <remarks>
-/// long-comment: the rule this file enforces is four separate checks, and a
-/// reader needs to know which one failed before they can fix a page.
 /// Microsoft derives a declaration, a parameter list and an Applies-to from the
 /// assembly. Here they are written by hand, so this is what replaces that
 /// derivation: every exported type and public method of a covered namespace has
@@ -236,9 +236,11 @@ internal static class ReferenceDocumentation
         }
     }
 
-    private sealed record Entry(List<string> Declarations, HashSet<string> Parameters, string AppliesTo);
+    // internal rather than private: Parse's rubric-boundary handling is pinned directly by
+    // ReferenceDocumentationTests, and both types are compiled into that same test assembly.
+    internal sealed record Entry(List<string> Declarations, HashSet<string> Parameters, string AppliesTo);
 
-    private sealed record Page(Dictionary<string, Entry> Entries)
+    internal sealed record Page(Dictionary<string, Entry> Entries)
     {
         /// <summary>Splits a page into its entries, keyed by the heading text.</summary>
         public static Page Parse(string text)
@@ -262,6 +264,7 @@ internal static class ReferenceDocumentation
             private Entry current = New();
             private bool inDeclaration;
             private bool inFence;
+            private bool inParameters;
 
             public void Consume(string line)
             {
@@ -271,6 +274,7 @@ internal static class ReferenceDocumentation
                     title = line.TrimStart('#').Trim();
                     current = New();
                     inDeclaration = false;
+                    inParameters = false;
                     return;
                 }
 
@@ -297,18 +301,33 @@ internal static class ReferenceDocumentation
                 if (inDeclaration && inFence && line.Trim().Length > 0)
                 {
                     current.Declarations.Add(line.Trim());
+                    return;
                 }
-                else if (line.StartsWith("**Parameters**", StringComparison.Ordinal))
+
+                // A line starting with "**" is a rubric heading; it bounds where
+                // Parameters ends as sharply as it bounds where it begins.
+                if (line.StartsWith("**", StringComparison.Ordinal))
+                {
+                    ConsumeRubricStart(line);
+                    return;
+                }
+
+                if (inParameters)
+                {
+                    AddParameters(line);
+                }
+            }
+
+            private void ConsumeRubricStart(string line)
+            {
+                inParameters = line.StartsWith("**Parameters**", StringComparison.Ordinal);
+                if (inParameters)
                 {
                     AddParameters(line);
                 }
                 else if (line.StartsWith("**Applies to**", StringComparison.Ordinal))
                 {
                     current = current with { AppliesTo = line };
-                }
-                else if (current.Parameters.Count > 0 && line.StartsWith('`'))
-                {
-                    AddParameters(line);
                 }
             }
 

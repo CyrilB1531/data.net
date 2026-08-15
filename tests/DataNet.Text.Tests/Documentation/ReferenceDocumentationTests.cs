@@ -51,4 +51,47 @@ public sealed class ReferenceDocumentationTests
         Assert.Contains(complaints, complaint => complaint.Contains("Levenshtein", StringComparison.Ordinal));
         Directory.Delete(page, recursive: true);
     }
+
+    [Fact]
+    public void A_hard_wrapped_parameter_is_captured_and_a_remarks_backtick_is_not()
+    {
+        // The plan's own worked example: `unit` is described mid-paragraph, and
+        // `Jaccard` / `JaroWinkler` are backticked in Remarks, not in Parameters.
+        const string text = """
+            #### Levenshtein.Distance
+
+            Counts the fewest insertions, deletions and substitutions that turn one string into the other.
+
+            <!-- docs-declaration -->
+
+            ```csharp
+            public static int Distance(ReadOnlySpan<char> a, ReadOnlySpan<char> b)
+            public static int Distance(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement unit)
+            ```
+
+            **Parameters** — `a` and `b` are the two strings to compare; a `string` converts implicitly, so
+            nothing is allocated for them. `unit` says what counts as one character: `TextElement.Utf16` by
+            default, the native and fastest choice, or `TextElement.CodePoint` to match Python outside the Basic
+            Multilingual Plane.
+
+            **Returns** — `int`, the number of edits. Zero when the two are equal, and never negative.
+
+            **Remarks** — this is the ordinary answer to "how different are these two texts", and the right
+            tool for typing mistakes and mis-keyed names. To compare sets of words rather than characters,
+            `Jaccard` is the better fit; to weight a common prefix, `JaroWinkler`.
+
+            **Applies to** — net10.0, netstandard2.0.
+
+            **See also** — `Levenshtein.NormalizedSimilarity`, `Indel.Distance`, `DamerauLevenshtein.Distance`,
+            the [Python equivalence table](../../equivalence.md).
+            """;
+
+        ReferenceDocumentation.Page page = ReferenceDocumentation.Page.Parse(text);
+
+        Assert.True(page.Entries.ContainsKey("Levenshtein.Distance"));
+        ReferenceDocumentation.Entry entry = page.Entries["Levenshtein.Distance"];
+        Assert.Contains("unit", entry.Parameters);
+        Assert.DoesNotContain("Jaccard", entry.Parameters);
+        Assert.DoesNotContain("JaroWinkler", entry.Parameters);
+    }
 }
