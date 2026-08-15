@@ -54,11 +54,8 @@ public sealed record TokenizationResult(IReadOnlyList<string> Tokens, IReadOnlyL
     }
 }
 
-// long-comment: justifies the CA1308 pragma below, which needs its own reason.
-// This lowercasing is the `lowercase` constructor option, mirroring HuggingFace's
-// do_lower_case -- true for an uncased checkpoint, false for bert-base-cased.
-// ToUpperInvariant would match no vocabulary entry, producing wrong ids rather
-// than differently-cased tokens.
+// CA1308: this is the `lowercase` option, HuggingFace's do_lower_case. ToUpperInvariant
+// would match no vocabulary entry, giving wrong ids rather than differently-cased tokens.
 #pragma warning disable CA1308
 
 /// <summary>WordPiece tokenizer (BERT family), reproducing HuggingFace <c>tokenizers</c>' greedy longest-match algorithm.</summary>
@@ -169,15 +166,8 @@ public sealed class WordPieceTokenizer : ISubwordTokenizer
         var tokens = new List<string>();
         var ids = new List<int>();
 
-        // long-comment: BpeTokenizer.EncodeGap deliberately does not take this
-        // shortcut, because this warning is the reason it does not.
-        // Normalized once, and indexed with positions found in the raw text. That is
-        // sound only because ToLowerInvariant maps char to char and so preserves
-        // length — an assumption about the scripts in scope, not a fact of Unicode,
-        // and the reason this is ToLowerInvariant rather than ToLower: a
-        // culture-sensitive mapping is under no such obligation. See
-        // BpeTokenizer.EncodeGap, which normalizes each gap separately because its
-        // four normalization forms do not share this guarantee.
+        // Indexed with raw-text positions, sound only because ToLowerInvariant preserves
+        // length -- ToLower and BpeTokenizer's four forms do not, hence its per-gap pass.
         string normalized = _lowercase ? text.ToLowerInvariant() : text;
 
         int pos = 0;

@@ -6,37 +6,13 @@ using DataNet.Internal.Persistence;
 
 namespace DataNet.Embeddings.Persistence;
 
-/// long-comment: the loader's own refused-pipeline citations, plus the worked
-/// example below that CONTRIBUTING.md requires on every public member, do not
-/// fit in eight lines together
-/// <summary>
-/// Reads a HuggingFace <c>tokenizer.json</c> — the WordPiece, Unigram or BPE
-/// model it declares, together with the settings that change tokenization.
-/// </summary>
+/// <summary>Reads a HuggingFace <c>tokenizer.json</c>: the WordPiece, Unigram or BPE model it declares, with the settings that change tokenization.</summary>
 /// <remarks>
-/// <para>
-/// Matches the vocabulary side of
-/// <c>tokenizers.Tokenizer.from_file("tokenizer.json")</c>. DataNet's tokenizers
-/// implement one fixed pipeline each, so the whole normalizer / pre-tokenizer /
-/// post-processor graph is <em>checked</em> rather than ignored, and a file
-/// describing a different one fails to load with a message naming what it found
-/// — see <c>docs/guides/embeddings.md</c>'s "Models that are refused" for the
-/// list, including that a stock HuggingFace BERT file (<c>BertPreTokenizer</c>
-/// plus a full <c>BertNormalizer</c>) is one of them, with
-/// <see cref="VocabTxtLoader"/> the route for BERT instead. Unrecognized
-/// top-level properties, the file's own <c>version</c> included, are accepted in
-/// silence rather than refused — see <c>docs/equivalence.md</c>'s BPE loader row
-/// for why that asymmetry is deliberate.
-/// </para>
-/// <para>
-/// The <c>decoder</c> section is accepted unchecked for WordPiece and Unigram —
-/// <see cref="WordPieceTokenizer"/> and <see cref="SentencePieceTokenizer"/> only
-/// encode — where <see cref="LoadBpe(string, ArtifactLoadOptions?)"/> refuses one
-/// whose byte-level-ness disagrees with the model's own, since
-/// <see cref="BpeTokenizer"/> does decode and a silent mismatch would corrupt
-/// <see cref="BpeTokenizer.Decode(System.Collections.Generic.IReadOnlyList{int}, bool)"/>
-/// rather than merely go unused.
-/// </para>
+/// The vocabulary side of <c>tokenizers.Tokenizer.from_file</c>. Each tokenizer here
+/// implements one fixed pipeline, so a file describing another is refused by name —
+/// <c>docs/guides/embeddings.md</c>'s "Models that are refused" lists them, stock BERT
+/// included, whose route is <see cref="VocabTxtLoader"/>. An unknown top-level property
+/// is accepted in silence: <c>docs/equivalence.md</c>'s loader row.
 /// </remarks>
 /// <example>
 /// <code>
@@ -132,6 +108,11 @@ public static class TokenizerJsonLoader
     }
 
     /// <summary>Reads the BPE model declared by <paramref name="source"/>.</summary>
+    /// <remarks>
+    /// Alone among the three, this checks the <c>decoder</c> against the model's own
+    /// byte-level-ness: <see cref="BpeTokenizer"/> decodes, so a mismatch would corrupt
+    /// output rather than go unused.
+    /// </remarks>
     /// <param name="source">The <c>tokenizer.json</c> bytes; never disposed by this method.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <exception cref="InvalidDataException">The file is malformed, exceeds a limit, declares a different model type, or describes a pipeline this library does not reproduce.</exception>
@@ -526,13 +507,11 @@ public static class TokenizerJsonLoader
     /// </remarks>
     private static void EnsureBpeModelSettingsAreReproduced(JsonElement model)
     {
-        // long-comment: justifies the S1244 pragma below, which needs its own reason
-        // At 0.0 no merge is ever skipped, so a numeric zero is exempt; anything
-        // present, non-null and not a number is malformed, not a reproduced zero,
-        // and still falls into the throw below.
-        // SonarLint S1244: the exact value matters, not a tolerance -- 0.0 is what
-        // "no dropout" round-trips to and is exactly representable; a tolerance
-        // would instead accept small non-zero dropouts this loader cannot reproduce.
+        // Zero skips no merge at all, so a numeric zero is accepted here, while anything
+        // present that is not a number is malformed and reaches the throw below.
+        // S1244 is suppressed because the exact value is the point: zero is what "no
+        // dropout" round-trips to, and a tolerance would accept small dropouts that this
+        // loader cannot reproduce.
 #pragma warning disable S1244
         if (model.TryGetProperty("dropout", out JsonElement dropout)
             && dropout.ValueKind != JsonValueKind.Null

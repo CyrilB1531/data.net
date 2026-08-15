@@ -466,13 +466,8 @@ def build(
     repo, out = pathlib.Path(os.path.realpath(repo)), pathlib.Path(os.path.realpath(out))
     if not out.parent.is_dir():
         raise MapError(f"{out}: its parent directory does not exist")
-    # long-comment: a suppressed security rule has to say why, and the reason is
-    # that this sink is the one path in the tool with nothing above it to check
-    # One level, inside a directory that already exists: --out names a wiki clone
-    # the caller has made, so a run that builds a tree of its own is a typo. S8707
-    # asks for the path to be validated against a root before the write; here the
-    # argument *is* the root, so the only check available compares it with itself.
-    # Every path derived from it goes through _guard, which is what the rule is for.
+    # S8707 asks for a path validated against a root; here the argument *is* the root,
+    # so only the one level below an existing directory can be checked, and is.
     out.mkdir(exist_ok=True)  # NOSONAR S8707
     index = link_index(repo, mapping)
     names: dict[str, pathlib.Path] = {}

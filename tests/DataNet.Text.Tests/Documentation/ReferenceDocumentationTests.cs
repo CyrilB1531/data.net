@@ -173,13 +173,8 @@ public sealed class ReferenceDocumentationTests
     [Fact]
     public void A_hard_wrapped_parameter_is_captured_and_a_remarks_backtick_is_not()
     {
-        // long-comment: a fixture copied out of a page is only worth copying if a
-        // reviewer can see which properties of the original it pins
-        // The Levenshtein.Distance entry of docs/reference/text/distances.md, verbatim.
-        // It is inlined rather than read from disk so those properties are visible here:
-        // `element` is described mid-paragraph, three lines into Parameters; `Jaccard`
-        // and `JaroWinkler` are backticked in Remarks, after that block has closed; and
-        // an Example fence sits between the two, which must not reopen the declaration.
+        // The Levenshtein.Distance entry verbatim: `element` described mid-paragraph,
+        // `Jaccard` backticked after Parameters closed, an Example fence between them.
         const string text = """
             #### Levenshtein.Distance
 

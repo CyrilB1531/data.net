@@ -238,14 +238,8 @@ def test_check_names_the_path_and_does_not_report_the_api_as_unreachable_when_a_
 
 
 def test_check_reports_an_unreadable_local_file_as_a_local_failure_not_the_network(tmp_path, monkeypatch, capsys):
-    # long-comment: the technique's portability, not just its result, needs stating
-    # A directory, not a chmod'd file: os.chmod(0o000) only clears POSIX
-    # permission bits, ignored when os.geteuid() == 0, and Windows chmod cannot
-    # remove owner read access at all -- either would let the file open fine
-    # and the test pass without reaching the branch under test. Opening a
-    # directory as a file fails on both: IsADirectoryError here, PermissionError
-    # on Windows (its os module reports the no-such-read-mode as a permission
-    # failure) -- both are OSError subclasses, which is what the branch catches.
+    # A directory, not a chmod'd file: chmod(0o000) is ignored under root and cannot
+    # remove owner read on Windows, so the open would succeed and skip the branch.
     unreadable = tmp_path / "unreadable.sarif"
     unreadable.mkdir()
     monkeypatch.setattr(gen, "ERROR_LOG", unreadable)

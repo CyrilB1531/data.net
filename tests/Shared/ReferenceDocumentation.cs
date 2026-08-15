@@ -7,20 +7,15 @@ using System.Text.Json;
 
 namespace DataNet.Tests.Documentation;
 
-/// long-comment: the rule this file enforces is four separate checks, and a
-/// reader needs to know which one failed before they can fix a page
 /// <summary>
 /// Checks a reference page against the assembly it documents.
 /// </summary>
 /// <remarks>
-/// Microsoft derives a declaration, a parameter list and an Applies-to from the
-/// assembly. Here they are written by hand, so this is what replaces that
-/// derivation: every exported type and public method of a covered namespace has
-/// an entry, its declaration block lists exactly the overloads reflection
-/// reports, every parameter is named, and Applies to names the targets that
-/// really export the member. It runs once per target framework, because each
-/// test assembly references a different build of the library — which is the
-/// only way the fourth check can see the difference.
+/// Microsoft derives a declaration, a parameter list and an Applies-to from the assembly;
+/// hand-written here, so four checks replace that derivation — an entry per exported type
+/// and public method, a declaration block listing exactly the overloads reflection reports,
+/// every parameter named, and Applies to naming the targets that export the member. Each
+/// test assembly references a different build, the only way the last of them sees anything.
 /// </remarks>
 internal static class ReferenceDocumentation
 {
@@ -125,8 +120,6 @@ internal static class ReferenceDocumentation
         }
     }
 
-    /// long-comment: two exclusions, and a reader who trips over either needs to
-    /// know it was decided rather than overlooked
     /// <summary>The exported types of one namespace that owe an entry of their own.</summary>
     /// <remarks>
     /// A nested exported type does not: the five residual kernels of
@@ -203,16 +196,13 @@ internal static class ReferenceDocumentation
     /// <summary>One reference page: where it came from, its raw text, and its entries.</summary>
     private sealed record Sheet(string Source, string Text, Page Parsed);
 
-    /// long-comment: the rule has two halves and only one of them is about a
-    /// single line, so a reader has to be told which half a complaint comes from
     /// <summary>Every place a documented member is named and its entry is not reachable.</summary>
     /// <remarks>
-    /// Two obligations. Every backticked mention in prose is a link, which is a
-    /// property of the line it sits on. And naming a member at all — inside a
-    /// `csharp` fence included, where Markdown cannot carry a link — obliges the
-    /// page to link its entry at least once somewhere, which is a property of
-    /// the page. The second is what stops a guide from demonstrating a method
-    /// three times and offering no way to find out what it does.
+    /// Two obligations, and a complaint says which it comes from. A backticked mention in
+    /// prose is a link — a property of the line. Naming a member at all, inside a `csharp`
+    /// fence included where Markdown carries no link, obliges the page to link its entry
+    /// once somewhere — a property of the page, and what stops a guide from demonstrating
+    /// a method three times while offering no way to find out what it does.
     /// </remarks>
     public static IReadOnlyList<string> CheckLinks(
         Assembly assembly, string package, string wikiMapPath, string referenceRoot, string docsRoot)
@@ -436,17 +426,14 @@ internal static class ReferenceDocumentation
         return spans;
     }
 
-    /// long-comment: the second exclusion looks like a loophole until a reader
-    /// knows which methods it removes and that none of them can be written down
     /// <summary>The public methods of a type that owe an entry, grouped by name.</summary>
     /// <remarks>
-    /// A compiler-generated method does not: a <c>record</c> synthesises
-    /// <c>Deconstruct</c>, <c>Equals</c>, <c>GetHashCode</c>, <c>ToString</c> and
-    /// <c>&lt;Clone&gt;$</c>, and the last of those is not a name C# can spell, so its
-    /// declaration could not be written even in principle. They belong to the record's
-    /// own declaration, which its type entry shows — the same argument the nested
-    /// exported type gets in <see cref="Documented"/>. A hand-written
-    /// <c>ToString</c> override carries no such attribute and still owes an entry.
+    /// A compiler-generated one does not: a <c>record</c> synthesises <c>Deconstruct</c>,
+    /// <c>Equals</c>, <c>GetHashCode</c>, <c>ToString</c> and <c>&lt;Clone&gt;$</c> — the
+    /// last not a name C# can spell, so its declaration could not be written even in
+    /// principle. Its type entry shows them, as it does a nested type in
+    /// <see cref="Documented"/>. A hand-written <c>ToString</c> carries no such attribute
+    /// and still owes an entry.
     /// </remarks>
     private static IEnumerable<IGrouping<string, MethodInfo>> Methods(Type type) =>
         type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance |
@@ -673,8 +660,6 @@ internal static class ReferenceDocumentation
             : "netstandard2.0";
     }
 
-    /// long-comment: the shape of the value is a decision, not a detail, and the
-    /// reason one namespace may carry several pages belongs next to the code reading it
     /// <summary>Every (namespace, page) pair a package declares covered.</summary>
     /// <remarks>
     /// A namespace maps to a page or to a list of them. <c>DataNet.Metrics</c> is why:
