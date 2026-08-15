@@ -41,9 +41,8 @@ public sealed class ReferenceDocumentationTests
     [Fact]
     public void Neither_page_covers_the_namespace_on_its_own()
     {
-        // The point of the list `covered` takes, and the check that the relaxation
-        // did not become "some page will have it": declared alone, in the scalar
-        // form the other three packages still use, classification.md owes R2 too.
+        // Declared alone, in the scalar form the other three packages still use,
+        // classification.md owes R2 too -- the relaxation is a list, not "some page".
         string map = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".json");
         File.WriteAllText(map, """
             {"root":[],"packages":{"DataNet.Metrics":{"wiki":"Metrics","pages":[],
