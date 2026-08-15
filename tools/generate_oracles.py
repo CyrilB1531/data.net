@@ -2062,6 +2062,69 @@ def generate_classification_metrics() -> dict:
     }
 
 
+# --- Clustering agreement (issue #172) ---------------------------------------
+
+
+def _clustering_fixtures() -> list[tuple[str, list[int], list[int]]]:
+    """Partitions whose agreement is the thing under test, degenerate ones included.
+
+    The last four are the cases the reference answers surprisingly: an empty
+    input and a single sample are perfect agreement rather than an error, and a
+    single cluster on one side splits homogeneity from completeness.
+    """
+    return [
+        ("identical", [0, 0, 1, 1, 2, 2], [0, 0, 1, 1, 2, 2]),
+        ("renamed", [0, 0, 1, 1, 2, 2], [2, 2, 0, 0, 1, 1]),
+        ("one moved", [0, 0, 1, 1, 2, 2], [0, 0, 1, 2, 2, 2]),
+        ("independent", [0, 0, 1, 1], [0, 1, 0, 1]),
+        ("split in two", [0, 0, 0, 1, 1, 1], [0, 1, 0, 1, 0, 1]),
+        ("merged", [0, 0, 1, 1, 2, 2], [0, 0, 0, 0, 1, 1]),
+        ("unbalanced", [0] * 8 + [1, 2], [0] * 7 + [1, 1, 2]),
+        ("negative labels", [-1, -1, 3, 3], [7, 7, -2, -2]),
+        ("one cluster predicted", [0, 0, 1, 1], [0, 0, 0, 0]),
+        ("every sample alone", [0, 0, 1, 1], [0, 1, 2, 3]),
+        ("single sample", [0], [0]),
+        ("empty", [], []),
+    ]
+
+
+def generate_clustering_agreement() -> dict:
+    from sklearn import metrics as skmetrics
+
+    cases = []
+    with warnings.catch_warnings():
+        # An undefined case warns and still returns the value under test.
+        warnings.simplefilter("ignore")
+        for name, true, pred in _clustering_fixtures():
+            homogeneity, completeness, v_measure = (
+                skmetrics.homogeneity_completeness_v_measure(true, pred))
+            cases.append({
+                "name": name,
+                "labels_true": true,
+                "labels_pred": pred,
+                "adjusted_rand": skmetrics.adjusted_rand_score(true, pred),
+                "normalized_mutual_information": skmetrics.normalized_mutual_info_score(true, pred),
+                "homogeneity": homogeneity,
+                "completeness": completeness,
+                "v_measure": v_measure,
+            })
+
+    return {
+        "metadata": {
+            "algorithm": "ClusteringAgreement",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.adjusted_rand_score",
+                "sklearn.metrics.normalized_mutual_info_score",
+                "sklearn.metrics.homogeneity_completeness_v_measure",
+            ],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 # --- ROC-AUC (issue #61) ------------------------------------------------------
 
 
@@ -4658,6 +4721,7 @@ def main() -> None:
         "fuzz.json": generate_fuzz,
         "process.json": generate_process,
         "classification_metrics.json": generate_classification_metrics,
+        "clustering_agreement.json": generate_clustering_agreement,
         "roc_auc.json": generate_roc_auc,
         "regression.json": generate_regression,
         "regression_conditioning.json": generate_regression_conditioning,

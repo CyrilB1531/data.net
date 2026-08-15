@@ -178,6 +178,18 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | `explained_variance_score(…)` | scikit-learn | [`ExplainedVariance.Score(…)`](reference/metrics/regression/explainedvariance-score.md), `.PerOutput(…)`, `.VarianceWeighted(…)` | Takes `forceFinite` but **no** `ZeroDivision`: it has no fewer-than-two-samples case to route, so `explained_variance_score([3], [5])` is `1.0`, not `nan`, and `PerOutput` matches scikit-learn exactly there — the divergence noted for `r2_score` is `r2_score`'s alone. Its five accumulations are Neumaier-compensated (issue #127) for the same reason `R2`'s are, at least as accurate as numpy's pairwise reduction rather than merely close to it. |
 | `mean_pinball_loss(…, alpha=…)` | scikit-learn | [`PinballLoss.Score(…, alpha, …)`](reference/metrics/regression/pinballloss-score.md), `.PerOutput(…)` | Named for the loss rather than for the Python identifier's `mean_` prefix, matching the other ten. `alpha` outside `[0, 1]` throws `ArgumentOutOfRangeException` where scikit-learn raises `InvalidParameterError`. The underlying mean is Neumaier-compensated (issue #127), at least as accurate as numpy's pairwise reduction rather than merely close to it. |
 
+## DataNet.Metrics — clustering metrics
+
+| Python | Library | C# | Differences |
+| --- | --- | --- | --- |
+| `adjusted_rand_score(labels_true, labels_pred)` | scikit-learn | [`AdjustedRand.Score(labelsTrue, labelsPred)`](reference/metrics/clustering/adjustedrand-score.md) | Identical, degenerate cases included: an empty input and a single sample both score `1`, and two independent partitions of four samples score `-0.5`. |
+| `normalized_mutual_info_score(…)` | scikit-learn | [`NormalizedMutualInformation.Score(…)`](reference/metrics/clustering/normalizedmutualinformation-score.md) | `average_method` is not a parameter: the arithmetic mean, scikit-learn's default, is the only normalizer reproduced. The other three (`min`, `geometric`, `max`) have no oracle row and are refused by absence rather than by exception. |
+| `homogeneity_score(…)` | scikit-learn | [`Homogeneity.Score(…)`](reference/metrics/clustering/homogeneity-score.md) | Identical. |
+| `completeness_score(…)` | scikit-learn | [`Completeness.Score(…)`](reference/metrics/clustering/completeness-score.md) | Identical, and implemented as `Homogeneity` with the two labellings exchanged, which is scikit-learn's own definition. |
+| `v_measure_score(…, beta=1.0)` | scikit-learn | [`VMeasure.Score(…)`](reference/metrics/clustering/vmeasure-score.md) | `beta` is not a parameter: the default of `1` is the harmonic mean, and no reference value exists here for another weighting. |
+| `homogeneity_completeness_v_measure(…)` | scikit-learn | the three calls above | No combined call: three `double`s would be a tuple or a record, and each metric is cheap enough to ask for on its own. The contingency table is rebuilt per call, which is `O(n)` each time. |
+| `silhouette_score`, `silhouette_samples` | scikit-learn | — | Not shipped yet; [#172](https://github.com/CyrilB1531/data.net/issues/172)'s second lot. |
+
 ## Conventions
 
 - **Comparison unit.** Unless stated otherwise, string distances compare `char`
