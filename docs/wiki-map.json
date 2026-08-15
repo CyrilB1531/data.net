@@ -11,10 +11,11 @@
       "pages": [
         "docs/guides/quickstart.md",
         "docs/guides/vectorization.md",
-        "docs/reference/text/*.md"
+        "docs/reference/text/*.md",
+        "docs/reference/text/*/*.md"
       ],
       "covered": {
-        "DataNet.Text.Distances": "docs/reference/text/distances.md"
+        "DataNet.Text.Distances": "docs/reference/text/distances"
       }
     },
     "DataNet.Embeddings": {
@@ -36,12 +37,13 @@
     "DataNet.Metrics": {
       "wiki": "Metrics",
       "pages": [
-        "docs/reference/metrics/*.md"
+        "docs/reference/metrics/*.md",
+        "docs/reference/metrics/*/*.md"
       ],
       "covered": {
         "DataNet.Metrics": [
-          "docs/reference/metrics/classification.md",
-          "docs/reference/metrics/regression.md"
+          "docs/reference/metrics/classification",
+          "docs/reference/metrics/regression"
         ]
       }
     }

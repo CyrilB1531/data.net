@@ -33,9 +33,9 @@ allocated for the inputs.
 
 Each of the three has a reference entry giving its parameters, its behaviour on
 empty inputs and the trap that comes with it:
-[`Levenshtein.Distance`](../reference/text/distances.md#levenshteindistance),
-[`Levenshtein.NormalizedSimilarity`](../reference/text/distances.md#levenshteinnormalizedsimilarity)
-and [`Levenshtein.NormalizedDistance`](../reference/text/distances.md#levenshteinnormalizeddistance).
+[`Levenshtein.Distance`](../reference/text/distances/levenshtein-distance.md),
+[`Levenshtein.NormalizedSimilarity`](../reference/text/distances/levenshtein-normalizedsimilarity.md)
+and [`Levenshtein.NormalizedDistance`](../reference/text/distances/levenshtein-normalizeddistance.md).
 
 ## Unicode: choosing the comparison unit
 

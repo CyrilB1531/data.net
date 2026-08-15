@@ -30,7 +30,8 @@
        way the oracle corpora already are. -->
   <ItemGroup>
     <Compile Include="../Shared/ReferenceDocumentation.cs" Link="Documentation/ReferenceDocumentation.cs" />
-    <None Include="../../docs/reference/text/*.md" CopyToOutputDirectory="PreserveNewest" LinkBase="reference" />
+    <None Include="../../docs/reference/text/**/*.md" CopyToOutputDirectory="PreserveNewest"
+          LinkBase="reference" />
     <None Include="../../docs/wiki-map.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../docs/**/*.md" Exclude="../../docs/superpowers/**"
           CopyToOutputDirectory="PreserveNewest" LinkBase="docs" />

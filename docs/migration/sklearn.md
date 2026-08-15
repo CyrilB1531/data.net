@@ -67,10 +67,10 @@ random, weighted asks how it does on a *sample* picked at random.
 
 In C#, the mode is an enum rather than a string, so a typo is a compile error
 instead of a `ValueError` at the end of a run. One
-[`ConfusionMatrix.Compute`](../reference/metrics/classification.md#confusionmatrixcompute)
+[`ConfusionMatrix.Compute`](../reference/metrics/classification/confusionmatrix-compute.md)
 pass feeds both
-[`F1.Score`](../reference/metrics/classification.md#f1score) and
-[`ClassificationReport.Compute`](../reference/metrics/classification.md#classificationreportcompute):
+[`F1.Score`](../reference/metrics/classification/f1-score.md) and
+[`ClassificationReport.Compute`](../reference/metrics/classification/classificationreport-compute.md):
 
 ```csharp
 using DataNet.Metrics;
@@ -84,7 +84,7 @@ Console.WriteLine(ClassificationReport.Compute(cm).ToText()); // what sklearn pr
 ```
 
 Two differences from the Python spelling are deliberate. `average=None` becomes
-[`F1.PerClass`](../reference/metrics/classification.md#f1perclass), a method,
+[`F1.PerClass`](../reference/metrics/classification/f1-perclass.md), a method,
 because it returns one value per class rather than a scalar — an enum member
 cannot change its method's return type. And
 `Averaging.Binary` throws on a target with more than two classes instead of

@@ -40,7 +40,7 @@ pinned down, and reproducing it would mean copying an unspecified quirk.
 
 ## Consequences
 
-- [`Hamming.Distance`](../reference/text/distances.md#hammingdistance) (and Jaro/Jaro-Winkler) are correct per the definition and
+- [`Hamming.Distance`](../reference/text/distances/hamming-distance.md) (and Jaro/Jaro-Winkler) are correct per the definition and
   coincide with jellyfish everywhere jellyfish computes a standard result.
 - The divergence is explicit, measured and versioned, in line with §5 of the brief
   ("either replicate, or document the divergence").

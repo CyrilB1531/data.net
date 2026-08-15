@@ -24,7 +24,7 @@ one kept class's recall is exactly `1.0`, so the numerator is `0.0`), and
 
 ## Decision
 
-[`BalancedAccuracy.Score`](../reference/metrics/classification.md#balancedaccuracyscore)
+[`BalancedAccuracy.Score`](../reference/metrics/classification/balancedaccuracy-score.md)
 does not special-case the single-kept-class edge. `chance = 1.0 / kept` and
 `(score - chance) / (1.0 - chance)` are computed exactly as written; when
 `kept == 1` the denominator is `0.0` and .NET's own IEEE 754 division produces
@@ -34,7 +34,7 @@ reproduce it.
 ## Consequences
 
 - The `<remarks>` on
-  [`BalancedAccuracy.Score(ConfusionMatrix, bool)`](../reference/metrics/classification.md#balancedaccuracyscore)
+  [`BalancedAccuracy.Score(ConfusionMatrix, bool)`](../reference/metrics/classification/balancedaccuracy-score.md)
   carries a pointer here instead of restating the averaging rule and the edge
   case.
 - Verified by

@@ -25,16 +25,16 @@ scikit-learn keyword had to be renamed.
 
 ### `normalize=` is a projection on the matrix, not a parameter on `Compute`
 
-[`ConfusionMatrix.ToArray(Normalization)`](../reference/metrics/classification.md#confusionmatrixtoarray)
+[`ConfusionMatrix.ToArray(Normalization)`](../reference/metrics/classification/confusionmatrix-toarray.md)
 returns scaled cells. A `ConfusionMatrix` is never normalized and never
 remembers having been.
 
 The rejected alternative is scikit-learn's own signature —
-[`ConfusionMatrix.Compute(…, normalize: Normalization.All)`](../reference/metrics/classification.md#confusionmatrixcompute)
+[`ConfusionMatrix.Compute(…, normalize: Normalization.All)`](../reference/metrics/classification/confusionmatrix-compute.md)
 — which is what a reader coming from `confusion_matrix(…, normalize="all")`
 will look for first.
 It cannot be offered.
-[`Accuracy.Score(ConfusionMatrix)`](../reference/metrics/classification.md#accuracyscore)
+[`Accuracy.Score(ConfusionMatrix)`](../reference/metrics/classification/accuracy-score.md)
 divides the diagonal by the total weight; on a matrix whose cells are row
 fractions that quotient is still a number between 0 and 1, still prints, and is
 neither accuracy nor anything else. So do the balanced accuracy, Matthews and
@@ -46,7 +46,7 @@ having every matrix-consuming metric refuse a normalized one at run time — a
 flag on the matrix, a new exception on every matrix-consuming method, and a failure
 mode that only appears once a caller has combined two features that each work.
 A projection cannot be handed to
-[`Accuracy.Score`](../reference/metrics/classification.md#accuracyscore) at all:
+[`Accuracy.Score`](../reference/metrics/classification/accuracy-score.md) at all:
 `double[,]` is not a `ConfusionMatrix`, so the compiler rejects the mistake
 instead of the library reporting it. The cost is one departure from a
 scikit-learn signature, recorded in [`equivalence.md`](../equivalence.md).
@@ -85,7 +85,7 @@ reference, and the three metrics differ in whether a reference value even exists
 `balanced_accuracy_score` and `matthews_corrcoef` take no `labels` argument at
 all, so for them a restricted matrix has no scikit-learn counterpart to agree or
 disagree with; the label-taking overloads added here pass `labels` through to
-[`ConfusionMatrix.Compute`](../reference/metrics/classification.md#confusionmatrixcompute), which is the
+[`ConfusionMatrix.Compute`](../reference/metrics/classification/confusionmatrix-compute.md), which is the
 only place it means anything. `cohen_kappa_score` **does** take `labels`, so
 there a counterpart exists — and on the corpus fixture the tests pin,
 restricting to `[1, 2]` gives `1.0` from both. That is stated as agreement on a
@@ -130,7 +130,7 @@ value.
 ### `weights` became `weighting`
 
 `cohen_kappa_score(…, weights="linear")` is
-[`CohenKappa.Score(…, KappaWeighting.Linear)`](../reference/metrics/classification.md#cohenkappascore).
+[`CohenKappa.Score(…, KappaWeighting.Linear)`](../reference/metrics/classification/cohenkappa-score.md).
 
 The rejected alternative is the literal transcription, `weights`, which would
 have sat in the same signature as `sampleWeight` while meaning something
@@ -144,7 +144,7 @@ would have cost a caller a plausible, compiling, wrong argument.
 `matthews_corrcoef` returns `0.0` when the denominator collapses — which happens
 whenever either side of the matrix holds a single label — and emits an
 `UndefinedMetricWarning`. The value is hard-coded; there is no keyword.
-[`MatthewsCorrelation.Score`](../reference/metrics/classification.md#matthewscorrelationscore)
+[`MatthewsCorrelation.Score`](../reference/metrics/classification/matthewscorrelation-score.md)
 takes `ZeroDivision`, defaulting to `Zero`, so the default call returns
 scikit-learn's number.
 
