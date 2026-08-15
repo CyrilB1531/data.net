@@ -79,12 +79,16 @@ A change is not finished until all of these hold:
 3. **Lint is clean**: `dotnet format --verify-no-changes` and markdownlint.
 4. **Public API carries XML documentation**, naming the Python function whose
    behavior it matches.
-5. **The C# in the guides still compiles.** Every ```` ```csharp ```` fence in
-   `README.md` and `docs/guides/` is extracted from the Markdown and built
-   against the packed packages — there is no second copy, so a snippet cannot
-   drift from the API. A fence that genuinely cannot compile opts out with
-   `<!-- docs-compile: skip - reason -->` on the line above it, and the reason
-   has to be one a reviewer can disagree with.
+5. **The C# in the documentation still compiles.** Every ```` ```csharp ````
+   fence in `README.md`, `docs/guides/` and `docs/reference/<package>/` is
+   extracted from the Markdown and built against the packed packages — there is
+   no second copy, so a snippet cannot drift from the API. The reference pages'
+   fences are then **executed**, so a result a page promises is checked rather
+   than trusted; item 6 has the `// =>` marker that states one. A fence that
+   genuinely cannot compile opts out with
+   `<!-- docs-compile: skip - reason -->` on the line above it, and one that
+   compiles but cannot be run with `<!-- docs-run: skip - reason -->`; the
+   reason has to be one a reviewer can disagree with.
 6. **A new public type or method carries a reference entry.** The pages under
    `docs/reference/<package>/` follow the layout of the .NET API reference: a `###` entry per
    exported type, a `####` entry per public method with all overloads sharing it, and inside an

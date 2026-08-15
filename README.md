@@ -75,6 +75,13 @@ Full guide: [`docs/guides/quickstart.md`](docs/guides/quickstart.md). See also t
 [vectorization](docs/guides/vectorization.md), [embeddings](docs/guides/embeddings.md)
 and [fuzzy-matching](docs/guides/migrating-from-rapidfuzz.md) guides.
 
+Function by function, the reference pages under
+[`docs/reference/`](docs/reference/text/distances.md) say what each member is
+for, when to prefer it to its neighbour and what the trap is — start with
+[the distances](docs/reference/text/distances.md). The same pages are published
+to [the wiki](https://github.com/CyrilB1531/data.net/wiki), where each package's
+channel follows `main` and every release is archived under its own version.
+
 ## Developing
 
 ```bash
@@ -111,7 +118,9 @@ DataNet.slnx
 ├── tools/generate_oracles.py    reference generation
 ├── Directory.Build.props        (root); src|tests/Directory.Packages.props (central package management)
 ├── src/*/Version.props          one version per publishable package (decision 0012)
-└── docs/                        guides, equivalence table, decision log
+├── docs/                        guides, equivalence table, decision log
+├── docs/reference/<package>/    one reference entry per exported type and public method
+└── docs/wiki-map.json           which page ships with which package, and which namespaces the reference gate enforces
 ```
 
 ## Where a fact belongs
@@ -129,6 +138,8 @@ you whether to correct the document itself or something upstream of it.
 | `CLAUDE.md` | what a session has found, hand-maintained | what a session needs to be productive, and the traps that cost time |
 | `docs/equivalence.md` | the oracle corpora in `tests/oracles/*.json`, replayed against the C# they compare | the Python call to C# counterpart mapping, with each divergence |
 | `docs/migration/` | the .NET package chosen for each need | what is delegated to another .NET library, and why |
+| `docs/reference/` | the exported types and public methods of the namespaces `docs/wiki-map.json` declares covered, replayed against both target frameworks' assemblies | what each function is for, entry by entry — declaration, parameters, returns, example, remarks |
+| `docs/wiki-map.json` | the packages and the pages that ship with each, hand-maintained | which page belongs to which package, and which namespaces the reference gate enforces |
 | `CHANGELOG.md` | the merged pull requests, per release | what changed, per release |
 | `docs/decisions/` | the ADRs' own `**Status:**` lines, indexed in [`docs/decisions/README.md`](docs/decisions/README.md) | a decision, with its options and its loser |
 | root `README.md` | the project as it stands, hand-maintained | what the project is, and where to go next |
