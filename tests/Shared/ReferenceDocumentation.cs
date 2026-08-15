@@ -140,7 +140,17 @@ internal static class ReferenceDocumentation
         }
     }
 
-    /// <summary>Every backticked mention of a documented member that is not linked to its entry.</summary>
+    /// long-comment: the rule has two halves and only one of them is about a
+    /// single line, so a reader has to be told which half a complaint comes from
+    /// <summary>Every place a documented member is named and its entry is not reachable.</summary>
+    /// <remarks>
+    /// Two obligations. Every backticked mention in prose is a link, which is a
+    /// property of the line it sits on. And naming a member at all — inside a
+    /// `csharp` fence included, where Markdown cannot carry a link — obliges the
+    /// page to link its entry at least once somewhere, which is a property of
+    /// the page. The second is what stops a guide from demonstrating a method
+    /// three times and offering no way to find out what it does.
+    /// </remarks>
     public static IReadOnlyList<string> CheckLinks(
         Assembly assembly, string package, string wikiMapPath, string referenceRoot, string docsRoot)
     {
@@ -188,6 +198,7 @@ internal static class ReferenceDocumentation
     {
         string relative = Path.GetRelativePath(docsRoot, file).Replace('\\', '/');
         string[] lines = File.ReadAllLines(file);
+        HashSet<string> anchors = new(StringComparer.Ordinal);
         bool inFence = false;
 
         for (int index = 0; index < lines.Length; index++)
@@ -202,9 +213,87 @@ internal static class ReferenceDocumentation
             if (!inFence)
             {
                 CheckLineLinks(line, relative, index + 1, linkable, complaints);
+                foreach (string anchor in Anchors(line))
+                {
+                    anchors.Add(anchor);
+                }
+            }
+        }
+
+        CheckPageLinksWhatItUses(lines, relative, linkable, anchors, complaints);
+    }
+
+    /// <summary>The second obligation: a member the page names, and links nowhere.</summary>
+    private static void CheckPageLinksWhatItUses(
+        string[] lines,
+        string relative,
+        HashSet<string> linkable,
+        HashSet<string> anchors,
+        List<string> complaints)
+    {
+        foreach (string member in linkable.OrderBy(name => name, StringComparer.Ordinal))
+        {
+            if (!anchors.Contains(Anchor(member)) && Array.Exists(lines, line => Names(line, member)))
+            {
+                complaints.Add(
+                    $"{relative}: uses '{member}' and links its entry nowhere on the page. " +
+                    "A fence cannot carry a link, so put one in the prose around it.");
             }
         }
     }
+
+    /// <summary>The anchor GitHub gives an entry's heading: its text, lowercased, without the dot.</summary>
+    private static string Anchor(string member)
+    {
+        StringBuilder anchor = new(member.Length);
+        foreach (char character in member)
+        {
+            if (character != '.')
+            {
+                anchor.Append(char.ToLowerInvariant(character));
+            }
+        }
+
+        return anchor.ToString();
+    }
+
+    /// <summary>Every heading anchor a line links to, without its '#'.</summary>
+    private static IEnumerable<string> Anchors(string line)
+    {
+        foreach ((int start, int end) in LinkSpans(line))
+        {
+            string span = line[start..end];
+            int target = span.IndexOf("](", StringComparison.Ordinal);
+            int hash = target < 0 ? -1 : span.IndexOf('#', target + 2);
+            if (hash >= 0)
+            {
+                yield return span[(hash + 1)..^1];
+            }
+        }
+    }
+
+    // Bounded on both sides, so `DamerauLevenshtein.Distance` is not read as a
+    // use of `Levenshtein.Distance` and does not satisfy — or fail — its rule.
+    private static bool Names(string line, string member)
+    {
+        int index = 0;
+        while ((index = line.IndexOf(member, index, StringComparison.Ordinal)) >= 0)
+        {
+            int after = index + member.Length;
+            if ((index == 0 || !IsWithinName(line[index - 1])) &&
+                (after == line.Length || !IsWithinName(line[after])))
+            {
+                return true;
+            }
+
+            index = after;
+        }
+
+        return false;
+    }
+
+    private static bool IsWithinName(char character) =>
+        char.IsLetterOrDigit(character) || character == '_' || character == '.';
 
     private static void CheckLineLinks(
         string line, string relativeFile, int lineNumber, HashSet<string> linkable, List<string> complaints)

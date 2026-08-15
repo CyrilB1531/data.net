@@ -107,7 +107,11 @@ A change is not finished until all of these hold:
    `ReferenceDocumentationTests` fails the build when a page and the assembly disagree.
 
    A member that has a reference entry is linked to it wherever it is named in prose or in a
-   table, and `ReferenceDocumentationTests` fails the build on a mention that is not.
+   table. Using it obliges the page as well: a member named anywhere on a page — inside a
+   ```` ```csharp ```` fence included, where Markdown cannot carry a link — has to be linked to
+   its entry at least once somewhere on that page, so a reader who meets it has a way to find
+   out what it does. `ReferenceDocumentationTests` fails the build on either. A reference page
+   is exempt for its own members: its headings are the entries.
 
 ```bash
 dotnet build DataNet.slnx -c Release

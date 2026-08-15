@@ -163,22 +163,86 @@ public sealed class ReferenceDocumentationTests
     [Fact]
     public void A_backticked_member_outside_a_link_is_reported()
     {
-        string docs = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-        Directory.CreateDirectory(docs);
-        File.WriteAllText(Path.Combine(docs, "page.md"), """
-            Use `Levenshtein.Distance` for typing mistakes.
+        // The page already links the entry once, so only the second mention is at issue:
+        // this pins the first obligation on its own, with the second one satisfied.
+        IReadOnlyList<string> complaints = OnePage("""
+            Read [`Levenshtein.Distance`](reference/text/distances.md#levenshteindistance) first.
+
+            Then reach for `Levenshtein.Distance` on typing mistakes.
+            """);
+
+        string complaint = Assert.Single(complaints);
+        Assert.Contains("page.md:3", complaint, StringComparison.Ordinal);
+        Assert.Contains("not linked", complaint, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_member_used_only_inside_a_fence_still_owes_the_page_a_link()
+    {
+        IReadOnlyList<string> complaints = OnePage("""
+            # Quickstart
 
             ```csharp
-            int d = Levenshtein.Distance("a", "b");
+            int d = Levenshtein.Distance("kitten", "sitting");
             ```
             """);
 
-        IReadOnlyList<string> complaints = ReferenceDocumentation.CheckLinks(
-            typeof(Levenshtein).Assembly, "DataNet.Text", Map, Root, docs);
+        string complaint = Assert.Single(complaints);
+        Assert.Contains("page.md", complaint, StringComparison.Ordinal);
+        Assert.Contains("Levenshtein.Distance", complaint, StringComparison.Ordinal);
+    }
 
-        // The prose mention owes a link; the one inside the fence does not.
-        Assert.Single(complaints);
-        Assert.Contains("page.md", complaints[0], StringComparison.Ordinal);
-        Directory.Delete(docs, recursive: true);
+    [Fact]
+    public void One_link_in_prose_covers_every_later_use_in_a_fence()
+    {
+        IReadOnlyList<string> complaints = OnePage("""
+            [`Levenshtein.Distance`](reference/text/distances.md#levenshteindistance) counts edits.
+
+            ```csharp
+            int d = Levenshtein.Distance("kitten", "sitting");
+            ```
+
+            ```csharp
+            int e = Levenshtein.Distance("a", "b");
+            ```
+
+            ```csharp
+            int f = Levenshtein.Distance("", "");
+            ```
+            """);
+
+        Assert.Empty(complaints);
+    }
+
+    [Fact]
+    public void A_near_namesake_is_not_read_as_a_use_of_the_shorter_name()
+    {
+        // `DamerauLevenshtein.Distance` ends with `Levenshtein.Distance`, and a
+        // substring match would have this page owe a link it does not owe.
+        IReadOnlyList<string> complaints = OnePage("""
+            [`DamerauLevenshtein.Distance`](reference/text/distances.md#dameraulevenshteindistance) swaps.
+
+            ```csharp
+            int d = DamerauLevenshtein.Distance("CA", "ABC");
+            ```
+            """);
+
+        Assert.Empty(complaints);
+    }
+
+    private static IReadOnlyList<string> OnePage(string markdown)
+    {
+        string docs = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(docs);
+        try
+        {
+            File.WriteAllText(Path.Combine(docs, "page.md"), markdown);
+            return ReferenceDocumentation.CheckLinks(
+                typeof(Levenshtein).Assembly, "DataNet.Text", Map, Root, docs);
+        }
+        finally
+        {
+            Directory.Delete(docs, recursive: true);
+        }
     }
 }
