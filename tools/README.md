@@ -274,10 +274,13 @@ package; a page it declares that the tree does not hold is an error, not
 silence — that is how a renamed guide stops being published without anyone
 noticing. Without `--archive` the run refreshes every live channel plus the
 root pages (`Home`, `_Sidebar`, and the pages whose subject is the project
-rather than a package); with it, the run writes that one package's frozen
-snapshot and touches nothing else — the split is what lets a per-package
-release tag publish only that package's version. `.github/workflows/wiki.yml`
-is what calls it, on pushes to `main` and on per-package release tags.
+rather than a package); with it, the run freezes that one package's snapshot
+first and then refreshes the live channels on top of it — only that package is
+frozen, which is what lets a per-package release tag publish one version, but
+the sidebar and the live pages' banner are read off the tree, so they are
+rewritten too rather than left naming the previous release.
+`.github/workflows/wiki.yml` is what calls it, on pushes to `main` and on
+per-package release tags.
 
 ## `check_comment_length.py`
 

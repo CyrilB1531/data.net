@@ -23,8 +23,10 @@ Usage:
         [--archive DataNet.Text=0.4.0]
 
 Without --archive it refreshes every live channel and the root pages, each
-named `<channel>-<stem>`. With it, it writes that one package's frozen
-version, named `<channel>-<version>-<stem>`, and touches nothing else.
+named `<channel>-<stem>`. With it, it first freezes that one package under
+`<channel>-<version>-<stem>` and then refreshes the live channels on top of
+that copy: the sidebar's version list and the live pages' banner are both read
+off the tree, so archiving alone would leave them naming the previous release.
 
 Exit:   0 clean, 1 the map disagrees with the tree, 2 bad usage
 """
@@ -213,7 +215,14 @@ def _version_key(version: str) -> tuple:
     return tuple(int(part) if part.isdigit() else part for part in version.split("."))
 
 
-def home(mapping: dict, released: dict[str, str]) -> str:
+def home(out: pathlib.Path, mapping: dict, released: dict[str, str]) -> str:
+    """The front page, read off the tree that was just written -- as the sidebar is.
+
+    A package whose pages are only a glob that matches nothing has no landing
+    page, and `sidebar` drops its entry for exactly that reason. Home keeps the
+    row, because the released version is the other half of what the table is
+    for, and writes no link rather than one to a page that does not exist.
+    """
     lines = [
         "# DataNet",
         "",
@@ -225,9 +234,10 @@ def home(mapping: dict, released: dict[str, str]) -> str:
     ]
     for name, package in mapping["packages"].items():
         version = released.get(name, "unreleased")
-        declared = _declared_landing(package)
-        target = wiki_name(declared, package["wiki"]) if declared else package["wiki"]
-        lines.append(f"| `{name}` | {version} | [{package['wiki']}]({target}) |")
+        channel = package["wiki"]
+        landing = _resolve_landing(_live_stems(out, channel), package)
+        target = f"[{channel}]({wiki_name(landing, channel)})" if landing else "no pages yet"
+        lines.append(f"| `{name}` | {version} | {target} |")
     return "\n".join(lines) + "\n"
 
 
@@ -291,16 +301,26 @@ def build(
     released: dict[str, str],
     archive: tuple[str, str] | None = None,
 ) -> list[pathlib.Path]:
-    """Write the wiki tree. Returns the pages written, for the caller to report."""
+    """Write the wiki tree. Returns the pages written, for the caller to report.
+
+    An archive is written first and the live channels are then rebuilt on top of
+    it, never instead of it. Only the named package is frozen -- that split is
+    what lets a per-package tag publish one version -- but the sidebar's version
+    list and the banner of D4 are both read off the tree, so returning after the
+    archive left the sidebar without the new version and every live page still
+    naming the previous release. The banner exists so it cannot go stale, and a
+    release tag was the one moment it did.
+    """
     repo, out = pathlib.Path(repo), pathlib.Path(out)
     out.mkdir(parents=True, exist_ok=True)
     index = link_index(repo, mapping)
     names: dict[str, pathlib.Path] = {}
 
-    if archive is not None:
-        return _build_archive(repo, out, mapping, index, names, archive)
+    written: list[pathlib.Path] = (
+        _build_archive(repo, out, mapping, index, names, archive) if archive is not None else []
+    )
 
-    written: list[pathlib.Path] = [
+    written += [
         _write(page, out, repo, index, "", wiki_name(page_stem(page)), names)
         for page in pages_for(mapping["root"], repo)
     ]
@@ -308,7 +328,7 @@ def build(
         written.extend(_build_channel(repo, out, index, names, pkg_name, package, released))
 
     (out / "_Sidebar.md").write_text(sidebar(out, mapping), encoding="utf-8")
-    (out / "Home.md").write_text(home(mapping, released), encoding="utf-8")
+    (out / "Home.md").write_text(home(out, mapping, released), encoding="utf-8")
     return written
 
 

@@ -66,8 +66,45 @@ def test_an_archived_page_carries_the_version_in_its_name(tmp_path):
 
     assert (out / "Text-0.4.0-distances.md").exists()
     assert (out / "Text-0.4.0-quickstart.md").exists()
-    # An archive publishes that package only, and never rewrites the live channel.
-    assert not (out / "Text-quickstart.md").exists()
+
+
+def test_an_archive_run_leaves_the_sidebar_and_the_banner_naming_the_new_version(tmp_path):
+    """A release tag is the one moment the generated banner could go stale."""
+    repo = make_repo(tmp_path)
+    out = tmp_path / "wiki"
+    build_wiki.build(repo, out, MAP, released={"DataNet.Text": "0.3.0"})
+
+    build_wiki.build(
+        repo, out, MAP, released={"DataNet.Text": "0.4.0"},
+        archive=("DataNet.Text", "0.4.0"),
+    )
+
+    sidebar = (out / "_Sidebar.md").read_text(encoding="utf-8")
+    assert "[0.4.0](Text-0.4.0-quickstart)" in sidebar
+    assert "0.4.0" in (out / "Home.md").read_text(encoding="utf-8")
+    live = (out / "Text-quickstart.md").read_text(encoding="utf-8")
+    assert live.startswith("> **Development build.**")
+    assert "(Text-0.4.0-quickstart)" in live
+
+
+def test_a_package_with_no_pages_yet_is_named_on_home_without_a_link(tmp_path):
+    """`[Metrics](Metrics)` was a 404: a glob that matches nothing has no landing page."""
+    repo = make_repo(tmp_path)
+    mapping = json.loads(json.dumps(MAP))
+    mapping["packages"]["DataNet.Metrics"] = {
+        "wiki": "Metrics",
+        "pages": ["docs/reference/metrics/*.md"],
+        "covered": {},
+    }
+    out = tmp_path / "wiki"
+
+    build_wiki.build(repo, out, mapping, released={"DataNet.Metrics": "0.3.0"})
+
+    home = (out / "Home.md").read_text(encoding="utf-8")
+    assert "`DataNet.Metrics`" in home
+    assert "[Metrics](Metrics)" not in home
+    # The sidebar already skipped the channel; Home now agrees that there is nothing to link.
+    assert "Metrics" not in (out / "_Sidebar.md").read_text(encoding="utf-8")
 
 
 def test_links_are_rewritten_to_flat_wiki_names(tmp_path):
