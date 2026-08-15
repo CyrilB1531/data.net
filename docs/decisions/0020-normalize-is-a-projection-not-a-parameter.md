@@ -25,27 +25,31 @@ scikit-learn keyword had to be renamed.
 
 ### `normalize=` is a projection on the matrix, not a parameter on `Compute`
 
-`ConfusionMatrix.ToArray(Normalization)` returns scaled cells. A
-`ConfusionMatrix` is never normalized and never remembers having been.
+[`ConfusionMatrix.ToArray(Normalization)`](../reference/metrics/classification.md#confusionmatrixtoarray)
+returns scaled cells. A `ConfusionMatrix` is never normalized and never
+remembers having been.
 
 The rejected alternative is scikit-learn's own signature —
-`ConfusionMatrix.Compute(…, normalize: Normalization.All)` — which is what a
-reader coming from `confusion_matrix(…, normalize="all")` will look for first.
-It cannot be offered. `Accuracy.Score(ConfusionMatrix)` divides the diagonal by
-the total weight; on a matrix whose cells are row fractions that quotient is
-still a number between 0 and 1, still prints, and is neither accuracy nor
-anything else. So do the balanced accuracy, Matthews and kappa overloads added
-here, all of which read the same cells. There is no type error, no exception, and
-nothing in the value to notice.
+[`ConfusionMatrix.Compute(…, normalize: Normalization.All)`](../reference/metrics/classification.md#confusionmatrixcompute)
+— which is what a reader coming from `confusion_matrix(…, normalize="all")`
+will look for first.
+It cannot be offered.
+[`Accuracy.Score(ConfusionMatrix)`](../reference/metrics/classification.md#accuracyscore)
+divides the diagonal by the total weight; on a matrix whose cells are row
+fractions that quotient is still a number between 0 and 1, still prints, and is
+neither accuracy nor anything else. So do the balanced accuracy, Matthews and
+kappa overloads added here, all of which read the same cells. There is no type
+error, no exception, and nothing in the value to notice.
 
 Making it safe would have meant carrying a `Normalization` on the matrix and
 having every matrix-consuming metric refuse a normalized one at run time — a
 flag on the matrix, a new exception on every matrix-consuming method, and a failure
 mode that only appears once a caller has combined two features that each work.
-A projection cannot be handed to `Accuracy.Score` at all: `double[,]` is not a
-`ConfusionMatrix`, so the compiler rejects the mistake instead of the library
-reporting it. The cost is one departure from a scikit-learn signature, recorded
-in [`equivalence.md`](../equivalence.md).
+A projection cannot be handed to
+[`Accuracy.Score`](../reference/metrics/classification.md#accuracyscore) at all:
+`double[,]` is not a `ConfusionMatrix`, so the compiler rejects the mistake
+instead of the library reporting it. The cost is one departure from a
+scikit-learn signature, recorded in [`equivalence.md`](../equivalence.md).
 
 `ToArray(Normalization.None)` is kept as the identity, so the enum has a member
 for each of scikit-learn's four values rather than three plus "call the other
@@ -81,12 +85,13 @@ reference, and the three metrics differ in whether a reference value even exists
 `balanced_accuracy_score` and `matthews_corrcoef` take no `labels` argument at
 all, so for them a restricted matrix has no scikit-learn counterpart to agree or
 disagree with; the label-taking overloads added here pass `labels` through to
-`ConfusionMatrix.Compute`, which is the only place it means anything.
-`cohen_kappa_score` **does** take `labels`, so there a counterpart exists — and
-on the corpus fixture the tests pin, restricting to `[1, 2]` gives `1.0` from
-both. That is stated as agreement on a measured case, not as a capability gap:
-the frozen corpus passes no `labels=` to any of the three generators, so every
-value in it covers the full label domain, and the restricted case is pinned by
+[`ConfusionMatrix.Compute`](../reference/metrics/classification.md#confusionmatrixcompute), which is the
+only place it means anything. `cohen_kappa_score` **does** take `labels`, so
+there a counterpart exists — and on the corpus fixture the tests pin,
+restricting to `[1, 2]` gives `1.0` from both. That is stated as agreement on a
+measured case, not as a capability gap: the frozen corpus passes no `labels=` to
+any of the three generators, so every value in it covers the full label domain,
+and the restricted case is pinned by
 `CohenKappaTests.A_restricted_label_set_reads_over_the_matrix_it_holds` rather
 than by an oracle row.
 
@@ -124,7 +129,8 @@ value.
 
 ### `weights` became `weighting`
 
-`cohen_kappa_score(…, weights="linear")` is `CohenKappa.Score(…, KappaWeighting.Linear)`.
+`cohen_kappa_score(…, weights="linear")` is
+[`CohenKappa.Score(…, KappaWeighting.Linear)`](../reference/metrics/classification.md#cohenkappascore).
 
 The rejected alternative is the literal transcription, `weights`, which would
 have sat in the same signature as `sampleWeight` while meaning something
@@ -138,8 +144,9 @@ would have cost a caller a plausible, compiling, wrong argument.
 `matthews_corrcoef` returns `0.0` when the denominator collapses — which happens
 whenever either side of the matrix holds a single label — and emits an
 `UndefinedMetricWarning`. The value is hard-coded; there is no keyword.
-`MatthewsCorrelation.Score` takes `ZeroDivision`, defaulting to `Zero`, so the
-default call returns scikit-learn's number.
+[`MatthewsCorrelation.Score`](../reference/metrics/classification.md#matthewscorrelationscore)
+takes `ZeroDivision`, defaulting to `Zero`, so the default call returns
+scikit-learn's number.
 
 This is an extension of a kind the package already documents rather than a new
 idea: `ZeroDivision.Throw` exists at all because a Python warning has no useful

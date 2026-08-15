@@ -8,9 +8,9 @@ namespace DataNet.Text.Distances;
 #pragma warning disable S3776, S4136
 
 /// <summary>
-/// Unrestricted Damerau-Levenshtein distance (insertions, deletions,
-/// substitutions and transpositions of adjacent characters); a substring may
-/// be edited more than once, unlike <see cref="Osa"/>. Not a proper metric.
+/// Unrestricted Damerau-Levenshtein (Lowrance-Wagner: insertions, deletions,
+/// substitutions and transpositions of adjacent characters, a substring editable
+/// more than once, unlike <see cref="Osa"/>). A true metric at unit costs.
 /// </summary>
 /// <remarks>
 /// Reference behavior: <c>rapidfuzz.distance.DamerauLevenshtein</c>; see

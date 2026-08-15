@@ -79,12 +79,48 @@ A change is not finished until all of these hold:
 3. **Lint is clean**: `dotnet format --verify-no-changes` and markdownlint.
 4. **Public API carries XML documentation**, naming the Python function whose
    behavior it matches.
-5. **The C# in the guides still compiles.** Every ```` ```csharp ```` fence in
-   `README.md` and `docs/guides/` is extracted from the Markdown and built
-   against the packed packages — there is no second copy, so a snippet cannot
-   drift from the API. A fence that genuinely cannot compile opts out with
-   `<!-- docs-compile: skip - reason -->` on the line above it, and the reason
-   has to be one a reviewer can disagree with.
+5. **The C# in the documentation still compiles.** Every ```` ```csharp ````
+   fence in `README.md`, `docs/guides/` and `docs/reference/<package>/` is
+   extracted from the Markdown and built against the packed packages — there is
+   no second copy, so a snippet cannot drift from the API. The reference pages'
+   fences are then **executed**, so a result a page promises is checked rather
+   than trusted; item 6 has the `// =>` marker that states one. A fence that
+   genuinely cannot compile opts out with
+   `<!-- docs-compile: skip - reason -->` on the line above it, and one that
+   compiles but cannot be run with `<!-- docs-run: skip - reason -->`; the
+   reason has to be one a reviewer can disagree with.
+6. **A new public type or method carries a reference entry.** The pages under
+   `docs/reference/<package>/` follow the layout of the .NET API reference: a `###` entry per
+   exported type, a `####` entry per public method with all overloads sharing it, and inside an
+   entry, in order — a one-sentence summary, the declaration under a `<!-- docs-declaration -->`
+   marker, **Parameters**, **Returns**, **Exceptions**, **Example**, **Remarks**, **Applies to**,
+   **See also**. Empty rubrics are left out rather than filled with "none".
+
+   The prose a reader came for lives in **Remarks**: what the member is for, when to prefer it to
+   its neighbour, and the trap. The Python counterpart is not repeated — link
+   [`docs/equivalence.md`](docs/equivalence.md) under **See also**.
+
+   In an **Example**, a `// =>` comment is an assertion the CI executes; a plain `//` stays a
+   comment. The value must be bound to a local first, and a trailing `…` means prefix match. A
+   fence that cannot be executed carries `<!-- docs-run: skip - reason -->` on the line above.
+
+   A Mermaid diagram is welcome where it shows a mechanism prose cannot hand a reader in one
+   glance, and is removed in review when it only restates the sentence above it.
+
+   Which namespaces are enforced is declared in [`docs/wiki-map.json`](docs/wiki-map.json), and
+   `ReferenceDocumentationTests` fails the build when a page and the assembly disagree.
+
+   A member that has a reference entry is linked to it wherever it is named in prose or in a
+   table. Using it obliges the page as well: a member named anywhere on a page — inside a
+   ```` ```csharp ```` fence included, where Markdown cannot carry a link — has to be linked to
+   its entry at least once somewhere on that page, so a reader who meets it has a way to find
+   out what it does. `ReferenceDocumentationTests` fails the build on either. A reference page
+   is exempt for its own members: its headings are the entries.
+
+   The page's opening table is navigation, not a summary: every exported type gets a row, its
+   name linked to its own `###` entry — `` [`Levenshtein`](#levenshtein) ``. The anchor is
+   GitHub's slug rule, lower-cased with dots dropped, and `ReferenceDocumentationTests` fails
+   the build on a row with no link.
 
 ```bash
 dotnet build DataNet.slnx -c Release

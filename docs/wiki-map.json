@@ -1,0 +1,49 @@
+{
+  "root": [
+    "docs/equivalence.md",
+    "docs/guides/performance.md",
+    "docs/decisions/*.md",
+    "docs/migration/*.md"
+  ],
+  "packages": {
+    "DataNet.Text": {
+      "wiki": "Text",
+      "pages": [
+        "docs/guides/quickstart.md",
+        "docs/guides/vectorization.md",
+        "docs/reference/text/*.md"
+      ],
+      "covered": {
+        "DataNet.Text.Distances": "docs/reference/text/distances.md"
+      }
+    },
+    "DataNet.Embeddings": {
+      "wiki": "Embeddings",
+      "pages": [
+        "docs/guides/embeddings.md",
+        "docs/reference/embeddings/*.md"
+      ],
+      "covered": {}
+    },
+    "DataNet.Fuzzy": {
+      "wiki": "Fuzzy",
+      "pages": [
+        "docs/guides/migrating-from-rapidfuzz.md",
+        "docs/reference/fuzzy/*.md"
+      ],
+      "covered": {}
+    },
+    "DataNet.Metrics": {
+      "wiki": "Metrics",
+      "pages": [
+        "docs/reference/metrics/*.md"
+      ],
+      "covered": {
+        "DataNet.Metrics": [
+          "docs/reference/metrics/classification.md",
+          "docs/reference/metrics/regression.md"
+        ]
+      }
+    }
+  }
+}

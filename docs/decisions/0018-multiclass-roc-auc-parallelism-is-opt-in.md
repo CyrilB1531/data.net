@@ -108,8 +108,9 @@ a threshold written to defend them would have removed a doubling.
 
 ### The arguments moved into `MultiClassRocOptions`, a `ref struct`
 
-`RocAuc.MultiClass` used to take strategy, averaging, labels and sample weights
-as trailing parameters. `MaxDegreeOfParallelism` would have been a fifth, and an
+[`RocAuc.MultiClass`](../reference/metrics/classification.md#rocaucmulticlass)
+used to take strategy, averaging, labels and sample weights as trailing
+parameters. `MaxDegreeOfParallelism` would have been a fifth, and an
 options value carries the whole set instead.
 
 It is a `ref struct` and could not have been anything else: `Labels` is a
@@ -236,8 +237,9 @@ library with no performance budget to defend.
 
 ## Consequences
 
-- `RocAuc.MultiClass`'s parameter list changed shape before the package's first
-  release. `DataNet.Metrics` has never shipped, so this is a change to an
+- [`RocAuc.MultiClass`](../reference/metrics/classification.md#rocaucmulticlass)'s
+  parameter list changed shape before the package's first release.
+  `DataNet.Metrics` has never shipped, so this is a change to an
   unreleased surface; after 0.1.0 the same change would have been breaking, and
   gathering the arguments now is the cheap moment.
 - `MultiClassRocOptions` is a `ref struct` forever, with everything that
@@ -272,8 +274,9 @@ library with no performance budget to defend.
   arrays that both versions allocate either way. At n=100 000, k=10 that is 22
   fresh arrays, most of them on the large-object heap at that size, replaced by
   four rentals from `ArrayPool<T>.Shared`.
-- **The binary entry point pays a small unadvertised cost.** `RocAuc.Score` used
-  to allocate two fresh arrays and now rents four, because it shares
+- **The binary entry point pays a small unadvertised cost.**
+  [`RocAuc.Score`](../reference/metrics/classification.md#rocaucscore) used to
+  allocate two fresh arrays and now rents four, because it shares
   `BinaryRoc.Scratch` with the multiclass drivers and two of the four —
   `Scratch.Binary` and `Scratch.Column`, where a driver compacts one class's
   samples before scoring — are never read on the binary path. Two idle rentals

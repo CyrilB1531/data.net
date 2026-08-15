@@ -21,6 +21,11 @@ given:
 - `generate_sonar_globalconfig.py` writes the `.globalconfig` that raises the
   Sonar rules `SonarAnalyzer.CSharp` ships disabled, from the SonarCloud
   quality profile that gates the pull request.
+- `extract_doc_snippets.py` turns the ` ```csharp ` fences in `README.md` and
+  `docs/` into a project the compiler — and, for the reference pages, the
+  runtime — can judge.
+- `build_wiki.py` produces what the GitHub wiki publishes: `docs/` turned into
+  a flat page per package channel and per released version.
 - `sonarqube-local/` holds the compose file for a disposable local SonarQube
   server, covering the Python rules, duplication and coverage that no local
   `dotnet build` reaches — see
@@ -217,6 +222,76 @@ python tools/generate_sonar_globalconfig.py --check
 A regenerated file that differs means the SonarCloud profile moved; an
 unreachable API is reported separately and never as drift, so a network hiccup
 cannot make the check pass on a stale file.
+
+## `extract_doc_snippets.py`
+
+Turns every ` ```csharp ` fence in `README.md`, `docs/guides/*.md` and
+`docs/reference/*/*.md` into one method in a generated, git-ignored project
+under `samples/DataNet.DocSnippets/Generated/` — the guides stay the single
+source of truth, so a snippet and its compiled counterpart cannot drift:
+
+```bash
+python3 tools/extract_doc_snippets.py            # regenerate
+python3 tools/extract_doc_snippets.py --check    # report without writing
+```
+
+A fence that cannot compile opts out with `<!-- docs-compile: skip - reason
+a reviewer can disagree with -->` on the line above it — CONTRIBUTING.md's
+[*Definition of done*](../CONTRIBUTING.md#definition-of-done), item 5, has
+the exact syntax. A marker with no fence after it is an error, not silence:
+an opt-out that stopped applying must not go unnoticed.
+
+Pages under `docs/reference/` carry three more markers, and land in the
+`DataNet.DocSnippets.Reference` namespace instead of `DataNet.DocSnippets`:
+
+- `<!-- docs-declaration -->` marks a signature shown above a fence — the
+  declaration itself, excluded from compilation entirely.
+- `<!-- docs-run: skip - reason -->` compiles the fence but never runs it,
+  under the same "a reviewer can disagree with the reason" rule as
+  `docs-compile: skip`.
+- a trailing `// =>` comment on a local-variable declaration becomes an
+  assertion on the value the declaration promises, so a reference example is
+  not only compiled but *executed* — a promised result that stops being true
+  fails CI instead of a reader.
+
+## `build_wiki.py`
+
+Turns a checkout into the tree the GitHub wiki publishes: `docs/` becomes a
+flat page per package channel and, once a package is tagged, per released
+version — flat because a wiki addresses a page by file name alone, with no
+directory context of its own, and two pages sharing a base name would
+otherwise collide silently.
+
+```bash
+python3 tools/build_wiki.py --repo <dir> --out <dir> \
+  --released DataNet.Text=0.3.0 [--released ...]     # every live channel
+python3 tools/build_wiki.py --repo <dir> --out <dir> \
+  --archive DataNet.Text=0.4.0                       # one frozen version
+```
+
+`docs/wiki-map.json` is the only place that says which page belongs to which
+package; a page it declares that the tree does not hold is an error, not
+silence — that is how a renamed guide stops being published without anyone
+noticing. Without `--archive` the run refreshes every live channel plus the
+root pages (`Home`, `_Sidebar`, and the pages whose subject is the project
+rather than a package); with it, the run freezes that one package's snapshot
+first and then refreshes the live channels on top of it — only that package is
+frozen, which is what lets a per-package release tag publish one version, but
+the sidebar and the live pages' banner are read off the tree, so they are
+rewritten too rather than left naming the previous release.
+`.github/workflows/wiki.yml` is what calls it, on pushes to `main` and on
+per-package release tags.
+
+Each live channel also gets a generated entry page, `<channel>.md` — a link
+per namespace it covers and a link per guide it ships, read off
+`docs/wiki-map.json`'s `covered` map so it cannot go stale — and `Home` links
+each package to that page rather than to a bare channel name that used to
+resolve to nothing. A package that covers no namespace and ships no guide,
+`DataNet.Metrics` today, gets no entry page: one linking nothing would not be
+navigation, so `Home` names it "no pages yet" instead, the same text it
+already used before this page existed. The entry page is not archived — it
+carries no content of its own to freeze, and the reasoning is in the module
+docstring.
 
 ## `check_comment_length.py`
 

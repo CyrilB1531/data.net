@@ -1,0 +1,101 @@
+name: Wiki
+
+# The pages live in docs/, where markdownlint, the snippet compiler and review
+# reach them; this is what turns them into what a reader sees. A push to main
+# refreshes each package's live channel, and a per-package tag freezes an
+# archive directory. See docs/superpowers/specs/2026-08-15_0181_documentation-per-version-and-per-function.md.
+
+# One `push` trigger carries both: a `paths` filter narrows branch pushes only, so
+# the tag trigger is not silently filtered by it.
+on:
+  push:
+    branches: [main]
+    tags: ['DataNet.*/v*']
+    paths:
+      - 'docs/**'
+      - 'CONTRIBUTING.md'
+      - 'tools/build_wiki.py'
+      - '.github/workflows/wiki.yml'
+  workflow_dispatch:
+    inputs:
+      archive:
+        description: 'PACKAGE=VERSION to archive, e.g. DataNet.Text=0.4.0. Empty refreshes the live channels.'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wiki
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # the released versions are read from the tags
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      # The tag is <PackageId>/v<Version>, so the latest release of each package is
+      # the highest such tag. Read from git rather than from Version.props, which
+      # declares the NEXT version and would name something nobody can install.
+      - name: The released version of each package
+        id: released
+        run: |
+          set -euo pipefail
+          args=""
+          for package in DataNet.Text DataNet.Embeddings DataNet.Fuzzy DataNet.Metrics; do
+            version=$(git tag --list "$package/v*" | sed "s|$package/v||" | sort -V | tail -1)
+            if [ -n "$version" ]; then
+              args="$args --released $package=$version"
+            fi
+          done
+          echo "args=$args" >> "$GITHUB_OUTPUT"
+
+      # A ref name is untrusted input, so it stays in the environment and is never
+      # interpolated into the script — the same rule release.yml follows.
+      - name: What to publish
+        id: what
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          INPUT_ARCHIVE: ${{ github.event.inputs.archive }}
+        run: |
+          set -euo pipefail
+          if [ "$REF_TYPE" = "tag" ]; then
+            echo "archive=--archive ${REF_NAME%/v*}=${REF_NAME##*/v}" >> "$GITHUB_OUTPUT"
+          elif [ -n "$INPUT_ARCHIVE" ]; then
+            echo "archive=--archive $INPUT_ARCHIVE" >> "$GITHUB_OUTPUT"
+          else
+            echo "archive=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Clone the wiki
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: git clone "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" wiki
+
+      - name: Build the tree
+        run: |
+          python tools/build_wiki.py --repo . --out wiki \
+            ${{ steps.released.outputs.args }} ${{ steps.what.outputs.archive }}
+
+      - name: Push what changed
+        working-directory: wiki
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "The wiki already matches this tree."
+            exit 0
+          fi
+          git commit -m "Publish ${GITHUB_REF_NAME}"
+          git push

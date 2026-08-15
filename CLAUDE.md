@@ -26,6 +26,8 @@ you whether to correct the document itself or something upstream of it.
 | `CLAUDE.md` | what a session has found, hand-maintained | what a session needs to be productive, and the traps that cost time |
 | `docs/equivalence.md` | the oracle corpora in `tests/oracles/*.json`, replayed against the C# they compare | the Python call to C# counterpart mapping, with each divergence |
 | `docs/migration/` | the .NET package chosen for each need | what is delegated to another .NET library, and why |
+| `docs/reference/` | the exported types and public methods of the namespaces `docs/wiki-map.json` declares covered, replayed against both target frameworks' assemblies | what each function is for, entry by entry — declaration, parameters, returns, example, remarks |
+| `docs/wiki-map.json` | the packages and the pages that ship with each, hand-maintained | which page belongs to which package, and which namespaces the reference gate enforces |
 | `CHANGELOG.md` | the merged pull requests, per release | what changed, per release |
 | `docs/decisions/` | the ADRs' own `**Status:**` lines, indexed in [`docs/decisions/README.md`](docs/decisions/README.md) | a decision, with its options and its loser |
 | root `README.md` | the project as it stands, hand-maintained | what the project is, and where to go next |
@@ -220,7 +222,7 @@ its own change.
 solution. Duplication and coverage are visible only to SonarCloud, so a green
 local build is not a green quality gate.
 
-## Two gates that constrain how code is written
+## Three gates that constrain how code is written
 
 - **The packaging gate.** `samples/DataNet.Sample` consumes the packages from
   `./artifacts` through `samples/NuGet.config`, and every new public type must be
@@ -228,10 +230,19 @@ local build is not a green quality gate.
   it in `Lot*.cs`. Both sample builds need a fresh `pack` **and** an isolated
   `NUGET_PACKAGES`, or they judge the published packages instead of the working
   tree (ADR 0009).
-- **The doc-snippets gate.** Every ` ```csharp ` fence in `README.md` and
-  `docs/guides/` is compiled against the packed packages, so a renamed method
-  fails CI — CONTRIBUTING.md's [*Definition of
-  done*](CONTRIBUTING.md#definition-of-done), item 5, has the opt-out syntax.
+- **The doc-snippets gate.** Every ` ```csharp ` fence in `README.md`,
+  `docs/guides/` and `docs/reference/*/*.md` is compiled against the packed
+  packages, so a renamed method fails CI. The reference fences are **executed**
+  on top of that, and a trailing `// =>` on one is an assertion on the value the
+  page promises — CONTRIBUTING.md's [*Definition of
+  done*](CONTRIBUTING.md#definition-of-done), items 5 and 6, have the two
+  opt-out markers.
+- **The reference gate.** A new public type or method in a namespace listed in
+  `docs/wiki-map.json`'s `covered` table needs an entry in its package's
+  reference page under `docs/reference/`, checked against both target
+  frameworks' assemblies — a signature that drifts from its documentation fails
+  CI rather than a reader. Only the namespaces `covered` names are enforced; the
+  rest of the surface waits on the reference page that has not been written yet.
 
 ## Provenance — two hard rules
 

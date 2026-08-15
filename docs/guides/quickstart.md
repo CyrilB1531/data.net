@@ -31,6 +31,12 @@ double nd = Levenshtein.NormalizedDistance("kitten", "sitting");    // 0.4286…
 `string` literals convert implicitly to `ReadOnlySpan<char>`, so no buffer is
 allocated for the inputs.
 
+Each of the three has a reference entry giving its parameters, its behaviour on
+empty inputs and the trap that comes with it:
+[`Levenshtein.Distance`](../reference/text/distances.md#levenshteindistance),
+[`Levenshtein.NormalizedSimilarity`](../reference/text/distances.md#levenshteinnormalizedsimilarity)
+and [`Levenshtein.NormalizedDistance`](../reference/text/distances.md#levenshteinnormalizeddistance).
+
 ## Unicode: choosing the comparison unit
 
 By default, comparison is over **UTF-16 units** (`char`) — the native .NET choice
@@ -51,6 +57,7 @@ This is Unicode pitfall #1 when porting from Python; it's documented in detail i
 
 ## Next
 
+- [Every distance, function by function](../reference/text/distances.md) — the reference entries
 - [From string to vector](vectorization.md) — bag of words, TF-IDF, cosine
 - [Semantic search with embeddings](embeddings.md)
 - [Migrating from rapidfuzz](migrating-from-rapidfuzz.md)

@@ -6,13 +6,15 @@
 
 The textbook F-beta formula is `(1 + beta^2) * P * R / (beta^2 * P + R)` for
 precision `P` and recall `R`. The obvious implementation computes `P` and `R`
-first — each already available as `Precision.Score`/`Recall.Score` — and
+first — each already available as
+[`Precision.Score`](../reference/metrics/classification.md#precisionscore) /
+[`Recall.Score`](../reference/metrics/classification.md#recallscore) — and
 substitutes. scikit-learn's `fbeta_score` does not do this: it derives F-beta
 from the raw `tp`/`predicted`/`support` counts directly. Substituting
-`P = tp/predicted` and `R = tp/support` into the textbook formula and
-cancelling `tp` leaves `score = (1 + beta^2) * tp / (predicted + beta^2 * support)`
-— algebraically the same value when `predicted` and `support` are both
-nonzero, but not the same *computation*.
+`P = tp/predicted` and `R = tp/support` into the textbook formula and cancelling `tp`
+leaves `score = (1 + beta^2) * tp / (predicted + beta^2 * support)` —
+algebraically the same value when `predicted` and `support` are both nonzero,
+but not the same *computation*.
 
 Going through `P` and `R` first applies `Prf.Divide`'s zero-division policy up
 to three times for one F-beta value: once for `P`, once for `R`, and once more

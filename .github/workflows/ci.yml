@@ -176,7 +176,7 @@ jobs:
         run: dotnet run --project samples/DataNet.Sample --configuration Release
 
   docs-snippets:
-    name: Guide snippets compile
+    name: Guide snippets compile, reference snippets run
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -208,6 +208,13 @@ jobs:
         env:
           NUGET_PACKAGES: ${{ runner.temp }}/snippet-packages
         run: dotnet build samples/DataNet.DocSnippets --configuration Release
+
+      # Compiling caught an API that moved; running catches a documented result
+      # that is wrong. Only docs/reference/** fences run — see Program.cs.
+      - name: Run them
+        env:
+          NUGET_PACKAGES: ${{ runner.temp }}/snippet-packages
+        run: dotnet run --project samples/DataNet.DocSnippets --configuration Release
 
   stopwords-pinned:
     name: Stop-word lists match their pinned source

@@ -31,16 +31,26 @@
       exists for.
     -->
     <NoWarn>$(NoWarn);CS0219</NoWarn>
+
+    <!--
+      Running the reference fences is what checks the value each page promises its
+      reader; compiling only ever caught an API that moved. Program.cs runs the
+      DataNet.DocSnippets.Reference namespace and nothing else — see
+      docs/superpowers/specs/2026-08-15_0181_documentation-per-version-and-per-function.md.
+    -->
+    <OutputType>Exe</OutputType>
   </PropertyGroup>
 
   <Import Project="../../src/DataNet.Text/Version.props" />
   <Import Project="../../src/DataNet.Embeddings/Version.props" />
   <Import Project="../../src/DataNet.Fuzzy/Version.props" />
+  <Import Project="../../src/DataNet.Metrics/Version.props" />
 
   <ItemGroup>
     <PackageReference Include="DataNet.Text" Version="$(DataNetTextVersion)" />
     <PackageReference Include="DataNet.Fuzzy" Version="$(DataNetFuzzyVersion)" />
     <PackageReference Include="DataNet.Embeddings" Version="$(DataNetEmbeddingsVersion)" />
+    <PackageReference Include="DataNet.Metrics" Version="$(DataNetMetricsVersion)" />
   </ItemGroup>
 
 </Project>
