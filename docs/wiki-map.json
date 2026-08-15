@@ -13,7 +13,9 @@
         "docs/guides/vectorization.md",
         "docs/reference/text/*.md"
       ],
-      "covered": {}
+      "covered": {
+        "DataNet.Text.Distances": "docs/reference/text/distances.md"
+      }
     },
     "DataNet.Embeddings": {
       "wiki": "Embeddings",
