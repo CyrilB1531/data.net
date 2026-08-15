@@ -2199,6 +2199,164 @@ git commit -m "Enforce the reference gate on DataNet.Text.Distances"
 
 ---
 
+## Task 8b: A member named anywhere links to its entry
+
+Spec decision D9. A reader who meets `Levenshtein.Distance` in a table or a paragraph must reach its
+description by clicking it. `docs/equivalence.md` is the case that makes it obvious: its C# column is
+sixty-odd member names, each of which is exactly the question "what does this do".
+
+**Files:**
+
+- Modify: `tests/Shared/ReferenceDocumentation.cs`,
+  `tests/DataNet.Text.Tests/Documentation/ReferenceDocumentationTests.cs`,
+  `docs/equivalence.md`, `docs/guides/quickstart.md`, `docs/guides/vectorization.md`,
+  `CONTRIBUTING.md`
+
+**Interfaces:**
+
+- Consumes: `ReferenceDocumentation.Check` from Task 6, and the entries Task 7 wrote.
+- Produces: `ReferenceDocumentation.CheckLinks(Assembly assembly, string package, string wikiMapPath,
+  string referenceRoot, string docsRoot) -> IReadOnlyList<string>`.
+
+- [ ] **Step 1: Settle the anchor question before writing any link**
+
+GitHub renders `#### Levenshtein.Distance` to the anchor `#levenshteindistance`. The wiki is rendered
+by Gollum, not by the repository's renderer, and a link that works in one and dies in the other is
+worse than no link. Measure it rather than assuming:
+
+```bash
+rm -rf /tmp/wiki-anchor
+git clone https://github.com/CyrilB1531/data.net.wiki.git /tmp/wiki-anchor
+grep -n '^#' /tmp/wiki-anchor/Text-quickstart.md | head -5
+curl -s -L "https://github.com/CyrilB1531/data.net/wiki/Text-quickstart" | grep -o 'user-content-[a-z0-9-]*' | head -5
+```
+
+The `user-content-*` ids are the anchors Gollum actually emitted for those headings. Compare them
+against what GitHub's own slug rule would produce — lowercase, spaces to hyphens, punctuation
+dropped. **If they differ, stop and report it**: the link form is then a spec question, not an
+implementation detail, and D9 says so.
+
+- [ ] **Step 2: Write the failing test**
+
+Append to `tests/DataNet.Text.Tests/Documentation/ReferenceDocumentationTests.cs`:
+
+```csharp
+    [Fact]
+    public void Every_documented_member_named_in_the_docs_links_to_its_entry()
+    {
+        IReadOnlyList<string> complaints = ReferenceDocumentation.CheckLinks(
+            typeof(Levenshtein).Assembly, "DataNet.Text", Map, Root, Docs);
+
+        Assert.Empty(complaints);
+    }
+
+    [Fact]
+    public void A_backticked_member_outside_a_link_is_reported()
+    {
+        string docs = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(docs);
+        File.WriteAllText(Path.Combine(docs, "page.md"), """
+            Use `Levenshtein.Distance` for typing mistakes.
+
+            ```csharp
+            int d = Levenshtein.Distance("a", "b");
+            ```
+            """);
+
+        IReadOnlyList<string> complaints = ReferenceDocumentation.CheckLinks(
+            typeof(Levenshtein).Assembly, "DataNet.Text", Map, Root, docs);
+
+        // The prose mention owes a link; the one inside the fence does not.
+        Assert.Single(complaints);
+        Assert.Contains("page.md", complaints[0], StringComparison.Ordinal);
+        Directory.Delete(docs, recursive: true);
+    }
+```
+
+Add next to the existing `Root` and `Map` properties:
+
+```csharp
+    private static string Docs => Path.Combine(AppContext.BaseDirectory, "docs");
+```
+
+- [ ] **Step 3: Run it to verify it fails**
+
+Run: `dotnet test tests/DataNet.Text.Tests -c Release --filter "FullyQualifiedName~ReferenceDocumentation"`
+Expected: a compile error, `ReferenceDocumentation` does not contain `CheckLinks`.
+
+- [ ] **Step 4: Implement `CheckLinks`**
+
+In `tests/Shared/ReferenceDocumentation.cs`, add a method that:
+
+- builds the set of linkable names from reflection — for every covered namespace, each exported
+  type's name and each `Type.Member` string, the same enumeration `Check` already performs, so the
+  two cannot disagree about what has an entry;
+- walks every `*.md` under `docsRoot`, skipping fenced blocks (a line toggling on ```` ``` ````) and
+  skipping the reference pages themselves, whose headings *are* the entries;
+- finds every backticked span, strips a trailing argument list (`` `Levenshtein.Distance(a, b)` ``
+  names `Levenshtein.Distance`), and complains when the name is linkable and the span is not already
+  the label of a Markdown link;
+- reports `<file>:<line>: '<name>' has an entry and is not linked to it.`
+
+Only `Type.Member` forms are checked. A bare type name in prose is not, because `Levenshtein` alone
+appears in ordinary sentences and a link on every one of them would be noise rather than navigation.
+
+- [ ] **Step 5: Copy the documentation next to the tests**
+
+The test reads `docs/` from its output directory. In both
+`tests/DataNet.Text.Tests/DataNet.Text.Tests.csproj` and
+`tests/DataNet.Text.NetStandard.Tests/DataNet.Text.NetStandard.Tests.csproj`, extend the item group
+Task 6 added:
+
+```xml
+    <None Include="../../docs/**/*.md" Exclude="../../docs/superpowers/**"
+          CopyToOutputDirectory="PreserveNewest" LinkBase="docs" />
+```
+
+`docs/superpowers/` is excluded: specs and plans are a record of decisions, not documentation a
+reader navigates, and they name members constantly.
+
+- [ ] **Step 6: Run the test and read what it lists**
+
+Run: `dotnet test tests/DataNet.Text.Tests -c Release --filter "FullyQualifiedName~ReferenceDocumentation"`
+Expected: failure, listing every unlinked mention. `docs/equivalence.md` will carry most of them.
+
+- [ ] **Step 7: Add the links**
+
+For each complaint, wrap the mention. From `docs/equivalence.md`:
+
+```markdown
+| `Levenshtein.distance(a, b)` | rapidfuzz | [`Levenshtein.Distance(a, b)`](reference/text/distances.md#levenshteindistance) | … |
+```
+
+From `docs/guides/quickstart.md`, the path is `../reference/text/distances.md#levenshteindistance`.
+Do not touch a mention inside a code fence, and do not link the Python column.
+
+- [ ] **Step 8: Write the rule into CONTRIBUTING.md**
+
+Extend the item Task 6 added to *Definition of done* with a sentence: a member that has a reference
+entry is linked to it wherever it is named in prose or in a table, and
+`ReferenceDocumentationTests` fails the build on a mention that is not.
+
+- [ ] **Step 9: Check both suites, the links, and the lint**
+
+```bash
+dotnet test tests/DataNet.Text.Tests -c Release --filter "FullyQualifiedName~ReferenceDocumentation"
+dotnet test tests/DataNet.Text.NetStandard.Tests -c Release --filter "FullyQualifiedName~ReferenceDocumentation"
+npx --yes --ignore-scripts markdownlint-cli2@0.23.2 "docs/**/*.md" "README.md" "CONTRIBUTING.md"
+```
+
+Expected: five tests passed in each suite, no lint issues.
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add tests docs CONTRIBUTING.md
+git commit -m "Link every documented member to its reference entry"
+```
+
+---
+
 ## Task 9: Documents, formatting, and the whole-repository verification
 
 **Files:**

@@ -264,17 +264,43 @@ foundation pull request is red until all four are finished.
 ### D8 — the publisher is a tool, not YAML
 
 `tools/build_wiki.py` reads a checkout plus `wiki-map.json` and produces the wiki tree: the package
-channels, the archived directories, the generated `_Sidebar.md` and `Home.md`, and the banner of D4.
-The workflow clones the wiki, runs the tool, commits and pushes. Logic in a tool is testable and
+channels, the archived pages, the generated `_Sidebar.md` and `Home.md`, and the banner of D4. The
+workflow clones the wiki, runs the tool, commits and pushes. Logic in a tool is testable and
 reviewable; logic in YAML is neither, and this repository already keeps its checks in `tools/`.
 
 Two triggers, one tool:
 
 - `push` on `main` refreshes each package's live channel and the root pages.
-- `push` of a tag matching `DataNet.*/v*` writes the archived directory for that package and version.
+- `push` of a tag matching `DataNet.*/v*` writes the archived pages for that package and version.
 
 A `workflow_dispatch` taking a ref lets a failed publication be repeated by hand, and lets the
 workflow be proved before anything depends on it.
+
+### D9 — a member named in a page links to its entry
+
+A reader who meets `Levenshtein.Distance` in a table or a paragraph should reach its description by
+clicking it, on every page and not only in the reference. `docs/equivalence.md` is the case that
+makes it obvious: its C# column is sixty-odd member names, each of which is exactly the question
+"what does this do".
+
+The link is the entry's heading anchor — `[Levenshtein.Distance](reference/text/distances.md#levenshteindistance)`
+from `docs/equivalence.md`. The wiki keeps it: `rewrite_links` maps the path to the flat page name
+and carries the anchor through untouched.
+
+**What must be linked is decided by reflection, not by pattern.** A rule over backticked
+`Type.Member` text would demand links on `DataNet.Text`, `Version.props` and `CONTRIBUTING.md`,
+which are a namespace and two file names. The gate of D7 already enumerates the real exported types
+and public methods of every covered namespace, so it is the same list that says which mention owes a
+link: a backticked mention of a member that has an entry, sitting outside a code fence and outside a
+link, fails the build.
+
+Scoping to covered namespaces is what keeps this from being a repository-wide sweep on day one.
+`DataNet.Text.Distances` is linked when Task 8 turns its coverage on; each later lot links its own.
+
+One risk is unmeasured and named here rather than assumed away: GitHub renders `#### Levenshtein.Distance`
+to the anchor `#levenshteindistance`, and the wiki's renderer is Gollum, not the repository's. Whether
+Gollum slugifies a heading identically is checked against a published page before the rule is enforced,
+because a link that works in the repository and dies in the wiki is worse than no link.
 
 ## Scope of this issue
 
@@ -290,6 +316,8 @@ The foundation, and one area as proof:
    renderer it needs.
 6. `docs/reference/text/distances.md`, written against the convention — including at least one
    Mermaid diagram, the "which distance do I pick" decision tree — and declared covered.
+7. The linking rule of D9, enforced for `DataNet.Text.Distances`, with `docs/equivalence.md` and the
+   guides updated to satisfy it.
 
 Four lots follow, one issue each: the rest of `DataNet.Text`, then `DataNet.Embeddings`,
 `DataNet.Fuzzy`, `DataNet.Metrics` — each on a template that will already have survived a release.
