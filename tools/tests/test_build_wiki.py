@@ -257,6 +257,15 @@ def test_a_page_name_that_would_escape_the_output_directory_is_refused(tmp_path)
         build_wiki.build(repo, out, mapping, released={"DataNet.Text": "0.3.0"})
 
 
+def test_an_output_directory_whose_parent_is_missing_is_refused(tmp_path):
+    """--out names a wiki clone the caller has made, so one level is all this creates."""
+    repo = make_repo(tmp_path)
+
+    with pytest.raises(build_wiki.MapError):
+        build_wiki.build(
+            repo, tmp_path / "no" / "such" / "wiki", MAP, released={"DataNet.Text": "0.3.0"})
+
+
 def test_an_index_takes_the_name_of_the_directory_it_indexes(tmp_path):
     """Both docs/decisions/ and docs/migration/ call their index README.md."""
     repo = make_repo(tmp_path)

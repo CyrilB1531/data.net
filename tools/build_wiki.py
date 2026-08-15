@@ -417,7 +417,11 @@ def build(
     # Both roots are resolved once, here, so every path derived from them is
     # already real by the time _guard compares one against them.
     repo, out = pathlib.Path(os.path.realpath(repo)), pathlib.Path(os.path.realpath(out))
-    out.mkdir(parents=True, exist_ok=True)
+    if not out.parent.is_dir():
+        raise MapError(f"{out}: its parent directory does not exist")
+    # One level, inside a directory that already exists: --out names a wiki clone
+    # the caller has made, so a run that builds a tree of its own is a typo (S8707).
+    out.mkdir(exist_ok=True)
     index = link_index(repo, mapping)
     names: dict[str, pathlib.Path] = {}
 
