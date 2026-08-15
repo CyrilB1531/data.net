@@ -105,6 +105,55 @@ def test_a_package_with_no_pages_yet_is_named_on_home_without_a_link(tmp_path):
     assert "[Metrics](Metrics)" not in home
     # The sidebar already skipped the channel; Home now agrees that there is nothing to link.
     assert "Metrics" not in (out / "_Sidebar.md").read_text(encoding="utf-8")
+    # A package with neither a covered namespace nor a guide gets no entry page either --
+    # one linking nothing would not be navigation, so there is nothing for Home to point at.
+    assert not (out / "Metrics.md").exists()
+
+
+def test_a_package_entry_page_links_every_covered_namespace_and_guide(tmp_path):
+    repo = make_repo(tmp_path)
+    mapping = json.loads(json.dumps(MAP))
+    mapping["packages"]["DataNet.Text"]["covered"] = {
+        "DataNet.Text.Distances": "docs/reference/text/distances.md",
+    }
+    out = tmp_path / "wiki"
+
+    build_wiki.build(repo, out, mapping, released={"DataNet.Text": "0.3.0"})
+
+    entry = (out / "Text.md").read_text(encoding="utf-8")
+    assert "[DataNet.Text.Distances](Text-distances)" in entry
+    # The guide's own H1 is the link text, read off the page rather than guessed
+    # from its file name.
+    assert "[Quickstart](Text-quickstart)" in entry
+
+
+def test_home_links_a_package_to_its_entry_page_not_its_landing_guide(tmp_path):
+    repo = make_repo(tmp_path)
+    out = tmp_path / "wiki"
+
+    build_wiki.build(repo, out, MAP, released={"DataNet.Text": "0.3.0"})
+
+    home = (out / "Home.md").read_text(encoding="utf-8")
+    assert "[Text](Text)" in home
+    assert "[Text](Text-quickstart)" not in home
+
+
+def test_a_stale_entry_page_is_removed_once_the_package_covers_nothing(tmp_path):
+    """A page that stops linking anything must not linger and outlive its link."""
+    repo = make_repo(tmp_path)
+    mapping = json.loads(json.dumps(MAP))
+    mapping["packages"]["DataNet.Text"]["covered"] = {
+        "DataNet.Text.Distances": "docs/reference/text/distances.md",
+    }
+    out = tmp_path / "wiki"
+    build_wiki.build(repo, out, mapping, released={"DataNet.Text": "0.3.0"})
+    assert (out / "Text.md").exists()
+
+    mapping["packages"]["DataNet.Text"]["pages"] = ["docs/reference/text/*.md"]
+    mapping["packages"]["DataNet.Text"]["covered"] = {}
+    build_wiki.build(repo, out, mapping, released={"DataNet.Text": "0.3.0"})
+
+    assert not (out / "Text.md").exists()
 
 
 def test_links_are_rewritten_to_flat_wiki_names(tmp_path):

@@ -41,12 +41,37 @@ internal static class ReferenceDocumentation
                 continue;
             }
 
-            Page parsed = Page.Parse(File.ReadAllText(path));
+            string text = File.ReadAllText(path);
+            Page parsed = Page.Parse(text);
             CheckNamespace(assembly, space, page, parsed, moniker, complaints);
             CheckOverClaims(assembly, space, page, parsed, moniker, complaints);
+            CheckTypeTable(assembly, space, page, text, complaints);
         }
 
         return complaints;
+    }
+
+    /// <summary>Every exported type named in the page's opening table, linked to its own entry.</summary>
+    /// <remarks>
+    /// This is the third level of D10's hierarchy: the table already existed, and what it
+    /// lacked was the link that turns a summary into navigation. The anchor is GitHub's slug
+    /// rule -- lower-cased, dots dropped -- which <see cref="Anchor"/> already computes for a
+    /// member link, and a bare type name slugifies the same way because it carries no dot.
+    /// </remarks>
+    private static void CheckTypeTable(
+        Assembly assembly, string space, string page, string text, List<string> complaints)
+    {
+        foreach (Type type in assembly.GetExportedTypes()
+                     .Where(candidate => candidate.Namespace == space)
+                     .OrderBy(candidate => candidate.Name, StringComparer.Ordinal))
+        {
+            string link = $"[`{type.Name}`](#{Anchor(type.Name)})";
+            if (!text.Contains(link, StringComparison.Ordinal))
+            {
+                complaints.Add(
+                    $"{page}: the opening table does not link {type.Name} to its entry as {link}.");
+            }
+        }
     }
 
     private static void CheckNamespace(

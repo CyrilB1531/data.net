@@ -81,6 +81,29 @@ public sealed class ReferenceDocumentationTests
     }
 
     [Fact]
+    public void A_type_missing_from_the_opening_table_link_is_reported()
+    {
+        // The real page, its one link to the Levenshtein entry undone -- everything
+        // else stays exactly as published, so only this check has anything to say.
+        string page = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(page);
+        string original = File.ReadAllText(Path.Combine(Root, "distances.md"));
+        string broken = original.Replace(
+            "[`Levenshtein`](#levenshtein)", "`Levenshtein`", StringComparison.Ordinal);
+        Assert.NotEqual(original, broken);
+        File.WriteAllText(Path.Combine(page, "distances.md"), broken);
+        File.Copy(Map, Path.Combine(page, "wiki-map.json"));
+
+        IReadOnlyList<string> complaints = ReferenceDocumentation.Check(
+            typeof(Levenshtein).Assembly, "DataNet.Text", Path.Combine(page, "wiki-map.json"), page);
+
+        Assert.Contains(complaints, complaint =>
+            complaint.Contains("Levenshtein", StringComparison.Ordinal) &&
+            complaint.Contains("opening table", StringComparison.Ordinal));
+        Directory.Delete(page, recursive: true);
+    }
+
+    [Fact]
     public void A_hard_wrapped_parameter_is_captured_and_a_remarks_backtick_is_not()
     {
         // long-comment: a fixture copied out of a page is only worth copying if a

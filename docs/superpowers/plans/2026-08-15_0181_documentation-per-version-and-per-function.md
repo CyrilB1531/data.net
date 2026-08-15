@@ -952,7 +952,9 @@ In `tools/build_wiki.py`:
   name repeats;
 - rewrite `sidebar` to find archives by scanning `out` for `^<channel>-(?P<version>\d[^-]*)-` rather
   than by listing directories, and to emit flat links;
-- have `home` link each package to its channel landing page, `Text-quickstart`, not to `Text`;
+- have `home` link each package to its channel landing page, `Text-quickstart`, not to `Text`
+  (this plan predates D10; a later change makes `Text` a real page — a generated entry page — and
+  points `home` there instead, per the spec's *navigation is a hierarchy* decision);
 - write the banner only when at least one `<channel>-<version>-*` page exists in `out`.
 
 - [ ] **Step 4: Run the tests to verify they pass**

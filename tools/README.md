@@ -282,6 +282,17 @@ rewritten too rather than left naming the previous release.
 `.github/workflows/wiki.yml` is what calls it, on pushes to `main` and on
 per-package release tags.
 
+Each live channel also gets a generated entry page, `<channel>.md` — a link
+per namespace it covers and a link per guide it ships, read off
+`docs/wiki-map.json`'s `covered` map so it cannot go stale — and `Home` links
+each package to that page rather than to a bare channel name that used to
+resolve to nothing. A package that covers no namespace and ships no guide,
+`DataNet.Metrics` today, gets no entry page: one linking nothing would not be
+navigation, so `Home` names it "no pages yet" instead, the same text it
+already used before this page existed. The entry page is not archived — it
+carries no content of its own to freeze, and the reasoning is in the module
+docstring.
+
 ## `check_comment_length.py`
 
 Refuses a comment block that runs past its budget without saying why —

@@ -17,6 +17,20 @@ Links are rewritten from repository-relative paths to flat wiki names. A wiki
 page has no .md suffix and no directory, so `../reference/text/distances.md`
 read in a guide has to become `Text-distances` in the wiki or it 404s.
 
+Each live channel also gets a generated entry page, `<channel>.md` -- `Text.md`
+and so on -- linking to every namespace the package covers and every guide it
+ships, so Home can send a reader one level down without naming a page that
+might not exist. It carries no content of its own to freeze, so an archived
+version does not get one: `<channel>-<version>-<stem>` already names every
+frozen page a reader can reach from the banner, and the entry page's own name
+has no stem to sit in that scheme -- inventing one would mean teaching
+_archive_pattern, _live_stems and _archive_stems (which infer "archived" from
+a trailing `-<stem>` after the version) to special-case a page that has none,
+for a hub whose only content is links the frozen pages already carry to each
+other via the banner. A reader who follows a banner back to an archived page
+lands on that page's own frozen counterpart, never on an index, and that is
+enough.
+
 Usage:
     python3 tools/build_wiki.py --repo <dir> --out <dir>
         --released DataNet.Text=0.3.0 [--released ...]
@@ -215,13 +229,51 @@ def _version_key(version: str) -> tuple:
     return tuple(int(part) if part.isdigit() else part for part in version.split("."))
 
 
+def entry_page(repo: pathlib.Path, package: dict, version: str | None = None) -> str | None:
+    """A package's hub: a link per namespace it covers, then a link per guide it ships.
+
+    This is the page D10 puts between Home and a reference page -- Home no
+    longer links a bare channel name that resolved to nothing. `None` for a
+    package that covers no namespace and ships no guide, which is
+    `DataNet.Metrics` before its first reference page lands: a page linking
+    nothing is not navigation, and `home` falls back to the same "no pages
+    yet" text it already used before this page existed, rather than link to
+    an empty one.
+    """
+    channel = package["wiki"]
+    lines = [f"# {channel}", ""]
+    linked = False
+
+    if package["covered"]:
+        lines += ["## Namespaces", ""]
+        for namespace, page in sorted(package["covered"].items()):
+            stem = page_stem(pathlib.Path(page))
+            lines.append(f"- [{namespace}]({wiki_name(stem, channel, version)})")
+        lines.append("")
+        linked = True
+
+    guides = [pattern for pattern in package["pages"] if "*" not in pattern]
+    if guides:
+        lines += ["## Guides", ""]
+        for pattern in guides:
+            path = repo / pattern
+            title = path.read_text(encoding="utf-8").splitlines()[0].lstrip("#").strip()
+            lines.append(f"- [{title}]({wiki_name(page_stem(path), channel, version)})")
+        lines.append("")
+        linked = True
+
+    return "\n".join(lines) + "\n" if linked else None
+
+
 def home(out: pathlib.Path, mapping: dict, released: dict[str, str]) -> str:
     """The front page, read off the tree that was just written -- as the sidebar is.
 
-    A package whose pages are only a glob that matches nothing has no landing
-    page, and `sidebar` drops its entry for exactly that reason. Home keeps the
-    row, because the released version is the other half of what the table is
-    for, and writes no link rather than one to a page that does not exist.
+    A package with no entry page -- `entry_page` returned `None`, so nothing
+    under this channel is covered or guided yet -- has nothing a reader could
+    walk down to, and `sidebar` already drops its row for the same reason.
+    Home keeps the row, because the released version is the other half of
+    what the table is for, and writes no link rather than one to a page that
+    does not exist.
     """
     lines = [
         "# DataNet",
@@ -235,8 +287,7 @@ def home(out: pathlib.Path, mapping: dict, released: dict[str, str]) -> str:
     for name, package in mapping["packages"].items():
         version = released.get(name, "unreleased")
         channel = package["wiki"]
-        landing = _resolve_landing(_live_stems(out, channel), package)
-        target = f"[{channel}]({wiki_name(landing, channel)})" if landing else "no pages yet"
+        target = f"[{channel}]({channel})" if (out / f"{channel}.md").exists() else "no pages yet"
         lines.append(f"| `{name}` | {version} | {target} |")
     return "\n".join(lines) + "\n"
 
@@ -288,10 +339,22 @@ def _build_channel(
         if not archive_pattern.match(stale.stem):
             stale.unlink()
 
-    return [
+    written = [
         _write(page, out, repo, index, prefix, wiki_name(page_stem(page), channel), names)
         for page in pages
     ]
+
+    entry = entry_page(repo, package)
+    entry_target = out / f"{channel}.md"
+    if entry is not None:
+        entry_target.write_text(prefix + entry, encoding="utf-8")
+        written.append(entry_target)
+    elif entry_target.exists():
+        # Covered before, not now: nothing would link here any more, so the
+        # stale page from a previous run must not linger and outlive its link.
+        entry_target.unlink()
+
+    return written
 
 
 def build(

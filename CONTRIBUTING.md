@@ -117,6 +117,11 @@ A change is not finished until all of these hold:
    out what it does. `ReferenceDocumentationTests` fails the build on either. A reference page
    is exempt for its own members: its headings are the entries.
 
+   The page's opening table is navigation, not a summary: every exported type gets a row, its
+   name linked to its own `###` entry — `` [`Levenshtein`](#levenshtein) ``. The anchor is
+   GitHub's slug rule, lower-cased with dots dropped, and `ReferenceDocumentationTests` fails
+   the build on a row with no link.
+
 ```bash
 dotnet build DataNet.slnx -c Release
 dotnet test DataNet.slnx -c Release

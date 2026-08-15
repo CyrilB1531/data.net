@@ -53,15 +53,15 @@ flowchart TD
 
 | Type | What it measures |
 | --- | --- |
-| `DamerauLevenshtein` | Insertions, deletions, substitutions and swaps of neighbouring characters, with no limit on re-editing a stretch. |
-| `Hamming` | How many positions hold a different character, plus the difference in length. |
-| `Indel` | Insertions and deletions only, never substitutions — the basis of rapidfuzz's `fuzz.ratio`. |
-| `Jaro` | How many characters the two share near the same position, and how many of those arrive out of order. |
-| `JaroWinkler` | `Jaro`, raised for pairs that already agree on their first few characters. |
-| `Lcs` | The length of the longest run the two have in common, contiguous or not. |
-| `Levenshtein` | Insertions, deletions and substitutions. |
-| `Osa` | The same as `DamerauLevenshtein`, except that no stretch of text may be edited twice. |
-| `RatcliffObershelp` | How much of the two texts their matching blocks cover, taken longest first. |
+| [`DamerauLevenshtein`](#dameraulevenshtein) | Insertions, deletions, substitutions and swaps of neighbouring characters, with no limit on re-editing a stretch. |
+| [`Hamming`](#hamming) | How many positions hold a different character, plus the difference in length. |
+| [`Indel`](#indel) | Insertions and deletions only, never substitutions — the basis of rapidfuzz's `fuzz.ratio`. |
+| [`Jaro`](#jaro) | How many characters the two share near the same position, and how many of those arrive out of order. |
+| [`JaroWinkler`](#jarowinkler) | `Jaro`, raised for pairs that already agree on their first few characters. |
+| [`Lcs`](#lcs) | The length of the longest run the two have in common, contiguous or not. |
+| [`Levenshtein`](#levenshtein) | Insertions, deletions and substitutions. |
+| [`Osa`](#osa) | The same as `DamerauLevenshtein`, except that no stretch of text may be edited twice. |
+| [`RatcliffObershelp`](#ratcliffobershelp) | How much of the two texts their matching blocks cover, taken longest first. |
 
 ## Reference
 
