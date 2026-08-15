@@ -210,6 +210,29 @@ def test_a_page_declared_in_the_map_but_missing_is_an_error(tmp_path):
         build_wiki.build(repo, out, MAP, released={"DataNet.Text": "0.3.0"})
 
 
+def test_a_map_entry_escaping_the_repository_is_refused(tmp_path):
+    """A glob or a literal pattern in wiki-map.json is trusted as data, not as a path."""
+    repo = make_repo(tmp_path)
+    (tmp_path / "outside.md").write_text("# Outside\n", encoding="utf-8")
+    mapping = json.loads(json.dumps(MAP))
+    mapping["root"].append("../outside.md")
+    out = tmp_path / "wiki"
+
+    with pytest.raises(build_wiki.MapError):
+        build_wiki.build(repo, out, mapping, released={"DataNet.Text": "0.3.0"})
+
+
+def test_a_page_name_that_would_escape_the_output_directory_is_refused(tmp_path):
+    """A channel name feeds every wiki file name -- `..` there must not reach past `out`."""
+    repo = make_repo(tmp_path)
+    mapping = json.loads(json.dumps(MAP))
+    mapping["packages"]["DataNet.Text"]["wiki"] = "../outside"
+    out = tmp_path / "wiki"
+
+    with pytest.raises(build_wiki.MapError):
+        build_wiki.build(repo, out, mapping, released={"DataNet.Text": "0.3.0"})
+
+
 def test_an_index_takes_the_name_of_the_directory_it_indexes(tmp_path):
     """Both docs/decisions/ and docs/migration/ call their index README.md."""
     repo = make_repo(tmp_path)

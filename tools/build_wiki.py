@@ -68,6 +68,21 @@ class MapError(Exception):
     """The map and the tree disagree — a declared page that is not there."""
 
 
+def _guard(candidate: pathlib.Path, root: pathlib.Path) -> pathlib.Path:
+    """Refuse candidate unless it resolves inside root, else return it unchanged.
+
+    docs/wiki-map.json's patterns and the page names built from them are
+    trusted as data, not as paths: a glob or a name carrying `..` would
+    otherwise read from, write to, or delete outside the tree this run is
+    scoped to (S8707). The return value is `candidate` itself, not its
+    resolved form, so callers keep comparing it against the same `repo`/`out`
+    they already hold.
+    """
+    if not candidate.resolve().is_relative_to(root.resolve()):
+        raise MapError(f"{candidate}: escapes {root}")
+    return candidate
+
+
 def load_map(path: pathlib.Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -77,9 +92,9 @@ def pages_for(patterns: list[str], repo: pathlib.Path) -> list[pathlib.Path]:
     found: list[pathlib.Path] = []
     for pattern in patterns:
         if "*" in pattern:
-            found.extend(sorted(repo.glob(pattern)))
+            found.extend(_guard(page, repo) for page in sorted(repo.glob(pattern)))
         else:
-            page = repo / pattern
+            page = _guard(repo / pattern, repo)
             if not page.exists():
                 raise MapError(f"{pattern}: declared in wiki-map.json, missing from the tree")
             found.append(page)
@@ -156,6 +171,7 @@ def _archive_stems(out: pathlib.Path, channel: str) -> dict[str, set[str]]:
     pattern = _archive_pattern(channel)
     by_version: dict[str, set[str]] = {}
     for page in out.glob(f"{channel}-*.md"):
+        page = _guard(page, out)
         match = pattern.match(page.stem)
         if match:
             by_version.setdefault(match.group("version"), set()).add(page.stem[match.end():])
@@ -168,7 +184,7 @@ def _live_stems(out: pathlib.Path, channel: str) -> set[str]:
     prefix_len = len(channel) + 1
     return {
         page.stem[prefix_len:]
-        for page in out.glob(f"{channel}-*.md")
+        for page in (_guard(page, out) for page in out.glob(f"{channel}-*.md"))
         if not pattern.match(page.stem)
     }
 
@@ -258,7 +274,7 @@ def entry_page(repo: pathlib.Path, package: dict, version: str | None = None) ->
     if guides:
         lines += ["## Guides", ""]
         for pattern in guides:
-            path = repo / pattern
+            path = _guard(repo / pattern, repo)
             title = path.read_text(encoding="utf-8").splitlines()[0].lstrip("#").strip()
             lines.append(f"- [{title}]({wiki_name(page_stem(path), channel, version)})")
         lines.append("")
@@ -289,7 +305,8 @@ def home(out: pathlib.Path, mapping: dict, released: dict[str, str]) -> str:
     for name, package in mapping["packages"].items():
         version = released.get(name, "unreleased")
         channel = package["wiki"]
-        target = f"[{channel}]({channel})" if (out / f"{channel}.md").exists() else "no pages yet"
+        entry_target = _guard(out / f"{channel}.md", out)
+        target = f"[{channel}]({channel})" if entry_target.exists() else "no pages yet"
         lines.append(f"| `{name}` | {version} | {target} |")
     return "\n".join(lines) + "\n"
 
@@ -307,7 +324,7 @@ def _build_archive(
     package = mapping["packages"][name]
     written: list[pathlib.Path] = []
     for stale in out.glob(f"{package['wiki']}-{version}-*.md"):
-        stale.unlink()
+        _guard(stale, out).unlink()
     for page in pages_for(package["pages"], repo):
         wname = wiki_name(page_stem(page), package["wiki"], version)
         written.append(_write(page, out, repo, index, "", wname, names))
@@ -339,7 +356,7 @@ def _build_channel(
     archive_pattern = _archive_pattern(channel)
     for stale in out.glob(f"{channel}-*.md"):
         if not archive_pattern.match(stale.stem):
-            stale.unlink()
+            _guard(stale, out).unlink()
 
     written = [
         _write(page, out, repo, index, prefix, wiki_name(page_stem(page), channel), names)
@@ -347,7 +364,7 @@ def _build_channel(
     ]
 
     entry = entry_page(repo, package)
-    entry_target = out / f"{channel}.md"
+    entry_target = _guard(out / f"{channel}.md", out)
     if entry is not None:
         entry_target.write_text(prefix + entry, encoding="utf-8")
         written.append(entry_target)
@@ -392,8 +409,8 @@ def build(
     for pkg_name, package in mapping["packages"].items():
         written.extend(_build_channel(repo, out, index, names, pkg_name, package, released))
 
-    (out / "_Sidebar.md").write_text(sidebar(out, mapping), encoding="utf-8")
-    (out / "Home.md").write_text(home(out, mapping, released), encoding="utf-8")
+    _guard(out / "_Sidebar.md", out).write_text(sidebar(out, mapping), encoding="utf-8")
+    _guard(out / "Home.md", out).write_text(home(out, mapping, released), encoding="utf-8")
     return written
 
 
@@ -413,7 +430,7 @@ def _write(
             "would both publish under this name"
         )
     names[name] = page
-    target = out / f"{name}.md"
+    target = _guard(out / f"{name}.md", out)
     target.write_text(
         prefix + rewrite_links(page.read_text(encoding="utf-8"), page, repo, index),
         encoding="utf-8",
