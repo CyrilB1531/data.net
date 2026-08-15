@@ -113,6 +113,17 @@ def page_stem(page: pathlib.Path) -> str:
     return page.parent.name if page.stem == "README" else page.stem
 
 
+def covered_pages(declared: str | list[str]) -> list[str]:
+    """The pages one covered namespace maps to, whether it declared one or several.
+
+    `DataNet.Metrics` is why the plural exists: 31 exported types on one page is a
+    scrolling exercise rather than a reference, so its classification and regression
+    halves are two documents of one namespace. The gate in
+    `tests/Shared/ReferenceDocumentation.cs` reads the same field the same way.
+    """
+    return [declared] if isinstance(declared, str) else list(declared)
+
+
 def wiki_name(stem: str, channel: str | None = None, version: str | None = None) -> str:
     """The flat file name a page gets in the wiki: it has no directories."""
     if channel is None:
@@ -264,9 +275,14 @@ def entry_page(repo: pathlib.Path, package: dict, version: str | None = None) ->
 
     if package["covered"]:
         lines += ["## Namespaces", ""]
-        for namespace, page in sorted(package["covered"].items()):
-            stem = page_stem(pathlib.Path(page))
-            lines.append(f"- [{namespace}]({wiki_name(stem, channel, version)})")
+        for namespace, declared in sorted(package["covered"].items()):
+            pages = covered_pages(declared)
+            for page in pages:
+                stem = page_stem(pathlib.Path(page))
+                # The stem disambiguates a namespace with several pages: two rows
+                # both reading "DataNet.Metrics" would be a choice a reader cannot make.
+                label = namespace if len(pages) == 1 else f"{namespace} — {stem}"
+                lines.append(f"- [{label}]({wiki_name(stem, channel, version)})")
         lines.append("")
         linked = True
 

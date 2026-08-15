@@ -127,6 +127,30 @@ def test_a_package_entry_page_links_every_covered_namespace_and_guide(tmp_path):
     assert "[Quickstart](Text-quickstart)" in entry
 
 
+def test_a_namespace_split_over_several_pages_gets_a_row_each(tmp_path):
+    """DataNet.Metrics' shape: one namespace, two documents, two rows a reader can tell apart."""
+    repo = make_repo(tmp_path)
+    (repo / "docs" / "reference" / "text" / "similarity.md").write_text(
+        "# Similarity\n", encoding="utf-8"
+    )
+    mapping = json.loads(json.dumps(MAP))
+    mapping["packages"]["DataNet.Text"]["covered"] = {
+        "DataNet.Text.Distances": [
+            "docs/reference/text/distances.md",
+            "docs/reference/text/similarity.md",
+        ],
+    }
+    out = tmp_path / "wiki"
+
+    build_wiki.build(repo, out, mapping, released={"DataNet.Text": "0.3.0"})
+
+    entry = (out / "Text.md").read_text(encoding="utf-8")
+    assert "[DataNet.Text.Distances — distances](Text-distances)" in entry
+    assert "[DataNet.Text.Distances — similarity](Text-similarity)" in entry
+    # The bare namespace label is what one page gets; two must not both carry it.
+    assert "[DataNet.Text.Distances](Text-distances)" not in entry
+
+
 def test_home_links_a_package_to_its_entry_page_not_its_landing_guide(tmp_path):
     repo = make_repo(tmp_path)
     out = tmp_path / "wiki"

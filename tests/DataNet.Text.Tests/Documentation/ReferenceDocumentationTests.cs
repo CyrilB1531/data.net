@@ -1,5 +1,6 @@
 using System.Reflection;
 using DataNet.Tests.Documentation;
+using DataNet.Tests.Documentation.Fixtures;
 using DataNet.Text.Distances;
 using Xunit;
 
@@ -251,6 +252,164 @@ public sealed class ReferenceDocumentationTests
             """);
 
         Assert.Empty(complaints);
+    }
+
+    [Fact]
+    public void One_namespace_may_be_split_over_several_pages()
+    {
+        // Cabinet on one page, Slip on the other: under a single-page `covered`
+        // each would owe the other's type, and DataNet.Metrics could not be split.
+        IReadOnlyList<string> complaints = CheckFixtures(("cabinet.md", CabinetPage), ("slip.md", SlipPage));
+
+        Assert.Empty(complaints);
+    }
+
+    [Fact]
+    public void A_type_with_an_entry_on_no_page_is_still_reported()
+    {
+        // Only cabinet.md is declared, so Slip has an entry nowhere. The relaxation
+        // of the previous test must not have turned into "some page will have it".
+        IReadOnlyList<string> complaints = CheckFixtures(("cabinet.md", CabinetPage));
+
+        string complaint = Assert.Single(complaints);
+        Assert.Contains("no entry for the type Slip", complaint, StringComparison.Ordinal);
+        Assert.Contains("cabinet.md", complaint, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_type_table_row_belongs_on_the_page_that_carries_the_entry()
+    {
+        // slip.md keeps its Slip entry and loses the link in its own table. The
+        // complaint has to name slip.md, not cabinet.md, which also has a table.
+        IReadOnlyList<string> complaints = CheckFixtures(
+            ("cabinet.md", CabinetPage),
+            ("slip.md", SlipPage.Replace("[`Slip`](#slip)", "`Slip`", StringComparison.Ordinal)));
+
+        string complaint = Assert.Single(complaints);
+        Assert.StartsWith("slip.md:", complaint, StringComparison.Ordinal);
+        Assert.Contains("opening table", complaint, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_nested_exported_type_is_owed_no_entry_of_its_own()
+    {
+        // Cabinet.Drawer is exported and nested. Neither page mentions it, and the
+        // pair above is silent — which is the whole of the rule.
+        Assert.Contains(typeof(Cabinet.Drawer), typeof(Cabinet).Assembly.GetExportedTypes());
+        Assert.True(typeof(Cabinet.Drawer).IsNested);
+
+        IReadOnlyList<string> complaints = CheckFixtures(("cabinet.md", CabinetPage), ("slip.md", SlipPage));
+
+        Assert.DoesNotContain(complaints, complaint => complaint.Contains("Drawer", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_records_synthesised_methods_are_owed_no_entry()
+    {
+        // Slip's page describes the record and no method of it. `<Clone>$` is the
+        // one that makes this more than a convenience: it is not a name C# can spell.
+        Assert.Contains(
+            typeof(Slip).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly),
+            method => method.Name == "<Clone>$");
+
+        IReadOnlyList<string> complaints = CheckFixtures(("cabinet.md", CabinetPage), ("slip.md", SlipPage));
+
+        Assert.DoesNotContain(complaints, complaint => complaint.Contains("Slip.", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(nameof(Cabinet.Measure), "public static double[] Measure(int count)")]
+    [InlineData(nameof(Cabinet.Grid), "public static double[,] Grid(int rows)")]
+    public void An_array_return_reads_as_a_reader_writes_it(string name, string expected)
+    {
+        // Reflection spells these Double[] and Double[,]; no member of the distances
+        // page returns an array, so the renderer went unmeasured until DataNet.Metrics.
+        MethodInfo method = typeof(Cabinet).GetMethod(name)!;
+
+        Assert.Equal(expected, ReferenceDocumentation.RenderSignature(method));
+    }
+
+    private const string CabinetPage = """
+        # Cabinet
+
+        | Type | What it is |
+        | --- | --- |
+        | [`Cabinet`](#cabinet) | A fixture. |
+
+        ### Cabinet
+
+        A fixture type.
+
+        #### Cabinet.Grid
+
+        A rectangular reading.
+
+        <!-- docs-declaration -->
+
+        ```csharp
+        public static double[,] Grid(int rows)
+        ```
+
+        **Parameters** — `rows` is the side of the square.
+
+        **Applies to** — net10.0, netstandard2.0.
+
+        #### Cabinet.Measure
+
+        One number per drawer.
+
+        <!-- docs-declaration -->
+
+        ```csharp
+        public static double[] Measure(int count)
+        ```
+
+        **Parameters** — `count` is how many drawers.
+
+        **Applies to** — net10.0, netstandard2.0.
+        """;
+
+    private const string SlipPage = """
+        # Slip
+
+        | Type | What it is |
+        | --- | --- |
+        | [`Slip`](#slip) | A record fixture. |
+
+        ### Slip
+
+        A record, described by its own declaration.
+        """;
+
+    /// <summary>Runs the gate over the fixture namespace, with `covered` as a list of pages.</summary>
+    private static IReadOnlyList<string> CheckFixtures(params (string Name, string Markdown)[] pages)
+    {
+        string root = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(root);
+        try
+        {
+            foreach ((string name, string markdown) in pages)
+            {
+                File.WriteAllText(Path.Combine(root, name), markdown);
+            }
+
+            // A placeholder rather than interpolation: the map ends on four closing
+            // braces, which no number of '$' can tell apart from an interpolation hole.
+            const string template = """
+                {"root":[],"packages":{"DataNet.Text":{"wiki":"Text","pages":[],
+                 "covered":{"DataNet.Tests.Documentation.Fixtures":[PAGES]}}}}
+                """;
+
+            string map = Path.Combine(root, "wiki-map.json");
+            string listed = string.Join(",", pages.Select(page => $"\"{page.Name}\""));
+            File.WriteAllText(map, template.Replace("PAGES", listed, StringComparison.Ordinal));
+
+            return ReferenceDocumentation.Check(typeof(Cabinet).Assembly, "DataNet.Text", map, root);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     private static IReadOnlyList<string> OnePage(string markdown)

@@ -267,18 +267,39 @@ what makes check 4 possible at all: each assembly reports its own exported surfa
 Restricting to declared areas is what lets this land before the four lots exist. Without it the
 foundation pull request is red until all four are finished.
 
-Two refinements the first large namespace forced, `DataNet.Metrics` with 31 exported types against
+Three refinements the first large namespace forced, `DataNet.Metrics` with 31 exported types against
 `DataNet.Text.Distances`' 9:
 
 - **A namespace may map to several pages.** `covered` takes a page or a list of them, and the gate
   accepts an entry in any of the namespace's pages. One page per namespace would have put
   classification and regression metrics in the same three-thousand-line document, which is a
   scrolling exercise rather than a reference. What the gate still refuses is a type with no entry
-  anywhere.
+  anywhere. A type's linked table row belongs on whichever page carries its entry, so `build_wiki.py`
+  writes one namespace row per page and disambiguates the label by the page's stem.
 - **A nested exported type is described inside its declaring type's entry.** The five residual
   kernels — `MeanAbsoluteError.AbsoluteResidual` and its siblings — are public only because a
   generic constraint needs them nameable; nobody calls one. An entry each would be five pages of
   ceremony for types a reader never types.
+
+  **Measured against the assembly, `DataNet.Metrics` exports none of them.** The five are
+  `private readonly struct`s, and the constraint they satisfy — `Internal.IResidualKernel` — is
+  itself internal, so nothing forces them public. What listed them was
+  `grep 'T:DataNet.Metrics\.' … DataNet.Metrics.xml`, and a documentation XML file carries a
+  `<member>` for every member with a doc comment, private ones included; `GetExportedTypes()`
+  returns 31 types and no nested one. The rule is kept because it is the right rule and costs one
+  `!IsNested`, but it currently guards nothing, and **the XML file is not the exported surface** —
+  reflection is.
+- **A compiler-generated method is owed no entry either.** `ClassRow` and `AverageRow` are records,
+  and a record synthesises `Deconstruct`, `Equals`, `GetHashCode`, `ToString` and `<Clone>$`. That
+  last one is not a name C# can spell, so its declaration could not be written even in principle,
+  and the other four are the record's declaration restated. They are excluded by
+  `CompilerGeneratedAttribute`, which a hand-written `override` — `ClassificationReport.ToString` —
+  does not carry, so it still owes its entry.
+
+A fourth thing the same namespace measured rather than refined: the signature renderer spelled an
+array with reflection's name, `Double[]` and `Double[,]`. No member of the distances page returns an
+array, so it had never shown. `RenderType` now recurses through the element type, and the fixture
+pinning both spellings lives next to the two above.
 
 ### D8 — the publisher is a tool, not YAML
 

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.Versioning;
 using System.Text;
 using System.Text.Json;
@@ -32,76 +33,111 @@ internal static class ReferenceDocumentation
         List<string> complaints = [];
         string moniker = Moniker(assembly);
 
-        foreach ((string space, string page) in Covered(wikiMapPath, package))
+        foreach (IGrouping<string, string> space in Covered(wikiMapPath, package)
+                     .GroupBy(entry => entry.Namespace, entry => entry.Page, StringComparer.Ordinal))
         {
-            string path = Path.Combine(referenceRoot, Path.GetFileName(page));
-            if (!File.Exists(path))
+            List<Sheet> sheets = Load(space, referenceRoot, complaints);
+            CheckNamespace(assembly, space.Key, sheets, moniker, complaints);
+            foreach (Sheet sheet in sheets)
             {
-                complaints.Add($"{page}: declared covered for {space}, and not next to the tests.");
-                continue;
+                CheckOverClaims(assembly, space.Key, sheet, moniker, complaints);
             }
-
-            string text = File.ReadAllText(path);
-            Page parsed = Page.Parse(text);
-            CheckNamespace(assembly, space, page, parsed, moniker, complaints);
-            CheckOverClaims(assembly, space, page, parsed, moniker, complaints);
-            CheckTypeTable(assembly, space, page, text, complaints);
         }
 
         return complaints;
     }
 
-    /// <summary>Every exported type named in the page's opening table, linked to its own entry.</summary>
+    /// <summary>The pages of one namespace, parsed; a page declared and absent is a complaint.</summary>
+    private static List<Sheet> Load(
+        IEnumerable<string> pages, string referenceRoot, List<string> complaints)
+    {
+        List<Sheet> sheets = [];
+        foreach (string page in pages)
+        {
+            string path = Path.Combine(referenceRoot, Path.GetFileName(page));
+            if (!File.Exists(path))
+            {
+                complaints.Add($"{page}: declared covered, and not next to the tests.");
+                continue;
+            }
+
+            string text = File.ReadAllText(path);
+            sheets.Add(new Sheet(page, text, Page.Parse(text)));
+        }
+
+        return sheets;
+    }
+
+    /// <summary>The type's row in the opening table of the page that carries its entry.</summary>
     /// <remarks>
     /// This is the third level of D10's hierarchy: the table already existed, and what it
     /// lacked was the link that turns a summary into navigation. The anchor is GitHub's slug
     /// rule -- lower-cased, dots dropped -- which <see cref="Anchor"/> already computes for a
     /// member link, and a bare type name slugifies the same way because it carries no dot.
+    /// A namespace split over several pages has one table per page, and the row belongs on
+    /// whichever of them describes the type.
     /// </remarks>
-    private static void CheckTypeTable(
-        Assembly assembly, string space, string page, string text, List<string> complaints)
+    private static void CheckTypeTable(Type type, Sheet sheet, List<string> complaints)
     {
-        foreach (Type type in assembly.GetExportedTypes()
-                     .Where(candidate => candidate.Namespace == space)
-                     .OrderBy(candidate => candidate.Name, StringComparer.Ordinal))
+        string link = $"[`{type.Name}`](#{Anchor(type.Name)})";
+        if (!sheet.Text.Contains(link, StringComparison.Ordinal))
         {
-            string link = $"[`{type.Name}`](#{Anchor(type.Name)})";
-            if (!text.Contains(link, StringComparison.Ordinal))
-            {
-                complaints.Add(
-                    $"{page}: the opening table does not link {type.Name} to its entry as {link}.");
-            }
+            complaints.Add(
+                $"{sheet.Source}: the opening table does not link {type.Name} to its entry as {link}.");
         }
     }
 
     private static void CheckNamespace(
-        Assembly assembly, string space, string page, Page parsed, string moniker, List<string> complaints)
+        Assembly assembly, string space, List<Sheet> sheets, string moniker, List<string> complaints)
     {
-        foreach (Type type in assembly.GetExportedTypes()
-                     .Where(candidate => candidate.Namespace == space)
-                     .OrderBy(candidate => candidate.Name, StringComparer.Ordinal))
+        string pages = string.Join(", ", sheets.Select(sheet => sheet.Source));
+        foreach (Type type in Documented(assembly, space))
         {
-            if (!parsed.Entries.ContainsKey(type.Name))
+            Sheet? carrier = sheets.Find(sheet => sheet.Parsed.Entries.ContainsKey(type.Name));
+            if (carrier is null)
             {
-                complaints.Add($"{page}: no entry for the type {type.Name}.");
+                complaints.Add($"{pages}: no entry for the type {type.Name}.");
                 continue;
             }
 
-            foreach (IGrouping<string, MethodInfo> overloads in Methods(type))
-            {
-                string title = $"{type.Name}.{overloads.Key}";
-                if (!parsed.Entries.TryGetValue(title, out Entry? entry))
-                {
-                    complaints.Add($"{page}: no entry for {title}.");
-                    continue;
-                }
-
-                CheckDeclarations(page, title, entry, overloads, complaints);
-                CheckParameters(page, title, entry, overloads, complaints);
-                CheckAppliesTo(page, title, entry, moniker, complaints);
-            }
+            CheckTypeTable(type, carrier, complaints);
+            CheckMembers(type, sheets, pages, moniker, complaints);
         }
     }
+
+    private static void CheckMembers(
+        Type type, List<Sheet> sheets, string pages, string moniker, List<string> complaints)
+    {
+        foreach (IGrouping<string, MethodInfo> overloads in Methods(type))
+        {
+            string title = $"{type.Name}.{overloads.Key}";
+            Sheet? sheet = sheets.Find(candidate => candidate.Parsed.Entries.ContainsKey(title));
+            if (sheet is null)
+            {
+                complaints.Add($"{pages}: no entry for {title}.");
+                continue;
+            }
+
+            Entry entry = sheet.Parsed.Entries[title];
+            CheckDeclarations(sheet.Source, title, entry, overloads, complaints);
+            CheckParameters(sheet.Source, title, entry, overloads, complaints);
+            CheckAppliesTo(sheet.Source, title, entry, moniker, complaints);
+        }
+    }
+
+    /// long-comment: two exclusions, and a reader who trips over either needs to
+    /// know it was decided rather than overlooked
+    /// <summary>The exported types of one namespace that owe an entry of their own.</summary>
+    /// <remarks>
+    /// A nested exported type does not: the five residual kernels of
+    /// <c>DataNet.Metrics</c> are public only so that a generic constraint can name one,
+    /// nobody calls them, and an entry each would be ceremony for a type a reader never
+    /// types. They are described inside their declaring type's entry instead — D7.
+    /// </remarks>
+    private static IEnumerable<Type> Documented(Assembly assembly, string space) =>
+        assembly.GetExportedTypes()
+            .Where(candidate => candidate.Namespace == space && !candidate.IsNested)
+            .OrderBy(candidate => candidate.Name, StringComparer.Ordinal);
 
     private static void CheckDeclarations(
         string page, string title, Entry entry, IEnumerable<MethodInfo> overloads, List<string> complaints)
@@ -147,23 +183,25 @@ internal static class ReferenceDocumentation
     }
 
     private static void CheckOverClaims(
-        Assembly assembly, string space, string page, Page parsed, string moniker, List<string> complaints)
+        Assembly assembly, string space, Sheet sheet, string moniker, List<string> complaints)
     {
-        HashSet<string> exported = assembly.GetExportedTypes()
-            .Where(type => type.Namespace == space)
+        HashSet<string> exported = Documented(assembly, space)
             .SelectMany(type => Methods(type).Select(group => $"{type.Name}.{group.Key}")
                 .Append(type.Name))
             .ToHashSet(StringComparer.Ordinal);
 
-        foreach ((string title, Entry entry) in parsed.Entries)
+        foreach ((string title, Entry entry) in sheet.Parsed.Entries)
         {
             if (entry.AppliesTo.Contains(moniker, StringComparison.Ordinal) && !exported.Contains(title))
             {
                 complaints.Add(
-                    $"{page}: {title} claims {moniker}, which does not export it.");
+                    $"{sheet.Source}: {title} claims {moniker}, which does not export it.");
             }
         }
     }
+
+    /// <summary>One reference page: where it came from, its raw text, and its entries.</summary>
+    private sealed record Sheet(string Source, string Text, Page Parsed);
 
     /// long-comment: the rule has two halves and only one of them is about a
     /// single line, so a reader has to be told which half a complaint comes from
@@ -200,7 +238,7 @@ internal static class ReferenceDocumentation
         HashSet<string> members = new(StringComparer.Ordinal);
         foreach ((string space, string _) in Covered(wikiMapPath, package))
         {
-            foreach (Type type in assembly.GetExportedTypes().Where(candidate => candidate.Namespace == space))
+            foreach (Type type in Documented(assembly, space))
             {
                 foreach (IGrouping<string, MethodInfo> overloads in Methods(type))
                 {
@@ -398,10 +436,23 @@ internal static class ReferenceDocumentation
         return spans;
     }
 
+    /// long-comment: the second exclusion looks like a loophole until a reader
+    /// knows which methods it removes and that none of them can be written down
+    /// <summary>The public methods of a type that owe an entry, grouped by name.</summary>
+    /// <remarks>
+    /// A compiler-generated method does not: a <c>record</c> synthesises
+    /// <c>Deconstruct</c>, <c>Equals</c>, <c>GetHashCode</c>, <c>ToString</c> and
+    /// <c>&lt;Clone&gt;$</c>, and the last of those is not a name C# can spell, so its
+    /// declaration could not be written even in principle. They belong to the record's
+    /// own declaration, which its type entry shows — the same argument the nested
+    /// exported type gets in <see cref="Documented"/>. A hand-written
+    /// <c>ToString</c> override carries no such attribute and still owes an entry.
+    /// </remarks>
     private static IEnumerable<IGrouping<string, MethodInfo>> Methods(Type type) =>
         type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance |
                         BindingFlags.DeclaredOnly)
-            .Where(method => !method.IsSpecialName)
+            .Where(method => !method.IsSpecialName &&
+                             !method.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false))
             .GroupBy(method => method.Name, StringComparer.Ordinal)
             .OrderBy(group => group.Key, StringComparer.Ordinal);
 
@@ -517,6 +568,13 @@ internal static class ReferenceDocumentation
             return alias;
         }
 
+        // Reflection spells double[] "Double[]" and double[,] "Double[,]", neither of
+        // which is what a page writes; the element type goes back through the aliases.
+        if (type.IsArray)
+        {
+            return $"{RenderType(type.GetElementType()!)}[{new string(',', type.GetArrayRank() - 1)}]";
+        }
+
         if (!type.IsGenericType)
         {
             return type.Name;
@@ -551,6 +609,16 @@ internal static class ReferenceDocumentation
             : "netstandard2.0";
     }
 
+    /// long-comment: the shape of the value is a decision, not a detail, and the
+    /// reason one namespace may carry several pages belongs next to the code reading it
+    /// <summary>Every (namespace, page) pair a package declares covered.</summary>
+    /// <remarks>
+    /// A namespace maps to a page or to a list of them. <c>DataNet.Metrics</c> is why:
+    /// its 31 exported types on one page would be a scrolling exercise rather than a
+    /// reference, so its classification and regression halves are two documents of one
+    /// namespace. The gate takes the union — an entry counts wherever it is found —
+    /// and still refuses a type or a method with no entry on any of them.
+    /// </remarks>
     private static IEnumerable<(string Namespace, string Page)> Covered(string wikiMapPath, string package)
     {
         using JsonDocument map = JsonDocument.Parse(File.ReadAllText(wikiMapPath));
@@ -559,7 +627,17 @@ internal static class ReferenceDocumentation
 
         foreach (JsonProperty entry in covered.EnumerateObject())
         {
-            yield return (entry.Name, entry.Value.GetString()!);
+            if (entry.Value.ValueKind == JsonValueKind.Array)
+            {
+                foreach (JsonElement page in entry.Value.EnumerateArray())
+                {
+                    yield return (entry.Name, page.GetString()!);
+                }
+            }
+            else
+            {
+                yield return (entry.Name, entry.Value.GetString()!);
+            }
         }
     }
 
