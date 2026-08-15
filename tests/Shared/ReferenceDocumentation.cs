@@ -501,24 +501,31 @@ internal static class ReferenceDocumentation
         return text.ToString();
     }
 
+    /// <summary>The nullable byte that spells `notnull`: 1, "not annotated".</summary>
+    private const byte NotNullable = 1;
+
+    /// <summary>One parameter's clause, in the order C# accepts: primary, secondary, <c>new()</c>.</summary>
+    /// <remarks>
+    /// A base class must come before the interfaces beside it, so sorting every constraint
+    /// type together produced <c>where T : IComparable&lt;T&gt;, Random</c> — which does not
+    /// compile, and which the gate then required the page to write. The secondary
+    /// constraints are sorted among themselves, where the language leaves the order free.
+    /// </remarks>
     private static List<string> Constraints(Type argument)
     {
         GenericParameterAttributes flags = argument.GenericParameterAttributes;
-        List<string> clauses = [];
         bool value = flags.HasFlag(GenericParameterAttributes.NotNullableValueTypeConstraint);
-        if (flags.HasFlag(GenericParameterAttributes.ReferenceTypeConstraint))
+        List<string> clauses = [];
+        string? primary = Primary(argument, flags, value);
+        if (primary is not null)
         {
-            clauses.Add("class");
+            clauses.Add(primary);
         }
 
-        if (value)
-        {
-            clauses.Add("struct");
-        }
-
-        // ValueType is how `struct` is spelled in metadata, and it is already covered above.
+        // Interfaces and other type parameters, which the language treats alike here.
+        // ValueType is how `struct` is spelled in metadata, and Primary covered it.
         clauses.AddRange(argument.GetGenericParameterConstraints()
-            .Where(type => type != typeof(ValueType))
+            .Where(type => type.IsInterface || type.IsGenericParameter)
             .Select(RenderType)
             .OrderBy(name => name, StringComparer.Ordinal));
 
@@ -529,6 +536,63 @@ internal static class ReferenceDocumentation
 
         return clauses;
     }
+
+    /// <summary>The one constraint that has to come first, if the parameter has one.</summary>
+    private static string? Primary(Type argument, GenericParameterAttributes flags, bool value)
+    {
+        Type? baseClass = Array.Find(
+            argument.GetGenericParameterConstraints(),
+            type => !type.IsInterface && !type.IsGenericParameter && type != typeof(ValueType));
+        if (baseClass is not null)
+        {
+            return RenderType(baseClass);
+        }
+
+        if (flags.HasFlag(GenericParameterAttributes.ReferenceTypeConstraint))
+        {
+            return "class";
+        }
+
+        if (value)
+        {
+            return IsUnmanaged(argument) ? "unmanaged" : "struct";
+        }
+
+        return NullableFlag(argument) == NotNullable ? "notnull" : null;
+    }
+
+    /// <summary>`unmanaged`, which metadata spells as `struct` plus a marker attribute.</summary>
+    private static bool IsUnmanaged(Type argument) => argument.GetCustomAttributesData()
+        .Any(attribute => attribute.AttributeType.Name == "IsUnmanagedAttribute");
+
+    /// <summary>The nullable byte that applies to a type parameter, or none.</summary>
+    /// <remarks>
+    /// `notnull` is the value 1, written either on the parameter itself or, when the
+    /// compiler compressed it, as a `NullableContext` default on the method or the
+    /// declaring type. Measured: <c>where T : IComparable&lt;T&gt;</c> under a context of 1
+    /// carries an explicit 0, so a parameter that inherits the 1 really is `notnull`.
+    /// </remarks>
+    private static byte? NullableFlag(Type argument)
+    {
+        byte? own = ByteArgument(argument.GetCustomAttributesData(), "NullableAttribute");
+        if (own is not null)
+        {
+            return own;
+        }
+
+        MethodBase? method = argument.DeclaringMethod;
+        byte? onMethod = method is null
+            ? null
+            : ByteArgument(method.GetCustomAttributesData(), "NullableContextAttribute");
+        Type? declaring = argument.DeclaringType ?? method?.DeclaringType;
+        return onMethod ?? (declaring is null
+            ? null
+            : ByteArgument(declaring.GetCustomAttributesData(), "NullableContextAttribute"));
+    }
+
+    private static byte? ByteArgument(IEnumerable<CustomAttributeData> attributes, string name) =>
+        attributes.FirstOrDefault(attribute => attribute.AttributeType.Name == name)
+            ?.ConstructorArguments is [{ Value: byte flag }] ? flag : null;
 
     private static string RenderParameter(ParameterInfo parameter)
     {
