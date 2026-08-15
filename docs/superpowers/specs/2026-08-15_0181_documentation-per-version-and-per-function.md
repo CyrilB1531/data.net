@@ -291,8 +291,24 @@ and carries the anchor through untouched.
 `Type.Member` text would demand links on `DataNet.Text`, `Version.props` and `CONTRIBUTING.md`,
 which are a namespace and two file names. The gate of D7 already enumerates the real exported types
 and public methods of every covered namespace, so it is the same list that says which mention owes a
-link: a backticked mention of a member that has an entry, sitting outside a code fence and outside a
-link, fails the build.
+link.
+
+Two obligations, because a first pass enforced only the weaker one and it left the guides with no
+links at all:
+
+1. **Every prose mention is a link.** A backticked mention of a member that has an entry, outside a
+   code fence and outside a link, fails the build.
+2. **Using a member obliges the page to link it at least once.** A member named anywhere on a page —
+   *including inside a `csharp` fence* — must have at least one link to its entry somewhere on that
+   page. Markdown cannot link inside a fence, so the link goes in the prose around it; what the rule
+   forbids is a page that demonstrates `Levenshtein.Distance` three times and offers no way to find
+   out what it does.
+
+The second obligation is the one that matters for the guides. `docs/guides/quickstart.md` uses
+`Levenshtein.Distance`, `Levenshtein.NormalizedSimilarity` and `Levenshtein.NormalizedDistance`
+entirely inside fences, so under rule 1 alone it owed nothing and got nothing.
+
+A reference page is exempt for its own members: its headings *are* the entries.
 
 Scoping to covered namespaces is what keeps this from being a repository-wide sweep on day one.
 `DataNet.Text.Distances` is linked when Task 8 turns its coverage on; each later lot links its own.
