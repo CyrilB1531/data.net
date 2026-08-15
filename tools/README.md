@@ -21,6 +21,11 @@ given:
 - `generate_sonar_globalconfig.py` writes the `.globalconfig` that raises the
   Sonar rules `SonarAnalyzer.CSharp` ships disabled, from the SonarCloud
   quality profile that gates the pull request.
+- `extract_doc_snippets.py` turns the ` ```csharp ` fences in `README.md` and
+  `docs/` into a project the compiler — and, for the reference pages, the
+  runtime — can judge.
+- `build_wiki.py` produces what the GitHub wiki publishes: `docs/` turned into
+  a flat page per package channel and per released version.
 - `sonarqube-local/` holds the compose file for a disposable local SonarQube
   server, covering the Python rules, duplication and coverage that no local
   `dotnet build` reaches — see
@@ -217,6 +222,62 @@ python tools/generate_sonar_globalconfig.py --check
 A regenerated file that differs means the SonarCloud profile moved; an
 unreachable API is reported separately and never as drift, so a network hiccup
 cannot make the check pass on a stale file.
+
+## `extract_doc_snippets.py`
+
+Turns every ` ```csharp ` fence in `README.md`, `docs/guides/*.md` and
+`docs/reference/*/*.md` into one method in a generated, git-ignored project
+under `samples/DataNet.DocSnippets/Generated/` — the guides stay the single
+source of truth, so a snippet and its compiled counterpart cannot drift:
+
+```bash
+python3 tools/extract_doc_snippets.py            # regenerate
+python3 tools/extract_doc_snippets.py --check    # report without writing
+```
+
+A fence that cannot compile opts out with `<!-- docs-compile: skip - reason
+a reviewer can disagree with -->` on the line above it — CONTRIBUTING.md's
+[*Definition of done*](../CONTRIBUTING.md#definition-of-done), item 5, has
+the exact syntax. A marker with no fence after it is an error, not silence:
+an opt-out that stopped applying must not go unnoticed.
+
+Pages under `docs/reference/` carry three more markers, and land in the
+`DataNet.DocSnippets.Reference` namespace instead of `DataNet.DocSnippets`:
+
+- `<!-- docs-declaration -->` marks a signature shown above a fence — the
+  declaration itself, excluded from compilation entirely.
+- `<!-- docs-run: skip - reason -->` compiles the fence but never runs it,
+  under the same "a reviewer can disagree with the reason" rule as
+  `docs-compile: skip`.
+- a trailing `// =>` comment on a local-variable declaration becomes an
+  assertion on the value the declaration promises, so a reference example is
+  not only compiled but *executed* — a promised result that stops being true
+  fails CI instead of a reader.
+
+## `build_wiki.py`
+
+Turns a checkout into the tree the GitHub wiki publishes: `docs/` becomes a
+flat page per package channel and, once a package is tagged, per released
+version — flat because a wiki addresses a page by file name alone, with no
+directory context of its own, and two pages sharing a base name would
+otherwise collide silently.
+
+```bash
+python3 tools/build_wiki.py --repo <dir> --out <dir> \
+  --released DataNet.Text=0.3.0 [--released ...]     # every live channel
+python3 tools/build_wiki.py --repo <dir> --out <dir> \
+  --archive DataNet.Text=0.4.0                       # one frozen version
+```
+
+`docs/wiki-map.json` is the only place that says which page belongs to which
+package; a page it declares that the tree does not hold is an error, not
+silence — that is how a renamed guide stops being published without anyone
+noticing. Without `--archive` the run refreshes every live channel plus the
+root pages (`Home`, `_Sidebar`, and the pages whose subject is the project
+rather than a package); with it, the run writes that one package's frozen
+snapshot and touches nothing else — the split is what lets a per-package
+release tag publish only that package's version. `.github/workflows/wiki.yml`
+is what calls it, on pushes to `main` and on per-package release tags.
 
 ## `check_comment_length.py`
 

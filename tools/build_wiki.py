@@ -43,9 +43,9 @@ BANNER = (
     "({target}).\n\n"
 )
 
-# [text](path.md) and [text](path.md#anchor). Bounded by ')' rather than a lazy
-# quantifier between optional groups, which backtracks super-linearly.
-LINK = re.compile(r"\[(?P<text>[^\]]*)\]\((?P<target>[^)\s]+\.md)(?P<anchor>#[^)\s]*)?\)")
+# [text](path.md) and [text](path.md#anchor). The target excludes '#' as well as
+# ')', so it can't blur into the anchor; no lazy quantifier, so no super-linear backtrack.
+LINK = re.compile(r"\[(?P<text>[^\]]*)\]\((?P<target>[^)\s#]+\.md)(?P<anchor>#[^)\s]*)?\)")
 
 
 class MapError(Exception):
@@ -111,7 +111,9 @@ def rewrite_links(text: str, page: pathlib.Path, repo: pathlib.Path, index: dict
 
     def replace(match: re.Match) -> str:
         target = match.group("target")
-        if target.startswith(("http://", "https://")):
+        # S5332 false positive: string comparison against an already-written link,
+        # never a request -- this function makes no network call of any kind.
+        if target.startswith(("http://", "https://")):  # NOSONAR S5332
             return match.group(0)
         resolved = (page.parent / target).resolve()
         try:
@@ -229,6 +231,59 @@ def home(mapping: dict, released: dict[str, str]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _build_archive(
+    repo: pathlib.Path,
+    out: pathlib.Path,
+    mapping: dict,
+    index: dict[str, str],
+    names: dict[str, pathlib.Path],
+    archive: tuple[str, str],
+) -> list[pathlib.Path]:
+    """One package's frozen version, and nothing else -- the --archive branch."""
+    name, version = archive
+    package = mapping["packages"][name]
+    written: list[pathlib.Path] = []
+    for stale in out.glob(f"{package['wiki']}-{version}-*.md"):
+        stale.unlink()
+    for page in pages_for(package["pages"], repo):
+        wname = wiki_name(page_stem(page), package["wiki"], version)
+        written.append(_write(page, out, repo, index, "", wname, names))
+    return written
+
+
+def _build_channel(
+    repo: pathlib.Path,
+    out: pathlib.Path,
+    index: dict[str, str],
+    names: dict[str, pathlib.Path],
+    pkg_name: str,
+    package: dict,
+    released: dict[str, str],
+) -> list[pathlib.Path]:
+    """One package's live channel: its pages refreshed, banner-prefixed once archived."""
+    pages = pages_for(package["pages"], repo)
+    if not pages:
+        return []
+
+    channel = package["wiki"]
+    landing = _declared_landing(package) or min(page_stem(page) for page in pages)
+    version = released.get(pkg_name)
+    prefix = (
+        banner(pkg_name, channel, version, landing)
+        if version and version in _archive_stems(out, channel)
+        else ""
+    )
+    archive_pattern = _archive_pattern(channel)
+    for stale in out.glob(f"{channel}-*.md"):
+        if not archive_pattern.match(stale.stem):
+            stale.unlink()
+
+    return [
+        _write(page, out, repo, index, prefix, wiki_name(page_stem(page), channel), names)
+        for page in pages
+    ]
+
+
 def build(
     repo: pathlib.Path,
     out: pathlib.Path,
@@ -240,41 +295,17 @@ def build(
     repo, out = pathlib.Path(repo), pathlib.Path(out)
     out.mkdir(parents=True, exist_ok=True)
     index = link_index(repo, mapping)
-    written: list[pathlib.Path] = []
     names: dict[str, pathlib.Path] = {}
 
     if archive is not None:
-        name, version = archive
-        package = mapping["packages"][name]
-        for stale in out.glob(f"{package['wiki']}-{version}-*.md"):
-            stale.unlink()
-        for page in pages_for(package["pages"], repo):
-            wname = wiki_name(page_stem(page), package["wiki"], version)
-            written.append(_write(page, out, repo, index, "", wname, names))
-        return written
+        return _build_archive(repo, out, mapping, index, names, archive)
 
-    for page in pages_for(mapping["root"], repo):
-        written.append(_write(page, out, repo, index, "", wiki_name(page_stem(page)), names))
-
+    written: list[pathlib.Path] = [
+        _write(page, out, repo, index, "", wiki_name(page_stem(page)), names)
+        for page in pages_for(mapping["root"], repo)
+    ]
     for pkg_name, package in mapping["packages"].items():
-        pages = pages_for(package["pages"], repo)
-        if not pages:
-            continue
-        channel = package["wiki"]
-        landing = _declared_landing(package) or sorted(page_stem(page) for page in pages)[0]
-        version = released.get(pkg_name)
-        prefix = (
-            banner(pkg_name, channel, version, landing)
-            if version and version in _archive_stems(out, channel)
-            else ""
-        )
-        archive_pattern = _archive_pattern(channel)
-        for stale in out.glob(f"{channel}-*.md"):
-            if not archive_pattern.match(stale.stem):
-                stale.unlink()
-        for page in pages:
-            wname = wiki_name(page_stem(page), channel)
-            written.append(_write(page, out, repo, index, prefix, wname, names))
+        written.extend(_build_channel(repo, out, index, names, pkg_name, package, released))
 
     (out / "_Sidebar.md").write_text(sidebar(out, mapping), encoding="utf-8")
     (out / "Home.md").write_text(home(mapping, released), encoding="utf-8")
@@ -305,8 +336,10 @@ def _write(
     return target
 
 
+# S7494 and S7500 disagree on this exact shape: dict() over a generator of pairs,
+# or the equivalent comprehension, each draws the other rule's complaint.
 def _pairs(values: list[str]) -> dict[str, str]:
-    return dict(value.split("=", 1) for value in values)
+    return dict(value.split("=", 1) for value in values)  # NOSONAR S7494
 
 
 def main() -> int:

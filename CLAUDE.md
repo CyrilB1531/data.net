@@ -220,7 +220,7 @@ its own change.
 solution. Duplication and coverage are visible only to SonarCloud, so a green
 local build is not a green quality gate.
 
-## Two gates that constrain how code is written
+## Three gates that constrain how code is written
 
 - **The packaging gate.** `samples/DataNet.Sample` consumes the packages from
   `./artifacts` through `samples/NuGet.config`, and every new public type must be
@@ -232,6 +232,12 @@ local build is not a green quality gate.
   `docs/guides/` is compiled against the packed packages, so a renamed method
   fails CI — CONTRIBUTING.md's [*Definition of
   done*](CONTRIBUTING.md#definition-of-done), item 5, has the opt-out syntax.
+- **The reference gate.** A new public type or method in a namespace listed in
+  `docs/wiki-map.json`'s `covered` table needs an entry in its package's
+  reference page under `docs/reference/`, checked against both target
+  frameworks' assemblies — a signature that drifts from its documentation fails
+  CI rather than a reader. Only the namespaces `covered` names are enforced; the
+  rest of the surface waits on the reference page that has not been written yet.
 
 ## Provenance — two hard rules
 

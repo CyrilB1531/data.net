@@ -18,7 +18,15 @@ is one sentence, the issue and the commit; see
 
 ## [Unreleased]
 
-Nothing yet.
+### DataNet.Text
+
+#### Added
+
+- `docs/reference/text/distances.md` documents every type of `DataNet.Text.Distances` in the layout of the .NET API reference, and a test checks each declaration, parameter list and `Applies to` against the assembly. ([#181](https://github.com/CyrilB1531/data.net/issues/181))
+
+#### Changed
+
+- `DamerauLevenshtein`'s documented summary no longer says "Not a proper metric": unit-cost unrestricted Damerau-Levenshtein satisfies the triangle inequality and is a true metric; `Osa` is the one that does not. ([#181](https://github.com/CyrilB1531/data.net/issues/181))
 
 ## Released — 2026-08-14
 
