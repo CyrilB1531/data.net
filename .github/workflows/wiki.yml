@@ -9,7 +9,7 @@ name: Wiki
 # the tag trigger is not silently filtered by it.
 on:
   push:
-    branches: [main]
+    branches: [main, docs/181-documentation-per-version-and-per-function]
     tags: ['DataNet.*/v*']
     paths:
       - 'docs/**'
