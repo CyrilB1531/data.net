@@ -2,27 +2,29 @@
 """Turn a checkout into the wiki tree, per package and per version.
 
 The pages live in docs/ because that is where markdownlint, the snippet
-compiler and pull-request review reach them. This turns them into what a reader
-sees: one channel per package following main, one frozen directory per released
-version, and a generated sidebar -- generated because a hand-written one is
-wrong the second time a version is published.
+compiler and pull-request review reach them. This turns them into what a
+reader sees: a flat file per page, named for its channel and version -- flat
+because a GitHub wiki addresses a page by file name alone, with no directory
+context, and two files sharing a base name silently collide (one shadows the
+other with no warning).
 
 docs/wiki-map.json is the only place that says which page belongs to which
 package. A page listed there and absent from the tree is an error, not a
 silence: that is how a renamed guide stops being published without anyone
 noticing.
 
-Links are rewritten from repository-relative paths to wiki paths. A wiki page
-has no .md suffix and no directory context, so `../reference/text/distances.md`
-read in a guide has to become `Text/distances` in the wiki or it 404s.
+Links are rewritten from repository-relative paths to flat wiki names. A wiki
+page has no .md suffix and no directory, so `../reference/text/distances.md`
+read in a guide has to become `Text-distances` in the wiki or it 404s.
 
 Usage:
     python3 tools/build_wiki.py --repo <dir> --out <dir>
         --released DataNet.Text=0.3.0 [--released ...]
         [--archive DataNet.Text=0.4.0]
 
-Without --archive it refreshes every live channel and the root pages. With it,
-it writes that one package's frozen directory and touches nothing else.
+Without --archive it refreshes every live channel and the root pages, each
+named `<channel>-<stem>`. With it, it writes that one package's frozen
+version, named `<channel>-<version>-<stem>`, and touches nothing else.
 
 Exit:   0 clean, 1 the map disagrees with the tree, 2 bad usage
 """
@@ -33,13 +35,12 @@ import argparse
 import json
 import pathlib
 import re
-import shutil
 import sys
 
 BANNER = (
     "> **Development build.** This page describes `main`, not a released package.\n"
     "> The latest published {package} is **{version}** — read [its documentation]"
-    "({channel}/{version}/{landing}).\n\n"
+    "({target}).\n\n"
 )
 
 # [text](path.md) and [text](path.md#anchor). Bounded by ')' rather than a lazy
@@ -69,13 +70,13 @@ def pages_for(patterns: list[str], repo: pathlib.Path) -> list[pathlib.Path]:
     return list(dict.fromkeys(found))
 
 
-def wiki_path(page: pathlib.Path, repo: pathlib.Path, mapping: dict) -> str:
-    """Where one repository page lands in the wiki, without its .md suffix."""
-    relative = page.relative_to(repo).as_posix()
-    for package in mapping["packages"].values():
-        if any(_matches(relative, pattern) for pattern in package["pages"]):
-            return f"{package['wiki']}/{page.stem}"
-    return page.stem
+def wiki_name(stem: str, channel: str | None = None, version: str | None = None) -> str:
+    """The flat file name a page gets in the wiki: it has no directories."""
+    if channel is None:
+        return stem
+    if version is None:
+        return f"{channel}-{stem}"
+    return f"{channel}-{version}-{stem}"
 
 
 def _matches(relative: str, pattern: str) -> bool:
@@ -86,10 +87,10 @@ def link_index(repo: pathlib.Path, mapping: dict) -> dict[str, str]:
     """Every publishable page, keyed by its repository-relative path."""
     index: dict[str, str] = {}
     for page in pages_for(mapping["root"], repo):
-        index[page.relative_to(repo).as_posix()] = page.stem
+        index[page.relative_to(repo).as_posix()] = wiki_name(page.stem)
     for package in mapping["packages"].values():
         for page in pages_for(package["pages"], repo):
-            index[page.relative_to(repo).as_posix()] = f"{package['wiki']}/{page.stem}"
+            index[page.relative_to(repo).as_posix()] = wiki_name(page.stem, package["wiki"])
     return index
 
 
@@ -113,35 +114,62 @@ def rewrite_links(text: str, page: pathlib.Path, repo: pathlib.Path, index: dict
 
 
 def banner(package: str, wiki: str, version: str, landing: str) -> str:
-    return BANNER.format(package=package, channel=wiki, version=version, landing=landing)
+    return BANNER.format(package=package, version=version, target=wiki_name(landing, wiki, version))
+
+
+def _archive_pattern(channel: str) -> re.Pattern:
+    return re.compile(rf"^{re.escape(channel)}-(?P<version>\d[^-]*)-")
+
+
+def _archive_stems(out: pathlib.Path, channel: str) -> dict[str, set[str]]:
+    """Every archived stem present for a channel, grouped by version."""
+    pattern = _archive_pattern(channel)
+    by_version: dict[str, set[str]] = {}
+    for page in out.glob(f"{channel}-*.md"):
+        match = pattern.match(page.stem)
+        if match:
+            by_version.setdefault(match.group("version"), set()).add(page.stem[match.end():])
+    return by_version
+
+
+def _live_stems(out: pathlib.Path, channel: str) -> set[str]:
+    """Every live (non-archived) stem present for a channel."""
+    pattern = _archive_pattern(channel)
+    prefix_len = len(channel) + 1
+    return {
+        page.stem[prefix_len:]
+        for page in out.glob(f"{channel}-*.md")
+        if not pattern.match(page.stem)
+    }
 
 
 def sidebar(out: pathlib.Path, mapping: dict) -> str:
     """The navigation, read off the tree that was just written."""
+    channels = {package["wiki"] for package in mapping["packages"].values()}
     lines = ["### DataNet", "", "- [Home](Home)", ""]
-    for name, package in mapping["packages"].items():
-        channel = out / package["wiki"]
-        landing = _resolve_landing(channel, package)
+    for package in mapping["packages"].values():
+        channel = package["wiki"]
+        landing = _resolve_landing(_live_stems(out, channel), package)
         if landing is None:
             continue
-        lines.append(f"- [{package['wiki']}]({package['wiki']}/{landing})")
-        for version in sorted(
-            (child.name for child in channel.iterdir() if child.is_dir()),
-            key=_version_key,
-        ):
-            archived = _resolve_landing(channel / version, package)
+        lines.append(f"- [{channel}]({wiki_name(landing, channel)})")
+        for version, stems in sorted(_archive_stems(out, channel).items(), key=lambda kv: _version_key(kv[0])):
+            archived = _resolve_landing(stems, package)
             if archived is not None:
-                lines.append(f"  - [{version}]({package['wiki']}/{version}/{archived})")
+                lines.append(f"  - [{version}]({wiki_name(archived, channel, version)})")
     lines += ["", "### Project", ""]
     for page in sorted(out.glob("*.md")):
-        if page.stem not in {"Home", "_Sidebar"}:
-            lines.append(f"- [{page.stem}]({page.stem})")
+        if page.stem in {"Home", "_Sidebar"}:
+            continue
+        if any(page.stem == channel or page.stem.startswith(f"{channel}-") for channel in channels):
+            continue
+        lines.append(f"- [{page.stem}]({page.stem})")
     return "\n".join(lines) + "\n"
 
 
-def _landing(directory: pathlib.Path) -> str | None:
+def _landing(stems: set[str]) -> str | None:
     """The page a channel opens on: the first, alphabetically, that it holds."""
-    pages = sorted(page.stem for page in directory.glob("*.md")) if directory.exists() else []
+    pages = sorted(stems)
     return pages[0] if pages else None
 
 
@@ -159,12 +187,12 @@ def _declared_landing(package: dict) -> str | None:
     return None
 
 
-def _resolve_landing(directory: pathlib.Path, package: dict) -> str | None:
-    """The declared guide if this directory actually holds it, else the fallback."""
+def _resolve_landing(stems: set[str], package: dict) -> str | None:
+    """The declared guide if these stems actually hold it, else the fallback."""
     declared = _declared_landing(package)
-    if declared is not None and (directory / f"{declared}.md").exists():
+    if declared is not None and declared in stems:
         return declared
-    return _landing(directory)
+    return _landing(stems)
 
 
 def _version_key(version: str) -> tuple:
@@ -183,7 +211,9 @@ def home(mapping: dict, released: dict[str, str]) -> str:
     ]
     for name, package in mapping["packages"].items():
         version = released.get(name, "unreleased")
-        lines.append(f"| `{name}` | {version} | [{package['wiki']}]({package['wiki']}) |")
+        declared = _declared_landing(package)
+        target = wiki_name(declared, package["wiki"]) if declared else package["wiki"]
+        lines.append(f"| `{name}` | {version} | [{package['wiki']}]({target}) |")
     return "\n".join(lines) + "\n"
 
 
@@ -196,53 +226,66 @@ def build(
 ) -> list[pathlib.Path]:
     """Write the wiki tree. Returns the pages written, for the caller to report."""
     repo, out = pathlib.Path(repo), pathlib.Path(out)
+    out.mkdir(parents=True, exist_ok=True)
     index = link_index(repo, mapping)
     written: list[pathlib.Path] = []
+    names: dict[str, pathlib.Path] = {}
 
     if archive is not None:
         name, version = archive
         package = mapping["packages"][name]
-        destination = out / package["wiki"] / version
-        _clear(destination)
+        for stale in out.glob(f"{package['wiki']}-{version}-*.md"):
+            stale.unlink()
         for page in pages_for(package["pages"], repo):
-            written.append(_write(page, destination, repo, index, prefix=""))
+            wname = wiki_name(page.stem, package["wiki"], version)
+            written.append(_write(page, out, repo, index, "", wname, names))
         return written
 
     for page in pages_for(mapping["root"], repo):
-        written.append(_write(page, out, repo, index, prefix=""))
+        written.append(_write(page, out, repo, index, "", wiki_name(page.stem), names))
 
-    for name, package in mapping["packages"].items():
+    for pkg_name, package in mapping["packages"].items():
         pages = pages_for(package["pages"], repo)
         if not pages:
             continue
-        destination = out / package["wiki"]
-        for stale in destination.glob("*.md"):
-            stale.unlink()
+        channel = package["wiki"]
         landing = _declared_landing(package) or sorted(page.stem for page in pages)[0]
-        version = released.get(name)
-        prefix = banner(name, package["wiki"], version, landing) if version else ""
+        version = released.get(pkg_name)
+        prefix = (
+            banner(pkg_name, channel, version, landing)
+            if version and version in _archive_stems(out, channel)
+            else ""
+        )
+        archive_pattern = _archive_pattern(channel)
+        for stale in out.glob(f"{channel}-*.md"):
+            if not archive_pattern.match(stale.stem):
+                stale.unlink()
         for page in pages:
-            written.append(_write(page, destination, repo, index, prefix))
+            wname = wiki_name(page.stem, channel)
+            written.append(_write(page, out, repo, index, prefix, wname, names))
 
     (out / "_Sidebar.md").write_text(sidebar(out, mapping), encoding="utf-8")
     (out / "Home.md").write_text(home(mapping, released), encoding="utf-8")
     return written
 
 
-def _clear(destination: pathlib.Path) -> None:
-    if destination.exists():
-        shutil.rmtree(destination)
-
-
 def _write(
     page: pathlib.Path,
-    destination: pathlib.Path,
+    out: pathlib.Path,
     repo: pathlib.Path,
     index: dict[str, str],
     prefix: str,
+    name: str,
+    names: dict[str, pathlib.Path],
 ) -> pathlib.Path:
-    destination.mkdir(parents=True, exist_ok=True)
-    target = destination / page.name
+    """Write one page under its flat wiki name, refusing a name collision."""
+    if name in names and names[name] != page:
+        raise MapError(
+            f"{name}: {names[name].relative_to(repo)} and {page.relative_to(repo)} "
+            "would both publish under this name"
+        )
+    names[name] = page
+    target = out / f"{name}.md"
     target.write_text(
         prefix + rewrite_links(page.read_text(encoding="utf-8"), page, repo, index),
         encoding="utf-8",

@@ -44,17 +44,19 @@ def make_repo(tmp_path: Path) -> Path:
     return repo
 
 
-def test_live_pages_land_in_the_package_channel(tmp_path):
+def test_a_live_page_is_named_for_its_channel(tmp_path):
     repo = make_repo(tmp_path)
     out = tmp_path / "wiki"
     build_wiki.build(repo, out, MAP, released={"DataNet.Text": "0.3.0"})
 
-    assert (out / "Text" / "quickstart.md").exists()
-    assert (out / "Text" / "distances.md").exists()
+    assert (out / "Text-quickstart.md").exists()
+    assert (out / "Text-distances.md").exists()
     assert (out / "equivalence.md").exists()
+    # Nothing nests: a subdirectory is storage the reader cannot name.
+    assert not any(child.is_dir() for child in out.iterdir())
 
 
-def test_an_archive_freezes_the_same_pages_under_the_version(tmp_path):
+def test_an_archived_page_carries_the_version_in_its_name(tmp_path):
     repo = make_repo(tmp_path)
     out = tmp_path / "wiki"
     build_wiki.build(
@@ -62,55 +64,54 @@ def test_an_archive_freezes_the_same_pages_under_the_version(tmp_path):
         archive=("DataNet.Text", "0.4.0"),
     )
 
-    assert (out / "Text" / "0.4.0" / "distances.md").exists()
+    assert (out / "Text-0.4.0-distances.md").exists()
+    assert (out / "Text-0.4.0-quickstart.md").exists()
     # An archive publishes that package only, and never rewrites the live channel.
-    assert not (out / "Text" / "quickstart.md").exists()
+    assert not (out / "Text-quickstart.md").exists()
 
 
-def test_links_are_rewritten_to_wiki_paths(tmp_path):
+def test_links_are_rewritten_to_flat_wiki_names(tmp_path):
     repo = make_repo(tmp_path)
     out = tmp_path / "wiki"
     build_wiki.build(repo, out, MAP, released={"DataNet.Text": "0.3.0"})
 
-    text = (out / "Text" / "quickstart.md").read_text(encoding="utf-8")
-    assert "(Text/distances)" in text
+    text = (out / "Text-quickstart.md").read_text(encoding="utf-8")
+    assert "(Text-distances)" in text
     assert "(equivalence)" in text
     assert ".md)" not in text
 
 
-def test_a_live_page_carries_the_banner_naming_the_released_version(tmp_path):
+def test_the_sidebar_links_resolve_and_group_the_archives(tmp_path):
     repo = make_repo(tmp_path)
     out = tmp_path / "wiki"
-    build_wiki.build(repo, out, MAP, released={"DataNet.Text": "0.3.0"})
-
-    text = (out / "Text" / "quickstart.md").read_text(encoding="utf-8")
-    assert text.startswith("> **Development build.**")
-    assert "0.3.0" in text
-
-
-def test_an_archived_page_carries_no_banner(tmp_path):
-    repo = make_repo(tmp_path)
-    out = tmp_path / "wiki"
-    build_wiki.build(
-        repo, out, MAP, released={"DataNet.Text": "0.3.0"},
-        archive=("DataNet.Text", "0.4.0"),
-    )
-
-    text = (out / "Text" / "0.4.0" / "distances.md").read_text(encoding="utf-8")
-    assert not text.startswith("> **Development build.**")
-
-
-def test_the_sidebar_lists_channels_and_every_archive_present(tmp_path):
-    repo = make_repo(tmp_path)
-    out = tmp_path / "wiki"
-    (out / "Text" / "0.3.0").mkdir(parents=True)
-    (out / "Text" / "0.3.0" / "distances.md").write_text("# Distances\n", encoding="utf-8")
+    out.mkdir()
+    (out / "Text-0.3.0-quickstart.md").write_text("# Quickstart\n", encoding="utf-8")
 
     build_wiki.build(repo, out, MAP, released={"DataNet.Text": "0.3.0"})
 
     sidebar = (out / "_Sidebar.md").read_text(encoding="utf-8")
-    assert "[Text](Text/quickstart)" in sidebar
-    assert "[0.3.0](Text/0.3.0/distances)" in sidebar
+    assert "[Text](Text-quickstart)" in sidebar
+    assert "[0.3.0](Text-0.3.0-quickstart)" in sidebar
+
+
+def test_the_banner_is_written_only_for_a_version_the_wiki_holds(tmp_path):
+    repo = make_repo(tmp_path)
+    out = tmp_path / "wiki"
+    build_wiki.build(repo, out, MAP, released={"DataNet.Text": "0.3.0"})
+
+    # No Text-0.3.0-* page exists, so a banner would link to a 404.
+    assert not (out / "Text-quickstart.md").read_text(encoding="utf-8").startswith(">")
+
+
+def test_two_pages_that_would_share_a_name_are_refused(tmp_path):
+    repo = make_repo(tmp_path)
+    (repo / "docs" / "migration").mkdir(parents=True)
+    (repo / "docs" / "migration" / "equivalence.md").write_text("# Clash\n", encoding="utf-8")
+    mapping = json.loads(json.dumps(MAP))
+    mapping["root"].append("docs/migration/equivalence.md")
+
+    with pytest.raises(build_wiki.MapError):
+        build_wiki.build(repo, tmp_path / "wiki", mapping, released={})
 
 
 def test_a_page_declared_in_the_map_but_missing_is_an_error(tmp_path):
