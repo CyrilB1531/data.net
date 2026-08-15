@@ -64,13 +64,13 @@ public sealed class ReferenceDocumentationTests
     }
 
     [Fact]
-    public void The_map_declares_both_pages()
+    public void The_map_declares_both_directories()
     {
-        // What the two tests above check the pages against; a page dropped from the
-        // list would make them pass by covering nothing.
+        // What the two tests above check the pages against; a directory dropped from
+        // the list would make them pass by covering nothing.
         string map = File.ReadAllText(Map);
 
-        Assert.Contains("docs/reference/metrics/classification.md", map, StringComparison.Ordinal);
-        Assert.Contains("docs/reference/metrics/regression.md", map, StringComparison.Ordinal);
+        Assert.Contains("docs/reference/metrics/classification\"", map, StringComparison.Ordinal);
+        Assert.Contains("docs/reference/metrics/regression\"", map, StringComparison.Ordinal);
     }
 }

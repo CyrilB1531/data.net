@@ -51,7 +51,7 @@ exists for the same call shape.
 ## Consequences
 
 - The `<remarks>` on
-  [`CohenKappa.Score(ConfusionMatrix, ...)`](../reference/metrics/classification.md#cohenkappascore)
+  [`CohenKappa.Score(ConfusionMatrix, ...)`](../reference/metrics/classification/cohenkappa-score.md)
   and the `Weight` loop's inline comment both carry a pointer here instead of
   restating the orientation and order-dependence arguments.
 - **The orientation is not verified by anything, and cannot be.** All three

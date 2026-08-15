@@ -4,8 +4,8 @@
 
 ## Context
 
-[`R2.Score`](../reference/metrics/regression.md#r2score) and
-[`ExplainedVariance.Score`](../reference/metrics/regression.md#explainedvariancescore)
+[`R2.Score`](../reference/metrics/regression/r2-score.md) and
+[`ExplainedVariance.Score`](../reference/metrics/regression/explainedvariance-score.md)
 both divide by the variance of `yTrue`, both take `forceFinite`, and both were
 assumed — before this was checked against scikit-learn 1.9.0 rather than read
 off its source — to handle a zero denominator the same way. They do not.

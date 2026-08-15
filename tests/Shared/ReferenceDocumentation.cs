@@ -43,12 +43,23 @@ internal static class ReferenceDocumentation
     }
 
     /// <summary>The pages of one namespace, parsed; a page declared and absent is a complaint.</summary>
+    /// <remarks>
+    /// A namespace declares either pages or the directory that holds them — one page per member,
+    /// with a type page and an index above them (#189). A directory brings in that index too,
+    /// which sits beside it as <c>&lt;directory&gt;.md</c> rather than being declared again.
+    /// </remarks>
     private static List<Sheet> Load(
         IEnumerable<string> pages, string referenceRoot, List<string> complaints)
     {
         List<Sheet> sheets = [];
         foreach (string page in pages)
         {
+            if (!page.EndsWith(".md", StringComparison.Ordinal))
+            {
+                LoadDirectory(page, referenceRoot, sheets, complaints);
+                continue;
+            }
+
             string path = Path.Combine(referenceRoot, Path.GetFileName(page));
             if (!File.Exists(path))
             {
@@ -61,6 +72,39 @@ internal static class ReferenceDocumentation
         }
 
         return sheets;
+    }
+
+    private static void LoadDirectory(
+        string declared, string referenceRoot, List<Sheet> sheets, List<string> complaints)
+    {
+        string name = Path.GetFileName(declared.TrimEnd('/'));
+        string directory = Path.Combine(referenceRoot, name);
+        if (!Directory.Exists(directory))
+        {
+            complaints.Add($"{declared}: declared covered, and not next to the tests.");
+            return;
+        }
+
+        string index = Path.Combine(referenceRoot, name + ".md");
+        if (!File.Exists(index))
+        {
+            complaints.Add($"{declared}: no index page beside it — {name}.md is what a reader lands on.");
+        }
+        else
+        {
+            sheets.Add(Read(index, $"{declared}.md"));
+        }
+
+        foreach (string path in Directory.GetFiles(directory, "*.md").OrderBy(p => p, StringComparer.Ordinal))
+        {
+            sheets.Add(Read(path, $"{declared}/{Path.GetFileName(path)}"));
+        }
+    }
+
+    private static Sheet Read(string path, string source)
+    {
+        string text = File.ReadAllText(path);
+        return new Sheet(source, text, Page.Parse(text));
     }
 
     /// <summary>The type's row in the opening table of the page that carries its entry.</summary>
@@ -95,10 +139,49 @@ internal static class ReferenceDocumentation
                 continue;
             }
 
-            CheckTypeTable(type, carrier, complaints);
+            // The index of the directory this type is documented in -- a namespace may
+            // hold several, as DataNet.Metrics does, so it is not "the" index.
+            string directory = Path.GetDirectoryName(carrier.Source)?.Replace('\\', '/') ?? string.Empty;
+            Sheet? index = sheets.Find(sheet => sheet.Source == directory + ".md");
+            if (index is null)
+            {
+                CheckTypeTable(type, carrier, complaints);
+            }
+            else
+            {
+                CheckIndexLinksTheType(type, index, complaints);
+                CheckTypeLinksItsMembers(type, carrier, complaints);
+            }
+
             CheckMembers(type, sheets, pages, moniker, complaints);
         }
     }
+
+    /// <summary>A namespace index reaches a type by linking its page, not an anchor in itself.</summary>
+    private static void CheckIndexLinksTheType(Type type, Sheet index, List<string> complaints)
+    {
+        string directory = Path.GetFileNameWithoutExtension(index.Source);
+        string link = $"[`{type.Name}`]({directory}/{Anchor(type.Name)}.md)";
+        if (!index.Text.Contains(link, StringComparison.Ordinal))
+        {
+            complaints.Add($"{index.Source}: the type table does not link {type.Name} as {link}.");
+        }
+    }
+
+    /// <summary>A type page's member table reaches every member page of that type.</summary>
+    private static void CheckTypeLinksItsMembers(Type type, Sheet page, List<string> complaints)
+    {
+        foreach (IGrouping<string, MethodInfo> overloads in Methods(type))
+        {
+            string title = $"{type.Name}.{overloads.Key}";
+            string link = $"[`{title}`]({Anchor(type.Name)}-{Anchor(overloads.Key)}.md)";
+            if (!page.Text.Contains(link, StringComparison.Ordinal))
+            {
+                complaints.Add($"{page.Source}: the member table does not link {title} as {link}.");
+            }
+        }
+    }
+
 
     private static void CheckMembers(
         Type type, List<Sheet> sheets, string pages, string moniker, List<string> complaints)
@@ -242,7 +325,8 @@ internal static class ReferenceDocumentation
 
     /// <summary>The file names Check itself treats as reference pages, read off the same directory.</summary>
     private static HashSet<string> ReferencePageNames(string referenceRoot) => Directory.Exists(referenceRoot)
-        ? Directory.GetFiles(referenceRoot, "*.md").Select(path => Path.GetFileName(path))
+        ? Directory.GetFiles(referenceRoot, "*.md", SearchOption.AllDirectories)
+            .Select(path => Path.GetFileName(path))
             .ToHashSet(StringComparer.Ordinal)
         : new HashSet<string>(StringComparer.Ordinal);
 
@@ -286,7 +370,10 @@ internal static class ReferenceDocumentation
     {
         foreach (string member in linkable.OrderBy(name => name, StringComparer.Ordinal))
         {
-            if (!anchors.Contains(Anchor(member)) && Array.Exists(lines, line => Names(line, member)))
+            string page = Anchor(member.Replace('.', '-')) + ".md";
+            bool reachable = anchors.Contains(Anchor(member))
+                || anchors.Contains(page);
+            if (!reachable && Array.Exists(lines, line => Names(line, member)))
             {
                 complaints.Add(
                     $"{relative}: uses '{member}' and links its entry nowhere on the page. " +
@@ -310,18 +397,28 @@ internal static class ReferenceDocumentation
         return anchor.ToString();
     }
 
-    /// <summary>Every heading anchor a line links to, without its '#'.</summary>
+    /// <summary>What a line's links reach: a heading anchor without its '#', or a page's file name.</summary>
+    /// <remarks>
+    /// Both, because the two shapes coexist while the namespaces move one lot at a time:
+    /// a combined page is reached by `#levenshteindistance`, a split one by
+    /// `levenshtein-distance.md` (#189).
+    /// </remarks>
     private static IEnumerable<string> Anchors(string line)
     {
         foreach ((int start, int end) in LinkSpans(line))
         {
             string span = line[start..end];
             int target = span.IndexOf("](", StringComparison.Ordinal);
-            int hash = target < 0 ? -1 : span.IndexOf('#', target + 2);
-            if (hash >= 0)
+            if (target < 0)
             {
-                yield return span[(hash + 1)..^1];
+                continue;
             }
+
+            string destination = span[(target + 2)..^1];
+            int hash = destination.IndexOf('#', StringComparison.Ordinal);
+            yield return hash >= 0
+                ? destination[(hash + 1)..]
+                : destination[(destination.LastIndexOf('/') + 1)..];
         }
     }
 
@@ -722,7 +819,9 @@ internal static class ReferenceDocumentation
 
             public void Consume(string line)
             {
-                if (line.StartsWith("###", StringComparison.Ordinal))
+                // Any heading bounds an entry, `#` included: a member page's title is its H1
+                // where a combined page's section was an H4. Never inside a fence.
+                if (!inFence && line.StartsWith('#'))
                 {
                     Flush();
                     title = line.TrimStart('#').Trim();

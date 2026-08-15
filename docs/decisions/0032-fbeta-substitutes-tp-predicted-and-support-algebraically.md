@@ -7,8 +7,8 @@
 The textbook F-beta formula is `(1 + beta^2) * P * R / (beta^2 * P + R)` for
 precision `P` and recall `R`. The obvious implementation computes `P` and `R`
 first — each already available as
-[`Precision.Score`](../reference/metrics/classification.md#precisionscore) /
-[`Recall.Score`](../reference/metrics/classification.md#recallscore) — and
+[`Precision.Score`](../reference/metrics/classification/precision-score.md) /
+[`Recall.Score`](../reference/metrics/classification/recall-score.md) — and
 substitutes. scikit-learn's `fbeta_score` does not do this: it derives F-beta
 from the raw `tp`/`predicted`/`support` counts directly. Substituting
 `P = tp/predicted` and `R = tp/support` into the textbook formula and cancelling `tp`

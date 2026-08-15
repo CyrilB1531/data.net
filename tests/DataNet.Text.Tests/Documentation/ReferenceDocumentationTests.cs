@@ -148,26 +148,60 @@ public sealed class ReferenceDocumentationTests
     }
 
     [Fact]
-    public void A_type_missing_from_the_opening_table_link_is_reported()
+    public void A_type_the_index_does_not_link_is_reported()
     {
-        // The real page, its one link to the Levenshtein entry undone -- everything
+        // The real tree, the index's one link to the Levenshtein page undone -- everything
         // else stays exactly as published, so only this check has anything to say.
-        string page = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-        Directory.CreateDirectory(page);
-        string original = File.ReadAllText(Path.Combine(Root, "distances.md"));
+        string root = CopyReference();
+        string index = Path.Combine(root, "distances.md");
+        string original = File.ReadAllText(index);
         string broken = original.Replace(
-            "[`Levenshtein`](#levenshtein)", "`Levenshtein`", StringComparison.Ordinal);
+            "[`Levenshtein`](distances/levenshtein.md)", "`Levenshtein`", StringComparison.Ordinal);
         Assert.NotEqual(original, broken);
-        File.WriteAllText(Path.Combine(page, "distances.md"), broken);
-        File.Copy(Map, Path.Combine(page, "wiki-map.json"));
+        File.WriteAllText(index, broken);
 
         IReadOnlyList<string> complaints = ReferenceDocumentation.Check(
-            typeof(Levenshtein).Assembly, "DataNet.Text", Path.Combine(page, "wiki-map.json"), page);
+            typeof(Levenshtein).Assembly, "DataNet.Text", Path.Combine(root, "wiki-map.json"), root);
 
         Assert.Contains(complaints, complaint =>
             complaint.Contains("Levenshtein", StringComparison.Ordinal) &&
-            complaint.Contains("opening table", StringComparison.Ordinal));
-        Directory.Delete(page, recursive: true);
+            complaint.Contains("type table", StringComparison.Ordinal));
+        Directory.Delete(root, recursive: true);
+    }
+
+    [Fact]
+    public void A_member_its_type_page_does_not_link_is_reported()
+    {
+        // The level the split adds: a member page can now exist and be reachable from
+        // nothing, which a section of a combined page could not.
+        string root = CopyReference();
+        string page = Path.Combine(root, "distances", "levenshtein.md");
+        File.WriteAllText(page, File.ReadAllText(page).Replace(
+            "[`Levenshtein.Distance`](levenshtein-distance.md)",
+            "`Levenshtein.Distance`",
+            StringComparison.Ordinal));
+
+        IReadOnlyList<string> complaints = ReferenceDocumentation.Check(
+            typeof(Levenshtein).Assembly, "DataNet.Text", Path.Combine(root, "wiki-map.json"), root);
+
+        Assert.Contains(complaints, complaint =>
+            complaint.Contains("Levenshtein.Distance", StringComparison.Ordinal) &&
+            complaint.Contains("member table", StringComparison.Ordinal));
+        Directory.Delete(root, recursive: true);
+    }
+
+    /// <summary>The published reference, copied so a test can break one page of it.</summary>
+    private static string CopyReference()
+    {
+        string root = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(Path.Combine(root, "distances"));
+        foreach (string path in Directory.GetFiles(Root, "*.md", SearchOption.AllDirectories))
+        {
+            File.Copy(path, Path.Combine(root, Path.GetRelativePath(Root, path)));
+        }
+
+        File.Copy(Map, Path.Combine(root, "wiki-map.json"));
+        return root;
     }
 
     [Fact]
