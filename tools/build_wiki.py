@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import re
 import sys
@@ -69,18 +70,22 @@ class MapError(Exception):
 
 
 def _guard(candidate: pathlib.Path, root: pathlib.Path) -> pathlib.Path:
-    """Refuse candidate unless it resolves inside root, else return it unchanged.
+    """Return candidate's real path, refusing it unless it stays inside root.
 
     docs/wiki-map.json's patterns and the page names built from them are
     trusted as data, not as paths: a glob or a name carrying `..` would
     otherwise read from, write to, or delete outside the tree this run is
-    scoped to (S8707). The return value is `candidate` itself, not its
-    resolved form, so callers keep comparing it against the same `repo`/`out`
-    they already hold.
+    scoped to (S8707). What comes back is the resolved path and every caller
+    uses that, because validating one spelling of a path and then opening
+    another is the hole the rule is about. `build` resolves `repo` and `out`
+    the same way, so `relative_to` still answers against the root a caller
+    holds.
     """
-    if not candidate.resolve().is_relative_to(root.resolve()):
+    base = os.path.realpath(root)
+    resolved = os.path.realpath(candidate)
+    if resolved != base and not resolved.startswith(base + os.sep):
         raise MapError(f"{candidate}: escapes {root}")
-    return candidate
+    return pathlib.Path(resolved)
 
 
 def load_map(path: pathlib.Path) -> dict:
@@ -409,7 +414,9 @@ def build(
     naming the previous release. The banner exists so it cannot go stale, and a
     release tag was the one moment it did.
     """
-    repo, out = pathlib.Path(repo), pathlib.Path(out)
+    # Both roots are resolved once, here, so every path derived from them is
+    # already real by the time _guard compares one against them.
+    repo, out = pathlib.Path(os.path.realpath(repo)), pathlib.Path(os.path.realpath(out))
     out.mkdir(parents=True, exist_ok=True)
     index = link_index(repo, mapping)
     names: dict[str, pathlib.Path] = {}
@@ -468,13 +475,12 @@ def main() -> int:
     parser.add_argument("--archive", metavar="PACKAGE=VERSION")
     arguments = parser.parse_args()
 
-    mapping = load_map(arguments.repo / "docs" / "wiki-map.json")
+    repo = pathlib.Path(os.path.realpath(arguments.repo))
     archive = tuple(arguments.archive.split("=", 1)) if arguments.archive else None
 
     try:
-        written = build(
-            arguments.repo, arguments.out, mapping, _pairs(arguments.released), archive
-        )
+        mapping = load_map(_guard(repo / "docs" / "wiki-map.json", repo))
+        written = build(repo, arguments.out, mapping, _pairs(arguments.released), archive)
     except MapError as error:
         print(f"::error::{error}", file=sys.stderr)
         return 1
