@@ -267,6 +267,19 @@ what makes check 4 possible at all: each assembly reports its own exported surfa
 Restricting to declared areas is what lets this land before the four lots exist. Without it the
 foundation pull request is red until all four are finished.
 
+Two refinements the first large namespace forced, `DataNet.Metrics` with 31 exported types against
+`DataNet.Text.Distances`' 9:
+
+- **A namespace may map to several pages.** `covered` takes a page or a list of them, and the gate
+  accepts an entry in any of the namespace's pages. One page per namespace would have put
+  classification and regression metrics in the same three-thousand-line document, which is a
+  scrolling exercise rather than a reference. What the gate still refuses is a type with no entry
+  anywhere.
+- **A nested exported type is described inside its declaring type's entry.** The five residual
+  kernels — `MeanAbsoluteError.AbsoluteResidual` and its siblings — are public only because a
+  generic constraint needs them nameable; nobody calls one. An entry each would be five pages of
+  ceremony for types a reader never types.
+
 ### D8 — the publisher is a tool, not YAML
 
 `tools/build_wiki.py` reads a checkout plus `wiki-map.json` and produces the wiki tree: the package
