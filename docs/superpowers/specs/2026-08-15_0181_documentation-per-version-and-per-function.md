@@ -151,6 +151,12 @@ A page may carry `mermaid` fences. The GitHub wiki renders them natively, markdo
 inside a fence, and the snippet extractor takes only `csharp` fences, so a diagram passes every gate
 without changing one.
 
+"Renders them natively" was an assumption until the first publication, and is now a measurement: the
+published `Text-distances` page serves the decision tree as
+`<pre lang="mermaid">` wrapped in `data-type="mermaid"` and a `js-render-enrichment-target`, which is
+GitHub's own diagram renderer. Nothing in CI would have caught it failing, which is why it was
+checked against the live wiki rather than left to the first reader.
+
 A diagram earns its place by showing a mechanism the prose cannot hand a reader in one glance — the
 vectorization pipeline from text to `CsrMatrix`, the encoding pipeline in `DataNet.Embeddings`, or a
 decision tree answering "which distance do I pick". It is not decoration, and a diagram that only
