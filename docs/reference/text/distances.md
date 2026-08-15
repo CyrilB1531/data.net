@@ -9,18 +9,23 @@ like what a reader expects.
 Two conventions run through the whole namespace, and knowing them saves reading every entry.
 
 - A **distance** counts how far apart two inputs are: `0` means identical, and a bigger number is a
-  worse match. A **similarity** runs the other way, `1` meaning identical. A bare `Distance` that
-  returns `int` has no upper bound; every `Normalized…` member returns a `double` in `[0, 1]`, and
-  those are the only numbers you may compare across pairs of different lengths.
-- Every member takes a `TextElement` saying what counts as one character. The default,
+  worse match. A **similarity** runs the other way, `1` meaning identical. What decides whether a
+  number can be compared across pairs of different lengths is its type, not its name: a `Distance`
+  returning `int` counts edits and has no upper bound, while every member returning `double` on this
+  page — the `Normalized…` ones and also `Jaro`, `JaroWinkler` and `RatcliffObershelp` — is already
+  scaled to `[0, 1]` and is comparable.
+- Every member that takes a `string` also takes a `TextElement` saying what counts as one character.
+  (The generic overloads — `Distance<T>`, `SubsequenceLength<T>`, `SubstringLength<T>` — do not: they
+  compare whatever elements you hand them.) The default,
   `TextElement.Utf16Unit`, is .NET's own unit and gives the same answer as Python for every
   character in the Basic Multilingual Plane. Outside it — emoji, rare ideographs — one character is
   two UTF-16 units, and the two disagree on purpose; pass `TextElement.CodePoint` for Python's
   answer. The reasoning is in [decision 0002](../../decisions/0002-unicode-comparison-unit.md).
 
 Comparing two **bags** of words or characters, where position does not matter at all, is a
-different question. It is answered by `DataNet.Text.Similarity` — `Jaccard`, `SorensenDice`,
-`Overlap`, `Tversky` and `Cosine` — not by anything here.
+different question. It is answered by the `DataNet.Text.Similarity` namespace — `Jaccard`,
+`SorensenDice`, `Overlap`, `Tversky` and `Cosine` — not by anything here; its members are listed
+under [set similarity in the equivalence table](../../equivalence.md).
 
 ## Which one do I want?
 
@@ -31,11 +36,19 @@ flowchart TD
     A --> D["Two bags of words<br/>or characters"]
     B --> E{"Do the two line up<br/>position by position?"}
     E -->|yes| F["Hamming"]
-    E -->|no| G{"Are swapped neighbours<br/>a common mistake?"}
-    G -->|yes| H["JaroWinkler, Osa<br/>or DamerauLevenshtein"]
-    G -->|no| I["Levenshtein"]
-    C --> J["RatcliffObershelp<br/>or Indel"]
-    D --> K["Not here — see<br/>DataNet.Text.Similarity"]
+    E -->|no| G{"Is agreement on the first<br/>few letters strong evidence?"}
+    G -->|yes| H["JaroWinkler"]
+    G -->|no| I{"Are swapped neighbours<br/>a common mistake?"}
+    I -->|yes| J["DamerauLevenshtein,<br/>or Osa when speed matters more"]
+    I -->|no| K{"Do you want a count of edits,<br/>or a forgiving score?"}
+    K -->|a count| L["Levenshtein"]
+    K -->|a score| M["Jaro"]
+    C --> N{"Do you want a score,<br/>or the shared text itself?"}
+    N -->|the text itself| O["Lcs"]
+    N -->|a score| P{"Does the shared material come in a<br/>few long passages, or scattered?"}
+    P -->|long passages| Q["RatcliffObershelp"]
+    P -->|scattered| R["Indel"]
+    D --> S["Not here — see<br/>DataNet.Text.Similarity"]
 ```
 
 | Type | What it measures |
@@ -91,10 +104,17 @@ Reach for it instead of `Osa` when a stretch of text may need editing more than 
 restriction is the only difference between the two, and it is what makes `"CA"` to `"ABC"` cost 2
 here and 3 there.
 
-The trap is that this is not a proper metric: the triangle inequality does not hold, so any
-structure that assumes one — a BK-tree for nearest-neighbour lookup, say — is off the table.
-`Levenshtein` is a metric and can be indexed that way. As with every raw distance the result is
-also unbounded, so threshold on `NormalizedSimilarity`, never on this.
+Where it matters most is the one place people expect the opposite. With unit costs this **is** a
+proper metric — Lowrance-Wagner satisfies the triangle inequality because two transpositions never
+cost less than an insertion plus a deletion — so it can be indexed by anything that needs one, a
+BK-tree for nearest-neighbour lookup included. `Osa` cannot: restricting each stretch to a single
+edit is exactly what breaks the inequality there, and `Osa.Distance("bca", "ab")` is 3 while the
+route through `"ba"` costs `1 + 1`. If you are building an index rather than scoring one pair at a
+time, that is the reason to take the unrestricted variant even though it costs more to compute.
+
+The trap is the ordinary one for a raw distance: the result is unbounded, so three edits mean
+something different between two names and between two paragraphs. Threshold on
+`NormalizedSimilarity`, never on this.
 
 **Applies to** — net10.0, netstandard2.0.
 
@@ -372,18 +392,26 @@ numbers on text outside the Basic Multilingual Plane.
 
 **Returns** — `double` in `[0, 1]`, larger meaning more alike. Two empty inputs give `1`.
 
-**Example** — the score behind `fuzz.ratio("kitten", "sitting") == 61.53…`.
+**Example** — four of the five letters survive in order, so `fuzz.ratio` on this pair is 80.
 
 ```csharp
 using DataNet.Text.Distances;
 
-double s = Indel.NormalizedSimilarity("kitten", "sitting");   // => 0.6153…
+double s = Indel.NormalizedSimilarity("state", "taste");   // => 0.8
 ```
 
 **Remarks** — this is the member that ports `fuzz.ratio`: multiply by 100 and the numbers agree.
 `DataNet.Fuzzy`'s `Fuzz.Ratio` is literally this call times 100, so use that if you want the 0-100
 scale and the rest of the `fuzz.*` family alongside it, and this if you want the `[0, 1]` score on
 its own.
+
+What separates this from `RatcliffObershelp`, the other measure this page recommends for longer
+text, is the one thing worth reading twice: **this counts every character the two share in order,
+however scattered, and `RatcliffObershelp` counts only characters sitting inside a shared unbroken
+run.** On the pair above the shared material is `tate` — four characters, but never more than two of
+them adjacent — so this scores `0.8` where `RatcliffObershelp.Similarity` scores `0.6`. On text
+whose overlap comes in a few solid passages the two agree exactly; the more interleaved the overlap,
+the further apart they drift, and `("conversation", "voicesranton")` splits them `0.5833…` to `0.25`.
 
 The trap is that neither of them preprocesses anything. rapidfuzz's `fuzz` functions are routinely
 called with a `processor` that lowercases and strips punctuation, and fuzzywuzzy did that by
@@ -416,7 +444,8 @@ public static double Similarity(ReadOnlySpan<char> a, ReadOnlySpan<char> b, Text
 character; jellyfish works on code points, so pass `TextElement.CodePoint` to reproduce its numbers
 on supplementary-plane text.
 
-**Returns** — `double` in `[0, 1]`, larger meaning more alike. `1` for equal inputs.
+**Returns** — `double` in `[0, 1]`, larger meaning more alike. `1` for equal non-empty inputs — see
+the trap below for what two empty ones give.
 
 **Example** — one transposition in a six-letter name barely dents the score.
 
@@ -457,7 +486,8 @@ public static double Distance(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextEl
 **Parameters** — `a` and `b` are the two strings to compare; `element` says what counts as one
 character, exactly as it does for `Similarity`, which this subtracts from `1`.
 
-**Returns** — `double` in `[0, 1]`, larger meaning less alike. `0` for equal inputs.
+**Returns** — `double` in `[0, 1]`, larger meaning less alike. `0` for equal non-empty inputs — see
+the trap below for what two empty ones give.
 
 **Example** — two names that a human would call a near-match.
 
@@ -643,9 +673,10 @@ int n = Lcs.SubstringLength("kitten", "sitting");   // => 3
 
 **Remarks** — contiguity is the whole difference from `SubsequenceLength`, and it is what makes
 this the right call for detecting quoted or copied text, shared identifiers, or a common stem. It
-matches the `size` that Python's `difflib.SequenceMatcher.find_longest_match` reports, tie-break
-included: when two runs are equally long, the one starting earliest in `a`, then earliest in `b`,
-wins.
+matches the `size` that Python's `difflib.SequenceMatcher.find_longest_match` reports. Only the
+size: this returns no position, and it swaps its two operands internally when `b` is the longer, so
+which of several equally long runs was measured is not observable from here. If you need the run's
+location, difflib's tie-break is the one `RatcliffObershelp` applies.
 
 The trap is how brittle contiguity is. A single character inserted in the middle of an otherwise
 identical string halves this number, while `SubsequenceLength` barely moves. If you are measuring
@@ -689,7 +720,8 @@ int d = Levenshtein.Distance("kitten", "sitting");   // => 3
 
 **Remarks** — this is the ordinary answer to "how different are these two texts", and the right
 tool for typing mistakes and mis-keyed names. To compare sets of words rather than characters,
-`Jaccard` is the better fit; to weight a common prefix, `JaroWinkler`.
+`Jaccard` — in the `DataNet.Text.Similarity` namespace, not this one — is the better fit; to weight
+a common prefix, `JaroWinkler`.
 
 The trap is that the result is not bounded. Three edits are enormous between two six-letter words
 and negligible between two paragraphs, so a raw distance cannot be compared across pairs of
@@ -813,8 +845,13 @@ The trap is that "almost always" is not always, and the disagreement is silent. 
 2 under `DamerauLevenshtein` and 3 here, because reaching 2 means transposing `CA` to `AC` and then
 inserting into that same stretch. If a test suite was built against Python's
 `DamerauLevenshtein.distance`, `Osa.Distance` will pass on nearly every case and fail on a handful,
-which is the worst way to discover the difference. Like `DamerauLevenshtein` it is also not a proper
-metric, so no BK-tree.
+which is the worst way to discover the difference.
+
+The restriction costs one property outright: unlike `Levenshtein` and unlike unrestricted
+`DamerauLevenshtein`, this is **not a metric**. The triangle inequality fails —
+`Osa.Distance("bca", "ab")` is 3, while going through `"ba"` costs `1 + 1` — so a BK-tree or any
+other structure that assumes a metric will silently return wrong neighbours. Use
+`DamerauLevenshtein` when you need to index rather than to score.
 
 **Applies to** — net10.0, netstandard2.0.
 
@@ -918,18 +955,27 @@ on supplementary-plane text.
 **Returns** — `double` in `[0, 1]`, larger meaning more alike. `1` for equal inputs, and `1` when
 both are empty.
 
-**Example** — `itt` plus `s` and `n` cover eight of the thirteen characters.
+**Example** — the matched blocks are `st` and `e`: three characters, counted twice, over ten.
 
 ```csharp
 using DataNet.Text.Distances;
 
-double s = RatcliffObershelp.Similarity("kitten", "sitting");   // => 0.6153…
+double s = RatcliffObershelp.Similarity("state", "taste");   // => 0.6
 ```
 
-**Remarks** — this is the measure to use on longer text, where the edit distances stop being
-informative: it rewards long shared passages and does not care how much unmatched material sits
-between them. It is exactly `difflib.SequenceMatcher(None, a, b).ratio()`, so it is the port for
-anything written against Python's standard library rather than against rapidfuzz.
+**Remarks** — this is the measure for longer text whose overlap comes in **passages**: it rewards
+long unbroken runs and does not care how much unmatched material sits between them. It is exactly
+`difflib.SequenceMatcher(None, a, b).ratio()`, so it is the port for anything written against
+Python's standard library rather than against rapidfuzz.
+
+The page's other recommendation for longer text is `Indel`, and the two are not interchangeable
+even though they agree on plenty of pairs. The difference is contiguity: `Indel` credits every
+character the two share in order however scattered, while this credits only characters inside a
+shared unbroken run, and it commits greedily to the longest run before looking at what is left. On
+`("state", "taste")` — the example above — that is `0.6` here against `0.8` from
+`Indel.NormalizedSimilarity`, and on `("conversation", "voicesranton")` it is `0.25` against
+`0.5833…`. Reach for this when a long verbatim passage should count for more than the same number of
+characters sprinkled about, and for `Indel` when it should not.
 
 Two things to know, and the first is the one that catches people. This measure is **not symmetric**:
 swapping the arguments can change the answer, sometimes by a lot. `Similarity("bbcabba", "bacaa")`
@@ -965,12 +1011,12 @@ character, exactly as it does for `Similarity`, which this subtracts from `1`.
 **Returns** — `double` in `[0, 1]`, larger meaning less alike. `0` for equal inputs, and `0` when
 both are empty.
 
-**Example** — the share of the two strings their matching blocks fail to cover.
+**Example** — the share of the two strings their matched blocks fail to cover.
 
 ```csharp
 using DataNet.Text.Distances;
 
-double d = RatcliffObershelp.Distance("kitten", "sitting");   // => 0.3846…
+double d = RatcliffObershelp.Distance("state", "taste");   // => 0.4
 ```
 
 **Remarks** — the same measure turned round, for code that sorts ascending or thresholds with
