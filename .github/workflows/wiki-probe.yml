@@ -1,0 +1,29 @@
+name: Wiki probe
+
+# Throwaway. Answers one question — can GITHUB_TOKEN write to the wiki repository —
+# and is deleted in the same pull request that answers it.
+
+on:
+  push:
+    branches: ['docs/181-documentation-per-version-and-per-function']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone the wiki and push one page
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git clone "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" wiki
+          cd wiki
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          printf 'Probe for issue 181.\n' > Probe.md
+          git add Probe.md
+          git commit -m "Probe the wiki write path"
+          git push
