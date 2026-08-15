@@ -70,6 +70,18 @@ def pages_for(patterns: list[str], repo: pathlib.Path) -> list[pathlib.Path]:
     return list(dict.fromkeys(found))
 
 
+def page_stem(page: pathlib.Path) -> str:
+    """The name a page is known by, which is not always its file name.
+
+    Both `docs/decisions/` and `docs/migration/` call their index `README.md`,
+    and a wiki has no directories to keep the two apart -- so an index takes the
+    name of the directory it indexes. Left as the file name, one silently
+    shadowed the other, which is what the collision guard in `_write` exists to
+    make impossible.
+    """
+    return page.parent.name if page.stem == "README" else page.stem
+
+
 def wiki_name(stem: str, channel: str | None = None, version: str | None = None) -> str:
     """The flat file name a page gets in the wiki: it has no directories."""
     if channel is None:
@@ -87,10 +99,10 @@ def link_index(repo: pathlib.Path, mapping: dict) -> dict[str, str]:
     """Every publishable page, keyed by its repository-relative path."""
     index: dict[str, str] = {}
     for page in pages_for(mapping["root"], repo):
-        index[page.relative_to(repo).as_posix()] = wiki_name(page.stem)
+        index[page.relative_to(repo).as_posix()] = wiki_name(page_stem(page))
     for package in mapping["packages"].values():
         for page in pages_for(package["pages"], repo):
-            index[page.relative_to(repo).as_posix()] = wiki_name(page.stem, package["wiki"])
+            index[page.relative_to(repo).as_posix()] = wiki_name(page_stem(page), package["wiki"])
     return index
 
 
@@ -237,19 +249,19 @@ def build(
         for stale in out.glob(f"{package['wiki']}-{version}-*.md"):
             stale.unlink()
         for page in pages_for(package["pages"], repo):
-            wname = wiki_name(page.stem, package["wiki"], version)
+            wname = wiki_name(page_stem(page), package["wiki"], version)
             written.append(_write(page, out, repo, index, "", wname, names))
         return written
 
     for page in pages_for(mapping["root"], repo):
-        written.append(_write(page, out, repo, index, "", wiki_name(page.stem), names))
+        written.append(_write(page, out, repo, index, "", wiki_name(page_stem(page)), names))
 
     for pkg_name, package in mapping["packages"].items():
         pages = pages_for(package["pages"], repo)
         if not pages:
             continue
         channel = package["wiki"]
-        landing = _declared_landing(package) or sorted(page.stem for page in pages)[0]
+        landing = _declared_landing(package) or sorted(page_stem(page) for page in pages)[0]
         version = released.get(pkg_name)
         prefix = (
             banner(pkg_name, channel, version, landing)
@@ -261,7 +273,7 @@ def build(
             if not archive_pattern.match(stale.stem):
                 stale.unlink()
         for page in pages:
-            wname = wiki_name(page.stem, channel)
+            wname = wiki_name(page_stem(page), channel)
             written.append(_write(page, out, repo, index, prefix, wname, names))
 
     (out / "_Sidebar.md").write_text(sidebar(out, mapping), encoding="utf-8")

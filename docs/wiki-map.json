@@ -2,8 +2,8 @@
   "root": [
     "docs/equivalence.md",
     "docs/guides/performance.md",
-    "docs/decisions/[0-9]*.md",
-    "docs/migration/[a-z]*.md"
+    "docs/decisions/*.md",
+    "docs/migration/*.md"
   ],
   "packages": {
     "DataNet.Text": {

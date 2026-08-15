@@ -121,3 +121,20 @@ def test_a_page_declared_in_the_map_but_missing_is_an_error(tmp_path):
 
     with pytest.raises(build_wiki.MapError):
         build_wiki.build(repo, out, MAP, released={"DataNet.Text": "0.3.0"})
+
+
+def test_an_index_takes_the_name_of_the_directory_it_indexes(tmp_path):
+    """Both docs/decisions/ and docs/migration/ call their index README.md."""
+    repo = make_repo(tmp_path)
+    for area in ("decisions", "migration"):
+        (repo / "docs" / area).mkdir(parents=True)
+        (repo / "docs" / area / "README.md").write_text(f"# {area}\n", encoding="utf-8")
+    mapping = json.loads(json.dumps(MAP))
+    mapping["root"] += ["docs/decisions/*.md", "docs/migration/*.md"]
+    out = tmp_path / "wiki"
+
+    build_wiki.build(repo, out, mapping, released={})
+
+    assert (out / "decisions.md").exists()
+    assert (out / "migration.md").exists()
+    assert not (out / "README.md").exists()
