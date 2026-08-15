@@ -85,6 +85,26 @@ A change is not finished until all of these hold:
    drift from the API. A fence that genuinely cannot compile opts out with
    `<!-- docs-compile: skip - reason -->` on the line above it, and the reason
    has to be one a reviewer can disagree with.
+6. **A new public type or method carries a reference entry.** The pages under
+   `docs/reference/<package>/` follow the layout of the .NET API reference: a `###` entry per
+   exported type, a `####` entry per public method with all overloads sharing it, and inside an
+   entry, in order — a one-sentence summary, the declaration under a `<!-- docs-declaration -->`
+   marker, **Parameters**, **Returns**, **Exceptions**, **Example**, **Remarks**, **Applies to**,
+   **See also**. Empty rubrics are left out rather than filled with "none".
+
+   The prose a reader came for lives in **Remarks**: what the member is for, when to prefer it to
+   its neighbour, and the trap. The Python counterpart is not repeated — link
+   [`docs/equivalence.md`](docs/equivalence.md) under **See also**.
+
+   In an **Example**, a `// =>` comment is an assertion the CI executes; a plain `//` stays a
+   comment. The value must be bound to a local first, and a trailing `…` means prefix match. A
+   fence that cannot be executed carries `<!-- docs-run: skip - reason -->` on the line above.
+
+   A Mermaid diagram is welcome where it shows a mechanism prose cannot hand a reader in one
+   glance, and is removed in review when it only restates the sentence above it.
+
+   Which namespaces are enforced is declared in [`docs/wiki-map.json`](docs/wiki-map.json), and
+   `ReferenceDocumentationTests` fails the build when a page and the assembly disagree.
 
 ```bash
 dotnet build DataNet.slnx -c Release
