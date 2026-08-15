@@ -192,6 +192,23 @@ What reduces the harm without changing the model: every page in a live channel c
 banner naming the latest released version of that package and linking to its archived counterpart.
 The banner is written by the publisher, never by hand, so it cannot go stale.
 
+**Amended by issue #183 — an archived page carries a banner of its own, and its links stay in the
+archive.** As first written, a frozen page was published with the link index built for the live
+channel, so every cross-page link inside it pointed at the live page: a reader of 0.4.0 was one
+click from whatever `main` said that day, which is the defect above with an extra step rather than
+a fix for it. A frozen page now links its own frozen counterparts, and only for the package that
+was frozen — a link to another package's channel and a link to a root page (an ADR, the migration
+inventory) both stay live, because neither was frozen and neither has a versioned counterpart to
+point at.
+
+That leaves two things a reader cannot see from the page itself: which version they are reading,
+which lives in the URL and not in the text, and which of these links will take them out of the
+archive. So an archived page opens on a banner naming its package and version, pointing at the
+channel's entry page for what `main` says now, and saying that a decision or migration link leaves
+the archive. It points at the entry page rather than at this page's live counterpart on purpose: a
+`<channel>-<stem>` link is the exact thing an archived page must not carry, and the hub reaches the
+same place one click later.
+
 ### D5 — `wiki-map.json` says which pages belong to which package
 
 One file declares, per package, the pages that ship with it and the reference areas that are

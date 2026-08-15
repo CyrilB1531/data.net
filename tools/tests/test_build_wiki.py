@@ -68,6 +68,61 @@ def test_an_archived_page_carries_the_version_in_its_name(tmp_path):
     assert (out / "Text-0.4.0-quickstart.md").exists()
 
 
+def test_an_archived_page_links_to_its_own_frozen_counterpart(tmp_path):
+    """The whole point of an archive: one click must not land on what main says today."""
+    repo = make_repo(tmp_path)
+    out = tmp_path / "wiki"
+    build_wiki.build(
+        repo, out, MAP, released={"DataNet.Text": "0.3.0"},
+        archive=("DataNet.Text", "0.4.0"),
+    )
+
+    frozen = (out / "Text-0.4.0-quickstart.md").read_text(encoding="utf-8")
+    assert "(Text-0.4.0-distances)" in frozen
+    assert "(Text-distances)" not in frozen
+
+
+def test_an_archived_page_leaves_another_package_and_the_root_pages_alone(tmp_path):
+    """Only the named package is frozen, so only its links move."""
+    repo = make_repo(tmp_path)
+    (repo / "docs" / "guides" / "embeddings.md").write_text("# Embeddings\n", encoding="utf-8")
+    (repo / "docs" / "guides" / "quickstart.md").write_text(
+        "# Quickstart\n\nSee [distances](../reference/text/distances.md), "
+        "[embeddings](embeddings.md) and [the table](../equivalence.md).\n",
+        encoding="utf-8",
+    )
+    mapping = json.loads(json.dumps(MAP))
+    mapping["packages"]["DataNet.Embeddings"] = {
+        "wiki": "Embeddings",
+        "pages": ["docs/guides/embeddings.md"],
+        "covered": {},
+    }
+    out = tmp_path / "wiki"
+    build_wiki.build(
+        repo, out, mapping, released={"DataNet.Text": "0.3.0"},
+        archive=("DataNet.Text", "0.4.0"),
+    )
+
+    frozen = (out / "Text-0.4.0-quickstart.md").read_text(encoding="utf-8")
+    assert "(Embeddings-embeddings)" in frozen
+    assert "(equivalence)" in frozen
+
+
+def test_an_archived_page_says_which_version_it_is(tmp_path):
+    """Nothing else on the page does: its name is in the URL, not in the text."""
+    repo = make_repo(tmp_path)
+    out = tmp_path / "wiki"
+    build_wiki.build(
+        repo, out, MAP, released={"DataNet.Text": "0.3.0"},
+        archive=("DataNet.Text", "0.4.0"),
+    )
+
+    frozen = (out / "Text-0.4.0-distances.md").read_text(encoding="utf-8")
+    assert frozen.startswith("> **DataNet.Text 0.4.0.**")
+    # The live channel, so a reader can leave the archive deliberately.
+    assert "(Text)" in frozen
+
+
 def test_an_archive_run_leaves_the_sidebar_and_the_banner_naming_the_new_version(tmp_path):
     """A release tag is the one moment the generated banner could go stale."""
     repo = make_repo(tmp_path)
