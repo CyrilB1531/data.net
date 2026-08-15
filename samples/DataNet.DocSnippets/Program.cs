@@ -3,8 +3,7 @@ using System.Reflection;
 namespace DataNet.DocSnippets;
 
 // Runs the fences of docs/reference/** only. The guides stay compile-only: they
-// open files and load models on purpose, and retrofitting an opt-out onto every
-// one of their fences is a change of its own.
+// open files and load models on purpose, which an opt-out per fence would not fix.
 internal static class Program
 {
     private const string Runnable = "DataNet.DocSnippets.Reference";
@@ -22,7 +21,22 @@ internal static class Program
 
         foreach (Type type in types)
         {
-            object instance = Activator.CreateInstance(type)!;
+            object instance;
+            try
+            {
+                instance = Activator.CreateInstance(type)!;
+            }
+            catch (MissingMethodException error)
+            {
+                failures.Add($"{type.Name}: {error.Message}");
+                continue;
+            }
+            catch (TargetInvocationException error)
+            {
+                failures.Add($"{type.Name}: {error.InnerException?.Message}");
+                continue;
+            }
+
             foreach (MethodInfo snippet in type
                          .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
                          .OrderBy(method => method.Name, StringComparer.Ordinal))
