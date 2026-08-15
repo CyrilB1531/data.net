@@ -41,13 +41,15 @@ freer to release than `DataNet.Text` is.
 scikit-learn exposes `confusion_matrix` as a metric in its own right, so parity
 alone settles most of it. The stronger reason is cost: precision, recall, F1 and
 the report are all read off the same `O(samples)` pass. A caller who wants four
-numbers and can only reach `Precision.Score(yTrue, yPred, …)` pays that pass four
-times over.
+numbers and can only reach
+[`Precision.Score(yTrue, yPred, …)`](../reference/metrics/classification.md#precisionscore)
+pays that pass four times over.
 
 Making the matrix public gives them the choice, and it is the choice the
-benchmarks measure: `ClassificationReport.Compute(cm)` over a million samples
-costs what building the matrix costs, because everything after it is
-`O(classes)`.
+benchmarks measure:
+[`ClassificationReport.Compute(cm)`](../reference/metrics/classification.md#classificationreportcompute)
+over a million samples costs what building the matrix costs, because everything
+after it is `O(classes)`.
 
 The type is therefore part of the supported surface: label order, the `Labels`
 view, `TotalWeight`, the indexer and `ToArray()`. What stays internal is the
@@ -79,10 +81,11 @@ value, and — decisively — the return type is not the same. Every other avera
 mode yields one `double`; `None` yields one per class.
 
 An enum member that silently changes the return type of its method cannot exist,
-so it becomes a method: `Precision.PerClass(cm)` returns `double[]` in label
-order. The enum keeps only the four members that genuinely reduce to a scalar —
-`Binary`, `Micro`, `Macro`, `Weighted` — and the equivalence table records the
-rename against `average=None`.
+so it becomes a method:
+[`Precision.PerClass(cm)`](../reference/metrics/classification.md#precisionperclass)
+returns `double[]` in label order. The enum keeps only the four members that
+genuinely reduce to a scalar — `Binary`, `Micro`, `Macro`, `Weighted` — and the
+equivalence table records the rename against `average=None`.
 
 `Averaging.Binary` keeps scikit-learn's default and its strictness: it is not an
 average at all but a single class scored against the rest, and it throws on a

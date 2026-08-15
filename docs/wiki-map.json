@@ -38,7 +38,12 @@
       "pages": [
         "docs/reference/metrics/*.md"
       ],
-      "covered": {}
+      "covered": {
+        "DataNet.Metrics": [
+          "docs/reference/metrics/classification.md",
+          "docs/reference/metrics/regression.md"
+        ]
+      }
     }
   }
 }

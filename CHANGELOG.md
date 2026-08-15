@@ -28,6 +28,12 @@ is one sentence, the issue and the commit; see
 
 - `DamerauLevenshtein`'s documented summary no longer says "Not a proper metric": unit-cost unrestricted Damerau-Levenshtein satisfies the triangle inequality and is a true metric; `Osa` is the one that does not. ([#181](https://github.com/CyrilB1531/data.net/issues/181))
 
+### DataNet.Metrics
+
+#### Added
+
+- `docs/reference/metrics/classification.md` and `docs/reference/metrics/regression.md` document every type of `DataNet.Metrics` in the layout of the .NET API reference, and the same test checks each declaration, parameter list and `Applies to` against the assembly. ([#181](https://github.com/CyrilB1531/data.net/issues/181))
+
 ## Released — 2026-08-14
 
 ### DataNet.Text — 0.3.0

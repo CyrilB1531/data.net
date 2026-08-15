@@ -50,9 +50,10 @@ exists for the same call shape.
 
 ## Consequences
 
-- `CohenKappa.Score(ConfusionMatrix, ...)`'s `<remarks>` and the `Weight`
-  loop's inline comment both carry a pointer here instead of restating the
-  orientation and order-dependence arguments.
+- The `<remarks>` on
+  [`CohenKappa.Score(ConfusionMatrix, ...)`](../reference/metrics/classification.md#cohenkappascore)
+  and the `Weight` loop's inline comment both carry a pointer here instead of
+  restating the orientation and order-dependence arguments.
 - **The orientation is not verified by anything, and cannot be.** All three
   weightings are symmetric, so the two orientations return the same kappa on
   all 78 corpus fixture × weighting combinations the theory runs — the choice

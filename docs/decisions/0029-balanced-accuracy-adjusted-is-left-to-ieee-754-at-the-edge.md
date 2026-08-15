@@ -24,16 +24,19 @@ one kept class's recall is exactly `1.0`, so the numerator is `0.0`), and
 
 ## Decision
 
-`BalancedAccuracy.Score` does not special-case the single-kept-class edge.
-`chance = 1.0 / kept` and `(score - chance) / (1.0 - chance)` are computed
-exactly as written; when `kept == 1` the denominator is `0.0` and .NET's own
-IEEE 754 division produces the same `NaN`/`-Infinity` split scikit-learn does,
-with no branch needed to reproduce it.
+[`BalancedAccuracy.Score`](../reference/metrics/classification.md#balancedaccuracyscore)
+does not special-case the single-kept-class edge. `chance = 1.0 / kept` and
+`(score - chance) / (1.0 - chance)` are computed exactly as written; when
+`kept == 1` the denominator is `0.0` and .NET's own IEEE 754 division produces
+the same `NaN`/`-Infinity` split scikit-learn does, with no branch needed to
+reproduce it.
 
 ## Consequences
 
-- `BalancedAccuracy.Score(ConfusionMatrix, bool)`'s `<remarks>` carries a
-  pointer here instead of restating the averaging rule and the edge case.
+- The `<remarks>` on
+  [`BalancedAccuracy.Score(ConfusionMatrix, bool)`](../reference/metrics/classification.md#balancedaccuracyscore)
+  carries a pointer here instead of restating the averaging rule and the edge
+  case.
 - Verified by
   `BalancedAccuracyTests.Adjusted_divides_by_zero_when_a_single_class_is_kept`,
   which asserts `double.IsNaN` and `double.IsNegativeInfinity` for the two

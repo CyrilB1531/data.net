@@ -2455,8 +2455,13 @@ package lots follow.
 
 ## What this plan does not do
 
-The reference pages for `DataNet.Embeddings`, `DataNet.Fuzzy`, `DataNet.Metrics` and the rest of
-`DataNet.Text` — five namespaces beyond `Distances`. Each is its own issue, and each turns its own
-`covered` entry on. `DataNet.Metrics` will also need adding to
-`samples/DataNet.DocSnippets/DataNet.DocSnippets.csproj`, which references the other three packages
+The reference pages for `DataNet.Embeddings`, `DataNet.Fuzzy` and the rest of `DataNet.Text` — four
+namespaces beyond `Distances`. Each is its own issue, and each turns its own `covered` entry on.
+
+`DataNet.Metrics` was in that list and is no longer: `docs/reference/metrics/classification.md` and
+`docs/reference/metrics/regression.md` were written on this branch, after Task 8b. Its 31 exported
+types against `Distances`' 9 are what forced the engine's refinements — `covered` taking a list of
+pages, the array spellings in the signature renderer — and the spec records each one, so writing the
+pages here is what those refinements were measured against. Its lot also added `DataNet.Metrics` to
+`samples/DataNet.DocSnippets/DataNet.DocSnippets.csproj`, which referenced the other three packages
 only.

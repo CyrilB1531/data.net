@@ -92,12 +92,14 @@ values, and an enum member cannot. It becomes an optional
 could then set both and mean two things at once.
 
 The package already contains the shape this avoids. `Averaging.Binary` is a
-member of an enum that `RocAuc.MultiClass` refuses at run time, because binary
-averaging is meaningless over more than two classes — a compile-time-valid call
-that throws. That was unavoidable there: `Averaging` is genuinely shared by
-metrics that differ in which members they accept. Here it *is* avoidable, and
-the cost of avoiding it is a wider-looking API — three method names instead of
-one keyword — in exchange for every call that compiles being a call that runs.
+member of an enum that
+[`RocAuc.MultiClass`](../reference/metrics/classification.md#rocaucmulticlass)
+refuses at run time, because binary averaging is meaningless over more than two
+classes — a compile-time-valid call that throws. That was unavoidable there:
+`Averaging` is genuinely shared by metrics that differ in which members they
+accept. Here it *is* avoidable, and the cost of avoiding it is a wider-looking
+API — three method names instead of one keyword — in exchange for every call
+that compiles being a call that runs.
 
 ## Consequences
 
@@ -128,11 +130,12 @@ one keyword — in exchange for every call that compiles being a call that runs.
   further decision to make — and `d2_tweedie_score` will arrive after the
   Tweedie deviance it is defined in terms of, which is the dependency the split
   was drawn along.
-- **`R2.PerOutput` diverges in shape on one degenerate input**, and it is
-  recorded in the equivalence table rather than hidden: with fewer than two
-  samples and more than one output it returns one `NaN` per output, where
-  `r2_score` returns a single scalar `nan` before it consults `multioutput` at
-  all. No value differs — every scalar-returning path still answers `nan` — and
-  a one-element array would break `PerOutput`'s own contract that it returns one
-  value per output. `ExplainedVariance.PerOutput` has no such case, because it
-  has no fewer-than-two-samples rule to apply.
+- **[`R2.PerOutput`](../reference/metrics/regression.md#r2peroutput) diverges in
+  shape on one degenerate input**, and it is recorded in the equivalence table
+  rather than hidden: with fewer than two samples and more than one output it
+  returns one `NaN` per output, where `r2_score` returns a single scalar `nan`
+  before it consults `multioutput` at all. No value differs — every
+  scalar-returning path still answers `nan` — and a one-element array would
+  break `PerOutput`'s own contract that it returns one value per output.
+  [`ExplainedVariance.PerOutput`](../reference/metrics/regression.md#explainedvarianceperoutput)
+  has no such case, because it has no fewer-than-two-samples rule to apply.
