@@ -1448,8 +1448,9 @@ python3 tools/extract_doc_snippets.py
 NUGET_PACKAGES=/tmp/snippet-packages dotnet run --project samples/DataNet.DocSnippets -c Release
 ```
 
-Expected: `snippets run     : 0`, `snippets skipped : 0`, exit 0. Zero is correct here — Task 7
-writes the first reference page. Do not treat it as proof the runner works; step 5 is that proof.
+Expected at the time this was written: `snippets run     : 0`, exit 0, because Task 7
+had not yet written a reference page. **That is no longer true** — the final review made a run
+that executes nothing a failure, so today this step exits 1 until a reference page exists.
 
 - [ ] **Step 5: Prove the runner actually fails on a wrong promise**
 
