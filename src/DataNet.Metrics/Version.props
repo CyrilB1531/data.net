@@ -4,12 +4,13 @@
     DataNet.Metrics owns its version here, independently of the other packages
     (see docs/decisions/0012-per-package-versioning.md).
 
-    0.1.0: this package has never shipped. It creates no inter-package edge —
-    nothing depends on it and it depends on nothing — so unlike DataNet.Text it
-    is free to release on its own schedule from the start.
+    0.1.0 shipped on 2026-08-14, this package's first release. It creates no
+    inter-package edge — nothing depends on it and it depends on nothing — so
+    unlike DataNet.Text it releases on its own schedule, which is why its number
+    trails the other three rather than matching them.
   -->
   <PropertyGroup>
-    <DataNetMetricsVersion>0.1.0</DataNetMetricsVersion>
+    <DataNetMetricsVersion>0.2.0</DataNetMetricsVersion>
   </PropertyGroup>
 
 </Project>
