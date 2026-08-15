@@ -318,6 +318,26 @@ to the anchor `#levenshteindistance`, and the wiki's renderer is Gollum, not the
 Gollum slugifies a heading identically is checked against a published page before the rule is enforced,
 because a link that works in the repository and dies in the wiki is worse than no link.
 
+### D10 — navigation is a hierarchy, and every level links to the next
+
+A reader arriving at a package must be able to walk down to a method without knowing a URL.
+Three levels, and each one is answerable by a gate rather than by discipline:
+
+- **Home → package.** `Home` lists the four packages, each linking to its own entry page.
+- **Package → namespace.** The entry page is `<Channel>.md`, **generated** by `tools/build_wiki.py`
+  from `docs/wiki-map.json`: one line per namespace the package documents, linking to that
+  namespace's reference page, plus the guides attached to the package. Generated because a
+  hand-written index is wrong the first time a namespace is added, and because the same file already
+  says which namespaces exist. It replaces the bare channel name that `Home` used to link to and
+  that resolved to nothing.
+- **Namespace → class.** The table opening a reference page lists every exported type of that
+  namespace, and each name **links to its own entry** on the page. The gate of D7 already enumerates
+  those types, so it also checks the link: a type with no linked row fails the build, which is what
+  keeps the table complete as a namespace grows.
+
+The member table already existed; what it lacked was the links, so it read as a summary rather than
+as navigation.
+
 ## Scope of this issue
 
 The foundation, and one area as proof:
