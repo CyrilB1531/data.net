@@ -93,14 +93,26 @@ Settle it before building on it, and throw the proof away.
   the branch stops here and the fallback (a fine-grained token as a repository secret) becomes its
   own decision, recorded in the spec before Task 2 starts.
 
-- [ ] **Step 1: Initialise the wiki by hand**
+- [ ] **Step 1: Confirm the wiki remote exists**
 
-A repository's wiki git remote does not exist until the first page is created through the web UI.
-Open `https://github.com/CyrilB1531/data.net/wiki`, create a page titled `Home` with the single line
-`Placeholder.`, and save it. Without this, the clone in step 3 fails with
-`remote: Repository not found` and the probe would blame the token.
+A repository's wiki git remote does not exist until its first page is created through the web UI,
+and a clone would otherwise fail with `remote: Repository not found` — which reads as a token
+problem and is not one.
+
+```bash
+rm -rf /tmp/wiki-exists
+git clone --depth 1 https://github.com/CyrilB1531/data.net.wiki.git /tmp/wiki-exists && ls /tmp/wiki-exists
+```
+
+Expected: it clones and holds `Home.md`. Verified on 2026-08-15 — it does. If it ever does not,
+create a page titled `Home` at `https://github.com/CyrilB1531/data.net/wiki` before continuing.
 
 - [ ] **Step 2: Write the probe workflow**
+
+`workflow_dispatch` is deliberately **not** the trigger. GitHub only offers a `workflow_dispatch`
+workflow once the file is on the default branch, so a probe on a feature branch could never be
+dispatched. It triggers on a push to this branch instead, which is how it can answer anything before
+the pull request merges.
 
 ```yaml
 name: Wiki probe
@@ -109,7 +121,8 @@ name: Wiki probe
 # and is deleted in the same pull request that answers it.
 
 on:
-  workflow_dispatch:
+  push:
+    branches: ['docs/181-documentation-per-version-and-per-function']
 
 permissions:
   contents: write
@@ -133,11 +146,16 @@ jobs:
           git push
 ```
 
-- [ ] **Step 3: Run it and read the result**
+- [ ] **Step 3: Push, and read the result**
 
-Push the branch, then `gh workflow run "Wiki probe" --ref docs/181-documentation-per-version-and-per-function`.
-Watch it with `gh run watch`. Expected: green, and `https://github.com/CyrilB1531/data.net/wiki/Probe`
-exists.
+```bash
+git add .github/workflows/wiki-probe.yml
+git commit -m "Probe whether a workflow can write the wiki"
+git push -u origin docs/181-documentation-per-version-and-per-function
+gh run watch "$(gh run list --workflow 'Wiki probe' --limit 1 --json databaseId --jq '.[0].databaseId')"
+```
+
+Expected: green, and `https://github.com/CyrilB1531/data.net/wiki/Probe` exists.
 
 - [ ] **Step 4: If it failed, stop**
 
@@ -148,13 +166,22 @@ before continuing, because it widens what a compromised workflow can reach.
 
 - [ ] **Step 5: Delete the probe page**
 
-Delete `Probe` through the wiki UI, so the first real publication starts from a clean tree.
+The wiki is a git repository, so this needs no browser:
+
+```bash
+rm -rf /tmp/wiki-cleanup
+git clone https://github.com/CyrilB1531/data.net.wiki.git /tmp/wiki-cleanup
+git -C /tmp/wiki-cleanup rm Probe.md
+git -C /tmp/wiki-cleanup commit -m "Remove the probe page"
+git -C /tmp/wiki-cleanup push
+```
 
 - [ ] **Step 6: Delete the probe workflow and commit**
 
 ```bash
 git rm .github/workflows/wiki-probe.yml
-git commit -m "Prove GITHUB_TOKEN can write the wiki, and remove the probe"
+git commit -m "Remove the wiki probe, its question answered"
+git push
 ```
 
 ---
@@ -778,12 +805,23 @@ jobs:
           git push
 ```
 
-- [ ] **Step 2: Verify by dispatch**
+- [ ] **Step 2: Verify it on this branch, before it can reach `main`**
 
-Push the branch, then `gh workflow run Wiki --ref docs/181-documentation-per-version-and-per-function`.
-Expected: green, and the wiki holds `Home`, `_Sidebar`, `Text/quickstart`, `Text/vectorization`,
-`Embeddings/embeddings`, `Fuzzy/migrating-from-rapidfuzz`, plus the ADRs and migration pages at the
-root. Open `Text/quickstart` and confirm the banner names 0.3.0 and its links resolve.
+`workflow_dispatch` cannot be triggered until the file is on the default branch, so it proves nothing
+here. Add this branch to the trigger temporarily:
+
+```yaml
+    branches: [main, 'docs/181-documentation-per-version-and-per-function']
+```
+
+Push. Expected: green, and the wiki holds `Home`, `_Sidebar`, `Text/quickstart`,
+`Text/vectorization`, `Embeddings/embeddings`, `Fuzzy/migrating-from-rapidfuzz`, plus the ADRs and
+migration pages at the root. Open `Text/quickstart` and confirm the banner names 0.3.0 and that its
+links resolve rather than 404.
+
+Then **remove the branch from the trigger** and push again, leaving `branches: [main]`. A workflow
+that publishes the wiki from a feature branch would let any branch overwrite what a reader sees.
+Confirm it is gone with `git show HEAD:.github/workflows/wiki.yml | grep branches`.
 
 - [ ] **Step 3: Commit**
 
