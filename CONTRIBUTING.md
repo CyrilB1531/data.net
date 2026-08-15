@@ -106,6 +106,9 @@ A change is not finished until all of these hold:
    Which namespaces are enforced is declared in [`docs/wiki-map.json`](docs/wiki-map.json), and
    `ReferenceDocumentationTests` fails the build when a page and the assembly disagree.
 
+   A member that has a reference entry is linked to it wherever it is named in prose or in a
+   table, and `ReferenceDocumentationTests` fails the build on a mention that is not.
+
 ```bash
 dotnet build DataNet.slnx -c Release
 dotnet test DataNet.slnx -c Release

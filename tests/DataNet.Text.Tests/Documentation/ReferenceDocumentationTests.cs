@@ -11,6 +11,8 @@ public sealed class ReferenceDocumentationTests
 
     private static string Map => Path.Combine(AppContext.BaseDirectory, "wiki-map.json");
 
+    private static string Docs => Path.Combine(AppContext.BaseDirectory, "docs");
+
     [Fact]
     public void Every_covered_namespace_is_documented()
     {
@@ -121,5 +123,36 @@ public sealed class ReferenceDocumentationTests
         ];
 
         Assert.Equal(declarations, entry.Declarations);
+    }
+
+    [Fact]
+    public void Every_documented_member_named_in_the_docs_links_to_its_entry()
+    {
+        IReadOnlyList<string> complaints = ReferenceDocumentation.CheckLinks(
+            typeof(Levenshtein).Assembly, "DataNet.Text", Map, Root, Docs);
+
+        Assert.Empty(complaints);
+    }
+
+    [Fact]
+    public void A_backticked_member_outside_a_link_is_reported()
+    {
+        string docs = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(docs);
+        File.WriteAllText(Path.Combine(docs, "page.md"), """
+            Use `Levenshtein.Distance` for typing mistakes.
+
+            ```csharp
+            int d = Levenshtein.Distance("a", "b");
+            ```
+            """);
+
+        IReadOnlyList<string> complaints = ReferenceDocumentation.CheckLinks(
+            typeof(Levenshtein).Assembly, "DataNet.Text", Map, Root, docs);
+
+        // The prose mention owes a link; the one inside the fence does not.
+        Assert.Single(complaints);
+        Assert.Contains("page.md", complaints[0], StringComparison.Ordinal);
+        Directory.Delete(docs, recursive: true);
     }
 }

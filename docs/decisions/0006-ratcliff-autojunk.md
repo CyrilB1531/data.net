@@ -19,7 +19,7 @@ treated as "junk" and ignored when finding matching blocks. This can change
 
 ## Consequences
 
-- For any input ≤ 200 elements, `RatcliffObershelp.Similarity` is identical to
+- For any input ≤ 200 elements, [`RatcliffObershelp.Similarity`](../reference/text/distances.md#ratcliffobershelpsimilarity) is identical to
   `difflib` by default (autojunk doesn't trigger).
 - Beyond 200 elements, DataNet may differ from `difflib` **by default** (but
   coincides with `difflib(autojunk=False)`). This is a deliberate choice: autojunk

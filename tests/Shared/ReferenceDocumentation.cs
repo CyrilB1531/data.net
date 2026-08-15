@@ -140,6 +140,150 @@ internal static class ReferenceDocumentation
         }
     }
 
+    /// <summary>Every backticked mention of a documented member that is not linked to its entry.</summary>
+    public static IReadOnlyList<string> CheckLinks(
+        Assembly assembly, string package, string wikiMapPath, string referenceRoot, string docsRoot)
+    {
+        List<string> complaints = [];
+        HashSet<string> linkable = LinkableMembers(assembly, wikiMapPath, package);
+        HashSet<string> referencePageNames = ReferencePageNames(referenceRoot);
+
+        foreach (string file in Directory.EnumerateFiles(docsRoot, "*.md", SearchOption.AllDirectories)
+                     .Where(candidate => !referencePageNames.Contains(Path.GetFileName(candidate)!))
+                     .OrderBy(candidate => candidate, StringComparer.Ordinal))
+        {
+            CheckFileLinks(file, docsRoot, linkable, complaints);
+        }
+
+        return complaints;
+    }
+
+    // Reuses Covered, GetExportedTypes and Methods -- the primitives CheckNamespace and
+    // CheckOverClaims already build "documented" from -- so the two cannot disagree.
+    private static HashSet<string> LinkableMembers(Assembly assembly, string wikiMapPath, string package)
+    {
+        HashSet<string> members = new(StringComparer.Ordinal);
+        foreach ((string space, string _) in Covered(wikiMapPath, package))
+        {
+            foreach (Type type in assembly.GetExportedTypes().Where(candidate => candidate.Namespace == space))
+            {
+                foreach (IGrouping<string, MethodInfo> overloads in Methods(type))
+                {
+                    members.Add($"{type.Name}.{overloads.Key}");
+                }
+            }
+        }
+
+        return members;
+    }
+
+    /// <summary>The file names Check itself treats as reference pages, read off the same directory.</summary>
+    private static HashSet<string> ReferencePageNames(string referenceRoot) => Directory.Exists(referenceRoot)
+        ? Directory.GetFiles(referenceRoot, "*.md").Select(path => Path.GetFileName(path)!)
+            .ToHashSet(StringComparer.Ordinal)
+        : new HashSet<string>(StringComparer.Ordinal);
+
+    private static void CheckFileLinks(
+        string file, string docsRoot, HashSet<string> linkable, List<string> complaints)
+    {
+        string relative = Path.GetRelativePath(docsRoot, file).Replace('\\', '/');
+        string[] lines = File.ReadAllLines(file);
+        bool inFence = false;
+
+        for (int index = 0; index < lines.Length; index++)
+        {
+            string line = lines[index];
+            if (line.TrimStart().StartsWith("```", StringComparison.Ordinal))
+            {
+                inFence = !inFence;
+                continue;
+            }
+
+            if (!inFence)
+            {
+                CheckLineLinks(line, relative, index + 1, linkable, complaints);
+            }
+        }
+    }
+
+    private static void CheckLineLinks(
+        string line, string relativeFile, int lineNumber, HashSet<string> linkable, List<string> complaints)
+    {
+        IReadOnlyList<(int Start, int End)> linked = LinkSpans(line);
+
+        foreach ((int start, int end) in BacktickSpans(line))
+        {
+            if (linked.Any(span => start >= span.Start && end <= span.End))
+            {
+                continue;
+            }
+
+            string name = StripArguments(line[(start + 1)..(end - 1)]);
+            if (linkable.Contains(name))
+            {
+                complaints.Add($"{relativeFile}:{lineNumber}: '{name}' has an entry and is not linked to it.");
+            }
+        }
+    }
+
+    private static string StripArguments(string text)
+    {
+        int index = text.IndexOf('(', StringComparison.Ordinal);
+        return index < 0 ? text : text[..index];
+    }
+
+    /// <summary>Every backticked span on a line, as (start, end) offsets spanning both backticks.</summary>
+    private static List<(int Start, int End)> BacktickSpans(string line)
+    {
+        List<(int Start, int End)> spans = [];
+        int index = 0;
+        while ((index = line.IndexOf('`', index)) >= 0)
+        {
+            int end = line.IndexOf('`', index + 1);
+            if (end < 0)
+            {
+                break;
+            }
+
+            spans.Add((index, end + 1));
+            index = end + 1;
+        }
+
+        return spans;
+    }
+
+    /// <summary>Every `[label](target)` span on a line, as (start, end) offsets spanning both brackets.</summary>
+    /// <remarks>
+    /// No nested brackets: a label never contains `]`, which is true of every link this repository
+    /// writes -- the label is either plain prose or a single backticked span.
+    /// </remarks>
+    private static List<(int Start, int End)> LinkSpans(string line)
+    {
+        List<(int Start, int End)> spans = [];
+        int index = 0;
+        while ((index = line.IndexOf('[', index)) >= 0)
+        {
+            int labelEnd = line.IndexOf(']', index + 1);
+            if (labelEnd < 0 || labelEnd + 1 >= line.Length || line[labelEnd + 1] != '(')
+            {
+                index++;
+                continue;
+            }
+
+            int targetEnd = line.IndexOf(')', labelEnd + 2);
+            if (targetEnd < 0)
+            {
+                index++;
+                continue;
+            }
+
+            spans.Add((index, targetEnd + 1));
+            index = targetEnd + 1;
+        }
+
+        return spans;
+    }
+
     private static IEnumerable<IGrouping<string, MethodInfo>> Methods(Type type) =>
         type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance |
                         BindingFlags.DeclaredOnly)

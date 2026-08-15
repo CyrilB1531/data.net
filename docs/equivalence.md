@@ -7,21 +7,21 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 
 | Python | Library | C# | Differences |
 | --- | --- | --- | --- |
-| `Levenshtein.distance(a, b)` | rapidfuzz | `Levenshtein.Distance(a, b)` | Compares **UTF-16 units** by default; pass `TextElement.CodePoint` for exact parity with Python on non-BMP characters (emoji…). Weights `(1,1,1)`. |
-| `Levenshtein.normalized_distance(a, b)` | rapidfuzz | `Levenshtein.NormalizedDistance(a, b)` | `distance / max(len(a), len(b))`, `0` if both empty. Identical. |
-| `Levenshtein.normalized_similarity(a, b)` | rapidfuzz | `Levenshtein.NormalizedSimilarity(a, b)` | `1 - normalized_distance`. Two empty strings ⇒ `1`. Identical. |
-| `OSA.distance(a, b)` | rapidfuzz | `Osa.Distance(a, b)` | Optimal String Alignment (restricted Damerau): adjacent transposition allowed, no substring re-edited. Differs from full Damerau (`"CA"/"ABC"` ⇒ 3 vs 2). |
-| `OSA.normalized_similarity(a, b)` | rapidfuzz | `Osa.NormalizedSimilarity(a, b)` | `1 - dist/max(len)`. Identical. |
-| `DamerauLevenshtein.distance(a, b)` | rapidfuzz | `DamerauLevenshtein.Distance(a, b)` | Unrestricted Damerau (Lowrance-Wagner). `"CA"/"ABC"` ⇒ 2. Not a metric. |
-| `DamerauLevenshtein.normalized_similarity(a, b)` | rapidfuzz | `DamerauLevenshtein.NormalizedSimilarity(a, b)` | `1 - dist/max(len)`. Identical. |
-| `hamming_distance(a, b)` | jellyfish | `Hamming.Distance(a, b)` | Differing positions + length difference. Matches jellyfish on normal inputs; documented divergence on combining marks ([decision 0005](decisions/0005-hamming-jellyfish-divergence.md)). |
-| `Indel.distance(a, b)` | rapidfuzz | `Indel.Distance(a, b)` | Insertions/deletions only = `len(a)+len(b)-2·LCS`. Basis of `fuzz.ratio`. |
-| `Indel.normalized_similarity(a, b)` | rapidfuzz | `Indel.NormalizedSimilarity(a, b)` | `1 - dist/(len(a)+len(b))`. **×100 = `fuzz.ratio`.** |
-| `jaro_similarity(a, b)` | jellyfish | `Jaro.Similarity(a, b)` | Empty ⇒ `0`. Matches jellyfish except combining-mark quirks ([decision 0005](decisions/0005-hamming-jellyfish-divergence.md)). |
-| `jaro_winkler_similarity(a, b)` | jellyfish | `JaroWinkler.Similarity(a, b)` | Prefix boost only when Jaro > 0.7 (Winkler threshold), weight `0.1`, prefix ≤ 4. |
-| `SequenceMatcher(None,a,b).find_longest_match(...).size` | difflib | `Lcs.SubstringLength(a, b)` | Longest common (contiguous) substring. Same tie-break as difflib. |
-| — (classic LCS) | — | `Lcs.SubsequenceLength(a, b)` | Longest common subsequence (order-preserving, non-contiguous). Basis of `Indel`. |
-| `SequenceMatcher(None,a,b).ratio()` | difflib | `RatcliffObershelp.Similarity(a, b)` | Gestalt `2·M/T`. `autojunk` **not** replicated (identical for ≤ 200 elements; [decision 0006](decisions/0006-ratcliff-autojunk.md)). |
+| `Levenshtein.distance(a, b)` | rapidfuzz | [`Levenshtein.Distance(a, b)`](reference/text/distances.md#levenshteindistance) | Compares **UTF-16 units** by default; pass `TextElement.CodePoint` for exact parity with Python on non-BMP characters (emoji…). Weights `(1,1,1)`. |
+| `Levenshtein.normalized_distance(a, b)` | rapidfuzz | [`Levenshtein.NormalizedDistance(a, b)`](reference/text/distances.md#levenshteinnormalizeddistance) | `distance / max(len(a), len(b))`, `0` if both empty. Identical. |
+| `Levenshtein.normalized_similarity(a, b)` | rapidfuzz | [`Levenshtein.NormalizedSimilarity(a, b)`](reference/text/distances.md#levenshteinnormalizedsimilarity) | `1 - normalized_distance`. Two empty strings ⇒ `1`. Identical. |
+| `OSA.distance(a, b)` | rapidfuzz | [`Osa.Distance(a, b)`](reference/text/distances.md#osadistance) | Optimal String Alignment (restricted Damerau): adjacent transposition allowed, no substring re-edited. Differs from full Damerau (`"CA"/"ABC"` ⇒ 3 vs 2). |
+| `OSA.normalized_similarity(a, b)` | rapidfuzz | [`Osa.NormalizedSimilarity(a, b)`](reference/text/distances.md#osanormalizedsimilarity) | `1 - dist/max(len)`. Identical. |
+| `DamerauLevenshtein.distance(a, b)` | rapidfuzz | [`DamerauLevenshtein.Distance(a, b)`](reference/text/distances.md#dameraulevenshteindistance) | Unrestricted Damerau (Lowrance-Wagner). `"CA"/"ABC"` ⇒ 2. Not a metric. |
+| `DamerauLevenshtein.normalized_similarity(a, b)` | rapidfuzz | [`DamerauLevenshtein.NormalizedSimilarity(a, b)`](reference/text/distances.md#dameraulevenshteinnormalizedsimilarity) | `1 - dist/max(len)`. Identical. |
+| `hamming_distance(a, b)` | jellyfish | [`Hamming.Distance(a, b)`](reference/text/distances.md#hammingdistance) | Differing positions + length difference. Matches jellyfish on normal inputs; documented divergence on combining marks ([decision 0005](decisions/0005-hamming-jellyfish-divergence.md)). |
+| `Indel.distance(a, b)` | rapidfuzz | [`Indel.Distance(a, b)`](reference/text/distances.md#indeldistance) | Insertions/deletions only = `len(a)+len(b)-2·LCS`. Basis of `fuzz.ratio`. |
+| `Indel.normalized_similarity(a, b)` | rapidfuzz | [`Indel.NormalizedSimilarity(a, b)`](reference/text/distances.md#indelnormalizedsimilarity) | `1 - dist/(len(a)+len(b))`. **×100 = `fuzz.ratio`.** |
+| `jaro_similarity(a, b)` | jellyfish | [`Jaro.Similarity(a, b)`](reference/text/distances.md#jarosimilarity) | Empty ⇒ `0`. Matches jellyfish except combining-mark quirks ([decision 0005](decisions/0005-hamming-jellyfish-divergence.md)). |
+| `jaro_winkler_similarity(a, b)` | jellyfish | [`JaroWinkler.Similarity(a, b)`](reference/text/distances.md#jarowinklersimilarity) | Prefix boost only when Jaro > 0.7 (Winkler threshold), weight `0.1`, prefix ≤ 4. |
+| `SequenceMatcher(None,a,b).find_longest_match(...).size` | difflib | [`Lcs.SubstringLength(a, b)`](reference/text/distances.md#lcssubstringlength) | Longest common (contiguous) substring. Same tie-break as difflib. |
+| — (classic LCS) | — | [`Lcs.SubsequenceLength(a, b)`](reference/text/distances.md#lcssubsequencelength) | Longest common subsequence (order-preserving, non-contiguous). Basis of `Indel`. |
+| `SequenceMatcher(None,a,b).ratio()` | difflib | [`RatcliffObershelp.Similarity(a, b)`](reference/text/distances.md#ratcliffobershelpsimilarity) | Gestalt `2·M/T`. `autojunk` **not** replicated (identical for ≤ 200 elements; [decision 0006](decisions/0006-ratcliff-autojunk.md)). |
 
 ## DataNet.Text — set similarity (q-gram multisets)
 
@@ -186,7 +186,8 @@ implemented, never retrofitted at the end (§6.1 of the brief).
   values *exactly* on supplementary text (emoji, rare ideographs), pass
   `TextElement.CodePoint`. See [`decisions/0002-unicode-comparison-unit.md`](decisions/0002-unicode-comparison-unit.md).
 - **`ReadOnlySpan<char>`.** All computation signatures accept spans; `string`
-  literals convert implicitly, so `Levenshtein.Distance("a", "b")` works with no
+  literals convert implicitly, so
+  [`Levenshtein.Distance("a", "b")`](reference/text/distances.md#levenshteindistance) works with no
   allocation.
 - **Culture.** No operation is culture-sensitive by default. Overloads accepting a
   `CultureInfo` are added where case/accents matter (tokenization).

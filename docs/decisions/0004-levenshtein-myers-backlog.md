@@ -5,7 +5,7 @@
 ## Context
 
 The cross-language bench (`bench/`) shows that the initial implementation of
-`Levenshtein.Distance` — a rolling-row DP `O(n·m)` — is markedly slower than
+[`Levenshtein.Distance`](../reference/text/distances.md#levenshteindistance) — a rolling-row DP `O(n·m)` — is markedly slower than
 rapidfuzz on long strings (≈ 37× at 512 characters), while being faster on short
 strings (no call overhead). rapidfuzz owes that advantage to the **bit-parallel
 Myers algorithm** (1999), in `O(n·⌈m/w⌉)` with `w = 64` bits per machine word.
