@@ -60,6 +60,15 @@ BANNER = (
     "({target}).\n\n"
 )
 
+# The other half of BANNER, and the only thing on a frozen page that says which
+# version it is: the name carries it, and the name is in the URL, not in the text.
+ARCHIVE_BANNER = (
+    "> **{package} {version}.** This page is frozen at that release.{exit}\n"
+    "> A link to a decision or a migration page follows `main`, and leaves the archive.\n\n"
+)
+
+ARCHIVE_EXIT = " Read [the current documentation]({channel}) for what `main` says now."
+
 # [text](path.md) and [text](path.md#anchor). The target excludes '#' as well as
 # ')', so it can't blur into the anchor; no lazy quantifier, so no super-linear backtrack.
 LINK = re.compile(r"\[(?P<text>[^\]]*)\]\((?P<target>[^)\s#]+\.md)(?P<anchor>#[^)\s]*)?\)")
@@ -176,6 +185,23 @@ def rewrite_links(text: str, page: pathlib.Path, repo: pathlib.Path, index: dict
 
 def banner(package: str, wiki: str, version: str, landing: str) -> str:
     return BANNER.format(package=package, version=version, target=wiki_name(landing, wiki, version))
+
+
+def archive_banner(package: str, wiki: str, version: str, has_entry: bool) -> str:
+    """What a frozen page opens on.
+
+    The way out is the channel's entry page rather than the live counterpart of
+    this page: a `<channel>-<stem>` link is exactly what an archived page must
+    not carry, and the hub reaches the same place in one more click. A package
+    whose entry page `entry_page` declines to write gets the sentence without
+    the link, for the reason D4 gives about the live banner -- a banner naming a
+    page the wiki does not hold is worse than no banner.
+    """
+    return ARCHIVE_BANNER.format(
+        package=package,
+        version=version,
+        exit=ARCHIVE_EXIT.format(channel=wiki) if has_entry else "",
+    )
 
 
 def _archive_pattern(channel: str) -> re.Pattern:
@@ -346,10 +372,31 @@ def _build_archive(
     written: list[pathlib.Path] = []
     for stale in out.glob(f"{package['wiki']}-{version}-*.md"):
         _guard(stale, out).unlink()
+    frozen = _archive_index(index, repo, package, version)
+    prefix = archive_banner(name, package["wiki"], version, entry_page(repo, package) is not None)
     for page in pages_for(package["pages"], repo):
         wname = wiki_name(page_stem(page), package["wiki"], version)
-        written.append(_write(page, out, repo, index, "", wname, names))
+        written.append(_write(page, out, repo, frozen, prefix, wname, names))
     return written
+
+
+def _archive_index(
+    index: dict[str, str], repo: pathlib.Path, package: dict, version: str
+) -> dict[str, str]:
+    """The link index as a frozen page sees it: this package's pages, versioned.
+
+    Sharing the live index is what sent a reader of 0.4.0 one click into
+    whatever `main` says today, which is the one thing an archive exists to
+    prevent. Only the frozen package moves: a link to another package's channel
+    is right as it stands, because that channel was not frozen, and so is a link
+    to a root page, which follows `main` and has no frozen counterpart to point
+    at. The banner is what tells the reader those two leave the archive.
+    """
+    frozen = dict(index)
+    for page in pages_for(package["pages"], repo):
+        frozen[page.relative_to(repo).as_posix()] = wiki_name(
+            page_stem(page), package["wiki"], version)
+    return frozen
 
 
 def _build_channel(
