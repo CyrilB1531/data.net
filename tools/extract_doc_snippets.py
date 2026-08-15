@@ -132,6 +132,11 @@ def assert_lines(body: list[str], origin: str, start_line: int) -> list[str]:
             out.append(source_line)
             continue
         binding = BINDING.match(match.group("code"))
+        if binding is None:
+            # arrow_failures has already written the sentence this contributor needs;
+            # asserting on a name that is not there would replace it with a traceback.
+            out.append(source_line)
+            continue
         out.append(match.group("code"))
         out.append(
             f'SnippetAssert.Value({binding.group("name")}, "{match.group("expected").strip()}", '
@@ -149,7 +154,7 @@ def arrow_failures(path: pathlib.Path, text: str) -> list[str]:
         if match is not None and BINDING.match(match.group("code")) is None:
             failures.append(
                 f"{relative}:{number}: a '// =>' comment on a line that binds nothing. "
-                "Assign the value to a local and bind the value to a variable first."
+                "Assign the value to a local first, so the assertion has a name to check."
             )
     return failures
 

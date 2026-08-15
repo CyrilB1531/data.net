@@ -42,7 +42,21 @@ def test_var_declarations_are_asserted_too():
 def test_an_arrow_on_a_line_that_binds_nothing_is_an_error():
     text = '```csharp\nLevenshtein.Distance("a", "b");  // => 1\n```\n'
     failures = extractor.arrow_failures(extractor.REPO / "docs/reference/text/distances.md", text)
-    assert failures and "bind the value to a variable" in failures[0]
+    assert len(failures) == 1
+    assert "Assign the value to a local" in failures[0]
+
+
+def test_a_page_with_that_arrow_is_diagnosed_rather_than_crashing(tmp_path, monkeypatch):
+    """scan() built the message and then let render() raise AttributeError over it."""
+    page = tmp_path / "docs" / "reference" / "text" / "distances.md"
+    page.parent.mkdir(parents=True)
+    page.write_text('```csharp\nLevenshtein.Distance("a", "b");  // => 1\n```\n', encoding="utf-8")
+    monkeypatch.setattr(extractor, "REPO", tmp_path)
+
+    failures = extractor.scan(page)[3]
+
+    assert len(failures) == 1
+    assert "Assign the value to a local" in failures[0]
 
 
 def test_a_declaration_fence_is_not_compiled():
