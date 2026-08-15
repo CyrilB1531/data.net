@@ -158,8 +158,24 @@ restates the sentence above it is removed in review.
 
 ### D4 — the wiki follows `main`, and a tag archives a copy
 
-`Text/` always mirrors `main`. Pushing `DataNet.Text/v0.4.0` freezes a copy of that tree into
-`Text/0.4.0/`, which is never rewritten afterwards. Every archived version stays.
+The channel `Text` always mirrors `main`. Pushing `DataNet.Text/v0.4.0` freezes a copy of it, which
+is never rewritten afterwards. Every archived version stays.
+
+**A page name carries the channel and the version, because a wiki has no directories.** This was
+measured on the live wiki on 2026-08-15, after the first publication went out under a directory
+layout:
+
+- `…/wiki/Text/quickstart` returns 404 while `…/wiki/quickstart` returns 200. A GitHub wiki
+  addresses a page by its **file name alone**; a subdirectory is storage the reader cannot name.
+- Pushing a second `Text/0.3.0/quickstart.md` made `…/wiki/quickstart` serve the *archived* copy,
+  and the percent-encoded forms `Text%2Fquickstart` and `Text%2F0.3.0%2Fquickstart` both fell back
+  to `Home`. Two files sharing a base name collide, and one shadows the other silently.
+
+So the layout is flat and the name carries what a directory would have: `Text-quickstart` for the
+live page, `Text-0.4.0-distances` for an archived one, and the project pages — the ADRs, the
+migration inventory, `performance` — keep their own stems at the root. The publisher refuses a
+duplicate base name rather than letting one page shadow another, because that is the failure this
+decision exists to avoid.
 
 **The cost, recorded because it was chosen with it known:** a reader who lands on `Text/` reads the
 development tree, which is defect 1 with an archive added. It was preferred to publishing from the
@@ -167,8 +183,8 @@ tag alone, because that would have left the wiki silent between releases — the
 the wiki be current before the next release, not only at it.
 
 What reduces the harm without changing the model: every page in a live channel carries a generated
-banner naming the latest released version of that package and linking to its archived directory. The
-banner is written by the publisher, never by hand, so it cannot go stale.
+banner naming the latest released version of that package and linking to its archived counterpart.
+The banner is written by the publisher, never by hand, so it cannot go stale.
 
 ### D5 — `wiki-map.json` says which pages belong to which package
 
@@ -289,8 +305,9 @@ Four lots follow, one issue each: the rest of `DataNet.Text`, then `DataNet.Embe
 - **Executing the snippets lengthens CI and widens what breaks the build.** An example that now
   throws fails the build. That is the intent, and it will be felt most on the packages with I/O.
 - **The wiki carries no archived version until the next release.** The tag trees predate the
-  reference pages, so `Text/0.3.0/` cannot be reconstructed. The archive starts at the first tag
-  pushed after this lands.
+  reference pages, so `Text-0.3.0-*` cannot be reconstructed. The archive starts at the first tag
+  pushed after this lands, and until then the banner names a version whose pages do not exist yet —
+  so the banner is written only for a version the wiki actually holds.
 - **The .NET layout costs more per entry than prose would.** Declaration, *Parameters*, *Returns*,
   *Exceptions* and *Applies to* are five rubrics a writer fills before reaching the sentence a reader
   came for. D7 is what makes them worth writing rather than a form to fill in — a rubric no gate

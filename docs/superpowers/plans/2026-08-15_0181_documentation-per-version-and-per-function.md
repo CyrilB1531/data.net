@@ -832,6 +832,171 @@ git commit -m "Publish the wiki on main pushes and on per-package tags"
 
 ---
 
+## Task 3b: Flatten the page names, because a wiki has no directories
+
+Tasks 2 and 3 published a directory layout, and the first real publication proved it unreadable.
+Measured on the live wiki on 2026-08-15:
+
+- `…/wiki/Text/quickstart` → 404; `…/wiki/quickstart` → 200. A GitHub wiki addresses a page by its
+  file name alone. Every `[Text](Text/quickstart)` link the generated `_Sidebar.md` carries is dead.
+- Pushing a second `Text/0.3.0/quickstart.md` made `…/wiki/quickstart` serve the **archived** copy,
+  and `Text%2Fquickstart` and `Text%2F0.3.0%2Fquickstart` both fell back to `Home`. Two files
+  sharing a base name collide, and one shadows the other with no warning.
+
+The decision this forces is in the spec's D4: the layout goes flat and the name carries what the
+directory would have.
+
+**Files:**
+
+- Modify: `tools/build_wiki.py`, `tools/tests/test_build_wiki.py`
+
+**Interfaces:**
+
+- Consumes: `docs/wiki-map.json` and the workflow from Task 3, both unchanged.
+- Produces: `wiki_name(stem, channel=None, version=None) -> str` — `equivalence`,
+  `Text-quickstart`, `Text-0.4.0-distances`. Every other function keeps its signature; only what
+  they write changes.
+
+- [ ] **Step 1: Write the failing tests**
+
+Replace the four tests in `tools/tests/test_build_wiki.py` that assert a directory path, and add
+three. The names below are the whole change:
+
+```python
+def test_a_live_page_is_named_for_its_channel(tmp_path):
+    repo = make_repo(tmp_path)
+    out = tmp_path / "wiki"
+    build_wiki.build(repo, out, MAP, released={"DataNet.Text": "0.3.0"})
+
+    assert (out / "Text-quickstart.md").exists()
+    assert (out / "Text-distances.md").exists()
+    assert (out / "equivalence.md").exists()
+    # Nothing nests: a subdirectory is storage the reader cannot name.
+    assert not any(child.is_dir() for child in out.iterdir())
+
+
+def test_an_archived_page_carries_the_version_in_its_name(tmp_path):
+    repo = make_repo(tmp_path)
+    out = tmp_path / "wiki"
+    build_wiki.build(
+        repo, out, MAP, released={"DataNet.Text": "0.3.0"},
+        archive=("DataNet.Text", "0.4.0"),
+    )
+
+    assert (out / "Text-0.4.0-distances.md").exists()
+    assert (out / "Text-0.4.0-quickstart.md").exists()
+    # An archive publishes that package only, and never rewrites the live channel.
+    assert not (out / "Text-quickstart.md").exists()
+
+
+def test_links_are_rewritten_to_flat_wiki_names(tmp_path):
+    repo = make_repo(tmp_path)
+    out = tmp_path / "wiki"
+    build_wiki.build(repo, out, MAP, released={"DataNet.Text": "0.3.0"})
+
+    text = (out / "Text-quickstart.md").read_text(encoding="utf-8")
+    assert "(Text-distances)" in text
+    assert "(equivalence)" in text
+    assert ".md)" not in text
+
+
+def test_the_sidebar_links_resolve_and_group_the_archives(tmp_path):
+    repo = make_repo(tmp_path)
+    out = tmp_path / "wiki"
+    out.mkdir()
+    (out / "Text-0.3.0-quickstart.md").write_text("# Quickstart\n", encoding="utf-8")
+
+    build_wiki.build(repo, out, MAP, released={"DataNet.Text": "0.3.0"})
+
+    sidebar = (out / "_Sidebar.md").read_text(encoding="utf-8")
+    assert "[Text](Text-quickstart)" in sidebar
+    assert "[0.3.0](Text-0.3.0-quickstart)" in sidebar
+
+
+def test_the_banner_is_written_only_for_a_version_the_wiki_holds(tmp_path):
+    repo = make_repo(tmp_path)
+    out = tmp_path / "wiki"
+    build_wiki.build(repo, out, MAP, released={"DataNet.Text": "0.3.0"})
+
+    # No Text-0.3.0-* page exists, so a banner would link to a 404.
+    assert not (out / "Text-quickstart.md").read_text(encoding="utf-8").startswith(">")
+
+
+def test_two_pages_that_would_share_a_name_are_refused(tmp_path):
+    repo = make_repo(tmp_path)
+    (repo / "docs" / "migration").mkdir(parents=True)
+    (repo / "docs" / "migration" / "equivalence.md").write_text("# Clash\n", encoding="utf-8")
+    mapping = json.loads(json.dumps(MAP))
+    mapping["root"].append("docs/migration/equivalence.md")
+
+    with pytest.raises(build_wiki.MapError):
+        build_wiki.build(repo, tmp_path / "wiki", mapping, released={})
+```
+
+- [ ] **Step 2: Run them to verify they fail**
+
+Run: `python3 -m pytest tools/tests/test_build_wiki.py -q`
+Expected: failures naming `Text-quickstart.md` and `Text-0.4.0-distances.md` as missing, and
+`DID NOT RAISE` on the collision test.
+
+- [ ] **Step 3: Flatten the writer**
+
+In `tools/build_wiki.py`:
+
+- add `wiki_name(stem, channel=None, version=None)` returning `stem`, `f"{channel}-{stem}"` or
+  `f"{channel}-{version}-{stem}"`;
+- make `wiki_path` and `link_index` produce those names, and delete the dead `wiki_path` the review
+  flagged if it is still unused after the change;
+- write every page straight into `out`, never into a subdirectory;
+- have `build` keep a `dict` of name to source page and raise `MapError` naming both sources when a
+  name repeats;
+- rewrite `sidebar` to find archives by scanning `out` for `^<channel>-(?P<version>\d[^-]*)-` rather
+  than by listing directories, and to emit flat links;
+- have `home` link each package to its channel landing page, `Text-quickstart`, not to `Text`;
+- write the banner only when at least one `<channel>-<version>-*` page exists in `out`.
+
+- [ ] **Step 4: Run the tests to verify they pass**
+
+Run: `python3 -m pytest tools/tests/test_build_wiki.py -q`
+Expected: `9 passed`. Read the count.
+
+- [ ] **Step 5: Republish and check the URLs, not the files**
+
+```bash
+git add tools/build_wiki.py tools/tests/test_build_wiki.py
+git commit -m "Name a wiki page for its channel and version, because a wiki has no directories"
+```
+
+Temporarily add this branch back to `.github/workflows/wiki.yml`'s `branches:` list, push, wait for
+the run, then check the reader's view rather than the repository's:
+
+```bash
+for u in Text-quickstart Text-vectorization Embeddings-embeddings Fuzzy-migrating-from-rapidfuzz equivalence Home; do
+  printf '%s -> %s\n' "$u" "$(curl -s -o /dev/null -w '%{http_code}' -L "https://github.com/CyrilB1531/data.net/wiki/$u")"
+done
+```
+
+Expected: `200` for every one. Then open the wiki, click three links in `_Sidebar.md`, and confirm
+none lands on `Home`. Finally remove the branch from the trigger, push, and confirm with
+`git show HEAD:.github/workflows/wiki.yml | grep -A2 branches`.
+
+- [ ] **Step 6: Remove the stale directory pages from the wiki**
+
+The previous publication left `Text/`, `Embeddings/` and `Fuzzy/` in the wiki repository, and the
+publisher only clears what it now writes.
+
+```bash
+rm -rf /tmp/wiki-tidy
+git clone https://github.com/CyrilB1531/data.net.wiki.git /tmp/wiki-tidy
+git -C /tmp/wiki-tidy rm -r Text Embeddings Fuzzy
+git -C /tmp/wiki-tidy commit -m "Remove the directory layout the flat names replace"
+git -C /tmp/wiki-tidy push
+```
+
+Expected afterwards: `git -C /tmp/wiki-tidy ls-files | grep -c /` prints `0`.
+
+---
+
 ## Task 4: Teach the extractor the reference pages and the three markers
 
 **Files:**
