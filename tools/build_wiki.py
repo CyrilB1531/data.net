@@ -182,7 +182,9 @@ def sidebar(out: pathlib.Path, mapping: dict) -> str:
         landing = _resolve_landing(_live_stems(out, channel), package)
         if landing is None:
             continue
-        lines.append(f"- [{channel}]({wiki_name(landing, channel)})")
+        # The channel's own entry page, not its first guide: D10 makes that page the
+        # one place a reader sees the namespaces and the guides together.
+        lines.append(f"- [{channel}]({channel})")
         for version, stems in sorted(_archive_stems(out, channel).items(), key=lambda kv: _version_key(kv[0])):
             archived = _resolve_landing(stems, package)
             if archived is not None:

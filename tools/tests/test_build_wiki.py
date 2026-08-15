@@ -176,7 +176,8 @@ def test_the_sidebar_links_resolve_and_group_the_archives(tmp_path):
     build_wiki.build(repo, out, MAP, released={"DataNet.Text": "0.3.0"})
 
     sidebar = (out / "_Sidebar.md").read_text(encoding="utf-8")
-    assert "[Text](Text-quickstart)" in sidebar
+    # The channel points at its entry page, not at its first guide (D10).
+    assert "[Text](Text)" in sidebar
     assert "[0.3.0](Text-0.3.0-quickstart)" in sidebar
 
 
