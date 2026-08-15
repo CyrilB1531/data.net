@@ -300,14 +300,74 @@ internal static class ReferenceDocumentation
             text.Append("static ");
         }
 
-        text.Append(RenderType(method.ReturnType)).Append(' ').Append(method.Name).Append('(');
+        text.Append(RenderType(method.ReturnType)).Append(' ').Append(method.Name);
+        if (method.IsGenericMethodDefinition)
+        {
+            text.Append('<').AppendJoin(", ", method.GetGenericArguments().Select(RenderType)).Append('>');
+        }
+
+        text.Append('(');
         text.AppendJoin(", ", method.GetParameters().Select(RenderParameter)).Append(')');
+        return text.Append(RenderConstraints(method)).ToString();
+    }
+
+    /// <summary>The `where` clauses of a generic method, as C# spells them, on one line.</summary>
+    /// <remarks>
+    /// Without them a page would document `Distance(ReadOnlySpan&lt;T&gt; a, ...)`, which names an
+    /// unbound T and would not compile if a reader pasted it — and the gate would insist on it.
+    /// </remarks>
+    private static string RenderConstraints(MethodInfo method)
+    {
+        if (!method.IsGenericMethodDefinition)
+        {
+            return string.Empty;
+        }
+
+        StringBuilder text = new();
+        foreach (Type argument in method.GetGenericArguments())
+        {
+            List<string> clauses = Constraints(argument);
+            if (clauses.Count > 0)
+            {
+                text.Append(" where ").Append(argument.Name).Append(" : ").AppendJoin(", ", clauses);
+            }
+        }
+
         return text.ToString();
+    }
+
+    private static List<string> Constraints(Type argument)
+    {
+        GenericParameterAttributes flags = argument.GenericParameterAttributes;
+        List<string> clauses = [];
+        bool value = flags.HasFlag(GenericParameterAttributes.NotNullableValueTypeConstraint);
+        if (flags.HasFlag(GenericParameterAttributes.ReferenceTypeConstraint))
+        {
+            clauses.Add("class");
+        }
+
+        if (value)
+        {
+            clauses.Add("struct");
+        }
+
+        // ValueType is how `struct` is spelled in metadata, and it is already covered above.
+        clauses.AddRange(argument.GetGenericParameterConstraints()
+            .Where(type => type != typeof(ValueType))
+            .Select(RenderType)
+            .OrderBy(name => name, StringComparer.Ordinal));
+
+        if (!value && flags.HasFlag(GenericParameterAttributes.DefaultConstructorConstraint))
+        {
+            clauses.Add("new()");
+        }
+
+        return clauses;
     }
 
     private static string RenderParameter(ParameterInfo parameter)
     {
-        string modifier = parameter.ParameterType.IsByRef ? "ref " : string.Empty;
+        string modifier = parameter.ParameterType.IsByRef ? ByRefModifier(parameter) : string.Empty;
         Type type = parameter.ParameterType.IsByRef
             ? parameter.ParameterType.GetElementType()!
             : parameter.ParameterType;
@@ -316,6 +376,15 @@ internal static class ReferenceDocumentation
             ? $"{rendered} = {RenderDefault(parameter.DefaultValue, type)}"
             : rendered;
     }
+
+    // All three are by-ref in metadata, and only the keyword tells a reader whether
+    // the value goes in, comes out, or is read without being copied.
+    private static string ByRefModifier(ParameterInfo parameter) => parameter switch
+    {
+        { IsOut: true } => "out ",
+        { IsIn: true } => "in ",
+        _ => "ref ",
+    };
 
     private static string RenderDefault(object? value, Type type) => value switch
     {

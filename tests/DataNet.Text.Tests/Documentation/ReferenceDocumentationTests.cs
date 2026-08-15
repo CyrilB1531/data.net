@@ -36,6 +36,32 @@ public sealed class ReferenceDocumentationTests
     }
 
     [Fact]
+    public void A_generic_signature_carries_its_arity_and_its_constraints()
+    {
+        MethodInfo method = typeof(Levenshtein)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .First(candidate => candidate.Name == "Distance" && candidate.IsGenericMethodDefinition);
+
+        // Without the arity and the where clause this reads as a declaration naming an
+        // unbound T, which does not compile — and the gate would demand a page write it.
+        Assert.Equal(
+            "public static int Distance<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b) where T : IEquatable<T>",
+            ReferenceDocumentation.RenderSignature(method));
+    }
+
+    [Fact]
+    public void A_by_ref_parameter_keeps_the_keyword_it_was_declared_with()
+    {
+        MethodInfo method = typeof(ByRefFixture)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .First(candidate => candidate.Name == nameof(ByRefFixture.TryMeasure));
+
+        Assert.Equal(
+            "public static bool TryMeasure(in ReadOnlySpan<char> text, ref int budget, out int length)",
+            ReferenceDocumentation.RenderSignature(method));
+    }
+
+    [Fact]
     public void A_missing_entry_is_reported_with_the_member_that_lacks_it()
     {
         string page = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
@@ -73,7 +99,7 @@ public sealed class ReferenceDocumentationTests
 
             ```csharp
             public static int Distance(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement element = TextElement.Utf16Unit)
-            public static int Distance(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
+            public static int Distance<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b) where T : IEquatable<T>
             ```
 
             **Parameters** — `a` and `b` are the two strings to compare; a `string` converts implicitly, so
@@ -119,7 +145,7 @@ public sealed class ReferenceDocumentationTests
         [
             "public static int Distance(ReadOnlySpan<char> a, ReadOnlySpan<char> b, " +
             "TextElement element = TextElement.Utf16Unit)",
-            "public static int Distance(ReadOnlySpan<T> a, ReadOnlySpan<T> b)",
+            "public static int Distance<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b) where T : IEquatable<T>",
         ];
 
         Assert.Equal(declarations, entry.Declarations);

@@ -79,7 +79,7 @@ turn one string into the other.
 
 ```csharp
 public static int Distance(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement element = TextElement.Utf16Unit)
-public static int Distance(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
+public static int Distance<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b) where T : IEquatable<T>
 ```
 
 **Parameters** — `a` and `b` are the two strings to compare; a `string` converts implicitly, so
@@ -207,7 +207,7 @@ Counts the positions at which the two differ, then adds the difference in their 
 
 ```csharp
 public static int Distance(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement element = TextElement.Utf16Unit)
-public static int Distance(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
+public static int Distance<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b) where T : IEquatable<T>
 ```
 
 **Parameters** — `a` and `b` are the two strings to compare, and they need not be the same length.
@@ -300,7 +300,7 @@ not allowed.
 
 ```csharp
 public static int Distance(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement element = TextElement.Utf16Unit)
-public static int Distance(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
+public static int Distance<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b) where T : IEquatable<T>
 ```
 
 **Parameters** — `a` and `b` are the two strings to compare. `element` says what counts as one
@@ -613,7 +613,7 @@ order, with gaps allowed.
 
 ```csharp
 public static int SubsequenceLength(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement element = TextElement.Utf16Unit)
-public static int SubsequenceLength(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
+public static int SubsequenceLength<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b) where T : IEquatable<T>
 ```
 
 **Parameters** — `a` and `b` are the two strings to compare. `element` says what counts as one
@@ -655,7 +655,7 @@ Returns the length of the longest **contiguous** run of characters that appears 
 
 ```csharp
 public static int SubstringLength(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement element = TextElement.Utf16Unit)
-public static int SubstringLength(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
+public static int SubstringLength<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b) where T : IEquatable<T>
 ```
 
 **Parameters** — `a` and `b` are the two strings to compare; `element` says what counts as one
@@ -700,7 +700,7 @@ Counts the fewest insertions, deletions and substitutions that turn one string i
 
 ```csharp
 public static int Distance(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement element = TextElement.Utf16Unit)
-public static int Distance(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
+public static int Distance<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b) where T : IEquatable<T>
 ```
 
 **Parameters** — `a` and `b` are the two strings to compare; a `string` converts implicitly, so
@@ -818,7 +818,7 @@ no character allowed to take part in more than one edit.
 
 ```csharp
 public static int Distance(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement element = TextElement.Utf16Unit)
-public static int Distance(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
+public static int Distance<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b) where T : IEquatable<T>
 ```
 
 **Parameters** — `a` and `b` are the two strings to compare. `element` says what counts as one
