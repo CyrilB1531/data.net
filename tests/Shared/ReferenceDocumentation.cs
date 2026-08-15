@@ -184,7 +184,7 @@ internal static class ReferenceDocumentation
         HashSet<string> referencePageNames = ReferencePageNames(referenceRoot);
 
         foreach (string file in Directory.EnumerateFiles(docsRoot, "*.md", SearchOption.AllDirectories)
-                     .Where(candidate => !referencePageNames.Contains(Path.GetFileName(candidate)!))
+                     .Where(candidate => !referencePageNames.Contains(Path.GetFileName(candidate)))
                      .OrderBy(candidate => candidate, StringComparer.Ordinal))
         {
             CheckFileLinks(file, docsRoot, linkable, complaints);
@@ -214,7 +214,7 @@ internal static class ReferenceDocumentation
 
     /// <summary>The file names Check itself treats as reference pages, read off the same directory.</summary>
     private static HashSet<string> ReferencePageNames(string referenceRoot) => Directory.Exists(referenceRoot)
-        ? Directory.GetFiles(referenceRoot, "*.md").Select(path => Path.GetFileName(path)!)
+        ? Directory.GetFiles(referenceRoot, "*.md").Select(path => Path.GetFileName(path))
             .ToHashSet(StringComparer.Ordinal)
         : new HashSet<string>(StringComparer.Ordinal);
 
