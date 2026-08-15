@@ -63,6 +63,72 @@ public sealed class ReferenceDocumentationTests
     }
 
     [Fact]
+    public void A_base_class_constraint_comes_before_the_interfaces_beside_it()
+    {
+        // C# refuses the other order, so sorting the constraint types made the gate
+        // demand a declaration that does not compile.
+        Assert.Equal(
+            "public static T Pick<T>(T left, T right) where T : Random, IComparable<T>",
+            RenderFixture(nameof(ConstraintFixture.Pick)));
+    }
+
+    [Fact]
+    public void A_constructor_constraint_comes_last()
+    {
+        Assert.Equal(
+            "public static T Fresh<T>() where T : class, new()",
+            RenderFixture(nameof(ConstraintFixture.Fresh)));
+    }
+
+    [Fact]
+    public void A_value_type_constraint_reads_as_struct()
+    {
+        Assert.Equal(
+            "public static T Zero<T>() where T : struct",
+            RenderFixture(nameof(ConstraintFixture.Zero)));
+    }
+
+    [Fact]
+    public void An_unmanaged_constraint_is_not_documented_as_struct()
+    {
+        Assert.Equal(
+            "public static int Size<T>(T value) where T : unmanaged",
+            RenderFixture(nameof(ConstraintFixture.Size)));
+    }
+
+    [Fact]
+    public void A_notnull_constraint_reaches_the_clause()
+    {
+        Assert.Equal(
+            "public static string Name<T>(T value) where T : notnull",
+            RenderFixture(nameof(ConstraintFixture.Name)));
+    }
+
+    [Fact]
+    public void An_interface_constraint_alone_does_not_become_notnull()
+    {
+        // Under a `NullableContext(1)` type, a parameter that is not `notnull` carries an
+        // explicit 0 of its own -- which is why inheriting the 1 can be read as `notnull`.
+        Assert.Equal(
+            "public static int Only<T>(T value) where T : IComparable<T>",
+            RenderFixture(nameof(ConstraintFixture.Only)));
+    }
+
+    [Fact]
+    public void Two_parameters_get_a_clause_each()
+    {
+        Assert.Equal(
+            "public static bool Pair<TKey, TValue>(TKey key, TValue value) " +
+            "where TKey : notnull where TValue : class",
+            RenderFixture(nameof(ConstraintFixture.Pair)));
+    }
+
+    private static string RenderFixture(string name) => ReferenceDocumentation.RenderSignature(
+        typeof(ConstraintFixture)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .First(candidate => candidate.Name == name));
+
+    [Fact]
     public void A_missing_entry_is_reported_with_the_member_that_lacks_it()
     {
         string page = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
