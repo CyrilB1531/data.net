@@ -2044,7 +2044,14 @@ Fill the table with one row per type, in alphabetical order, and one sentence ea
 
 - [ ] **Step 2: Write one entry, end to end, and prove the machinery on it**
 
-Append this to the page, and change nothing about its shape — the twelve entries after it copy it:
+Append this to the page, and change nothing about its shape — the twelve entries after it copy it.
+
+The two declarations are the real ones: `Levenshtein.Distance` has a `char` overload whose third
+parameter is named `element` and defaults to `TextElement.Utf16Unit`, and a generic
+`Distance<T>(ReadOnlySpan<T>, ReadOnlySpan<T>) where T : IEquatable<T>`. **Do not hand-write a
+declaration from memory for the other entries** — write your best reading, and let Task 8's gate,
+which renders each signature from reflection, tell you the exact text to paste. That is what it is
+for, and it is the only thing here that cannot be wrong.
 
 ````markdown
 ### Levenshtein
@@ -2058,14 +2065,14 @@ Counts the fewest insertions, deletions and substitutions that turn one string i
 <!-- docs-declaration -->
 
 ```csharp
-public static int Distance(ReadOnlySpan<char> a, ReadOnlySpan<char> b)
-public static int Distance(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement unit)
+public static int Distance(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement element = TextElement.Utf16Unit)
+public static int Distance(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
 ```
 
 **Parameters** — `a` and `b` are the two strings to compare; a `string` converts implicitly, so
-nothing is allocated for them. `unit` says what counts as one character: `TextElement.Utf16` by
-default, the native and fastest choice, or `TextElement.CodePoint` to match Python outside the Basic
-Multilingual Plane.
+nothing is allocated for them. `element` says what counts as one character:
+`TextElement.Utf16Unit` by default, the native and fastest choice, or `TextElement.CodePoint` to
+match Python outside the Basic Multilingual Plane.
 
 **Returns** — `int`, the number of edits. Zero when the two are equal, and never negative.
 
