@@ -64,6 +64,18 @@ def test_structural_elements_do_not_spend_the_documentation_budget():
     assert guard.findings_in(block.split("\n"), ".cs") == []
 
 
+def test_a_worked_example_does_not_spend_the_documentation_budget():
+    # CONTRIBUTING.md asks every public member for one, and a code sample is not
+    # prose -- counting it made TokenizerJsonLoader carry a marker for having one.
+    block = (
+        "/// <summary>\n/// prose\n/// </summary>\n"
+        "/// <example>\n/// <code>\n" +
+        "".join(f"/// var x{i} = Call(x{i});\n" for i in range(9)) +
+        "/// </code>\n/// </example>\n"
+        "int X;\n")
+    assert guard.findings_in(block.split("\n"), ".cs") == []
+
+
 def test_python_comments_are_inline_and_get_two():
     three = "# one\n# two\n# three\nx = 1\n"
     assert len(guard.findings_in(three.split("\n"), ".py")) == 1

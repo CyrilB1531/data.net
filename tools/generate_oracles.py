@@ -2331,8 +2331,8 @@ def generate_orphan_bpe() -> dict:
     }
 
 
-# long-comment: gated-model provenance a reviewer needs in order to trust that
-# cross-checking two mirrors substitutes for reading the original.
+# long-comment: kept at length because the material imposes it -- two mirror URLs and
+# what they agree on are the evidence that stands in for a gated original nobody can open
 # Transcribe each of these from the model's own tokenizer.json rather than from
 # memory: they differ from GPT-2 in newline handling and in the case-insensitive
 # contraction group, and from each other only in a quantifier on \p{N}.
@@ -2424,16 +2424,8 @@ def generate_bpe_tokenizer_json() -> dict:
     }
 
 
-# long-comment: three landmines here are each real and each silent -- reusing
-# the name NORMALIZER_TEXTS would overwrite a different generator's corpus at
-# call time, a literal already-normalized character would silently stop
-# testing the difference it exists to test, and dropping any one of the three
-# probe kinds below loses the form coverage this corpus's name promises.
-#
-# Combining sequence, singleton (U+212B ANGSTROM SIGN -> U+00C5), and two
-# compatibility characters the K forms alone touch (U+FB01 fi ligature,
-# U+2460 circled digit one) -- written as \u escapes so none of them is a
-# character a form has already normalized.
+# Combining sequence, singleton (U+212B -> U+00C5) and two compatibility characters
+# only the K forms touch -- as \u escapes, so none arrives already normalized.
 BPE_NORMALIZER_TEXTS = [
     "école",            # e + COMBINING ACUTE
     "école",             # the precomposed form of the same word

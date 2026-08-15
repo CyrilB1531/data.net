@@ -1,15 +1,12 @@
 namespace DataNet.Tests.Documentation.Fixtures;
 
-/// long-comment: a fixture is only worth having if a reader can see which
-/// property of the real surface each of its three members stands in for
 /// <summary>A namespace shaped like the two cases D7's refinements carve out.</summary>
 /// <remarks>
-/// <c>DataNet.Metrics</c> is what forced both, and neither is reachable from
-/// <c>DataNet.Text.Distances</c>: it exports no nested type and no record, so the
-/// rules would go unmeasured against a real assembly. This namespace is a real
-/// assembly — the test assembly itself — so <c>Check</c> reflects over it exactly
-/// as it reflects over a shipped one. <see cref="Measure"/> and <see cref="Grid"/>
-/// additionally pin the array spellings, which no member of the distances page has.
+/// <c>DataNet.Metrics</c> forced both, and <c>DataNet.Text.Distances</c> exports neither a
+/// nested type nor a record, so the rules would go unmeasured against a real assembly.
+/// This one is real — the test assembly itself — so <c>Check</c> reflects over it exactly
+/// as over a shipped one. <see cref="Measure"/> and <see cref="Grid"/> pin the array
+/// spellings besides, which no member of the distances page has.
 /// </remarks>
 public static class Cabinet
 {

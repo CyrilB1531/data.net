@@ -39,29 +39,21 @@ from collections import namedtuple
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
-# long-comment: the measurement that set both budgets, which a reader
-# changing either one needs
-# Two budgets, because the two kinds of prose sit in different places. An
-# inline comment stands between a reader and the code, so it is a sentence:
-# measured, 446 blocks run past two lines today, holding 2391 of them. XML
-# documentation is the member's own interface, read by a caller who does not
-# have the source, and CLAUDE.md requires every public member to carry it --
-# so it gets eight, counted over prose only.
+# An inline comment is a sentence between a reader and the code; XML documentation is
+# the member's interface, read without the source. Measured: see the module docstring.
 THRESHOLD_INLINE = 2
 THRESHOLD_DOC = 8
 MARKER = "long-comment:"
 
-# long-comment: why structural elements are exempt, measured
-# An XML documentation element a well-formed member must carry anyway: a
-# <param> per parameter, an <exception> per throw, a <summary> that the
-# analyzers require. Measured: counting these against the budget puts 316 of
-# the 354 over-length C# blocks inside public API documentation, which
-# CLAUDE.md separately requires every public member to have -- so the cap
-# would have been a cap on documenting the API rather than on prose. Counting
-# only the prose leaves 228, and a well-formed 12-line block with a four-line
-# <remarks> passes while a three-paragraph essay does not.
+# What a well-formed member carries anyway: counting it capped documenting the API
+# rather than essay-writing -- 316 of 354 over-length blocks were API documentation.
 STRUCTURAL = re.compile(
-    r"</?(summary|param|returns|exception|typeparam|value|inheritdoc|seealso)")
+    r"</?(summary|param|returns|exception|typeparam|value|inheritdoc|seealso|example|code)")
+
+# A worked example is a code sample, and a code sample is not prose. CONTRIBUTING.md
+# asks every public member for one, so counting its lines taxed having one.
+SAMPLE_OPEN = re.compile(r"<(example|code)\b")
+SAMPLE_CLOSE = re.compile(r"</(example|code)>")
 
 # The whole vocabulary: a suffix not listed here is skipped, not guessed at.
 LEADERS: dict[str, tuple[str, ...]] = {
@@ -180,6 +172,7 @@ def blocks_in(lines: list[str], suffix: str) -> list[Block]:
     prose = 0
     doc = False
     marked = False
+    sample = 0
 
     for number, raw in enumerate(lines, start=1):
         is_comment, content = _is_comment_line(raw.strip(), leaders)
@@ -189,9 +182,12 @@ def blocks_in(lines: list[str], suffix: str) -> list[Block]:
                 marked = _is_marker(content)
                 prose = 0
                 doc = raw.strip().startswith("///")
+                sample = 0
             length += 1
-            if not STRUCTURAL.search(content):
+            sample += len(SAMPLE_OPEN.findall(content))
+            if not sample and not STRUCTURAL.search(content):
                 prose += 1
+            sample = max(0, sample - len(SAMPLE_CLOSE.findall(content)))
         elif length:
             result.append(_close(lines, number - 1, start, length, prose, doc, marked))
             length = 0

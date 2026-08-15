@@ -59,21 +59,8 @@ internal sealed class BpePreTokenizer
             return;
         }
 
-        // long-comment: the default rule when no Split step is declared is not
-        // obvious, and the measured case is what keeps it from looking arbitrary.
-        // A pre-split runs first and the second pattern re-splits its pieces
-        // (issue #143). Only the pre-split carries a declared behaviour; a null
-        // pre-split still needs one to drive Apply, and it is Removed with invert
-        // on -- "keep the regex matches, drop everything else" -- not Isolated.
-        // The two are interchangeable only when the pattern never leaves a gap,
-        // which is true of every shipped byte-level pattern (Gpt2/Llama3/Qwen2)
-        // but false of BpePatterns.Whitespace's \w+|[^\w\s]+, which never matches
-        // a run of whitespace: under Isolated that whitespace would surface as its
-        // own piece and reach the merge loop as an uncovered symbol, where measured
-        // (bpe.json, e.g. " leading space") the reference produces no such piece
-        // and no substituted token for one. Removed+invert keeps that path
-        // byte-for-byte unchanged; BpeSplitBehaviorTests never exercises this
-        // branch at all, since every corpus case supplies its own BpeSplitStep.
+        // A null pre-split still needs a behaviour to drive Apply: Removed with invert,
+        // never Isolated -- docs/decisions/0035 has the measured case that separates them.
         if (preSplit is null)
         {
             // Not null here: BpeTokenizer.EnsurePreTokenizerIsDeclared refuses a
