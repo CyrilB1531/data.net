@@ -97,11 +97,32 @@ the identity carriers that name Text.
   `data.net` under this account afterwards** — it breaks every redirect at once.
 - [ ] **Step 2: `RepositoryUrl` and `PackageProjectUrl`** in `Directory.Build.props`, which are
   stamped into every package.
-- [ ] **Step 3: SonarCloud** — the project key `CyrilB1531_data.net` in
-  `.github/workflows/sonarcloud.yml`, `.globalconfig`, `tools/generate_sonar_globalconfig.py` and
-  the README badge, **and** the binding, which the rename breaks separately from the key. Pull
-  request decoration is how the gate reports, so it is verified on a live pull request rather than
-  assumed.
+- [x] **Step 3: SonarCloud — nothing to do, measured.** The key stays `CyrilB1531_data.net` (it is
+  an internal identifier, and changing it would start the analysis history over), and the binding
+  followed the rename on its own: GitHub keeps the repository id `1322216727` across it, and
+  SonarCloud binds to that. Verified on PR #198, the first of the renamed repository:
+  `SonarCloud Code Analysis` decorated it, key unchanged, no action taken.
+
+- [x] **Step 4: nuget.org Trusted Publishing — the policy does NOT follow the rename**, and this
+  step is here because the plan did not have it. The publish at 06:29 succeeded, the rename
+  happened, and the publish at 07:27 failed:
+  `Token exchange failed (HTTP 401) … No matching trust policy owned by user 'CyrilB1531' was
+  found.` nuget.org's tooltip says the permanent id is used for validation, which is what misled
+  this plan — the policy has to be **deleted and recreated** against the renamed repository,
+  because its edit form exposes only the policy name, the workflow file and the environment.
+  Recreated, the same run succeeded on re-attempt.
+
+  The rule for whoever renames next: **the id survives, the policy does not follow it.** Publish
+  one cheap package first, and find out before four tags are waiting.
+
+## Task 4b — what publishing four tags at once broke
+
+- [ ] **The wiki lost two archives, and nothing failed.** `wiki.yml` declares
+  `concurrency: group: wiki`, and GitHub keeps at most one *pending* run per group —
+  `cancel-in-progress: false` protects a running job, not a queued one. Four tags pushed together
+  left `Fuzzy 0.3.1` and `Metrics 0.2.0` with no frozen pages, while every run reported success or
+  cancellation. Recorded as [#199](https://github.com/CyrilB1531/lodestar/issues/199) and fixed
+  there: any run now archives every released version the wiki does not hold, each from its own tag.
 
 ## Task 5 — `Lodestar.Metrics 0.1.1`, from the tag
 

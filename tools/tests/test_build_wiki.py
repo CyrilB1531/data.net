@@ -68,6 +68,37 @@ def test_an_archived_page_carries_the_version_in_its_name(tmp_path):
     assert (out / "Text-0.4.0-quickstart.md").exists()
 
 
+def test_a_released_version_the_wiki_does_not_hold_is_reported(tmp_path):
+    """The check that would have caught #199: three tags pushed, one archive written."""
+    repo = make_repo(tmp_path)
+    out = tmp_path / "wiki"
+    build_wiki.build(repo, out, MAP, released={"Lodestar.Text": "0.3.0"})
+
+    assert build_wiki.missing_archives(out, MAP, {"Lodestar.Text": "0.3.0"}) == [
+        ("Lodestar.Text", "0.3.0")
+    ]
+
+
+def test_an_archive_the_wiki_already_holds_is_not_reported(tmp_path):
+    repo = make_repo(tmp_path)
+    out = tmp_path / "wiki"
+    build_wiki.build(
+        repo, out, MAP, released={"Lodestar.Text": "0.4.0"},
+        archive=("Lodestar.Text", "0.4.0"),
+    )
+
+    assert build_wiki.missing_archives(out, MAP, {"Lodestar.Text": "0.4.0"}) == []
+
+
+def test_a_package_with_no_release_is_not_reported(tmp_path):
+    """`released` omits a package that has never shipped, and nothing is owed for it."""
+    repo = make_repo(tmp_path)
+    out = tmp_path / "wiki"
+    build_wiki.build(repo, out, MAP, released={})
+
+    assert build_wiki.missing_archives(out, MAP, {}) == []
+
+
 def test_an_archived_page_links_to_its_own_frozen_counterpart(tmp_path):
     """The whole point of an archive: one click must not land on what main says today."""
     repo = make_repo(tmp_path)
