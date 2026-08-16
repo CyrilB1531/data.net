@@ -8,17 +8,17 @@ namespace DataNet.Metrics;
 /// </summary>
 public static class NormalizedMutualInformation
 {
-    /// <summary>
-    /// Scores the shared information between two labellings against the mean of their
-    /// entropies — <c>sklearn.metrics.normalized_mutual_info_score(labels_true, labels_pred)</c>.
-    /// </summary>
+    /// <summary>Scores the shared information between two labellings against the mean of their entropies — <c>sklearn.metrics.normalized_mutual_info_score(labels_true, labels_pred)</c>.</summary>
     /// <param name="labelsTrue">The reference labelling.</param>
     /// <param name="labelsPred">The labelling to score, same length as <paramref name="labelsTrue"/>.</param>
     /// <returns><c>1</c> when each labelling determines the other, <c>0</c> when neither says anything about the other.</returns>
     /// <remarks>
-    /// The normalizer is the arithmetic mean, scikit-learn's default <c>average_method</c>; the
-    /// other three are not reproduced. Not corrected for chance: splitting every sample into its
-    /// own cluster scores <c>0.667</c> here where <see cref="AdjustedRand"/> scores <c>0</c>.
+    /// <c>MI</c> over the arithmetic mean of the two entropies, which is the same quantity as
+    /// <see cref="VMeasure"/> — its remark writes the cancellation out. The other three
+    /// <c>average_method</c> normalizers are absent rather than refused: no corpus row covers them.
+    /// Nothing here is corrected for chance, and the gap is measurable: <c>[0,0,1,1]</c> against
+    /// <c>[0,1,2,3]</c> scores <c>0.667</c> where <see cref="AdjustedRand"/> scores <c>0</c>. The
+    /// split labelling does determine the truth; what it does not do is beat chance at it.
     /// </remarks>
     /// <exception cref="ArgumentException">The two labellings disagree in length.</exception>
     public static double Score(ReadOnlySpan<int> labelsTrue, ReadOnlySpan<int> labelsPred)

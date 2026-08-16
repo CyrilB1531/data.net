@@ -29,13 +29,18 @@ int[] alone = [0, 1, 2, 3];
 double score = NormalizedMutualInformation.Score(truth, alone);   // => 0.6666…
 ```
 
-**Remarks** — the example is the reason this is not the default choice: a clustering that puts
-every sample on its own carries no information about the truth, and still scores two thirds here
-where `AdjustedRand.Score` scores `0`.
+**Remarks** — the example is the reason this is not the default choice, and the reason is *not*
+that the split clustering says nothing. It says a great deal: every cluster holds one sample, so
+knowing the cluster tells you the class exactly, and the mutual information is genuinely high. What
+it does not do is beat chance — a partition that fine agrees with any truth about that well by
+accident, which is what `AdjustedRand.Score` subtracts and this does not. Read the two together and
+the gap between them *is* the correction for chance.
 
 The normalizer is the arithmetic mean of the two entropies, scikit-learn's default
-`average_method`; the other three it offers are not reproduced. That choice is also what makes
-this equal to `VMeasure.Score` on every input.
+`average_method`; `min`, `geometric` and `max` are absent rather than refused, because the frozen
+corpus holds no row for them and an unproven normalizer is not parity. That same choice makes this
+the identical number to `VMeasure.Score` on every input — the cancellation is written out in
+[that entry](vmeasure-score.md), and it is worth reading before reporting both.
 
 **Applies to** — net10.0, netstandard2.0.
 
