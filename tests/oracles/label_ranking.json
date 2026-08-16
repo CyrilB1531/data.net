@@ -1,0 +1,306 @@
+{
+ "metadata": {
+  "algorithm": "LabelRanking",
+  "library": "scikit-learn",
+  "library_version": "1.9.0",
+  "reference_calls": [
+   "sklearn.metrics.label_ranking_average_precision_score",
+   "sklearn.metrics.coverage_error",
+   "sklearn.metrics.label_ranking_loss"
+  ],
+  "count": 11
+ },
+ "cases": [
+  {
+   "name": "the worked case",
+   "y_true": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1
+   ],
+   "y_score": [
+    0.75,
+    0.5,
+    1.0,
+    1.0,
+    0.2,
+    0.1
+   ],
+   "label_count": 3,
+   "sample_weight": null,
+   "lrap": 0.41666666666666663,
+   "coverage": 2.5,
+   "ranking_loss": 0.75
+  },
+  {
+   "name": "the worked case, weighted",
+   "y_true": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1
+   ],
+   "y_score": [
+    0.75,
+    0.5,
+    1.0,
+    1.0,
+    0.2,
+    0.1
+   ],
+   "label_count": 3,
+   "sample_weight": [
+    1.0,
+    2.0
+   ],
+   "lrap": 0.38888888888888884,
+   "coverage": 2.6666666666666665,
+   "ranking_loss": 0.8333333333333334
+  },
+  {
+   "name": "every label relevant",
+   "y_true": [
+    1,
+    1,
+    1
+   ],
+   "y_score": [
+    0.7,
+    0.2,
+    0.1
+   ],
+   "label_count": 3,
+   "sample_weight": null,
+   "lrap": 1.0,
+   "coverage": 3.0,
+   "ranking_loss": 0.0
+  },
+  {
+   "name": "no label relevant",
+   "y_true": [
+    0,
+    0,
+    0
+   ],
+   "y_score": [
+    0.7,
+    0.2,
+    0.1
+   ],
+   "label_count": 3,
+   "sample_weight": null,
+   "lrap": 1.0,
+   "coverage": 0.0,
+   "ranking_loss": 0.0
+  },
+  {
+   "name": "an empty row beside a scoring one",
+   "y_true": [
+    0,
+    0,
+    0,
+    1,
+    0,
+    0
+   ],
+   "y_score": [
+    0.7,
+    0.2,
+    0.1,
+    0.7,
+    0.2,
+    0.1
+   ],
+   "label_count": 3,
+   "sample_weight": null,
+   "lrap": 1.0,
+   "coverage": 0.5,
+   "ranking_loss": 0.0
+  },
+  {
+   "name": "every score equal, two of three relevant",
+   "y_true": [
+    1,
+    1,
+    0
+   ],
+   "y_score": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "label_count": 3,
+   "sample_weight": null,
+   "lrap": 0.6666666666666666,
+   "coverage": 3.0,
+   "ranking_loss": 1.0
+  },
+  {
+   "name": "negative scores",
+   "y_true": [
+    1,
+    0,
+    0
+   ],
+   "y_score": [
+    -0.7,
+    -0.2,
+    -0.1
+   ],
+   "label_count": 3,
+   "sample_weight": null,
+   "lrap": 0.3333333333333333,
+   "coverage": 3.0,
+   "ranking_loss": 1.0
+  },
+  {
+   "name": "relevant on top",
+   "y_true": [
+    1,
+    1,
+    0,
+    0
+   ],
+   "y_score": [
+    0.9,
+    0.8,
+    0.2,
+    0.1
+   ],
+   "label_count": 4,
+   "sample_weight": null,
+   "lrap": 1.0,
+   "coverage": 2.0,
+   "ranking_loss": 0.0
+  },
+  {
+   "name": "relevant at the bottom",
+   "y_true": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "y_score": [
+    0.9,
+    0.8,
+    0.2,
+    0.1
+   ],
+   "label_count": 4,
+   "sample_weight": null,
+   "lrap": 0.41666666666666663,
+   "coverage": 4.0,
+   "ranking_loss": 1.0
+  },
+  {
+   "name": "twenty columns, every score tied",
+   "y_true": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1
+   ],
+   "y_score": [
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5
+   ],
+   "label_count": 20,
+   "sample_weight": null,
+   "lrap": 0.15,
+   "coverage": 20.0,
+   "ranking_loss": 1.0
+  },
+  {
+   "name": "twenty columns, strictly ordered",
+   "y_true": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1
+   ],
+   "y_score": [
+    1.0,
+    0.95,
+    0.9,
+    0.85,
+    0.8,
+    0.75,
+    0.7,
+    0.65,
+    0.6,
+    0.55,
+    0.5,
+    0.45,
+    0.4,
+    0.35,
+    0.3,
+    0.25,
+    0.2,
+    0.15,
+    0.1,
+    0.05
+   ],
+   "label_count": 20,
+   "sample_weight": null,
+   "lrap": 0.44999999999999996,
+   "coverage": 20.0,
+   "ranking_loss": 0.49019607843137253
+  }
+ ]
+}
