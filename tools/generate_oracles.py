@@ -2275,17 +2275,113 @@ def generate_label_ranking() -> dict:
 
 
 def _top_k_fixtures() -> list[dict]:
-    """Multiclass score matrices, where k is the question rather than ties."""
+    """Multiclass score matrices, where k is the question rather than ties.
+
+    Every weight vector puts a value other than 1 on a sample that HITS. A
+    vector weighting only the misses cannot separate "sums the weights" from
+    "counts the samples": both give the unweighted count, which is what a first
+    measurement of normalize=False reported before the fixture was fixed (#216).
+    """
     return [
         {"name": "three classes", "true": [0, 1, 2, 2],
-         "score": [[0.7, 0.2, 0.1], [0.3, 0.5, 0.2], [0.2, 0.3, 0.5], [0.5, 0.3, 0.2]]},
+         "score": [[0.7, 0.2, 0.1], [0.3, 0.5, 0.2], [0.2, 0.3, 0.5], [0.5, 0.3, 0.2]],
+         "weight": [5.0, 1.0, 1.0, 1.0]},
         {"name": "every prediction wrong at k=1", "true": [1, 2, 0],
-         "score": [[0.6, 0.3, 0.1], [0.5, 0.4, 0.1], [0.2, 0.7, 0.1]]},
+         "score": [[0.6, 0.3, 0.1], [0.5, 0.4, 0.1], [0.2, 0.7, 0.1]],
+         "weight": [2.0, 3.0, 4.0]},
         # scikit-learn infers the label set from y_true and refuses a wider score row,
         # so every class appears here; our own surface takes the count as a parameter.
         {"name": "ties in the score row", "true": [0, 1, 2],
-         "score": [[0.5, 0.5, 0.0], [0.4, 0.4, 0.2], [0.1, 0.2, 0.7]]},
+         "score": [[0.5, 0.5, 0.0], [0.4, 0.4, 0.2], [0.1, 0.2, 0.7]],
+         "weight": [1.0, 4.0, 1.0]},
+        # A negative weight is accepted and takes the fraction out of [0, 1],
+        # which the reference does too rather than refusing it.
+        {"name": "a negative weight", "true": [0, 1, 2, 2],
+         "score": [[0.7, 0.2, 0.1], [0.3, 0.5, 0.2], [0.2, 0.3, 0.5], [0.5, 0.3, 0.2]],
+         "weight": [-1.0, 1.0, 1.0, 1.0]},
     ]
+
+
+def _ranking_weighted_fixtures() -> list[dict]:
+    """Multi-row queries, because a weight over one row cancels.
+
+    Every fixture in _ranking_fixtures is a single query, so sample_weight
+    there multiplies the numerator and the denominator alike and no vector can
+    change a value. Weights need at least two rows that score differently,
+    which is what these are.
+    """
+    return [
+        # The corpus' perfect and reversed rows together: the pair whose mean the
+        # weights move furthest, and whose unweighted mean is already asserted.
+        {"name": "perfect and reversed", "true": [[3.0, 2.0, 1.0, 0.0], [3.0, 2.0, 1.0, 0.0]],
+         "score": [[0.9, 0.5, 0.4, 0.1], [0.1, 0.4, 0.5, 0.9]], "weight": [1.0, 3.0]},
+        {"name": "perfect and reversed, weight on the good row",
+         "true": [[3.0, 2.0, 1.0, 0.0], [3.0, 2.0, 1.0, 0.0]],
+         "score": [[0.9, 0.5, 0.4, 0.1], [0.1, 0.4, 0.5, 0.9]], "weight": [3.0, 1.0]},
+        # Equal weights must give the unweighted mean back, which is the check
+        # that the weighting is a mean rather than a sum.
+        {"name": "equal weights are the plain mean",
+         "true": [[3.0, 2.0, 1.0, 0.0], [3.0, 2.0, 1.0, 0.0]],
+         "score": [[0.9, 0.5, 0.4, 0.1], [0.1, 0.4, 0.5, 0.9]], "weight": [2.0, 2.0]},
+        # A row whose relevance is all zero scores 0 for ndcg and 0 for dcg, and
+        # still carries its weight into the denominator.
+        {"name": "a nothing-relevant row carries its weight",
+         "true": [[3.0, 2.0, 1.0, 0.0], [0.0, 0.0, 0.0, 0.0]],
+         "score": [[0.9, 0.5, 0.4, 0.1], [0.9, 0.5, 0.4, 0.1]], "weight": [1.0, 4.0]},
+        # Accepted on both sides, and it takes the result outside the range the
+        # page promises -- recorded rather than smoothed.
+        {"name": "a negative weight", "true": [[3.0, 2.0, 1.0, 0.0], [3.0, 2.0, 1.0, 0.0]],
+         "score": [[0.9, 0.5, 0.4, 0.1], [0.1, 0.4, 0.5, 0.9]], "weight": [-1.0, 2.0]},
+        {"name": "three rows", "true": [[3.0, 2.0, 1.0], [1.0, 2.0, 3.0], [0.0, 1.0, 0.0]],
+         "score": [[0.9, 0.5, 0.1], [0.9, 0.5, 0.1], [0.5, 0.5, 0.5]], "weight": [1.0, 2.0, 5.0]},
+    ]
+
+
+def generate_ranking_weighted() -> dict:
+    """dcg_score and ndcg_score with a sample_weight, which needs several rows."""
+    import math
+
+    import numpy as np
+    from sklearn.metrics import dcg_score, ndcg_score
+
+    cases = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for fixture in _ranking_weighted_fixtures():
+            true = np.array(fixture["true"])
+            score = np.array(fixture["score"])
+            weight = np.array(fixture["weight"])
+            cases.append({
+                "name": fixture["name"],
+                "y_true": [v for row in fixture["true"] for v in row],
+                "y_score": [v for row in fixture["score"] for v in row],
+                "label_count": true.shape[1],
+                "sample_weight": fixture["weight"],
+                "dcg": float(dcg_score(true, score)),
+                "dcg_weighted": float(dcg_score(true, score, sample_weight=weight)),
+                "dcg_weighted_log_e": float(
+                    dcg_score(true, score, log_base=math.e, sample_weight=weight)),
+                "dcg_weighted_at_2": float(dcg_score(true, score, k=2, sample_weight=weight)),
+                "ndcg": float(ndcg_score(true, score)),
+                "ndcg_weighted": float(ndcg_score(true, score, sample_weight=weight)),
+                "ndcg_weighted_at_2": float(ndcg_score(true, score, k=2, sample_weight=weight)),
+                "ndcg_weighted_ignore_ties": float(
+                    ndcg_score(true, score, ignore_ties=True, sample_weight=weight)),
+            })
+
+    return {
+        "metadata": {
+            "algorithm": "RankingWeighted",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.dcg_score(sample_weight=...)",
+                "sklearn.metrics.ndcg_score(sample_weight=...)",
+            ],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
 
 
 def generate_top_k_accuracy() -> dict:
@@ -2305,10 +2401,19 @@ def generate_top_k_accuracy() -> dict:
                 "y_score": [value for row in fixture["score"] for value in row],
                 "class_count": classes,
             }
+            weight = np.array(fixture["weight"])
+            entry["sample_weight"] = fixture["weight"]
             for k in (1, 2, classes):
                 entry[f"top_{k}"] = float(top_k_accuracy_score(true, score, k=k))
                 entry[f"top_{k}_count"] = float(
                     top_k_accuracy_score(true, score, k=k, normalize=False))
+                entry[f"top_{k}_weighted"] = float(
+                    top_k_accuracy_score(true, score, k=k, sample_weight=weight))
+                # normalize=False sums the weights of the hits rather than counting
+                # them, and never divides -- so it alone survives a zero-sum vector.
+                entry[f"top_{k}_weighted_count"] = float(
+                    top_k_accuracy_score(true, score, k=k, normalize=False,
+                                         sample_weight=weight))
             cases.append(entry)
 
     return {
@@ -2319,6 +2424,8 @@ def generate_top_k_accuracy() -> dict:
             "reference_calls": [
                 "sklearn.metrics.top_k_accuracy_score",
                 "sklearn.metrics.top_k_accuracy_score(normalize=False)",
+                "sklearn.metrics.top_k_accuracy_score(sample_weight=...)",
+                "sklearn.metrics.top_k_accuracy_score(normalize=False, sample_weight=...)",
             ],
             "count": len(cases),
         },
@@ -5054,6 +5161,7 @@ def main() -> None:
         "clustering_agreement.json": generate_clustering_agreement,
         "silhouette.json": generate_silhouette,
         "ranking.json": generate_ranking,
+        "ranking_weighted.json": generate_ranking_weighted,
         "label_ranking.json": generate_label_ranking,
         "top_k_accuracy.json": generate_top_k_accuracy,
         "roc_auc.json": generate_roc_auc,

@@ -5,9 +5,11 @@
   "library_version": "1.9.0",
   "reference_calls": [
    "sklearn.metrics.top_k_accuracy_score",
-   "sklearn.metrics.top_k_accuracy_score(normalize=False)"
+   "sklearn.metrics.top_k_accuracy_score(normalize=False)",
+   "sklearn.metrics.top_k_accuracy_score(sample_weight=...)",
+   "sklearn.metrics.top_k_accuracy_score(normalize=False, sample_weight=...)"
   ],
-  "count": 3
+  "count": 4
  },
  "cases": [
   {
@@ -33,12 +35,24 @@
     0.2
    ],
    "class_count": 3,
+   "sample_weight": [
+    5.0,
+    1.0,
+    1.0,
+    1.0
+   ],
    "top_1": 0.75,
    "top_1_count": 3.0,
+   "top_1_weighted": 0.875,
+   "top_1_weighted_count": 7.0,
    "top_2": 0.75,
    "top_2_count": 3.0,
+   "top_2_weighted": 0.875,
+   "top_2_weighted_count": 7.0,
    "top_3": 1.0,
-   "top_3_count": 4.0
+   "top_3_count": 4.0,
+   "top_3_weighted": 1.0,
+   "top_3_weighted_count": 8.0
   },
   {
    "name": "every prediction wrong at k=1",
@@ -59,12 +73,23 @@
     0.1
    ],
    "class_count": 3,
+   "sample_weight": [
+    2.0,
+    3.0,
+    4.0
+   ],
    "top_1": 0.0,
    "top_1_count": 0.0,
+   "top_1_weighted": 0.0,
+   "top_1_weighted_count": 0.0,
    "top_2": 0.6666666666666666,
    "top_2_count": 2.0,
+   "top_2_weighted": 0.6666666666666666,
+   "top_2_weighted_count": 6.0,
    "top_3": 1.0,
-   "top_3_count": 3.0
+   "top_3_count": 3.0,
+   "top_3_weighted": 1.0,
+   "top_3_weighted_count": 9.0
   },
   {
    "name": "ties in the score row",
@@ -85,12 +110,65 @@
     0.7
    ],
    "class_count": 3,
+   "sample_weight": [
+    1.0,
+    4.0,
+    1.0
+   ],
    "top_1": 0.6666666666666666,
    "top_1_count": 2.0,
+   "top_1_weighted": 0.8333333333333334,
+   "top_1_weighted_count": 5.0,
    "top_2": 1.0,
    "top_2_count": 3.0,
+   "top_2_weighted": 1.0,
+   "top_2_weighted_count": 6.0,
    "top_3": 1.0,
-   "top_3_count": 3.0
+   "top_3_count": 3.0,
+   "top_3_weighted": 1.0,
+   "top_3_weighted_count": 6.0
+  },
+  {
+   "name": "a negative weight",
+   "y_true": [
+    0,
+    1,
+    2,
+    2
+   ],
+   "y_score": [
+    0.7,
+    0.2,
+    0.1,
+    0.3,
+    0.5,
+    0.2,
+    0.2,
+    0.3,
+    0.5,
+    0.5,
+    0.3,
+    0.2
+   ],
+   "class_count": 3,
+   "sample_weight": [
+    -1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "top_1": 0.75,
+   "top_1_count": 3.0,
+   "top_1_weighted": 0.5,
+   "top_1_weighted_count": 1.0,
+   "top_2": 0.75,
+   "top_2_count": 3.0,
+   "top_2_weighted": 0.5,
+   "top_2_weighted_count": 1.0,
+   "top_3": 1.0,
+   "top_3_count": 4.0,
+   "top_3_weighted": 1.0,
+   "top_3_weighted_count": 2.0
   }
  ]
 }

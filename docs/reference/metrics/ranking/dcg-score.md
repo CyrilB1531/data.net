@@ -5,7 +5,7 @@ The mean discounted gain over the rows — `sklearn.metrics.dcg_score`.
 <!-- docs-declaration -->
 
 ```csharp
-public static double Score(ReadOnlySpan<double> yTrue, ReadOnlySpan<double> yScore, int labelCount, int? k = null, double logBase = 2, bool ignoreTies = false)
+public static double Score(ReadOnlySpan<double> yTrue, ReadOnlySpan<double> yScore, int labelCount, int? k = null, double logBase = 2, bool ignoreTies = false, ReadOnlySpan<double> sampleWeight = default)
 ```
 
 **Parameters** — `yTrue` is the relevance of each document and `yScore` the scores the ranking was
@@ -15,7 +15,8 @@ the whole row rather than raising. `logBase` is the base of the positional disco
 scikit-learn, and anywhere in `(0, ∞)`: a base below `1` is accepted and takes the score negative,
 `1` itself makes every discount zero. `ignoreTies` ranks equal scores in descending index order
 instead of averaging over their permutations — faster, and correct only when genuine ties cannot
-occur.
+occur. `sampleWeight` carries one weight per query, or is empty for an unweighted mean;
+over a single query it cancels, since it multiplies both halves of the mean.
 
 **Returns** — `double`, the mean over the rows of `Σ relevance / log(rank + 1)`. **Unbounded
 above**: it grows with the relevance values, so two rows are comparable only on the same judgement
@@ -27,7 +28,9 @@ disagree in length, or when the length is not a whole number of rows of `labelCo
 `ArgumentOutOfRangeException` when `k` is below `1`, and when `logBase` falls outside `(0, ∞)` —
 zero, negative, `NaN` or infinite; scikit-learn refuses the same values, through the constraint it
 prints as "must be a float in the range (0.0, inf)". A zero or negative base would otherwise reach
-the caller as a silent `NaN` score.
+the caller as a silent `NaN` score. `ArgumentException` also when `sampleWeight` is neither
+empty nor one value per query, or when it sums to zero — `numpy.average`'s own refusal,
+which the reference reaches as a `ZeroDivisionError` from the same call.
 
 A negative relevance is **not** refused here, and the result can be negative — `dcg_score` accepts
 it too. [`Ndcg.Score`](ndcg-score.md) does refuse it, because there the ratio would leave `[0, 1]`.

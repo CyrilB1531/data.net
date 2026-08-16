@@ -15,13 +15,14 @@ public static class Dcg
     /// <param name="k">Score only the first <c>k</c> positions, or <c>null</c> for all of them.</param>
     /// <param name="logBase">The base of the positional discount, anywhere in <c>(0, ∞)</c>; <c>2</c> is scikit-learn's default.</param>
     /// <param name="ignoreTies">Rank equal scores arbitrarily instead of averaging over their permutations.</param>
+    /// <param name="sampleWeight">One weight per query, or empty for an unweighted mean.</param>
     /// <returns>The mean discounted gain over the rows. Unbounded above: it grows with the relevance values.</returns>
     /// <remarks>
     /// The gains are linear, <c>Σ relevance / log(rank + 1)</c>. Much of the literature uses
     /// <c>2^relevance − 1</c> instead, which on the same row gives <c>9.3927…</c> where this
     /// gives <c>4.7618…</c> — the difference is the definition, not an error on either side.
     /// </remarks>
-    /// <exception cref="ArgumentException">The rows disagree in length, or hold fewer than two documents.</exception>
+    /// <exception cref="ArgumentException">The rows disagree in length, hold fewer than two documents, or <paramref name="sampleWeight"/> has the wrong length or sums to zero.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="k"/> is below 1, or <paramref name="logBase"/> is outside <c>(0, ∞)</c> — zero, negative, <c>NaN</c> or infinite.</exception>
     public static double Score(
         ReadOnlySpan<double> yTrue,
@@ -29,22 +30,24 @@ public static class Dcg
         int labelCount,
         int? k = null,
         double logBase = 2.0,
-        bool ignoreTies = false)
+        bool ignoreTies = false,
+        ReadOnlySpan<double> sampleWeight = default)
     {
         Ranking.Validate(yTrue, yScore, labelCount, nameof(yTrue), nameof(yScore));
+        int rows = yTrue.Length / labelCount;
+        Weights.Validate(sampleWeight, rows, nameof(sampleWeight));
         double[] discounts = Ranking.Discounts(labelCount, k, logBase);
 
-        double total = 0.0;
-        int rows = yTrue.Length / labelCount;
+        double[] perQuery = new double[rows];
         for (int row = 0; row < rows; row++)
         {
             ReadOnlySpan<double> relevance = yTrue.Slice(row * labelCount, labelCount);
             ReadOnlySpan<double> scores = yScore.Slice(row * labelCount, labelCount);
-            total += ignoreTies
+            perQuery[row] = ignoreTies
                 ? Ranking.Gain(relevance, scores, discounts)
                 : Ranking.TieAveragedGain(relevance, scores, discounts);
         }
 
-        return total / rows;
+        return Weights.Mean(perQuery, sampleWeight);
     }
 }

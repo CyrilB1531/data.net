@@ -41,6 +41,31 @@ public sealed class TopKAccuracyTests
         }
     }
 
+    [Theory]
+    [MemberData(nameof(Indices))]
+    public void Matches_sklearn_at_every_k_with_a_sample_weight(int index)
+    {
+        JsonElement c = Cases[index];
+        int[] yTrue = MetricsCorpus.Ints(c, "y_true");
+        double[] yScore = MetricsCorpus.Doubles(c, "y_score");
+        double[] weight = MetricsCorpus.Doubles(c, "sample_weight");
+        int classes = c.GetProperty("class_count").GetInt32();
+
+        foreach (int k in new[] { 1, 2, classes })
+        {
+            Assert.Equal(c.GetProperty($"top_{k}_weighted").GetDouble(),
+                         TopKAccuracy.Score(yTrue, yScore, classes, k, sampleWeight: weight),
+                         MetricsCorpus.Tolerance);
+
+            // normalize: false sums the weights of the hits rather than counting them.
+            // Measured, 7.0 against the unweighted 3.0 on the corpus' first fixture.
+            Assert.Equal(c.GetProperty($"top_{k}_weighted_count").GetDouble(),
+                         TopKAccuracy.Score(yTrue, yScore, classes, k, normalize: false,
+                                            sampleWeight: weight),
+                         MetricsCorpus.Tolerance);
+        }
+    }
+
     [Fact]
     public void Every_class_in_the_top_k_is_a_hit_when_k_reaches_the_class_count()
     {
