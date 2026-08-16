@@ -34,6 +34,9 @@ public sealed class NetStandardAssemblyGuardTests
     /// </remarks>
     // #194: the pin was a ProjectReference to a project that is Lodestar.Text now, and
     // nothing can force the netstandard assets of a package built elsewhere.
+    // xUnit1004 is right in general and wrong here: the assertion is unenforceable
+    // until the floor moves, and deleting it would lose the reason it exists.
+#pragma warning disable xUnit1004
     [Fact(Skip = "#194: restored when Fuzzy's floor moves to Lodestar.Text")]
     public void Suite_runs_against_the_netstandard2_0_build_of_DataNet_Text()
     {
@@ -42,4 +45,5 @@ public sealed class NetStandardAssemblyGuardTests
 
         Assert.Equal(".NETStandard,Version=v2.0", framework);
     }
+#pragma warning restore xUnit1004
 }
