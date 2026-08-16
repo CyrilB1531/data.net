@@ -108,41 +108,10 @@ internal static class LabelRanking
 
     /// <summary>The mean of the per-row values, weighted when weights are given.</summary>
     /// <remarks>
-    /// A weight vector summing to zero raises, in <c>numpy.average</c>'s sentence — the one the
-    /// regression metrics already reproduce. <c>LabelRankingAveragePrecision</c> does not call
-    /// this: the reference divides directly there and returns <c>NaN</c>, which C# does too.
+    /// <see cref="Weights.Mean"/> is where this lives, shared with the ordered-list metrics
+    /// since #216. <c>LabelRankingAveragePrecision</c> does not call it: the reference
+    /// divides by the weight sum directly there and returns <c>NaN</c>, which C# does too.
     /// </remarks>
-    public static double Weighted(ReadOnlySpan<double> perRow, ReadOnlySpan<double> sampleWeight)
-    {
-        if (sampleWeight.Length == 0)
-        {
-            double plain = 0.0;
-            foreach (double value in perRow)
-            {
-                plain += value;
-            }
-
-            return plain / perRow.Length;
-        }
-
-        double total = 0.0;
-        double weights = 0.0;
-        for (int row = 0; row < perRow.Length; row++)
-        {
-            total += perRow[row] * sampleWeight[row];
-            weights += sampleWeight[row];
-        }
-
-        // S1244: the reference compares the sum to zero exactly, and a tolerance would
-        // refuse weights numpy accepts. Its own message is reproduced below.
-#pragma warning disable S1244
-        if (weights == 0.0)
-#pragma warning restore S1244
-        {
-            throw new ArgumentException(
-                "Weights sum to zero, can't be normalized.", nameof(sampleWeight));
-        }
-
-        return total / weights;
-    }
+    public static double Weighted(ReadOnlySpan<double> perRow, ReadOnlySpan<double> sampleWeight) =>
+        Weights.Mean(perRow, sampleWeight);
 }

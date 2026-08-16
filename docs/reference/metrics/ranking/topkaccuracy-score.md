@@ -5,21 +5,30 @@ How often the true class is among the `k` highest-scoring — `sklearn.metrics.t
 <!-- docs-declaration -->
 
 ```csharp
-public static double Score(ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int classCount, int k = 2, bool normalize = true)
+public static double Score(ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int classCount, int k = 2, bool normalize = true, ReadOnlySpan<double> sampleWeight = default)
 ```
 
 **Parameters** — `yTrue` is the true class of each sample, as an index into that sample's score row.
 `yScore` holds the scores row-major: one row per sample, `classCount` values each, so its length is
 `yTrue.Length * classCount`. `classCount` is how many classes each row scores. `k` is how many of
 the highest-scoring classes count as a hit, `2` as in scikit-learn. `normalize` returns the fraction
-when true and the number of hits when false.
+when true and the number of hits when false. `sampleWeight` carries one weight per sample, or is
+empty to weight each equally.
 
-**Returns** — `double`: a fraction in `[0, 1]`, or a count when `normalize` is false.
+**Returns** — `double`: a fraction in `[0, 1]`, or a count when `normalize` is false. With weights,
+the fraction is the weight of the hits over the total weight, and the count becomes the **sum of
+the weights** of the hits rather than how many there are — measured, `7.0` where the unweighted
+count is `3.0`. A negative weight is accepted and takes the fraction outside `[0, 1]`.
 
 **Exceptions** — `ArgumentOutOfRangeException` when `k` is below `1`. `ArgumentException` when
 `classCount` is below `2`, when `yTrue` is empty, when `yScore` is not exactly `yTrue.Length` rows
 of `classCount`, or when `yTrue` names a class outside `[0, classCount)` — that last one would
 otherwise be counted as a miss, and read as a bad model rather than as the caller error it is.
+`ArgumentException` also when `sampleWeight` is neither empty nor one value per sample, and when it
+sums to zero **while `normalize` is true**. `normalize: false` never divides, so it does not
+refuse a zero-sum vector at all: it returns the weighted sum of the hits, which is `3.0` on weights
+`[1, 1, 1, -3]` — zero only when the *hits'* own weights cancel, not when the total does. The
+reference draws the same line.
 
 **Example** — four samples over three classes, as a fraction and as a count.
 

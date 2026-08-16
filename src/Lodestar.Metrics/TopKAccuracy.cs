@@ -8,26 +8,51 @@ namespace Lodestar.Metrics;
 /// </summary>
 public static class TopKAccuracy
 {
-    /// <summary>Scores a multiclass prediction by whether the truth is in the top <c>k</c> — <c>sklearn.metrics.top_k_accuracy_score(y_true, y_score, k=…, normalize=…)</c>.</summary>
+    /// <summary>Scores a multiclass prediction by whether the truth is in the top <c>k</c> — <c>sklearn.metrics.top_k_accuracy_score(y_true, y_score, k=…, normalize=…, sample_weight=…)</c>.</summary>
     /// <param name="yTrue">The true class of each sample, as an index into the score row.</param>
     /// <param name="yScore">The scores, row-major: one row per sample, <paramref name="classCount"/> values each.</param>
     /// <param name="classCount">How many classes each row scores.</param>
     /// <param name="k">How many of the highest-scoring classes count as a hit. <c>2</c> is scikit-learn's default.</param>
     /// <param name="normalize">When true (the default) return the fraction; when false, the number of hits.</param>
+    /// <param name="sampleWeight">One weight per sample, or empty to weight each equally.</param>
     /// <returns>A fraction in <c>[0, 1]</c>, or a count when <paramref name="normalize"/> is false — measured, <c>3.0</c> on the corpus' first fixture at <c>k = 2</c>.</returns>
     /// <remarks>
     /// scikit-learn infers the class set from <c>y_true</c> and refuses a score row wider than
     /// what it found, unless given <c>labels</c>. Here the count is a parameter, so a class no
     /// sample happens to carry raises nothing — there is no inference to be wrong about.
     /// </remarks>
-    /// <exception cref="ArgumentException">The inputs disagree in shape, <paramref name="classCount"/> is below 2, or <paramref name="yTrue"/> names a class outside <c>[0, classCount)</c>.</exception>
+    /// <exception cref="ArgumentException">The inputs disagree in shape, <paramref name="classCount"/> is below 2, <paramref name="yTrue"/> names a class outside <c>[0, classCount)</c>, or <paramref name="sampleWeight"/> has the wrong length — or sums to zero while <paramref name="normalize"/> is true.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="k"/> is below 1.</exception>
     public static double Score(
         ReadOnlySpan<int> yTrue,
         ReadOnlySpan<double> yScore,
         int classCount,
         int k = 2,
-        bool normalize = true)
+        bool normalize = true,
+        ReadOnlySpan<double> sampleWeight = default)
+    {
+        Validate(yTrue, yScore, classCount, k, sampleWeight);
+        double hits = WeightedHits(yTrue, yScore, classCount, k, sampleWeight);
+
+        // normalize: false never divides, so a zero-sum weight vector gives 0 here
+        // where the fraction refuses it. The reference draws the same line.
+        if (!normalize)
+        {
+            return hits;
+        }
+
+        return sampleWeight.Length == 0
+            ? hits / yTrue.Length
+            : hits / Weights.Sum(sampleWeight, throwOnZero: true);
+    }
+
+    /// <summary>Refuses the shapes scikit-learn refuses, before any row is read.</summary>
+    private static void Validate(
+        ReadOnlySpan<int> yTrue,
+        ReadOnlySpan<double> yScore,
+        int classCount,
+        int k,
+        ReadOnlySpan<double> sampleWeight)
     {
         if (k < 1)
         {
@@ -56,6 +81,21 @@ public static class TopKAccuracy
                 nameof(yScore));
         }
 
+        Weights.Validate(sampleWeight, yTrue.Length, nameof(sampleWeight));
+    }
+
+    /// <summary>The weight of every sample whose true class is among the highest k scored.</summary>
+    /// <remarks>
+    /// A weight rather than a count: <c>top_k_accuracy_score(normalize=False)</c> adds the
+    /// weights of the hits, which is <c>7.0</c> where the unweighted count is <c>3.0</c>.
+    /// </remarks>
+    private static double WeightedHits(
+        ReadOnlySpan<int> yTrue,
+        ReadOnlySpan<double> yScore,
+        int classCount,
+        int k,
+        ReadOnlySpan<double> sampleWeight)
+    {
         double hits = 0.0;
         for (int sample = 0; sample < yTrue.Length; sample++)
         {
@@ -76,12 +116,12 @@ public static class TopKAccuracy
             {
                 if (order[rank] == trueClass)
                 {
-                    hits++;
+                    hits += sampleWeight.Length == 0 ? 1.0 : sampleWeight[sample];
                     break;
                 }
             }
         }
 
-        return normalize ? hits / yTrue.Length : hits;
+        return hits;
     }
 }

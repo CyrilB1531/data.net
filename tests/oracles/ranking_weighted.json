@@ -1,0 +1,233 @@
+{
+ "metadata": {
+  "algorithm": "RankingWeighted",
+  "library": "scikit-learn",
+  "library_version": "1.9.0",
+  "reference_calls": [
+   "sklearn.metrics.dcg_score(sample_weight=...)",
+   "sklearn.metrics.ndcg_score(sample_weight=...)"
+  ],
+  "count": 6
+ },
+ "cases": [
+  {
+   "name": "perfect and reversed",
+   "y_true": [
+    3.0,
+    2.0,
+    1.0,
+    0.0,
+    3.0,
+    2.0,
+    1.0,
+    0.0
+   ],
+   "y_score": [
+    0.9,
+    0.5,
+    0.4,
+    0.1,
+    0.1,
+    0.4,
+    0.5,
+    0.9
+   ],
+   "label_count": 4,
+   "sample_weight": [
+    1.0,
+    3.0
+   ],
+   "dcg": 3.8424094674672755,
+   "dcg_weighted": 3.3826844476294555,
+   "dcg_weighted_log_e": 4.88018207748724,
+   "dcg_weighted_at_2": 1.5386621919643217,
+   "ndcg": 0.8069136566720543,
+   "ndcg_weighted": 0.7103704850080814,
+   "ndcg_weighted_at_2": 0.36103071661219943,
+   "ndcg_weighted_ignore_ties": 0.7103704850080814
+  },
+  {
+   "name": "perfect and reversed, weight on the good row",
+   "y_true": [
+    3.0,
+    2.0,
+    1.0,
+    0.0,
+    3.0,
+    2.0,
+    1.0,
+    0.0
+   ],
+   "y_score": [
+    0.9,
+    0.5,
+    0.4,
+    0.1,
+    0.1,
+    0.4,
+    0.5,
+    0.9
+   ],
+   "label_count": 4,
+   "sample_weight": [
+    3.0,
+    1.0
+   ],
+   "dcg": 3.8424094674672755,
+   "dcg_weighted": 4.302134487305095,
+   "dcg_weighted_log_e": 6.206668090072444,
+   "dcg_weighted_at_2": 3.35412706875005,
+   "ndcg": 0.8069136566720543,
+   "ndcg_weighted": 0.9034568283360271,
+   "ndcg_weighted_at_2": 0.7870102388707332,
+   "ndcg_weighted_ignore_ties": 0.9034568283360271
+  },
+  {
+   "name": "equal weights are the plain mean",
+   "y_true": [
+    3.0,
+    2.0,
+    1.0,
+    0.0,
+    3.0,
+    2.0,
+    1.0,
+    0.0
+   ],
+   "y_score": [
+    0.9,
+    0.5,
+    0.4,
+    0.1,
+    0.1,
+    0.4,
+    0.5,
+    0.9
+   ],
+   "label_count": 4,
+   "sample_weight": [
+    2.0,
+    2.0
+   ],
+   "dcg": 3.8424094674672755,
+   "dcg_weighted": 3.8424094674672755,
+   "dcg_weighted_log_e": 5.543425083779843,
+   "dcg_weighted_at_2": 2.4463946303571857,
+   "ndcg": 0.8069136566720543,
+   "ndcg_weighted": 0.8069136566720543,
+   "ndcg_weighted_at_2": 0.5740204777414664,
+   "ndcg_weighted_ignore_ties": 0.8069136566720543
+  },
+  {
+   "name": "a nothing-relevant row carries its weight",
+   "y_true": [
+    3.0,
+    2.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "y_score": [
+    0.9,
+    0.5,
+    0.4,
+    0.1,
+    0.9,
+    0.5,
+    0.4,
+    0.1
+   ],
+   "label_count": 4,
+   "sample_weight": [
+    1.0,
+    4.0
+   ],
+   "dcg": 2.3809297535714573,
+   "dcg_weighted": 0.952371901428583,
+   "dcg_weighted_log_e": 1.3739822192730093,
+   "dcg_weighted_at_2": 0.8523719014285829,
+   "ndcg": 0.5,
+   "ndcg_weighted": 0.2,
+   "ndcg_weighted_at_2": 0.2,
+   "ndcg_weighted_ignore_ties": 0.2
+  },
+  {
+   "name": "a negative weight",
+   "y_true": [
+    3.0,
+    2.0,
+    1.0,
+    0.0,
+    3.0,
+    2.0,
+    1.0,
+    0.0
+   ],
+   "y_score": [
+    0.9,
+    0.5,
+    0.4,
+    0.1,
+    0.1,
+    0.4,
+    0.5,
+    0.9
+   ],
+   "label_count": 4,
+   "sample_weight": [
+    -1.0,
+    2.0
+   ],
+   "dcg": 3.8424094674672755,
+   "dcg_weighted": 1.0840593484403573,
+   "dcg_weighted_log_e": 1.5639670460242288,
+   "dcg_weighted_at_2": -3.0,
+   "ndcg": 0.8069136566720543,
+   "ndcg_weighted": 0.22765462668821712,
+   "ndcg_weighted_at_2": -0.7039180890341348,
+   "ndcg_weighted_ignore_ties": 0.22765462668821712
+  },
+  {
+   "name": "three rows",
+   "y_true": [
+    3.0,
+    2.0,
+    1.0,
+    1.0,
+    2.0,
+    3.0,
+    0.0,
+    1.0,
+    0.0
+   ],
+   "y_score": [
+    0.9,
+    0.5,
+    0.1,
+    0.9,
+    0.5,
+    0.1,
+    0.5,
+    0.5,
+    0.5
+   ],
+   "label_count": 3,
+   "sample_weight": [
+    1.0,
+    2.0,
+    5.0
+   ],
+   "dcg": 3.0780096440476608,
+   "dcg_weighted": 1.9796410138393132,
+   "dcg_weighted_log_e": 2.8560182734063773,
+   "dcg_weighted_at_2": 1.4379743471726465,
+   "ndcg": 0.833435974034396,
+   "ndcg_weighted": 0.7664431997222292,
+   "ndcg_weighted_at_2": 0.5974573504883645,
+   "ndcg_weighted_ignore_ties": 0.7168305970436698
+  }
+ ]
+}

@@ -41,6 +41,31 @@ public sealed class TopKAccuracyTests
         }
     }
 
+    [Theory]
+    [MemberData(nameof(Indices))]
+    public void Matches_sklearn_at_every_k_with_a_sample_weight(int index)
+    {
+        JsonElement c = Cases[index];
+        int[] yTrue = MetricsCorpus.Ints(c, "y_true");
+        double[] yScore = MetricsCorpus.Doubles(c, "y_score");
+        double[] weight = MetricsCorpus.Doubles(c, "sample_weight");
+        int classes = c.GetProperty("class_count").GetInt32();
+
+        foreach (int k in new[] { 1, 2, classes })
+        {
+            Assert.Equal(c.GetProperty($"top_{k}_weighted").GetDouble(),
+                         TopKAccuracy.Score(yTrue, yScore, classes, k, sampleWeight: weight),
+                         MetricsCorpus.Tolerance);
+
+            // normalize: false sums the weights of the hits rather than counting them.
+            // Measured, 7.0 against the unweighted 3.0 on the corpus' first fixture.
+            Assert.Equal(c.GetProperty($"top_{k}_weighted_count").GetDouble(),
+                         TopKAccuracy.Score(yTrue, yScore, classes, k, normalize: false,
+                                            sampleWeight: weight),
+                         MetricsCorpus.Tolerance);
+        }
+    }
+
     [Fact]
     public void Every_class_in_the_top_k_is_a_hit_when_k_reaches_the_class_count()
     {
@@ -109,5 +134,35 @@ public sealed class TopKAccuracyTests
 
         Assert.Equal(1.0, TopKAccuracy.Score([n - 3], tied, n, k: 3), MetricsCorpus.Tolerance);
         Assert.Equal(0.0, TopKAccuracy.Score([n - 4], tied, n, k: 3), MetricsCorpus.Tolerance);
+    }
+
+    [Fact]
+    public void A_zero_sum_weight_vector_is_refused_by_the_fraction_and_not_by_the_count()
+    {
+        // The count never divides, so it refuses nothing: it returns the weight of the
+        // HITS, which a zero total says nothing about. Measured, 3.0 on [1, 1, 1, -3].
+        int[] yTrue = [0, 1, 2, 0];
+        double[] yScore =
+        [
+            0.9, 0.05, 0.05,
+            0.1, 0.2, 0.7,
+            0.1, 0.6, 0.3,
+            0.05, 0.9, 0.05,
+        ];
+        double[] zeroSum = [1.0, 1.0, 1.0, -3.0];
+
+        ArgumentException fraction = Assert.Throws<ArgumentException>(
+            () => TopKAccuracy.Score(yTrue, yScore, 3, k: 2, sampleWeight: zeroSum));
+        Assert.Contains("Weights sum to zero", fraction.Message, StringComparison.Ordinal);
+
+        Assert.Equal(3.0,
+            TopKAccuracy.Score(yTrue, yScore, 3, k: 2, normalize: false, sampleWeight: zeroSum),
+            MetricsCorpus.Tolerance);
+
+        // ...and 0 only when the hits' own weights cancel, which is a different vector.
+        Assert.Equal(0.0,
+            TopKAccuracy.Score(yTrue, yScore, 3, k: 2, normalize: false,
+                               sampleWeight: [1.0, 1.0, -2.0, 0.0]),
+            MetricsCorpus.Tolerance);
     }
 }

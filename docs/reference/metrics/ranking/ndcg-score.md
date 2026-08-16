@@ -5,14 +5,15 @@ The mean normalized discounted gain over the rows, in `[0, 1]` — `sklearn.metr
 <!-- docs-declaration -->
 
 ```csharp
-public static double Score(ReadOnlySpan<double> yTrue, ReadOnlySpan<double> yScore, int labelCount, int? k = null, bool ignoreTies = false)
+public static double Score(ReadOnlySpan<double> yTrue, ReadOnlySpan<double> yScore, int labelCount, int? k = null, bool ignoreTies = false, ReadOnlySpan<double> sampleWeight = default)
 ```
 
 **Parameters** — `yTrue` is the relevance of each document and `yScore` the scores the ranking was
 made from, both row-major: one row per query, `labelCount` values each, and the same length.
 `k` scores only the first `k` positions, or `null` for all of them; a `k` past `labelCount` scores
 the whole row rather than raising. `ignoreTies` ranks equal scores in descending index order instead
-of averaging over their permutations.
+of averaging over their permutations. `sampleWeight` carries one weight per query, or is empty for
+an unweighted mean; over a single query it cancels, since it multiplies both halves of the mean.
 
 There is no `logBase`, because `ndcg_score` has none: the discount cancels in the ratio only when
 both halves share a base, and scikit-learn shares base 2. Pass one to
@@ -22,8 +23,15 @@ both halves share a base, and scikit-learn shares base 2. Pass one to
 when no document in the row is relevant — there is no ideal to divide by, and the answer is `0`
 rather than a division by zero.
 
+The `[0, 1]` holds for every weight vector but one: a **negative** `sampleWeight` takes the mean
+outside it, which the reference does too rather than refusing — frozen in `ranking_weighted.json`,
+`-0.7039180890341348` at `k = 2` on weights `[-1, 2]`. [`Dcg.Score`](dcg-score.md) is unbounded
+above and so has nothing to lose here.
+
 **Exceptions** — `ArgumentException` when `labelCount` is below `2` (scikit-learn's own sentence,
-"Computing NDCG is only meaningful when there is more than 1 document."), when `yTrue` and `yScore`
+"Computing NDCG is only meaningful when there is more than 1 document."), when `sampleWeight` is
+neither empty nor one value per query, when it sums to zero — `numpy.average`'s own refusal — when
+`yTrue` and `yScore`
 disagree in length, when the length is not a whole number of rows of `labelCount`, or when any
 relevance is **negative** — "ndcg_score should not be used on negative y_true values.", which is
 scikit-learn's refusal and the reason the `[0, 1]` above holds. `ArgumentOutOfRangeException` when
