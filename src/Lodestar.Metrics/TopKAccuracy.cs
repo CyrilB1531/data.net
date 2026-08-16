@@ -20,7 +20,8 @@ public static class TopKAccuracy
     /// what it found, unless given <c>labels</c>. Here the count is a parameter, so a class no
     /// sample happens to carry raises nothing — there is no inference to be wrong about.
     /// </remarks>
-    /// <exception cref="ArgumentException">The inputs disagree in shape, or <paramref name="k"/> is not positive.</exception>
+    /// <exception cref="ArgumentException">The inputs disagree in shape, <paramref name="classCount"/> is below 2, or <paramref name="yTrue"/> names a class outside <c>[0, classCount)</c>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="k"/> is below 1.</exception>
     public static double Score(
         ReadOnlySpan<int> yTrue,
         ReadOnlySpan<double> yScore,
