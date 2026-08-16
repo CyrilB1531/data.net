@@ -1,11 +1,19 @@
 # Ranking metrics — `Lodestar.Metrics`
 
-You have an ordered list — search results, recommendations, retrieved passages — and a judgement of
-how relevant each item actually was. Every type on this page scores that ordering, and what
+You have an ordered list — search results, recommendations, retrieved passages, or the labels a
+multi-label classifier put a score on — and a judgement of how relevant each item actually was.
+Every type on this page scores that ordering, and what
 separates them from the classification metrics is that *position matters*: the same set of documents
 scores differently depending on where in the list the good ones landed.
 
-Three of the four reproduce scikit-learn exactly. The fourth does not, and says so on its own page.
+The page has two halves, and they take different input. The four types of the first table score
+**one ordered list** of documents against a relevance judgement. The three of the second score a
+**label matrix** — one boolean per label per sample, which is the shape a multi-label classifier
+answers in — and everything said about ties above them does not apply to them, for the reason the
+second half opens with.
+
+Six of the seven reproduce scikit-learn exactly. The seventh,
+[`ReciprocalRank`](ranking/reciprocalrank.md), does not, and says so on its own page.
 
 ## The gains are linear, and much of the literature's are not
 
@@ -52,9 +60,38 @@ have scored and lands in `[0, 1]`.
 row is not an error — it scores the whole row, which is what `k` past the label count means. A row
 of fewer than two documents *is* refused, in scikit-learn's own sentence.
 
+## One ordered list, four types
+
 | Type | What it measures |
 | --- | --- |
 | [`Dcg`](ranking/dcg.md) | How much relevance the ranking puts near the top, discounted by position. |
 | [`Ndcg`](ranking/ndcg.md) | The same, divided by the best that row could have scored — `[0, 1]`. |
 | [`ReciprocalRank`](ranking/reciprocalrank.md) | How high the first relevant document lands, averaged over queries. **No reference implementation.** |
 | [`TopKAccuracy`](ranking/topkaccuracy.md) | How often the true class is among the highest-scoring few. |
+
+## A label matrix, and the rank as a count
+
+The three types below take a boolean per label per sample rather than a relevance per document, and
+they rank by *counting* rather than by ordering: a label's rank is how many labels score at least as
+high as it does, which is `rankdata(-y_score, "max")` — `1` is the best score, and every member of a
+tied group takes the group's worst rank. Nothing observes the order inside a tie, because no such
+order is ever produced, so the three paragraphs above about averaging over the permutations of a
+tie, and about `ignoreTies` not being a parity claim, have nothing to say here. Permuting a tied
+group cannot move any of these three numbers, at any width.
+
+What ties do change is the value, in one place: for
+[`LabelRankingLoss`](ranking/labelrankingloss.md) an irrelevant label sharing a relevant one's score
+counts as outranking it, so a row whose scores are all equal scores `1` rather than `0.5`.
+
+The three do not validate their input alike, and that is the reference's inconsistency rather than
+this library's: `label_ranking_average_precision_score` scores a single label column and returns
+`1`, while `coverage_error` and `label_ranking_loss` refuse it with "binary format is not
+supported". The same split shows up in a weight vector summing to zero: `NaN` from the average
+precision, which divides by the weight sum directly, and an exception from the other two, which go
+through `numpy.average`. Each page says so next to the number it affects.
+
+| Type | What it measures |
+| --- | --- |
+| [`CoverageError`](ranking/coverageerror.md) | How far down the labels you must read to have seen every relevant one. A row with none contributes `0`, so the mean can sit below `1`. |
+| [`LabelRankingAveragePrecision`](ranking/labelrankingaverageprecision.md) | How much of the ranking above each relevant label is itself relevant — `[0, 1]`, `1` is perfect. |
+| [`LabelRankingLoss`](ranking/labelrankingloss.md) | The fraction of (relevant, irrelevant) label pairs the ranking ordered wrongly — `[0, 1]`, `0` is perfect. |

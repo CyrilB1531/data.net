@@ -34,6 +34,10 @@ internal static class MetricsCorpus
     public static double[] Doubles(JsonElement c, string name) =>
         [.. c.GetProperty(name).EnumerateArray().Select(x => x.GetDouble())];
 
+    /// <summary>An array the corpus writes as 0/1, read as the boolean it means.</summary>
+    public static bool[] Bools(JsonElement c, string name) =>
+        [.. c.GetProperty(name).EnumerateArray().Select(x => x.GetInt32() != 0)];
+
     /// <summary>Reads an array property that the corpus writes as null when absent.</summary>
     public static int[] OptionalInts(JsonElement c, string name) =>
         c.GetProperty(name).ValueKind == JsonValueKind.Null ? [] : Ints(c, name);

@@ -2194,6 +2194,83 @@ def generate_ranking() -> dict:
     }
 
 
+def _label_ranking_fixtures() -> list[dict]:
+    """Rows where a plausible implementation and the reference part company."""
+    wide = [0] * 20
+    for j in (0, 9, 19):
+        wide[j] = 1
+    return [
+        {"name": "the worked case", "true": [[1, 0, 0], [0, 0, 1]],
+         "score": [[0.75, 0.5, 1.0], [1.0, 0.2, 0.1]], "weight": None},
+        {"name": "the worked case, weighted", "true": [[1, 0, 0], [0, 0, 1]],
+         "score": [[0.75, 0.5, 1.0], [1.0, 0.2, 0.1]], "weight": [1.0, 2.0]},
+        {"name": "every label relevant", "true": [[1, 1, 1]],
+         "score": [[0.7, 0.2, 0.1]], "weight": None},
+        {"name": "no label relevant", "true": [[0, 0, 0]],
+         "score": [[0.7, 0.2, 0.1]], "weight": None},
+        {"name": "an empty row beside a scoring one", "true": [[0, 0, 0], [1, 0, 0]],
+         "score": [[0.7, 0.2, 0.1], [0.7, 0.2, 0.1]], "weight": None},
+        {"name": "every score equal, two of three relevant", "true": [[1, 1, 0]],
+         "score": [[0.5, 0.5, 0.5]], "weight": None},
+        {"name": "negative scores", "true": [[1, 0, 0]],
+         "score": [[-0.7, -0.2, -0.1]], "weight": None},
+        {"name": "relevant on top", "true": [[1, 1, 0, 0]],
+         "score": [[0.9, 0.8, 0.2, 0.1]], "weight": None},
+        {"name": "relevant at the bottom", "true": [[0, 0, 1, 1]],
+         "score": [[0.9, 0.8, 0.2, 0.1]], "weight": None},
+        # 20 columns: the width at which lot 1's Array.Sort stopped being stable. The
+        # tie order is unobservable here, and a case is worth more than the claim.
+        {"name": "twenty columns, every score tied", "true": [wide],
+         "score": [[0.5] * 20], "weight": None},
+        {"name": "twenty columns, strictly ordered", "true": [wide],
+         "score": [[(20 - j) / 20 for j in range(20)]], "weight": None},
+        # The relevant labels are at indices 0 and 2 but score 0.2 and 0.8, so their
+        # index order and score order disagree -- the only shape a pairing bug shows in.
+        {"name": "relevant labels out of score order", "true": [[1, 0, 1]],
+         "score": [[0.2, 0.9, 0.8]], "weight": None},
+    ]
+
+
+def generate_label_ranking() -> dict:
+    import numpy as np
+    from sklearn.metrics import coverage_error, label_ranking_loss
+    from sklearn.metrics import label_ranking_average_precision_score as lrap
+
+    cases = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for fixture in _label_ranking_fixtures():
+            true = np.array(fixture["true"])
+            score = np.array(fixture["score"])
+            kw = {} if fixture["weight"] is None else {
+                "sample_weight": np.array(fixture["weight"])}
+            cases.append({
+                "name": fixture["name"],
+                "y_true": [v for row in fixture["true"] for v in row],
+                "y_score": [v for row in fixture["score"] for v in row],
+                "label_count": true.shape[1],
+                "sample_weight": fixture["weight"],
+                "lrap": float(lrap(true, score, **kw)),
+                "coverage": float(coverage_error(true, score, **kw)),
+                "ranking_loss": float(label_ranking_loss(true, score, **kw)),
+            })
+
+    return {
+        "metadata": {
+            "algorithm": "LabelRanking",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.label_ranking_average_precision_score",
+                "sklearn.metrics.coverage_error",
+                "sklearn.metrics.label_ranking_loss",
+            ],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def _top_k_fixtures() -> list[dict]:
     """Multiclass score matrices, where k is the question rather than ties."""
     return [
@@ -4933,6 +5010,7 @@ def main() -> None:
         "clustering_agreement.json": generate_clustering_agreement,
         "silhouette.json": generate_silhouette,
         "ranking.json": generate_ranking,
+        "label_ranking.json": generate_label_ranking,
         "top_k_accuracy.json": generate_top_k_accuracy,
         "roc_auc.json": generate_roc_auc,
         "regression.json": generate_regression,

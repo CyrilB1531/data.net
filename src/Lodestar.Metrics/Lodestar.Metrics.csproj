@@ -13,4 +13,10 @@
     <PackageTags>metrics;classification;f1;precision;recall;roc-auc;confusion-matrix;scikit-learn;lodestar</PackageTags>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lodestar.Metrics.Tests" />
+    <!-- Same suite, replayed against the netstandard2.0 build. -->
+    <InternalsVisibleTo Include="Lodestar.Metrics.NetStandard.Tests" />
+  </ItemGroup>
+
 </Project>
