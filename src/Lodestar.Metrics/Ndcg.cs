@@ -8,14 +8,14 @@ namespace Lodestar.Metrics;
 /// </summary>
 public static class Ndcg
 {
-    /// <summary>Scores one or more ranked rows in <c>[0, 1]</c> — <c>sklearn.metrics.ndcg_score(y_true, y_score, k=…, ignore_ties=…)</c>.</summary>
+    /// <summary>Scores one or more ranked rows in <c>[0, 1]</c> — <c>sklearn.metrics.ndcg_score(y_true, y_score, k=…, sample_weight=…, ignore_ties=…)</c>.</summary>
     /// <param name="yTrue">The relevance of each document, row-major: one row per query, <paramref name="labelCount"/> values each.</param>
     /// <param name="yScore">The scores the ranking was made from, same shape as <paramref name="yTrue"/>.</param>
     /// <param name="labelCount">How many documents each row holds.</param>
     /// <param name="k">Score only the first <c>k</c> positions, or <c>null</c> for all of them.</param>
     /// <param name="ignoreTies">Rank equal scores arbitrarily instead of averaging over their permutations.</param>
     /// <param name="sampleWeight">One weight per query, or empty for an unweighted mean.</param>
-    /// <returns><c>1</c> when the ranking is as good as its relevance allows, <c>0</c> when no document is relevant.</returns>
+    /// <returns><c>1</c> when the ranking is as good as its relevance allows, <c>0</c> when no document is relevant. In <c>[0, 1]</c> unless <paramref name="sampleWeight"/> holds a negative value, which the reference accepts too — measured, <c>-0.7039180890341348</c>.</returns>
     /// <remarks>
     /// No <c>logBase</c>, because <c>ndcg_score</c> has none: the discount cancels in the ratio
     /// only when the base is shared, and scikit-learn shares base 2 on both halves. A row with

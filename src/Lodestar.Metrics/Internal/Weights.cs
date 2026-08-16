@@ -3,8 +3,8 @@ namespace Lodestar.Metrics.Internal;
 /// <summary>A <c>sample_weight</c>, validated and applied, for every metric that takes one.</summary>
 /// <remarks>
 /// Shared rather than written per family: <c>numpy.average</c> is what the reference calls
-/// throughout, so the zero-sum refusal and its sentence have to be one thing. The ranking
-/// metrics reach it through <see cref="Ranking"/> and the label-matrix ones through
+/// throughout, so the zero-sum refusal and its sentence have to be one thing. <c>Dcg</c>,
+/// <c>Ndcg</c> and <c>TopKAccuracy</c> call it directly and the label-matrix metrics through
 /// <see cref="LabelRanking"/>; <c>average_precision_score</c> will want it too (#210).
 /// </remarks>
 internal static class Weights
@@ -45,12 +45,11 @@ internal static class Weights
         return Total(perSample, sampleWeight) / Sum(sampleWeight, throwOnZero: true);
     }
 
-    /// <summary>The weighted sum of the per-sample values, which never divides.</summary>
+    /// <summary><see cref="Mean"/>'s numerator: the per-sample values against their weights.</summary>
     /// <remarks>
-    /// What <c>top_k_accuracy_score(normalize=False)</c> returns: the weights of the hits
-    /// added up rather than counted. Measured, <c>7.0</c> where the unweighted count is
-    /// <c>3.0</c>. Because it does not divide, a zero-sum vector gives <c>0</c> here where
-    /// <see cref="Mean"/> raises — a divergence of the reference's, reproduced.
+    /// Separate from <see cref="Mean"/> because it never divides, and so has no zero-sum to
+    /// refuse. <c>TopKAccuracy</c> needs the same shape over its hits alone rather than over
+    /// every sample, which is why it accumulates its own instead of calling this.
     /// </remarks>
     public static double Total(ReadOnlySpan<double> perSample, ReadOnlySpan<double> sampleWeight)
     {

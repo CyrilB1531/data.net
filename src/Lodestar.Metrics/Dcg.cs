@@ -8,7 +8,7 @@ namespace Lodestar.Metrics;
 /// </summary>
 public static class Dcg
 {
-    /// <summary>Scores one or more ranked rows — <c>sklearn.metrics.dcg_score(y_true, y_score, k=…, log_base=…, ignore_ties=…)</c>.</summary>
+    /// <summary>Scores one or more ranked rows — <c>sklearn.metrics.dcg_score(y_true, y_score, k=…, log_base=…, sample_weight=…, ignore_ties=…)</c>.</summary>
     /// <param name="yTrue">The relevance of each document, row-major: one row per query, <paramref name="labelCount"/> values each.</param>
     /// <param name="yScore">The scores the ranking was made from, same shape as <paramref name="yTrue"/>.</param>
     /// <param name="labelCount">How many documents each row holds.</param>

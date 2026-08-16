@@ -8,7 +8,7 @@ namespace Lodestar.Metrics;
 /// </summary>
 public static class TopKAccuracy
 {
-    /// <summary>Scores a multiclass prediction by whether the truth is in the top <c>k</c> — <c>sklearn.metrics.top_k_accuracy_score(y_true, y_score, k=…, normalize=…)</c>.</summary>
+    /// <summary>Scores a multiclass prediction by whether the truth is in the top <c>k</c> — <c>sklearn.metrics.top_k_accuracy_score(y_true, y_score, k=…, normalize=…, sample_weight=…)</c>.</summary>
     /// <param name="yTrue">The true class of each sample, as an index into the score row.</param>
     /// <param name="yScore">The scores, row-major: one row per sample, <paramref name="classCount"/> values each.</param>
     /// <param name="classCount">How many classes each row scores.</param>

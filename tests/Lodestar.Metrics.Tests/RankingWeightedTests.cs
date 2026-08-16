@@ -73,4 +73,47 @@ public sealed class RankingWeightedTests
 
         Assert.Equal(5, separating);
     }
+
+    [Fact]
+    public void A_zero_sum_weight_vector_is_refused_wherever_the_metric_divides()
+    {
+        double[] yTrue = [3.0, 2.0, 1.0, 0.0, 3.0, 2.0, 1.0, 0.0];
+        double[] yScore = [0.9, 0.5, 0.4, 0.1, 0.1, 0.4, 0.5, 0.9];
+        double[] zeroSum = [1.0, -1.0];
+
+        ArgumentException dcg = Assert.Throws<ArgumentException>(
+            () => Dcg.Score(yTrue, yScore, 4, sampleWeight: zeroSum));
+        Assert.Contains("Weights sum to zero", dcg.Message, StringComparison.Ordinal);
+        Assert.Throws<ArgumentException>(() => Ndcg.Score(yTrue, yScore, 4, sampleWeight: zeroSum));
+    }
+
+    [Fact]
+    public void A_weight_vector_of_the_wrong_length_is_refused()
+    {
+        double[] yTrue = [3.0, 2.0, 1.0, 0.0, 3.0, 2.0, 1.0, 0.0];
+        double[] yScore = [0.9, 0.5, 0.4, 0.1, 0.1, 0.4, 0.5, 0.9];
+
+        // Two queries, three weights: the shape scikit-learn refuses as
+        // "inconsistent numbers of samples".
+        Assert.Throws<ArgumentException>(
+            () => Dcg.Score(yTrue, yScore, 4, sampleWeight: [1.0, 1.0, 1.0]));
+        Assert.Throws<ArgumentException>(
+            () => Ndcg.Score(yTrue, yScore, 4, sampleWeight: [1.0]));
+        Assert.Throws<ArgumentException>(
+            () => TopKAccuracy.Score([0, 1], [0.9, 0.1, 0.1, 0.9], 2, sampleWeight: [1.0]));
+    }
+
+    [Fact]
+    public void An_empty_weight_vector_is_the_unweighted_mean()
+    {
+        // The default, asserted as an equality rather than as a frozen number: a
+        // regression that ignored an empty span would still pass a value check.
+        double[] yTrue = [3.0, 2.0, 1.0, 0.0, 3.0, 2.0, 1.0, 0.0];
+        double[] yScore = [0.9, 0.5, 0.4, 0.1, 0.1, 0.4, 0.5, 0.9];
+
+        Assert.Equal(Dcg.Score(yTrue, yScore, 4),
+                     Dcg.Score(yTrue, yScore, 4, sampleWeight: []), MetricsCorpus.Tolerance);
+        Assert.Equal(Ndcg.Score(yTrue, yScore, 4),
+                     Ndcg.Score(yTrue, yScore, 4, sampleWeight: []), MetricsCorpus.Tolerance);
+    }
 }

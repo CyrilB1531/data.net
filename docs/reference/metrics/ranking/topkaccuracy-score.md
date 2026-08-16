@@ -25,8 +25,10 @@ count is `3.0`. A negative weight is accepted and takes the fraction outside `[0
 of `classCount`, or when `yTrue` names a class outside `[0, classCount)` — that last one would
 otherwise be counted as a miss, and read as a bad model rather than as the caller error it is.
 `ArgumentException` also when `sampleWeight` is neither empty nor one value per sample, and when it
-sums to zero **while `normalize` is true**. With `normalize: false` a zero-sum vector returns `0`
-instead: that path never divides, and the reference draws the same line.
+sums to zero **while `normalize` is true**. `normalize: false` never divides, so it does not
+refuse a zero-sum vector at all: it returns the weighted sum of the hits, which is `3.0` on weights
+`[1, 1, 1, -3]` — zero only when the *hits'* own weights cancel, not when the total does. The
+reference draws the same line.
 
 **Example** — four samples over three classes, as a fraction and as a count.
 
