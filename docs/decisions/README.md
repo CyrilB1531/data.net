@@ -45,6 +45,7 @@ a later decision uses instead.
 | [`0033`](0033-compensated-sum-is-neumaiers-variant.md) | `CompensatedSum` is Neumaier's variant, and its SIMD lanes are not bit-identical to it | accepted | 2026-08-14 | — |
 | [`0034`](0034-dropout-is-refused-for-want-of-a-user.md) | Distributional proof is admissible, and `dropout` is still refused | accepted | 2026-08-14 | — |
 | [`0035`](0035-a-null-pre-split-is-removed-with-invert-not-isolated.md) | A null pre-split drives `Apply` as Removed with invert, not Isolated | accepted | 2026-08-15 | — |
+| [`0036`](0036-a-member-may-ship-without-an-oracle-if-it-says-so.md) | A member may ship without an oracle, if the documentation says so | accepted | 2026-08-16 | — |
 
 ## What `accepted` means here
 
