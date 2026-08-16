@@ -61,4 +61,5 @@ This is Unicode pitfall #1 when porting from Python; it's documented in detail i
 - [From string to vector](vectorization.md) — bag of words, TF-IDF, cosine
 - [Semantic search with embeddings](embeddings.md)
 - [Migrating from rapidfuzz](migrating-from-rapidfuzz.md)
+- [Which metric?](metrics.md) — evaluating a model, and which number to report
 - [Python → C# equivalence table](../equivalence.md)

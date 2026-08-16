@@ -3,7 +3,7 @@
 `Lodestar.Metrics` reproduces `sklearn.metrics`: 44 types and 58 documented members
 across four families, at parity with scikit-learn 1.9.0 and with no Python at runtime.
 
-The [reference pages](../reference/metrics/) answer *what does this function do* — one
+The [reference pages](../reference/metrics/classification.md) answer *what does this function do* — one
 page per member, checked against the assembly. They cannot answer **which one to
 reach for**, because that question spans types. This guide is that question.
 
@@ -33,7 +33,7 @@ of its own for classification and regression:
 | a class, or a score you will threshold | classification | [`classification.md`](../reference/metrics/classification.md) |
 | a continuous number | regression | [`regression.md`](../reference/metrics/regression.md) |
 | a grouping, with or without a reference | clustering | [`clustering.md`](../reference/metrics/clustering.md) |
-| an ordering, or a set of labels with scores | ranking | [`reference/metrics/ranking.md`](../reference/metrics/ranking.md) |
+| an ordering, or a set of labels with scores | ranking | [`ranking.md`](../reference/metrics/ranking.md) |
 
 ## The four questions, in one line each
 
@@ -46,7 +46,7 @@ class and `Averaging.Macro` how it does on the rare one; picking `F1` over
 `MeanAbsoluteError` is in euros, seconds or items and cannot be compared across two
 different targets; `R2` and `ExplainedVariance` are unitless and can. How one very
 bad prediction should count is the other axis: squared errors let it dominate,
-`MedianAbsoluteError` ignores any number of them.
+`MedianAbsoluteError` is unmoved by outliers up to half the sample.
 
 **Clustering — "corrected for chance" is the question, not a detail.** Put every
 sample in a cluster of its own and `Homogeneity` scores a perfect `1`, because each
@@ -81,14 +81,20 @@ member takes its input the same way, and there is no overload that takes a `[,]`
 
 Most members take an optional `sampleWeight`, one weight per sample, and it is a
 **weighted mean** rather than a repetition count. A vector summing to zero raises in
-`numpy.average`'s own sentence, and a negative weight is accepted and can take the
-result outside the range its page promises — both are the reference's behaviour,
-reproduced rather than smoothed.
+`numpy.average`'s own sentence — except in
+[`LabelRankingAveragePrecision.Score`](../reference/metrics/ranking/labelrankingaverageprecision-score.md),
+which divides directly and returns `NaN`, and in
+[`TopKAccuracy.Score`](../reference/metrics/ranking/topkaccuracy-score.md) with
+`normalize: false`, which never divides at all. A negative weight is accepted
+everywhere and can take the result outside the range its page promises. All three are
+the reference's behaviour, reproduced rather than smoothed.
 
 An undefined metric — precision for a class nothing was predicted into — is settled
-by a `ZeroDivision` argument rather than a warning: return `0`, return `1`, or throw
-`UndefinedMetricException`. scikit-learn warns and continues; this package makes you
-choose, which is [decision 0020](../decisions/0020-normalize-is-a-projection-not-a-parameter.md).
+by a `ZeroDivision` argument rather than a warning: return `0`, return `1`, return
+`NaN` — which is what [`R2.Score`](../reference/metrics/regression/r2-score.md)
+defaults to — or throw `UndefinedMetricException`. scikit-learn warns and continues;
+this package makes you choose, which is
+[decision 0020](../decisions/0020-normalize-is-a-projection-not-a-parameter.md).
 
 ## A worked example in each family
 
@@ -181,7 +187,7 @@ is stated on the page of the member it affects, and each has cost a reader time:
   rather than copy one.
 
 [`docs/equivalence.md`](../equivalence.md) maps every Python call to its C#
-counterpart and lists each divergence, and [`docs/decisions/`](../decisions/) has the
+counterpart and lists each divergence, and [`docs/decisions/`](../decisions/README.md) has the
 reasoning where behaviour departs from the reference on purpose.
 
 ## Where to go next
