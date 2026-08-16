@@ -8,17 +8,17 @@ namespace DataNet.Metrics;
 /// </summary>
 public static class VMeasure
 {
-    /// <summary>
-    /// Scores a clustering on both counts at once —
-    /// <c>sklearn.metrics.v_measure_score(labels_true, labels_pred)</c>.
-    /// </summary>
+    /// <summary>Scores a clustering on both counts at once — <c>sklearn.metrics.v_measure_score(labels_true, labels_pred)</c>.</summary>
     /// <param name="labelsTrue">The reference labelling.</param>
     /// <param name="labelsPred">The labelling to score, same length as <paramref name="labelsTrue"/>.</param>
     /// <returns>The harmonic mean of <see cref="Homogeneity"/> and <see cref="Completeness"/>, or <c>0</c> when both are.</returns>
     /// <remarks>
-    /// scikit-learn's <c>beta</c> is not reproduced: its default of <c>1</c> is the harmonic mean,
-    /// and no oracle row exists for another value. Equal to
-    /// <see cref="NormalizedMutualInformation"/> by construction, which the corpus shows per case.
+    /// This returns what <see cref="NormalizedMutualInformation"/> returns, on every input, and the
+    /// algebra says why: homogeneity is <c>MI / H(true)</c> and completeness is <c>MI / H(pred)</c>,
+    /// so their harmonic mean is <c>2·MI / (H(true) + H(pred))</c> — which is <c>MI</c> divided by
+    /// the arithmetic mean of the two entropies, the normalizer NMI uses by default. Reporting both
+    /// numbers reports one. <c>beta</c>, which would weigh the two apart, is not a parameter here:
+    /// no oracle row exists for a value other than its default of <c>1</c>.
     /// </remarks>
     /// <exception cref="ArgumentException">The two labellings disagree in length.</exception>
     public static double Score(ReadOnlySpan<int> labelsTrue, ReadOnlySpan<int> labelsPred)

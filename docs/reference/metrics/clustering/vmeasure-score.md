@@ -28,12 +28,20 @@ int[] split = [0, 0, 1, 2, 2, 2];
 double score = VMeasure.Score(truth, split);   // => 0.8132…
 ```
 
-**Remarks** — scikit-learn's `beta`, which weighs homogeneity against completeness, is not
-reproduced: its default of `1` is the harmonic mean, and no oracle row exists for another value.
+**Remarks** — this returns exactly what `NormalizedMutualInformation.Score` returns, on every
+input. That is not a coincidence and it is worth deriving once, because a reader who reports both
+numbers thinks they have two: homogeneity is `MI / H(true)` and completeness is `MI / H(pred)`, so
+their harmonic mean `2hc / (h + c)` cancels down to `2·MI / (H(true) + H(pred))` — mutual
+information divided by the arithmetic mean of the two entropies, which is precisely the normalizer
+`normalized_mutual_info_score` applies by default. Two names, one quantity.
 
-This equals `NormalizedMutualInformation.Score` on every input, which is not a coincidence but the
-arithmetic-mean normalizer written twice. When they disagree with `AdjustedRand.Score`, the gap is
-the correction for chance.
+The number that *does* say something different is `AdjustedRand.Score`, and the gap between the two
+is the correction for chance: a clustering that invents clusters scores well here and near zero
+there.
+
+scikit-learn's `beta`, which would weigh homogeneity against completeness rather than averaging them
+evenly, is not a parameter here: its default of `1` is the plain harmonic mean above, and no oracle
+row exists for any other value.
 
 **Applies to** — net10.0, netstandard2.0.
 
