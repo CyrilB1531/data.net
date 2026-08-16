@@ -39,4 +39,29 @@ public sealed class LabelRankingFactsTests
         Assert.Throws<ArgumentException>(
             () => LabelRanking.Validate(truth, scores, 2, [1.0, 2.0], singleLabelAllowed: false));
     }
+
+    [Fact]
+    public void Weighted_throws_numpys_own_sentence_on_a_zero_weight_sum()
+    {
+        ArgumentException error = Assert.Throws<ArgumentException>(
+            () => LabelRanking.Weighted([1.0, 2.0, 3.0], [0.0, 0.0, 0.0]));
+        Assert.Contains(
+            "Weights sum to zero, can't be normalized.", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Weighted_is_the_plain_mean_unweighted_and_the_weighted_mean_otherwise()
+    {
+        double[] values = [1.0, 2.0, 3.0];
+        Assert.Equal(2.0, LabelRanking.Weighted(values, default));
+        Assert.Equal(2.0, LabelRanking.Weighted(values, [1.0, 0.0, 1.0]));
+        Assert.Equal(3.0, LabelRanking.Weighted(values, [0.0, 0.0, 1.0]));
+    }
+
+    [Fact]
+    public void RelevantCount_counts_the_true_entries_of_a_row()
+    {
+        Assert.Equal(2, LabelRanking.RelevantCount([true, false, true, false]));
+        Assert.Equal(0, LabelRanking.RelevantCount([false, false, false]));
+    }
 }
