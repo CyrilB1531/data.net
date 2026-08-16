@@ -89,4 +89,22 @@ public sealed class LabelRankingFactsTests
             LabelRankingLoss.Score([true, true, false], [0.5, 0.5, 0.1], 3),
             MetricsCorpus.Tolerance);
     }
+
+    [Fact]
+    public void Both_degenerate_rows_score_one_and_a_single_label_column_is_accepted()
+    {
+        Assert.Equal(1.0,
+            LabelRankingAveragePrecision.Score([true, true, true], [0.7, 0.2, 0.1], 3),
+            MetricsCorpus.Tolerance);
+        Assert.Equal(1.0,
+            LabelRankingAveragePrecision.Score([false, false, false], [0.7, 0.2, 0.1], 3),
+            MetricsCorpus.Tolerance);
+
+        // coverage_error and label_ranking_loss refuse this; lrap returns 1. Measured.
+        Assert.Equal(1.0,
+            LabelRankingAveragePrecision.Score([true], [0.7], 1),
+            MetricsCorpus.Tolerance);
+        Assert.Throws<ArgumentException>(() => CoverageError.Score([true], [0.7], 1));
+        Assert.Throws<ArgumentException>(() => LabelRankingLoss.Score([true], [0.7], 1));
+    }
 }
