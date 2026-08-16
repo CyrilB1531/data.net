@@ -49,6 +49,7 @@ is one sentence, the issue and the commit; see
 #### Added
 
 - `docs/reference/metrics/classification.md` and `docs/reference/metrics/regression.md` document every type of `Lodestar.Metrics` in the layout of the .NET API reference, and the same test checks each declaration, parameter list and `Applies to` against the assembly. ([#181](https://github.com/CyrilB1531/data.net/issues/181))
+- `docs/guides/metrics.md` answers which metric to reach for, which the per-member reference pages deliberately cannot: a router across the four families, and the four things true of all of them — row-major input with a count, `sampleWeight` as a weighted mean, `ZeroDivision` as an argument rather than a warning, and the answers that look like bugs and are scikit-learn's. ([#203](https://github.com/CyrilB1531/lodestar/issues/203))
 
 #### Changed
 
@@ -66,8 +67,6 @@ is one sentence, the issue and the commit; see
 - `ReciprocalRank` scores rankings by the position of their first relevant document — the one member of this package **not verified against a reference**, because `sklearn.metrics` has no counterpart to freeze; its definition is pinned by tests under [`docs/decisions/0036`](docs/decisions/0036-a-member-may-ship-without-an-oracle-if-it-says-so.md), which also says what would retire the exception. ([#173](https://github.com/CyrilB1531/lodestar/issues/173))
 - `CoverageError`, `LabelRankingLoss` and `LabelRankingAveragePrecision` score a boolean label matrix at scikit-learn parity, the two places the reference disagrees with itself included: a single label column is accepted by the average precision and refused by the other two, and a weight vector summing to zero gives `NaN` there where the other two raise. ([#201](https://github.com/CyrilB1531/lodestar/issues/201))
 - A sample with no relevant label contributes `0` to `CoverageError` rather than the label count, so its mean can sit below `1` — measured, `0.5` on two samples one of which is empty; a tie between a relevant and an irrelevant label counts as an error in `LabelRankingLoss`, so a sample whose scores are all equal scores `1`. ([#201](https://github.com/CyrilB1531/lodestar/issues/201))
-
-#### Added — ranking
 
 - `Dcg.Score`, `Ndcg.Score` and `TopKAccuracy.Score` take a `sampleWeight`, which the reference has always had and these three did not — three rows of `docs/equivalence.md` called them identical anyway. With weights `TopKAccuracy`'s `normalize: false` returns the **sum of the weights** of the hits rather than how many there are, measured `7.0` against the unweighted `3.0`, and because that path never divides it does not refuse a zero-sum vector at all, where the fraction does — what it returns there is the weighted sum of the hits, `3.0` on weights `[1, 1, 1, -3]` whose total is zero. ([#216](https://github.com/CyrilB1531/lodestar/issues/216))
 
