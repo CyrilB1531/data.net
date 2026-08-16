@@ -18,7 +18,7 @@ empty inputs give `0`.
 **Example** — one swap over four characters.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 double d = Osa.NormalizedDistance("abcd", "acbd");   // => 0.25
 ```

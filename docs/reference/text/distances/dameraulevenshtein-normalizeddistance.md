@@ -19,7 +19,7 @@ reused. Two empty inputs give `0` rather than a division by zero.
 **Example** — one swap over six characters.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 double d = DamerauLevenshtein.NormalizedDistance("MARTHA", "MARHTA");   // => 0.1666…
 ```

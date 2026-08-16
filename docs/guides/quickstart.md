@@ -5,7 +5,7 @@ Compare two strings in a few lines.
 ## Install
 
 ```bash
-dotnet add package DataNet.Text
+dotnet add package Lodestar.Text
 ```
 
 > The package has **no external dependencies on `net10.0`**: it's pure .NET, with
@@ -16,7 +16,7 @@ dotnet add package DataNet.Text
 ## Compare two strings
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 // Raw edit distance: number of insertions/deletions/substitutions.
 int d = Levenshtein.Distance("kitten", "sitting");     // 3
@@ -45,7 +45,7 @@ outside the Basic Multilingual Plane (emoji, rare ideographs), request **code
 point** comparison:
 
 ```csharp
-using DataNet.Text;   // TextElement lives here, not in .Distances
+using Lodestar.Text;   // TextElement lives here, not in .Distances
 
 // "a😀" -> "a": the emoji is ONE code point, but TWO UTF-16 units.
 Levenshtein.Distance("a\U0001F600", "a");                        // 2 (UTF-16 units)

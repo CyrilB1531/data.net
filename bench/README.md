@@ -7,7 +7,7 @@ Three complementary tools.
 Rigorous per-method measurement, for optimizing the C# implementation itself:
 
 ```bash
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter '*Levenshtein*'
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- --filter '*Levenshtein*'
 ```
 
 ## 2. net10 vs netstandard2.0 — what the broad-reach target costs
@@ -18,11 +18,11 @@ one, both hosted on .NET 10** — same JIT, same GC, so any difference comes fro
 the libraries' own conditional code paths.
 
 `DataNet.NetStandard.Benchmarks` links the *same* benchmark sources as the suite
-above (`<Compile Include="../DataNet.Text.Benchmarks/…" />`, never a copy) and
+above (`<Compile Include="../Lodestar.Text.Benchmarks/…" />`, never a copy) and
 only swaps which assemblies it references.
 
 ```bash
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks        -- --filter '*VectorMath*' --inProcess
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks        -- --filter '*VectorMath*' --inProcess
 dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter '*VectorMath*'
 ```
 
@@ -83,7 +83,7 @@ So the suite pins the in-process toolchain, removing the generated project, and
 asserts what it actually loaded before running anything:
 
 ```text
-// DataNet.Text: .NETStandard,Version=v2.0
+// Lodestar.Text: .NETStandard,Version=v2.0
 // DataNet.Embeddings: .NETStandard,Version=v2.0
 ```
 
@@ -135,8 +135,8 @@ are actually comparable.
 . .venv-oracles/bin/activate      # needs: pip install -r tools/requirements.txt
 python bench/python/bench_levenshtein.py
 
-# C# side (DataNet.Text) — matched Stopwatch harness, not BenchmarkDotNet
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- compare
+# C# side (Lodestar.Text) — matched Stopwatch harness, not BenchmarkDotNet
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- compare
 #   add --codepoint to measure the code-point mode instead of UTF-16
 
 # side-by-side table
@@ -178,7 +178,7 @@ rather than reporting numbers.
 ### net10 vs netstandard2.0
 
 ```bash
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks        -- --filter '*Persistence*' --inProcess
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks        -- --filter '*Persistence*' --inProcess
 dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter '*Persistence*'
 ```
 
@@ -282,7 +282,7 @@ above it.
 ### vs Python
 
 ```bash
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- compare-persistence
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- compare-persistence
 python bench/python/bench_persistence.py
 python bench/compare.py persistence
 ```
@@ -393,7 +393,7 @@ which would measure the parser rather than the metric.
 ### Intra-C#, and net10 vs netstandard2.0
 
 ```bash
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks        -- --filter '*MetricsBenchmarks*' --inProcess
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks        -- --filter '*MetricsBenchmarks*' --inProcess
 dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter '*MetricsBenchmarks*'
 ```
 
@@ -486,7 +486,7 @@ per-sample difference and does not.
 
 ```bash
 . .venv-oracles/bin/activate && python bench/python/bench_metrics.py
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- compare-metrics
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- compare-metrics
 python bench/compare.py metrics
 ```
 
@@ -594,7 +594,7 @@ generated in-process from a fixed seed — there is no Python side here, so ther
 no shared corpus to keep in step.
 
 ```bash
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- roc-parallel
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- roc-parallel
 ```
 
 The axis is **elapsed time**. Processor time rises with the worker count, which is
@@ -633,7 +633,7 @@ need no options to do it.
 ### net10 vs netstandard2.0
 
 ```bash
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks        -- --filter '*EmbeddingIndex*' --inProcess
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks        -- --filter '*EmbeddingIndex*' --inProcess
 dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter '*EmbeddingIndex*'
 ```
 
@@ -698,7 +698,7 @@ dependency would cost a pinned package to measure the same floor twice.
 
 ```bash
 python bench/python/bench_persistence.py
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- compare-persistence
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- compare-persistence
 python bench/compare.py persistence
 ```
 

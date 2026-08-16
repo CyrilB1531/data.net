@@ -17,7 +17,7 @@ character. The second overload compares any two spans of an `IEquatable<T>`.
 **Example** — the same pair as above, where only `itt` is unbroken.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 int n = Lcs.SubstringLength("kitten", "sitting");   // => 3
 ```

@@ -23,7 +23,7 @@ negative.
 three edits.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 int d = Indel.Distance("kitten", "sitting");   // => 5
 ```

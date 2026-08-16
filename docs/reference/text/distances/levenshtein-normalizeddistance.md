@@ -18,7 +18,7 @@ empty inputs give `0` rather than a division by zero.
 **Example** — three edits over the seven characters of the longer input.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 double d = Levenshtein.NormalizedDistance("kitten", "sitting");   // => 0.4285…
 ```

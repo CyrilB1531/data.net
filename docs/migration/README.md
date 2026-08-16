@@ -16,7 +16,7 @@ native code where .NET has a real gap: **text** (similarity, vectorization).
 | **PyTorch** | tensors, autograd, training, GPU | [TorchSharp](https://github.com/dotnet/TorchSharp) (= libtorch); [ONNX Runtime](https://onnxruntime.ai/) for inference only | ✅ **Use** |
 | **matplotlib** | plotting | [ScottPlot](https://scottplot.net/), [Plotly.NET](https://plotly.net/), OxyPlot | ✅ **Use** |
 | **NumPy** | N-dim arrays, dense algebra | [Math.NET Numerics](https://numerics.mathdotnet.com/) (+ native MKL/OpenBLAS provider); `System.Numerics.Tensors` | ✅ **Use** |
-| **scikit-learn** | classical ML, pipelines, metrics | [ML.NET](https://dotnet.microsoft.com/apps/machinelearning-ai/ml-dotnet); [SharpLearning](https://github.com/mdabros/SharpLearning) | ✅ **Use** *except* text vectorization → **DataNet.Text** and classification metrics → **DataNet.Metrics** |
+| **scikit-learn** | classical ML, pipelines, metrics | [ML.NET](https://dotnet.microsoft.com/apps/machinelearning-ai/ml-dotnet); [SharpLearning](https://github.com/mdabros/SharpLearning) | ✅ **Use** *except* text vectorization → **Lodestar.Text** and classification metrics → **DataNet.Metrics** |
 | **pandas** | DataFrame, groupby, IO | [`Microsoft.Data.Analysis`](https://www.nuget.org/packages/Microsoft.Data.Analysis); [Deedle](https://fslab.org/Deedle/) | 🟡 **Use** (rougher) |
 | **statsmodels** | econometric regression, time series, tests | Math.NET (basics); Accord.NET | 🟠 **Decide** — rich econometrics is a gap |
 | **seaborn** | tidy statistical viz | ScottPlot / Plotly.NET (charts rebuilt) | 🟠 **Decide** — statistical presets missing |
@@ -29,7 +29,7 @@ area is missing: a candidate for native code *if your usage justifies it*.
 
 One area truly justifies native code — **text** — and one more turned out to be
 a gap the .NET options do not fill honestly: the **evaluation metrics** every
-sklearn user reaches for. That's [`DataNet.Text`](../../src/DataNet.Text) and its
+sklearn user reaches for. That's [`Lodestar.Text`](../../src/Lodestar.Text) and its
 siblings, delivered as lots (see the brief):
 
 1. **String distances & similarity** — Levenshtein, Damerau-Levenshtein,

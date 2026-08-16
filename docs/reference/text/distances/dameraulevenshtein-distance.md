@@ -22,7 +22,7 @@ tokens, decoded code points — and compares elements rather than characters.
 **Example** — a swap and an insertion, where `Osa` charges three edits for the same pair.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 int d = DamerauLevenshtein.Distance("CA", "ABC");   // => 2
 ```

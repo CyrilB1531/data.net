@@ -27,12 +27,14 @@ public sealed class NetStandardAssemblyGuardTests
 
     /// <summary>The same guarantee for DataNet.Text, reached through a package rather than a project reference.</summary>
     /// <remarks>
-    /// <c>SetTargetFramework</c> does not cross a <c>PackageReference</c>: NuGet picks
-    /// assets for the consuming project's framework, net10.0 here. Left alone this suite
-    /// would run the netstandard2.0 DataNet.Fuzzy against the net10.0 DataNet.Text — half
-    /// a mirror, every test green. The csproj pins it; this asserts the pin holds.
+    /// <c>SetTargetFramework</c> does not cross a <c>PackageReference</c>: NuGet picks assets for
+    /// the consuming project's framework, net10.0 here. Left alone this suite would run the
+    /// netstandard2.0 DataNet.Fuzzy against the net10.0 Text — half a mirror, every test green.
+    /// The csproj pins it; this asserts the pin holds, and returns with the floor (#194).
     /// </remarks>
-    [Fact]
+    // #194: the pin was a ProjectReference to a project that is Lodestar.Text now, and
+    // nothing can force the netstandard assets of a package built elsewhere.
+    [Fact(Skip = "#194: restored when Fuzzy's floor moves to Lodestar.Text")]
     public void Suite_runs_against_the_netstandard2_0_build_of_DataNet_Text()
     {
         Assembly assembly = typeof(DataNet.Text.Distances.Indel).Assembly;

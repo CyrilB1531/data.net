@@ -52,11 +52,11 @@ sentencepiece / numpy / ONNX Runtime (see [`docs/equivalence.md`](docs/equivalen
 ## Getting started
 
 ```bash
-dotnet add package DataNet.Text
+dotnet add package Lodestar.Text
 ```
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 Levenshtein.Distance("kitten", "sitting");             // 3
 Levenshtein.NormalizedSimilarity("kitten", "sitting"); // 0.5714…
@@ -65,7 +65,7 @@ Levenshtein.NormalizedSimilarity("kitten", "sitting"); // 0.5714…
 A runnable version of the above, consuming the packages exactly as you would:
 
 ```bash
-for p in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
+for p in src/Lodestar.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
   dotnet pack "$p" -c Release -o ./artifacts
 done
 dotnet run --project samples/DataNet.Sample -c Release
@@ -87,7 +87,7 @@ channel follows `main` and every release is archived under its own version.
 ```bash
 dotnet build                                   # build the solution
 dotnet test                                    # replay oracles + property tests
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter '*Levenshtein*'
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- --filter '*Levenshtein*'
 ```
 
 The project follows **GitHub flow**: `main` is always releasable, and every change
@@ -108,13 +108,13 @@ replays them with a `1e-9` tolerance. Python is a development-only dependency. S
 
 ```text
 DataNet.slnx
-├── src/DataNet.Text/            distances, similarity, tokenizers, vectorizers, stemmers (no dependencies)
+├── src/Lodestar.Text/            distances, similarity, tokenizers, vectorizers, stemmers (no dependencies)
 ├── src/DataNet.Embeddings/      sub-word tokenizers, pooling, SIMD kNN, ONNX inference (ONNX Runtime isolated here)
 ├── src/DataNet.Fuzzy/           fuzz.*, process.extract, deduplication
 ├── src/DataNet.Metrics/         confusion matrix, precision/recall/F1, report, ROC-AUC
 ├── tests/                       xUnit: oracles + properties (one project per module)
 ├── tests/oracles/               frozen JSON corpora (generated from Python) + a synthetic ONNX model
-├── bench/DataNet.Text.Benchmarks/  BenchmarkDotNet
+├── bench/Lodestar.Text.Benchmarks/  BenchmarkDotNet
 ├── tools/generate_oracles.py    reference generation
 ├── Directory.Build.props        (root); src|tests/Directory.Packages.props (central package management)
 ├── src/*/Version.props          one version per publishable package (decision 0012)
@@ -146,11 +146,11 @@ you whether to correct the document itself or something upstream of it.
 
 ## Publishing
 
-Four NuGet packages are produced: `DataNet.Text`, `DataNet.Embeddings`,
+Four NuGet packages are produced: `Lodestar.Text`, `DataNet.Embeddings`,
 `DataNet.Fuzzy`, `DataNet.Metrics`. **Each versions and releases on its own**: shared metadata
 (license, README, repository) lives in `Directory.Build.props`, while the version
 is declared per project in `src/<Package>/Version.props`. `DataNet.Fuzzy` depends
-on `DataNet.Text` as a published package, not as a project reference — see
+on `Lodestar.Text` as a published package, not as a project reference — see
 [`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md).
 
 **GitHub Packages** (no nuget.org account needed — uses GitHub's automatic token).
@@ -182,7 +182,7 @@ that has `read:packages`):
 ```bash
 dotnet nuget add source "https://nuget.pkg.github.com/CyrilB1531/index.json" \
   --name github --username CyrilB1531 --password <GITHUB_TOKEN>
-dotnet add package DataNet.Text
+dotnet add package Lodestar.Text
 ```
 
 **nuget.org** uses Trusted Publishing (OIDC, no stored key): run the
@@ -191,8 +191,8 @@ the Actions tab, choosing the package and confirming its version. By hand, with
 an API key, one package at a time:
 
 ```bash
-dotnet pack src/DataNet.Text -c Release -o artifacts
-dotnet nuget push "artifacts/DataNet.Text.*.nupkg" \
+dotnet pack src/Lodestar.Text -c Release -o artifacts
+dotnet nuget push "artifacts/Lodestar.Text.*.nupkg" \
   --source https://api.nuget.org/v3/index.json --api-key <KEY>
 ```
 

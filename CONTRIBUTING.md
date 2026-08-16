@@ -249,7 +249,7 @@ A finding it reports is real, a clean run promises nothing.
 ## Working across two packages
 
 The four libraries version and release independently, and `DataNet.Fuzzy`
-reaches `DataNet.Text` through a `PackageReference` on the published package
+reaches `Lodestar.Text` through a `PackageReference` on the published package
 rather than a project reference — the reasoning is in
 [`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md).
 
@@ -257,8 +257,8 @@ A plain clone builds with no extra step: the version `DataNet.Fuzzy` depends on
 is a floor pinned in `src/Directory.Packages.props`, and it always names a
 release that is already on nuget.org.
 
-**When a branch edits `DataNet.Text` and `DataNet.Fuzzy` together**, that floor
-points at a `DataNet.Text` older than the one in your working tree, so
+**When a branch edits `Lodestar.Text` and `DataNet.Fuzzy` together**, that floor
+points at a `Lodestar.Text` older than the one in your working tree, so
 `DataNet.Fuzzy` would compile against the published assembly and not see your
 change. Flip the reference back for the duration:
 
@@ -282,7 +282,7 @@ Two things to keep straight:
 
 - **It is a local loop, not a merge strategy.** CI never sets the property and
   asserts the default path, so a branch whose `DataNet.Fuzzy` needs new
-  `DataNet.Text` API cannot go green. Release `DataNet.Text` first, raise the
+  `Lodestar.Text` API cannot go green. Release `Lodestar.Text` first, raise the
   floor in `src/Directory.Packages.props`, then land the `DataNet.Fuzzy` side.
   Two packages that release independently cannot also be merged as one.
 - **Unset it before measuring anything.** With the property on you are building a

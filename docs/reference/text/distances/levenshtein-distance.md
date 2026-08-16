@@ -19,14 +19,14 @@ match Python outside the Basic Multilingual Plane.
 **Example** — the textbook pair: two substitutions and one insertion.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 int d = Levenshtein.Distance("kitten", "sitting");   // => 3
 ```
 
 **Remarks** — this is the ordinary answer to "how different are these two texts", and the right
 tool for typing mistakes and mis-keyed names. To compare sets of words rather than characters,
-`Jaccard` — in the `DataNet.Text.Similarity` namespace, not this one — is the better fit; to
+`Jaccard` — in the `Lodestar.Text.Similarity` namespace, not this one — is the better fit; to
 weight
 a common prefix, `JaroWinkler`.
 

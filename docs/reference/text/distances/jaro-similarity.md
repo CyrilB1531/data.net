@@ -22,7 +22,7 @@ the trap below for what two empty ones give.
 **Example** — one transposition in a six-letter name barely dents the score.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 double s = Jaro.Similarity("MARTHA", "MARHTA");   // => 0.9444…
 ```

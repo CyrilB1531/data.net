@@ -6,8 +6,8 @@ Performance is the selling point against Python, so it is measured from Lot 1 wi
 ## Reproduce
 
 ```bash
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter '*Levenshtein*'
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter '*VectorizerBenchmarks*' '*FuzzBenchmarks*'
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- --filter '*Levenshtein*'
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- --filter '*VectorizerBenchmarks*' '*FuzzBenchmarks*'
 ```
 
 ## Principles applied
@@ -44,11 +44,11 @@ Cross-language bench with **identical methodology on both sides** (same committe
 ASCII corpus, ns/pair throughput, auto-scaling, best-of-5). See
 [`bench/README.md`](../../bench/README.md).
 
-Indicative measurement (rapidfuzz 3.14.5 / Python 3.12; DataNet.Text / .NET 10 on
+Indicative measurement (rapidfuzz 3.14.5 / Python 3.12; Lodestar.Text / .NET 10 on
 an Intel i7-4770S; dev machine — non-authoritative), **after** adding the blocked
 (multi-word) Myers fast path:
 
-| Length | Python (rapidfuzz) | C# (DataNet.Text) | Ratio | C# path |
+| Length | Python (rapidfuzz) | C# (Lodestar.Text) | Ratio | C# path |
 | ---: | ---: | ---: | --- | --- |
 | 8 | 183 ns/pair | **36 ns/pair** | **5.1× C# faster** | DP |
 | 32 | **324 ns/pair** | 453 ns/pair | 1.4× Python | Myers (single word) |
@@ -99,7 +99,7 @@ Short-job measurement, `[MemoryDiagnoser]` (dev machine — indicative).
 ## Batched embedding — what the number is, and what it is not
 
 ```bash
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter '*BatchEmbedding*' --inProcess
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- --filter '*BatchEmbedding*' --inProcess
 ```
 
 **Read this before quoting the ratio.** The model is `tiny_embedder.onnx`: one
@@ -207,7 +207,7 @@ the ratios travel between such sets while the absolute microseconds do not.
 ```bash
 python bench/corpus/generate_metrics.py           # writes bench/corpus/metrics/, git-ignored
 . .venv-oracles/bin/activate && python bench/python/bench_metrics.py
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- compare-metrics
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- compare-metrics
 python bench/compare.py metrics
 ```
 
@@ -660,7 +660,7 @@ three rows instead of seventy-eight and turns an eight-minute-twenty campaign
 into a twenty-one-second one:
 
 ```bash
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- \
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- \
     compare-metrics --only median_ae,mse,mae --shapes 1000000x2
 ```
 
@@ -672,7 +672,7 @@ a three-row file would otherwise have printed as a green one.
 ## Multiclass ROC-AUC, sequential against parallel (issue #86)
 
 ```bash
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- roc-parallel
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- roc-parallel
 ```
 
 ### Read the axis before reading the table

@@ -20,7 +20,7 @@ outside the Basic Multilingual Plane. The second overload compares any two spans
 **Example** — the pair that separates OSA from full Damerau-Levenshtein, which answers 2.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 int d = Osa.Distance("CA", "ABC");   // => 3
 ```

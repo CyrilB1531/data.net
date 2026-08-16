@@ -17,7 +17,7 @@ numbers on text outside the Basic Multilingual Plane.
 **Example** — four of the five letters survive in order, so `fuzz.ratio` on this pair is 80.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 double s = Indel.NormalizedSimilarity("state", "taste");   // => 0.8
 ```

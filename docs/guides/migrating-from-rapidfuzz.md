@@ -30,7 +30,7 @@ Fuzz.WRatio("fuzzy wuzzy was a bear", "wuzzy fuzzy was a bear"); // 95.0
 ```
 
 > Pitfall #1: `fuzz.ratio` is **not** Levenshtein — it's the **Indel** similarity
-> ×100. `DataNet.Fuzzy` builds on `DataNet.Text`'s `Indel`.
+> ×100. `DataNet.Fuzzy` builds on `Lodestar.Text`'s `Indel`.
 
 ## Finding the best candidate — `process`
 

@@ -17,7 +17,7 @@ both are empty.
 **Example** — the share of the two strings their matched blocks fail to cover.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 double d = RatcliffObershelp.Distance("state", "taste");   // => 0.4
 ```

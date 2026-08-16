@@ -1,4 +1,4 @@
-"""Regenerate src/DataNet.Text/Vectorization/StopWords.Snowball.cs.
+"""Regenerate src/Lodestar.Text/Vectorization/StopWords.Snowball.cs.
 
 Downloads the Snowball stop-word lists, checks each file against the SHA-256
 pinned below, and emits the C# source. The lists are BSD-3-Clause (see
@@ -40,7 +40,7 @@ PROPERTY = {
     "spanish": ("Spanish", "es"),
 }
 
-OUTPUT = pathlib.Path(__file__).resolve().parent.parent / "src/DataNet.Text/Vectorization/StopWords.Snowball.cs"
+OUTPUT = pathlib.Path(__file__).resolve().parent.parent / "src/Lodestar.Text/Vectorization/StopWords.Snowball.cs"
 
 HEADER = """// long-comment: BSD-3-Clause requires the copyright notice to travel with
 //     the data it covers; NOTICE and THIRD-PARTY-NOTICES.md carry the same text.
@@ -53,7 +53,7 @@ HEADER = """// long-comment: BSD-3-Clause requires the copyright notice to trave
 //     BSD-3-Clause. See docs/decisions/0010-stop-word-list-provenance.md.
 // </auto-generated>
 
-namespace DataNet.Text.Vectorization;
+namespace Lodestar.Text.Vectorization;
 
 public static partial class StopWords
 {

@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- This package's version, owned here rather than repository-wide. -->
+  <Import Project="Version.props" />
+
+  <PropertyGroup>
+    <Version>$(LodestarTextVersion)</Version>
+
+    <!-- Target framework (see docs/decisions/0001-target-framework.md). -->
+    <TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks>
+    <RootNamespace>Lodestar.Text</RootNamespace>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <!-- Pulls in the shared persistence plumbing (and System.Text.Json on ns2.0). -->
+    <DataNetIncludesPersistence>true</DataNetIncludesPersistence>
+
+    <!-- NuGet package identity. System.Text.Json on netstandard2.0 is the single,
+         deliberate runtime dependency (in-box on net10) — everything else in this
+         package is dependency-free by design. -->
+    <PackageId>Lodestar.Text</PackageId>
+    <Description>String distances, similarity metrics, tokenizers and text vectorizers for .NET — native, allocation-lean, no Python at runtime.</Description>
+    <PackageTags>text;similarity;levenshtein;distance;fuzzy;tfidf;nlp;datanet</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lodestar.Text.Tests" />
+    <!-- Same suite, replayed against the netstandard2.0 build. -->
+    <InternalsVisibleTo Include="Lodestar.Text.NetStandard.Tests" />
+  </ItemGroup>
+
+</Project>

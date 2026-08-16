@@ -3,7 +3,7 @@
 Filled in **as we go**: a row is added at the same time as each function is
 implemented, never retrofitted at the end (§6.1 of the brief).
 
-## DataNet.Text — distances & similarity
+## Lodestar.Text — distances & similarity
 
 | Python | Library | C# | Differences |
 | --- | --- | --- | --- |
@@ -23,7 +23,7 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | — (classic LCS) | — | [`Lcs.SubsequenceLength(a, b)`](reference/text/distances/lcs-subsequencelength.md) | Longest common subsequence (order-preserving, non-contiguous). Basis of `Indel`. |
 | `SequenceMatcher(None,a,b).ratio()` | difflib | [`RatcliffObershelp.Similarity(a, b)`](reference/text/distances/ratcliffobershelp-similarity.md) | Gestalt `2·M/T`. `autojunk` **not** replicated (identical for ≤ 200 elements; [decision 0006](decisions/0006-ratcliff-autojunk.md)). |
 
-## DataNet.Text — set similarity (q-gram multisets)
+## Lodestar.Text — set similarity (q-gram multisets)
 
 | Python | Library | C# | Differences |
 | --- | --- | --- | --- |
@@ -37,7 +37,7 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 > empty ⇒ `1`, one empty ⇒ `0`. The oracle covers non-empty pairs (`qval=1`);
 > edges are covered by unit tests.
 
-## DataNet.Text — phonetic encoding
+## Lodestar.Text — phonetic encoding
 
 | Python | Library | C# | Differences |
 | --- | --- | --- | --- |
@@ -45,7 +45,7 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | `metaphone(s)` | jellyfish | `Metaphone.Encode(s)` | Parity on real words; jellyfish non-word quirks not reproduced ([decision 0007](decisions/0007-metaphone-scope.md)). |
 | `nysiis(s)` | jellyfish | `Nysiis.Encode(s)` | Non-truncated variant. Exact parity (402 words). |
 
-## DataNet.Text — sparse vectorization
+## Lodestar.Text — sparse vectorization
 
 | Python | Library | C# | Differences |
 | --- | --- | --- | --- |
@@ -61,7 +61,7 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | `TfidfTransformer()` | scikit-learn | `new TfidfTransformer()` | `use_idf`, `smooth_idf`, `sublinear_tf`, `norm` (L1/L2/none). |
 | `HashingVectorizer()` | scikit-learn | `new HashingVectorizer()` | Hashing trick, no vocabulary. MurmurHash3-32 (seed 0) reproduced; alternate sign + L2 normalization by default. |
 
-## DataNet.Text — model persistence
+## Lodestar.Text — model persistence
 
 | Python | Library | C# | Differences |
 | --- | --- | --- | --- |
@@ -69,7 +69,7 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | `joblib.load(path)` / `pickle.load(f)` | joblib / pickle | `TfidfVectorizer.Load(path, options?)` | Static, not a constructor. Bounded by `ArtifactLoadOptions` — `pickle.load` has no equivalent, since it trusts the file by design ([decision 0011](decisions/0011-persistence-format.md)). |
 | — (no equivalent) | — | `ArtifactLoadOptions` | Deliberate addition, not a port: caps vocabulary size, token length, JSON depth, total bytes and array length. Over a limit ⇒ `InvalidDataException` naming limit and value. |
 
-## DataNet.Text — stemming
+## Lodestar.Text — stemming
 
 | Python | Library | C# | Differences |
 | --- | --- | --- | --- |

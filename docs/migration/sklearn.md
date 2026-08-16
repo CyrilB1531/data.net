@@ -1,14 +1,14 @@
 # scikit-learn → .NET
 
 **Verdict: use** ML.NET (or SharpLearning for a sklearn-like API), **except text
-vectorization**, which is the gap filled natively by `DataNet.Text` (exact
+vectorization**, which is the gap filled natively by `Lodestar.Text` (exact
 `CountVectorizer`/`TfidfVectorizer` semantics).
 
 | sklearn need | Recommended .NET |
 | --- | --- |
 | Pipelines, training, deployment | **ML.NET** (`Microsoft.ML`) |
 | sklearn-like API (trees, ensembles) | **SharpLearning** |
-| `CountVectorizer` / `TfidfVectorizer` **to the character** | **`DataNet.Text`** |
+| `CountVectorizer` / `TfidfVectorizer` **to the character** | **`Lodestar.Text`** |
 | `classification_report`, `roc_auc_score`, the averaging modes | **`DataNet.Metrics`** |
 
 ```bash
@@ -30,7 +30,7 @@ var model = pipeline.Fit(data);
 - **`TfidfVectorizer` is non-standard.** The sklearn formula (`smooth_idf`,
   per-row L2 normalization) must be reproduced to the character — ML.NET's
   `FeaturizeText` does not reproduce it. That is exactly the reason for
-  `DataNet.Text`. See [`../equivalence.md`](../equivalence.md).
+  `Lodestar.Text`. See [`../equivalence.md`](../equivalence.md).
 - **`min_df` / `max_df`, n-gram bounds**: on the DataNet side, not ML.NET.
 
 ## Metrics: the averaging mode is not a formatting choice

@@ -28,7 +28,7 @@ DataFrame expensive = df.Filter(df["price"].ElementwiseGreaterThan(100));
   indexing). Deedle is closer.
 - **Missing values.** `null`/NaN handling differs from pandas; check column by
   column.
-- **DataNet glue.** A `DataFrame` ↔ sparse-matrix bridge (`DataNet.Text`) is
+- **DataNet glue.** A `DataFrame` ↔ sparse-matrix bridge (`Lodestar.Text`) is
   planned to connect vectorization with tabular data.
 
 _Guide to be expanded as real needs arise._

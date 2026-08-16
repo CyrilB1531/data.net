@@ -5,7 +5,7 @@ using DataNet.Embeddings.Tokenization;
 using DataNet.Fuzzy;
 using DataNet.Metrics;
 using DataNet.Sample;
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 // A consumer of the published packages, one thing per lot; runs in CI so it can't
 // rot. Also ADR 0009's packaging gate: a new public type needs a call in Lot*.cs.
@@ -16,7 +16,7 @@ Console.WriteLine(new string('-', 46));
 // Confirms NuGet resolved the package's net10.0 lib folder, not something else —
 // must report .NETCoreApp,Version=v10.0.
 Console.WriteLine($"running on        : {RuntimeInformation.FrameworkDescription}");
-Console.WriteLine($"DataNet.Text      : {FrameworkOf(typeof(Levenshtein))}");
+Console.WriteLine($"Lodestar.Text      : {FrameworkOf(typeof(Levenshtein))}");
 Console.WriteLine($"DataNet.Fuzzy     : {FrameworkOf(typeof(Fuzz))}");
 Console.WriteLine($"DataNet.Embeddings: {FrameworkOf(typeof(WordPieceTokenizer))}");
 Console.WriteLine($"DataNet.Metrics   : {FrameworkOf(typeof(ConfusionMatrix))}");

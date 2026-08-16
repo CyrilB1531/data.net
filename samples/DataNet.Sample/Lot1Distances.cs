@@ -1,13 +1,13 @@
-using DataNet.Text;
-using DataNet.Text.Distances;
-using DataNet.Text.Phonetics;
-using DataNet.Text.Similarity;
-using DataNet.Text.Stemming;
+using Lodestar.Text;
+using Lodestar.Text.Distances;
+using Lodestar.Text.Phonetics;
+using Lodestar.Text.Similarity;
+using Lodestar.Text.Stemming;
 
 namespace DataNet.Sample;
 
 /// <summary>
-/// Lot 1 — everything DataNet.Text exposes that works on a pair of strings:
+/// Lot 1 — everything Lodestar.Text exposes that works on a pair of strings:
 /// edit distances, set similarity, phonetic encoders, stemmers.
 /// </summary>
 /// <remarks>

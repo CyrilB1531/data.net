@@ -29,7 +29,7 @@
     .nuspec is asserted there — see docs/decisions/0012-per-package-versioning.md.
   -->
   <ItemGroup Condition="'$(DataNetUseProjectRefs)' == 'true'">
-    <ProjectReference Include="../DataNet.Text/DataNet.Text.csproj" />
+    <ProjectReference Include="../Lodestar.Text/Lodestar.Text.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(DataNetUseProjectRefs)' != 'true'">

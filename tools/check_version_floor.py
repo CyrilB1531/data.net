@@ -35,10 +35,13 @@ import xml.etree.ElementTree as ET
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
-VERSION_PROPS = ROOT / "src" / "DataNet.Text" / "Version.props"
+VERSION_PROPS = ROOT / "src" / "Lodestar.Text" / "Version.props"
 PACKAGES_PROPS = ROOT / "src" / "Directory.Packages.props"
 NUSPEC_CHECK = ROOT / "tools" / "check_nuspec_dependencies.py"
 
+# Two ids while #194 is in flight: this repository builds BUILT, and DataNet.Fuzzy
+# still consumes the published FLOOR until Lodestar.Text exists on nuget.org.
+BUILT = "Lodestar.Text"
 PACKAGE = "DataNet.Text"
 FLAT_CONTAINER = "https://api.nuget.org/v3-flatcontainer/{id}/index.json"
 
@@ -46,9 +49,9 @@ FLAT_CONTAINER = "https://api.nuget.org/v3-flatcontainer/{id}/index.json"
 def declared_version() -> str:
     """The version DataNet.Text gives itself."""
     root = ET.parse(VERSION_PROPS).getroot()
-    version = root.findtext(".//DataNetTextVersion")
+    version = root.findtext(".//LodestarTextVersion")
     if version is None:
-        raise SystemExit(f"{VERSION_PROPS}: no <DataNetTextVersion>")
+        raise SystemExit(f"{VERSION_PROPS}: no <LodestarTextVersion>")
     return version.strip()
 
 
@@ -121,12 +124,16 @@ def main(argv: list[str]) -> int:
             f"same edge and must agree"
         )
 
-    if ordering_key(floor) > ordering_key(declared):
+    if BUILT == PACKAGE and ordering_key(floor) > ordering_key(declared):
         failures.append(
             f"the floor {floor} is above the declared version {declared}: "
             f"DataNet.Fuzzy would require a {PACKAGE} this repository has not "
             f"written"
         )
+    elif BUILT != PACKAGE:
+        # #194: comparing their numbers would compare two packages. What still holds is
+        # that the floor must resolve, which --check-feed asserts.
+        print(f"note  the rename is in flight: {BUILT} is built here, {PACKAGE} is the floor")
 
     if check_feed:
         published = published_versions()
@@ -147,7 +154,7 @@ def main(argv: list[str]) -> int:
     if failures:
         return 1
 
-    print(f"ok  {PACKAGE} declares {declared}, DataNet.Fuzzy floors at {floor}")
+    print(f"ok  {BUILT} declares {declared}, DataNet.Fuzzy floors at {PACKAGE} {floor}")
     return 0
 
 

@@ -18,8 +18,8 @@ how long the inputs are.
 score.
 
 ```csharp
-using DataNet.Text;
-using DataNet.Text.Distances;
+using Lodestar.Text;
+using Lodestar.Text.Distances;
 
 double s = Hamming.NormalizedSimilarity("a\U0001F600", "a", TextElement.CodePoint);   // => 0.5
 ```

@@ -5,7 +5,7 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-The four packages (`DataNet.Text`, `DataNet.Embeddings`, `DataNet.Fuzzy`,
+The four packages (`Lodestar.Text`, `DataNet.Embeddings`, `DataNet.Fuzzy`,
 `DataNet.Metrics`) version and release **independently**, each from its own
 `src/<Package>/Version.props`, so entries are grouped per package. Releases up to
 and including `0.2.0` predate the split and covered all three at once — see
@@ -18,14 +18,15 @@ is one sentence, the issue and the commit; see
 
 ## [Unreleased]
 
-### DataNet.Text
+### Lodestar.Text
 
 #### Added
 
-- `docs/reference/text/distances.md` documents every type of `DataNet.Text.Distances` in the layout of the .NET API reference, and a test checks each declaration, parameter list and `Applies to` against the assembly. ([#181](https://github.com/CyrilB1531/data.net/issues/181))
+- `docs/reference/text/distances.md` documents every type of `Lodestar.Text.Distances` in the layout of the .NET API reference, and a test checks each declaration, parameter list and `Applies to` against the assembly. ([#181](https://github.com/CyrilB1531/data.net/issues/181))
 
 #### Changed
 
+- The package is `Lodestar.Text`, and its namespaces are `Lodestar.Text.*`. `DataNet.Text 0.3.0` and `Lodestar.Text 0.3.1` hold the same code: the id changed, nothing else did. ([#194](https://github.com/CyrilB1531/data.net/issues/194))
 - `DamerauLevenshtein`'s documented summary no longer says "Not a proper metric": unit-cost unrestricted Damerau-Levenshtein satisfies the triangle inequality and is a true metric; `Osa` is the one that does not. ([#181](https://github.com/CyrilB1531/data.net/issues/181))
 - The reference is one page per member, with a type page and a namespace index above it: `docs/reference/text/distances.md` becomes 9 type pages and 22 member pages, and the index a reader lands on is 64 lines rather than 1034. ([#189](https://github.com/CyrilB1531/data.net/issues/189))
 

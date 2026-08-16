@@ -60,7 +60,7 @@ TEXT_FLOOR = "0.2.0"
 # package id -> target framework -> {dependency id: declared version range}.
 # See this module's docstring for what EXPECTED's shape and ranges prove.
 EXPECTED: dict[str, dict[str, dict[str, str]]] = {
-    TEXT: {
+    BUILT_TEXT: {
         NET: {},
         NETSTANDARD: {**POLYFILLS, **PERSISTENCE},
     },

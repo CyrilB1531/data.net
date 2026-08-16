@@ -18,7 +18,7 @@ the trap below for what two empty ones give.
 **Example** — two names that a human would call a near-match.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 double d = Jaro.Distance("DWAYNE", "DUANE");   // => 0.1777…
 ```
