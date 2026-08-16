@@ -103,23 +103,26 @@ work and are a plan in the ordinary sense. The distinction is marked per task ra
   fixed here. It also re-derived the arithmetic independently — 4000 random labellings against
   scikit-learn 1.9.0, worst deviation 1.25e-15.
 
-## Task 6 — silhouette *(lot 2, its own branch and pull request)*
+## Task 6 — silhouette *(lot 2, done but for the review and the pull request)*
 
-- [ ] **Step 1: Two overloads and no metric zoo** — a precomputed distance matrix, and feature
+- [x] **Step 1: Two entry points and no metric zoo** — a precomputed distance matrix, and feature
   vectors with the euclidean distance. Measured: the two paths give the identical `double`
-  (`0.9738594604105609` on the spec's fixture), so they are one computation with two entries.
-- [ ] **Step 2: `Silhouette.PerSample` beside `Score`**, the score being the mean of the samples.
-- [ ] **Step 3: Reproduce the refusal.** Fewer than two labels, or as many labels as samples, is
+  (`0.9738594604105609` on the spec's fixture), so they are one computation with two entries. Not
+  two overloads, though: the signatures collide and the analyzers refuse the `double[,]` that would
+  have separated them, so the precomputed path is `ScoreFromDistances`. The spec records it.
+- [x] **Step 2: `Silhouette.PerSample` beside `Score`**, the score being the mean of the samples.
+- [x] **Step 3: Reproduce the refusal.** Fewer than two labels, or as many labels as samples, is
   `ValueError` there and `ArgumentException` here, carrying scikit-learn's own sentence.
-- [ ] **Step 4: A cluster of one sample contributes `0.0`** for that sample — measured, and worth a
+- [x] **Step 4: A cluster of one sample contributes `0.0`** for that sample — measured, and worth a
   fact of its own because it is the case a reader would expect to divide by zero.
-- [ ] **Step 5: Corpus, pages, equivalence row, sample usage**, as Tasks 1–5.
+- [x] **Step 5: Corpus, pages, equivalence row, sample usage**, as Tasks 1–5.
 
 ## Task 7 — close the loop
 
-- [ ] **Step 1: `docs/equivalence.md`'s "not shipped yet" row for silhouette is removed** when lot 2
-  lands, not left to rot.
-- [ ] **Step 2: The spec's status becomes `implemented`**, with what the implementation added to it.
+- [x] **Step 1: `docs/equivalence.md`'s "not shipped yet" row for silhouette is removed** when lot 2
+  lands, not left to rot. Replaced by three rows: the two entry points and `silhouette_samples`.
+- [x] **Step 2: The spec's status becomes `implemented`**, with what the implementation added to it
+  — including the two example values the executed snippets caught as wrong.
 
 ---
 

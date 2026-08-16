@@ -72,6 +72,12 @@ internal static class Lot5Metrics
         // which is the pair of numbers the two families exist to show together.
         Console.WriteLine($"    every sample alone  = {Homogeneity.Score(reference, alone):F3} homogeneity, "
             + $"{AdjustedRand.Score(reference, alone):F3} adjusted Rand");
+
+        // Silhouette needs no reference partition at all: it reads the samples.
+        double[] features = [0.0, 0.0, 0.2, 0.1, 4.0, 4.0, 4.2, 3.9, 0.1, 0.3];
+        int[] guessed = [0, 0, 1, 1, 1];
+        Console.WriteLine($"    Silhouette          = {Silhouette.Score(guessed, features, 2):F3}");
+        Console.WriteLine($"    worst sample        = {Silhouette.PerSample(guessed, features, 2).Min():F3}");
         Console.WriteLine();
     }
 

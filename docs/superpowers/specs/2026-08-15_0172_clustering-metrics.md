@@ -1,7 +1,7 @@
 # 0172 — Clustering metrics: agreement between partitions, then silhouette
 
 **Issue:** [#172](https://github.com/CyrilB1531/data.net/issues/172) ·
-**Status:** proposed · **Date:** 2026-08-15
+**Status:** implemented · **Date:** 2026-08-15
 
 ## Problem
 
@@ -103,3 +103,19 @@ by zero. Adding a knob with no reference behind it would be an extension to defe
 - **A precomputed matrix is `n²` doubles.** At 100 000 samples that is 80 GB, so the matrix overload
   is for the size at which a reader would compute one anyway; the euclidean overload is `O(n²)` in
   time but `O(n)` in memory, and that difference is the reason both exist.
+
+## What the implementation changed in this spec
+
+- **D2's two overloads are two names.** `Score(labels, distances, sampleCount)` and
+  `Score(labels, features, featureCount)` are the same signature — a matrix and a feature block are
+  both a span of `double` with a count — so the C# compiler refuses the pair. Disambiguating by
+  `double[,]` was tried and refused too, this time by the analyzers the build runs: CA1814 and S2368
+  both reject a multidimensional array in a public API. The precomputed path is therefore
+  `ScoreFromDistances` and `PerSampleFromDistances`, which is decision 0021's ruling — when two
+  forms cannot be told apart, they are two methods — applied to an input rather than to a return.
+- **The refusal message carries scikit-learn's sentence verbatim**, including its missing full stop:
+  `Number of labels is 1. Valid values are 2 to n_samples - 1 (inclusive)`.
+- **Two promised example values were wrong** and the executed snippets caught both: a per-sample
+  score invented from memory (`-0.8285…` against a measured `-0.9501…`), and a matrix rounded to
+  four decimals scoring `0.9737…` where the exact samples score `0.9738…`. The second is now stated
+  on the page rather than left as a discrepancy a reader would have to explain to themselves.

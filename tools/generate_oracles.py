@@ -2125,6 +2125,91 @@ def generate_clustering_agreement() -> dict:
     }
 
 
+# --- Silhouette (issue #172, second lot) --------------------------------------
+
+
+def _silhouette_fixtures() -> list[dict]:
+    """Feature matrices whose clustering is the thing under test.
+
+    Two well-separated blobs, two that overlap, a cluster holding one sample, and
+    a one-dimensional case -- the shapes whose per-sample values differ in kind
+    rather than in scale.
+    """
+    return [
+        {
+            "name": "two separated blobs",
+            "features": [[0.0, 0.0], [0.1, 0.1], [5.0, 5.0], [5.1, 5.2], [5.0, 4.9]],
+            "labels": [0, 0, 1, 1, 1],
+        },
+        {
+            "name": "two overlapping blobs",
+            "features": [[0.0, 0.0], [1.0, 0.5], [1.2, 0.4], [2.0, 1.0], [0.4, 1.4]],
+            "labels": [0, 0, 1, 1, 0],
+        },
+        {
+            "name": "a singleton cluster",
+            "features": [[0.0, 0.0], [0.1, 0.1], [5.0, 5.0], [5.1, 5.2], [9.0, 9.0]],
+            "labels": [0, 0, 1, 1, 2],
+        },
+        {
+            "name": "one dimension",
+            "features": [[0.0], [1.0], [10.0], [11.0], [12.0]],
+            "labels": [0, 0, 1, 1, 1],
+        },
+        {
+            "name": "three clusters",
+            "features": [[0.0, 0.0], [0.2, 0.1], [4.0, 4.0], [4.2, 3.9], [8.0, 0.0], [8.1, 0.2]],
+            "labels": [0, 0, 1, 1, 2, 2],
+        },
+        {
+            "name": "coincident samples",
+            "features": [[1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0]],
+            "labels": [0, 0, 1, 1],
+        },
+        {
+            "name": "a misplaced sample",
+            "features": [[0.0, 0.0], [0.2, 0.1], [4.0, 4.0], [4.2, 3.9], [0.1, 0.3]],
+            "labels": [0, 0, 1, 1, 1],
+        },
+    ]
+
+
+def generate_silhouette() -> dict:
+    import numpy as np
+    from sklearn.metrics import pairwise_distances, silhouette_samples, silhouette_score
+
+    cases = []
+    for fixture in _silhouette_fixtures():
+        features = np.array(fixture["features"], dtype=float)
+        labels = fixture["labels"]
+        distances = pairwise_distances(features, metric="euclidean")
+        cases.append({
+            "name": fixture["name"],
+            "features": [value for row in fixture["features"] for value in row],
+            "feature_count": features.shape[1],
+            "labels": labels,
+            "distances": [float(value) for row in distances for value in row],
+            "score": float(silhouette_score(features, labels)),
+            "score_precomputed": float(silhouette_score(distances, labels, metric="precomputed")),
+            "per_sample": [float(value) for value in silhouette_samples(features, labels)],
+        })
+
+    return {
+        "metadata": {
+            "algorithm": "Silhouette",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.silhouette_score",
+                "sklearn.metrics.silhouette_score(metric='precomputed')",
+                "sklearn.metrics.silhouette_samples",
+            ],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 # --- ROC-AUC (issue #61) ------------------------------------------------------
 
 
@@ -4722,6 +4807,7 @@ def main() -> None:
         "process.json": generate_process,
         "classification_metrics.json": generate_classification_metrics,
         "clustering_agreement.json": generate_clustering_agreement,
+        "silhouette.json": generate_silhouette,
         "roc_auc.json": generate_roc_auc,
         "regression.json": generate_regression,
         "regression_conditioning.json": generate_regression_conditioning,

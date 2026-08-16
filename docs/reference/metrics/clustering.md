@@ -29,5 +29,6 @@ measured against 1.9.0 and frozen in the oracle corpus rather than reasoned abou
 | [`AdjustedRand`](clustering/adjustedrand.md) | How many pairs of samples the two partitions agree about, minus what chance would give. |
 | [`Completeness`](clustering/completeness.md) | Whether every sample of one class landed in the same cluster. |
 | [`Homogeneity`](clustering/homogeneity.md) | Whether each cluster holds samples of a single class. |
+| [`Silhouette`](clustering/silhouette.md) | How well each sample sits in its own cluster rather than the nearest other one — no reference partition needed. |
 | [`NormalizedMutualInformation`](clustering/normalizedmutualinformation.md) | How much knowing one labelling tells you about the other, scaled into `[0, 1]`. |
 | [`VMeasure`](clustering/vmeasure.md) | Homogeneity and completeness as one number, their harmonic mean. |
