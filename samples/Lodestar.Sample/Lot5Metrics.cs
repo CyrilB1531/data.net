@@ -54,7 +54,7 @@ internal static class Lot5Metrics
         Ranking();
     }
 
-    /// <summary>The four ranking metrics, on the rows that tell tie handling apart.</summary>
+    /// <summary>The ordered-list ranking metrics, on the rows that tell tie handling apart.</summary>
     private static void Ranking()
     {
         Console.WriteLine("  ranking, one ordered list of four documents");
@@ -95,6 +95,38 @@ internal static class Lot5Metrics
         double[] retrieved = [0.9, 0.5, 0.4, 0.1, 0.9, 0.5, 0.4, 0.1];
         Console.WriteLine($"    ReciprocalRank      = {ReciprocalRank.Score(judged, retrieved, 4):F3} "
             + "(no reference implementation — decision 0036)");
+        Console.WriteLine();
+
+        LabelMatrix();
+    }
+
+    /// <summary>The three label-matrix metrics, and the places the reference disagrees with itself.</summary>
+    private static void LabelMatrix()
+    {
+        Console.WriteLine("  ranking, a label matrix of two samples over three labels");
+
+        // One relevant label per sample: the first ranks second of three, the
+        // second ranks last, which is what makes the three numbers differ.
+        bool[] relevant = [true, false, false, false, false, true];
+        double[] labelScores = [0.75, 0.5, 1.0, 1.0, 0.2, 0.1];
+
+        Console.WriteLine($"    LabelRankingAvgPrec = {LabelRankingAveragePrecision.Score(relevant, labelScores, 3):F3}");
+        Console.WriteLine($"    CoverageError       = {CoverageError.Score(relevant, labelScores, 3):F3}");
+        Console.WriteLine($"    LabelRankingLoss    = {LabelRankingLoss.Score(relevant, labelScores, 3):F3}");
+
+        // A sample with nothing relevant covers 0 labels rather than all of them,
+        // so the mean sits below the 1 a reader takes for the floor.
+        bool[] sparse = [false, false, false, true, false, false];
+        double[] ranked = [0.7, 0.2, 0.1, 0.7, 0.2, 0.1];
+        Console.WriteLine($"    empty row, coverage = {CoverageError.Score(sparse, ranked, 3):F3} (below 1)");
+
+        // A tie is an error: two relevant labels and one irrelevant, all scored
+        // the same, loses both pairs.
+        Console.WriteLine($"    all tied, loss      = {LabelRankingLoss.Score([true, true, false], [0.5, 0.5, 0.5], 3):F3}");
+
+        // The single label column the other two refuse with "binary format is not
+        // supported" -- scikit-learn's own inconsistency, reproduced.
+        Console.WriteLine($"    one label column    = {LabelRankingAveragePrecision.Score([true], [0.7], 1):F3} (the other two refuse it)");
         Console.WriteLine();
     }
 
