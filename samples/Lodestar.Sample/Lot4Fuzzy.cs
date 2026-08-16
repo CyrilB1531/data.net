@@ -21,21 +21,21 @@ internal static class Lot4Fuzzy
         Console.WriteLine("lot 4 — fuzzy matching");
 
         // The seven scorers. Each is a rapidfuzz `fuzz.*` function by the same name.
-        Console.WriteLine($"  Ratio                 = {Fuzz.Ratio("apple pie", "appel pie"):F1}");
-        Console.WriteLine($"  PartialRatio          = {Fuzz.PartialRatio("apple", "an apple a day"):F1}");
-        Console.WriteLine($"  TokenSortRatio        = {Fuzz.TokenSortRatio("pie apple", "apple pie"):F1}");
-        Console.WriteLine($"  TokenSetRatio         = {Fuzz.TokenSetRatio("apple pie apple", "apple pie"):F1}");
-        Console.WriteLine($"  PartialTokenSortRatio = {Fuzz.PartialTokenSortRatio("pie apple", "the apple pie"):F1}");
-        Console.WriteLine($"  PartialTokenSetRatio  = {Fuzz.PartialTokenSetRatio("apple pie", "the apple pie today"):F1}");
-        Console.WriteLine($"  WRatio                = {Fuzz.WRatio("apple pie", "appel pie"):F1}");
+        Console.WriteLine($"  Ratio                 = {Inv.F1(Fuzz.Ratio("apple pie", "appel pie"))}");
+        Console.WriteLine($"  PartialRatio          = {Inv.F1(Fuzz.PartialRatio("apple", "an apple a day"))}");
+        Console.WriteLine($"  TokenSortRatio        = {Inv.F1(Fuzz.TokenSortRatio("pie apple", "apple pie"))}");
+        Console.WriteLine($"  TokenSetRatio         = {Inv.F1(Fuzz.TokenSetRatio("apple pie apple", "apple pie"))}");
+        Console.WriteLine($"  PartialTokenSortRatio = {Inv.F1(Fuzz.PartialTokenSortRatio("pie apple", "the apple pie"))}");
+        Console.WriteLine($"  PartialTokenSetRatio  = {Inv.F1(Fuzz.PartialTokenSetRatio("apple pie", "the apple pie today"))}");
+        Console.WriteLine($"  WRatio                = {Inv.F1(Fuzz.WRatio("apple pie", "appel pie"))}");
 
         // Process: the same scorers applied across a collection of choices.
         ExtractResult? best = Process.ExtractOne("appel pie", Candidates, scorer: Fuzz.WRatio, scoreCutoff: 0);
-        Console.WriteLine($"  ExtractOne            = {best?.Choice} ({best?.Score:F1}) at index {best?.Index}");
+        Console.WriteLine($"  ExtractOne            = {best?.Choice} ({Inv.F1(best?.Score)}) at index {best?.Index}");
         IReadOnlyList<ExtractResult> top = Process.Extract("appel pie", Candidates, scorer: Fuzz.WRatio, limit: 2, scoreCutoff: 0);
         foreach (ExtractResult hit in top)
         {
-            Console.WriteLine($"    Extract #{hit.Index} {hit.Choice} ({hit.Score:F1})");
+            Console.WriteLine($"    Extract #{hit.Index} {hit.Choice} ({Inv.F1(hit.Score)})");
         }
 
         // Deduplicator: blocked pairwise clustering, so the scorer never sees the

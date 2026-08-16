@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
@@ -9,6 +10,10 @@ using Lodestar.Text.Distances;
 
 // A consumer of the published packages, one thing per lot; runs in CI so it can't
 // rot. Also ADR 0009's packaging gate: a new public type needs a call in Lot*.cs.
+
+// Every number below goes through Inv.F3 and friends, which a hole carrying no
+// format specifier cannot; this covers those, so the run reads the same everywhere (#205).
+CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
 
 Console.WriteLine("Lodestar sample — consuming the NuGet packages");
 Console.WriteLine(new string('-', 46));

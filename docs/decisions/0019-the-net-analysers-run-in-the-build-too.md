@@ -157,7 +157,13 @@ and CI's *was* the defect. It is not closed. CA1305 fires only on an explicit
 `ToString(string)`; it does not fire on an interpolated hole such as `{value:F3}`,
 and roughly forty of those remain in the same two `samples/` files the nine fixes
 above touched — the analyser will never catch them, at any `AnalysisMode`, because
-the rule does not reach that syntax. Closing that is its own issue, not this one.
+the rule does not reach that syntax. Closing that is its own issue, not this one —
+[#205](https://github.com/CyrilB1531/lodestar/issues/205), which is closed since
+2026-08-16. The count had grown from roughly forty to 88 across five `samples/`
+files by then, which is the argument the issue made for a guard rather than a
+sweep: every one of them goes through `Inv.F3` and its siblings now,
+`Program.cs` pins the thread culture for the holes carrying no format specifier,
+and `tools/check_sample_culture.py` fails the build if either is dropped.
 
 The 31 pragmas are dominated by rules that are right in general and wrong about
 this code in particular: `CA1308` on the Snowball and Porter implementations,

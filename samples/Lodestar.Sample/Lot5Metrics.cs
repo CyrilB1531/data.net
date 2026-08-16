@@ -1,4 +1,3 @@
-using System.Globalization;
 using Lodestar.Metrics;
 
 namespace Lodestar.Sample;
@@ -29,17 +28,17 @@ internal static class Lot5Metrics
 
         ConfusionMatrix cm = ConfusionMatrix.Compute(YTrue, YPred);
         double[,] cells = cm.ToArray();
-        Console.WriteLine($"  labels                = [{string.Join(", ", cm.Labels)}], total weight {cm.TotalWeight:F0}");
+        Console.WriteLine($"  labels                = [{string.Join(", ", cm.Labels)}], total weight {Inv.F0(cm.TotalWeight)}");
         for (int row = 0; row < cm.Labels.Count; row++)
         {
             Console.WriteLine($"    row {cm.Labels[row]}               = "
-                + string.Join(" ", Enumerable.Range(0, cm.Labels.Count).Select(col => $"{cells[row, col]:F0}")));
+                + string.Join(" ", Enumerable.Range(0, cm.Labels.Count).Select(col => $"{Inv.F0(cells[row, col])}")));
         }
 
         // [0,0] read through the indexer, to show the matrix answers without a copy.
-        Console.WriteLine($"  cm[0,0]               = {cm[0, 0]:F0}");
-        Console.WriteLine($"  Accuracy              = {Accuracy.Score(cm):F3} normalized, "
-            + $"{Accuracy.Score(cm, normalize: false):F0} correct");
+        Console.WriteLine($"  cm[0,0]               = {Inv.F0(cm[0, 0])}");
+        Console.WriteLine($"  Accuracy              = {Inv.F3(Accuracy.Score(cm))} normalized, "
+            + $"{Inv.F0(Accuracy.Score(cm, normalize: false))} correct");
         Console.WriteLine();
 
         AveragesDisagree(cm);
@@ -64,20 +63,20 @@ internal static class Lot5Metrics
         double[] reversed = [0.1, 0.4, 0.5, 0.9];
         double[] tied = [0.5, 0.5, 0.5, 0.5];
 
-        Console.WriteLine($"    Dcg (perfect order) = {Dcg.Score(relevance, ordered, 4):F3}, "
-            + $"base e {Dcg.Score(relevance, ordered, 4, logBase: Math.E):F3}");
+        Console.WriteLine($"    Dcg (perfect order) = {Inv.F3(Dcg.Score(relevance, ordered, 4))}, "
+            + $"base e {Inv.F3(Dcg.Score(relevance, ordered, 4, logBase: Math.E))}");
         // The reversed row scores 0.614, not 0 -- the logarithmic discount is shallow
         // enough that even the worst ordering collects most of the ideal gain.
-        Console.WriteLine($"    Ndcg perfect / worst= {Ndcg.Score(relevance, ordered, 4):F3} / "
-            + $"{Ndcg.Score(relevance, reversed, 4):F3}");
+        Console.WriteLine($"    Ndcg perfect / worst= {Inv.F3(Ndcg.Score(relevance, ordered, 4))} / "
+            + $"{Inv.F3(Ndcg.Score(relevance, reversed, 4))}");
 
         // Cutting the list at two positions is what makes a bad ordering look bad.
-        Console.WriteLine($"    Ndcg at k=2 (worst) = {Ndcg.Score(relevance, reversed, 4, k: 2):F3}");
+        Console.WriteLine($"    Ndcg at k=2 (worst) = {Inv.F3(Ndcg.Score(relevance, reversed, 4, k: 2))}");
 
         // Every score equal: averaging over the permutations of the tie against
         // ranking them arbitrarily, a 30% gap on the same input.
-        Console.WriteLine($"    all tied, averaged  = {Ndcg.Score(relevance, tied, 4):F3}");
-        Console.WriteLine($"    all tied, ignored   = {Ndcg.Score(relevance, tied, 4, ignoreTies: true):F3}");
+        Console.WriteLine($"    all tied, averaged  = {Inv.F3(Ndcg.Score(relevance, tied, 4))}");
+        Console.WriteLine($"    all tied, ignored   = {Inv.F3(Ndcg.Score(relevance, tied, 4, ignoreTies: true))}");
 
         int[] classes = [0, 1, 2, 2];
         double[] probabilities =
@@ -87,13 +86,13 @@ internal static class Lot5Metrics
             0.2, 0.3, 0.5,
             0.5, 0.3, 0.2,
         ];
-        Console.WriteLine($"    TopKAccuracy k=2    = {TopKAccuracy.Score(classes, probabilities, 3):F3} "
-            + $"({TopKAccuracy.Score(classes, probabilities, 3, normalize: false):F0} of {classes.Length} samples)");
+        Console.WriteLine($"    TopKAccuracy k=2    = {Inv.F3(TopKAccuracy.Score(classes, probabilities, 3))} "
+            + $"({Inv.F0(TopKAccuracy.Score(classes, probabilities, 3, normalize: false))} of {classes.Length} samples)");
 
         // Two queries: the first relevant document second, then first.
         double[] judged = [0, 1, 0, 0, 1, 0, 0, 0];
         double[] retrieved = [0.9, 0.5, 0.4, 0.1, 0.9, 0.5, 0.4, 0.1];
-        Console.WriteLine($"    ReciprocalRank      = {ReciprocalRank.Score(judged, retrieved, 4):F3} "
+        Console.WriteLine($"    ReciprocalRank      = {Inv.F3(ReciprocalRank.Score(judged, retrieved, 4))} "
             + "(no reference implementation — decision 0036)");
         Console.WriteLine();
 
@@ -110,23 +109,23 @@ internal static class Lot5Metrics
         bool[] relevant = [true, false, false, false, false, true];
         double[] labelScores = [0.75, 0.5, 1.0, 1.0, 0.2, 0.1];
 
-        Console.WriteLine($"    LabelRankingAvgPrec = {LabelRankingAveragePrecision.Score(relevant, labelScores, 3):F3}");
-        Console.WriteLine($"    CoverageError       = {CoverageError.Score(relevant, labelScores, 3):F3}");
-        Console.WriteLine($"    LabelRankingLoss    = {LabelRankingLoss.Score(relevant, labelScores, 3):F3}");
+        Console.WriteLine($"    LabelRankingAvgPrec = {Inv.F3(LabelRankingAveragePrecision.Score(relevant, labelScores, 3))}");
+        Console.WriteLine($"    CoverageError       = {Inv.F3(CoverageError.Score(relevant, labelScores, 3))}");
+        Console.WriteLine($"    LabelRankingLoss    = {Inv.F3(LabelRankingLoss.Score(relevant, labelScores, 3))}");
 
         // A sample with nothing relevant covers 0 labels rather than all of them,
         // so the mean sits below the 1 a reader takes for the floor.
         bool[] sparse = [false, false, false, true, false, false];
         double[] ranked = [0.7, 0.2, 0.1, 0.7, 0.2, 0.1];
-        Console.WriteLine($"    empty row, coverage = {CoverageError.Score(sparse, ranked, 3):F3} (below 1)");
+        Console.WriteLine($"    empty row, coverage = {Inv.F3(CoverageError.Score(sparse, ranked, 3))} (below 1)");
 
         // A tie is an error: two relevant labels and one irrelevant, all scored
         // the same, loses both pairs.
-        Console.WriteLine($"    all tied, loss      = {LabelRankingLoss.Score([true, true, false], [0.5, 0.5, 0.5], 3):F3}");
+        Console.WriteLine($"    all tied, loss      = {Inv.F3(LabelRankingLoss.Score([true, true, false], [0.5, 0.5, 0.5], 3))}");
 
         // The single label column the other two refuse with "binary format is not
         // supported" -- scikit-learn's own inconsistency, reproduced.
-        Console.WriteLine($"    one label column    = {LabelRankingAveragePrecision.Score([true], [0.7], 1):F3} (the other two refuse it)");
+        Console.WriteLine($"    one label column    = {Inv.F3(LabelRankingAveragePrecision.Score([true], [0.7], 1))} (the other two refuse it)");
         Console.WriteLine();
     }
 
@@ -139,22 +138,22 @@ internal static class Lot5Metrics
         int[] split = [0, 0, 1, 2, 2, 2];
         int[] alone = [0, 1, 2, 3, 4, 5];
 
-        Console.WriteLine($"    AdjustedRand        = {AdjustedRand.Score(reference, split):F3}");
-        Console.WriteLine($"    NormalizedMutualInfo= {NormalizedMutualInformation.Score(reference, split):F3}");
-        Console.WriteLine($"    Homogeneity         = {Homogeneity.Score(reference, split):F3}");
-        Console.WriteLine($"    Completeness        = {Completeness.Score(reference, split):F3}");
-        Console.WriteLine($"    VMeasure            = {VMeasure.Score(reference, split):F3}");
+        Console.WriteLine($"    AdjustedRand        = {Inv.F3(AdjustedRand.Score(reference, split))}");
+        Console.WriteLine($"    NormalizedMutualInfo= {Inv.F3(NormalizedMutualInformation.Score(reference, split))}");
+        Console.WriteLine($"    Homogeneity         = {Inv.F3(Homogeneity.Score(reference, split))}");
+        Console.WriteLine($"    Completeness        = {Inv.F3(Completeness.Score(reference, split))}");
+        Console.WriteLine($"    VMeasure            = {Inv.F3(VMeasure.Score(reference, split))}");
 
         // One clustering per sample: perfectly homogeneous, and worth nothing --
         // which is the pair of numbers the two families exist to show together.
-        Console.WriteLine($"    every sample alone  = {Homogeneity.Score(reference, alone):F3} homogeneity, "
-            + $"{AdjustedRand.Score(reference, alone):F3} adjusted Rand");
+        Console.WriteLine($"    every sample alone  = {Inv.F3(Homogeneity.Score(reference, alone))} homogeneity, "
+            + $"{Inv.F3(AdjustedRand.Score(reference, alone))} adjusted Rand");
 
         // Silhouette needs no reference partition at all: it reads the samples.
         double[] features = [0.0, 0.0, 0.2, 0.1, 4.0, 4.0, 4.2, 3.9, 0.1, 0.3];
         int[] guessed = [0, 0, 1, 1, 1];
-        Console.WriteLine($"    Silhouette          = {Silhouette.Score(guessed, features, 2):F3}");
-        Console.WriteLine($"    worst sample        = {Silhouette.PerSample(guessed, features, 2).Min():F3}");
+        Console.WriteLine($"    Silhouette          = {Inv.F3(Silhouette.Score(guessed, features, 2))}");
+        Console.WriteLine($"    worst sample        = {Inv.F3(Silhouette.PerSample(guessed, features, 2).Min())}");
         Console.WriteLine();
     }
 
@@ -165,35 +164,35 @@ internal static class Lot5Metrics
         foreach (Averaging average in new[] { Averaging.Micro, Averaging.Macro, Averaging.Weighted })
         {
             Console.WriteLine($"    {average,-8}            = "
-                + $"{Precision.Score(cm, average):F3} / "
-                + $"{Recall.Score(cm, average):F3} / "
-                + $"{F1.Score(cm, average):F3}");
+                + $"{Inv.F3(Precision.Score(cm, average))} / "
+                + $"{Inv.F3(Recall.Score(cm, average))} / "
+                + $"{Inv.F3(F1.Score(cm, average))}");
         }
 
         // SpamTruth above explains why Binary needs its own two-class target.
         // posLabel picks which class counts as positive, here the spam one.
         Console.WriteLine($"    Binary, posLabel=1  = "
-            + $"{Precision.Score(SpamTruth, SpamPredicted, Averaging.Binary, posLabel: 1):F3} / "
-            + $"{Recall.Score(SpamTruth, SpamPredicted, Averaging.Binary, posLabel: 1):F3} / "
-            + $"{F1.Score(SpamTruth, SpamPredicted, Averaging.Binary, posLabel: 1):F3} (spam/not-spam)");
+            + $"{Inv.F3(Precision.Score(SpamTruth, SpamPredicted, Averaging.Binary, posLabel: 1))} / "
+            + $"{Inv.F3(Recall.Score(SpamTruth, SpamPredicted, Averaging.Binary, posLabel: 1))} / "
+            + $"{Inv.F3(F1.Score(SpamTruth, SpamPredicted, Averaging.Binary, posLabel: 1))} (spam/not-spam)");
         Console.WriteLine();
     }
 
     /// <summary>The unreduced per-class vectors the averages are computed from.</summary>
     private static void PerClass(ConfusionMatrix cm)
     {
-        Console.WriteLine($"  Precision.PerClass    = {Format(Precision.PerClass(cm))}");
-        Console.WriteLine($"  Recall.PerClass       = {Format(Recall.PerClass(cm))}");
-        Console.WriteLine($"  F1.PerClass           = {Format(F1.PerClass(cm))}");
+        Console.WriteLine($"  Precision.PerClass    = {Inv.List(Precision.PerClass(cm))}");
+        Console.WriteLine($"  Recall.PerClass       = {Inv.List(Recall.PerClass(cm))}");
+        Console.WriteLine($"  F1.PerClass           = {Inv.List(F1.PerClass(cm))}");
         Console.WriteLine();
     }
 
     /// <summary>F-beta either side of 1, where beta weights recall against precision.</summary>
     private static void Beta(ConfusionMatrix cm)
     {
-        Console.WriteLine($"  FBeta β=0.5 (macro)   = {FBeta.Score(cm, beta: 0.5, Averaging.Macro):F3} — leans on precision");
-        Console.WriteLine($"  FBeta β=2   (macro)   = {FBeta.Score(cm, beta: 2.0, Averaging.Macro):F3} — leans on recall");
-        Console.WriteLine($"  FBeta.PerClass β=2    = {Format(FBeta.PerClass(cm, beta: 2.0))}");
+        Console.WriteLine($"  FBeta β=0.5 (macro)   = {Inv.F3(FBeta.Score(cm, beta: 0.5, Averaging.Macro))} — leans on precision");
+        Console.WriteLine($"  FBeta β=2   (macro)   = {Inv.F3(FBeta.Score(cm, beta: 2.0, Averaging.Macro))} — leans on recall");
+        Console.WriteLine($"  FBeta.PerClass β=2    = {Inv.List(FBeta.PerClass(cm, beta: 2.0))}");
         Console.WriteLine();
     }
 
@@ -205,9 +204,9 @@ internal static class Lot5Metrics
     {
         ConfusionMatrix cm = ConfusionMatrix.Compute(YTrue, YPred, WithAbsentClass);
         Console.WriteLine($"  label 3 occurs in neither column; precision for it is 0/0:");
-        Console.WriteLine($"    ZeroDivision.Zero   = {Format(Precision.PerClass(cm, ZeroDivision.Zero))}");
-        Console.WriteLine($"    ZeroDivision.One    = {Format(Precision.PerClass(cm, ZeroDivision.One))}");
-        Console.WriteLine($"    ZeroDivision.NaN    = {Format(Precision.PerClass(cm, ZeroDivision.NaN))}");
+        Console.WriteLine($"    ZeroDivision.Zero   = {Inv.List(Precision.PerClass(cm, ZeroDivision.Zero))}");
+        Console.WriteLine($"    ZeroDivision.One    = {Inv.List(Precision.PerClass(cm, ZeroDivision.One))}");
+        Console.WriteLine($"    ZeroDivision.NaN    = {Inv.List(Precision.PerClass(cm, ZeroDivision.NaN))}");
 
         try
         {
@@ -229,10 +228,10 @@ internal static class Lot5Metrics
         // average and the support column with it.
         double[] weights = [1, 1, 2, 2, 1, 1, 1, 2, 2, 2];
         ConfusionMatrix weighted = ConfusionMatrix.Compute(YTrue, YPred, labels: default, sampleWeight: weights);
-        Console.WriteLine($"  weighted total        = {weighted.TotalWeight:F0} (unweighted {YTrue.Length})");
-        Console.WriteLine($"  weighted F1 (macro)   = {F1.Score(weighted, Averaging.Macro):F3} "
-            + $"(unweighted {F1.Score(ConfusionMatrix.Compute(YTrue, YPred), Averaging.Macro):F3})");
-        Console.WriteLine($"  weighted accuracy     = {Accuracy.Score(YTrue, YPred, sampleWeight: weights):F3}");
+        Console.WriteLine($"  weighted total        = {Inv.F0(weighted.TotalWeight)} (unweighted {YTrue.Length})");
+        Console.WriteLine($"  weighted F1 (macro)   = {Inv.F3(F1.Score(weighted, Averaging.Macro))} "
+            + $"(unweighted {Inv.F3(F1.Score(ConfusionMatrix.Compute(YTrue, YPred), Averaging.Macro))})");
+        Console.WriteLine($"  weighted accuracy     = {Inv.F3(Accuracy.Score(YTrue, YPred, sampleWeight: weights))}");
         Console.WriteLine();
     }
 
@@ -245,18 +244,18 @@ internal static class Lot5Metrics
         foreach (ClassRow row in report.Classes)
         {
             Console.WriteLine($"    {row.Name,-12} ({row.Label}) = "
-                + $"{row.Precision:F3} / {row.Recall:F3} / {row.F1:F3} on {row.Support:F0} samples");
+                + $"{Inv.F3(row.Precision)} / {Inv.F3(row.Recall)} / {Inv.F3(row.F1)} on {Inv.F0(row.Support)} samples");
         }
 
         AverageRow macro = report.MacroAverage;
         AverageRow weighted = report.WeightedAverage;
-        Console.WriteLine($"    {macro.Name,-18} = {macro.Precision:F3} / {macro.Recall:F3} / {macro.F1:F3} on {macro.Support:F0}");
-        Console.WriteLine($"    {weighted.Name,-18} = {weighted.Precision:F3} / {weighted.Recall:F3} / {weighted.F1:F3}");
+        Console.WriteLine($"    {macro.Name,-18} = {Inv.F3(macro.Precision)} / {Inv.F3(macro.Recall)} / {Inv.F3(macro.F1)} on {Inv.F0(macro.Support)}");
+        Console.WriteLine($"    {weighted.Name,-18} = {Inv.F3(weighted.Precision)} / {Inv.F3(weighted.Recall)} / {Inv.F3(weighted.F1)}");
 
         // Present only when the report is not over the full label set, exactly
         // as scikit-learn prints "micro avg" in place of "accuracy".
-        Console.WriteLine($"    micro avg          = {report.MicroAverage?.F1.ToString("F3", CultureInfo.InvariantCulture) ?? "<absent: every label is covered>"}");
-        Console.WriteLine($"    accuracy           = {report.Accuracy:F3} on {report.TotalSupport:F0} samples");
+        Console.WriteLine($"    micro avg          = {Inv.F3(report.MicroAverage?.F1) ?? "<absent: every label is covered>"}");
+        Console.WriteLine($"    accuracy           = {Inv.F3(report.Accuracy)} on {Inv.F0(report.TotalSupport)} samples");
         Console.WriteLine();
 
         Console.WriteLine("  ClassificationReport.ToText(), character for character what sklearn prints");
@@ -273,7 +272,7 @@ internal static class Lot5Metrics
     {
         int[] binaryTruth = [0, 0, 1, 1, 1, 0];
         double[] scores = [0.10, 0.40, 0.35, 0.80, 0.70, 0.20];
-        Console.WriteLine($"  RocAuc.Score (binary) = {RocAuc.Score(binaryTruth, scores):F3}");
+        Console.WriteLine($"  RocAuc.Score (binary) = {Inv.F3(RocAuc.Score(binaryTruth, scores))}");
 
         // Row-major: sample 0's three classes, then sample 1's — each row sums to
         // 1, which a multiclass score matrix must.
@@ -289,16 +288,16 @@ internal static class Lot5Metrics
         ];
 
         Console.WriteLine($"  MultiClass ovr macro  = "
-            + $"{RocAuc.MultiClass(truth, probabilities, classCount: 3):F3}");
+            + $"{Inv.F3(RocAuc.MultiClass(truth, probabilities, classCount: 3))}");
         Console.WriteLine($"  MultiClass ovr weight = "
-            + $"{RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { Average = Averaging.Weighted }):F3}");
+            + $"{Inv.F3(RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { Average = Averaging.Weighted }))}");
         Console.WriteLine($"  MultiClass ovo macro  = "
-            + $"{RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { Strategy = MultiClassStrategy.OneVsOne }):F3}");
+            + $"{Inv.F3(RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { Strategy = MultiClassStrategy.OneVsOne }))}");
 
         // Parallel and sequential agree by contract; Environment.ProcessorCount here
         // is honest, not optimal — see docs/guides/performance.md before copying it.
         Console.WriteLine($"  MultiClass ovr macro  = "
-            + $"{RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }):F3}"
+            + $"{Inv.F3(RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }))}"
             + "  (parallel, same value)");
         Console.WriteLine();
     }
@@ -310,18 +309,16 @@ internal static class Lot5Metrics
         int[] predicted = [0, 1, 1, 1, 2, 0, 2];
         ConfusionMatrix cm = ConfusionMatrix.Compute(truth, predicted);
 
-        Console.WriteLine($"  BalancedAccuracy      = {BalancedAccuracy.Score(cm):F3}");
-        Console.WriteLine($"  MatthewsCorrelation   = {MatthewsCorrelation.Score(cm):F3}");
-        Console.WriteLine($"  CohenKappa            = {CohenKappa.Score(cm):F3}");
-        Console.WriteLine($"  CohenKappa (linear)   = {CohenKappa.Score(cm, KappaWeighting.Linear):F3}");
+        Console.WriteLine($"  BalancedAccuracy      = {Inv.F3(BalancedAccuracy.Score(cm))}");
+        Console.WriteLine($"  MatthewsCorrelation   = {Inv.F3(MatthewsCorrelation.Score(cm))}");
+        Console.WriteLine($"  CohenKappa            = {Inv.F3(CohenKappa.Score(cm))}");
+        Console.WriteLine($"  CohenKappa (linear)   = {Inv.F3(CohenKappa.Score(cm, KappaWeighting.Linear))}");
 
         // normalize= is a projection: the matrix itself never becomes fractions,
         // so Accuracy.Score(cm) above still means what it says.
         double[,] rowNormalised = cm.ToArray(Normalization.True);
-        Console.WriteLine($"  row-normalised [0,0]  = {rowNormalised[0, 0]:F3}");
+        Console.WriteLine($"  row-normalised [0,0]  = {Inv.F3(rowNormalised[0, 0])}");
         Console.WriteLine();
     }
 
-    private static string Format(double[] values) =>
-        "[" + string.Join(", ", values.Select(v => v.ToString("F3", CultureInfo.InvariantCulture))) + "]";
 }

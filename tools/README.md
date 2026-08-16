@@ -18,6 +18,8 @@ given:
   someone's home directory.
 - `check_comment_length.py` refuses a comment block that runs past its budget
   without saying why.
+- `check_sample_culture.py` refuses a sample that can print a number in the
+  contributor's culture rather than the same way everywhere.
 - `generate_sonar_globalconfig.py` writes the `.globalconfig` that raises the
   Sonar rules `SonarAnalyzer.CSharp` ships disabled, from the SonarCloud
   quality profile that gates the pull request.
@@ -336,6 +338,57 @@ code review's call, per `CONTRIBUTING.md`'s *Claims in comments*.
 
 A docstring is not a comment block. Python prose belongs in one, and the tools
 in this directory open with thirty-line docstrings on purpose.
+
+## `check_sample_culture.py`
+
+Refuses a sample that can print a number in whoever ran it's culture. The sample
+is the packaging gate: CI runs it on every pull request and a contributor reads
+its output to see that a package works. String interpolation formats through
+`CurrentCulture`, so the same commit printed `0.807` on CI and `0,807` on a
+French console for two releases, and nothing failed — the gate checks that every
+public type is reachable, not what the run said.
+
+`CA1305` cannot catch it. The rule fires on an explicit `ToString(string)` and
+never on an interpolated hole, at any `AnalysisMode`, so the gap is in the rule
+rather than in the configuration and raising `AnalysisLevel` would not surface
+one of them. [`decisions/0019`](../docs/decisions/0019-the-net-analysers-run-in-the-build-too.md)
+recorded that and left it open; [#205](https://github.com/CyrilB1531/lodestar/issues/205)
+closed it.
+
+```bash
+python3 tools/check_sample_culture.py
+```
+
+Two checks, because neither covers the other:
+
+1. **No interpolated hole carries a standard format specifier.** `{value:F3}` and
+   friends are the rewritable ones, and `Inv.F3(value)` —
+   `samples/Lodestar.Sample/Inv.cs` — is what they become. An aligned hole
+   (`{value,10:F3}`) is reported as such, because a rewrite has to keep the
+   alignment rather than swallow it.
+
+   A hole is found by its closing `:F3}` and then walked *backwards* to its
+   opening brace, because the expression can hold braces of its own — an object
+   initializer in an argument list does, and three such holes survived the first
+   sweep of this issue precisely because a single regular expression cannot span
+   them. The specifier must be a letter followed by digits: the sample embeds
+   vocabularies as JSON, where `:10}` is data rather than a format. A *custom*
+   format (`{value:0.###}`) is therefore not matched, and is left to check 2.
+2. **`Program.cs` still pins the thread culture.** That covers what no syntactic
+   scan can: a bare `{value}` hole whose expression is a `double` reads exactly
+   like a bare `{count}` hole whose expression is an `int`. Matched on the
+   assignment rather than the comment above it, so rewording the comment does not
+   fail the build.
+
+Sources come from `git ls-files`, never a glob: `bin/` and `obj/` hold copies of
+every sample source, and editing those would turn the guard green while the files
+that ship still printed in the contributor's culture.
+
+Exit codes:
+
+- `0` — clean.
+- `1` — findings printed, each naming its file, line and hole.
+- `2` — bad usage, or no tracked sample sources to scan.
 
 ## `check_machine_paths.py`
 
