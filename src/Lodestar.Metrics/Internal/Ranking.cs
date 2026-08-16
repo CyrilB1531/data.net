@@ -15,13 +15,21 @@ internal static class Ranking
     /// returning 0, which is what the arithmetic would otherwise do quietly. scikit-learn
     /// refuses it too, with "must be an int in the range [1, inf) or None".
     /// </remarks>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="k"/> is below 1.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="k"/> is below 1, or <paramref name="logBase"/> is outside <c>(0, ∞)</c>.</exception>
     public static double[] Discounts(int count, int? k, double logBase)
     {
         if (k < 1)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(k), k, "k must be at least 1, or null for the whole row.");
+        }
+
+        // Math.Log turns zero and the negatives into a NaN the caller reads as a score.
+        // NaN itself fails both comparisons, which is the refusal it wants.
+        if (!(logBase > 0.0 && logBase < double.PositiveInfinity))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(logBase), logBase, "logBase must be in the range (0, inf).");
         }
 
         double scale = Math.Log(logBase);

@@ -13,7 +13,7 @@ public static class Dcg
     /// <param name="yScore">The scores the ranking was made from, same shape as <paramref name="yTrue"/>.</param>
     /// <param name="labelCount">How many documents each row holds.</param>
     /// <param name="k">Score only the first <c>k</c> positions, or <c>null</c> for all of them.</param>
-    /// <param name="logBase">The base of the positional discount; <c>2</c> is scikit-learn's default.</param>
+    /// <param name="logBase">The base of the positional discount, anywhere in <c>(0, ∞)</c>; <c>2</c> is scikit-learn's default.</param>
     /// <param name="ignoreTies">Rank equal scores arbitrarily instead of averaging over their permutations.</param>
     /// <returns>The mean discounted gain over the rows. Unbounded above: it grows with the relevance values.</returns>
     /// <remarks>
@@ -22,7 +22,7 @@ public static class Dcg
     /// gives <c>4.7618…</c> — the difference is the definition, not an error on either side.
     /// </remarks>
     /// <exception cref="ArgumentException">The rows disagree in length, or hold fewer than two documents.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="k"/> is below 1.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="k"/> is below 1, or <paramref name="logBase"/> is outside <c>(0, ∞)</c> — zero, negative, <c>NaN</c> or infinite.</exception>
     public static double Score(
         ReadOnlySpan<double> yTrue,
         ReadOnlySpan<double> yScore,

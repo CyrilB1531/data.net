@@ -12,8 +12,10 @@ public static double Score(ReadOnlySpan<double> yTrue, ReadOnlySpan<double> ySco
 made from, both row-major: one row per query, `labelCount` values each, and the same length.
 `k` scores only the first `k` positions, or `null` for all of them; a `k` past `labelCount` scores
 the whole row rather than raising. `logBase` is the base of the positional discount, `2` as in
-scikit-learn. `ignoreTies` ranks equal scores in descending index order instead of averaging over
-their permutations — faster, and correct only when genuine ties cannot occur.
+scikit-learn, and anywhere in `(0, ∞)`: a base below `1` is accepted and takes the score negative,
+`1` itself makes every discount zero. `ignoreTies` ranks equal scores in descending index order
+instead of averaging over their permutations — faster, and correct only when genuine ties cannot
+occur.
 
 **Returns** — `double`, the mean over the rows of `Σ relevance / log(rank + 1)`. **Unbounded
 above**: it grows with the relevance values, so two rows are comparable only on the same judgement
@@ -22,7 +24,10 @@ scale. Use [`Ndcg.Score`](ndcg-score.md) for a number in `[0, 1]`.
 **Exceptions** — `ArgumentException` when `labelCount` is below `2` (scikit-learn's own sentence,
 "Computing NDCG is only meaningful when there is more than 1 document."), when `yTrue` and `yScore`
 disagree in length, or when the length is not a whole number of rows of `labelCount`.
-`ArgumentOutOfRangeException` when `k` is below `1`; scikit-learn refuses the same value.
+`ArgumentOutOfRangeException` when `k` is below `1`, and when `logBase` falls outside `(0, ∞)` —
+zero, negative, `NaN` or infinite; scikit-learn refuses the same values, through the constraint it
+prints as "must be a float in the range (0.0, inf)". A zero or negative base would otherwise reach
+the caller as a silent `NaN` score.
 
 A negative relevance is **not** refused here, and the result can be negative — `dcg_score` accepts
 it too. [`Ndcg.Score`](ndcg-score.md) does refuse it, because there the ratio would leave `[0, 1]`.

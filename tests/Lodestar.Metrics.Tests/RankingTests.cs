@@ -180,4 +180,36 @@ public sealed class RankingTests
         Assert.Throws<ArgumentOutOfRangeException>(() => Ndcg.Score(yTrue, yScore, 4, k: 0));
         Assert.Throws<ArgumentOutOfRangeException>(() => Dcg.Score(yTrue, yScore, 4, k: -1));
     }
+
+    [Fact]
+    public void A_logBase_outside_scikit_learns_range_is_refused_rather_than_returning_NaN()
+    {
+        double[] yTrue = [3.0, 2.0, 1.0, 0.0];
+        double[] yScore = [0.9, 0.5, 0.4, 0.1];
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => Dcg.Score(yTrue, yScore, 4, logBase: 0.0));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => Dcg.Score(yTrue, yScore, 4, logBase: -2.0));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => Dcg.Score(yTrue, yScore, 4, logBase: double.NaN));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => Dcg.Score(yTrue, yScore, 4, logBase: double.PositiveInfinity));
+
+        // The interval is open at both ends but wide: a base below 1 is accepted, and
+        // takes the score negative. Measured, -4.761859507142915 at logBase 0.5.
+        Assert.Equal(-4.761859507142915,
+            Dcg.Score(yTrue, yScore, 4, logBase: 0.5), MetricsCorpus.Tolerance);
+    }
+
+    [Fact]
+    public void A_logBase_of_one_is_accepted_and_scores_zero_as_the_reference_does()
+    {
+        // Inside scikit-learn's (0, inf), so not a refusal: log(1) is 0, every discount
+        // is 0, and dcg_score returns 0.0 there too — measured, with a RuntimeWarning.
+        double[] yTrue = [3.0, 2.0, 1.0, 0.0];
+        double[] yScore = [0.9, 0.5, 0.4, 0.1];
+
+        Assert.Equal(0.0, Dcg.Score(yTrue, yScore, 4, logBase: 1.0), MetricsCorpus.Tolerance);
+    }
 }
