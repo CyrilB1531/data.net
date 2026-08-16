@@ -64,4 +64,15 @@ public sealed class LabelRankingFactsTests
         Assert.Equal(2, LabelRanking.RelevantCount([true, false, true, false]));
         Assert.Equal(0, LabelRanking.RelevantCount([false, false, false]));
     }
+
+    [Fact]
+    public void A_row_with_nothing_relevant_covers_zero_labels_not_all_of_them()
+    {
+        bool[] truth = [false, false, false, true, false, false];
+        double[] scores = [0.7, 0.2, 0.1, 0.7, 0.2, 0.1];
+
+        // The scoring row covers 1 label, the empty row covers 0: the mean is 0.5.
+        // Treating the empty row as fully covered would give 2.0 and look reasonable.
+        Assert.Equal(0.5, CoverageError.Score(truth, scores, 3), MetricsCorpus.Tolerance);
+    }
 }
