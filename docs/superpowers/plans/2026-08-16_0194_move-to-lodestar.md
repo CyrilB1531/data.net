@@ -124,14 +124,19 @@ the identity carriers that name Text.
   cancellation. Recorded as [#199](https://github.com/CyrilB1531/lodestar/issues/199) and fixed
   there: any run now archives every released version the wiki does not hold, each from its own tag.
 
-## Task 5 — `Lodestar.Metrics 0.1.1`, from the tag
+## Task 5 — `Lodestar.Metrics 0.1.1` — **dropped on 2026-08-16, deliberately**
 
-- [ ] **Step 1: Branch from `DataNet.Metrics/v0.1.0`**, apply the rename to that content, and
-  nothing else. This is the one release in the sequence that is not cut from `main`, and the reason
-  is in the decisions above.
-- [ ] **Step 2: Publish and tag** `Lodestar.Metrics/v0.1.1`.
-- [ ] **Step 3: `main` then ships `Lodestar.Metrics 0.2.0`** with the clustering lot, which is the
-  version it already declares.
+The plan was to cut a rename-only `0.1.1` from the tag `DataNet.Metrics/v0.1.0`, so a consumer of
+`DataNet.Metrics 0.1.0` could move id without moving code. It is not being done, and the reasons are
+worth keeping because they are what would make it right for another package:
+
+- `Lodestar.Metrics 0.2.0` is already published, so the id exists and the migration path is open.
+- `DataNet.Metrics` is deprecated with a message naming its replacement, which is what a consumer
+  actually sees in their IDE — a `0.1.1` would add nothing to that message.
+- The old package has 37 downloads, against a publication cut from an old tag on its own branch.
+
+The other three keep their rename-only patch, because their code genuinely did not move: `0.3.1` is
+`0.3.0` under a new id. That promise was worth making where it was true.
 
 ## Task 6 — retire the old ids
 
