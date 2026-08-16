@@ -63,7 +63,7 @@ A single test, or one area:
 
 ```bash
 dotnet test DataNet.slnx -c Release --filter "FullyQualifiedName~SpanishSnowball"
-dotnet test tests/DataNet.Text.Tests -c Release --filter "FullyQualifiedName~Levenshtein"
+dotnet test tests/Lodestar.Text.Tests -c Release --filter "FullyQualifiedName~Levenshtein"
 ```
 
 **Read the test count, not the colour.** A `--filter` that matches nothing exits
@@ -101,8 +101,8 @@ dotnet build samples/DataNet.DocSnippets -c Release
 ```
 
 ```bash
-dotnet run -c Release --project bench/DataNet.Text.Benchmarks -- --filter '*Levenshtein*'
-for p in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- --filter '*Levenshtein*'
+for p in src/Lodestar.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
   dotnet pack "$p" -c Release -o ./artifacts
 done
 ```
@@ -113,7 +113,7 @@ Four independently versioned packages under `src/`:
 
 | Package | Holds |
 | --- | --- |
-| `DataNet.Text` | distances, phonetics, set similarity, stemmers, tokenizers, sparse vectorizers (`CsrMatrix`), persistence. No third-party dependency beyond polyfills. |
+| `Lodestar.Text` | distances, phonetics, set similarity, stemmers, tokenizers, sparse vectorizers (`CsrMatrix`), persistence. No third-party dependency beyond polyfills. |
 | `DataNet.Embeddings` | sub-word tokenizers (WordPiece, SentencePiece, BPE/byte-level BPE), batch encoding pipeline, pooling, SIMD kNN `EmbeddingIndex`, ONNX inference. ONNX Runtime is isolated here. |
 | `DataNet.Fuzzy` | `fuzz.*`, `process.extract`, blocking deduplication. |
 | `DataNet.Metrics` | classification metrics at scikit-learn parity. |
@@ -143,14 +143,14 @@ net10, scalar loop on netstandard2.0.
 ### 2. Versions are per package, and `src/` references packages, not projects
 
 Each publishable project declares its version in a sibling `src/<Package>/Version.props`
-and nowhere else. `DataNet.Fuzzy` reaches `DataNet.Text` through a
+and nowhere else. `DataNet.Fuzzy` reaches `Lodestar.Text` through a
 `PackageReference` on a **published floor** pinned in `src/Directory.Packages.props`
 — which is what makes `git clone && dotnet build` work with no pack step. A CI job
 asserts through evaluated MSBuild that no `src/` project carries a
 `ProjectReference`.
 
 When a branch edits two packages together, the floor points at an older
-`DataNet.Text` than your working tree:
+`Lodestar.Text` than your working tree:
 
 ```bash
 # POSIX (bash/zsh)

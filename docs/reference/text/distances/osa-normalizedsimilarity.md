@@ -16,7 +16,7 @@ character, exactly as it does for `NormalizedDistance`, which this is computed f
 **Example** — the same swap, read as a score.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 double s = Osa.NormalizedSimilarity("abcd", "acbd");   // => 0.75
 ```

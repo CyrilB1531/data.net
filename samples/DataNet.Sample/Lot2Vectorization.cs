@@ -1,5 +1,5 @@
-using DataNet.Text.Persistence;
-using DataNet.Text.Vectorization;
+using Lodestar.Text.Persistence;
+using Lodestar.Text.Vectorization;
 
 namespace DataNet.Sample;
 

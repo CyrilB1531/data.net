@@ -53,7 +53,7 @@ Committing the regenerated JSON is part of the change.
 
 ## `fetch_stopwords.py`
 
-Regenerates `src/DataNet.Text/Vectorization/StopWords.Snowball.cs` from the
+Regenerates `src/Lodestar.Text/Vectorization/StopWords.Snowball.cs` from the
 Snowball stop-word lists (BSD-3-Clause). No third-party package needed — the
 standard library is enough:
 
@@ -142,20 +142,20 @@ python tools/check_nuspec_dependencies.py artifacts
 A package's dependency graph is a *build output*, derived from whatever restore
 resolved, so nobody writes it down and nothing notices when it drifts. This
 script is where it is written down. It matters more since the four packages
-version independently: `DataNet.Fuzzy` reaches `DataNet.Text` through a
+version independently: `DataNet.Fuzzy` reaches `Lodestar.Text` through a
 `PackageReference`, and that edge is now the one thing holding the two together.
 See [`../docs/decisions/0012-per-package-versioning.md`](../docs/decisions/0012-per-package-versioning.md).
 
 Dependency **ids and version ranges** are both asserted. The range matters as
 much as the id here: a `PackageReference` emits the floor from
 `src/Directory.Packages.props`, while the `DataNetUseProjectRefs` developer loop
-emits `DataNet.Text`'s own current version. Same id, different number — which is
+emits `Lodestar.Text`'s own current version. Same id, different number — which is
 what lets this check catch a package accidentally built with the escape hatch
 left on.
 
 ## `check_version_floor.py`
 
-Checks the three places a `DataNet.Text` version number lives, each for a
+Checks the three places a `Lodestar.Text` version number lives, each for a
 different reason, none of which MSBuild relates to the others:
 
 ```bash
@@ -163,7 +163,7 @@ python tools/check_version_floor.py               # offline: the two rules below
 python tools/check_version_floor.py --check-feed  # also: the floor is published
 ```
 
-- `src/DataNet.Text/Version.props` — what `DataNet.Text` *is*.
+- `src/Lodestar.Text/Version.props` — what `Lodestar.Text` *is*.
 - `src/Directory.Packages.props` — the *floor* `DataNet.Fuzzy` requires of it.
 - `check_nuspec_dependencies.py` — the floor that check asserts actually shipped.
 
@@ -264,9 +264,9 @@ otherwise collide silently.
 
 ```bash
 python3 tools/build_wiki.py --repo <dir> --out <dir> \
-  --released DataNet.Text=0.3.0 [--released ...]     # every live channel
+  --released Lodestar.Text=0.3.0 [--released ...]     # every live channel
 python3 tools/build_wiki.py --repo <dir> --out <dir> \
-  --archive DataNet.Text=0.4.0                       # one frozen version
+  --archive Lodestar.Text=0.4.0                       # one frozen version
 ```
 
 `docs/wiki-map.json` is the only place that says which page belongs to which

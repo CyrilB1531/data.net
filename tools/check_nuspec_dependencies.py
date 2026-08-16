@@ -39,6 +39,9 @@ import zipfile
 NET = "net10.0"
 NETSTANDARD = ".NETStandard2.0"
 
+# Two ids while #194 is in flight: this repository packs BUILT_TEXT, and
+# DataNet.Fuzzy still depends on the published TEXT until the floor can move.
+BUILT_TEXT = "Lodestar.Text"
 TEXT = "DataNet.Text"
 FUZZY = "DataNet.Fuzzy"
 EMBEDDINGS = "DataNet.Embeddings"
@@ -60,7 +63,7 @@ TEXT_FLOOR = "0.2.0"
 # package id -> target framework -> {dependency id: declared version range}.
 # See this module's docstring for what EXPECTED's shape and ranges prove.
 EXPECTED: dict[str, dict[str, dict[str, str]]] = {
-    TEXT: {
+    BUILT_TEXT: {
         NET: {},
         NETSTANDARD: {**POLYFILLS, **PERSISTENCE},
     },

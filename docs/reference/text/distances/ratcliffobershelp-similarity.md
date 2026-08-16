@@ -20,7 +20,7 @@ both are empty.
 **Example** — the matched blocks are `st` and `e`: three characters, counted twice, over ten.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 double s = RatcliffObershelp.Similarity("state", "taste");   // => 0.6
 ```

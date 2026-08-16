@@ -1,4 +1,4 @@
-# Distances — `DataNet.Text.Distances`
+# Distances — `Lodestar.Text.Distances`
 
 How different are two pieces of text? Every type on this page answers that, and they disagree on
 what "different" means: some count the edits that turn one string into the other, some check how
@@ -23,7 +23,7 @@ Two conventions run through the whole namespace, and knowing them saves reading 
   answer. The reasoning is in [decision 0002](../../decisions/0002-unicode-comparison-unit.md).
 
 Comparing two **bags** of words or characters, where position does not matter at all, is a
-different question. It is answered by the `DataNet.Text.Similarity` namespace — `Jaccard`,
+different question. It is answered by the `Lodestar.Text.Similarity` namespace — `Jaccard`,
 `SorensenDice`, `Overlap`, `Tversky` and `Cosine` — not by anything here; its members are listed
 under [set similarity in the equivalence table](../../equivalence.md).
 
@@ -48,7 +48,7 @@ flowchart TD
     N -->|a score| P{"Does the shared material come in a<br/>few long passages, or scattered?"}
     P -->|long passages| Q["RatcliffObershelp"]
     P -->|scattered| R["Indel"]
-    D --> S["Not here — see<br/>DataNet.Text.Similarity"]
+    D --> S["Not here — see<br/>Lodestar.Text.Similarity"]
 ```
 
 | Type | What it measures |

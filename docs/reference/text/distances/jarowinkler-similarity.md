@@ -22,7 +22,7 @@ when it is not.
 **Example** — a shared `DI` prefix lifts a middling Jaro score.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 double s = JaroWinkler.Similarity("DIXON", "DICKSONX");   // => 0.8133…
 ```

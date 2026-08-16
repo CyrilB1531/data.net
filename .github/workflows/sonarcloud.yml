@@ -170,7 +170,7 @@ jobs:
       # second time inside the same window, for nothing.
       - name: Pack
         run: |
-          for proj in src/DataNet.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
+          for proj in src/Lodestar.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
             dotnet pack "$proj" --configuration Release --no-build --output ./artifacts
           done
 

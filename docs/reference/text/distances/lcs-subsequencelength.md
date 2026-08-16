@@ -20,7 +20,7 @@ common run of **words** rather than of characters.
 **Example** — `ittn` survives in both, out of six and seven characters.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 int n = Lcs.SubsequenceLength("kitten", "sitting");   // => 4
 ```

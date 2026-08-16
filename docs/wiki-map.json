@@ -6,7 +6,7 @@
     "docs/migration/*.md"
   ],
   "packages": {
-    "DataNet.Text": {
+    "Lodestar.Text": {
       "wiki": "Text",
       "pages": [
         "docs/guides/quickstart.md",
@@ -15,7 +15,7 @@
         "docs/reference/text/*/*.md"
       ],
       "covered": {
-        "DataNet.Text.Distances": "docs/reference/text/distances"
+        "Lodestar.Text.Distances": "docs/reference/text/distances"
       }
     },
     "DataNet.Embeddings": {

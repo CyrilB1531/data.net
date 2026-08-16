@@ -4,7 +4,7 @@ using System.Reflection.PortableExecutable;
 using DataNet.Embeddings.Tokenization;
 using DataNet.Fuzzy;
 using DataNet.Metrics;
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 namespace DataNet.Sample;
 

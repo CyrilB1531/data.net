@@ -18,7 +18,7 @@ Two empty inputs give `0`.
 **Example** — five edits over thirteen characters of input.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 double d = Indel.NormalizedDistance("kitten", "sitting");   // => 0.3846…
 ```

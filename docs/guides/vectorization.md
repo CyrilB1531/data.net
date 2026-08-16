@@ -1,16 +1,16 @@
 # From string to vector — bag of words, TF-IDF, hashing
 
-`DataNet.Text.Vectorization` reproduces `sklearn.feature_extraction.text`: it turns
+`Lodestar.Text.Vectorization` reproduces `sklearn.feature_extraction.text`: it turns
 a corpus of documents into a **sparse matrix** of features.
 
 ```bash
-dotnet add package DataNet.Text
+dotnet add package Lodestar.Text
 ```
 
 ## Bag of words — `CountVectorizer`
 
 ```csharp
-using DataNet.Text.Vectorization;
+using Lodestar.Text.Vectorization;
 
 string[] docs =
 [
@@ -147,7 +147,7 @@ same document, and nothing downstream would notice.
 Every count in an artifact sizes a buffer, so loading is bounded:
 
 ```csharp
-using DataNet.Text.Persistence;
+using Lodestar.Text.Persistence;
 
 var strict = new ArtifactLoadOptions { MaxVocabularySize = 50_000, MaxTotalBytes = 8L * 1024 * 1024 };
 TfidfVectorizer model = TfidfVectorizer.Load("model.json", strict);

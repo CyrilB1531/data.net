@@ -18,7 +18,7 @@ three exactly as for `Similarity`, which this subtracts from `1`.
 **Example** — a swapped pair of letters, forgiven almost entirely because the prefix agrees.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 double d = JaroWinkler.Distance("MARTHA", "MARHTA");   // => 0.0388…
 ```

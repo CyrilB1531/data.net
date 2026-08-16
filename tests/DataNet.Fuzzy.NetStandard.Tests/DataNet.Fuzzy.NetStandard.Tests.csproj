@@ -45,7 +45,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/DataNet.Fuzzy/DataNet.Fuzzy.csproj"
                       SetTargetFramework="TargetFramework=netstandard2.0" />
-    <ProjectReference Include="../../src/DataNet.Text/DataNet.Text.csproj"
+    <ProjectReference Include="../../src/Lodestar.Text/Lodestar.Text.csproj"
                       SetTargetFramework="TargetFramework=netstandard2.0" />
   </ItemGroup>
 

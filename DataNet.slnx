@@ -1,13 +1,13 @@
 <Solution>
   <Folder Name="/bench/">
     <Project Path="bench/DataNet.NetStandard.Benchmarks/DataNet.NetStandard.Benchmarks.csproj" />
-    <Project Path="bench/DataNet.Text.Benchmarks/DataNet.Text.Benchmarks.csproj" />
+    <Project Path="bench/Lodestar.Text.Benchmarks/Lodestar.Text.Benchmarks.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/DataNet.Embeddings/DataNet.Embeddings.csproj" />
     <Project Path="src/DataNet.Fuzzy/DataNet.Fuzzy.csproj" />
     <Project Path="src/DataNet.Metrics/DataNet.Metrics.csproj" />
-    <Project Path="src/DataNet.Text/DataNet.Text.csproj" />
+    <Project Path="src/Lodestar.Text/Lodestar.Text.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/DataNet.Embeddings.NetStandard.Tests/DataNet.Embeddings.NetStandard.Tests.csproj" />
@@ -15,8 +15,8 @@
     <Project Path="tests/DataNet.Fuzzy.NetStandard.Tests/DataNet.Fuzzy.NetStandard.Tests.csproj" />
     <Project Path="tests/DataNet.Metrics.NetStandard.Tests/DataNet.Metrics.NetStandard.Tests.csproj" />
     <Project Path="tests/DataNet.Metrics.Tests/DataNet.Metrics.Tests.csproj" />
-    <Project Path="tests/DataNet.Text.NetStandard.Tests/DataNet.Text.NetStandard.Tests.csproj" />
+    <Project Path="tests/Lodestar.Text.NetStandard.Tests/Lodestar.Text.NetStandard.Tests.csproj" />
     <Project Path="tests/DataNet.Fuzzy.Tests/DataNet.Fuzzy.Tests.csproj" />
-    <Project Path="tests/DataNet.Text.Tests/DataNet.Text.Tests.csproj" />
+    <Project Path="tests/Lodestar.Text.Tests/Lodestar.Text.Tests.csproj" />
   </Folder>
 </Solution>

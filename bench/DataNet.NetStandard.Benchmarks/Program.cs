@@ -6,7 +6,7 @@ using BenchmarkDotNet.Running;
 using BenchmarkDotNet.Toolchains.InProcess.Emit;
 using DataNet.Embeddings.Search;
 using DataNet.Metrics;
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 // In-process, so BenchmarkDotNet cannot regenerate a project that silently
 // restores net10.0 instead; the assertion below checks that, rather than trusting it.

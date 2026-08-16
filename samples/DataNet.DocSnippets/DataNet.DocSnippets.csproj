@@ -41,13 +41,13 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 
-  <Import Project="../../src/DataNet.Text/Version.props" />
+  <Import Project="../../src/Lodestar.Text/Version.props" />
   <Import Project="../../src/DataNet.Embeddings/Version.props" />
   <Import Project="../../src/DataNet.Fuzzy/Version.props" />
   <Import Project="../../src/DataNet.Metrics/Version.props" />
 
   <ItemGroup>
-    <PackageReference Include="DataNet.Text" Version="$(DataNetTextVersion)" />
+    <PackageReference Include="Lodestar.Text" Version="$(LodestarTextVersion)" />
     <PackageReference Include="DataNet.Fuzzy" Version="$(DataNetFuzzyVersion)" />
     <PackageReference Include="DataNet.Embeddings" Version="$(DataNetEmbeddingsVersion)" />
     <PackageReference Include="DataNet.Metrics" Version="$(DataNetMetricsVersion)" />

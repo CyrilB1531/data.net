@@ -20,7 +20,7 @@ two spans of an `IEquatable<T>`.
 count.
 
 ```csharp
-using DataNet.Text.Distances;
+using Lodestar.Text.Distances;
 
 int d = Hamming.Distance("a", "abc");   // => 2
 ```
