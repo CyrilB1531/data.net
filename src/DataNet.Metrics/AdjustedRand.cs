@@ -8,17 +8,15 @@ namespace DataNet.Metrics;
 /// </summary>
 public static class AdjustedRand
 {
-    /// <summary>
-    /// Scores how well two labellings of the same samples agree, ignoring what the
-    /// labels are called — <c>sklearn.metrics.adjusted_rand_score(labels_true, labels_pred)</c>.
-    /// </summary>
+    /// <summary>Scores how well two labellings of the same samples agree — <c>sklearn.metrics.adjusted_rand_score(labels_true, labels_pred)</c>.</summary>
     /// <param name="labelsTrue">The reference labelling.</param>
     /// <param name="labelsPred">The labelling to score, same length as <paramref name="labelsTrue"/>.</param>
     /// <returns><c>1</c> for the same partition however it is named, <c>0</c> for the agreement chance gives, and negative below that.</returns>
     /// <remarks>
-    /// Measured against scikit-learn 1.9.0: two independent partitions of four samples score
-    /// <c>-0.5</c> rather than <c>0</c>, and an empty input scores <c>1.0</c> — agreeing about
-    /// nothing is agreeing. The reference page has the rest of the degenerate table.
+    /// The label values carry no meaning: only which samples share one does, so renaming every
+    /// cluster changes nothing. Measured against scikit-learn 1.9.0, two independent partitions of
+    /// four samples score <c>-0.5</c> rather than <c>0</c>, and an empty input scores <c>1.0</c> —
+    /// agreeing about nothing is agreeing. The reference page has the rest of that table.
     /// </remarks>
     /// <exception cref="ArgumentException">The two labellings disagree in length.</exception>
     public static double Score(ReadOnlySpan<int> labelsTrue, ReadOnlySpan<int> labelsPred)

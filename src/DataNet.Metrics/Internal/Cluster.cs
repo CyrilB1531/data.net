@@ -1,16 +1,14 @@
 namespace DataNet.Metrics.Internal;
 
-/// <summary>The half of homogeneity/completeness the two share: one is the other reversed.</summary>
+/// <summary>The computation homogeneity and completeness share.</summary>
 internal static class Cluster
 {
-    /// <summary>
-    /// The mutual information over the entropy of <paramref name="over"/>, which is
-    /// homogeneity when the truth is passed first and completeness when it is passed second.
-    /// </summary>
+    /// <summary>The mutual information over the entropy of <paramref name="over"/>.</summary>
     /// <remarks>
-    /// An entropy of zero returns <c>1.0</c> rather than dividing: one class, or none,
-    /// leaves nothing for the clustering to get wrong. That is scikit-learn's rule, and
-    /// it is what makes an empty input score perfectly.
+    /// Homogeneity when the truth is passed first, completeness when it is passed second — the two
+    /// are one function called both ways round, which is scikit-learn's own definition. An entropy
+    /// of zero returns <c>1.0</c> rather than dividing: one class, or none, leaves nothing for the
+    /// clustering to get wrong, and that is what makes an empty input score perfectly.
     /// </remarks>
     public static double Homogeneity(ReadOnlySpan<int> over, ReadOnlySpan<int> against)
     {

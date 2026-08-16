@@ -52,10 +52,7 @@ internal sealed class Contingency
         return new Contingency(cells, [.. rows], [.. columns], labelsTrue.Length);
     }
 
-    /// <summary>
-    /// The mutual information of the two labellings, in nats — scikit-learn's
-    /// <c>mutual_info_score</c>, in its own arithmetic.
-    /// </summary>
+    /// <summary>The mutual information of the two labellings, in nats — scikit-learn's <c>mutual_info_score</c>.</summary>
     /// <remarks>
     /// The grouping is scikit-learn's and is load-bearing at <c>1e-9</c>: it takes
     /// <c>log(nij) - log(n)</c> rather than <c>log(nij / n)</c>, and adds the outer
