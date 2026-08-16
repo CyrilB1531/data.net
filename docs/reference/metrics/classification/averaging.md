@@ -17,7 +17,7 @@ support.
 **Example** — the same predictions read three ways.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [0, 0, 1, 1, 2, 2, 2];
 int[] yPred = [0, 1, 1, 1, 2, 2, 0];

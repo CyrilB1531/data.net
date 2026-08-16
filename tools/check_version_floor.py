@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Assert the DataNet.Text version numbers that must agree still agree.
+"""Assert the Lodestar.Text version numbers that must agree still agree.
 
 Per-package versioning replaced one repository-wide ``<Version>`` with several
 numbers that are related but not equal, and nothing in the build objects when
 they drift apart:
 
 * ``src/Lodestar.Text/Version.props`` — what Lodestar.Text *is*.
-* ``src/Directory.Packages.props`` — the *floor* DataNet.Fuzzy requires of it.
+* ``src/Directory.Packages.props`` — the *floor* Lodestar.Fuzzy requires of it.
 * ``tools/check_nuspec_dependencies.py`` — the floor that check asserts shipped.
 
 Two rules hold between them, and both fail silently today:
 
 1. The floor must not exceed the declared version. A floor above it asks
-   consumers for a DataNet.Text that this repository has not written yet.
+   consumers for a Lodestar.Text that this repository has not written yet.
 2. The floor must already be on nuget.org. It is what makes ``git clone &&
    dotnet build`` work with no pack step, so a floor naming an unpublished
    version breaks a clean clone — on a contributor's machine, not on the one
@@ -39,15 +39,12 @@ VERSION_PROPS = ROOT / "src" / "Lodestar.Text" / "Version.props"
 PACKAGES_PROPS = ROOT / "src" / "Directory.Packages.props"
 NUSPEC_CHECK = ROOT / "tools" / "check_nuspec_dependencies.py"
 
-# Two ids while #194 is in flight: this repository builds BUILT, and DataNet.Fuzzy
-# still consumes the published FLOOR until Lodestar.Text exists on nuget.org.
-BUILT = "Lodestar.Text"
-PACKAGE = "DataNet.Text"
+PACKAGE = "Lodestar.Text"
 FLAT_CONTAINER = "https://api.nuget.org/v3-flatcontainer/{id}/index.json"
 
 
 def declared_version() -> str:
-    """The version DataNet.Text gives itself."""
+    """The version Lodestar.Text gives itself."""
     root = ET.parse(VERSION_PROPS).getroot()
     version = root.findtext(".//LodestarTextVersion")
     if version is None:
@@ -56,7 +53,7 @@ def declared_version() -> str:
 
 
 def floor_version() -> str:
-    """The minimum DataNet.Text that DataNet.Fuzzy requires of consumers."""
+    """The minimum Lodestar.Text that Lodestar.Fuzzy requires of consumers."""
     root = ET.parse(PACKAGES_PROPS).getroot()
     for item in root.iterfind(".//PackageVersion"):
         if item.get("Include") == PACKAGE:
@@ -89,7 +86,7 @@ def ordering_key(version: str) -> tuple[tuple[int, ...], int]:
 
 
 def published_versions() -> set[str] | None:
-    """Every DataNet.Text version on nuget.org, or None if it has never shipped."""
+    """Every Lodestar.Text version on nuget.org, or None if it has never shipped."""
     url = FLAT_CONTAINER.format(id=PACKAGE.lower())
     try:
         with urllib.request.urlopen(url, timeout=30) as response:
@@ -124,17 +121,12 @@ def main(argv: list[str]) -> int:
             f"same edge and must agree"
         )
 
-    if BUILT == PACKAGE and ordering_key(floor) > ordering_key(declared):
+    if ordering_key(floor) > ordering_key(declared):
         failures.append(
             f"the floor {floor} is above the declared version {declared}: "
-            f"DataNet.Fuzzy would require a {PACKAGE} this repository has not "
+            f"Lodestar.Fuzzy would require a {PACKAGE} this repository has not "
             f"written"
         )
-    elif BUILT != PACKAGE:
-        # #194: comparing their numbers would compare two packages. What still holds is
-        # that the floor must resolve, which --check-feed asserts.
-        print(f"note  the rename is in flight: {BUILT} is built here, {PACKAGE} is the floor")
-
     if check_feed:
         published = published_versions()
         if published is None:
@@ -146,7 +138,7 @@ def main(argv: list[str]) -> int:
             failures.append(
                 f"the floor {floor} is not on nuget.org (published: "
                 f"{', '.join(sorted(published, key=ordering_key))}), so a clean "
-                f"clone cannot restore DataNet.Fuzzy"
+                f"clone cannot restore Lodestar.Fuzzy"
             )
 
     for failure in failures:
@@ -154,7 +146,7 @@ def main(argv: list[str]) -> int:
     if failures:
         return 1
 
-    print(f"ok  {BUILT} declares {declared}, DataNet.Fuzzy floors at {PACKAGE} {floor}")
+    print(f"ok  {PACKAGE} declares {declared}, Lodestar.Fuzzy floors at {floor}")
     return 0
 
 

@@ -1,9 +1,9 @@
 using System.Text.Json;
 
-namespace DataNet.Internal.Persistence;
+namespace Lodestar.Internal.Persistence;
 
 /// <summary>
-/// The two properties every DataNet artifact opens with — <c>"$schema"</c>
+/// The two properties every Lodestar artifact opens with — <c>"$schema"</c>
 /// identifying the artifact kind and <c>"version"</c> its format revision — plus
 /// the reader-side state that proves both were present and understood.
 /// </summary>
@@ -108,7 +108,7 @@ internal struct ArtifactHeader
         if (version < 1 || version > _supportedVersion)
         {
             throw new InvalidDataException(
-                $"Unsupported '{SchemaFor(_artifact)}' artifact version {version}; this build of DataNet reads versions 1 to {_supportedVersion}.");
+                $"Unsupported '{SchemaFor(_artifact)}' artifact version {version}; this build of Lodestar reads versions 1 to {_supportedVersion}.");
         }
         Version = version;
         _sawVersion = true;

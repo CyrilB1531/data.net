@@ -14,7 +14,7 @@ public string ToString()
 
 ```csharp
 using System;
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [0, 0, 1, 1, 2, 2, 2];
 int[] yPred = [0, 1, 1, 1, 2, 2, 0];
@@ -23,7 +23,7 @@ ClassificationReport report = ClassificationReport.Compute(yTrue, yPred);
 bool same = string.Equals(report.ToString(), report.ToText(2), StringComparison.Ordinal);   // => True
 ```
 
-**Remarks** — an override rather than the default `DataNet.Metrics.ClassificationReport`, because
+**Remarks** — an override rather than the default `Lodestar.Metrics.ClassificationReport`, because
 a
 report in a debugger watch window or an interpolated string is nearly always something a human is
 about to read. It carries no information `ToText` does not.

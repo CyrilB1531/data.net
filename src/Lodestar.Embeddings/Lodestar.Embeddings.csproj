@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- This package's version, owned here rather than repository-wide. -->
+  <Import Project="Version.props" />
+
+  <PropertyGroup>
+    <Version>$(LodestarEmbeddingsVersion)</Version>
+    <TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks>
+    <RootNamespace>Lodestar.Embeddings</RootNamespace>
+    <!-- Pulls in the shared persistence plumbing (and System.Text.Json on ns2.0). -->
+    <LodestarIncludesPersistence>true</LodestarIncludesPersistence>
+
+    <PackageId>Lodestar.Embeddings</PackageId>
+    <Description>Sub-word tokenizers, pooling and semantic (kNN) search for .NET. ONNX Runtime is isolated to this package so Lodestar.Text stays dependency-free.</Description>
+    <PackageTags>embeddings;onnx;wordpiece;semantic-search;knn;nlp;lodestar</PackageTags>
+  </PropertyGroup>
+
+  <!-- ONNX Runtime is the one external dependency, isolated to this package so
+       Lodestar.Text stays dependency-free. Only the OnnxTextEmbedder type uses it. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lodestar.Embeddings.Tests" />
+    <!-- Same suite, replayed against the netstandard2.0 build. -->
+    <InternalsVisibleTo Include="Lodestar.Embeddings.NetStandard.Tests" />
+  </ItemGroup>
+
+</Project>

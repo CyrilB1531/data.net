@@ -1,10 +1,10 @@
 # Migrating from rapidfuzz — fuzzy matching
 
-`DataNet.Fuzzy` reproduces `rapidfuzz.fuzz` and `rapidfuzz.process`, plus a
+`Lodestar.Fuzzy` reproduces `rapidfuzz.fuzz` and `rapidfuzz.process`, plus a
 blocking deduplication.
 
 ```bash
-dotnet add package DataNet.Fuzzy
+dotnet add package Lodestar.Fuzzy
 ```
 
 ## The `fuzz.*` ratios
@@ -12,7 +12,7 @@ dotnet add package DataNet.Fuzzy
 All return a score in `[0, 100]`. Like rapidfuzz, **no preprocessing** by default
 (case-sensitive).
 
-| rapidfuzz | DataNet.Fuzzy |
+| rapidfuzz | Lodestar.Fuzzy |
 | --- | --- |
 | `fuzz.ratio(a, b)` | `Fuzz.Ratio(a, b)` |
 | `fuzz.partial_ratio(a, b)` | `Fuzz.PartialRatio(a, b)` |
@@ -21,7 +21,7 @@ All return a score in `[0, 100]`. Like rapidfuzz, **no preprocessing** by defaul
 | `fuzz.WRatio(a, b)` | `Fuzz.WRatio(a, b)` |
 
 ```csharp
-using DataNet.Fuzzy;
+using Lodestar.Fuzzy;
 
 Fuzz.Ratio("new york mets", "new york yankees");             // 65.0
 Fuzz.TokenSortRatio("hello world", "world hello");           // 100.0 (order ignored)
@@ -30,7 +30,7 @@ Fuzz.WRatio("fuzzy wuzzy was a bear", "wuzzy fuzzy was a bear"); // 95.0
 ```
 
 > Pitfall #1: `fuzz.ratio` is **not** Levenshtein — it's the **Indel** similarity
-> ×100. `DataNet.Fuzzy` builds on `Lodestar.Text`'s `Indel`.
+> ×100. `Lodestar.Fuzzy` builds on `Lodestar.Text`'s `Indel`.
 
 ## Finding the best candidate — `process`
 

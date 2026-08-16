@@ -16,11 +16,11 @@
        into, so they are the worst place to leave unanalysed. The version comes
        from the single pin in the root Directory.Build.props; it is named on the
        PackageReference because samples/, like bench/, has no Central Package
-       Management. samples/NuGet.config maps only DataNet.* to the local feed, so
+       Management. samples/NuGet.config maps only Lodestar.* to the local feed, so
        this restores from nuget.org as usual. See
        docs/decisions/0019-the-net-analysers-run-in-the-build-too.md. -->
   <ItemGroup>
-    <PackageReference Include="SonarAnalyzer.CSharp" Version="$(DataNetSonarAnalyzerVersion)" PrivateAssets="all" />
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="$(LodestarSonarAnalyzerVersion)" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>

@@ -27,7 +27,7 @@ fixes the label set and its order, and `sampleWeight` weights the samples.
 **Example** — the spam filter, whose precision is `0.6666…` and whose recall is `0.5`.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [1, 1, 1, 1, 0, 0, 0, 0];
 int[] yPred = [1, 1, 0, 0, 1, 0, 0, 0];

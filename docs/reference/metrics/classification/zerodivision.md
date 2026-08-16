@@ -16,7 +16,7 @@ its
 **Example** — one sample of class 1, and a model that never predicts it.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [0, 0, 1];
 int[] yPred = [0, 0, 0];

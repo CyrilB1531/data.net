@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
-namespace DataNet.Internal;
+namespace Lodestar.Internal;
 
 /// <summary>
 /// Small argument guards shared across the libraries (compiled into each assembly).

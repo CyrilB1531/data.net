@@ -17,13 +17,13 @@ be measured is the **netstandard2.0-compiled assembly against the net10-compiled
 one, both hosted on .NET 10** — same JIT, same GC, so any difference comes from
 the libraries' own conditional code paths.
 
-`DataNet.NetStandard.Benchmarks` links the *same* benchmark sources as the suite
+`Lodestar.NetStandard.Benchmarks` links the *same* benchmark sources as the suite
 above (`<Compile Include="../Lodestar.Text.Benchmarks/…" />`, never a copy) and
 only swaps which assemblies it references.
 
 ```bash
 dotnet run -c Release --project bench/Lodestar.Text.Benchmarks        -- --filter '*VectorMath*' --inProcess
-dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter '*VectorMath*'
+dotnet run -c Release --project bench/Lodestar.NetStandard.Benchmarks -- --filter '*VectorMath*'
 ```
 
 ### Measured
@@ -84,7 +84,7 @@ asserts what it actually loaded before running anything:
 
 ```text
 // Lodestar.Text: .NETStandard,Version=v2.0
-// DataNet.Embeddings: .NETStandard,Version=v2.0
+// Lodestar.Embeddings: .NETStandard,Version=v2.0
 ```
 
 A mismatch exits non-zero rather than producing numbers. Sanity-check any result
@@ -179,7 +179,7 @@ rather than reporting numbers.
 
 ```bash
 dotnet run -c Release --project bench/Lodestar.Text.Benchmarks        -- --filter '*Persistence*' --inProcess
-dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter '*Persistence*'
+dotnet run -c Release --project bench/Lodestar.NetStandard.Benchmarks -- --filter '*Persistence*'
 ```
 
 `--inProcess` puts the net10 side on the toolchain the netstandard2.0 project
@@ -287,11 +287,11 @@ python bench/python/bench_persistence.py
 python bench/compare.py persistence
 ```
 
-DataNet on .NET 10.0.10 against Python 3.12.3 with `tokenizers` 0.23.1,
-`sentencepiece` 0.2.2 and `scikit-learn` 1.9.0. Ratios above 1 mean DataNet is
+Lodestar on .NET 10.0.10 against Python 3.12.3 with `tokenizers` 0.23.1,
+`sentencepiece` 0.2.2 and `scikit-learn` 1.9.0. Ratios above 1 mean Lodestar is
 faster.
 
-| Operation | DataNet | Python | wall | DataNet cpu | Python cpu | **cpu** |
+| Operation | Lodestar | Python | wall | Lodestar cpu | Python cpu | **cpu** |
 | --- | --- | --- | --- | --- | --- | --- |
 | `spiece_model` | 6.163 ms | 33.475 ms | 5.43× | 6.462 ms | 33.473 ms | **5.18×** |
 | `tokenizer_json_unigram` | 15.623 ms | 53.566 ms | 3.43× | 16.126 ms | 53.559 ms | **3.32×** |
@@ -310,7 +310,7 @@ far larger than it.
 Every ratio here is smaller than the previous edition's, and none of that is a
 regression: this is the regenerated corpus of the section above, on which the
 Python side is uniformly faster than it was on the old one (`vocab_txt` 11.632 ms
-against 16.860). The DataNet column moved in the other direction — the same
+against 16.860). The Lodestar column moved in the other direction — the same
 harness on `main`, on this corpus, in this session, read `vocab_txt` 6.799 ms,
 `tokenizer_json_wordpiece` 14.269, `tfidf_load` 6.277 and `tfidf_save` 2.032, so
 every row above except `tokenizer_json_unigram` is faster after issue #100 than
@@ -320,7 +320,7 @@ before it, `tfidf_load` by 12%.
 
 Elapsed time alone flatters this runtime. .NET's background collector does its
 work on other threads, so an allocation-heavy operation finishes in less elapsed
-time than it costs: every DataNet row above burns 1.02–1.07 processor-seconds per
+time than it costs: every Lodestar row above burns 1.02–1.07 processor-seconds per
 elapsed second, while CPython is strictly single-threaded and measures 1.00 on
 every row. That gap is narrower than the 1.12–1.21 the previous edition reported,
 and it narrowed for the reason issue #100 exists: an operation that allocates a
@@ -340,9 +340,9 @@ runtimeconfig.
 The two sides do not do the same amount of work on the loader rows, and the
 comparison says so rather than hiding it. `tokenizers` and `sentencepiece` build
 a whole tokenizer: the normalizer and pre-tokenizer graph, and the Rust or C++
-matcher they will encode with. DataNet's loaders build a validated dictionary and
+matcher they will encode with. Lodestar's loaders build a validated dictionary and
 stop — the guides tell readers to construct a tokenizer from it as a second step.
-A margin in DataNet's favour therefore reflects, in part, work it does not do.
+A margin in Lodestar's favour therefore reflects, in part, work it does not do.
 
 Both are also native code behind a thin binding, not interpreted Python.
 
@@ -394,7 +394,7 @@ which would measure the parser rather than the metric.
 
 ```bash
 dotnet run -c Release --project bench/Lodestar.Text.Benchmarks        -- --filter '*MetricsBenchmarks*' --inProcess
-dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter '*MetricsBenchmarks*'
+dotnet run -c Release --project bench/Lodestar.NetStandard.Benchmarks -- --filter '*MetricsBenchmarks*'
 ```
 
 Default job on both sides. The full matrix — 3 sizes × 2 class counts ×
@@ -404,7 +404,7 @@ This tier is not the nine-operation cross-language set: `MetricsBenchmarks` time
 three issue-#93 metrics have no BenchmarkDotNet method of their own.
 
 **`--inProcess` on the first command is not decoration.** Without it the two
-commands do not measure the same way: `DataNet.NetStandard.Benchmarks` pins
+commands do not measure the same way: `Lodestar.NetStandard.Benchmarks` pins
 `InProcessEmitToolchain` (its `Program.cs` needs it, or BenchmarkDotNet's
 generated project re-resolves the `ProjectReference` and silently restores the
 net10.0 build), while the first command would use the default out-of-process
@@ -420,7 +420,7 @@ Same isolation assertion as those sections: the netstandard2.0 run proves it
 loaded the netstandard2.0 build before any number from it is trusted.
 
 ```text
-// DataNet.Metrics: .NETStandard,Version=v2.0
+// Lodestar.Metrics: .NETStandard,Version=v2.0
 ```
 
 **Every figure below is two runs, not one, and the two are shown.** The runs
@@ -475,9 +475,9 @@ sizes. A fixed per-call cost the netstandard2.0 build pays and net10 does not,
 drowned once O(samples) work dominates.
 
 This is still **not** the `VectorMath.Dot` story from section 2, where the gap
-is 4.2×–5.3×. `DataNet.Metrics` has no `Vector<T>` SIMD path, and every
+is 4.2×–5.3×. `Lodestar.Metrics` has no `Vector<T>` SIMD path, and every
 benchmark here is a scalar loop over `int[]`/`double[]`. The one piece of
-target-conditional code in its dependencies is `DataNet.Internal.Guard`, which
+target-conditional code in its dependencies is `Lodestar.Internal.Guard`, which
 picks `ArgumentNullException.ThrowIfNull` on net10 and a hand-written check on
 netstandard2.0 — a null test outside every loop, which cannot produce a
 per-sample difference and does not.
@@ -490,8 +490,8 @@ dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- compare-metric
 python bench/compare.py metrics
 ```
 
-DataNet on .NET 10.0.10 against scikit-learn 1.9.0 / NumPy 2.5.1 on Python
-3.12.3. Ratios above 1 mean DataNet is faster. The 29 measured rows are
+Lodestar on .NET 10.0.10 against scikit-learn 1.9.0 / NumPy 2.5.1 on Python
+3.12.3. Ratios above 1 mean Lodestar is faster. The 29 measured rows are
 published in
 [`docs/guides/performance.md`](../docs/guides/performance.md#classification-metrics-issue-61--vs-scikit-learn),
 not duplicated here.
@@ -529,7 +529,7 @@ workstation's floor, and the Python side started below it.
 seconds after the Python run finished saturating a core. The second side of any
 back-to-back pair pays this; the alternative, waiting for the tail to decay,
 buys a quieter machine at the cost of the two sides no longer being back to
-back. The bias it introduces runs *against* DataNet — the C# figures are the
+back. The bias it introduces runs *against* Lodestar — the C# figures are the
 ones measured on the busier machine — so every ratio in the table above, and
 the merge gate that reads them, is conservative rather than flattering.
 
@@ -539,7 +539,7 @@ working set at n=1 000 000 is about 16 MB, and the machine had 22 GB free with
 
 ### Why processor time barely differs from wall time here
 
-Unlike the persistence comparison in section 4 — where DataNet burns 1.12–1.21
+Unlike the persistence comparison in section 4 — where Lodestar burns 1.12–1.21
 processor-seconds per elapsed second, so the wall and cpu columns diverge and
 `tfidf_load` even flips winner between them — the two columns above agree to
 within about 1% on every row (up to 3.4% on the single heaviest row,
@@ -550,7 +550,7 @@ between the two columns for the cpu one to correct.
 
 ### Reading the numbers
 
-The rows at n=1 000 (70×–620×) are not telling you DataNet is two orders of
+The rows at n=1 000 (70×–620×) are not telling you Lodestar is two orders of
 magnitude faster at the arithmetic — a confusion matrix over 1 000 samples is
 sub-microsecond work either way. They are measuring CPython's per-call
 interpreter overhead, which the auto-scaling loop cannot amortise away because
@@ -569,7 +569,7 @@ that.
 quite the same amount of work, though both compute the same three numbers over
 the same matrix. scikit-learn's `precision_recall_fscore_support` builds the
 per-class true-positive/predicted/support sums once and reads precision,
-recall and F1 off that single pass. The DataNet side builds the confusion
+recall and F1 off that single pass. The Lodestar side builds the confusion
 matrix once too, but `Precision.Score`/`Recall.Score`/`F1.Score` each walk
 those sums again independently — three redundant `O(classes)` passes instead
 of Python's one. At 2 or 10 classes that redundancy is a handful of additions,
@@ -634,7 +634,7 @@ need no options to do it.
 
 ```bash
 dotnet run -c Release --project bench/Lodestar.Text.Benchmarks        -- --filter '*EmbeddingIndex*' --inProcess
-dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter '*EmbeddingIndex*'
+dotnet run -c Release --project bench/Lodestar.NetStandard.Benchmarks -- --filter '*EmbeddingIndex*'
 ```
 
 Intel i7-4770S, .NET 10.0.10. **Two runs per side, both shown**, interleaved
@@ -702,10 +702,10 @@ dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- compare-persis
 python bench/compare.py persistence
 ```
 
-DataNet on .NET 10.0.10 against numpy 2.5.1 on Python 3.12.3. Ratios above 1 mean
-DataNet is faster.
+Lodestar on .NET 10.0.10 against numpy 2.5.1 on Python 3.12.3. Ratios above 1 mean
+Lodestar is faster.
 
-| Operation | DataNet | numpy | wall | DataNet cpu | numpy cpu | **cpu** |
+| Operation | Lodestar | numpy | wall | Lodestar cpu | numpy cpu | **cpu** |
 | --- | --- | --- | --- | --- | --- | --- |
 | `embedding_index_save` | 12.419 ms | 15.084 ms | 1.21× | 13.349 ms | 15.083 ms | **1.13×** |
 | `embedding_index_load` | 12.129 ms | 2.492 ms | 0.21× | 13.897 ms | 2.492 ms | **0.18×** |
@@ -714,7 +714,7 @@ Against `main` in the same session, on the same numpy figures:
 `embedding_index_save` read 14.164 ms (0.94× wall, 1.06× cpu) and
 `embedding_index_load` 32.460 ms (0.08× wall, 0.07× cpu).
 
-| | DataNet artifact | `.npy` |
+| | Lodestar artifact | `.npy` |
 | --- | --- | --- |
 | bytes on disk | 20 589 007 | 15 360 128 |
 
@@ -724,7 +724,7 @@ build after it produces the same file, verified byte for byte by hash, and each
 build reads the other's.
 
 Neither harness command above prints a byte count — `Harness.Measure` only
-records `ms_per_op` and `cpu_ms_per_op`. The DataNet figure is `stream.Length`
+records `ms_per_op` and `cpu_ms_per_op`. The Lodestar figure is `stream.Length`
 after building the same index through `BuildIndex()` and calling `Save`; the
 `.npy` figure is `len(buffer.getvalue())` after `np.save` on the same
 `build_vectors()` array — the same two calls each `embedding_index_save` row

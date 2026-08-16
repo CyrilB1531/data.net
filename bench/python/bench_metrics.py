@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Time the Python counterparts of the DataNet.Metrics work (issue #61),
+"""Time the Python counterparts of the Lodestar.Metrics work (issue #61),
 extended with balanced accuracy, Matthews correlation and Cohen's kappa
 (issue #93), and with four regression operations (issue #92).
 
-Methodology is mirrored by the C# harness (bench/DataNet.Text.Benchmarks,
+Methodology is mirrored by the C# harness (bench/Lodestar.Text.Benchmarks,
 `compare-metrics` mode) so the two are comparable:
 
   * same corpus files (bench/corpus/metrics/, from generate_metrics.py),
@@ -59,7 +59,7 @@ def check_corpus() -> None:
 def measure(operation: str, action) -> dict:
     """Time one operation, recording both elapsed time and processor time.
 
-    The C# harness (bench/DataNet.Text.Benchmarks/CrossLang/Harness.cs) records
+    The C# harness (bench/Lodestar.Text.Benchmarks/CrossLang/Harness.cs) records
     the same pair for the same reason: .NET's background collector does its work
     on other threads, so elapsed time understates what an allocating operation
     actually costs. CPython is strictly single-threaded, so cpu/wall lands at

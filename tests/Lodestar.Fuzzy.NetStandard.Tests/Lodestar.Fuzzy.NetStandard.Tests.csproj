@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Replays the entire Lodestar.Fuzzy.Tests suite against the *netstandard2.0* build of
+    the library, instead of the net10.0 one the original project references.
+
+    netstandard2.0 is a contract, not a runtime, so the tests cannot run *on* it.
+    They run on net10.0 — identical host — and only the assembly under test
+    changes. Without this, the assemblies shipped to .NET Framework, Mono and
+    Unity consumers are compile-verified but never executed.
+
+    The test sources are linked, never copied: one suite, two builds.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <AssemblyName>Lodestar.Fuzzy.NetStandard.Tests</AssemblyName>
+    <RootNamespace>Lodestar.Fuzzy.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <!--
+    SetTargetFramework is what pins the reference to the netstandard2.0 build.
+
+    Lodestar.Text is listed explicitly, and that is not redundant. Lodestar.Fuzzy
+    now reaches it through a PackageReference, and SetTargetFramework does not
+    travel across one: NuGet resolves package assets against *this* project's
+    target framework (net10.0), so the transitive Lodestar.Text would come from
+    lib/net10.0 and the mirror would stop mirroring — silently, since the
+    original guard only ever inspected the Lodestar.Fuzzy assembly. A direct
+    ProjectReference takes precedence over the package of the same id, which
+    restores the netstandard2.0 build; the extended guard proves it.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/Lodestar.Fuzzy/Lodestar.Fuzzy.csproj"
+                      SetTargetFramework="TargetFramework=netstandard2.0" />
+    <ProjectReference Include="../../src/Lodestar.Text/Lodestar.Text.csproj"
+                      SetTargetFramework="TargetFramework=netstandard2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../Lodestar.Fuzzy.Tests/**/*.cs"
+             Exclude="../Lodestar.Fuzzy.Tests/bin/**;../Lodestar.Fuzzy.Tests/obj/**"
+             Link="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../oracles/**/*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
+  </ItemGroup>
+
+</Project>

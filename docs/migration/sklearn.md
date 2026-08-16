@@ -9,7 +9,7 @@ vectorization**, which is the gap filled natively by `Lodestar.Text` (exact
 | Pipelines, training, deployment | **ML.NET** (`Microsoft.ML`) |
 | sklearn-like API (trees, ensembles) | **SharpLearning** |
 | `CountVectorizer` / `TfidfVectorizer` **to the character** | **`Lodestar.Text`** |
-| `classification_report`, `roc_auc_score`, the averaging modes | **`DataNet.Metrics`** |
+| `classification_report`, `roc_auc_score`, the averaging modes | **`Lodestar.Metrics`** |
 
 ```bash
 dotnet add package Microsoft.ML
@@ -31,7 +31,7 @@ var model = pipeline.Fit(data);
   per-row L2 normalization) must be reproduced to the character — ML.NET's
   `FeaturizeText` does not reproduce it. That is exactly the reason for
   `Lodestar.Text`. See [`../equivalence.md`](../equivalence.md).
-- **`min_df` / `max_df`, n-gram bounds**: on the DataNet side, not ML.NET.
+- **`min_df` / `max_df`, n-gram bounds**: on the Lodestar side, not ML.NET.
 
 ## Metrics: the averaging mode is not a formatting choice
 
@@ -73,7 +73,7 @@ pass feeds both
 [`ClassificationReport.Compute`](../reference/metrics/classification/classificationreport-compute.md):
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 ConfusionMatrix cm = ConfusionMatrix.Compute(yTrue, yPred);   // one O(samples) pass
 double macro    = F1.Score(cm, Averaging.Macro);              // 0.489
@@ -93,7 +93,7 @@ guessing which class was meant. Both are recorded in
 
 **Absent classes.** A class with no predictions gives 0/0. sklearn returns 0 and
 emits an `UndefinedMetricWarning`; a warning is easy to miss in a log and has no
-natural .NET equivalent. `DataNet.Metrics` makes the choice explicit —
+natural .NET equivalent. `Lodestar.Metrics` makes the choice explicit —
 `ZeroDivision.Zero` (sklearn's value), `One`, `NaN`, or `Throw`, which raises
 `UndefinedMetricException` rather than letting a silent 0 flow into a report.
 
@@ -101,7 +101,7 @@ Every function, with its sklearn call and its deliberate divergences, is in
 [`../equivalence.md`](../equivalence.md).
 
 ```bash
-dotnet add package DataNet.Metrics
+dotnet add package Lodestar.Metrics
 ```
 
 *Guide to be expanded as real needs arise.*

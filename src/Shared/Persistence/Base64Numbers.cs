@@ -4,7 +4,7 @@ using System.Buffers.Text;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 
-namespace DataNet.Internal.Persistence;
+namespace Lodestar.Internal.Persistence;
 
 /// <summary>
 /// Reads and writes a numeric vector as one base64 string of raw little-endian

@@ -20,7 +20,7 @@ sentence: `Number of labels is 1. Valid values are 2 to n_samples - 1 (inclusive
 **Example** — the mean hides which sample is misplaced; this does not.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 double[] features = [0.0, 0.0, 0.2, 0.1, 4.0, 4.0, 4.2, 3.9, 0.1, 0.3];
 int[] labels = [0, 0, 1, 1, 1];

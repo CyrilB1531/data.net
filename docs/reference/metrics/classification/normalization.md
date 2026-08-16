@@ -16,7 +16,7 @@ total, turning each into a share of the dataset.
 **Example** — one matrix, three readings of the same cell.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [1, 1, 1, 1, 0, 0, 0, 0];
 int[] yPred = [1, 1, 0, 0, 1, 0, 0, 0];

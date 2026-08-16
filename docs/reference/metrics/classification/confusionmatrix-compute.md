@@ -24,7 +24,7 @@ labels, or no supplied label occurs in `yTrue`.
 **Example** — the four cells of the spam filter, read by index.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [1, 1, 1, 1, 0, 0, 0, 0];
 int[] yPred = [1, 1, 0, 0, 1, 0, 0, 0];

@@ -21,7 +21,7 @@ input is not an error: it scores `1`.
 **Example** — a clustering that got one sample wrong, against one that split everything.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] truth = [0, 0, 1, 1, 2, 2];
 int[] almost = [0, 0, 1, 2, 2, 2];

@@ -29,7 +29,7 @@ it holds a non-finite value; `ArgumentOutOfRangeException` when `outputCount` is
 **Example** — four predictions, close but not exact.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 double[] yTrue = [3.0, -0.5, 2.0, 7.0];
 double[] yPred = [2.5, 0.0, 2.0, 8.0];

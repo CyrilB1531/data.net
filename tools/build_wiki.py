@@ -33,8 +33,8 @@ enough.
 
 Usage:
     python3 tools/build_wiki.py --repo <dir> --out <dir>
-        --released DataNet.Text=0.3.0 [--released ...]
-        [--archive DataNet.Text=0.4.0]
+        --released Lodestar.Text=0.3.0 [--released ...]
+        [--archive Lodestar.Text=0.4.0]
 
 Without --archive it refreshes every live channel and the root pages, each
 named `<channel>-<stem>`. With it, it first freezes that one package under
@@ -130,7 +130,7 @@ def page_stem(page: pathlib.Path) -> str:
 def covered_pages(declared: str | list[str]) -> list[str]:
     """The pages one covered namespace maps to, whether it declared one or several.
 
-    `DataNet.Metrics` is why the plural exists: 31 exported types on one page is a
+    `Lodestar.Metrics` is why the plural exists: 31 exported types on one page is a
     scrolling exercise rather than a reference, so its classification and regression
     halves are two documents of one namespace. The gate in
     `tests/Shared/ReferenceDocumentation.cs` reads the same field the same way.
@@ -234,7 +234,7 @@ def _live_stems(out: pathlib.Path, channel: str) -> set[str]:
 def sidebar(out: pathlib.Path, mapping: dict) -> str:
     """The navigation, read off the tree that was just written."""
     channels = {package["wiki"] for package in mapping["packages"].values()}
-    lines = ["### DataNet", "", "- [Home](Home)", ""]
+    lines = ["### Lodestar", "", "- [Home](Home)", ""]
     for package in mapping["packages"].values():
         channel = package["wiki"]
         landing = _resolve_landing(_live_stems(out, channel), package)
@@ -295,7 +295,7 @@ def entry_page(repo: pathlib.Path, package: dict, version: str | None = None) ->
     This is the page D10 puts between Home and a reference page -- Home no
     longer links a bare channel name that resolved to nothing. `None` for a
     package that covers no namespace and ships no guide, which is
-    `DataNet.Metrics` before its first reference page lands: a page linking
+    `Lodestar.Metrics` before its first reference page lands: a page linking
     nothing is not navigation, and `home` falls back to the same "no pages
     yet" text it already used before this page existed, rather than link to
     an empty one.
@@ -311,7 +311,7 @@ def entry_page(repo: pathlib.Path, package: dict, version: str | None = None) ->
             for page in pages:
                 stem = page_stem(pathlib.Path(page))
                 # The stem disambiguates a namespace with several pages: two rows
-                # both reading "DataNet.Metrics" would be a choice a reader cannot make.
+                # both reading "Lodestar.Metrics" would be a choice a reader cannot make.
                 label = namespace if len(pages) == 1 else f"{namespace} — {stem}"
                 lines.append(f"- [{label}]({wiki_name(stem, channel, version)})")
         lines.append("")
@@ -341,7 +341,7 @@ def home(out: pathlib.Path, mapping: dict, released: dict[str, str]) -> str:
     does not exist.
     """
     lines = [
-        "# DataNet",
+        "# Lodestar",
         "",
         "A data-science toolkit for C#/.NET. Each package documents itself, at the version",
         "you installed.",

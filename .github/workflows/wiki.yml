@@ -10,7 +10,7 @@ name: Wiki
 on:
   push:
     branches: [main]
-    tags: ['DataNet.*/v*', 'Lodestar.*/v*']
+    tags: ['Lodestar.*/v*']
     paths:
       - 'docs/**'
       - 'CONTRIBUTING.md'
@@ -50,7 +50,7 @@ jobs:
         run: |
           set -euo pipefail
           args=""
-          for package in Lodestar.Text DataNet.Embeddings DataNet.Fuzzy DataNet.Metrics; do
+          for package in Lodestar.Text Lodestar.Embeddings Lodestar.Fuzzy Lodestar.Metrics; do
             version=$(git tag --list "$package/v*" | sed "s|$package/v||" | sort -V | tail -1)
             if [ -n "$version" ]; then
               args="$args --released $package=$version"

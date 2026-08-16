@@ -15,7 +15,7 @@ message with an inner exception.
 **Example** — asking to be told instead of scoring `0`.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [0, 0, 1];
 int[] yPred = [0, 0, 0];

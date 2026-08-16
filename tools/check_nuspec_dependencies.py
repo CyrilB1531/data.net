@@ -19,11 +19,11 @@ Usage:  python tools/check_nuspec_dependencies.py <artifacts-directory> [--requi
 what CI wants after packing all three. A release job packs exactly one package,
 so it omits the flag.
 
-``EXPECTED`` states the intended graph directly: ``DataNet.Text`` carries
+``EXPECTED`` states the intended graph directly: ``Lodestar.Text`` carries
 nothing on ``net10.0`` (the dependency-free core) and only
 ``System.Text.Json`` on ``netstandard2.0`` (the one deliberate exception, so
 persisting a fitted model does not mean hand-rolling a JSON writer);
-``DataNet.Fuzzy`` depends on ``DataNet.Text`` because ``Fuzz.Ratio`` is built
+``Lodestar.Fuzzy`` depends on ``Lodestar.Text`` because ``Fuzz.Ratio`` is built
 on ``Indel`` -- the only inter-package edge that exists. The ranges are
 asserted too, not only the ids: a bare ``"0.2.0"`` is NuGet's shorthand for
 ``[0.2.0, )``, and an edge with the wrong floor is a different edge.
@@ -39,13 +39,10 @@ import zipfile
 NET = "net10.0"
 NETSTANDARD = ".NETStandard2.0"
 
-# Two ids while #194 is in flight: this repository packs BUILT_TEXT, and
-# DataNet.Fuzzy still depends on the published TEXT until the floor can move.
-BUILT_TEXT = "Lodestar.Text"
-TEXT = "DataNet.Text"
-FUZZY = "DataNet.Fuzzy"
-EMBEDDINGS = "DataNet.Embeddings"
-METRICS = "DataNet.Metrics"
+TEXT = "Lodestar.Text"
+FUZZY = "Lodestar.Fuzzy"
+EMBEDDINGS = "Lodestar.Embeddings"
+METRICS = "Lodestar.Metrics"
 ONNX = "Microsoft.ML.OnnxRuntime"
 STJ = "System.Text.Json"
 
@@ -57,13 +54,13 @@ POLYFILLS = {"System.Memory": "4.6.3", "System.Numerics.Vectors": "4.6.1"}
 PERSISTENCE = {STJ: "10.0.10"}
 
 # Must equal Directory.Packages.props' PackageVersion: a PackageReference
-# emits this floor, but DataNetUseProjectRefs emits Text's own version instead -- catching the escape hatch left on.
-TEXT_FLOOR = "0.2.0"
+# emits this floor, but LodestarUseProjectRefs emits Text's own version instead -- catching the escape hatch left on.
+TEXT_FLOOR = "0.3.1"
 
 # package id -> target framework -> {dependency id: declared version range}.
 # See this module's docstring for what EXPECTED's shape and ranges prove.
 EXPECTED: dict[str, dict[str, dict[str, str]]] = {
-    BUILT_TEXT: {
+    TEXT: {
         NET: {},
         NETSTANDARD: {**POLYFILLS, **PERSISTENCE},
     },

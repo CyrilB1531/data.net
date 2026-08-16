@@ -1,8 +1,8 @@
 using System.Text.Json;
 using BenchmarkDotNet.Attributes;
-using DataNet.Embeddings.Persistence;
-using DataNet.Embeddings.Search;
-using DataNet.Embeddings.Tokenization;
+using Lodestar.Embeddings.Persistence;
+using Lodestar.Embeddings.Search;
+using Lodestar.Embeddings.Tokenization;
 using Lodestar.Text.Vectorization;
 
 namespace Lodestar.Text.Benchmarks;

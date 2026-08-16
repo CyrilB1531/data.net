@@ -4,7 +4,7 @@
 `ByteLevelBpeTests` claims byte-exact parity with HuggingFace `tokenizers` over
 GPT-2's real 50 257-entry vocabulary. A self-trained toy model cannot support
 that claim: it would never exercise a merge table with 50 000 ranks, and it
-would not prove that DataNet reads the `merges.txt` layout a real model ships.
+would not prove that Lodestar reads the `merges.txt` layout a real model ships.
 
 Only the vocabulary and the merge table are redistributed here — never the
 weights, per docs/decisions/0003-provenance-and-licensing.md. `gpt2` is

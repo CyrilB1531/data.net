@@ -1,16 +1,16 @@
-using DataNet.Internal.Persistence;
+using Lodestar.Internal.Persistence;
 
 namespace Lodestar.Text.Persistence;
 
 /// <summary>
-/// The bounds applied when loading a persisted DataNet artifact.
+/// The bounds applied when loading a persisted Lodestar artifact.
 /// </summary>
 /// <remarks>
 /// See the guide's "Reading a file you did not write" section
 /// (<c>docs/guides/vectorization.md</c>) for the defaults and a worked example,
 /// and <c>docs/decisions/0011-persistence-format.md</c> for the <c>pickle.load</c>
 /// comparison and why this type is declared separately from
-/// <c>DataNet.Embeddings</c>'s rather than shared.
+/// <c>Lodestar.Embeddings</c>'s rather than shared.
 /// </remarks>
 public sealed record ArtifactLoadOptions
 {

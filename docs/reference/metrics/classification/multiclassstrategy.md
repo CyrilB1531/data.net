@@ -17,7 +17,7 @@ formulation.
 **Example** — the two on the same scores; see `MultiClassRocOptions` for the data.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [0, 1, 2, 2, 2, 1];
 double[] yScore =

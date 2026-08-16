@@ -11,14 +11,14 @@
     <RootNamespace>Lodestar.Text</RootNamespace>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <!-- Pulls in the shared persistence plumbing (and System.Text.Json on ns2.0). -->
-    <DataNetIncludesPersistence>true</DataNetIncludesPersistence>
+    <LodestarIncludesPersistence>true</LodestarIncludesPersistence>
 
     <!-- NuGet package identity. System.Text.Json on netstandard2.0 is the single,
          deliberate runtime dependency (in-box on net10) — everything else in this
          package is dependency-free by design. -->
     <PackageId>Lodestar.Text</PackageId>
     <Description>String distances, similarity metrics, tokenizers and text vectorizers for .NET — native, allocation-lean, no Python at runtime.</Description>
-    <PackageTags>text;similarity;levenshtein;distance;fuzzy;tfidf;nlp;datanet</PackageTags>
+    <PackageTags>text;similarity;levenshtein;distance;fuzzy;tfidf;nlp;lodestar</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

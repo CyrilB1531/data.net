@@ -23,7 +23,7 @@ holds a non-finite value, or either array holds a value at or below `−1`;
 **Example** — the same four counts `MeanSquaredLogError.Score` scores `0.0397…`.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 double[] yTrue = [3.0, 5.0, 2.5, 7.0];
 double[] yPred = [2.5, 5.0, 4.0, 8.0];

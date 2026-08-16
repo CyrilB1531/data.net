@@ -22,7 +22,7 @@ or micro-average row, the two averaged rows, and a trailing newline.
 ```csharp
 using System;
 using System.Linq;
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [0, 0, 1, 1, 2, 2, 2];
 int[] yPred = [0, 0, 1, 1, 2, 2, 0];

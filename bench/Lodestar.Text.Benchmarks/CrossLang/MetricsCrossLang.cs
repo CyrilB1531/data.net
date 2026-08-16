@@ -1,6 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 namespace Lodestar.Text.Benchmarks.CrossLang;
 
@@ -68,7 +68,7 @@ public static class MetricsCrossLang
             Metadata = new Harness.OutputMetadata
             {
                 Side = "csharp",
-                Library = "DataNet",
+                Library = "Lodestar",
                 Runtime = Environment.Version.ToString(),
                 Os = Environment.OSVersion.ToString(),
                 MinTimeS = Harness.MinTimeSeconds,

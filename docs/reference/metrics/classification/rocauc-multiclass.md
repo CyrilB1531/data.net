@@ -25,7 +25,7 @@ match, a row that does not sum to 1, a `NaN`, a sample weight under one-vs-one;
 **Example** — six samples over three classes, one probability row each.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [0, 1, 2, 2, 2, 1];
 double[] yScore =

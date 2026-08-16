@@ -23,7 +23,7 @@ score, or only one class occurs.
 **Example** — four samples and the model's confidence in each.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [0, 0, 1, 1];
 double[] yScore = [0.1, 0.4, 0.35, 0.8];

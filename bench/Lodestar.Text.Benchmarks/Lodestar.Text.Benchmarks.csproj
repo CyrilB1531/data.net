@@ -15,9 +15,9 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Lodestar.Text/Lodestar.Text.csproj" />
-    <ProjectReference Include="../../src/DataNet.Fuzzy/DataNet.Fuzzy.csproj" />
-    <ProjectReference Include="../../src/DataNet.Embeddings/DataNet.Embeddings.csproj" />
-    <ProjectReference Include="../../src/DataNet.Metrics/DataNet.Metrics.csproj" />
+    <ProjectReference Include="../../src/Lodestar.Fuzzy/Lodestar.Fuzzy.csproj" />
+    <ProjectReference Include="../../src/Lodestar.Embeddings/Lodestar.Embeddings.csproj" />
+    <ProjectReference Include="../../src/Lodestar.Metrics/Lodestar.Metrics.csproj" />
   </ItemGroup>
 
   <!--

@@ -15,9 +15,9 @@ on:
         type: choice
         options:
           - Lodestar.Text
-          - DataNet.Embeddings
-          - DataNet.Fuzzy
-          - DataNet.Metrics
+          - Lodestar.Embeddings
+          - Lodestar.Fuzzy
+          - Lodestar.Metrics
       version:
         description: 'Version to publish (e.g. 0.3.0) — must match the declared one'
         required: true

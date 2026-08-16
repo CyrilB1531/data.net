@@ -1,5 +1,5 @@
 using System.Text.Json;
-using DataNet.Internal.Persistence;
+using Lodestar.Internal.Persistence;
 using Lodestar.Text.Vectorization;
 
 namespace Lodestar.Text.Persistence;

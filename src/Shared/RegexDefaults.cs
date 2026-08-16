@@ -1,6 +1,6 @@
 using System;
 
-namespace DataNet.Internal;
+namespace Lodestar.Internal;
 
 /// <summary>
 /// Shared regular-expression policy (compiled into each assembly).

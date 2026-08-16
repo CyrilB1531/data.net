@@ -26,7 +26,7 @@ all. `labels` fixes the label set and its order, and `sampleWeight` weights the 
 **Example** — four messages were spam and the filter caught two.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [1, 1, 1, 1, 0, 0, 0, 0];
 int[] yPred = [1, 1, 0, 0, 1, 0, 0, 0];

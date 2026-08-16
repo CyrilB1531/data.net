@@ -123,9 +123,9 @@ A change is not finished until all of these hold:
    the build on a row with no link.
 
 ```bash
-dotnet build DataNet.slnx -c Release
-dotnet test DataNet.slnx -c Release
-dotnet format DataNet.slnx --verify-no-changes
+dotnet build Lodestar.slnx -c Release
+dotnet test Lodestar.slnx -c Release
+dotnet format Lodestar.slnx --verify-no-changes
 npx markdownlint-cli2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
 ```
 
@@ -138,7 +138,7 @@ opens the Store instead of running anything.
 ```bash
 # POSIX (bash/zsh)
 python3 tools/check_version_floor.py
-python3 tools/extract_doc_snippets.py && dotnet build samples/DataNet.DocSnippets -c Release
+python3 tools/extract_doc_snippets.py && dotnet build samples/Lodestar.DocSnippets -c Release
 python3 tools/check_machine_paths.py
 ```
 
@@ -146,7 +146,7 @@ python3 tools/check_machine_paths.py
 # PowerShell — split, not chained with `&&`, which needs PowerShell 7+
 python tools/check_version_floor.py
 python tools/extract_doc_snippets.py
-dotnet build samples/DataNet.DocSnippets -c Release
+dotnet build samples/Lodestar.DocSnippets -c Release
 python tools/check_machine_paths.py
 ```
 
@@ -211,8 +211,8 @@ dotnet tool install --global dotnet-sonarscanner   # once, if absent
 dotnet sonarscanner begin /k:"datanet-local" \
   /d:sonar.host.url="http://localhost:9000" /d:sonar.token="$SONAR_TOKEN" \
   /d:sonar.python.version="3.12" \
-  /d:sonar.exclusions="tests/oracles/**,samples/DataNet.DocSnippets/Generated/**"
-dotnet build DataNet.slnx -c Release --no-incremental
+  /d:sonar.exclusions="tests/oracles/**,samples/Lodestar.DocSnippets/Generated/**"
+dotnet build Lodestar.slnx -c Release --no-incremental
 dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
 ```
 
@@ -248,30 +248,30 @@ A finding it reports is real, a clean run promises nothing.
 
 ## Working across two packages
 
-The four libraries version and release independently, and `DataNet.Fuzzy`
+The four libraries version and release independently, and `Lodestar.Fuzzy`
 reaches `Lodestar.Text` through a `PackageReference` on the published package
 rather than a project reference — the reasoning is in
 [`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md).
 
-A plain clone builds with no extra step: the version `DataNet.Fuzzy` depends on
+A plain clone builds with no extra step: the version `Lodestar.Fuzzy` depends on
 is a floor pinned in `src/Directory.Packages.props`, and it always names a
 release that is already on nuget.org.
 
-**When a branch edits `Lodestar.Text` and `DataNet.Fuzzy` together**, that floor
+**When a branch edits `Lodestar.Text` and `Lodestar.Fuzzy` together**, that floor
 points at a `Lodestar.Text` older than the one in your working tree, so
-`DataNet.Fuzzy` would compile against the published assembly and not see your
+`Lodestar.Fuzzy` would compile against the published assembly and not see your
 change. Flip the reference back for the duration:
 
 ```bash
 # POSIX (bash/zsh)
-export DataNetUseProjectRefs=true
-dotnet build DataNet.slnx -c Release   # prints a reminder that this is on
+export LodestarUseProjectRefs=true
+dotnet build Lodestar.slnx -c Release   # prints a reminder that this is on
 ```
 
 ```powershell
 # PowerShell
-$env:DataNetUseProjectRefs = 'true'
-dotnet build DataNet.slnx -c Release   # prints a reminder that this is on
+$env:LodestarUseProjectRefs = 'true'
+dotnet build Lodestar.slnx -c Release   # prints a reminder that this is on
 ```
 
 MSBuild reads environment variables as properties, so one export covers `build`,
@@ -281,9 +281,9 @@ between edits.
 Two things to keep straight:
 
 - **It is a local loop, not a merge strategy.** CI never sets the property and
-  asserts the default path, so a branch whose `DataNet.Fuzzy` needs new
+  asserts the default path, so a branch whose `Lodestar.Fuzzy` needs new
   `Lodestar.Text` API cannot go green. Release `Lodestar.Text` first, raise the
-  floor in `src/Directory.Packages.props`, then land the `DataNet.Fuzzy` side.
+  floor in `src/Directory.Packages.props`, then land the `Lodestar.Fuzzy` side.
   Two packages that release independently cannot also be merged as one.
 - **Unset it before measuring anything.** With the property on you are building a
   graph that will never ship; benchmark numbers and packaging checks taken there
@@ -293,7 +293,7 @@ Two things to keep straight:
 
 Versions are declared per package in `src/<Package>/Version.props` and nowhere
 else. To release one: bump that file, land it on `main`, then tag
-`<PackageId>/v<Version>` (for example `DataNet.Fuzzy/v0.3.0`). The workflow
+`<PackageId>/v<Version>` (for example `Lodestar.Fuzzy/v0.3.0`). The workflow
 compares the tag against the declared version and refuses to publish if they
 disagree. The tag chooses *which* release to cut; it does not set the number.
 Add the entry under a per-package heading in `CHANGELOG.md`.
@@ -388,7 +388,7 @@ finding is a compile error on your machine rather than a comment on your pull
 request:
 
 ```bash
-dotnet build DataNet.slnx -c Release
+dotnet build Lodestar.slnx -c Release
 ```
 
 That claim needs two mechanisms, not one. `AnalysisMode=All` covers the .NET
@@ -414,7 +414,7 @@ file was last generated: regenerate with the command above and commit the
 result, the same as any other generated file here.
 
 Regenerating is required, not optional, whenever `AnalysisLevel` is raised past
-`10.0` or `$(DataNetSonarAnalyzerVersion)` is bumped. Either can change which
+`10.0` or `$(LodestarSonarAnalyzerVersion)` is bumped. Either can change which
 rules the package ships disabled, which changes the delta the file encodes. This
 applies whether the bump is a deliberate edit or an automated dependency update
 (a Dependabot pull request, should one ever be wired for this pin): skip the
@@ -423,7 +423,7 @@ no explanation of why, on a pull request that touched no C#.
 
 It is an analyzer-only reference (`PrivateAssets="all"`), so it reaches no
 published package — `tools/check_nuspec_dependencies.py` asserts that. The
-version is pinned once, as `$(DataNetSonarAnalyzerVersion)` in the root
+version is pinned once, as `$(LodestarSonarAnalyzerVersion)` in the root
 `Directory.Build.props`; raising it will usually surface new rules and therefore
 a cleanup, so treat it as its own change. `AnalysisLevel` is pinned to `10.0`
 for the same reason. See
@@ -431,11 +431,11 @@ for the same reason. See
 [`0019`](docs/decisions/0019-the-net-analysers-run-in-the-build-too.md).
 
 The command above does not reach `samples/`. The samples are outside
-`DataNet.slnx` and consume the packages from a local feed, so they are analysed
+`Lodestar.slnx` and consume the packages from a local feed, so they are analysed
 only when the samples themselves are built. That needs a `pack` first, and
 happens in three CI jobs: `Sample consumes the packages`, `Guide snippets
 compile`, and the samples build inside `Build and analyze`. Expect a finding
-there from CI rather than from `dotnet build DataNet.slnx`.
+there from CI rather than from `dotnet build Lodestar.slnx`.
 
 One thing still only SonarCloud sees, so a green local build is not a green
 quality gate: **duplication and coverage**.

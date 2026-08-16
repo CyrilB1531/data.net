@@ -21,7 +21,7 @@ it holds a non-finite value; `ArgumentOutOfRangeException` when `outputCount` is
 **Example** — the same four numbers read as two samples of two outputs.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 double[] yTrue = [100.0, 50.0, 200.0, 25.0];
 double[] yPred = [110.0, 45.0, 180.0, 30.0];

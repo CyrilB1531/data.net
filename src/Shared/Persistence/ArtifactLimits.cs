@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace DataNet.Internal.Persistence;
+namespace Lodestar.Internal.Persistence;
 
 /// <summary>
 /// The numeric bounds applied while reading an artifact, in a form the shared

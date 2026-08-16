@@ -51,6 +51,26 @@ The script is **deterministic** (fixed seed, no timestamps): regenerating on
 another machine produces an identical file — diffs stay readable and reviewable.
 Committing the regenerated JSON is part of the change.
 
+## `draw_icon.py`
+
+Draws `assets/icon.png`, the icon every published package embeds. Run by hand and
+rarely — the output is committed, so a fresh clone needs nothing:
+
+```bash
+python tools/draw_icon.py
+```
+
+**Pillow is its only dependency, and it is deliberately not in
+`requirements.txt`.** That file feeds a hash-pinned lock every CI job installs,
+and no job draws an icon; adding it there would make three workflows carry an
+image library for nothing. Install it ad hoc when you need to redraw:
+`pip install Pillow`.
+
+The star is drawn at eight times the final size and downsampled, because its
+points are thin and a 128-pixel canvas has no room for a jagged edge. Check the
+result at **32 pixels** as well as at 128 — that is the size the package list
+shows, and a mark that dissolves there is the wrong mark.
+
 ## `fetch_stopwords.py`
 
 Regenerates `src/Lodestar.Text/Vectorization/StopWords.Snowball.cs` from the
@@ -142,13 +162,13 @@ python tools/check_nuspec_dependencies.py artifacts
 A package's dependency graph is a *build output*, derived from whatever restore
 resolved, so nobody writes it down and nothing notices when it drifts. This
 script is where it is written down. It matters more since the four packages
-version independently: `DataNet.Fuzzy` reaches `Lodestar.Text` through a
+version independently: `Lodestar.Fuzzy` reaches `Lodestar.Text` through a
 `PackageReference`, and that edge is now the one thing holding the two together.
 See [`../docs/decisions/0012-per-package-versioning.md`](../docs/decisions/0012-per-package-versioning.md).
 
 Dependency **ids and version ranges** are both asserted. The range matters as
 much as the id here: a `PackageReference` emits the floor from
-`src/Directory.Packages.props`, while the `DataNetUseProjectRefs` developer loop
+`src/Directory.Packages.props`, while the `LodestarUseProjectRefs` developer loop
 emits `Lodestar.Text`'s own current version. Same id, different number — which is
 what lets this check catch a package accidentally built with the escape hatch
 left on.
@@ -164,7 +184,7 @@ python tools/check_version_floor.py --check-feed  # also: the floor is published
 ```
 
 - `src/Lodestar.Text/Version.props` — what `Lodestar.Text` *is*.
-- `src/Directory.Packages.props` — the *floor* `DataNet.Fuzzy` requires of it.
+- `src/Directory.Packages.props` — the *floor* `Lodestar.Fuzzy` requires of it.
 - `check_nuspec_dependencies.py` — the floor that check asserts actually shipped.
 
 The floor must not exceed the declared version, and must already be on nuget.org
@@ -191,15 +211,15 @@ repository root, so `$(pwd)` is `ROOT`:
 
 ```bash
 mkdir -p obj
-dotnet build src/DataNet.Fuzzy -c Release --no-incremental -f net10.0 \
+dotnet build src/Lodestar.Fuzzy -c Release --no-incremental -f net10.0 \
   -p:ErrorLog=$(pwd)/obj/sonar-rules.sarif%2Cversion=2
 python tools/generate_sonar_globalconfig.py
 ```
 
 The path handed to `-p:ErrorLog` must be absolute. MSBuild resolves a relative one
-against the project directory (`src/DataNet.Fuzzy`), not the shell's current
+against the project directory (`src/Lodestar.Fuzzy`), not the shell's current
 directory, so a relative `obj/sonar-rules.sarif` here would write to
-`src/DataNet.Fuzzy/obj/` and the script — which always looks under the
+`src/Lodestar.Fuzzy/obj/` and the script — which always looks under the
 repository's own `obj/` — would report the input missing.
 
 The `%2C` is load-bearing, not decorative — it is the URL-encoded comma MSBuild
@@ -227,7 +247,7 @@ cannot make the check pass on a stale file.
 
 Turns every ` ```csharp ` fence in `README.md`, `docs/guides/*.md` and
 `docs/reference/*/*.md` into one method in a generated, git-ignored project
-under `samples/DataNet.DocSnippets/Generated/` — the guides stay the single
+under `samples/Lodestar.DocSnippets/Generated/` — the guides stay the single
 source of truth, so a snippet and its compiled counterpart cannot drift:
 
 ```bash
@@ -242,7 +262,7 @@ the exact syntax. A marker with no fence after it is an error, not silence:
 an opt-out that stopped applying must not go unnoticed.
 
 Pages under `docs/reference/` carry three more markers, and land in the
-`DataNet.DocSnippets.Reference` namespace instead of `DataNet.DocSnippets`:
+`Lodestar.DocSnippets.Reference` namespace instead of `Lodestar.DocSnippets`:
 
 - `<!-- docs-declaration -->` marks a signature shown above a fence — the
   declaration itself, excluded from compilation entirely.
@@ -287,7 +307,7 @@ per namespace it covers and a link per guide it ships, read off
 `docs/wiki-map.json`'s `covered` map so it cannot go stale — and `Home` links
 each package to that page rather than to a bare channel name that used to
 resolve to nothing. A package that covers no namespace and ships no guide,
-`DataNet.Metrics` today, gets no entry page: one linking nothing would not be
+`Lodestar.Metrics` today, gets no entry page: one linking nothing would not be
 navigation, so `Home` names it "no pages yet" instead, the same text it
 already used before this page existed. The entry page is not archived — it
 carries no content of its own to freeze, and the reasoning is in the module

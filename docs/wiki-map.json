@@ -18,7 +18,7 @@
         "Lodestar.Text.Distances": "docs/reference/text/distances"
       }
     },
-    "DataNet.Embeddings": {
+    "Lodestar.Embeddings": {
       "wiki": "Embeddings",
       "pages": [
         "docs/guides/embeddings.md",
@@ -26,7 +26,7 @@
       ],
       "covered": {}
     },
-    "DataNet.Fuzzy": {
+    "Lodestar.Fuzzy": {
       "wiki": "Fuzzy",
       "pages": [
         "docs/guides/migrating-from-rapidfuzz.md",
@@ -34,14 +34,14 @@
       ],
       "covered": {}
     },
-    "DataNet.Metrics": {
+    "Lodestar.Metrics": {
       "wiki": "Metrics",
       "pages": [
         "docs/reference/metrics/*.md",
         "docs/reference/metrics/*/*.md"
       ],
       "covered": {
-        "DataNet.Metrics": [
+        "Lodestar.Metrics": [
           "docs/reference/metrics/classification",
           "docs/reference/metrics/regression",
           "docs/reference/metrics/clustering"

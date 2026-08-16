@@ -1,5 +1,5 @@
 using System.Text.Json;
-using DataNet.Internal.Persistence;
+using Lodestar.Internal.Persistence;
 using Lodestar.Text.Persistence;
 
 namespace Lodestar.Text.Vectorization;
@@ -14,7 +14,7 @@ public sealed partial class CountVectorizer
     /// <paramref name="destination"/> as UTF-8 JSON.
     /// </summary>
     /// <remarks>
-    /// The DataNet equivalent of <c>pickle.dump</c> / <c>joblib.dump</c> on a fitted
+    /// The Lodestar equivalent of <c>pickle.dump</c> / <c>joblib.dump</c> on a fitted
     /// <c>sklearn.feature_extraction.text.CountVectorizer</c>, as versioned JSON rather than an executable
     /// pickle — see <see cref="ArtifactLoadOptions"/> and the "Saving a fitted model" section of
     /// <c>docs/guides/vectorization.md</c>.
@@ -47,7 +47,7 @@ public sealed partial class CountVectorizer
     /// to <see cref="Transform"/> without being fitted again.
     /// </summary>
     /// <remarks>
-    /// The DataNet equivalent of <c>pickle.load(f)</c> / <c>joblib.load</c> for a
+    /// The Lodestar equivalent of <c>pickle.load(f)</c> / <c>joblib.load</c> for a
     /// fitted <c>sklearn.feature_extraction.text.CountVectorizer</c> — with the
     /// difference that this reads data, never code, and enforces the bounds in
     /// <paramref name="options"/>.

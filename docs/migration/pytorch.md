@@ -32,6 +32,6 @@ y.backward();                 // autograd, like PyTorch
   `DisposeScope` — there is no GC for native memory. A classic leak pitfall.
 - **Inference only → ONNX.** To serve a Python-trained model, export to ONNX and
   load with ONNX Runtime: lighter than TorchSharp. That is the path taken by
-  `DataNet.Embeddings`.
+  `Lodestar.Embeddings`.
 
 *Guide to be expanded as real needs arise.*

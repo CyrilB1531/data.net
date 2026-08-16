@@ -21,7 +21,7 @@ input is not an error: it scores `1`.
 **Example** — the same two clusterings, scored without the correction for chance.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] truth = [0, 0, 1, 1];
 int[] alone = [0, 1, 2, 3];

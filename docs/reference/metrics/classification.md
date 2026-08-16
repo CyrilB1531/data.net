@@ -1,4 +1,4 @@
-# Classification metrics — `DataNet.Metrics`
+# Classification metrics — `Lodestar.Metrics`
 
 Your model looked at some things and put a label on each one. How well did it do? Every type on this
 page answers that, and they disagree — not about the arithmetic, but about what "well" is worth

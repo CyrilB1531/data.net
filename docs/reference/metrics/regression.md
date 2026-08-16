@@ -1,4 +1,4 @@
-# Regression metrics — `DataNet.Metrics`
+# Regression metrics — `Lodestar.Metrics`
 
 Your model predicted a number and the truth was a different number. How wrong is that? Every type on
 this page answers it, and they disagree about what "wrong" should cost. Squaring the miss makes one

@@ -1,8 +1,8 @@
-namespace DataNet.Tests.Documentation.Fixtures;
+namespace Lodestar.Tests.Documentation.Fixtures;
 
 /// <summary>A namespace shaped like the two cases D7's refinements carve out.</summary>
 /// <remarks>
-/// <c>DataNet.Metrics</c> forced both, and <c>Lodestar.Text.Distances</c> exports neither a
+/// <c>Lodestar.Metrics</c> forced both, and <c>Lodestar.Text.Distances</c> exports neither a
 /// nested type nor a record, so the rules would go unmeasured against a real assembly.
 /// This one is real — the test assembly itself — so <c>Check</c> reflects over it exactly
 /// as over a shipped one. <see cref="Measure"/> and <see cref="Grid"/> pin the array

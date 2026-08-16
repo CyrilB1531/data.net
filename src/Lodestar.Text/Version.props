@@ -6,8 +6,8 @@
 
     The property is named, not just <Version>, because this file is imported in
     three places that each need the number for a different reason: the csproj
-    (its own identity), src/Directory.Packages.props (the floor DataNet.Fuzzy
-    depends on) and samples/DataNet.Sample.csproj (the version just packed).
+    (its own identity), src/Directory.Packages.props (the floor Lodestar.Fuzzy
+    depends on) and samples/Lodestar.Sample.csproj (the version just packed).
     One source of truth, no tooling.
 
     Never leave this equal to a version that is already on the feed. A package's
@@ -21,7 +21,7 @@
     src/Directory.Packages.props.
   -->
   <PropertyGroup>
-    <LodestarTextVersion>0.3.1</LodestarTextVersion>
+    <LodestarTextVersion>0.3.2</LodestarTextVersion>
   </PropertyGroup>
 
 </Project>

@@ -22,7 +22,7 @@ input is not an error: it scores `1`.
 here.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] truth = [0, 0, 1, 1];
 int[] merged = [0, 0, 0, 0];

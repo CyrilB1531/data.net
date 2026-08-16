@@ -23,7 +23,7 @@ jobs:
           npx --yes --ignore-scripts markdownlint-cli2@0.23.2
           "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
       - name: C# format check
-        run: dotnet format DataNet.slnx --verify-no-changes
+        run: dotnet format Lodestar.slnx --verify-no-changes
       - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -64,7 +64,7 @@ jobs:
       - name: Sonar globalconfig is current
         run: |
           mkdir -p obj
-          dotnet build src/DataNet.Fuzzy -c Release --no-incremental -f net10.0 \
+          dotnet build src/Lodestar.Fuzzy -c Release --no-incremental -f net10.0 \
             -p:ErrorLog=$GITHUB_WORKSPACE/obj/sonar-rules.sarif%2Cversion=2
           python tools/generate_sonar_globalconfig.py --check
 
@@ -95,18 +95,18 @@ jobs:
       # and that declaration is authoritative everywhere — here and at release.
       - name: Pack
         run: |
-          for proj in src/Lodestar.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
+          for proj in src/Lodestar.Text src/Lodestar.Embeddings src/Lodestar.Fuzzy src/Lodestar.Metrics; do
             dotnet pack "$proj" --configuration Release --no-build --output ./artifacts
           done
 
       # The libraries reference each other by package, never by project. The
-      # opt-in developer loop (DataNetUseProjectRefs) puts a ProjectReference
+      # opt-in developer loop (LodestarUseProjectRefs) puts a ProjectReference
       # back, so a text grep cannot tell the shipped path from the local one —
       # it would match the conditional ItemGroup either way. Evaluated MSBuild
       # can, and this job never sets the property.
       - name: src/ ships PackageReference only
         run: |
-          for proj in src/Lodestar.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
+          for proj in src/Lodestar.Text src/Lodestar.Embeddings src/Lodestar.Fuzzy src/Lodestar.Metrics; do
             refs=$(dotnet msbuild "$proj" -getItem:ProjectReference -p:TargetFramework=net10.0 \
               | python3 -c 'import sys, json; print(" ".join(i["Identity"] for i in json.load(sys.stdin)["Items"]["ProjectReference"]))')
             if [ -n "$refs" ]; then
@@ -115,12 +115,12 @@ jobs:
             fi
           done
 
-      # Three files hold a DataNet.Text version number for three different
+      # Three files hold a Lodestar.Text version number for three different
       # reasons, and MSBuild is happy when they disagree. --check-feed also
       # proves the floor is resolvable, which is what lets a clean clone build
       # with no pack step — a broken floor otherwise surfaces only on a machine
       # whose NuGet cache is cold, never on the one that raised it.
-      - name: The DataNet.Text floor is coherent
+      - name: The Lodestar.Text floor is coherent
         run: python3 tools/check_version_floor.py --check-feed
 
       - name: The shipped dependency graph is the intended one
@@ -151,19 +151,19 @@ jobs:
       # The sample restores from ./artifacts, so the packages must exist before
       # it: this gate tests what is about to ship, not what already shipped.
       #
-      # Packing DataNet.Fuzzy restores DataNet.Text from nuget.org, because src/
+      # Packing Lodestar.Fuzzy restores Lodestar.Text from nuget.org, because src/
       # reaches it by PackageReference and has no local feed. That extraction
       # must not be visible to the sample: the global packages folder is
       # consulted ahead of every source, so a published package sitting in it
       # wins over the one just built whenever the two share a version, and the
       # gate silently validates the wrong assembly. Separate folders make the
-      # two restores independent; samples/NuGet.config maps DataNet.* to the
+      # two restores independent; samples/NuGet.config maps Lodestar.* to the
       # local feed so the sample's restore can only succeed from ./artifacts.
       - name: Pack
         env:
           NUGET_PACKAGES: ${{ runner.temp }}/pack-packages
         run: |
-          for proj in src/Lodestar.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
+          for proj in src/Lodestar.Text src/Lodestar.Embeddings src/Lodestar.Fuzzy src/Lodestar.Metrics; do
             dotnet pack "$proj" --configuration Release -o ./artifacts
           done
 
@@ -173,7 +173,7 @@ jobs:
       - name: Run the sample
         env:
           NUGET_PACKAGES: ${{ runner.temp }}/sample-packages
-        run: dotnet run --project samples/DataNet.Sample --configuration Release
+        run: dotnet run --project samples/Lodestar.Sample --configuration Release
 
   docs-snippets:
     name: Guide snippets compile, reference snippets run
@@ -197,7 +197,7 @@ jobs:
         env:
           NUGET_PACKAGES: ${{ runner.temp }}/pack-packages
         run: |
-          for proj in src/Lodestar.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
+          for proj in src/Lodestar.Text src/Lodestar.Embeddings src/Lodestar.Fuzzy src/Lodestar.Metrics; do
             dotnet pack "$proj" --configuration Release -o ./artifacts
           done
 
@@ -207,14 +207,14 @@ jobs:
       - name: Build them
         env:
           NUGET_PACKAGES: ${{ runner.temp }}/snippet-packages
-        run: dotnet build samples/DataNet.DocSnippets --configuration Release
+        run: dotnet build samples/Lodestar.DocSnippets --configuration Release
 
       # Compiling caught an API that moved; running catches a documented result
       # that is wrong. Only docs/reference/** fences run — see Program.cs.
       - name: Run them
         env:
           NUGET_PACKAGES: ${{ runner.temp }}/snippet-packages
-        run: dotnet run --project samples/DataNet.DocSnippets --configuration Release
+        run: dotnet run --project samples/Lodestar.DocSnippets --configuration Release
 
   stopwords-pinned:
     name: Stop-word lists match their pinned source
@@ -298,17 +298,17 @@ jobs:
       # request. This job carries what does depend on the platform: the build,
       # the eight test assemblies across both target frameworks, and the three
       # checks whose failure mode is platform-specific -- a machine path
-      # slipping into a tracked file, the DataNet.Text version floor, and the
+      # slipping into a tracked file, the Lodestar.Text version floor, and the
       # tool tests that exercise the guard and generator scripts themselves.
       # Measured on windows-latest at 39.7 s (build) and 24.3 s (test) -- issue
       # #138's probe, run 31728500235 -- against several minutes for
       # "Build, test, pack" on Linux, so this job will not become the slowest
       # check on a pull request even running in parallel with the others.
       - name: Build
-        run: dotnet build DataNet.slnx -c Release
+        run: dotnet build Lodestar.slnx -c Release
 
       - name: Test
-        run: dotnet test DataNet.slnx -c Release
+        run: dotnet test Lodestar.slnx -c Release
 
       # Same lock file, same flags, installed into the runner's own Python --
       # no venv, matching the Linux jobs. This is the first job to install it
@@ -330,5 +330,5 @@ jobs:
       - name: Comment budgets
         run: python tools/check_comment_length.py
 
-      - name: The DataNet.Text floor is coherent
+      - name: The Lodestar.Text floor is coherent
         run: python tools/check_version_floor.py
