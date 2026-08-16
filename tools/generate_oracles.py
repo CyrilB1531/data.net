@@ -25,9 +25,12 @@ Usage:
 from __future__ import annotations
 
 import base64
+import contextlib
 import json
 import math
+import os
 import sys
+import tempfile
 import warnings
 from importlib.metadata import version
 from pathlib import Path
@@ -4048,6 +4051,53 @@ def _added_coverage_models() -> list[tuple]:
     ]
 
 
+@contextlib.contextmanager
+def _rust_stderr_captured():
+    """Hold file descriptor 2 open to a temp file, yielding the file itself.
+
+    A Rust panic is printed by the default panic hook, which writes to fd 2
+    directly and before pyo3 turns the panic into a PanicException. Nothing
+    above that layer can see it: contextlib.redirect_stderr rebinds
+    sys.stderr, which the hook never consults. Only dup2 reaches it.
+    """
+    saved = os.dup(2)
+    try:
+        with tempfile.TemporaryFile(mode="w+b") as sink:
+            os.dup2(sink.fileno(), 2)
+            try:
+                yield sink
+            finally:
+                os.dup2(saved, 2)
+    finally:
+        os.close(saved)
+
+
+def _load_recording_panic(document: str):
+    """(tokenizer, error) -- the reference's verdict on one document, panic and all.
+
+    The error is None when it loaded. Whatever the panic hook wrote to fd 2 is
+    dropped when a refusal came with it, and re-emitted when none did: the known
+    panic is expected, and suppressing it must not hide the next one.
+    """
+    from tokenizers import Tokenizer  # noqa: PLC0415
+
+    with _rust_stderr_captured() as sink:
+        try:
+            loaded, error = Tokenizer.from_str(document), None
+        except BaseException as exc:  # noqa: BLE001 - the refusal IS the measurement
+            # BaseException: a Rust panic surfaces as unimportable
+            # pyo3_runtime.PanicException; Ctrl-C/SystemExit are re-raised (S5754).
+            if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                raise
+            loaded, error = None, f"{type(exc).__name__}: {exc}"
+        sink.seek(0)
+        printed = sink.read().decode("utf-8", "replace")
+
+    if printed and error is None:
+        sys.stderr.write(printed)
+    return loaded, error
+
+
 def _added_coverage_refusals() -> list[dict]:
     """Three shapes the reference refuses, recorded with what it said and when.
 
@@ -4068,15 +4118,14 @@ def _added_coverage_refusals() -> list[dict]:
     merge_result_missing: a merge whose two sides are present but whose
     result is not. The reference PANICS while reading rather than raising;
     the panic is recorded as what it is, and Lodestar refuses in its own words
-    (D6).
+    (D6). Its stderr is captured rather than let through: the hook prints on
+    every run, and a line that is always there is one nobody reads (#214).
 
     The reference does not refuse all three at the same moment: two fail
     while the document is being read, the first loads and fails from encode
     -- and only on text that needs a substitution, which is why each shape
     carries the text that provokes it.
     """
-    from tokenizers import Tokenizer  # noqa: PLC0415
-
     def document(vocab, merges, unk, added):
         return json.dumps({
             "version": "1.0", "truncation": None, "padding": None,
@@ -4112,20 +4161,15 @@ def _added_coverage_refusals() -> list[dict]:
 
     refusals = []
     for shape, doc, provoking_text in shapes:
-        try:
-            tokenizer = Tokenizer.from_str(doc)
-        except BaseException as exc:  # noqa: BLE001 - the refusal IS the measurement
-            # BaseException: a Rust panic surfaces as unimportable
-            # pyo3_runtime.PanicException; Ctrl-C/SystemExit are re-raised (S5754).
-            if isinstance(exc, (KeyboardInterrupt, SystemExit)):
-                raise
+        tokenizer, refused_at_load = _load_recording_panic(doc)
+        if refused_at_load is not None:
             refusals.append({"shape": shape, "document": doc, "raised_by": "load",
-                             "text": None, "error": f"{type(exc).__name__}: {exc}"})
+                             "text": None, "error": refused_at_load})
             continue
         try:
             tokenizer.encode(provoking_text)
         except BaseException as exc:  # noqa: BLE001
-            # Same reasoning as the from_str handler above.
+            # Same reasoning as _load_recording_panic's handler.
             if isinstance(exc, (KeyboardInterrupt, SystemExit)):
                 raise
             refusals.append({"shape": shape, "document": doc, "raised_by": "encode",
@@ -4263,7 +4307,7 @@ def _prefix_refusals() -> list[dict]:
     try:
         Tokenizer.from_str(document)
     except BaseException as exc:  # noqa: BLE001 - the refusal IS the measurement
-        # Same reasoning as _added_coverage_refusals's from_str handler.
+        # Same reasoning as _load_recording_panic's handler.
         if isinstance(exc, (KeyboardInterrupt, SystemExit)):
             raise
         return [{"shape": "merge_result_not_stripped", "document": document,
@@ -4545,7 +4589,7 @@ def _split_behavior_refusals() -> list[dict]:
         try:
             Tokenizer.from_str(doc)
         except BaseException as exc:  # noqa: BLE001 - the refusal IS the measurement
-            # Same reasoning as _added_coverage_refusals's from_str handler.
+            # Same reasoning as _load_recording_panic's handler.
             if isinstance(exc, (KeyboardInterrupt, SystemExit)):
                 raise
             refusals.append({"shape": shape, "document": doc,
