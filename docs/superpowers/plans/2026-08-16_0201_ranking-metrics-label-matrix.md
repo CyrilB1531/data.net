@@ -76,7 +76,7 @@ everywhere, which is an issue rather than a step.
 **Produces:** a corpus whose cases carry `name`, `y_true` (flat `0`/`1`), `y_score` (flat),
 `label_count`, `sample_weight` (or `null`), and the three values `lrap`, `coverage`, `ranking_loss`.
 
-- [ ] **Step 1: Write `_label_ranking_fixtures()` beside `_ranking_fixtures`.** One corpus for the
+- [x] **Step 1: Write `_label_ranking_fixtures()` beside `_ranking_fixtures`.** One corpus for the
   three metrics, because they take the same two inputs — a file each would triple the fixtures to
   say the same thing. The fixtures, chosen to separate implementations rather than to exercise them:
 
@@ -114,7 +114,7 @@ def _label_ranking_fixtures() -> list[dict]:
     ]
 ```
 
-- [ ] **Step 2: Write `generate_label_ranking()`**, in the shape `generate_ranking` uses at line 2152:
+- [x] **Step 2: Write `generate_label_ranking()`**, in the shape `generate_ranking` uses at line 2152:
 
 ```python
 def generate_label_ranking() -> dict:
@@ -157,14 +157,14 @@ def generate_label_ranking() -> dict:
     }
 ```
 
-- [ ] **Step 3: Register it** in the map at `tools/generate_oracles.py:4935`, beside the two lot 1
+- [x] **Step 3: Register it** in the map at `tools/generate_oracles.py:4935`, beside the two lot 1
   added:
 
 ```python
         "label_ranking.json": generate_label_ranking,
 ```
 
-- [ ] **Step 4: Generate, and read the generator's own exit code.**
+- [x] **Step 4: Generate, and read the generator's own exit code.**
 
 ```bash
 cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python <repo>/tools/generate_oracles.py
@@ -174,7 +174,7 @@ echo "generator exit=$?"
 Expected: `generator exit=0`, and `git status` shows `tests/oracles/label_ranking.json` as the only
 new corpus with no drift in the others.
 
-- [ ] **Step 5: Check the corpus can tell the three metrics apart.** A corpus where the three agree
+- [x] **Step 5: Check the corpus can tell the three metrics apart.** A corpus where the three agree
   everywhere would prove nothing.
 
 ```bash
@@ -191,7 +191,7 @@ the row that drags the mean below `1`. Five rather than six because the loss is 
 degenerate rows and `1` on three saturated ones by construction; measured on these fixtures it takes
 five distinct values where the other two take seven and eight.
 
-- [ ] **Step 6: Run the Python guards on the generator, then commit.**
+- [x] **Step 6: Run the Python guards on the generator, then commit.**
 
 ```bash
 git add -N tools/generate_oracles.py tests/oracles/label_ranking.json
@@ -222,7 +222,7 @@ internal static class LabelRanking
 }
 ```
 
-- [ ] **Step 1: Write the failing test for the rank.** This is the whole family's foundation, and
+- [x] **Step 1: Write the failing test for the rank.** This is the whole family's foundation, and
   the property that matters is that a tied group takes its **worst** rank.
 
 ```csharp
@@ -248,7 +248,7 @@ public sealed class LabelRankingFactsTests
 }
 ```
 
-- [ ] **Step 2: Run it and watch it fail.**
+- [x] **Step 2: Run it and watch it fail.**
 
 ```bash
 dotnet test tests/Lodestar.Metrics.Tests -c Release --filter "FullyQualifiedName~LabelRankingFactsTests"
@@ -257,7 +257,7 @@ dotnet test tests/Lodestar.Metrics.Tests -c Release --filter "FullyQualifiedName
 Expected: a compile error, `LabelRanking` does not exist. **Read the count, not the colour** — a
 filter that matches nothing exits zero and reports success.
 
-- [ ] **Step 3: Write `MaxRank`.** No permutation is built, which is the point: there is no tie
+- [x] **Step 3: Write `MaxRank`.** No permutation is built, which is the point: there is no tie
   order to get wrong.
 
 ```csharp
@@ -320,9 +320,9 @@ internal static class LabelRanking
 }
 ```
 
-- [ ] **Step 4: Run the test and watch it pass.** Expected: `réussite : 1`.
+- [x] **Step 4: Run the test and watch it pass.** Expected: `réussite : 1`.
 
-- [ ] **Step 5: Write the failing test for the validation**, one per refusal the spec measured.
+- [x] **Step 5: Write the failing test for the validation**, one per refusal the spec measured.
 
 ```csharp
     [Fact]
@@ -348,7 +348,7 @@ internal static class LabelRanking
     }
 ```
 
-- [ ] **Step 6: Run it and watch it fail**, then write `Validate` and `Weighted`:
+- [x] **Step 6: Run it and watch it fail**, then write `Validate` and `Weighted`:
 
 ```csharp
     /// <summary>Refuses the shapes scikit-learn refuses, with the sentences it prints.</summary>
@@ -443,7 +443,7 @@ internal static class LabelRanking
     }
 ```
 
-- [ ] **Step 7: Run the tests and watch them pass**, then clear the analyzers before committing —
+- [x] **Step 7: Run the tests and watch them pass**, then clear the analyzers before committing —
   a green build is not a clean Sonar, and a finding blocks the merge.
 
 ```bash
@@ -463,7 +463,7 @@ git add -A && git commit -m "Rank a row without ordering its ties"
 
 **Interfaces consumed:** `LabelRanking.MaxRank`, `RelevantCount`, `Validate`, `Weighted`.
 
-- [ ] **Step 1: Write the failing test.** Two rows of the worked case, and the empty row that drags
+- [x] **Step 1: Write the failing test.** Two rows of the worked case, and the empty row that drags
   the mean below `1` — the number an implementation treating "nothing relevant" as "all covered"
   gets wrong while looking plausible.
 
@@ -480,9 +480,9 @@ git add -A && git commit -m "Rank a row without ordering its ties"
     }
 ```
 
-- [ ] **Step 2: Run it and watch it fail.** Expected: `CoverageError` does not exist.
+- [x] **Step 2: Run it and watch it fail.** Expected: `CoverageError` does not exist.
 
-- [ ] **Step 3: Write the implementation.**
+- [x] **Step 3: Write the implementation.**
 
 ```csharp
 using Lodestar.Metrics.Internal;
@@ -535,9 +535,9 @@ public static class CoverageError
 }
 ```
 
-- [ ] **Step 4: Run the test and watch it pass.** Expected: `réussite : 1`.
+- [x] **Step 4: Run the test and watch it pass.** Expected: `réussite : 1`.
 
-- [ ] **Step 5: Commit.**
+- [x] **Step 5: Commit.**
 
 ```bash
 git add -N src/Lodestar.Metrics/CoverageError.cs
@@ -552,7 +552,7 @@ git add -A && git commit -m "Read down to the worst-ranked relevant label"
 **Files:** create `src/Lodestar.Metrics/LabelRankingLoss.cs`; modify
 `tests/Lodestar.Metrics.Tests/LabelRankingFactsTests.cs`.
 
-- [ ] **Step 1: Write the failing test.** A tie between a relevant and an irrelevant label counts
+- [x] **Step 1: Write the failing test.** A tie between a relevant and an irrelevant label counts
   as an error, which is the choice the reference makes and the one an implementation is most likely
   to get backwards.
 
@@ -572,9 +572,9 @@ git add -A && git commit -m "Read down to the worst-ranked relevant label"
     }
 ```
 
-- [ ] **Step 2: Run it and watch it fail.**
+- [x] **Step 2: Run it and watch it fail.**
 
-- [ ] **Step 3: Write the implementation.** The reference reaches the same count through
+- [x] **Step 3: Write the implementation.** The reference reaches the same count through
   `np.unique` and a cumulative sum; the pair loop is the definition itself, and it is `O(p·q)` on
   the relevant and irrelevant counts of one row, which for a label matrix is small.
 
@@ -643,9 +643,9 @@ public static class LabelRankingLoss
 }
 ```
 
-- [ ] **Step 4: Run the test and watch it pass.**
+- [x] **Step 4: Run the test and watch it pass.**
 
-- [ ] **Step 5: Commit.**
+- [x] **Step 5: Commit.**
 
 ```bash
 git add -N src/Lodestar.Metrics/LabelRankingLoss.cs
@@ -660,7 +660,7 @@ git add -A && git commit -m "Count the pairs an irrelevant label wins, ties incl
 **Files:** create `src/Lodestar.Metrics/LabelRankingAveragePrecision.cs`; modify
 `tests/Lodestar.Metrics.Tests/LabelRankingFactsTests.cs`.
 
-- [ ] **Step 1: Write the failing test.** The two degenerate rows both score `1`, and a single
+- [x] **Step 1: Write the failing test.** The two degenerate rows both score `1`, and a single
   label column is **accepted** here where the other two refuse it.
 
 ```csharp
@@ -683,9 +683,9 @@ git add -A && git commit -m "Count the pairs an irrelevant label wins, ties incl
     }
 ```
 
-- [ ] **Step 2: Run it and watch it fail.**
+- [x] **Step 2: Run it and watch it fail.**
 
-- [ ] **Step 3: Write the implementation.** `L / rank` averaged over the relevant labels, where
+- [x] **Step 3: Write the implementation.** `L / rank` averaged over the relevant labels, where
   `rank` is the label's rank among all labels and `L` its rank among the relevant ones.
 
 ```csharp
@@ -778,9 +778,9 @@ public static class LabelRankingAveragePrecision
 }
 ```
 
-- [ ] **Step 4: Run the test and watch it pass.**
+- [x] **Step 4: Run the test and watch it pass.**
 
-- [ ] **Step 5: Build both frameworks and clear the analyzers.**
+- [x] **Step 5: Build both frameworks and clear the analyzers.**
 
 ```bash
 dotnet build Lodestar.slnx -c Release --no-incremental
@@ -788,7 +788,7 @@ dotnet build Lodestar.slnx -c Release --no-incremental
 
 Expected: `0 Avertissement(s)`, `0 Erreur(s)`.
 
-- [ ] **Step 6: Commit.**
+- [x] **Step 6: Commit.**
 
 ```bash
 git add -N src/Lodestar.Metrics/LabelRankingAveragePrecision.cs
@@ -804,7 +804,7 @@ git add -A && git commit -m "Average how much of each relevant label's lead is r
 `tests/Lodestar.Metrics.Tests/LabelRankingTests.cs`; modify
 `tests/Lodestar.Metrics.Tests/LabelRankingFactsTests.cs`.
 
-- [ ] **Step 1: Add a `Bools` reader** to `MetricsCorpus.cs`, beside `Ints`:
+- [x] **Step 1: Add a `Bools` reader** to `MetricsCorpus.cs`, beside `Ints`:
 
 ```csharp
     /// <summary>An array the corpus writes as 0/1, read as the boolean it means.</summary>
@@ -812,7 +812,7 @@ git add -A && git commit -m "Average how much of each relevant label's lead is r
         [.. c.GetProperty(name).EnumerateArray().Select(x => x.GetInt32() != 0)];
 ```
 
-- [ ] **Step 2: Write the replay**, one theory row per fixture so a failure names it:
+- [x] **Step 2: Write the replay**, one theory row per fixture so a failure names it:
 
 ```csharp
 using System.Text.Json;
@@ -862,14 +862,14 @@ public sealed class LabelRankingTests
 }
 ```
 
-- [ ] **Step 3: Run it, and read the count.** Expected: 11 passing theory rows — one per fixture of
+- [x] **Step 3: Run it, and read the count.** Expected: 11 passing theory rows — one per fixture of
   Task 1. A number below that means `Indices()` is not seeing the corpus.
 
 ```bash
 dotnet test tests/Lodestar.Metrics.Tests -c Release --filter "FullyQualifiedName~LabelRankingTests"
 ```
 
-- [ ] **Step 4: Assert the tie indifference as an indifference**, in
+- [x] **Step 4: Assert the tie indifference as an indifference**, in
   `LabelRankingFactsTests.cs`. Two permutations compared to *each other*, not to a frozen number:
   a frozen number would pass if both sides were wrong the same way.
 
@@ -903,7 +903,7 @@ dotnet test tests/Lodestar.Metrics.Tests -c Release --filter "FullyQualifiedName
     }
 ```
 
-- [ ] **Step 5: Add the weight facts**, both divergences the spec measured:
+- [x] **Step 5: Add the weight facts**, both divergences the spec measured:
 
 ```csharp
     [Fact]
@@ -939,7 +939,7 @@ dotnet test tests/Lodestar.Metrics.Tests -c Release --filter "FullyQualifiedName
     }
 ```
 
-- [ ] **Step 6: Run the whole Metrics suite on both frameworks, and read the count.**
+- [x] **Step 6: Run the whole Metrics suite on both frameworks, and read the count.**
 
 ```bash
 dotnet test Lodestar.slnx -c Release --filter "FullyQualifiedName~Lodestar.Metrics"
@@ -948,7 +948,7 @@ dotnet test Lodestar.slnx -c Release --filter "FullyQualifiedName~Lodestar.Metri
 Expected: the lot 1 total plus 11 theory rows and 8 facts — two from Task 2, one each
 from Tasks 3, 4 and 5, three from this one — failing none.
 
-- [ ] **Step 7: Commit.**
+- [x] **Step 7: Commit.**
 
 ```bash
 git add -N tests/Lodestar.Metrics.Tests/LabelRankingTests.cs
@@ -964,7 +964,7 @@ git add -A && git commit -m "Replay the corpus, and pin what it cannot say"
 `samples/Lodestar.Sample/Lot5Metrics.cs`, `CHANGELOG.md`; create six pages under
 `docs/reference/metrics/ranking/`.
 
-- [ ] **Step 1: Write the six reference pages**, in the layout lot 1 established — read
+- [x] **Step 1: Write the six reference pages**, in the layout lot 1 established — read
   `docs/reference/metrics/ranking/ndcg.md` and `ndcg-score.md` first and copy their rubric order:
   title, one-line summary, `<!-- docs-declaration -->` and its fence, then **Parameters**,
   **Returns**, **Exceptions**, **Example**, **Remarks**, **Applies to**, **See also**.
@@ -996,31 +996,31 @@ double coverage = CoverageError.Score(truth, scores, labelCount: 3);  // => 2.5
 double loss = LabelRankingLoss.Score(truth, scores, labelCount: 3);  // => 0.75
 ```
 
-- [ ] **Step 2: Extend `docs/reference/metrics/ranking.md`.** Three rows in the type table, in the
+- [x] **Step 2: Extend `docs/reference/metrics/ranking.md`.** Three rows in the type table, in the
   exact form the gate demands — `[`CoverageError`](ranking/coverageerror.md)` and so on — plus a
   short section separating the two halves of the page: lot 1 scores **one ordered list**, these
   three score a **label matrix**, and the tie discussion above them does not apply here because the
   rank is a count rather than an order.
 
-- [ ] **Step 3: Run the reference gate.** It names the exact declaration it wants when it disagrees.
+- [x] **Step 3: Run the reference gate.** It names the exact declaration it wants when it disagrees.
 
 ```bash
 dotnet test tests/Lodestar.Metrics.Tests -c Release --filter "FullyQualifiedName~ReferenceDocumentation"
 ```
 
-- [ ] **Step 4: Add one `docs/equivalence.md` row per function**, in the ranking section lot 1
+- [x] **Step 4: Add one `docs/equivalence.md` row per function**, in the ranking section lot 1
   created, each linking its member page. The Differences column carries: the single-column
   divergence, the zero-sum weight divergence, negative weights leaving the range, and — for the
   loss — that a tie counts as an error.
 
-- [ ] **Step 5: Exercise the three from the sample.** Extend `Ranking()` in `Lot5Metrics.cs`; the
+- [x] **Step 5: Exercise the three from the sample.** Extend `Ranking()` in `Lot5Metrics.cs`; the
   packaging gate needs a **member reference**, not a `typeof`.
 
-- [ ] **Step 6: Add the changelog entry**, under `## [Unreleased]` → `### Lodestar.Metrics` →
+- [x] **Step 6: Add the changelog entry**, under `## [Unreleased]` → `### Lodestar.Metrics` →
   `#### Added — ranking`, beside the lot 1 entries. No version bump: `Lodestar.Metrics` is at
   `0.2.0` and unreleased.
 
-- [ ] **Step 7: Run the whole battery.** Each on its own exit code — a pipeline's status is the
+- [x] **Step 7: Run the whole battery.** Each on its own exit code — a pipeline's status is the
   last command's.
 
 ```bash
@@ -1034,7 +1034,7 @@ python3 tools/check_comment_length.py; echo "comment_length=$?"
 python3 tools/check_version_floor.py;  echo "version_floor=$?"
 ```
 
-- [ ] **Step 8: Run the packaging and snippet gates with an isolated package cache**, or they judge
+- [x] **Step 8: Run the packaging and snippet gates with an isolated package cache**, or they judge
   the published packages instead of the working tree.
 
 ```bash
@@ -1052,7 +1052,7 @@ dotnet run --project samples/Lodestar.DocSnippets -c Release
 Expected: `every public type is reachable.` from the sample, and `snippets skipped : 0` with no
 `::error::` line from the snippets.
 
-- [ ] **Step 9: Regenerate the corpora and confirm no drift**, then commit.
+- [x] **Step 9: Regenerate the corpora and confirm no drift**, then commit.
 
 ```bash
 cd /tmp && PYTHONSAFEPATH=1 <repo>/.venv-oracles/bin/python <repo>/tools/generate_oracles.py
@@ -1067,13 +1067,13 @@ believing a failure.
 
 ## Task 8 — review, then the pull request
 
-- [ ] **Step 1: Ask for a code review of the diff, before the pull request exists.** What it is for
+- [x] **Step 1: Ask for a code review of the diff, before the pull request exists.** What it is for
   here: whether `MaxRank`'s count really is `rankdata(-y_score, "max")` at every width, whether the
   loss counts the pairs the reference counts rather than their complement, and whether the pages say
   what the code does rather than what the spec hoped. On lot 1 the equivalent review found eight
   defects, three of which the corpus could not see.
 
-- [ ] **Step 2: Act on it, re-run the battery, then open the pull request.** `gh pr edit` fails
+- [x] **Step 2: Act on it, re-run the battery, then open the pull request.** `gh pr edit` fails
   silently on this repository; assignment and label edits go through `gh api`.
 
   The body carries **`Closes #201`** and **`Closes #173`**, once, next to each number and with no
