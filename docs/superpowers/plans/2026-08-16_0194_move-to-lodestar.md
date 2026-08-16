@@ -97,20 +97,46 @@ the identity carriers that name Text.
   `data.net` under this account afterwards** — it breaks every redirect at once.
 - [ ] **Step 2: `RepositoryUrl` and `PackageProjectUrl`** in `Directory.Build.props`, which are
   stamped into every package.
-- [ ] **Step 3: SonarCloud** — the project key `CyrilB1531_data.net` in
-  `.github/workflows/sonarcloud.yml`, `.globalconfig`, `tools/generate_sonar_globalconfig.py` and
-  the README badge, **and** the binding, which the rename breaks separately from the key. Pull
-  request decoration is how the gate reports, so it is verified on a live pull request rather than
-  assumed.
+- [x] **Step 3: SonarCloud — nothing to do, measured.** The key stays `CyrilB1531_data.net` (it is
+  an internal identifier, and changing it would start the analysis history over), and the binding
+  followed the rename on its own: GitHub keeps the repository id `1322216727` across it, and
+  SonarCloud binds to that. Verified on PR #198, the first of the renamed repository:
+  `SonarCloud Code Analysis` decorated it, key unchanged, no action taken.
 
-## Task 5 — `Lodestar.Metrics 0.1.1`, from the tag
+- [x] **Step 4: nuget.org Trusted Publishing — the policy does NOT follow the rename**, and this
+  step is here because the plan did not have it. The publish at 06:29 succeeded, the rename
+  happened, and the publish at 07:27 failed:
+  `Token exchange failed (HTTP 401) … No matching trust policy owned by user 'CyrilB1531' was
+  found.` nuget.org's tooltip says the permanent id is used for validation, which is what misled
+  this plan — the policy has to be **deleted and recreated** against the renamed repository,
+  because its edit form exposes only the policy name, the workflow file and the environment.
+  Recreated, the same run succeeded on re-attempt.
 
-- [ ] **Step 1: Branch from `DataNet.Metrics/v0.1.0`**, apply the rename to that content, and
-  nothing else. This is the one release in the sequence that is not cut from `main`, and the reason
-  is in the decisions above.
-- [ ] **Step 2: Publish and tag** `Lodestar.Metrics/v0.1.1`.
-- [ ] **Step 3: `main` then ships `Lodestar.Metrics 0.2.0`** with the clustering lot, which is the
-  version it already declares.
+  The rule for whoever renames next: **the id survives, the policy does not follow it.** Publish
+  one cheap package first, and find out before four tags are waiting.
+
+## Task 4b — what publishing four tags at once broke
+
+- [ ] **The wiki lost two archives, and nothing failed.** `wiki.yml` declares
+  `concurrency: group: wiki`, and GitHub keeps at most one *pending* run per group —
+  `cancel-in-progress: false` protects a running job, not a queued one. Four tags pushed together
+  left `Fuzzy 0.3.1` and `Metrics 0.2.0` with no frozen pages, while every run reported success or
+  cancellation. Recorded as [#199](https://github.com/CyrilB1531/lodestar/issues/199) and fixed
+  there: any run now archives every released version the wiki does not hold, each from its own tag.
+
+## Task 5 — `Lodestar.Metrics 0.1.1` — **dropped on 2026-08-16, deliberately**
+
+The plan was to cut a rename-only `0.1.1` from the tag `DataNet.Metrics/v0.1.0`, so a consumer of
+`DataNet.Metrics 0.1.0` could move id without moving code. It is not being done, and the reasons are
+worth keeping because they are what would make it right for another package:
+
+- `Lodestar.Metrics 0.2.0` is already published, so the id exists and the migration path is open.
+- `DataNet.Metrics` is deprecated with a message naming its replacement, which is what a consumer
+  actually sees in their IDE — a `0.1.1` would add nothing to that message.
+- The old package has 37 downloads, against a publication cut from an old tag on its own branch.
+
+The other three keep their rename-only patch, because their code genuinely did not move: `0.3.1` is
+`0.3.0` under a new id. That promise was worth making where it was true.
 
 ## Task 6 — retire the old ids
 

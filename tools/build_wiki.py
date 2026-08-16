@@ -444,6 +444,29 @@ def _build_channel(
     return written
 
 
+def missing_archives(
+    out: pathlib.Path, mapping: dict, released: dict[str, str]
+) -> list[tuple[str, str]]:
+    """The released versions the wiki holds no frozen page for, in map order.
+
+    A tag push archives the version that triggered it, and GitHub keeps at most
+    one pending run per concurrency group -- so publishing several tags at once
+    drops every archive but the last, silently (#199). This is what a later run
+    reads to catch up, and it is why a cancelled run costs nothing.
+
+    The caller archives each from *its own tag*, never from the current tree: the
+    documentation moves between releases, and freezing today's pages under an
+    older number would be worse than the gap it fills.
+    """
+    out = pathlib.Path(out)
+    behind: list[tuple[str, str]] = []
+    for name, package in mapping["packages"].items():
+        version = released.get(name)
+        if version and version not in _archive_stems(out, package["wiki"]):
+            behind.append((name, version))
+    return behind
+
+
 def build(
     repo: pathlib.Path,
     out: pathlib.Path,
@@ -524,6 +547,11 @@ def main() -> int:
     parser.add_argument("--out", required=True, type=pathlib.Path)
     parser.add_argument("--released", action="append", default=[], metavar="PACKAGE=VERSION")
     parser.add_argument("--archive", metavar="PACKAGE=VERSION")
+    parser.add_argument(
+        "--report-missing-archives",
+        action="store_true",
+        help="print the released versions the out tree holds no archive for, one per line, and exit",
+    )
     arguments = parser.parse_args()
 
     repo = pathlib.Path(os.path.realpath(arguments.repo))
@@ -531,6 +559,13 @@ def main() -> int:
 
     try:
         mapping = load_map(_guard(repo / "docs" / "wiki-map.json", repo))
+        if arguments.report_missing_archives:
+            for name, version in missing_archives(
+                arguments.out, mapping, _pairs(arguments.released)
+            ):
+                print(f"{name}={version}")
+            return 0
+
         written = build(repo, arguments.out, mapping, _pairs(arguments.released), archive)
     except MapError as error:
         print(f"::error::{error}", file=sys.stderr)

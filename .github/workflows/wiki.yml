@@ -86,6 +86,30 @@ jobs:
           python tools/build_wiki.py --repo . --out wiki \
             ${{ steps.released.outputs.args }} ${{ steps.what.outputs.archive }}
 
+      # A tag push archives the version that triggered it, and GitHub keeps at most one
+      # pending run per concurrency group -- so publishing several tags together drops
+      # every archive but the last, in silence (#199). Any run catches the others up,
+      # which makes a cancelled run cost nothing.
+      #
+      # Each missing archive is built from its own tag through a worktree, never from
+      # the tree this run checked out: the documentation moves between releases, and
+      # freezing today's pages under an older number would be worse than the gap.
+      - name: Archive the releases the wiki does not hold
+        run: |
+          set -euo pipefail
+          python tools/build_wiki.py --repo . --out wiki \
+            ${{ steps.released.outputs.args }} --report-missing-archives > missing.txt
+          while IFS='=' read -r package version; do
+            [ -n "$package" ] || continue
+            echo "catching up $package $version"
+            rm -rf "../catchup"
+            git worktree add --detach "../catchup" "$package/v$version"
+            python tools/build_wiki.py --repo "../catchup" --out wiki \
+              ${{ steps.released.outputs.args }} --archive "$package=$version"
+            git worktree remove --force "../catchup"
+          done < missing.txt
+          rm -f missing.txt
+
       - name: Push what changed
         working-directory: wiki
         run: |
