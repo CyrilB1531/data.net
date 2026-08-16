@@ -35,13 +35,13 @@ SAMPLE = "samples/Lodestar.Sample"
 ENTRY_POINT = f"{SAMPLE}/Program.cs"
 HELPER = f"{SAMPLE}/Inv.cs"
 
-# {expr:F3}, {expr:N2}, {expr:P1} and friends. The expression cannot hold a
-# brace, which bounds the match to a single hole.
-FORMATTED_HOLE = re.compile(r"\{[^{}]*:[A-Za-z]\d*\}")
+# A hole's closing half, walked backwards to its brace by _opening_brace below.
+# Letter then digits only -- the sample embeds JSON, where ":10}" is data.
+FORMAT_SUFFIX = re.compile(r":[A-Za-z]\d*\}")
 
 # {expr,10:F3}. Reported like the rest, and named, because the rewrite to
 # Inv.F3(expr) has to keep the alignment rather than swallow it.
-ALIGNED_HOLE = re.compile(r"\{[^{}]*,\s*-?\d+\s*:[A-Za-z]\d*\}")
+ALIGNED_HOLE = re.compile(r"^\{.*,\s*-?\d+\s*:[A-Za-z]\d*\}$")
 
 # What Program.cs must still do. Matched on the assignment rather than on the
 # comment above it, so rewording the comment does not fail the build.
@@ -64,16 +64,45 @@ def tracked_sample_sources() -> list[str]:
     return listed.stdout.split()
 
 
+def _opening_brace(line: str, close: int) -> int:
+    """The index of the brace that opens the hole closing at <paramref>close</paramref>, or -1.
+
+    Walked backwards with a depth counter rather than matched: the expression can
+    hold balanced braces of its own, and an object initializer in an argument list
+    routinely does.
+    """
+    depth = 0
+    for index in range(close, -1, -1):
+        if line[index] == "}":
+            depth += 1
+        elif line[index] == "{":
+            depth -= 1
+            if depth == 0:
+                return index
+    return -1
+
+
+def formatted_holes(line: str) -> list[str]:
+    """Every interpolated hole on one line that carries a format specifier."""
+    holes = []
+    for suffix in FORMAT_SUFFIX.finditer(line):
+        close = suffix.end() - 1
+        start = _opening_brace(line, close)
+        if start >= 0:
+            holes.append(line[start:close + 1])
+    return holes
+
+
 def _holes_in(relative: str) -> list[str]:
     """Every formatted hole in one file, already rendered as a finding line."""
     findings = []
     text = (ROOT / relative).read_text(encoding="utf-8")
     for number, line in enumerate(text.splitlines(), start=1):
-        for hole in FORMATTED_HOLE.finditer(line):
-            kind = "aligned " if ALIGNED_HOLE.fullmatch(hole.group()) else ""
+        for hole in formatted_holes(line):
+            kind = "aligned " if ALIGNED_HOLE.match(hole) else ""
             findings.append(
                 f"{relative}:{number}: {kind}interpolated hole formats with the "
-                f"current culture: {hole.group()}")
+                f"current culture: {hole}")
     return findings
 
 

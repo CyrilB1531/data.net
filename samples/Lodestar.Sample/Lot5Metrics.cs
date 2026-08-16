@@ -290,14 +290,14 @@ internal static class Lot5Metrics
         Console.WriteLine($"  MultiClass ovr macro  = "
             + $"{Inv.F3(RocAuc.MultiClass(truth, probabilities, classCount: 3))}");
         Console.WriteLine($"  MultiClass ovr weight = "
-            + $"{RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { Average = Averaging.Weighted }):F3}");
+            + $"{Inv.F3(RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { Average = Averaging.Weighted }))}");
         Console.WriteLine($"  MultiClass ovo macro  = "
-            + $"{RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { Strategy = MultiClassStrategy.OneVsOne }):F3}");
+            + $"{Inv.F3(RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { Strategy = MultiClassStrategy.OneVsOne }))}");
 
         // Parallel and sequential agree by contract; Environment.ProcessorCount here
         // is honest, not optimal — see docs/guides/performance.md before copying it.
         Console.WriteLine($"  MultiClass ovr macro  = "
-            + $"{RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }):F3}"
+            + $"{Inv.F3(RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }))}"
             + "  (parallel, same value)");
         Console.WriteLine();
     }

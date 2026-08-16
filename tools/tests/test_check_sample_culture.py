@@ -127,7 +127,8 @@ def test_the_pin_is_matched_on_the_assignment_not_on_its_comment(tmp_path, monke
     assert "ok" in capsys.readouterr().out
 
 
-def test_a_missing_entry_point_is_bad_shape_rather_than_a_finding(tmp_path, monkeypatch, capsys):
+def test_no_tracked_source_is_bad_shape_rather_than_a_clean_tree(tmp_path, monkeypatch, capsys):
+    # An empty list means the scan looked at nothing, which must never read as ok.
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(guard, "tracked_sample_sources", lambda: [])
 
@@ -135,6 +136,21 @@ def test_a_missing_entry_point_is_bad_shape_rather_than_a_finding(tmp_path, monk
 
     assert exit_code == 2
     assert capsys.readouterr().err
+
+
+def test_a_missing_entry_point_is_bad_shape_rather_than_a_finding(tmp_path, monkeypatch, capsys):
+    # Sources present so the empty-list branch above cannot be what returns 2.
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    source = tmp_path / guard.SAMPLE / "Lot1.cs"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_text("// nothing\n", encoding="utf-8")
+    monkeypatch.setattr(guard, "tracked_sample_sources",
+                        lambda: [f"{guard.SAMPLE}/Lot1.cs"])
+
+    exit_code = guard.main([PROG])
+
+    assert exit_code == 2
+    assert "Program.cs" in capsys.readouterr().err
 
 
 def test_an_unrecognised_argument_is_bad_usage_on_stderr(capsys):
@@ -152,5 +168,28 @@ def test_the_sources_come_from_git_rather_than_a_glob():
     listed = guard.tracked_sample_sources()
 
     assert listed, "the real repository should track sample sources"
-    assert all(not part.startswith(("bin/", "obj/"))
+    assert all(part not in ("bin", "obj")
                for path in listed for part in path.split("/"))
+
+def test_a_hole_whose_expression_holds_braces_is_still_found(tmp_path, monkeypatch, capsys):
+    # The shape a first sweep missed: an object initializer in an argument list
+    # puts balanced braces inside the hole, which no single regex can span.
+    lay_out(tmp_path, monkeypatch, {
+        "Lot5.cs": 'W($"{RocAuc.MultiClass(t, p, new Options { Average = a }):F3}");\n',
+    })
+
+    exit_code = guard.main([PROG])
+
+    assert exit_code == 1
+    assert "new Options { Average = a }):F3}" in capsys.readouterr().out
+
+
+def test_json_in_a_string_literal_is_not_mistaken_for_a_hole(tmp_path, monkeypatch, capsys):
+    # The sample embeds vocabularies as JSON. ":10}" there is data, and a guard
+    # that flagged it would report findings nobody can act on.
+    lay_out(tmp_path, monkeypatch, {
+        "Lot3.cs": 'Utf8("""{"a":0,"b":1,"ke":10}""");\n',
+    })
+
+    assert guard.main([PROG]) == 0
+    assert "ok" in capsys.readouterr().out

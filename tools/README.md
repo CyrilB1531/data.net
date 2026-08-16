@@ -361,10 +361,19 @@ python3 tools/check_sample_culture.py
 
 Two checks, because neither covers the other:
 
-1. **No interpolated hole carries a format specifier.** `{value:F3}` and friends
-   are the rewritable ones, and `Inv.F3(value)` — `samples/Lodestar.Sample/Inv.cs`
-   — is what they become. An aligned hole (`{value,10:F3}`) is reported as such,
-   because a rewrite has to keep the alignment rather than swallow it.
+1. **No interpolated hole carries a standard format specifier.** `{value:F3}` and
+   friends are the rewritable ones, and `Inv.F3(value)` —
+   `samples/Lodestar.Sample/Inv.cs` — is what they become. An aligned hole
+   (`{value,10:F3}`) is reported as such, because a rewrite has to keep the
+   alignment rather than swallow it.
+
+   A hole is found by its closing `:F3}` and then walked *backwards* to its
+   opening brace, because the expression can hold braces of its own — an object
+   initializer in an argument list does, and three such holes survived the first
+   sweep of this issue precisely because a single regular expression cannot span
+   them. The specifier must be a letter followed by digits: the sample embeds
+   vocabularies as JSON, where `:10}` is data rather than a format. A *custom*
+   format (`{value:0.###}`) is therefore not matched, and is left to check 2.
 2. **`Program.cs` still pins the thread culture.** That covers what no syntactic
    scan can: a bare `{value}` hole whose expression is a `double` reads exactly
    like a bare `{count}` hole whose expression is an `int`. Matched on the

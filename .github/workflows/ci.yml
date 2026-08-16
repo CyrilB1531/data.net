@@ -120,14 +120,14 @@ jobs:
       # proves the floor is resolvable, which is what lets a clean clone build
       # with no pack step — a broken floor otherwise surfaces only on a machine
       # whose NuGet cache is cold, never on the one that raised it.
+      - name: The Lodestar.Text floor is coherent
+        run: python3 tools/check_version_floor.py --check-feed
+
       # The sample is the only thing a contributor reads to see a package work, and
       # it printed 0,807 on a French console against CI's 0.807 for two releases
       # (#205). CA1305 never fires on an interpolated hole, at any AnalysisMode.
       - name: The sample prints no number in the contributor's culture
-        run: python tools/check_sample_culture.py
-
-      - name: The Lodestar.Text floor is coherent
-        run: python3 tools/check_version_floor.py --check-feed
+        run: python3 tools/check_sample_culture.py
 
       - name: The shipped dependency graph is the intended one
         run: python3 tools/check_nuspec_dependencies.py ./artifacts --require-all
