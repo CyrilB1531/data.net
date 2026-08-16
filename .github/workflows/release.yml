@@ -13,7 +13,7 @@ name: Release
 
 on:
   push:
-    tags: ['DataNet.*/v*']
+    tags: ['DataNet.*/v*', 'Lodestar.*/v*']
 
 permissions:
   contents: read
@@ -53,7 +53,7 @@ jobs:
           VERSION: ${{ steps.tag.outputs.version }}
         run: |
           case "$PACKAGE" in
-            DataNet.Text|DataNet.Embeddings|DataNet.Fuzzy|DataNet.Metrics) ;;
+            Lodestar.Text|DataNet.Embeddings|DataNet.Fuzzy|DataNet.Metrics) ;;
             *) echo "::error::Unknown package '$PACKAGE'."; exit 1 ;;
           esac
           declared=$(dotnet msbuild "src/$PACKAGE" -getProperty:Version -p:TargetFramework=net10.0)

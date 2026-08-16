@@ -5,7 +5,7 @@ Per-package versioning replaced one repository-wide ``<Version>`` with several
 numbers that are related but not equal, and nothing in the build objects when
 they drift apart:
 
-* ``src/DataNet.Text/Version.props`` — what DataNet.Text *is*.
+* ``src/Lodestar.Text/Version.props`` — what Lodestar.Text *is*.
 * ``src/Directory.Packages.props`` — the *floor* DataNet.Fuzzy requires of it.
 * ``tools/check_nuspec_dependencies.py`` — the floor that check asserts shipped.
 

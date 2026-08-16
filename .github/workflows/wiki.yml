@@ -10,7 +10,7 @@ name: Wiki
 on:
   push:
     branches: [main]
-    tags: ['DataNet.*/v*']
+    tags: ['DataNet.*/v*', 'Lodestar.*/v*']
     paths:
       - 'docs/**'
       - 'CONTRIBUTING.md'
@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       archive:
-        description: 'PACKAGE=VERSION to archive, e.g. DataNet.Text=0.4.0. Empty refreshes the live channels.'
+        description: 'PACKAGE=VERSION to archive, e.g. Lodestar.Text=0.3.1. Empty refreshes the live channels.'
         required: false
         default: ''
 
@@ -50,7 +50,7 @@ jobs:
         run: |
           set -euo pipefail
           args=""
-          for package in DataNet.Text DataNet.Embeddings DataNet.Fuzzy DataNet.Metrics; do
+          for package in Lodestar.Text DataNet.Embeddings DataNet.Fuzzy DataNet.Metrics; do
             version=$(git tag --list "$package/v*" | sed "s|$package/v||" | sort -V | tail -1)
             if [ -n "$version" ]; then
               args="$args --released $package=$version"
