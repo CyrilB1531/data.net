@@ -42,7 +42,7 @@ internal static class Lot2Vectorization
 
         // The CSR matrix is the exchange format between every stage.
         countMatrix.NormalizeRows(SparseNorm.L2);
-        Console.WriteLine($"  row 0 L2 / L1    = {countMatrix.RowL2Norm(0):F4} / {countMatrix.RowL1Norm(0):F4}");
+        Console.WriteLine($"  row 0 L2 / L1    = {Inv.F4(countMatrix.RowL2Norm(0))} / {Inv.F4(countMatrix.RowL1Norm(0))}");
         Console.WriteLine($"  CSR arrays       : values={countMatrix.Values.Length} cols={countMatrix.ColumnIndices.Length} ptrs={countMatrix.RowPointers.Length}");
         double[] product = countMatrix.Multiply(new double[countMatrix.ColumnCount]);
         double[,] dense = countMatrix.ToDense();
@@ -57,7 +57,7 @@ internal static class Lot2Vectorization
             UseIdf = true,
         });
         CsrMatrix weighted = transformer.Fit(counts.Transform(Documents)).Transform(counts.Transform(Documents));
-        Console.WriteLine($"  TfidfTransformer : {weighted.NonZeroCount} non-zeros, idf[0]={transformer.Idf[0]:F4}");
+        Console.WriteLine($"  TfidfTransformer : {weighted.NonZeroCount} non-zeros, idf[0]={Inv.F4(transformer.Idf[0])}");
 
         // TfidfVectorizer is the two of them in one pass.
         var tfidf = new TfidfVectorizer(new TfidfVectorizerOptions

@@ -51,12 +51,14 @@ opens the Store instead of running anything.
 # POSIX (bash/zsh)
 python3 tools/check_version_floor.py      # offline, instant; catches the three version numbers drifting apart
 python3 tools/check_machine_paths.py      # catches a tracked file holding a path under someone's home directory
+python3 tools/check_sample_culture.py     # catches a sample number printed in the contributor's culture
 ```
 
 ```powershell
 # PowerShell
 python tools/check_version_floor.py
 python tools/check_machine_paths.py
+python tools/check_sample_culture.py
 ```
 
 A single test, or one area:

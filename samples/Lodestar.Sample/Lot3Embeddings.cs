@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 using Lodestar.Embeddings.Persistence;
 using Lodestar.Embeddings.Pooling;
@@ -88,7 +87,7 @@ internal static class Lot3Embeddings
         var sp = new SentencePieceTokenizer(handBuilt);
         Console.WriteLine($"  SentencePiece    : [{string.Join(", ", sp.Encode("alpha beta").Tokens)}]");
         Console.WriteLine($"  vocabulary       : {handBuilt.Count} pieces, types[0]={handBuilt.Types[0]}, "
-            + $"piece[2]='{handBuilt.Pieces[2].Piece}' score={handBuilt.Pieces[2].Score:F1} id={handBuilt.Pieces[2].Id}, "
+            + $"piece[2]='{handBuilt.Pieces[2].Piece}' score={Inv.F1(handBuilt.Pieces[2].Score)} id={handBuilt.Pieces[2].Id}, "
             + $"matchable(0)={handBuilt.IsMatchable(0)}, unk={handBuilt.UnkId} bos={handBuilt.BosId} eos={handBuilt.EosId} pad={handBuilt.PadId}");
 
         SentencePieceVocabulary fromUnigramJson = TokenizerJsonLoader.LoadUnigram(Utf8(UnigramJson), bounds);
@@ -213,9 +212,9 @@ internal static class Lot3Embeddings
         float[] pooled = Pooler.MeanPool(tokenEmbeddings, seqLen: 2, dim: 3, attentionMask);
         Pooler.L2Normalize(pooled);
         float[] normalized = Pooler.MeanPoolAndNormalize(tokenEmbeddings, seqLen: 2, dim: 3, attentionMask);
-        Console.WriteLine($"  MeanPool         : [{string.Join(", ", pooled.Select(v => v.ToString("F3", CultureInfo.InvariantCulture)))}]");
-        Console.WriteLine($"  MeanPool+L2      : [{string.Join(", ", normalized.Select(v => v.ToString("F3", CultureInfo.InvariantCulture)))}]");
-        Console.WriteLine($"  VectorMath       : dot={VectorMath.Dot(pooled, normalized):F3}, l2={VectorMath.L2Norm(pooled):F3}");
+        Console.WriteLine($"  MeanPool         : {Inv.List(pooled)}");
+        Console.WriteLine($"  MeanPool+L2      : {Inv.List(normalized)}");
+        Console.WriteLine($"  VectorMath       : dot={Inv.F3(VectorMath.Dot(pooled, normalized))}, l2={Inv.F3(VectorMath.L2Norm(pooled))}");
 
         // Each row of the [batch, seq, dim] tensor pools against its own mask
         // slice, so a shorter sequence's padding cannot reach its vector.
@@ -224,7 +223,7 @@ internal static class Lot3Embeddings
         float[][] batchPooled = Pooler.MeanPoolAndNormalizeBatch(
             batchedEmbeddings, batchSize: 2, seqLen: 2, dim: 3, batchedMask);
         Console.WriteLine($"  MeanPoolBatch    : {batchPooled.Length} vectors, "
-            + string.Join(" | ", batchPooled.Select(v => $"[{string.Join(", ", v.Select(c => c.ToString("F3", CultureInfo.InvariantCulture)))}]")));
+            + string.Join(" | ", batchPooled.Select(v => $"[{string.Join(", ", v.Select(Inv.F3))}]")));
 
         // Nearest-neighbour search over those vectors, with the ids a reloaded
         // index is queried by.
@@ -236,7 +235,7 @@ internal static class Lot3Embeddings
         Console.WriteLine($"  EmbeddingIndex   : {index.Count} vectors of {index.Dimension} dims");
         foreach (SearchResult hit in hits)
         {
-            Console.WriteLine($"    #{hit.Index} {index.GetId(hit.Index)} score={hit.Score:F4}");
+            Console.WriteLine($"    #{hit.Index} {index.GetId(hit.Index)} score={Inv.F4(hit.Score)}");
         }
 
         // Embed once, query for as long as the artifact lasts.
@@ -246,7 +245,7 @@ internal static class Lot3Embeddings
         EmbeddingIndex reloaded = EmbeddingIndex.Load(artifact);
         SearchResult best = reloaded.Search([1f, 0f, 0f], k: 1)[0];
         Console.WriteLine($"  Reloaded index   : {reloaded.Count} vectors, "
-            + $"best '{reloaded.GetId(best.Index)}' score={best.Score:F4}");
+            + $"best '{reloaded.GetId(best.Index)}' score={Inv.F4(best.Score)}");
         Console.WriteLine();
     }
 
