@@ -186,8 +186,10 @@ for k in ('lrap','coverage','ranking_loss'):
 "
 ```
 
-Expected: at least six distinct values for each of the three, and `coverage` holding `0.5` — the
-row that drags the mean below `1`.
+Expected: at least **five** distinct values for each of the three, and `coverage` holding `0.5` —
+the row that drags the mean below `1`. Five rather than six because the loss is `0` on all three
+degenerate rows and `1` on three saturated ones by construction; measured on these fixtures it takes
+five distinct values where the other two take seven and eight.
 
 - [ ] **Step 6: Run the Python guards on the generator, then commit.**
 
@@ -969,6 +971,11 @@ git add -A && git commit -m "Replay the corpus, and pin what it cannot say"
 
   The files are `labelrankingaverageprecision.md`, `labelrankingaverageprecision-score.md`,
   `coverageerror.md`, `coverageerror-score.md`, `labelrankingloss.md`, `labelrankingloss-score.md`.
+
+  **Each type page carries a `## Members` table linking its member page in the exact form the gate
+  matches** — `| [`CoverageError.Score`](coverageerror-score.md) | … |` — and the index links each
+  type page as `[`CoverageError`](ranking/coverageerror.md)`. The gate compares those two strings
+  literally; a link that reads well but differs by a character fails it.
   Every parameter must be named in backticks inside the **Parameters** rubric, and **Applies to**
   must read `net10.0, netstandard2.0` — the gate replays each declaration against both assemblies.
 
