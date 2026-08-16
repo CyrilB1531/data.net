@@ -50,6 +50,29 @@ internal static class Lot5Metrics
         Report(cm);
         Roc();
         MatrixReaders();
+        Clustering();
+    }
+
+    /// <summary>The five agreement metrics, on the case that tells them apart.</summary>
+    private static void Clustering()
+    {
+        Console.WriteLine("  clustering agreement, against a reference partition");
+
+        int[] reference = [0, 0, 0, 1, 1, 1];
+        int[] split = [0, 0, 1, 2, 2, 2];
+        int[] alone = [0, 1, 2, 3, 4, 5];
+
+        Console.WriteLine($"    AdjustedRand        = {AdjustedRand.Score(reference, split):F3}");
+        Console.WriteLine($"    NormalizedMutualInfo= {NormalizedMutualInformation.Score(reference, split):F3}");
+        Console.WriteLine($"    Homogeneity         = {Homogeneity.Score(reference, split):F3}");
+        Console.WriteLine($"    Completeness        = {Completeness.Score(reference, split):F3}");
+        Console.WriteLine($"    VMeasure            = {VMeasure.Score(reference, split):F3}");
+
+        // One clustering per sample: perfectly homogeneous, and worth nothing --
+        // which is the pair of numbers the two families exist to show together.
+        Console.WriteLine($"    every sample alone  = {Homogeneity.Score(reference, alone):F3} homogeneity, "
+            + $"{AdjustedRand.Score(reference, alone):F3} adjusted Rand");
+        Console.WriteLine();
     }
 
     /// <summary>The three multiclass averages, on one matrix, printed together.</summary>

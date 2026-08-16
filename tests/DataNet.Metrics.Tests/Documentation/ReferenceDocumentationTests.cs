@@ -64,7 +64,7 @@ public sealed class ReferenceDocumentationTests
     }
 
     [Fact]
-    public void The_map_declares_both_directories()
+    public void The_map_declares_every_directory()
     {
         // What the two tests above check the pages against; a directory dropped from
         // the list would make them pass by covering nothing.
@@ -72,5 +72,6 @@ public sealed class ReferenceDocumentationTests
 
         Assert.Contains("docs/reference/metrics/classification\"", map, StringComparison.Ordinal);
         Assert.Contains("docs/reference/metrics/regression\"", map, StringComparison.Ordinal);
+        Assert.Contains("docs/reference/metrics/clustering\"", map, StringComparison.Ordinal);
     }
 }
