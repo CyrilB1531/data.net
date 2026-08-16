@@ -37,6 +37,7 @@
     "Lodestar.Metrics": {
       "wiki": "Metrics",
       "pages": [
+        "docs/guides/metrics.md",
         "docs/reference/metrics/*.md",
         "docs/reference/metrics/*/*.md"
       ],

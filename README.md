@@ -72,8 +72,10 @@ dotnet run --project samples/Lodestar.Sample -c Release
 ```
 
 Full guide: [`docs/guides/quickstart.md`](docs/guides/quickstart.md). See also the
-[vectorization](docs/guides/vectorization.md), [embeddings](docs/guides/embeddings.md)
-and [fuzzy-matching](docs/guides/migrating-from-rapidfuzz.md) guides.
+[vectorization](docs/guides/vectorization.md), [embeddings](docs/guides/embeddings.md),
+[fuzzy-matching](docs/guides/migrating-from-rapidfuzz.md) and
+[metrics](docs/guides/metrics.md) guides — the last one answers _which_ metric to
+reach for, which the per-member reference pages deliberately cannot.
 
 Function by function, the reference pages under
 [`docs/reference/`](docs/reference/text/distances.md) say what each member is
