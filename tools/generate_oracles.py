@@ -2189,8 +2189,11 @@ def generate_silhouette() -> dict:
             "feature_count": features.shape[1],
             "labels": labels,
             "distances": [float(value) for row in distances for value in row],
-            "score": float(silhouette_score(features, labels)),
-            "score_precomputed": float(silhouette_score(distances, labels, metric="precomputed")),
+            # random_state is inert without sample_size, and named anyway: S6709 asks
+            # every caller of a seeded API to say which seed, and silence is not an answer.
+            "score": float(silhouette_score(features, labels, random_state=0)),
+            "score_precomputed": float(
+                silhouette_score(distances, labels, metric="precomputed", random_state=0)),
             "per_sample": [float(value) for value in silhouette_samples(features, labels)],
         })
 
