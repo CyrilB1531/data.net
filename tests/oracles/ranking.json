@@ -1,0 +1,204 @@
+{
+ "metadata": {
+  "algorithm": "Ranking",
+  "library": "scikit-learn",
+  "library_version": "1.9.0",
+  "reference_calls": [
+   "sklearn.metrics.dcg_score",
+   "sklearn.metrics.dcg_score(k=..., log_base=..., ignore_ties=...)",
+   "sklearn.metrics.ndcg_score",
+   "sklearn.metrics.ndcg_score(k=..., ignore_ties=...)"
+  ],
+  "count": 8
+ },
+ "cases": [
+  {
+   "name": "perfectly ordered",
+   "y_true": [
+    3.0,
+    2.0,
+    1.0,
+    0.0
+   ],
+   "y_score": [
+    0.9,
+    0.5,
+    0.4,
+    0.1
+   ],
+   "dcg": 4.761859507142915,
+   "dcg_ignore_ties": 4.761859507142915,
+   "dcg_log_e": 6.869911096365047,
+   "dcg_at_2": 4.261859507142915,
+   "ndcg": 1.0,
+   "ndcg_ignore_ties": 1.0,
+   "ndcg_at_2": 1.0,
+   "ndcg_at_99": 1.0
+  },
+  {
+   "name": "reversed",
+   "y_true": [
+    3.0,
+    2.0,
+    1.0,
+    0.0
+   ],
+   "y_score": [
+    0.1,
+    0.4,
+    0.5,
+    0.9
+   ],
+   "dcg": 2.922959427791636,
+   "dcg_ignore_ties": 2.9229594277916364,
+   "dcg_log_e": 4.216939071194638,
+   "dcg_at_2": 0.6309297535714573,
+   "ndcg": 0.6138273133441086,
+   "ndcg_ignore_ties": 0.6138273133441086,
+   "ndcg_at_2": 0.1480409554829326,
+   "ndcg_at_99": 0.6138273133441086
+  },
+  {
+   "name": "every score tied",
+   "y_true": [
+    3.0,
+    2.0,
+    1.0,
+    0.0
+   ],
+   "y_score": [
+    0.5,
+    0.5,
+    0.5,
+    0.5
+   ],
+   "dcg": 3.8424094674672755,
+   "dcg_ignore_ties": 2.9229594277916364,
+   "dcg_log_e": 5.543425083779843,
+   "dcg_at_2": 2.4463946303571857,
+   "ndcg": 0.8069136566720543,
+   "ndcg_ignore_ties": 0.6138273133441086,
+   "ndcg_at_2": 0.5740204777414663,
+   "ndcg_at_99": 0.8069136566720543
+  },
+  {
+   "name": "two tied among distinct",
+   "y_true": [
+    3.0,
+    2.0,
+    1.0,
+    0.0
+   ],
+   "y_score": [
+    0.9,
+    0.5,
+    0.5,
+    0.1
+   ],
+   "dcg": 4.696394630357186,
+   "dcg_ignore_ties": 4.630929753571458,
+   "dcg_log_e": 6.775465243273869,
+   "dcg_at_2": 3.9463946303571857,
+   "ndcg": 0.9862522452232095,
+   "ndcg_ignore_ties": 0.9725044904464194,
+   "ndcg_at_2": 0.9259795222585336,
+   "ndcg_at_99": 0.9862522452232095
+  },
+  {
+   "name": "a tie across the k boundary",
+   "y_true": [
+    3.0,
+    2.0,
+    1.0,
+    0.0
+   ],
+   "y_score": [
+    0.9,
+    0.5,
+    0.5,
+    0.2
+   ],
+   "dcg": 4.696394630357186,
+   "dcg_ignore_ties": 4.630929753571458,
+   "dcg_log_e": 6.775465243273869,
+   "dcg_at_2": 3.9463946303571857,
+   "ndcg": 0.9862522452232095,
+   "ndcg_ignore_ties": 0.9725044904464194,
+   "ndcg_at_2": 0.9259795222585336,
+   "ndcg_at_99": 0.9862522452232095
+  },
+  {
+   "name": "all-zero relevance",
+   "y_true": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "y_score": [
+    0.9,
+    0.5,
+    0.4,
+    0.1
+   ],
+   "dcg": 0.0,
+   "dcg_ignore_ties": 0.0,
+   "dcg_log_e": 0.0,
+   "dcg_at_2": 0.0,
+   "ndcg": 0.0,
+   "ndcg_ignore_ties": 0.0,
+   "ndcg_at_2": 0.0,
+   "ndcg_at_99": 0.0
+  },
+  {
+   "name": "one relevant document",
+   "y_true": [
+    0.0,
+    0.0,
+    1.0,
+    0.0
+   ],
+   "y_score": [
+    0.9,
+    0.5,
+    0.4,
+    0.1
+   ],
+   "dcg": 0.5,
+   "dcg_ignore_ties": 0.5,
+   "dcg_log_e": 0.7213475204444819,
+   "dcg_at_2": 0.0,
+   "ndcg": 0.5,
+   "ndcg_ignore_ties": 0.5,
+   "ndcg_at_2": 0.0,
+   "ndcg_at_99": 0.5
+  },
+  {
+   "name": "six documents",
+   "y_true": [
+    2.0,
+    0.0,
+    3.0,
+    1.0,
+    0.0,
+    2.0
+   ],
+   "y_score": [
+    0.8,
+    0.7,
+    0.6,
+    0.5,
+    0.4,
+    0.3
+   ],
+   "dcg": 4.643090932289438,
+   "dcg_ignore_ties": 4.643090932289438,
+   "dcg_log_e": 6.6985642624104855,
+   "dcg_at_2": 2.0,
+   "ndcg": 0.8156454134143474,
+   "ndcg_ignore_ties": 0.8156454134143474,
+   "ndcg_at_2": 0.46927872602275655,
+   "ndcg_at_99": 0.8156454134143474
+  }
+ ]
+}

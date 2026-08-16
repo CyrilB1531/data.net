@@ -51,6 +51,51 @@ internal static class Lot5Metrics
         Roc();
         MatrixReaders();
         Clustering();
+        Ranking();
+    }
+
+    /// <summary>The four ranking metrics, on the rows that tell tie handling apart.</summary>
+    private static void Ranking()
+    {
+        Console.WriteLine("  ranking, one ordered list of four documents");
+
+        double[] relevance = [3, 2, 1, 0];
+        double[] ordered = [0.9, 0.5, 0.4, 0.1];
+        double[] reversed = [0.1, 0.4, 0.5, 0.9];
+        double[] tied = [0.5, 0.5, 0.5, 0.5];
+
+        Console.WriteLine($"    Dcg (perfect order) = {Dcg.Score(relevance, ordered, 4):F3}, "
+            + $"base e {Dcg.Score(relevance, ordered, 4, logBase: Math.E):F3}");
+        // The reversed row scores 0.614, not 0 -- the logarithmic discount is shallow
+        // enough that even the worst ordering collects most of the ideal gain.
+        Console.WriteLine($"    Ndcg perfect / worst= {Ndcg.Score(relevance, ordered, 4):F3} / "
+            + $"{Ndcg.Score(relevance, reversed, 4):F3}");
+
+        // Cutting the list at two positions is what makes a bad ordering look bad.
+        Console.WriteLine($"    Ndcg at k=2 (worst) = {Ndcg.Score(relevance, reversed, 4, k: 2):F3}");
+
+        // Every score equal: averaging over the permutations of the tie against
+        // ranking them arbitrarily, a 30% gap on the same input.
+        Console.WriteLine($"    all tied, averaged  = {Ndcg.Score(relevance, tied, 4):F3}");
+        Console.WriteLine($"    all tied, ignored   = {Ndcg.Score(relevance, tied, 4, ignoreTies: true):F3}");
+
+        int[] classes = [0, 1, 2, 2];
+        double[] probabilities =
+        [
+            0.7, 0.2, 0.1,
+            0.3, 0.5, 0.2,
+            0.2, 0.3, 0.5,
+            0.5, 0.3, 0.2,
+        ];
+        Console.WriteLine($"    TopKAccuracy k=2    = {TopKAccuracy.Score(classes, probabilities, 3):F3} "
+            + $"({TopKAccuracy.Score(classes, probabilities, 3, normalize: false):F0} of {classes.Length} samples)");
+
+        // Two queries: the first relevant document second, then first.
+        double[] judged = [0, 1, 0, 0, 1, 0, 0, 0];
+        double[] retrieved = [0.9, 0.5, 0.4, 0.1, 0.9, 0.5, 0.4, 0.1];
+        Console.WriteLine($"    ReciprocalRank      = {ReciprocalRank.Score(judged, retrieved, 4):F3} "
+            + "(no reference implementation — decision 0036)");
+        Console.WriteLine();
     }
 
     /// <summary>The five agreement metrics, on the case that tells them apart.</summary>

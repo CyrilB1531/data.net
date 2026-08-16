@@ -44,7 +44,8 @@
         "Lodestar.Metrics": [
           "docs/reference/metrics/classification",
           "docs/reference/metrics/regression",
-          "docs/reference/metrics/clustering"
+          "docs/reference/metrics/clustering",
+          "docs/reference/metrics/ranking"
         ]
       }
     }

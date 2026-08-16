@@ -1,0 +1,96 @@
+{
+ "metadata": {
+  "algorithm": "TopKAccuracy",
+  "library": "scikit-learn",
+  "library_version": "1.9.0",
+  "reference_calls": [
+   "sklearn.metrics.top_k_accuracy_score",
+   "sklearn.metrics.top_k_accuracy_score(normalize=False)"
+  ],
+  "count": 3
+ },
+ "cases": [
+  {
+   "name": "three classes",
+   "y_true": [
+    0,
+    1,
+    2,
+    2
+   ],
+   "y_score": [
+    0.7,
+    0.2,
+    0.1,
+    0.3,
+    0.5,
+    0.2,
+    0.2,
+    0.3,
+    0.5,
+    0.5,
+    0.3,
+    0.2
+   ],
+   "class_count": 3,
+   "top_1": 0.75,
+   "top_1_count": 3.0,
+   "top_2": 0.75,
+   "top_2_count": 3.0,
+   "top_3": 1.0,
+   "top_3_count": 4.0
+  },
+  {
+   "name": "every prediction wrong at k=1",
+   "y_true": [
+    1,
+    2,
+    0
+   ],
+   "y_score": [
+    0.6,
+    0.3,
+    0.1,
+    0.5,
+    0.4,
+    0.1,
+    0.2,
+    0.7,
+    0.1
+   ],
+   "class_count": 3,
+   "top_1": 0.0,
+   "top_1_count": 0.0,
+   "top_2": 0.6666666666666666,
+   "top_2_count": 2.0,
+   "top_3": 1.0,
+   "top_3_count": 3.0
+  },
+  {
+   "name": "ties in the score row",
+   "y_true": [
+    0,
+    1,
+    2
+   ],
+   "y_score": [
+    0.5,
+    0.5,
+    0.0,
+    0.4,
+    0.4,
+    0.2,
+    0.1,
+    0.2,
+    0.7
+   ],
+   "class_count": 3,
+   "top_1": 0.6666666666666666,
+   "top_1_count": 2.0,
+   "top_2": 1.0,
+   "top_2_count": 3.0,
+   "top_3": 1.0,
+   "top_3_count": 3.0
+  }
+ ]
+}

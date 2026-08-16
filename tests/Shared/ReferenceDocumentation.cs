@@ -701,7 +701,9 @@ internal static class ReferenceDocumentation
 
     private static string RenderDefault(object? value, Type type) => value switch
     {
-        null => type.IsValueType ? "default" : "null",
+        // `int? k = default` compiles, and no caller writes it: a nullable parameter's
+        // absent value is spelled `null`, which is also what the source declares.
+        null => type.IsValueType && Nullable.GetUnderlyingType(type) is null ? "default" : "null",
         bool flag => flag ? "true" : "false",
         string text => $"\"{text}\"",
         _ when type.IsEnum => $"{type.Name}.{Enum.GetName(type, value)}",
@@ -726,6 +728,14 @@ internal static class ReferenceDocumentation
         if (!type.IsGenericType)
         {
             return type.Name;
+        }
+
+        // Reflection spells int? "Nullable<Int32>"; C# has a suffix for it, and a page
+        // that wrote the long form would be documenting metadata rather than a signature.
+        Type? underlying = Nullable.GetUnderlyingType(type);
+        if (underlying is not null)
+        {
+            return $"{RenderType(underlying)}?";
         }
 
         string name = type.Name[..type.Name.IndexOf('`', StringComparison.Ordinal)];

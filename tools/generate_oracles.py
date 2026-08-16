@@ -2125,6 +2125,127 @@ def generate_clustering_agreement() -> dict:
     }
 
 
+# --- Ranking, ordered list (issue #173, first lot) ---------------------------
+
+
+def _ranking_fixtures() -> list[dict]:
+    """Relevance and score pairs whose *ties* are the thing under test.
+
+    A tie is where a plausible implementation agrees on the easy cases and
+    disagrees where it matters: scikit-learn averages the discounted gain over
+    the permutations of equal scores, which is a different number from ranking
+    them arbitrarily -- 0.807 against 0.614 on the all-tied case, measured.
+    """
+    return [
+        {"name": "perfectly ordered", "true": [3.0, 2.0, 1.0, 0.0], "score": [0.9, 0.5, 0.4, 0.1]},
+        {"name": "reversed", "true": [3.0, 2.0, 1.0, 0.0], "score": [0.1, 0.4, 0.5, 0.9]},
+        {"name": "every score tied", "true": [3.0, 2.0, 1.0, 0.0], "score": [0.5, 0.5, 0.5, 0.5]},
+        {"name": "two tied among distinct", "true": [3.0, 2.0, 1.0, 0.0], "score": [0.9, 0.5, 0.5, 0.1]},
+        {"name": "a tie across the k boundary", "true": [3.0, 2.0, 1.0, 0.0], "score": [0.9, 0.5, 0.5, 0.2]},
+        {"name": "all-zero relevance", "true": [0.0, 0.0, 0.0, 0.0], "score": [0.9, 0.5, 0.4, 0.1]},
+        {"name": "one relevant document", "true": [0.0, 0.0, 1.0, 0.0], "score": [0.9, 0.5, 0.4, 0.1]},
+        {"name": "six documents", "true": [2.0, 0.0, 3.0, 1.0, 0.0, 2.0],
+         "score": [0.8, 0.7, 0.6, 0.5, 0.4, 0.3]},
+    ]
+
+
+def generate_ranking() -> dict:
+    import math
+
+    import numpy as np
+    from sklearn.metrics import dcg_score, ndcg_score
+
+    cases = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for fixture in _ranking_fixtures():
+            true = np.array([fixture["true"]])
+            score = np.array([fixture["score"]])
+            cases.append({
+                "name": fixture["name"],
+                "y_true": fixture["true"],
+                "y_score": fixture["score"],
+                "dcg": float(dcg_score(true, score)),
+                # ignore_ties goes through a bare np.argsort, an unstable quicksort, so
+                # on a tied row this value is numpy's order rather than a defined one.
+                "dcg_ignore_ties": float(dcg_score(true, score, ignore_ties=True)),
+                "dcg_log_e": float(dcg_score(true, score, log_base=math.e)),
+                "dcg_at_2": float(dcg_score(true, score, k=2)),
+                "ndcg": float(ndcg_score(true, score)),
+                "ndcg_ignore_ties": float(ndcg_score(true, score, ignore_ties=True)),
+                "ndcg_at_2": float(ndcg_score(true, score, k=2)),
+                "ndcg_at_99": float(ndcg_score(true, score, k=99)),
+            })
+
+    return {
+        "metadata": {
+            "algorithm": "Ranking",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.dcg_score",
+                "sklearn.metrics.dcg_score(k=..., log_base=..., ignore_ties=...)",
+                "sklearn.metrics.ndcg_score",
+                "sklearn.metrics.ndcg_score(k=..., ignore_ties=...)",
+            ],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+def _top_k_fixtures() -> list[dict]:
+    """Multiclass score matrices, where k is the question rather than ties."""
+    return [
+        {"name": "three classes", "true": [0, 1, 2, 2],
+         "score": [[0.7, 0.2, 0.1], [0.3, 0.5, 0.2], [0.2, 0.3, 0.5], [0.5, 0.3, 0.2]]},
+        {"name": "every prediction wrong at k=1", "true": [1, 2, 0],
+         "score": [[0.6, 0.3, 0.1], [0.5, 0.4, 0.1], [0.2, 0.7, 0.1]]},
+        # scikit-learn infers the label set from y_true and refuses a wider score row,
+        # so every class appears here; our own surface takes the count as a parameter.
+        {"name": "ties in the score row", "true": [0, 1, 2],
+         "score": [[0.5, 0.5, 0.0], [0.4, 0.4, 0.2], [0.1, 0.2, 0.7]]},
+    ]
+
+
+def generate_top_k_accuracy() -> dict:
+    import numpy as np
+    from sklearn.metrics import top_k_accuracy_score
+
+    cases = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for fixture in _top_k_fixtures():
+            true = np.array(fixture["true"])
+            score = np.array(fixture["score"])
+            classes = score.shape[1]
+            entry = {
+                "name": fixture["name"],
+                "y_true": fixture["true"],
+                "y_score": [value for row in fixture["score"] for value in row],
+                "class_count": classes,
+            }
+            for k in (1, 2, classes):
+                entry[f"top_{k}"] = float(top_k_accuracy_score(true, score, k=k))
+                entry[f"top_{k}_count"] = float(
+                    top_k_accuracy_score(true, score, k=k, normalize=False))
+            cases.append(entry)
+
+    return {
+        "metadata": {
+            "algorithm": "TopKAccuracy",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.top_k_accuracy_score",
+                "sklearn.metrics.top_k_accuracy_score(normalize=False)",
+            ],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 # --- Silhouette (issue #172, second lot) --------------------------------------
 
 
@@ -4811,6 +4932,8 @@ def main() -> None:
         "classification_metrics.json": generate_classification_metrics,
         "clustering_agreement.json": generate_clustering_agreement,
         "silhouette.json": generate_silhouette,
+        "ranking.json": generate_ranking,
+        "top_k_accuracy.json": generate_top_k_accuracy,
         "roc_auc.json": generate_roc_auc,
         "regression.json": generate_regression,
         "regression_conditioning.json": generate_regression_conditioning,
