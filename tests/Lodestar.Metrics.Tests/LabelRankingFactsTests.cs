@@ -107,4 +107,64 @@ public sealed class LabelRankingFactsTests
         Assert.Throws<ArgumentException>(() => CoverageError.Score([true], [0.7], 1));
         Assert.Throws<ArgumentException>(() => LabelRankingLoss.Score([true], [0.7], 1));
     }
+
+    [Fact]
+    public void Permuting_a_tied_group_changes_nothing_at_any_width()
+    {
+        // 20 columns: past the 16 where lot 1's Array.Sort stopped being stable, and the
+        // width at which a permutation-based implementation would start to disagree.
+        const int n = 20;
+        bool[] first = new bool[n];
+        bool[] second = new bool[n];
+        double[] tied = new double[n];
+        for (int i = 0; i < n; i++)
+        {
+            tied[i] = 0.5;
+        }
+
+        first[0] = true;
+        first[9] = true;
+        second[10] = true;
+        second[19] = true;
+
+        Assert.Equal(LabelRankingAveragePrecision.Score(first, tied, n),
+                     LabelRankingAveragePrecision.Score(second, tied, n),
+                     MetricsCorpus.Tolerance);
+        Assert.Equal(CoverageError.Score(first, tied, n),
+                     CoverageError.Score(second, tied, n), MetricsCorpus.Tolerance);
+        Assert.Equal(LabelRankingLoss.Score(first, tied, n),
+                     LabelRankingLoss.Score(second, tied, n), MetricsCorpus.Tolerance);
+    }
+
+    [Fact]
+    public void A_weight_vector_summing_to_zero_throws_for_two_and_gives_NaN_for_the_third()
+    {
+        bool[] truth = [true, false, false, false, false, true];
+        double[] scores = [0.7, 0.2, 0.1, 0.7, 0.2, 0.1];
+        double[] zeroSum = [0.0, 0.0];
+
+        Assert.True(double.IsNaN(
+            LabelRankingAveragePrecision.Score(truth, scores, 3, zeroSum)));
+
+        ArgumentException coverage = Assert.Throws<ArgumentException>(
+            () => CoverageError.Score(truth, scores, 3, zeroSum));
+        Assert.Contains("Weights sum to zero", coverage.Message, StringComparison.Ordinal);
+        Assert.Throws<ArgumentException>(
+            () => LabelRankingLoss.Score(truth, scores, 3, zeroSum));
+    }
+
+    [Fact]
+    public void A_negative_weight_is_accepted_and_takes_the_result_out_of_its_range()
+    {
+        // Measured against scikit-learn 1.9.0: -0.33333333333333337, 5.0 and 2.0 — a
+        // metric documented in [0, 1] returning a negative number, as the reference does.
+        bool[] truth = [true, false, false, false, false, true];
+        double[] scores = [0.7, 0.2, 0.1, 0.7, 0.2, 0.1];
+        double[] weight = [-1.0, 2.0];
+
+        Assert.Equal(-0.33333333333333337,
+            LabelRankingAveragePrecision.Score(truth, scores, 3, weight), MetricsCorpus.Tolerance);
+        Assert.Equal(5.0, CoverageError.Score(truth, scores, 3, weight), MetricsCorpus.Tolerance);
+        Assert.Equal(2.0, LabelRankingLoss.Score(truth, scores, 3, weight), MetricsCorpus.Tolerance);
+    }
 }

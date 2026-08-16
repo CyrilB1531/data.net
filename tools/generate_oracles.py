@@ -2224,6 +2224,10 @@ def _label_ranking_fixtures() -> list[dict]:
          "score": [[0.5] * 20], "weight": None},
         {"name": "twenty columns, strictly ordered", "true": [wide],
          "score": [[(20 - j) / 20 for j in range(20)]], "weight": None},
+        # The relevant labels are at indices 0 and 2 but score 0.2 and 0.8, so their
+        # index order and score order disagree -- the only shape a pairing bug shows in.
+        {"name": "relevant labels out of score order", "true": [[1, 0, 1]],
+         "score": [[0.2, 0.9, 0.8]], "weight": None},
     ]
 
 
