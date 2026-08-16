@@ -75,4 +75,18 @@ public sealed class LabelRankingFactsTests
         // Treating the empty row as fully covered would give 2.0 and look reasonable.
         Assert.Equal(0.5, CoverageError.Score(truth, scores, 3), MetricsCorpus.Tolerance);
     }
+
+    [Fact]
+    public void A_tie_between_a_relevant_and_an_irrelevant_label_counts_as_an_error()
+    {
+        // Two relevant, one irrelevant, every score equal: both pairs are wrong, so 1.
+        Assert.Equal(1.0,
+            LabelRankingLoss.Score([true, true, false], [0.5, 0.5, 0.5], 3),
+            MetricsCorpus.Tolerance);
+
+        // The same row with the irrelevant label scored strictly lower: nothing is wrong.
+        Assert.Equal(0.0,
+            LabelRankingLoss.Score([true, true, false], [0.5, 0.5, 0.1], 3),
+            MetricsCorpus.Tolerance);
+    }
 }
