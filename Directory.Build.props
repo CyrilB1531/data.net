@@ -58,8 +58,8 @@
     <Authors>Cyril BRUNET</Authors>
     <Copyright>Copyright 2026 Cyril BRUNET</Copyright>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/CyrilB1531/data.net</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/CyrilB1531/data.net</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/CyrilB1531/lodestar</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/CyrilB1531/lodestar</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>icon.png</PackageIcon>
