@@ -1,5 +1,5 @@
 using System.Text.Json;
-using DataNet.Internal.Persistence;
+using Lodestar.Internal.Persistence;
 using Lodestar.Text.Persistence;
 
 namespace Lodestar.Text.Vectorization;
@@ -14,7 +14,7 @@ public sealed partial class TfidfVectorizer
     /// to <paramref name="destination"/> as UTF-8 JSON.
     /// </summary>
     /// <remarks>
-    /// The DataNet equivalent of <c>pickle.dump</c> / <c>joblib.dump</c> on a fitted
+    /// The Lodestar equivalent of <c>pickle.dump</c> / <c>joblib.dump</c> on a fitted
     /// <c>sklearn.feature_extraction.text.TfidfVectorizer</c> (format: see <see cref="CountVectorizer.Save(Stream)"/>).
     /// The idf vector round-trips bit-exact — raw IEEE-754, not a decimal <see cref="double"/> — and is
     /// always written, even when <c>UseIdf</c> is off, so the artifact stays lossless.
@@ -47,7 +47,7 @@ public sealed partial class TfidfVectorizer
     /// to <see cref="Transform"/> without being fitted again.
     /// </summary>
     /// <remarks>
-    /// The DataNet equivalent of <c>pickle.load(f)</c> / <c>joblib.load</c> for a
+    /// The Lodestar equivalent of <c>pickle.load(f)</c> / <c>joblib.load</c> for a
     /// fitted <c>sklearn.feature_extraction.text.TfidfVectorizer</c> — reading
     /// data rather than code, under the bounds in <paramref name="options"/>.
     /// </remarks>

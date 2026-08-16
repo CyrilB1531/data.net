@@ -1,0 +1,19 @@
+<Project>
+
+  <!--
+    Lodestar.Fuzzy owns its version here, independently of the other packages
+    (see docs/decisions/0012-per-package-versioning.md).
+
+    0.4.0 alongside Lodestar.Text and Lodestar.Embeddings, each for reasons of its
+    own. Three packages at the same number is not the split failing: the point is
+    that each number now describes its own package, so a package that had not
+    changed would have been free to stay behind rather than be dragged along.
+
+    Independent versions do not have to mean different versions. Releasing all
+    three together is a normal outcome. What changed is that it is now a choice.
+  -->
+  <PropertyGroup>
+    <LodestarFuzzyVersion>0.3.1</LodestarFuzzyVersion>
+  </PropertyGroup>
+
+</Project>

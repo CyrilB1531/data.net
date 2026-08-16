@@ -28,7 +28,7 @@ public static class Hamming
 
     /// <summary>
     /// Length-normalized similarity in <c>[0, 1]</c>: <c>1 - distance / max(len(a), len(b))</c>.
-    /// Two empty inputs are perfectly similar (<c>1</c>). This is a DataNet convenience;
+    /// Two empty inputs are perfectly similar (<c>1</c>). This is a Lodestar convenience;
     /// jellyfish itself exposes only the integer distance.
     /// </summary>
     public static double NormalizedSimilarity(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement element = TextElement.Utf16Unit)

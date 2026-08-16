@@ -1,6 +1,6 @@
 using System.Text.Json;
-using DataNet.Embeddings.Persistence;
-using DataNet.Embeddings.Search;
+using Lodestar.Embeddings.Persistence;
+using Lodestar.Embeddings.Search;
 using Lodestar.Text.Vectorization;
 
 namespace Lodestar.Text.Benchmarks.CrossLang;
@@ -80,7 +80,7 @@ public static class PersistenceCrossLang
             Metadata = new Harness.OutputMetadata
             {
                 Side = "csharp",
-                Library = "DataNet",
+                Library = "Lodestar",
                 Runtime = Environment.Version.ToString(),
                 Os = Environment.OSVersion.ToString(),
                 MinTimeS = Harness.MinTimeSeconds,

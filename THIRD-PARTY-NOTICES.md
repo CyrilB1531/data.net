@@ -8,15 +8,15 @@ for traceability.
 
 ## Runtime / shipped dependencies
 
-`DataNet.Text`, `DataNet.Fuzzy` and `DataNet.Metrics` have **no** runtime
+`Lodestar.Text`, `Lodestar.Fuzzy` and `Lodestar.Metrics` have **no** runtime
 dependencies on `net10.0`, by design (§3).
 
 | Component | License | Shipped by | Target |
 | --- | --- | --- | --- |
-| Microsoft.ML.OnnxRuntime | MIT | `DataNet.Embeddings` | both |
+| Microsoft.ML.OnnxRuntime | MIT | `Lodestar.Embeddings` | both |
 | System.Memory | MIT | all four packages | `netstandard2.0` only |
 | System.Numerics.Vectors | MIT | all four packages | `netstandard2.0` only |
-| System.Text.Json | MIT | `DataNet.Text`, `DataNet.Embeddings` | `netstandard2.0` only |
+| System.Text.Json | MIT | `Lodestar.Text`, `Lodestar.Embeddings` | `netstandard2.0` only |
 
 `System.Memory` and `System.Numerics.Vectors` supply `Span`, `Memory`,
 `ArrayPool` and `Vector<T>`, which are in-box on `net10.0`. They appear only in
@@ -26,11 +26,11 @@ the `netstandard2.0` dependency group of each package.
 the `netstandard2.0` group. It backs the persistence layer — saving a fitted
 vectorizer, reading a `tokenizer.json` — and is the one place the "no external
 dependencies" rule is knowingly bent rather than a polyfill for something the
-modern framework already provides. `DataNet.Fuzzy` ships no I/O and does not
+modern framework already provides. `Lodestar.Fuzzy` ships no I/O and does not
 take it. The reasoning is in
 [`docs/decisions/0011-persistence-format.md`](docs/decisions/0011-persistence-format.md).
 
-ONNX Runtime is deliberately isolated to `DataNet.Embeddings`, so consumers of
+ONNX Runtime is deliberately isolated to `Lodestar.Embeddings`, so consumers of
 the distance, vectorization and fuzzy-matching packages take no native
 dependency.
 
@@ -38,10 +38,10 @@ dependency.
 
 | Component | License | Shipped by | Source |
 | --- | --- | --- | --- |
-| Snowball stop-word lists (fr, de, it, pt, es) | BSD-3-Clause | `DataNet.Text` | `https://snowballstem.org/algorithms/<language>/stop.txt` |
+| Snowball stop-word lists (fr, de, it, pt, es) | BSD-3-Clause | `Lodestar.Text` | `https://snowballstem.org/algorithms/<language>/stop.txt` |
 
 These are data, not code: the five lists are compiled into
-`DataNet.Text.Vectorization.StopWords` by `tools/fetch_stopwords.py`, which pins a
+`Lodestar.Text.Vectorization.StopWords` by `tools/fetch_stopwords.py`, which pins a
 SHA-256 per file. Unlike the libraries below, they *are* redistributed, so the
 licence travels with them. The English list is scikit-learn's (BSD-3-Clause), not
 Snowball's; the nltk stop-word corpus is deliberately not used — see

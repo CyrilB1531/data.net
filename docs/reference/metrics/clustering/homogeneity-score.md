@@ -21,7 +21,7 @@ input is not an error: it scores `1`.
 **Example** — splitting a class in two keeps every cluster pure, and costs nothing here.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] truth = [0, 0, 0, 1, 1, 1];
 int[] split = [0, 0, 1, 2, 2, 2];

@@ -1,5 +1,5 @@
 using System.Text.Json;
-using DataNet.Internal.Persistence;
+using Lodestar.Internal.Persistence;
 using Lodestar.Text.Persistence;
 
 namespace Lodestar.Text.Vectorization;
@@ -11,7 +11,7 @@ public sealed partial class HashingVectorizer
 
     /// <summary>Writes the vectorizer's configuration to <paramref name="destination"/> as UTF-8 JSON.</summary>
     /// <remarks>
-    /// The DataNet equivalent of <c>joblib.dump</c> on a <c>sklearn.feature_extraction.text.HashingVectorizer</c>
+    /// The Lodestar equivalent of <c>joblib.dump</c> on a <c>sklearn.feature_extraction.text.HashingVectorizer</c>
     /// (format: see <see cref="CountVectorizer.Save(Stream)"/>). Hashing has no vocabulary to learn, but the
     /// configuration still matters: a pipeline reloaded with a different <c>NumFeatures</c>,
     /// <c>AlternateSign</c> or analyzer silently produces different columns for the same document.
@@ -35,7 +35,7 @@ public sealed partial class HashingVectorizer
         ArtifactIo.SaveAsync(destination, ArtifactName, ArtifactVersion, WriteArtifactBody, cancellationToken);
 
     /// <summary>Reads a vectorizer configuration previously written by <see cref="Save(Stream)"/>.</summary>
-    /// <remarks>The DataNet equivalent of <c>joblib.load</c> for a <c>sklearn.feature_extraction.text.HashingVectorizer</c>.</remarks>
+    /// <remarks>The Lodestar equivalent of <c>joblib.load</c> for a <c>sklearn.feature_extraction.text.HashingVectorizer</c>.</remarks>
     /// <param name="source">The stream to read from; never disposed by this method.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <exception cref="InvalidDataException">The artifact is malformed, of the wrong kind, of an unsupported version, or exceeds a limit.</exception>

@@ -10,7 +10,7 @@
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <!-- Analyzer only, pinned in the root Directory.Build.props so src/, tests/
          and bench/ cannot drift apart. -->
-    <PackageVersion Include="SonarAnalyzer.CSharp" Version="$(DataNetSonarAnalyzerVersion)" />
+    <PackageVersion Include="SonarAnalyzer.CSharp" Version="$(LodestarSonarAnalyzerVersion)" />
     <PackageVersion Include="xunit" Version="2.9.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
   </ItemGroup>

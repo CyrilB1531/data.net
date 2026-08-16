@@ -26,7 +26,7 @@ With `normalize: false` it is a count instead — a weight, not a fraction, and 
 raised one false alarm.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [1, 1, 1, 1, 0, 0, 0, 0];
 int[] yPred = [1, 1, 0, 0, 1, 0, 0, 0];

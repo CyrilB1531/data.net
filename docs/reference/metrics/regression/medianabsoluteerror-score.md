@@ -24,7 +24,7 @@ it holds a non-finite value; `ArgumentOutOfRangeException` when `outputCount` is
 data is `24`.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 double[] yTrue = [1.0, 2.0, 3.0, 100.0];
 double[] yPred = [1.0, 2.0, 3.0, 4.0];

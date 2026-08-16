@@ -21,7 +21,7 @@ storage, so writing into the result changes nothing.
 **Example** — the same matrix as counts and as per-class recalls.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [1, 1, 1, 1, 0, 0, 0, 0];
 int[] yPred = [1, 1, 0, 0, 1, 0, 0, 0];

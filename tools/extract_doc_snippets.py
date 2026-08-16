@@ -10,7 +10,7 @@ exactly the way a reader reads the page.
 
 Symbols the prose introduces without showing them (`trainingDocuments`,
 `corpusVectors`, ...) come from the hand-written partial classes in
-samples/DataNet.DocSnippets/SnippetContext.cs. That file is scaffolding, not a
+samples/Lodestar.DocSnippets/SnippetContext.cs. That file is scaffolding, not a
 copy of any snippet.
 
 A fence that genuinely cannot compile opts out with an HTML comment on the line
@@ -22,7 +22,7 @@ A marker that is not followed by a fence is an error: an opt-out that stopped
 applying must not go unnoticed.
 
 Pages under docs/reference/ carry three more markers, and land in the
-DataNet.DocSnippets.Reference namespace instead of DataNet.DocSnippets:
+Lodestar.DocSnippets.Reference namespace instead of Lodestar.DocSnippets:
 
     <!-- docs-declaration -->                a signature above a fence, excluded
                                                from compilation entirely
@@ -45,7 +45,7 @@ import re
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-OUTPUT = REPO / "samples" / "DataNet.DocSnippets" / "Generated"
+OUTPUT = REPO / "samples" / "Lodestar.DocSnippets" / "Generated"
 SOURCES = ["README.md", "docs/guides/*.md",
            "docs/reference/*/*.md", "docs/reference/*/*/*.md"]
 
@@ -53,7 +53,7 @@ REFERENCE = "docs/reference"
 
 FENCE = re.compile(r"^```csharp[ \t]*\n(.*?)^```[ \t]*$", re.S | re.M)
 
-# A trailing comment ("using DataNet.Text;  // TextElement") must not stop
+# A trailing comment ("using Lodestar.Text;  // TextElement") must not stop
 # the line being recognised as a directive to hoist.
 USING = re.compile(r"^using +[A-Za-z_][A-Za-z0-9_.]* *; *(//.*)?$")
 
@@ -202,7 +202,7 @@ def compilation_unit(path: pathlib.Path, usings: list[str], methods: list[str], 
     """The generated file: hoisted usings, then one partial class of methods."""
     text = HEADER.format(source=path.relative_to(REPO).as_posix())
     text += "\n" + "\n".join(sorted(usings)) + "\n" if usings else "\n"
-    namespace = "DataNet.DocSnippets.Reference" if reference else "DataNet.DocSnippets"
+    namespace = "Lodestar.DocSnippets.Reference" if reference else "Lodestar.DocSnippets"
     text += f"\nnamespace {namespace};\n\ninternal sealed partial class {class_name(path)}\n{{\n"
     return text + "\n".join(methods) + "}\n"
 

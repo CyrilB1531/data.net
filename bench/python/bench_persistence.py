@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Time the Python counterparts of the DataNet persistence work.
+"""Time the Python counterparts of the Lodestar persistence work.
 
-Methodology is mirrored by the C# harness (bench/DataNet.Text.Benchmarks,
+Methodology is mirrored by the C# harness (bench/Lodestar.Text.Benchmarks,
 `compare-persistence` mode) so the two are comparable:
 
   * same corpus files (bench/corpus/vocabs/),
@@ -11,9 +11,9 @@ Methodology is mirrored by the C# harness (bench/DataNet.Text.Benchmarks,
 
 Note what the two sides each build. tokenizers and sentencepiece construct a
 whole tokenizer -- the normalizer and pre-tokenizer graph, the Rust or C++
-matcher it will encode with. DataNet's loaders build a validated dictionary and
+matcher it will encode with. Lodestar's loaders build a validated dictionary and
 stop; the guides tell readers to construct a tokenizer from it as a second step.
-A margin in DataNet's favour therefore reflects, in part, work it does not do.
+A margin in Lodestar's favour therefore reflects, in part, work it does not do.
 """
 
 from __future__ import annotations
@@ -88,11 +88,11 @@ def build_vectors() -> "np.ndarray":
     """A 10 000 x 384 block, from the same xorshift32 seed the C# side uses.
 
     The two blocks are the same size and come from the same generator; they are not
-    bit-identical, and do not need to be -- DataNet normalizes on insertion, and what
+    bit-identical, and do not need to be -- Lodestar normalizes on insertion, and what
     is being timed is how many floats there are rather than which ones.
 
     A .npy file is a short header followed by the raw little-endian block, so this
-    row is the binary floor DataNet's JSON + base64 artifact is measured against --
+    row is the binary floor Lodestar's JSON + base64 artifact is measured against --
     not a competitor doing the same job, a lower bound on the job itself.
     """
     count, dimension = 10_000, 384

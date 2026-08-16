@@ -5,7 +5,7 @@ using System.Runtime.Versioning;
 using System.Text;
 using System.Text.Json;
 
-namespace DataNet.Tests.Documentation;
+namespace Lodestar.Tests.Documentation;
 
 /// <summary>
 /// Checks a reference page against the assembly it documents.
@@ -140,7 +140,7 @@ internal static class ReferenceDocumentation
             }
 
             // The index of the directory this type is documented in -- a namespace may
-            // hold several, as DataNet.Metrics does, so it is not "the" index.
+            // hold several, as Lodestar.Metrics does, so it is not "the" index.
             string directory = Path.GetDirectoryName(carrier.Source)?.Replace('\\', '/') ?? string.Empty;
             Sheet? index = sheets.Find(sheet => sheet.Source == directory + ".md");
             if (index is null)
@@ -206,7 +206,7 @@ internal static class ReferenceDocumentation
     /// <summary>The exported types of one namespace that owe an entry of their own.</summary>
     /// <remarks>
     /// A nested exported type does not: the five residual kernels of
-    /// <c>DataNet.Metrics</c> are public only so that a generic constraint can name one,
+    /// <c>Lodestar.Metrics</c> are public only so that a generic constraint can name one,
     /// nobody calls them, and an entry each would be ceremony for a type a reader never
     /// types. They are described inside their declaring type's entry instead — D7.
     /// </remarks>
@@ -759,7 +759,7 @@ internal static class ReferenceDocumentation
 
     /// <summary>Every (namespace, page) pair a package declares covered.</summary>
     /// <remarks>
-    /// A namespace maps to a page or to a list of them. <c>DataNet.Metrics</c> is why:
+    /// A namespace maps to a page or to a list of them. <c>Lodestar.Metrics</c> is why:
     /// its 31 exported types on one page would be a scrolling exercise rather than a
     /// reference, so its classification and regression halves are two documents of one
     /// namespace. The gate takes the union — an entry counts wherever it is found —

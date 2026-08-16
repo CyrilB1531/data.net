@@ -20,7 +20,7 @@ sentence: `Number of labels is 1. Valid values are 2 to n_samples - 1 (inclusive
 **Example** — the same per-sample diagnosis, on a matrix.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 double[] distances =
 [

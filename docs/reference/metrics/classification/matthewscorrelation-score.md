@@ -24,7 +24,7 @@ disagree in length or are empty; `UndefinedMetricException` when the correlation
 **Example** — the spam filter, which F1 scores `0.5714…` and this scores far lower.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [1, 1, 1, 1, 0, 0, 0, 0];
 int[] yPred = [1, 1, 0, 0, 1, 0, 0, 0];

@@ -15,7 +15,7 @@ scores, and `Support` is the weight of the samples whose true label is this clas
 **Example** — reading one class off the report rather than off the text.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [0, 0, 1, 1, 2, 2, 2];
 int[] yPred = [0, 1, 1, 1, 2, 2, 0];

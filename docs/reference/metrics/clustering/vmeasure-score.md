@@ -20,7 +20,7 @@ input is not an error: it scores `1`.
 **Example** — one number for a clustering that splits one class and merges nothing.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] truth = [0, 0, 0, 1, 1, 1];
 int[] split = [0, 0, 1, 2, 2, 2];

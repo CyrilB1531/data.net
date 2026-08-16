@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Compiles the C# fences of README.md and docs/guides/*.md, extracted by
+    tools/extract_doc_snippets.py into Generated/. Nothing here is hand-written
+    except SnippetContext.cs, so a snippet cannot drift from what CI judges:
+    there is only one copy of it, and it is in the Markdown.
+
+    It consumes the packages rather than the projects, for the same reason
+    samples/Lodestar.Sample does — a snippet that only compiles against a
+    ProjectReference is not a snippet a reader can run. See
+    docs/decisions/0009-sample-consumes-a-local-feed.md.
+
+    Deliberately NOT in Lodestar.slnx: inside the solution, ProjectReference
+    resolution would satisfy these references and the check would prove less than
+    it appears to. Generated/ is git-ignored and rebuilt on every run.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+
+    <!--
+      The guides are written for a reader, not for an analyzer: a snippet ends at
+      the line that makes the point, so its last local is routinely never read.
+      That is the right shape for documentation, and CS0219 would fail the build
+      on it. Everything else stays an error — including the CS0117 / CS1061 /
+      CS7036 family that catches an API which moved, which is what this project
+      exists for.
+    -->
+    <NoWarn>$(NoWarn);CS0219</NoWarn>
+
+    <!--
+      Running the reference fences is what checks the value each page promises its
+      reader; compiling only ever caught an API that moved. Program.cs runs the
+      Lodestar.DocSnippets.Reference namespace and nothing else — see
+      docs/superpowers/specs/2026-08-15_0181_documentation-per-version-and-per-function.md.
+    -->
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <Import Project="../../src/Lodestar.Text/Version.props" />
+  <Import Project="../../src/Lodestar.Embeddings/Version.props" />
+  <Import Project="../../src/Lodestar.Fuzzy/Version.props" />
+  <Import Project="../../src/Lodestar.Metrics/Version.props" />
+
+  <ItemGroup>
+    <PackageReference Include="Lodestar.Text" Version="$(LodestarTextVersion)" />
+    <PackageReference Include="Lodestar.Fuzzy" Version="$(LodestarFuzzyVersion)" />
+    <PackageReference Include="Lodestar.Embeddings" Version="$(LodestarEmbeddingsVersion)" />
+    <PackageReference Include="Lodestar.Metrics" Version="$(LodestarMetricsVersion)" />
+  </ItemGroup>
+
+</Project>

@@ -1,5 +1,5 @@
 using BenchmarkDotNet.Attributes;
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 namespace Lodestar.Text.Benchmarks;
 

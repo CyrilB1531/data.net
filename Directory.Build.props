@@ -47,7 +47,7 @@
          samples/ have none and name the version on the PackageReference itself.
          See docs/decisions/0015-sonar-rules-in-the-build.md and
          docs/decisions/0019-the-net-analysers-run-in-the-build-too.md. -->
-    <DataNetSonarAnalyzerVersion>10.20.0.135146</DataNetSonarAnalyzerVersion>
+    <LodestarSonarAnalyzerVersion>10.20.0.135146</LodestarSonarAnalyzerVersion>
 
     <!-- Package identity / provenance (§10). Everything genuinely shared lives
          here; <Version> deliberately does not, because the three packages
@@ -62,6 +62,7 @@
     <RepositoryUrl>https://github.com/CyrilB1531/data.net</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
 
     <!-- Symbols + deterministic CI builds for a clean published package. -->
     <IncludeSymbols>true</IncludeSymbols>
@@ -95,9 +96,12 @@
        back — deliberately, next to the property that disabled discovery, not here.
        See issue #109. -->
 
-  <!-- Ship the repository README inside every published package (NuGet renders it). -->
+  <!-- Ship the repository README and the icon inside every published package. The icon
+       is embedded rather than linked: iconUrl is deprecated, and nuget.org's ID prefix
+       reservation criteria ask for the icon element. tools/draw_icon.py regenerates it. -->
   <ItemGroup Condition="'$(IsPackable)' != 'false'">
     <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)assets/icon.png" Pack="true" PackagePath="\" Visible="false" />
   </ItemGroup>
 
 </Project>

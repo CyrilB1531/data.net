@@ -28,14 +28,14 @@ public static class BenchCorpus
         var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
         while (dir is not null)
         {
-            if (File.Exists(System.IO.Path.Combine(dir.FullName, "DataNet.slnx")))
+            if (File.Exists(System.IO.Path.Combine(dir.FullName, "Lodestar.slnx")))
             {
                 return dir.FullName;
             }
             dir = dir.Parent;
         }
         throw new InvalidOperationException(
-            "Could not find the repository root (no DataNet.slnx in any parent of " +
+            "Could not find the repository root (no Lodestar.slnx in any parent of " +
             $"'{Directory.GetCurrentDirectory()}'). Run from inside the repository.");
     }
 

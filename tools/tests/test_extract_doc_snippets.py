@@ -77,11 +77,11 @@ def test_a_run_skip_marker_becomes_an_attribute():
 
 def test_a_reference_page_lands_in_the_reference_namespace():
     document = render('```csharp\nint d = 1;\n```\n')
-    assert "namespace DataNet.DocSnippets.Reference;" in document
+    assert "namespace Lodestar.DocSnippets.Reference;" in document
     assert "class TextDistances" in document
 
 
 def test_a_guide_keeps_its_namespace_and_its_class_name():
     document = render('```csharp\nint d = 1;\n```\n', relative="docs/guides/quickstart.md")
-    assert "namespace DataNet.DocSnippets;" in document
+    assert "namespace Lodestar.DocSnippets;" in document
     assert "class Quickstart" in document

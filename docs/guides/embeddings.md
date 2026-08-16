@@ -1,11 +1,11 @@
 # Semantic search with embeddings
 
-`DataNet.Embeddings` covers the full chain: **tokenize → infer (ONNX) → pool →
+`Lodestar.Embeddings` covers the full chain: **tokenize → infer (ONNX) → pool →
 index → query**. ONNX Runtime is isolated here, so the distance and
 vectorization packages take no native dependency.
 
 ```bash
-dotnet add package DataNet.Embeddings
+dotnet add package Lodestar.Embeddings
 ```
 
 ## Sub-word tokenization
@@ -17,8 +17,8 @@ hand.
 **WordPiece** (BERT), from a `vocab.txt` or a `tokenizer.json`:
 
 ```csharp
-using DataNet.Embeddings.Persistence;
-using DataNet.Embeddings.Tokenization;
+using Lodestar.Embeddings.Persistence;
+using Lodestar.Embeddings.Tokenization;
 
 WordPieceVocabulary vocab = VocabTxtLoader.Load("bert-base-uncased/vocab.txt", lowercase: true);
 var wp = new WordPieceTokenizer(vocab);
@@ -27,9 +27,9 @@ TokenizationResult t = wp.Encode("playing");   // pieces: play ##ing
 
 A stock HuggingFace BERT `tokenizer.json` — `BertPreTokenizer` plus a full
 `BertNormalizer` — **is refused** by `TokenizerJsonLoader.LoadWordPiece`; that is
-the correct outcome, not a gap, since DataNet does not reproduce those steps.
+the correct outcome, not a gap, since Lodestar does not reproduce those steps.
 `VocabTxtLoader` is the route for BERT, and `LoadWordPiece` is for a `tokenizer.json`
-whose pipeline already matches DataNet's own (see
+whose pipeline already matches Lodestar's own (see
 [Models that are refused](#models-that-are-refused)).
 
 **SentencePiece** (ALBERT, T5, camemBERT, XLM-R) — unigram Viterbi segmentation,
@@ -164,7 +164,7 @@ XLM-R 250 002 — so raising them should be deliberate.
 
 ### Models that are refused
 
-DataNet's tokenizers implement one fixed pipeline each. A file describing a
+Lodestar's tokenizers implement one fixed pipeline each. A file describing a
 different one is **rejected**, with a message naming what was found:
 
 - a model trained with an algorithm other than **unigram** — a `spiece.model`
@@ -233,7 +233,7 @@ different one is **rejected**, with a message naming what was found:
   right side still has it stripped, so the two halves of the tokenizer would
   disagree — and silently, since the byte-level alphabet spells `0x23` as `#`,
   which lets a stripped right side land on another entry that exists. The
-  refusal says that DataNet does not reproduce such a file, not anything about
+  refusal says that Lodestar does not reproduce such a file, not anything about
   what `tokenizers` makes of one. `BpeTokenizer`'s constructor refuses the same
   pairing, since `BpeVocabulary` can be built by hand;
 - for BPE, a `ByteLevel` block that declares no `add_prefix_space`, wherever it
@@ -296,8 +296,8 @@ model) to ONNX and pass its path, together with the tokenizer it was trained
 with.
 
 ```csharp
-using DataNet.Embeddings.Onnx;
-using DataNet.Embeddings.Tokenization;
+using Lodestar.Embeddings.Onnx;
+using Lodestar.Embeddings.Tokenization;
 
 using var embedder = new OnnxTextEmbedder("model.onnx", wp);
 
@@ -341,7 +341,7 @@ The single-sequence entry point is still there for a caller who owns the
 tokenization:
 
 ```csharp
-using DataNet.Embeddings.Onnx;
+using Lodestar.Embeddings.Onnx;
 
 using var embedder = new OnnxTextEmbedder("model.onnx");
 float[] single = embedder.Embed(ids, mask);   // mean pooling + L2 built in
@@ -358,7 +358,7 @@ internally.
 ## Index a corpus and query it
 
 ```csharp
-using DataNet.Embeddings.Search;
+using Lodestar.Embeddings.Search;
 
 var index = new EmbeddingIndex(dimension: vector.Length);
 foreach (float[] v in corpusVectors) index.Add(v);   // normalized on insertion

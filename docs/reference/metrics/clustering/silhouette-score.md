@@ -22,7 +22,7 @@ sentence: `Number of labels is 1. Valid values are 2 to n_samples - 1 (inclusive
 **Example** — two clusters that are genuinely apart.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 double[] features = [0.0, 0.0, 0.1, 0.1, 5.0, 5.0, 5.1, 5.2, 5.0, 4.9];
 int[] labels = [0, 0, 1, 1, 1];

@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-DataNet is a data-science toolkit for C#/.NET whose thesis is deliberately narrow.
+Lodestar is a data-science toolkit for C#/.NET whose thesis is deliberately narrow.
 Don't rewrite Python's ecosystem, write native code only where .NET has a real gap
 — text (distances, vectorization, tokenizers, embeddings) and scikit-learn-parity
 metrics — with **no Python at runtime**. Everything else is delegated to existing
@@ -35,9 +35,9 @@ you whether to correct the document itself or something upstream of it.
 ## Commands
 
 ```bash
-dotnet build DataNet.slnx -c Release      # both target frameworks; warnings are errors
-dotnet test DataNet.slnx -c Release       # runs the suite twice: net10 and netstandard2.0 assemblies
-dotnet format DataNet.slnx --verify-no-changes
+dotnet build Lodestar.slnx -c Release      # both target frameworks; warnings are errors
+dotnet test Lodestar.slnx -c Release       # runs the suite twice: net10 and netstandard2.0 assemblies
+dotnet format Lodestar.slnx --verify-no-changes
 npx markdownlint-cli2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
 ```
 
@@ -62,7 +62,7 @@ python tools/check_machine_paths.py
 A single test, or one area:
 
 ```bash
-dotnet test DataNet.slnx -c Release --filter "FullyQualifiedName~SpanishSnowball"
+dotnet test Lodestar.slnx -c Release --filter "FullyQualifiedName~SpanishSnowball"
 dotnet test tests/Lodestar.Text.Tests -c Release --filter "FullyQualifiedName~Levenshtein"
 ```
 
@@ -91,18 +91,18 @@ Guide snippets, benchmarks, packaging (see the `python`/`python3` split above):
 
 ```bash
 # POSIX (bash/zsh)
-python3 tools/extract_doc_snippets.py && dotnet build samples/DataNet.DocSnippets -c Release
+python3 tools/extract_doc_snippets.py && dotnet build samples/Lodestar.DocSnippets -c Release
 ```
 
 ```powershell
 # PowerShell — split, not chained with `&&`, which needs PowerShell 7+
 python tools/extract_doc_snippets.py
-dotnet build samples/DataNet.DocSnippets -c Release
+dotnet build samples/Lodestar.DocSnippets -c Release
 ```
 
 ```bash
 dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- --filter '*Levenshtein*'
-for p in src/Lodestar.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
+for p in src/Lodestar.Text src/Lodestar.Embeddings src/Lodestar.Fuzzy src/Lodestar.Metrics; do
   dotnet pack "$p" -c Release -o ./artifacts
 done
 ```
@@ -114,9 +114,9 @@ Four independently versioned packages under `src/`:
 | Package | Holds |
 | --- | --- |
 | `Lodestar.Text` | distances, phonetics, set similarity, stemmers, tokenizers, sparse vectorizers (`CsrMatrix`), persistence. No third-party dependency beyond polyfills. |
-| `DataNet.Embeddings` | sub-word tokenizers (WordPiece, SentencePiece, BPE/byte-level BPE), batch encoding pipeline, pooling, SIMD kNN `EmbeddingIndex`, ONNX inference. ONNX Runtime is isolated here. |
-| `DataNet.Fuzzy` | `fuzz.*`, `process.extract`, blocking deduplication. |
-| `DataNet.Metrics` | classification metrics at scikit-learn parity. |
+| `Lodestar.Embeddings` | sub-word tokenizers (WordPiece, SentencePiece, BPE/byte-level BPE), batch encoding pipeline, pooling, SIMD kNN `EmbeddingIndex`, ONNX inference. ONNX Runtime is isolated here. |
+| `Lodestar.Fuzzy` | `fuzz.*`, `process.extract`, blocking deduplication. |
+| `Lodestar.Metrics` | classification metrics at scikit-learn parity. |
 
 Four cross-cutting facts explain most of the layout, and none of them is visible
 from a single file.
@@ -128,7 +128,7 @@ reaches equivalent behaviour through conditional compilation, **never a reduced
 API**. Gaps are closed in a fixed order: PolySharp polyfills → `System.Memory` /
 `System.Numerics.Vectors` / `System.Text.Json` referenced only on that target →
 hand-written fallback. `src/Shared/` holds `Guard`, `StringCompat` and friends,
-compiled into every library under `DataNet.Internal` with a global using, so no
+compiled into every library under `Lodestar.Internal` with a global using, so no
 call site carries an `#if`.
 
 The `*.NetStandard.Tests` projects **link the same test sources** and pin
@@ -143,7 +143,7 @@ net10, scalar loop on netstandard2.0.
 ### 2. Versions are per package, and `src/` references packages, not projects
 
 Each publishable project declares its version in a sibling `src/<Package>/Version.props`
-and nowhere else. `DataNet.Fuzzy` reaches `Lodestar.Text` through a
+and nowhere else. `Lodestar.Fuzzy` reaches `Lodestar.Text` through a
 `PackageReference` on a **published floor** pinned in `src/Directory.Packages.props`
 — which is what makes `git clone && dotnet build` work with no pack step. A CI job
 asserts through evaluated MSBuild that no `src/` project carries a
@@ -154,12 +154,12 @@ When a branch edits two packages together, the floor points at an older
 
 ```bash
 # POSIX (bash/zsh)
-export DataNetUseProjectRefs=true   # local developer loop only; CI never sets it
+export LodestarUseProjectRefs=true   # local developer loop only; CI never sets it
 ```
 
 ```powershell
 # PowerShell
-$env:DataNetUseProjectRefs = 'true'   # local developer loop only; CI never sets it
+$env:LodestarUseProjectRefs = 'true'   # local developer loop only; CI never sets it
 ```
 
 Unset it before measuring anything — with it on you are building a graph that will
@@ -200,7 +200,7 @@ counterpart; **a row lands in the same commit as the function**, not afterwards.
 `bench/` and `samples/`, and the .NET code-quality rules run at
 `AnalysisMode=All` with `AnalysisLevel` pinned to `10.0` — CONTRIBUTING.md's
 [*Analyzers*](CONTRIBUTING.md#analyzers) has what that costs a finding. The
-analyzer version is pinned once as `$(DataNetSonarAnalyzerVersion)` in the root
+analyzer version is pinned once as `$(LodestarSonarAnalyzerVersion)` in the root
 `Directory.Build.props`; raising it or `AnalysisLevel` surfaces new rules and is
 its own change.
 
@@ -218,13 +218,13 @@ its own change.
   method into a new file leaves the `#pragma` in the old one and the rule
   reappears. This has happened twice here.
 
-`dotnet build DataNet.slnx` does **not** reach `samples/` — they are outside the
+`dotnet build Lodestar.slnx` does **not** reach `samples/` — they are outside the
 solution. Duplication and coverage are visible only to SonarCloud, so a green
 local build is not a green quality gate.
 
 ## Three gates that constrain how code is written
 
-- **The packaging gate.** `samples/DataNet.Sample` consumes the packages from
+- **The packaging gate.** `samples/Lodestar.Sample` consumes the packages from
   `./artifacts` through `samples/NuGet.config`, and every new public type must be
   reachable from it by a member reference. Adding public API means adding a use of
   it in `Lot*.cs`. Both sample builds need a fresh `pack` **and** an isolated

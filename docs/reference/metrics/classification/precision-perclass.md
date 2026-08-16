@@ -23,7 +23,7 @@ disagree in length or are empty.
 **Example** — the three-way triage: nothing predicted into class 2 was wrong.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [0, 0, 1, 1, 2, 2, 2];
 int[] yPred = [0, 1, 1, 1, 2, 2, 0];

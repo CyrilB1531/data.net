@@ -184,7 +184,7 @@ identically in both runs, while the two batch paths allocate byte for byte the
 same on both targets.
 
 ```bash
-dotnet run -c Release --project bench/DataNet.NetStandard.Benchmarks -- --filter '*BatchEmbedding*'
+dotnet run -c Release --project bench/Lodestar.NetStandard.Benchmarks -- --filter '*BatchEmbedding*'
 ```
 
 `--inProcess` on the first command, and not on the second, is the point. The
@@ -217,7 +217,7 @@ Six operations — `confusion_matrix`, `accuracy`, `precision_recall_f1_macro`,
 on both sides. **This is the merge gate for the branch, on processor time**: every
 row must be ≥ 1×, and it is.
 
-DataNet.Metrics on .NET 10.0.10 against scikit-learn 1.9.0 / NumPy 2.5.1 on
+Lodestar.Metrics on .NET 10.0.10 against scikit-learn 1.9.0 / NumPy 2.5.1 on
 Python 3.12.3, Intel i7-4770S. Both sides measured back to back, Python first,
 on a machine left to settle (one-minute load 1.52 at the Python start — below
 this workstation's 1.9–2.3 floor, itself a permanent ~30–40 % background from
@@ -226,7 +226,7 @@ later, in the Python run's own wake, so its figures are the ones taken on the
 busier machine and every ratio below is conservative rather than flattering;
 `bench/README.md` records the full conditions.
 
-| Operation | DataNet ms | Python ms | wall | DataNet cpu ms | Python cpu ms | **cpu** |
+| Operation | Lodestar ms | Python ms | wall | Lodestar cpu ms | Python cpu ms | **cpu** |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | `confusion_matrix_n1000_k2` | 0.009 | 1.028 | 117.98x | 0.009 | 1.028 | **117.97x** |
 | `accuracy_n1000_k2` | 0.001 | 0.546 | 618.32x | 0.001 | 0.546 | **618.33x** |
@@ -295,7 +295,7 @@ throughout that window). That is nowhere near the 1.52 one-minute load the
 paragraph above states for the original run, so these 18 rows should not be
 read as sharing that sentence's conditions — only their own, given here.
 
-| Operation | DataNet ms | Python ms | wall | DataNet cpu ms | Python cpu ms | **cpu** |
+| Operation | Lodestar ms | Python ms | wall | Lodestar cpu ms | Python cpu ms | **cpu** |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | `balanced_accuracy_n1000_k2` | 0.016 | 1.194 | 76.44x | 0.011 | 1.194 | **105.24x** |
 | `matthews_n1000_k2` | 0.017 | 2.216 | 134.27x | 0.012 | 2.216 | **192.06x** |
@@ -363,7 +363,7 @@ identical array gives 98.88× and 141.17× — a 43 % spread, which is what a
 sub-millisecond `mse` measurement is worth on a machine at this load, and the
 reason no conclusion on this page rests on an n=1 000 row.
 
-| Operation | DataNet ms | Python ms | wall | DataNet cpu ms | Python cpu ms | **cpu** |
+| Operation | Lodestar ms | Python ms | wall | Lodestar cpu ms | Python cpu ms | **cpu** |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | `mse_n1000_k2` | 0.005 | 0.486 | 104.89x | 0.005 | 0.458 | **98.88x** |
 | `mae_n1000_k2` | 0.005 | 0.358 | 77.79x | 0.005 | 0.358 | **77.70x** |
@@ -421,7 +421,7 @@ n=1 000 000 landed below the gate —
 5× *faster* there, the only rows on this page where that was true. The cause
 was the algorithm, not the run: scikit-learn's `median_absolute_error` calls
 NumPy's `median`, which selects via introselect/quickselect in expected
-`O(n)`; DataNet's `MedianAbsoluteError` sorted the whole residual array,
+`O(n)`; Lodestar's `MedianAbsoluteError` sorted the whole residual array,
 which is `O(n log n)`, and the gap widened with `n` exactly as that
 complexity difference predicted (0.36× at 100 000 rows, 0.19× at
 1 000 000). `mse_n1000000_k10` was the narrowest *passing* row at **1.00×**
@@ -463,7 +463,7 @@ original value rather than being edited to match this aside.
 
 **The four rows are faster but still below the gate — that is the finding,
 not a reason to keep iterating on the algorithm.** In absolute terms
-DataNet's own time dropped by roughly 4×–4.8× (7.358 ms → 1.967 ms at
+Lodestar's own time dropped by roughly 4×–4.8× (7.358 ms → 1.967 ms at
 n=100 000, k=2; 88.792 ms → 18.365 ms at n=1 000 000, k=2), and the
 processor-time ratio against scikit-learn rose from **0.36×** to **0.87×**
 (n=100 000, k=2), **0.25×** to **0.80×** (n=100 000, k=10), **0.19×** to

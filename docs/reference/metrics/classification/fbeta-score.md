@@ -30,7 +30,7 @@ once
 the other way round.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [1, 1, 1, 1, 0, 0, 0, 0];
 int[] yPred = [1, 1, 0, 0, 1, 0, 0, 0];

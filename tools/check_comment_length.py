@@ -8,7 +8,7 @@ public member. A single eight-line cap would have been a cap on documenting
 the API. Run --report for what the tree holds now; a total pinned in this
 docstring would be false at the next commit. About one block in five carries more than half the
 prose, and the longest runs 63 lines
-(src/DataNet.Embeddings/Persistence/TokenizerJsonLoader.cs:7).
+(src/Lodestar.Embeddings/Persistence/TokenizerJsonLoader.cs:7).
 
 Long is not banned. A block past the threshold carries `long-comment:` and a
 reason as its first line, which is the bargain a #pragma warning disable

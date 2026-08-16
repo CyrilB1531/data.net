@@ -1,4 +1,4 @@
-# Clustering metrics — `DataNet.Metrics`
+# Clustering metrics — `Lodestar.Metrics`
 
 You clustered some samples and you have a reference partition to compare against — labels from a
 human, from an earlier model, or from a dataset that came with them. Every type on this page scores

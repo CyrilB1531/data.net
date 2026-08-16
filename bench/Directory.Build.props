@@ -20,7 +20,7 @@
        comes from the single pin in the root Directory.Build.props. See
        docs/decisions/0015-sonar-rules-in-the-build.md. -->
   <ItemGroup>
-    <PackageReference Include="SonarAnalyzer.CSharp" Version="$(DataNetSonarAnalyzerVersion)" PrivateAssets="all" />
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="$(LodestarSonarAnalyzerVersion)" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>

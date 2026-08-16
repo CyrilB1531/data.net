@@ -26,7 +26,7 @@ has a different length from the label set, or the label spans disagree in length
 **Example** — a three-way triage, with names on the classes.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [0, 0, 1, 1, 2, 2, 2];
 int[] yPred = [0, 1, 1, 1, 2, 2, 0];

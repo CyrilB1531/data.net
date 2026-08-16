@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- This package's version, owned here rather than repository-wide. -->
+  <Import Project="Version.props" />
+
+  <PropertyGroup>
+    <Version>$(LodestarFuzzyVersion)</Version>
+    <TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks>
+    <RootNamespace>Lodestar.Fuzzy</RootNamespace>
+    <PackageId>Lodestar.Fuzzy</PackageId>
+    <Description>Applied fuzzy string matching for .NET (rapidfuzz-compatible fuzz ratios, process.extract, dedup). No external dependencies.</Description>
+    <PackageTags>fuzzy;matching;rapidfuzz;fuzzywuzzy;dedup;nlp;lodestar</PackageTags>
+  </PropertyGroup>
+
+  <!--
+    Fuzz.Ratio is Indel.NormalizedSimilarity × 100, so the dependency on
+    Lodestar.Text is real and permanent. What changed is how it is expressed: a
+    PackageReference against the published package, so the build graph is the
+    graph consumers see, and the two packages can release on their own cadences.
+
+    The default — no property set — is the path CI packs and ships. The opt-in
+    below exists only so that editing Lodestar.Text and Lodestar.Fuzzy in the same
+    branch does not require a pack-and-restore cycle per edit:
+
+        export LodestarUseProjectRefs=true
+
+    MSBuild reads environment variables as properties, so that one export covers
+    dotnet build, dotnet test and the IDE. It is never set in CI, and the packed
+    .nuspec is asserted there — see docs/decisions/0012-per-package-versioning.md.
+  -->
+  <ItemGroup Condition="'$(LodestarUseProjectRefs)' == 'true'">
+    <ProjectReference Include="../Lodestar.Text/Lodestar.Text.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(LodestarUseProjectRefs)' != 'true'">
+    <PackageReference Include="Lodestar.Text" />
+  </ItemGroup>
+
+  <!-- Loud on purpose: a local build that silently differed from the shipped one
+       is the failure mode this whole arrangement is designed to avoid. -->
+  <Target Name="WarnOnLocalProjectRefs" BeforeTargets="Build"
+          Condition="'$(LodestarUseProjectRefs)' == 'true'">
+    <Message Importance="high"
+             Text="Lodestar.Fuzzy: LodestarUseProjectRefs=true — referencing Lodestar.Text by project, not by package. This is the developer loop, not what ships." />
+  </Target>
+
+</Project>

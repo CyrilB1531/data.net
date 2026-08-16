@@ -1,4 +1,4 @@
-namespace DataNet.Internal;
+namespace Lodestar.Internal;
 
 
 // CA1307 (specify StringComparison): the overload it asks for —

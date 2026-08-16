@@ -22,7 +22,7 @@ non-finite value.
 **Example** — three predictions are perfect and one is out by 96.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 double[] yTrue = [1.0, 2.0, 3.0, 100.0];
 double[] yPred = [1.0, 2.0, 3.0, 4.0];

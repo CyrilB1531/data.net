@@ -15,7 +15,7 @@ distance, so a distant confusion costs disproportionately more than a near one.
 **Example** — the same ratings under all three.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] rater = [1, 1, 2, 2, 3, 3, 1, 3];
 int[] model = [1, 3, 2, 1, 3, 2, 1, 3];

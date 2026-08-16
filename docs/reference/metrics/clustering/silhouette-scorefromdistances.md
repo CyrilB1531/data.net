@@ -21,7 +21,7 @@ sentence: `Number of labels is 1. Valid values are 2 to n_samples - 1 (inclusive
 **Example** — the matrix of the two clusters above, passed in directly.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 double[] distances =
 [

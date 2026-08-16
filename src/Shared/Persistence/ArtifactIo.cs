@@ -1,9 +1,9 @@
 using System.Text.Json;
 
-namespace DataNet.Internal.Persistence;
+namespace Lodestar.Internal.Persistence;
 
 /// <summary>
-/// The save/load skeleton every DataNet.Text artifact shares: open the object,
+/// The save/load skeleton every Lodestar.Text artifact shares: open the object,
 /// write the header, let the artifact write its body, and on the way back read
 /// the whole (byte-capped) payload into one buffer for a single reader pass.
 /// </summary>

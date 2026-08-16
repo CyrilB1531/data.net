@@ -31,7 +31,7 @@ and `zeroDivision` is `ZeroDivision.Throw`.
 charged by how far apart the two ratings were.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] rater = [1, 1, 2, 2, 3, 3, 1, 3];
 int[] model = [1, 3, 2, 1, 3, 2, 1, 3];

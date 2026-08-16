@@ -28,7 +28,7 @@ it holds a non-finite value; `ArgumentOutOfRangeException` when `outputCount` is
 `R2.Score` on the same data is `-0.5`.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 double[] yTrue = [1.0, 2.0, 3.0];
 double[] yPred = [2.0, 3.0, 4.0];

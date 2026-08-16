@@ -54,7 +54,7 @@ def persistence() -> None:
 
     print()
     print(f"Python: {py['metadata']['libraries']} (py {py['metadata']['python']})")
-    print(f"C#:     DataNet on .NET {cs['metadata']['runtime']}")
+    print(f"C#:     Lodestar on .NET {cs['metadata']['runtime']}")
     print()
     print(f"{'operation':<28} {'C# ms':>8} {'Py ms':>8} {'wall':>7} | {'C# cpu':>8} {'Py cpu':>8} {'cpu':>7}")
     for row in py["results"]:
@@ -68,7 +68,7 @@ def persistence() -> None:
         print(f"{op:<28} {c_w:>8.3f} {p_w:>8.3f} {wall:>7} | "
               f"{(c_c or 0):>8.3f} {(p_c or 0):>8.3f} {cpu:>7}")
     print()
-    print("ratio > 1 means DataNet is faster. cpu is the honest one: elapsed time")
+    print("ratio > 1 means Lodestar is faster. cpu is the honest one: elapsed time")
     print("hides work .NET does on background GC threads; CPython is single-threaded.")
 
 
@@ -107,7 +107,7 @@ def metrics() -> None:
 
     print()
     print(f"Python: {py['metadata']['libraries']} (py {py['metadata']['python']})")
-    print(f"C#:     DataNet on .NET {cs['metadata']['runtime']}")
+    print(f"C#:     Lodestar on .NET {cs['metadata']['runtime']}")
     print()
     print(f"{'operation':<32} {'C# ms':>10} {'Py ms':>10} {'wall':>7} | {'C# cpu':>10} {'Py cpu':>10} {'cpu':>7}")
     below_gate = []
@@ -120,7 +120,7 @@ def metrics() -> None:
         if cpu_ratio is not None and cpu_ratio < 1.0:
             below_gate.append((op, cpu_ratio))
     print()
-    print("ratio > 1 means DataNet is faster. cpu is the merge gate for this branch")
+    print("ratio > 1 means Lodestar is faster. cpu is the merge gate for this branch")
     print("(docs/guides/performance.md): every operation, every size, must be >= 1x.")
     if below_gate:
         print()

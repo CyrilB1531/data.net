@@ -1,5 +1,5 @@
 using BenchmarkDotNet.Attributes;
-using DataNet.Fuzzy;
+using Lodestar.Fuzzy;
 
 namespace Lodestar.Text.Benchmarks;
 

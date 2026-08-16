@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the benchmark corpus for DataNet.Metrics (issue #61).
+"""Generate the benchmark corpus for Lodestar.Metrics (issue #61).
 
 Written rather than committed, like bench/corpus/vocabs: both language sides
 read these same files, which is what makes the comparison mean anything, and the

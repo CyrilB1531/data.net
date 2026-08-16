@@ -1,6 +1,6 @@
 using BenchmarkDotNet.Attributes;
-using DataNet.Embeddings.Persistence;
-using DataNet.Embeddings.Tokenization;
+using Lodestar.Embeddings.Persistence;
+using Lodestar.Embeddings.Tokenization;
 
 namespace Lodestar.Text.Benchmarks;
 

@@ -1,6 +1,6 @@
 using System.Reflection;
-using DataNet.Tests.Documentation;
-using DataNet.Tests.Documentation.Fixtures;
+using Lodestar.Tests.Documentation;
+using Lodestar.Tests.Documentation.Fixtures;
 using Lodestar.Text.Distances;
 using Xunit;
 
@@ -353,7 +353,7 @@ public sealed class ReferenceDocumentationTests
     public void One_namespace_may_be_split_over_several_pages()
     {
         // Cabinet on one page, Slip on the other: under a single-page `covered`
-        // each would owe the other's type, and DataNet.Metrics could not be split.
+        // each would owe the other's type, and Lodestar.Metrics could not be split.
         IReadOnlyList<string> complaints = CheckFixtures(("cabinet.md", CabinetPage), ("slip.md", SlipPage));
 
         Assert.Empty(complaints);
@@ -418,7 +418,7 @@ public sealed class ReferenceDocumentationTests
     public void An_array_return_reads_as_a_reader_writes_it(string name, string expected)
     {
         // Reflection spells these Double[] and Double[,]; no member of the distances
-        // page returns an array, so the renderer went unmeasured until DataNet.Metrics.
+        // page returns an array, so the renderer went unmeasured until Lodestar.Metrics.
         MethodInfo method = typeof(Cabinet).GetMethod(name)!;
 
         Assert.Equal(expected, ReferenceDocumentation.RenderSignature(method));
@@ -492,7 +492,7 @@ public sealed class ReferenceDocumentationTests
             // braces, which no number of '$' can tell apart from an interpolation hole.
             const string template = """
                 {"root":[],"packages":{"Lodestar.Text":{"wiki":"Text","pages":[],
-                 "covered":{"DataNet.Tests.Documentation.Fixtures":[PAGES]}}}}
+                 "covered":{"Lodestar.Tests.Documentation.Fixtures":[PAGES]}}}}
                 """;
 
             string map = Path.Combine(root, "wiki-map.json");

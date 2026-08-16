@@ -6,24 +6,24 @@
   </PropertyGroup>
 
   <!--
-    DataNet.Fuzzy depends on DataNet.Text as a published package. This number is
-    a deliberately chosen *floor* — the minimum DataNet.Text a consumer of
-    DataNet.Fuzzy is required to take — and is therefore written in full rather
-    than tracking $(DataNetTextVersion).
+    Lodestar.Fuzzy depends on Lodestar.Text as a published package. This number is
+    a deliberately chosen *floor* — the minimum Lodestar.Text a consumer of
+    Lodestar.Fuzzy is required to take — and is therefore written in full rather
+    than tracking $(LodestarTextVersion).
 
     Keeping it decoupled is what makes `git clone && dotnet build` work with no
     pack step: the floor always names a version that is already on nuget.org.
-    Raise it only when DataNet.Fuzzy actually needs newer DataNet.Text API, and
-    publish DataNet.Text first when you do. See
+    Raise it only when Lodestar.Fuzzy actually needs newer Lodestar.Text API, and
+    publish Lodestar.Text first when you do. See
     docs/decisions/0012-per-package-versioning.md.
   -->
   <ItemGroup>
-    <PackageVersion Include="DataNet.Text" Version="0.2.0" />
+    <PackageVersion Include="Lodestar.Text" Version="0.3.1" />
     <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" />
     <PackageVersion Include="PolySharp" Version="1.15.0" />
     <!-- Analyzer only, pinned in the root Directory.Build.props so src/, tests/
          and bench/ cannot drift apart. -->
-    <PackageVersion Include="SonarAnalyzer.CSharp" Version="$(DataNetSonarAnalyzerVersion)" />
+    <PackageVersion Include="SonarAnalyzer.CSharp" Version="$(LodestarSonarAnalyzerVersion)" />
     <!-- 4.6.3 is the floor System.Text.Json 10.0.x asks for on netstandard2.0;
          pinning lower makes the restore a downgrade, which is an error here. -->
     <PackageVersion Include="System.Memory" Version="4.6.3" />

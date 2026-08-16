@@ -22,7 +22,7 @@ disagree in length or are empty.
 **Example** — both classes of the spam filter at once.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [1, 1, 1, 1, 0, 0, 0, 0];
 int[] yPred = [1, 1, 0, 0, 1, 0, 0, 0];

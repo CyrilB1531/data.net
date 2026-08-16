@@ -1,7 +1,7 @@
 name: Release
 
 # Publishes ONE NuGet package to GitHub Packages when a per-package tag is
-# pushed, e.g.:  git tag DataNet.Fuzzy/v0.3.0 && git push origin DataNet.Fuzzy/v0.3.0
+# pushed, e.g.:  git tag Lodestar.Fuzzy/v0.3.0 && git push origin Lodestar.Fuzzy/v0.3.0
 #
 # The three packages version independently, so a tag names which one it releases
 # (see docs/decisions/0012-per-package-versioning.md). The old repository-wide
@@ -13,7 +13,7 @@ name: Release
 
 on:
   push:
-    tags: ['DataNet.*/v*', 'Lodestar.*/v*']
+    tags: ['Lodestar.*/v*']
 
 permissions:
   contents: read
@@ -53,7 +53,7 @@ jobs:
           VERSION: ${{ steps.tag.outputs.version }}
         run: |
           case "$PACKAGE" in
-            Lodestar.Text|DataNet.Embeddings|DataNet.Fuzzy|DataNet.Metrics) ;;
+            Lodestar.Text|Lodestar.Embeddings|Lodestar.Fuzzy|Lodestar.Metrics) ;;
             *) echo "::error::Unknown package '$PACKAGE'."; exit 1 ;;
           esac
           declared=$(dotnet msbuild "src/$PACKAGE" -getProperty:Version -p:TargetFramework=net10.0)

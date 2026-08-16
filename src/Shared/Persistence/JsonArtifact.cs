@@ -3,10 +3,10 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
-namespace DataNet.Internal.Persistence;
+namespace Lodestar.Internal.Persistence;
 
 /// <summary>
-/// The JSON reading and writing primitives shared by every DataNet artifact:
+/// The JSON reading and writing primitives shared by every Lodestar artifact:
 /// byte-capped stream reads, exact <see cref="double"/> formatting, and the
 /// exception shapes the public API documents.
 /// </summary>

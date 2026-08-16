@@ -1,4 +1,4 @@
-# DataNet
+# Lodestar
 
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=CyrilB1531_data.net&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=CyrilB1531_data.net)
 
@@ -16,7 +16,7 @@ kernels.
 
 C# brings static typing, real parallelism without a global interpreter
 lock, safe refactoring, and simple deployment. The only objective reason to stay
-on Python for this domain was the lack of an equivalent .NET library. DataNet
+on Python for this domain was the lack of an equivalent .NET library. Lodestar
 removes that reason.
 
 ## Two deliverables
@@ -65,10 +65,10 @@ Levenshtein.NormalizedSimilarity("kitten", "sitting"); // 0.5714…
 A runnable version of the above, consuming the packages exactly as you would:
 
 ```bash
-for p in src/Lodestar.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
+for p in src/Lodestar.Text src/Lodestar.Embeddings src/Lodestar.Fuzzy src/Lodestar.Metrics; do
   dotnet pack "$p" -c Release -o ./artifacts
 done
-dotnet run --project samples/DataNet.Sample -c Release
+dotnet run --project samples/Lodestar.Sample -c Release
 ```
 
 Full guide: [`docs/guides/quickstart.md`](docs/guides/quickstart.md). See also the
@@ -107,11 +107,11 @@ replays them with a `1e-9` tolerance. Python is a development-only dependency. S
 ## Structure
 
 ```text
-DataNet.slnx
+Lodestar.slnx
 ├── src/Lodestar.Text/            distances, similarity, tokenizers, vectorizers, stemmers (no dependencies)
-├── src/DataNet.Embeddings/      sub-word tokenizers, pooling, SIMD kNN, ONNX inference (ONNX Runtime isolated here)
-├── src/DataNet.Fuzzy/           fuzz.*, process.extract, deduplication
-├── src/DataNet.Metrics/         confusion matrix, precision/recall/F1, report, ROC-AUC
+├── src/Lodestar.Embeddings/      sub-word tokenizers, pooling, SIMD kNN, ONNX inference (ONNX Runtime isolated here)
+├── src/Lodestar.Fuzzy/           fuzz.*, process.extract, deduplication
+├── src/Lodestar.Metrics/         confusion matrix, precision/recall/F1, report, ROC-AUC
 ├── tests/                       xUnit: oracles + properties (one project per module)
 ├── tests/oracles/               frozen JSON corpora (generated from Python) + a synthetic ONNX model
 ├── bench/Lodestar.Text.Benchmarks/  BenchmarkDotNet
@@ -146,10 +146,10 @@ you whether to correct the document itself or something upstream of it.
 
 ## Publishing
 
-Four NuGet packages are produced: `Lodestar.Text`, `DataNet.Embeddings`,
-`DataNet.Fuzzy`, `DataNet.Metrics`. **Each versions and releases on its own**: shared metadata
+Four NuGet packages are produced: `Lodestar.Text`, `Lodestar.Embeddings`,
+`Lodestar.Fuzzy`, `Lodestar.Metrics`. **Each versions and releases on its own**: shared metadata
 (license, README, repository) lives in `Directory.Build.props`, while the version
-is declared per project in `src/<Package>/Version.props`. `DataNet.Fuzzy` depends
+is declared per project in `src/<Package>/Version.props`. `Lodestar.Fuzzy` depends
 on `Lodestar.Text` as a published package, not as a project reference — see
 [`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md).
 
@@ -159,10 +159,10 @@ Bump the version, then tag it with the package name. The
 package alone:
 
 ```bash
-# 1. edit src/DataNet.Fuzzy/Version.props, commit, merge to main
+# 1. edit src/Lodestar.Fuzzy/Version.props, commit, merge to main
 # 2. tag the released version — <PackageId>/v<Version>
-git tag DataNet.Fuzzy/v0.3.0
-git push origin DataNet.Fuzzy/v0.3.0
+git tag Lodestar.Fuzzy/v0.3.0
+git push origin Lodestar.Fuzzy/v0.3.0
 ```
 
 The tag does not set the version; it names which declared version to release. The

@@ -134,9 +134,9 @@ def render(rules: list[str], profile_key: str, analyzer_version: str) -> str:
 def analyzer_version() -> str:
     """The pin the root Directory.Build.props carries, quoted in the header."""
     text = (ROOT / "Directory.Build.props").read_text(encoding="utf-8")
-    match = re.search(r"<DataNetSonarAnalyzerVersion>([^<]+)</", text)
+    match = re.search(r"<LodestarSonarAnalyzerVersion>([^<]+)</", text)
     if match is None:
-        raise LookupError("Directory.Build.props declares no DataNetSonarAnalyzerVersion")
+        raise LookupError("Directory.Build.props declares no LodestarSonarAnalyzerVersion")
     return match.group(1)
 
 

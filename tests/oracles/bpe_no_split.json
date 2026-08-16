@@ -6,7 +6,7 @@
   "model": "hand-built: a 4-entry classic BPE and a byte-level one, defined in tools/generate_oracles.py",
   "models": {
    "absent": {
-    "declares": "no pre_tokenizer at all -- the shape #122 found DataNet mis-loading",
+    "declares": "no pre_tokenizer at all -- the shape #122 found Lodestar mis-loading",
     "tokenizer_json": "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null,\"added_tokens\":[],\"normalizer\":null,\"pre_tokenizer\":null,\"post_processor\":null,\"decoder\":null,\"model\":{\"type\":\"BPE\",\"dropout\":null,\"unk_token\":\"[UNK]\",\"continuing_subword_prefix\":null,\"end_of_word_suffix\":null,\"fuse_unk\":true,\"byte_fallback\":false,\"ignore_merges\":false,\"vocab\":{\"[UNK]\":0,\"a\":1,\"b\":2,\"ab\":3},\"merges\":[[\"a\",\"b\"]]}}"
    },
    "whitespace": {

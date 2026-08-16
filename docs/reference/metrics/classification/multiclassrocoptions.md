@@ -25,7 +25,7 @@ write `Environment.ProcessorCount`.
 **Example** — the same scores under both strategies and both averages.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [0, 1, 2, 2, 2, 1];
 double[] yScore =

@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 namespace Lodestar.Text.Benchmarks.CrossLang;
 
@@ -88,7 +88,7 @@ internal static class RocParallelBench
             Metadata = new Harness.OutputMetadata
             {
                 Side = "csharp",
-                Library = $"DataNet.Metrics ({Environment.ProcessorCount} logical cores)",
+                Library = $"Lodestar.Metrics ({Environment.ProcessorCount} logical cores)",
                 Runtime = Environment.Version.ToString(),
                 Os = Environment.OSVersion.ToString(),
                 MinTimeS = Harness.MinTimeSeconds,

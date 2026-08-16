@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate frozen oracle corpora for the DataNet.Text test suite.
+"""Generate frozen oracle corpora for the Lodestar.Text test suite.
 
 Per section 4 of the project brief, correctness is proven by replaying reference
 values captured from the canonical Python libraries — never by trusting that the
@@ -305,7 +305,7 @@ def _hamming_reference(a: str, b: str) -> int:
 
     Note: jellyfish.hamming_distance matches this for all normal inputs but
     diverges on ~5% of degenerate combining-mark strings (an unexplained quirk of
-    its Rust core — not NFC normalization, not byte-level). DataNet implements the
+    its Rust core — not NFC normalization, not byte-level). Lodestar implements the
     standard definition; see docs/decisions/0005-hamming-jellyfish-divergence.md.
     """
     m = min(len(a), len(b))
@@ -346,7 +346,7 @@ def generate_indel() -> dict:
 
 
 def _jaro_reference(a: str, b: str) -> float:  # NOSONAR S3776
-    """Standard Jaro similarity over code points (matches DataNet's Jaro core).
+    """Standard Jaro similarity over code points (matches Lodestar's Jaro core).
 
     Cognitive complexity is deliberately left above the threshold. This is a
     transcription of the published Jaro algorithm — match window, then
@@ -486,7 +486,7 @@ def generate_ratcliff() -> dict:
 def generate_set_similarity() -> dict:
     """qval=1 (textdistance default), multiset (bag) semantics, over non-empty pairs.
 
-    textdistance raises on empty operands, which is its own edge quirk; DataNet
+    textdistance raises on empty operands, which is its own edge quirk; Lodestar
     defines those separately and covers them via unit tests.
     """
     rng = SeededRandom(SEED)
@@ -1252,7 +1252,7 @@ LOADER_TEXTS = [
 
 
 def _wordpiece_tokenizer(vocab: dict[str, int], lowercase: bool):
-    """A HuggingFace WordPiece tokenizer with the pipeline DataNet reproduces."""
+    """A HuggingFace WordPiece tokenizer with the pipeline Lodestar reproduces."""
     from tokenizers import Tokenizer  # noqa: PLC0415
     from tokenizers.models import WordPiece  # noqa: PLC0415
     from tokenizers.normalizers import Lowercase  # noqa: PLC0415
@@ -1351,7 +1351,7 @@ def generate_spiece_model() -> dict:
     """Freeze what sentencepiece's own parser reads out of tests/oracles/tiny_sp.model.
 
     Piece *types* come from the protobuf rather than from the IsControl/IsUnknown
-    helpers: the proto is the format DataNet's loader claims to read, so it is the
+    helpers: the proto is the format Lodestar's loader claims to read, so it is the
     right reference for it.
     """
     import sentencepiece as spm  # noqa: PLC0415
@@ -1429,7 +1429,7 @@ def generate_xlmr_fairseq() -> dict:
     The fixture is built by tools/fetch_xlmr_vocab.py: XLM-R's own 250 000
     pieces and scores, at the ids HuggingFace gives them, with <s>=0, <pad>=1,
     </s>=2, <unk>=3 and <mask>=250001 typed CONTROL/UNKNOWN, and the normalizer
-    set to identity — the pipeline DataNet reproduces. See that script for why
+    set to identity — the pipeline Lodestar reproduces. See that script for why
     the stock sentencepiece.bpe.model cannot be replayed directly.
 
     This is the corpus the id-based control filter could not have passed: every
@@ -2788,7 +2788,7 @@ def generate_bytelevel_decode_stream() -> dict:
     """Each id of a text decoded on its own, which is how a stream is consumed.
 
     tokenizers substitutes U+FFFD for a byte sequence that is not well-formed
-    UTF-8; DataNet threw until issue #149. The `replacement_count` per case is
+    UTF-8; Lodestar threw until issue #149. The `replacement_count` per case is
     carried so a corpus that stopped exercising the substitution would be noticed
     rather than pass silently.
     """
@@ -3634,7 +3634,7 @@ def _fuse_unk_model(vocab, merges, fuse, *, unk=UNK_TOKEN, byte_level=False, eow
     """One tokenizer, built rather than trained, so the file is byte-stable.
 
     Every classic model declares Whitespace. A model declaring no pre-tokenizer
-    at all does not split at all, which DataNet reads as `NoPreTokenizer` since
+    at all does not split at all, which Lodestar reads as `NoPreTokenizer` since
     issue #122 and `bpe_no_split.json` measures; declaring the pre-tokenizer
     explicitly keeps this corpus about fuse_unk rather than about that split.
     """
@@ -3869,7 +3869,7 @@ def _added_coverage_refusals() -> list[dict]:
 
     merge_result_missing: a merge whose two sides are present but whose
     result is not. The reference PANICS while reading rather than raising;
-    the panic is recorded as what it is, and DataNet refuses in its own words
+    the panic is recorded as what it is, and Lodestar refuses in its own words
     (D6).
 
     The reference does not refuse all three at the same moment: two fail
@@ -4525,7 +4525,7 @@ def _no_split_models() -> list[tuple]:
     byte_texts = [HELLO_WORLD, "  leading and trailing  ", "hello world  again", "café \U0001f600"]
     added_texts = ["o o<sep>o o", "o o"]
     return [
-        ("absent", "no pre_tokenizer at all -- the shape #122 found DataNet mis-loading",
+        ("absent", "no pre_tokenizer at all -- the shape #122 found Lodestar mis-loading",
          _no_split_classic(None), fuse_texts),
         ("whitespace", "the classic Whitespace split, for the row above to differ from",
          _no_split_classic(pre_tokenizers.Whitespace()), fuse_texts),
@@ -4743,7 +4743,7 @@ def generate_bpe_split_literal() -> dict:
                        "tokenizer_json": tokenizer.to_str()}
                 for name, declares, literal, tokenizer, _ in carried
             },
-            # DataNet's refusals, not the reference's: tokenizers builds neither
+            # Lodestar's refusals, not the reference's: tokenizers builds neither
             # shape, so there is no error to capture -- only the pattern node.
             "refusals": _split_literal_refusals(),
             "count": len(cases),

@@ -2,7 +2,7 @@
 """Time rapidfuzz's Levenshtein on the shared corpus, per length bucket.
 
 Methodology is deliberately mirrored by the C# harness
-(bench/DataNet.Text.Benchmarks, `compare` mode) so the two are comparable:
+(bench/Lodestar.Text.Benchmarks, `compare` mode) so the two are comparable:
 
   * same committed corpus (bench/corpus/pairs.json),
   * throughput metric: nanoseconds per pair over the whole bucket,

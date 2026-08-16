@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/bench/">
+    <Project Path="bench/Lodestar.NetStandard.Benchmarks/Lodestar.NetStandard.Benchmarks.csproj" />
+    <Project Path="bench/Lodestar.Text.Benchmarks/Lodestar.Text.Benchmarks.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Lodestar.Embeddings/Lodestar.Embeddings.csproj" />
+    <Project Path="src/Lodestar.Fuzzy/Lodestar.Fuzzy.csproj" />
+    <Project Path="src/Lodestar.Metrics/Lodestar.Metrics.csproj" />
+    <Project Path="src/Lodestar.Text/Lodestar.Text.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Lodestar.Embeddings.NetStandard.Tests/Lodestar.Embeddings.NetStandard.Tests.csproj" />
+    <Project Path="tests/Lodestar.Embeddings.Tests/Lodestar.Embeddings.Tests.csproj" />
+    <Project Path="tests/Lodestar.Fuzzy.NetStandard.Tests/Lodestar.Fuzzy.NetStandard.Tests.csproj" />
+    <Project Path="tests/Lodestar.Metrics.NetStandard.Tests/Lodestar.Metrics.NetStandard.Tests.csproj" />
+    <Project Path="tests/Lodestar.Metrics.Tests/Lodestar.Metrics.Tests.csproj" />
+    <Project Path="tests/Lodestar.Text.NetStandard.Tests/Lodestar.Text.NetStandard.Tests.csproj" />
+    <Project Path="tests/Lodestar.Fuzzy.Tests/Lodestar.Fuzzy.Tests.csproj" />
+    <Project Path="tests/Lodestar.Text.Tests/Lodestar.Text.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -65,8 +65,8 @@ jobs:
       # produces an empty analysis that still reports success.
       #
       # *Every* compilation in the window is observed, not just the first, which
-      # is what lets the samples be analysed without joining DataNet.slnx. They
-      # must stay out of it: inside the solution they would resolve DataNet by
+      # is what lets the samples be analysed without joining Lodestar.slnx. They
+      # must stay out of it: inside the solution they would resolve Lodestar by
       # ProjectReference, and the packaging gate and the snippet check would both
       # become assertions about a graph that never ships (ADR 0009). Analysis
       # follows the build list, so before this they were read by nothing —
@@ -88,7 +88,7 @@ jobs:
       # what proves the packages resolve, and the snippets are what proves the
       # guides compile. Analysed, never covered.
       #
-      # samples/DataNet.DocSnippets/Generated/ is excluded from *analysis*: it is
+      # samples/Lodestar.DocSnippets/Generated/ is excluded from *analysis*: it is
       # extracted verbatim from the Markdown by tools/extract_doc_snippets.py, so
       # a finding there is a finding about prose the guides deliberately keep
       # short, and the file to fix it in would be a guide — where the rule usually
@@ -159,27 +159,27 @@ jobs:
             /d:sonar.python.version="3.12" \
             /d:sonar.projectBaseDir="$GITHUB_WORKSPACE" \
             /d:sonar.coverage.exclusions="tools/**,bench/**,samples/**" \
-            /d:sonar.exclusions="tests/oracles/**,samples/DataNet.DocSnippets/Generated/**,tools/tests/**" \
+            /d:sonar.exclusions="tests/oracles/**,samples/Lodestar.DocSnippets/Generated/**,tools/tests/**" \
             /d:sonar.test.exclusions="tests/oracles/**"
 
       - name: Build the solution
-        run: dotnet build DataNet.slnx --configuration Release
+        run: dotnet build Lodestar.slnx --configuration Release
 
       # --no-build: the projects were just compiled above, and that compilation is
       # the one the scanner observed. Packing without it would recompile src/ a
       # second time inside the same window, for nothing.
       - name: Pack
         run: |
-          for proj in src/Lodestar.Text src/DataNet.Embeddings src/DataNet.Fuzzy src/DataNet.Metrics; do
+          for proj in src/Lodestar.Text src/Lodestar.Embeddings src/Lodestar.Fuzzy src/Lodestar.Metrics; do
             dotnet pack "$proj" --configuration Release --no-build --output ./artifacts
           done
 
       - name: Extract the guide snippets
         run: python3 tools/extract_doc_snippets.py
 
-      # The samples restore DataNet from ./artifacts, and the builds above have
-      # already pulled published DataNet packages into the default global folder
-      # (src/ reaches DataNet.Text by PackageReference). The global folder is
+      # The samples restore Lodestar from ./artifacts, and the builds above have
+      # already pulled published Lodestar packages into the default global folder
+      # (src/ reaches Lodestar.Text by PackageReference). The global folder is
       # consulted ahead of every source, so a published package sitting in it
       # wins whenever the two share a version — these two builds would then
       # analyse a consumer of what already shipped. Their own NUGET_PACKAGES is
@@ -190,15 +190,15 @@ jobs:
         env:
           NUGET_PACKAGES: ${{ runner.temp }}/sample-packages
         run: |
-          dotnet build samples/DataNet.Sample --configuration Release
-          dotnet build samples/DataNet.DocSnippets --configuration Release
+          dotnet build samples/Lodestar.Sample --configuration Release
+          dotnet build samples/Lodestar.DocSnippets --configuration Release
 
       # Coverage must be written before `end` collects it. OpenCover, not the
       # default Cobertura: the .NET path of SonarQube Cloud reads OpenCover, and
       # a format or path mismatch fails silently as 0% coverage.
       - name: Test with coverage
         run: |
-          dotnet test DataNet.slnx --configuration Release --no-build \
+          dotnet test Lodestar.slnx --configuration Release --no-build \
             --collect:"XPlat Code Coverage;Format=opencover"
 
       - name: End analysis

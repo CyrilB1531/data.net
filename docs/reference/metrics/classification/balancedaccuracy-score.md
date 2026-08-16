@@ -28,7 +28,7 @@ every
 time. `Accuracy.Score` on this data is `0.8`.
 
 ```csharp
-using DataNet.Metrics;
+using Lodestar.Metrics;
 
 int[] yTrue = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1];
 int[] yPred = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
