@@ -288,14 +288,13 @@ internal static class ReferenceDocumentation
     /// a method three times while offering no way to find out what it does.
     /// </remarks>
     public static IReadOnlyList<string> CheckLinks(
-        Assembly assembly, string package, string wikiMapPath, string referenceRoot, string docsRoot)
+        Assembly assembly, string package, string wikiMapPath, string docsRoot)
     {
         List<string> complaints = [];
         HashSet<string> linkable = LinkableMembers(assembly, wikiMapPath, package);
-        HashSet<string> referencePageNames = ReferencePageNames(referenceRoot);
 
         foreach (string file in Directory.EnumerateFiles(docsRoot, "*.md", SearchOption.AllDirectories)
-                     .Where(candidate => !referencePageNames.Contains(Path.GetFileName(candidate)))
+                     .Where(candidate => !IsReferencePage(candidate, docsRoot))
                      .OrderBy(candidate => candidate, StringComparer.Ordinal))
         {
             CheckFileLinks(file, docsRoot, linkable, complaints);
@@ -323,12 +322,19 @@ internal static class ReferenceDocumentation
         return members;
     }
 
-    /// <summary>The file names Check itself treats as reference pages, read off the same directory.</summary>
-    private static HashSet<string> ReferencePageNames(string referenceRoot) => Directory.Exists(referenceRoot)
-        ? Directory.GetFiles(referenceRoot, "*.md", SearchOption.AllDirectories)
-            .Select(path => Path.GetFileName(path))
-            .ToHashSet(StringComparer.Ordinal)
-        : new HashSet<string>(StringComparer.Ordinal);
+    /// <summary>Whether a document is a reference page, which the page rules check instead.</summary>
+    /// <remarks>
+    /// By path, not by file name. Selecting on the name excluded any document that merely
+    /// shared one with a reference page: docs/guides/vectorization.md left this gate the
+    /// moment docs/reference/text/vectorization.md existed, and an unlinked member
+    /// survived it (#238). A guide and an index are allowed to share a subject, and one
+    /// of them is not a reference page for it.
+    /// </remarks>
+    private static bool IsReferencePage(string file, string docsRoot)
+    {
+        string relative = Path.GetRelativePath(docsRoot, file).Replace('\\', '/');
+        return relative.StartsWith("reference/", StringComparison.Ordinal);
+    }
 
     private static void CheckFileLinks(
         string file, string docsRoot, HashSet<string> linkable, List<string> complaints)
