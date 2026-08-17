@@ -41,9 +41,9 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 
 | Python | Library | C# | Differences |
 | --- | --- | --- | --- |
-| `soundex(s)` | jellyfish | `Soundex.Encode(s)` | Initial letter + 3 digits. Exact parity (402 words). |
-| `metaphone(s)` | jellyfish | `Metaphone.Encode(s)` | Parity on real words; jellyfish non-word quirks not reproduced ([decision 0007](decisions/0007-metaphone-scope.md)). |
-| `nysiis(s)` | jellyfish | `Nysiis.Encode(s)` | Non-truncated variant. Exact parity (402 words). |
+| `soundex(s)` | jellyfish | [`Soundex.Encode(s)`](reference/text/phonetics/soundex-encode.md) | Initial letter + 3 digits. Exact parity (402 words). |
+| `metaphone(s)` | jellyfish | [`Metaphone.Encode(s)`](reference/text/phonetics/metaphone-encode.md) | Parity on real words; jellyfish non-word quirks not reproduced ([decision 0007](decisions/0007-metaphone-scope.md)). |
+| `nysiis(s)` | jellyfish | [`Nysiis.Encode(s)`](reference/text/phonetics/nysiis-encode.md) | Non-truncated variant. Exact parity (402 words). |
 
 ## Lodestar.Text — sparse vectorization
 
