@@ -512,6 +512,34 @@ public sealed class ReferenceDocumentationTests
         }
     }
 
+    [Fact]
+    public void A_guide_sharing_a_name_with_a_reference_page_is_still_checked()
+    {
+        // Excluding by BARE FILE NAME let a guide named like an index leave the gate
+        // exactly when its members became linkable, and one did (#238).
+        string docs = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(Path.Combine(docs, "guides"));
+        try
+        {
+            // Named after a real reference index — "distances.md" is one — and naming a
+            // member it never links.
+            File.WriteAllText(
+                Path.Combine(docs, "guides", "distances.md"),
+                "# A guide\n\nIt calls `Levenshtein.Distance` and links nothing.\n");
+
+            IReadOnlyList<string> complaints = ReferenceDocumentation.CheckLinks(
+                typeof(Levenshtein).Assembly, "Lodestar.Text", Map, Root, docs);
+
+            Assert.Contains(complaints, complaint =>
+                complaint.Contains("guides/distances.md", StringComparison.Ordinal) &&
+                complaint.Contains("Levenshtein.Distance", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Directory.Delete(docs, recursive: true);
+        }
+    }
+
     private static IReadOnlyList<string> OnePage(string markdown)
     {
         string docs = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
