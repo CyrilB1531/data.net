@@ -23,7 +23,7 @@ double s = Indel.NormalizedSimilarity("state", "taste");   // => 0.8
 ```
 
 **Remarks** — this is the member that ports `fuzz.ratio`: multiply by 100 and the numbers agree.
-`Lodestar.Fuzzy`'s `Fuzz.Ratio` is literally this call times 100, so use that if you want the 0-100
+`Lodestar.Fuzzy`'s [`Fuzz.Ratio`](../../fuzzy/matching/fuzz-ratio.md) is literally this call times 100, so use that if you want the 0-100
 scale and the rest of the `fuzz.*` family alongside it, and this if you want the `[0, 1]` score on
 its own.
 

@@ -86,11 +86,11 @@ Short-job measurement, `[MemoryDiagnoser]` (dev machine — indicative).
 
 | Method | Mean | Allocated |
 | --- | ---: | ---: |
-| `Fuzz.Ratio` | ~2.5 µs | **0 B** |
-| `Fuzz.TokenSortRatio` | ~5.3 µs | 1.3 KB |
-| `Fuzz.TokenSetRatio` | ~15 µs | 5.6 KB |
-| `Fuzz.WRatio` | ~25 µs | 7.0 KB |
-| `Fuzz.PartialRatio` | ~460 µs | 0 B |
+| [`Fuzz.Ratio`](../reference/fuzzy/matching/fuzz-ratio.md) | ~2.5 µs | **0 B** |
+| [`Fuzz.TokenSortRatio`](../reference/fuzzy/matching/fuzz-tokensortratio.md) | ~5.3 µs | 1.3 KB |
+| [`Fuzz.TokenSetRatio`](../reference/fuzzy/matching/fuzz-tokensetratio.md) | ~15 µs | 5.6 KB |
+| [`Fuzz.WRatio`](../reference/fuzzy/matching/fuzz-wratio.md) | ~25 µs | 7.0 KB |
+| [`Fuzz.PartialRatio`](../reference/fuzzy/matching/fuzz-partialratio.md) | ~460 µs | 0 B |
 
 > `PartialRatio` is markedly slower: the current sliding-window scan is `O(n·m²)`
 > (a full Indel per window). It is correct and zero-alloc, but a bit-parallel or

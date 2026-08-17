@@ -134,14 +134,14 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 
 | Python | Library | C# | Differences |
 | --- | --- | --- | --- |
-| `fuzz.ratio(a, b)` | rapidfuzz | `Fuzz.Ratio(a, b)` | Indel similarity ×100. Case-sensitive (no preprocessing, like rapidfuzz). |
-| `fuzz.partial_ratio(a, b)` | rapidfuzz | `Fuzz.PartialRatio(a, b)` | Best sliding window (shorter over longer; both directions when lengths are equal). |
-| `fuzz.token_sort_ratio(a, b)` | rapidfuzz | `Fuzz.TokenSortRatio(a, b)` | Sort tokens then `ratio`. |
-| `fuzz.token_set_ratio(a, b)` | rapidfuzz | `Fuzz.TokenSetRatio(a, b)` | Shared tokens vs differences. |
-| `fuzz.WRatio(a, b)` | rapidfuzz | `Fuzz.WRatio(a, b)` | Weighted combination based on the length ratio. |
-| `process.extract(q, choices, limit=…, score_cutoff=…)` | rapidfuzz | `Process.Extract(q, choices, limit:…, scoreCutoff:…)` | Default scorer `WRatio`, score-descending order (index tie-break), cutoff, short-circuit. |
-| `process.extractOne(q, choices)` | rapidfuzz | `Process.ExtractOne(q, choices)` | Best candidate or `null`. |
-| blocking deduplication | — (application pattern) | `Deduplicator.FindClusters(...)` | Partition by blocking key + transitive closure (union-find). Avoids O(n²). |
+| `fuzz.ratio(a, b)` | rapidfuzz | [`Fuzz.Ratio(a, b)`](reference/fuzzy/matching/fuzz-ratio.md) | Indel similarity ×100. Case-sensitive (no preprocessing, like rapidfuzz). |
+| `fuzz.partial_ratio(a, b)` | rapidfuzz | [`Fuzz.PartialRatio(a, b)`](reference/fuzzy/matching/fuzz-partialratio.md) | Best sliding window (shorter over longer; both directions when lengths are equal). |
+| `fuzz.token_sort_ratio(a, b)` | rapidfuzz | [`Fuzz.TokenSortRatio(a, b)`](reference/fuzzy/matching/fuzz-tokensortratio.md) | Sort tokens then `ratio`. |
+| `fuzz.token_set_ratio(a, b)` | rapidfuzz | [`Fuzz.TokenSetRatio(a, b)`](reference/fuzzy/matching/fuzz-tokensetratio.md) | Shared tokens vs differences. |
+| `fuzz.WRatio(a, b)` | rapidfuzz | [`Fuzz.WRatio(a, b)`](reference/fuzzy/matching/fuzz-wratio.md) | Weighted combination based on the length ratio. |
+| `process.extract(q, choices, limit=…, score_cutoff=…)` | rapidfuzz | [`Process.Extract`](reference/fuzzy/matching/process-extract.md)`(q, choices, limit:…, scoreCutoff:…)` | Default scorer `WRatio`, score-descending order (index tie-break), cutoff, short-circuit. |
+| `process.extractOne(q, choices)` | rapidfuzz | [`Process.ExtractOne(q, choices)`](reference/fuzzy/matching/process-extractone.md) | Best candidate or `null`. |
+| blocking deduplication | — (application pattern) | [`Deduplicator.FindClusters(...)`](reference/fuzzy/matching/deduplicator-findclusters.md) | Partition by blocking key + transitive closure (union-find). Avoids O(n²). |
 
 ## Lodestar.Metrics — classification metrics
 
