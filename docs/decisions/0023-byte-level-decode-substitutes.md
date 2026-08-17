@@ -4,7 +4,7 @@
 
 ## Context
 
-`BpeTokenizer.Decode`, for a byte-level model, assembled the raw bytes each
+[`BpeTokenizer.Decode`](../reference/embeddings/tokenization/bpetokenizer-decode.md), for a byte-level model, assembled the raw bytes each
 token symbol spells and handed them to `JsonArtifact.Utf8NoBom.GetString`,
 the same strict `UTF8Encoding` the persistence layer uses. A byte sequence
 that is not well-formed UTF-8 made that call throw
