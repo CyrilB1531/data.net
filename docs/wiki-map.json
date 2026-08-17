@@ -32,7 +32,8 @@
       ],
       "covered": {
         "Lodestar.Embeddings.Onnx": "docs/reference/embeddings/onnx",
-        "Lodestar.Embeddings.Tokenization": "docs/reference/embeddings/tokenization"
+        "Lodestar.Embeddings.Tokenization": "docs/reference/embeddings/tokenization",
+        "Lodestar.Embeddings.Search": "docs/reference/embeddings/search"
       }
     },
     "Lodestar.Fuzzy": {
