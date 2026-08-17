@@ -9,7 +9,8 @@ public static class StopWords
 ```
 
 **Properties** — `English`, `French`, `German`, `Italian`, `Portuguese` and `Spanish`, each an
-`IReadOnlySet<string>` of lowercase words. They are frozen sets built once and shared, so reading
+`IReadOnlyCollection<string>` of lowercase words — a collection rather than a set because
+`IReadOnlySet<T>` does not exist on netstandard2.0, which this package still targets. They are frozen sets built once and shared, so reading
 one allocates nothing and the same instance comes back every time.
 
 **Example** — the English list, passed where a vectorizer expects one.
@@ -34,8 +35,8 @@ it removes words that carry meaning in some domains, and it exists mostly for pa
 five have no scikit-learn counterpart at all: `stop_words='english'` is the only built-in list
 there, so those five are additions rather than reproductions.
 
-Nothing stops a caller passing its own set instead; the property type is `IReadOnlySet<string>`
-and any set will do.
+Nothing stops a caller passing its own words instead; the option takes any
+`IReadOnlyCollection<string>`.
 
 **Applies to** — net10.0, netstandard2.0.
 

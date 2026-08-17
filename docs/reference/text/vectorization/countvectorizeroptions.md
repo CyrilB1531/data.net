@@ -33,9 +33,11 @@ int features = cv.FitTransform(["a cat eats"]).ColumnCount;  // => 2
 decision that keeps a ported pipeline giving the same columns, and it is also the one that makes
 `"I"` and `"a"` vanish from a corpus without saying so.
 
-`MinDf` and `MaxDf` are read as counts when integral and as proportions when fractional — `MinDf =
-2` means two documents, `MaxDf = 0.5` means half of them. That overload of one property is
-scikit-learn's design, reproduced.
+`MinDf` is read as a count when integral and as a proportion when fractional — `MinDf = 2` means
+two documents, `MinDf = 0.5` means half of them. `MaxDf` does **not** follow that rule at its
+default: `MaxDf = 1.0` is a proportion meaning "in up to all of them", which is why the default
+drops nothing. Measured, over two documents sharing `the`, `MaxDf = 1.0` keeps all three terms.
+Both properties are `double`, so writing `1` rather than `1.0` changes nothing.
 
 This is a `record`, so two options objects with the same settings are equal. `StopWords` is
 compared **as a set** rather than as a sequence, which is why

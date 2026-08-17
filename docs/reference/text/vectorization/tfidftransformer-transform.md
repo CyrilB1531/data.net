@@ -13,7 +13,9 @@ matrix that was fitted.
 
 **Returns** — [`CsrMatrix`](csrmatrix.md), weighted and normalized, the same shape as `counts`.
 
-**Exceptions** — `InvalidOperationException` when nothing has been fitted yet.
+**Exceptions** — `InvalidOperationException` when nothing has been fitted yet **and**
+[`TfidfOptions.UseIdf`](tfidfoptions.md) is true. With `UseIdf = false` there is no document
+frequency to be missing, so an unfitted transformer weights happily.
 `ArgumentNullException` when `counts` is null. `ArgumentException` when the column count disagrees
 with the fit.
 

@@ -40,8 +40,9 @@ int end = counts.RowPointers[3];     // => 10
 and the first two hold neither `and` nor one of `cat`/`dog`.
 
 The three arrays are exposed rather than hidden because reading them is often the point — feeding
-another library, writing a file format, or checking what a vectorizer produced. They are
-`ReadOnlySpan<T>` and copy nothing.
+another library, writing a file format, or checking what a vectorizer produced. They are the
+matrix's **own** `double[]` and `int[]`, handed out without copying, so writing to one changes the
+matrix. Treat them as read-only unless that is precisely what you mean.
 
 Within a row, `ColumnIndices` is ascending. That is what makes a row comparable to another row in
 one pass, and it is what `Multiply` relies on.

@@ -11,7 +11,7 @@ public sealed record HashingVectorizerOptions
 **Properties** — `NumFeatures` (default `1048576`, which is `2^20`) is how many columns the matrix
 has, and therefore how often two different terms collide into one. `AlternateSign` (default
 `true`) gives half the terms a negative weight, so that collisions tend to cancel rather than
-accumulate. `Norm` (default `SparseNorm.L2`) is the norm each row is divided by. `Count` carries
+accumulate. `Norm` (default `SparseNorm.L2`) is the norm each row is divided by, and is **nullable**: `null` leaves the rows unnormalized, which is scikit-learn's `norm=None`. `Count` carries
 the tokenization settings — the token pattern, lowercasing, n-gram range and the rest — because
 hashing changes only what happens *after* a document is cut into terms.
 

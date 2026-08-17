@@ -13,7 +13,9 @@ public double RowL2Norm(int row)
 **Returns** — `double`, the square root of the sum of the squares of that row's stored cells.
 Zero for an empty row.
 
-**Exceptions** — `ArgumentOutOfRangeException` when `row` is negative or not below `RowCount`.
+**Exceptions** — `IndexOutOfRangeException` when `row` is negative or not below
+`RowCount`. The index reaches the backing array directly, so the array's own exception
+is what surfaces rather than a re-wrapped one.
 
 **Example** — three ones give `√3`; the third row's repeated `the` makes it longer.
 

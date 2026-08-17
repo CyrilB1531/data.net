@@ -12,7 +12,9 @@ public double RowL1Norm(int row)
 
 **Returns** — `double`, the sum of `|value|` over that row's stored cells. Zero for an empty row.
 
-**Exceptions** — `ArgumentOutOfRangeException` when `row` is negative or not below `RowCount`.
+**Exceptions** — `IndexOutOfRangeException` when `row` is negative or not below
+`RowCount`. The index reaches the backing array directly, so the array's own exception
+is what surfaces rather than a re-wrapped one.
 
 **Example** — on raw counts, the L1 norm is how many terms the document holds.
 

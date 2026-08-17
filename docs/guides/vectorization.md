@@ -120,6 +120,11 @@ TfidfVectorizer reloaded = TfidfVectorizer.Load("model.json");
 CsrMatrix scored = reloaded.Transform(newDocuments);   // no refit
 ```
 
+Entry by entry: [`TfidfVectorizer.Save`](../reference/text/vectorization/tfidfvectorizer-save.md)
+writes the vocabulary and the document frequencies together, and
+[`TfidfVectorizer.Load`](../reference/text/vectorization/tfidfvectorizer-load.md) reads both back,
+so a reloaded model weights exactly as the original did.
+
 The equivalent of `joblib.dump` / `joblib.load`, with two differences that
 matter. The artifact is **versioned JSON, not a pickle** — it is data, never
 code, so it can be diffed, reviewed and read from a source you do not control.

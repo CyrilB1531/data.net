@@ -13,8 +13,9 @@ public CountVectorizer Fit(IEnumerable<string> documents)
 **Returns** — `CountVectorizer`, **the same instance**, so a call can be chained. Nothing is
 copied and the fit is stored on this object.
 
-**Exceptions** — `ArgumentNullException` when `documents` is null. `ArgumentException` when the
-corpus leaves no terms at all — every document empty, or every term removed by the options.
+**Exceptions** — `ArgumentNullException` when `documents` is null. A corpus that leaves no terms
+does **not** throw: it yields a model of zero columns, which every later transform will produce
+empty rows against.
 
 **Example** — fit on one corpus, transform another.
 

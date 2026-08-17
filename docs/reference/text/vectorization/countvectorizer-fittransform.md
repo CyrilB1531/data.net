@@ -12,8 +12,9 @@ public CsrMatrix FitTransform(IEnumerable<string> documents)
 
 **Returns** — [`CsrMatrix`](csrmatrix.md), one row per document and one column per learned term.
 
-**Exceptions** — `ArgumentNullException` when `documents` is null. `ArgumentException` when the
-corpus leaves no terms at all.
+**Exceptions** — `ArgumentNullException` when `documents` is null. A corpus that leaves no terms does **not**
+throw: it yields a model of zero columns, which every later transform will produce empty
+rows against.
 
 **Example** — the whole corpus at once.
 

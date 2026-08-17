@@ -12,8 +12,9 @@ public TfidfVectorizer Fit(IEnumerable<string> documents)
 
 **Returns** — `TfidfVectorizer`, the same instance, so a call can be chained.
 
-**Exceptions** — `ArgumentNullException` when `documents` is null. `ArgumentException` when the
-corpus leaves no terms at all.
+**Exceptions** — `ArgumentNullException` when `documents` is null. A corpus that leaves no terms does **not**
+throw: it yields a model of zero columns, which every later transform will produce empty
+rows against.
 
 **Example** — fit on training documents, weight a later one with those frequencies.
 

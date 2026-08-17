@@ -33,8 +33,8 @@ HashingVectorizer restored = HashingVectorizer.Load(buffer);
 CsrMatrix before = original.Transform(["the cat eats"]);
 CsrMatrix after = restored.Transform(["the cat eats"]);
 
-bool identical = before.NonZeroCount == after.NonZeroCount
-    && before.RowL2Norm(0) == after.RowL2Norm(0);  // => True
+bool sameShape = before.NonZeroCount == after.NonZeroCount;  // => True
+bool sameLength = before.RowL2Norm(0) == after.RowL2Norm(0);  // => True
 ```
 
 **Remarks** — a restored vectorizer produces the **same columns** as the original, because hashing

@@ -14,7 +14,7 @@ frequency; turn it off and the result is term frequencies with the normalization
 term had been seen, which is what keeps a term appearing in every document from dividing by zero.
 `SublinearTf` (default `false`) replaces the count `tf` with `1 + log(tf)`, so a term appearing
 twenty times counts as a little more than one appearing ten, rather than twice as much.
-`Norm` (default `SparseNorm.L2`) is the norm each row is divided by afterwards.
+`Norm` (default `SparseNorm.L2`) is the norm each row is divided by afterwards, and is **nullable**: `null` leaves the rows unnormalized, which is scikit-learn's `norm=None`. Measured, a row whose normalized length would be `1` comes out at `1.9938235052555415` with `Norm = null`.
 
 **Example** — the defaults, and the row they produce.
 
