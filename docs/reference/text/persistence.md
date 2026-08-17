@@ -28,6 +28,6 @@ smaller than it was saved would score differently and say nothing.
 
 ## See also
 
-- [`CountVectorizer.Load`](vectorization/countvectorizer-load.md) and
-  [`TfidfVectorizer.Load`](vectorization/tfidfvectorizer-load.md) — the members that take these.
+- [`CountVectorizer.Load`](vectorizers/countvectorizer-load.md) and
+  [`TfidfVectorizer.Load`](vectorizers/tfidfvectorizer-load.md) — the members that take these.
 - [From string to vector](../../guides/vectorization.md) — "Reading a file you did not write".

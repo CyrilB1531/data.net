@@ -120,9 +120,9 @@ TfidfVectorizer reloaded = TfidfVectorizer.Load("model.json");
 CsrMatrix scored = reloaded.Transform(newDocuments);   // no refit
 ```
 
-Entry by entry: [`TfidfVectorizer.Save`](../reference/text/vectorization/tfidfvectorizer-save.md)
+Entry by entry: [`TfidfVectorizer.Save`](../reference/text/vectorizers/tfidfvectorizer-save.md)
 writes the vocabulary and the document frequencies together, and
-[`TfidfVectorizer.Load`](../reference/text/vectorization/tfidfvectorizer-load.md) reads both back,
+[`TfidfVectorizer.Load`](../reference/text/vectorizers/tfidfvectorizer-load.md) reads both back,
 so a reloaded model weights exactly as the original did.
 
 The equivalent of `joblib.dump` / `joblib.load`, with two differences that

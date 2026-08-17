@@ -20,17 +20,17 @@ flowchart TD
     G -->|yes| H["TfidfTransformer"]
 ```
 
-**[`CountVectorizer`](vectorization/countvectorizer.md)** counts. It learns the
+**[`CountVectorizer`](vectorizers/countvectorizer.md)** counts. It learns the
 vocabulary from the corpus during `Fit`, so column 7 means the same term in every row
 and `GetFeatureNames` can tell you which.
 
-**[`TfidfVectorizer`](vectorization/tfidfvectorizer.md)** counts and then weights each
+**[`TfidfVectorizer`](vectorizers/tfidfvectorizer.md)** counts and then weights each
 count by how rare the term is across the corpus. It is
-[`CountVectorizer`](vectorization/countvectorizer.md) followed by
-[`TfidfTransformer`](vectorization/tfidftransformer.md), and doing it in one step is
+[`CountVectorizer`](vectorizers/countvectorizer.md) followed by
+[`TfidfTransformer`](vectorizers/tfidftransformer.md), and doing it in one step is
 the only difference.
 
-**[`HashingVectorizer`](vectorization/hashingvectorizer.md)** does not learn anything.
+**[`HashingVectorizer`](vectorizers/hashingvectorizer.md)** does not learn anything.
 It hashes each term into one of a fixed number of columns, so it needs no `Fit`, holds
 no vocabulary, and works on a stream — at the price that two terms can collide in one
 column and **no `GetFeatureNames` exists**, because there is no vocabulary to name.
@@ -51,19 +51,19 @@ it has no column. That is scikit-learn's behaviour, and it is why fitting on the
 training corpus and transforming the test one is the correct order rather than a
 convenience.
 
-[`HashingVectorizer`](vectorization/hashingvectorizer.md) has no `Fit` at all, and its
-[`Transform`](vectorization/hashingvectorizer-transform.md) and
-[`FitTransform`](vectorization/hashingvectorizer-fittransform.md) do the same thing —
+[`HashingVectorizer`](vectorizers/hashingvectorizer.md) has no `Fit` at all, and its
+[`Transform`](vectorizers/hashingvectorizer-transform.md) and
+[`FitTransform`](vectorizers/hashingvectorizer-fittransform.md) do the same thing —
 the second exists so the three vectorizers can be swapped for one another.
 
 ## The matrix they return
 
-Every one of them returns a [`CsrMatrix`](vectorization/csrmatrix.md): compressed
+Every one of them returns a [`CsrMatrix`](vectorizers/csrmatrix.md): compressed
 sparse row, the same layout `scipy.sparse.csr_matrix` uses. A corpus of ten thousand
 documents over fifty thousand terms is almost entirely zeros, and storing those zeros
 is what this layout exists to avoid.
 
-Read [`ToDense`](vectorization/csrmatrix-todense.md) only when you mean it: it
+Read [`ToDense`](vectorizers/csrmatrix-todense.md) only when you mean it: it
 allocates `RowCount × ColumnCount` doubles, which is exactly the array the sparse
 layout was avoiding.
 
@@ -71,9 +71,9 @@ layout was avoiding.
 
 Most of what makes these match scikit-learn lives in the three options records rather
 than in the vectorizers:
-[`CountVectorizerOptions`](vectorization/countvectorizeroptions.md),
-[`TfidfOptions`](vectorization/tfidfoptions.md) and
-[`HashingVectorizerOptions`](vectorization/hashingvectorizeroptions.md). Their defaults
+[`CountVectorizerOptions`](vectorizers/countvectorizeroptions.md),
+[`TfidfOptions`](vectorizers/tfidfoptions.md) and
+[`HashingVectorizerOptions`](vectorizers/hashingvectorizeroptions.md). Their defaults
 are scikit-learn's defaults, and each property's page entry says which Python keyword
 it answers to.
 
@@ -87,18 +87,18 @@ Two defaults surprise people, and both are scikit-learn's:
 
 | Type | What it is |
 | --- | --- |
-| [`AnalyzerKind`](vectorization/analyzerkind.md) | Whether features are words or character n-grams. |
-| [`CountVectorizer`](vectorization/countvectorizer.md) | Term counts, over a vocabulary learned from the corpus. |
-| [`CountVectorizerOptions`](vectorization/countvectorizeroptions.md) | Everything that decides what counts as a term. |
-| [`CsrMatrix`](vectorization/csrmatrix.md) | The compressed-sparse-row matrix every vectorizer returns. |
-| [`HashingVectorizer`](vectorization/hashingvectorizer.md) | Counts into a fixed number of columns, learning nothing. |
-| [`HashingVectorizerOptions`](vectorization/hashingvectorizeroptions.md) | The column count, and what the hashing does with signs. |
-| [`SparseNorm`](vectorization/sparsenorm.md) | Which norm `CsrMatrix.NormalizeRows` divides each row by. |
-| [`StopWords`](vectorization/stopwords.md) | The six built-in stop-word lists. |
-| [`TfidfOptions`](vectorization/tfidfoptions.md) | The four switches that decide how the weighting is computed. |
-| [`TfidfTransformer`](vectorization/tfidftransformer.md) | Counts in, TF-IDF weights out. |
-| [`TfidfVectorizer`](vectorization/tfidfvectorizer.md) | `CountVectorizer` and `TfidfTransformer` in one pass. |
-| [`TfidfVectorizerOptions`](vectorization/tfidfvectorizeroptions.md) | The two halves above, as one options object. |
+| [`AnalyzerKind`](vectorizers/analyzerkind.md) | Whether features are words or character n-grams. |
+| [`CountVectorizer`](vectorizers/countvectorizer.md) | Term counts, over a vocabulary learned from the corpus. |
+| [`CountVectorizerOptions`](vectorizers/countvectorizeroptions.md) | Everything that decides what counts as a term. |
+| [`CsrMatrix`](vectorizers/csrmatrix.md) | The compressed-sparse-row matrix every vectorizer returns. |
+| [`HashingVectorizer`](vectorizers/hashingvectorizer.md) | Counts into a fixed number of columns, learning nothing. |
+| [`HashingVectorizerOptions`](vectorizers/hashingvectorizeroptions.md) | The column count, and what the hashing does with signs. |
+| [`SparseNorm`](vectorizers/sparsenorm.md) | Which norm `CsrMatrix.NormalizeRows` divides each row by. |
+| [`StopWords`](vectorizers/stopwords.md) | The six built-in stop-word lists. |
+| [`TfidfOptions`](vectorizers/tfidfoptions.md) | The four switches that decide how the weighting is computed. |
+| [`TfidfTransformer`](vectorizers/tfidftransformer.md) | Counts in, TF-IDF weights out. |
+| [`TfidfVectorizer`](vectorizers/tfidfvectorizer.md) | `CountVectorizer` and `TfidfTransformer` in one pass. |
+| [`TfidfVectorizerOptions`](vectorizers/tfidfvectorizeroptions.md) | The two halves above, as one options object. |
 
 ## See also
 

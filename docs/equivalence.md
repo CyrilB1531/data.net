@@ -66,7 +66,7 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | Python | Library | C# | Differences |
 | --- | --- | --- | --- |
 | `joblib.dump(vec, path)` / `pickle.dump(vec, f)` | joblib / pickle | `vec.Save(path)` / `vec.Save(stream)` | Versioned JSON, not a pickle: data only, never code. Applies to `CountVectorizer`, `TfidfVectorizer` and `HashingVectorizer`. UTF-8 without BOM; the idf vector is base64-encoded raw IEEE-754 bits, the rest is readable JSON. |
-| `joblib.load(path)` / `pickle.load(f)` | joblib / pickle | [`TfidfVectorizer.Load(path, options?)`](reference/text/vectorization/tfidfvectorizer-load.md) | Static, not a constructor. Bounded by `ArtifactLoadOptions` — `pickle.load` has no equivalent, since it trusts the file by design ([decision 0011](decisions/0011-persistence-format.md)). |
+| `joblib.load(path)` / `pickle.load(f)` | joblib / pickle | [`TfidfVectorizer.Load(path, options?)`](reference/text/vectorizers/tfidfvectorizer-load.md) | Static, not a constructor. Bounded by `ArtifactLoadOptions` — `pickle.load` has no equivalent, since it trusts the file by design ([decision 0011](decisions/0011-persistence-format.md)). |
 | — (no equivalent) | — | `ArtifactLoadOptions` | Deliberate addition, not a port: caps vocabulary size, token length, JSON depth, total bytes and array length. Over a limit ⇒ `InvalidDataException` naming limit and value. |
 
 ## Lodestar.Text — stemming
