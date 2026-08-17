@@ -14,11 +14,11 @@ All return a score in `[0, 100]`. Like rapidfuzz, **no preprocessing** by defaul
 
 | rapidfuzz | Lodestar.Fuzzy |
 | --- | --- |
-| `fuzz.ratio(a, b)` | `Fuzz.Ratio(a, b)` |
-| `fuzz.partial_ratio(a, b)` | `Fuzz.PartialRatio(a, b)` |
-| `fuzz.token_sort_ratio(a, b)` | `Fuzz.TokenSortRatio(a, b)` |
-| `fuzz.token_set_ratio(a, b)` | `Fuzz.TokenSetRatio(a, b)` |
-| `fuzz.WRatio(a, b)` | `Fuzz.WRatio(a, b)` |
+| `fuzz.ratio(a, b)` | [`Fuzz.Ratio(a, b)`](../reference/fuzzy/matching/fuzz-ratio.md) |
+| `fuzz.partial_ratio(a, b)` | [`Fuzz.PartialRatio(a, b)`](../reference/fuzzy/matching/fuzz-partialratio.md) |
+| `fuzz.token_sort_ratio(a, b)` | [`Fuzz.TokenSortRatio(a, b)`](../reference/fuzzy/matching/fuzz-tokensortratio.md) |
+| `fuzz.token_set_ratio(a, b)` | [`Fuzz.TokenSetRatio(a, b)`](../reference/fuzzy/matching/fuzz-tokensetratio.md) |
+| `fuzz.WRatio(a, b)` | [`Fuzz.WRatio(a, b)`](../reference/fuzzy/matching/fuzz-wratio.md) |
 
 ```csharp
 using Lodestar.Fuzzy;
@@ -44,12 +44,20 @@ IReadOnlyList<ExtractResult> top = Process.Extract("new york", choices, limit: 3
 ExtractResult? best = Process.ExtractOne("new york mets", choices);
 ```
 
-Any scorer can be supplied: `Process.Extract(q, choices, scorer: Fuzz.Ratio)`.
+[`Process.ExtractOne`](../reference/fuzzy/matching/process-extractone.md) returns
+`null` when nothing clears `scoreCutoff`, which is the difference from rapidfuzz's
+`extractOne` worth knowing before porting a call that assumes a result.
+
+Any scorer can be supplied: [`Process.Extract`](../reference/fuzzy/matching/process-extract.md) takes one —
+[`Process.Extract(q, choices, scorer: Fuzz.Ratio)`](../reference/fuzzy/matching/process-extract.md).
 
 ## Deduplicating records (with blocking)
 
 To avoid quadratic comparison, first partition by a **blocking key** (initial,
-Soundex code, postal code…), then compare only within each block.
+Soundex code, postal code…), then compare only within each block. That is what
+[`Deduplicator.FindClusters`](../reference/fuzzy/matching/deduplicator-findclusters.md) does, and the key is
+the caller's to choose: two records in different blocks are never compared, whatever
+their similarity.
 
 ```csharp
 string[] records = ["John Smith", "Jon Smith", "Jane Doe", "Jayne Doe", "Bob Brown"];

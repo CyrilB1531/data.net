@@ -37,9 +37,12 @@
       "wiki": "Fuzzy",
       "pages": [
         "docs/guides/migrating-from-rapidfuzz.md",
-        "docs/reference/fuzzy/*.md"
+        "docs/reference/fuzzy/*.md",
+        "docs/reference/fuzzy/*/*.md"
       ],
-      "covered": {}
+      "covered": {
+        "Lodestar.Fuzzy": "docs/reference/fuzzy/matching"
+      }
     },
     "Lodestar.Metrics": {
       "wiki": "Metrics",
