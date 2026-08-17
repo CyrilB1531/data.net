@@ -382,7 +382,8 @@ Console.WriteLine($"{reloaded.GetId(best.Index)}  score={best.Score:F3}");
 ```
 
 The vectors are stored as raw IEEE-754 bits, so a reloaded index scores bit for
-bit what the original scored. The normalization flag travels in the file
+bit what the original scored — [`EmbeddingIndex.Load`](../reference/embeddings/search/embeddingindex-load.md)
+has the bounds it applies on the way in. The normalization flag travels in the file
 rather than being supplied again on load, because an index reloaded under the
 other setting would rank a corpus wrongly without ever looking wrong. The reader
 bounds every count it reads against `ArtifactLoadOptions` before that count sizes

@@ -43,9 +43,9 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 
 | Python | Library | C# | Differences |
 | --- | --- | --- | --- |
-| `soundex(s)` | jellyfish | `Soundex.Encode(s)` | Initial letter + 3 digits. Exact parity (402 words). |
-| `metaphone(s)` | jellyfish | `Metaphone.Encode(s)` | Parity on real words; jellyfish non-word quirks not reproduced ([decision 0007](decisions/0007-metaphone-scope.md)). |
-| `nysiis(s)` | jellyfish | `Nysiis.Encode(s)` | Non-truncated variant. Exact parity (402 words). |
+| `soundex(s)` | jellyfish | [`Soundex.Encode(s)`](reference/text/phonetics/soundex-encode.md) | Initial letter + 3 digits. Exact parity (402 words). |
+| `metaphone(s)` | jellyfish | [`Metaphone.Encode(s)`](reference/text/phonetics/metaphone-encode.md) | Parity on real words; jellyfish non-word quirks not reproduced ([decision 0007](decisions/0007-metaphone-scope.md)). |
+| `nysiis(s)` | jellyfish | [`Nysiis.Encode(s)`](reference/text/phonetics/nysiis-encode.md) | Non-truncated variant. Exact parity (402 words). |
 
 ## Lodestar.Text — sparse vectorization
 
@@ -75,13 +75,13 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 
 | Python | Library | C# | Differences |
 | --- | --- | --- | --- |
-| `PorterStemmer(mode=ORIGINAL_ALGORITHM).stem(w)` | nltk | `PorterStemmer.Stem(w)` | Porter (1980) algorithm, 5 steps. Exact parity (86 words). |
-| `SnowballStemmer("english").stem(w)` | nltk | `EnglishSnowballStemmer.Stem(w)` | Porter2: R1/R2 regions, exceptions. Exact parity (190 words). |
-| `SnowballStemmer("french").stem(w)` | nltk | `FrenchSnowballStemmer.Stem(w)` | French Snowball: RV region, 6 steps, NFC-normalized input. Exact parity (152 words). |
-| `SnowballStemmer("spanish").stem(w)` | nltk | `SpanishSnowballStemmer.Stem(w)` | Spanish Snowball: attached-pronoun step 0, accents stripped last. Exact parity (127 words). |
-| `SnowballStemmer("portuguese").stem(w)` | nltk | `PortugueseSnowballStemmer.Stem(w)` | Portuguese Snowball: nasal `a~`/`o~` expansion, accents kept. Exact parity (105 words). |
-| `SnowballStemmer("italian").stem(w)` | nltk | `ItalianSnowballStemmer.Stem(w)` | Italian Snowball: acute→grave folding, `u`/`i` marking. Exact parity (96 words); `enza`→`te` follows nltk over the published text, see [0008](decisions/0008-italian-enza-nltk-divergence.md). |
-| `SnowballStemmer("german").stem(w)` | nltk | `GermanSnowballStemmer.Stem(w)` | German Snowball: `ß`→`ss`, `u`/`y` marking, R1 floored at 3, no RV region. Exact parity (88 words). |
+| `PorterStemmer(mode=ORIGINAL_ALGORITHM).stem(w)` | nltk | [`PorterStemmer.Stem(w)`](reference/text/stemming/porterstemmer-stem.md) | Porter (1980) algorithm, 5 steps. Exact parity (86 words). |
+| `SnowballStemmer("english").stem(w)` | nltk | [`EnglishSnowballStemmer.Stem(w)`](reference/text/stemming/englishsnowballstemmer-stem.md) | Porter2: R1/R2 regions, exceptions. Exact parity (190 words). |
+| `SnowballStemmer("french").stem(w)` | nltk | [`FrenchSnowballStemmer.Stem(w)`](reference/text/stemming/frenchsnowballstemmer-stem.md) | French Snowball: RV region, 6 steps, NFC-normalized input. Exact parity (152 words). |
+| `SnowballStemmer("spanish").stem(w)` | nltk | [`SpanishSnowballStemmer.Stem(w)`](reference/text/stemming/spanishsnowballstemmer-stem.md) | Spanish Snowball: attached-pronoun step 0, accents stripped last. Exact parity (127 words). |
+| `SnowballStemmer("portuguese").stem(w)` | nltk | [`PortugueseSnowballStemmer.Stem(w)`](reference/text/stemming/portuguesesnowballstemmer-stem.md) | Portuguese Snowball: nasal `a~`/`o~` expansion, accents kept. Exact parity (105 words). |
+| `SnowballStemmer("italian").stem(w)` | nltk | [`ItalianSnowballStemmer.Stem(w)`](reference/text/stemming/italiansnowballstemmer-stem.md) | Italian Snowball: acute→grave folding, `u`/`i` marking. Exact parity (96 words); `enza`→`te` follows nltk over the published text, see [0008](decisions/0008-italian-enza-nltk-divergence.md). |
+| `SnowballStemmer("german").stem(w)` | nltk | [`GermanSnowballStemmer.Stem(w)`](reference/text/stemming/germansnowballstemmer-stem.md) | German Snowball: `ß`→`ss`, `u`/`y` marking, R1 floored at 3, no RV region. Exact parity (88 words). |
 
 ## Lodestar.Embeddings — sub-word tokenization & pooling
 
@@ -128,8 +128,8 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | Python | Library | C# | Differences |
 | --- | --- | --- | --- |
 | `numpy.save(path, matrix)` | numpy | `index.Save(path)` / `index.Save(stream)` | Versioned JSON whose vector block is base64-encoded raw little-endian IEEE-754 bits, not a `.npy` memory dump. Carries the normalization flag and an optional id per vector — a `.npy` header already carries `shape`/`dtype`, so the per-vector dimension is recoverable as `shape[1]`, but the flag and the ids have nowhere to live in it. |
-| `numpy.load(path)` | numpy | `EmbeddingIndex.Load(path, options?)` | Static, not a constructor. Returns a queryable index rather than an array, and bounds every count against `ArtifactLoadOptions` before it sizes a buffer — the vector block by `MaxTotalBytes` in bytes before parsing, the rest by `MaxArrayLength` in elements. |
-| `faiss.write_index(idx, path)` / `faiss.read_index(path)` | faiss | `index.Save(path)` / `EmbeddingIndex.Load(path)` | Comparable in purpose, not in structure: Lodestar's index is exhaustive (`IndexFlatIP`-shaped), so there is no graph or quantizer to serialize. An approximate index is a separate decision, not made. |
+| `numpy.load(path)` | numpy | [`EmbeddingIndex.Load(path, options?)`](reference/embeddings/search/embeddingindex-load.md) | Static, not a constructor. Returns a queryable index rather than an array, and bounds every count against `ArtifactLoadOptions` before it sizes a buffer — the vector block by `MaxTotalBytes` in bytes before parsing, the rest by `MaxArrayLength` in elements. |
+| `faiss.write_index(idx, path)` / `faiss.read_index(path)` | faiss | [`index.Save(path)`](reference/embeddings/search/embeddingindex-save.md) / [`EmbeddingIndex.Load(path)`](reference/embeddings/search/embeddingindex-load.md) | Comparable in purpose, not in structure: Lodestar's index is exhaustive (`IndexFlatIP`-shaped), so there is no graph or quantizer to serialize. An approximate index is a separate decision, not made. |
 | — (a parallel `list[str]` the caller keeps) | — | `index.Add(vector, id)` / `index.GetId(i)` | Deliberate addition: without ids in the file, a reloaded index is a wall of anonymous integers. |
 
 ## Lodestar.Fuzzy — applied fuzzy matching

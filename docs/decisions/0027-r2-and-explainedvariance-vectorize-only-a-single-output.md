@@ -16,7 +16,7 @@ shape where rows are contiguous in `yTrue`/`yPred`: with more than one
 output, column `col` of row `row` sits at `(row * outputCount) + col`, a
 strided access that a `Vector<T>` load cannot gather from a `ReadOnlySpan`
 without scattering it into a temporary first — not how SIMD is written
-elsewhere in this repository (`VectorMath.Dot`, `Pooling.cs`,
+elsewhere in this repository ([`VectorMath.Dot`](../reference/embeddings/search/vectormath-dot.md), `Pooling.cs`,
 `EmbeddingIndex.Persistence.cs` all vectorize over a single contiguous
 span). `outputCount > 1` therefore keeps the scalar loop, which walks the
 strided layout directly.
@@ -24,7 +24,7 @@ strided layout directly.
 `Vector.IsHardwareAccelerated` is checked independently of the shape
 condition, and falls through to the same scalar loop on a runtime where
 `Vector<double>` is software-emulated — the same guard `Pooling.cs` and
-`EmbeddingIndex.Persistence.cs` check before vectorizing (`VectorMath.Dot`
+`EmbeddingIndex.Persistence.cs` check before vectorizing ([`VectorMath.Dot`](../reference/embeddings/search/vectormath-dot.md)
 predates this repository checking it explicitly, per
 [`0001`](0001-target-framework.md)).
 

@@ -19,6 +19,8 @@
         "Lodestar.Text.Vectorization": "docs/reference/text/vectorizers",
         "Lodestar.Text": "docs/reference/text/core",
         "Lodestar.Text.Persistence": "docs/reference/text/persistence",
+        "Lodestar.Text.Stemming": "docs/reference/text/stemming",
+        "Lodestar.Text.Phonetics": "docs/reference/text/phonetics",
         "Lodestar.Text.Similarity": "docs/reference/text/similarity"
       }
     },
@@ -31,7 +33,8 @@
       ],
       "covered": {
         "Lodestar.Embeddings.Onnx": "docs/reference/embeddings/onnx",
-        "Lodestar.Embeddings.Tokenization": "docs/reference/embeddings/tokenization"
+        "Lodestar.Embeddings.Tokenization": "docs/reference/embeddings/tokenization",
+        "Lodestar.Embeddings.Search": "docs/reference/embeddings/search"
       }
     },
     "Lodestar.Fuzzy": {
