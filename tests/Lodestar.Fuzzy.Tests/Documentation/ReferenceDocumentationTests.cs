@@ -30,7 +30,7 @@ public sealed class ReferenceDocumentationTests
     public void Every_documented_member_named_in_the_docs_links_to_its_entry()
     {
         IReadOnlyList<string> complaints = ReferenceDocumentation.CheckLinks(
-            typeof(Fuzz).Assembly, "Lodestar.Fuzzy", Map, Root, Docs);
+            typeof(Fuzz).Assembly, "Lodestar.Fuzzy", Map, Docs);
 
         Assert.Empty(complaints);
     }
