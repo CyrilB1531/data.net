@@ -11,7 +11,7 @@ public static EmbeddingIndex Load(string path, ArtifactLoadOptions options = nul
 
 **Parameters** — `source` is a readable stream, left open for the caller to dispose; `path` is the
 file to read. `options` bounds what will be accepted and defaults to
-[`ArtifactLoadOptions`](../../text/persistence/artifactloadoptions.md)'s own defaults.
+`Lodestar.Embeddings.Persistence.ArtifactLoadOptions`'s own defaults.
 
 **Returns** — `EmbeddingIndex`, with the same `Dimension`, `Count`, ids and normalization setting
 it was saved with.

@@ -10,7 +10,7 @@ public static Task<EmbeddingIndex> LoadAsync(Stream source, ArtifactLoadOptions 
 
 **Parameters** — `source` is a readable stream, never disposed by this method. `options` bounds
 what will be accepted and defaults to
-[`ArtifactLoadOptions`](../../text/persistence/artifactloadoptions.md)'s own defaults.
+`Lodestar.Embeddings.Persistence.ArtifactLoadOptions`'s own defaults.
 `cancellationToken` cancels the read.
 
 **Returns** — `Task<EmbeddingIndex>`, completing with an index ready to
