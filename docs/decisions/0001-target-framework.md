@@ -32,7 +32,7 @@ to .NET Framework 4.6.1+, Mono, Xamarin and Unity for a bounded, one-off cost.
 - **Several `net10.0`-only `Vector<T>` paths exist in this codebase for the
   same reason** — the span-based `Vector<T>` constructor is net-only, so each
   falls back to a scalar loop on `netstandard2.0` under `#if NET5_0_OR_GREATER`
-  — `VectorMath.Dot` among them. `R2` and `ExplainedVariance` add one more, for
+  — [`VectorMath.Dot`](../reference/embeddings/search/vectormath-dot.md) among them. `R2` and `ExplainedVariance` add one more, for
   their single-output, unweighted accumulation (issue #127 task 7):
   `VectorCompensatedSum` keeps one Neumaier partial sum per SIMD lane, reduced
   to one `CompensatedSum` at the end.
