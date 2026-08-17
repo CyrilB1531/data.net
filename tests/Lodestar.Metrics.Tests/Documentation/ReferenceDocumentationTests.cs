@@ -33,7 +33,7 @@ public sealed class ReferenceDocumentationTests
     public void Every_documented_member_named_in_the_docs_links_to_its_entry()
     {
         IReadOnlyList<string> complaints = ReferenceDocumentation.CheckLinks(
-            typeof(ConfusionMatrix).Assembly, "Lodestar.Metrics", Map, Root, Docs);
+            typeof(ConfusionMatrix).Assembly, "Lodestar.Metrics", Map, Docs);
 
         Assert.Empty(complaints);
     }

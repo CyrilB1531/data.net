@@ -34,7 +34,7 @@ public sealed class ReferenceDocumentationTests
     public void Every_documented_member_named_in_the_docs_links_to_its_entry()
     {
         IReadOnlyList<string> complaints = ReferenceDocumentation.CheckLinks(
-            typeof(OnnxTextEmbedder).Assembly, "Lodestar.Embeddings", Map, Root, Docs);
+            typeof(OnnxTextEmbedder).Assembly, "Lodestar.Embeddings", Map, Docs);
 
         Assert.Empty(complaints);
     }
