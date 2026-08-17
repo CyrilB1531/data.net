@@ -26,7 +26,7 @@ TokenizationResult t = wp.Encode("playing");   // pieces: play ##ing
 ```
 
 A stock HuggingFace BERT `tokenizer.json` — `BertPreTokenizer` plus a full
-`BertNormalizer` — **is refused** by `TokenizerJsonLoader.LoadWordPiece`; that is
+`BertNormalizer` — **is refused** by [`TokenizerJsonLoader.LoadWordPiece`](../reference/embeddings/persistence/tokenizerjsonloader-loadwordpiece.md); that is
 the correct outcome, not a gap, since Lodestar does not reproduce those steps.
 `VocabTxtLoader` is the route for BERT, and `LoadWordPiece` is for a `tokenizer.json`
 whose pipeline already matches Lodestar's own (see
@@ -88,10 +88,10 @@ models are refused outright.
 
 | Family | Class | How to load |
 | --- | --- | --- |
-| BERT, DistilBERT, and the WordPiece family | `WordPieceTokenizer` | `VocabTxtLoader` or `TokenizerJsonLoader.LoadWordPiece` |
-| T5, ALBERT, camemBERT, XLM-R | `SentencePieceTokenizer` | `SentencePieceModelLoader` or `TokenizerJsonLoader.LoadUnigram` |
-| GPT-2 and its byte-level descendants | `BpeTokenizer` | `BpeFilesLoader` or `TokenizerJsonLoader.LoadBpe` |
-| Llama-3, Qwen2 | `BpeTokenizer` with `BpePatterns.Llama3` / `BpePatterns.Qwen2` | `TokenizerJsonLoader.LoadBpe` |
+| BERT, DistilBERT, and the WordPiece family | `WordPieceTokenizer` | `VocabTxtLoader` or [`TokenizerJsonLoader.LoadWordPiece`](../reference/embeddings/persistence/tokenizerjsonloader-loadwordpiece.md) |
+| T5, ALBERT, camemBERT, XLM-R | `SentencePieceTokenizer` | `SentencePieceModelLoader` or [`TokenizerJsonLoader.LoadUnigram`](../reference/embeddings/persistence/tokenizerjsonloader-loadunigram.md) |
+| GPT-2 and its byte-level descendants | `BpeTokenizer` | `BpeFilesLoader` or [`TokenizerJsonLoader.LoadBpe`](../reference/embeddings/persistence/tokenizerjsonloader-loadbpe.md) |
+| Llama-3, Qwen2 | `BpeTokenizer` with `BpePatterns.Llama3` / `BpePatterns.Qwen2` | [`TokenizerJsonLoader.LoadBpe`](../reference/embeddings/persistence/tokenizerjsonloader-loadbpe.md) |
 | **Llama-2, Mistral v0.1** | **none** | — |
 
 Llama-2 and Mistral v0.1 are trained as **SentencePiece BPE with a `Metaspace`
@@ -131,10 +131,10 @@ async counterpart; a stream you pass in is never disposed for you.
 
 | File | Loader | Produces |
 | --- | --- | --- |
-| `vocab.txt` (BERT) | `VocabTxtLoader.Load` | `WordPieceVocabulary` |
-| `tokenizer.json` (HuggingFace) | `TokenizerJsonLoader.LoadWordPiece` / `.LoadUnigram` / `.LoadBpe` | `WordPieceVocabulary` / `SentencePieceVocabulary` / `BpeVocabulary` |
-| `spiece.model` (SentencePiece) | `SentencePieceModelLoader.Load` | `SentencePieceVocabulary` |
-| `vocab.json` + `merges.txt` (GPT-2) | `BpeFilesLoader.Load` | `BpeVocabulary` |
+| `vocab.txt` (BERT) | [`VocabTxtLoader.Load`](../reference/embeddings/persistence/vocabtxtloader-load.md) | `WordPieceVocabulary` |
+| `tokenizer.json` (HuggingFace) | [`TokenizerJsonLoader.LoadWordPiece`](../reference/embeddings/persistence/tokenizerjsonloader-loadwordpiece.md) / `.LoadUnigram` / `.LoadBpe` | `WordPieceVocabulary` / `SentencePieceVocabulary` / `BpeVocabulary` |
+| `spiece.model` (SentencePiece) | [`SentencePieceModelLoader.Load`](../reference/embeddings/persistence/sentencepiecemodelloader-load.md) | `SentencePieceVocabulary` |
+| `vocab.json` + `merges.txt` (GPT-2) | [`BpeFilesLoader.Load`](../reference/embeddings/persistence/bpefilesloader-load.md) | `BpeVocabulary` |
 
 ```csharp
 WordPieceVocabulary wpVocab = TokenizerJsonLoader.LoadWordPiece("tokenizer.json");
