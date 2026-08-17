@@ -57,7 +57,7 @@ the comparison to `pickle.load` that motivates bounding at all.
 
 **Applies to** — net10.0, netstandard2.0.
 
-**See also** — [`CountVectorizer.Load`](../vectorization/countvectorizer-load.md),
-[`TfidfVectorizer.Load`](../vectorization/tfidfvectorizer-load.md),
-[`HashingVectorizer.Load`](../vectorization/hashingvectorizer-load.md), the
+**See also** — [`CountVectorizer.Load`](../vectorizers/countvectorizer-load.md),
+[`TfidfVectorizer.Load`](../vectorizers/tfidfvectorizer-load.md),
+[`HashingVectorizer.Load`](../vectorizers/hashingvectorizer-load.md), the
 [vectorization guide](../../../guides/vectorization.md).
