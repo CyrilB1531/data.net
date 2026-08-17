@@ -27,15 +27,17 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 
 | Python | Library | C# | Differences |
 | --- | --- | --- | --- |
-| `Jaccard(qval=1).normalized_similarity(a, b)` | textdistance | `Jaccard.Similarity(a, b)` | Multisets (bags) of q-grams, `qval=1` by default. `\|A∩B\|/\|A∪B\|`. |
-| `Sorensen(qval=1).normalized_similarity(a, b)` | textdistance | `SorensenDice.Similarity(a, b)` | `2·\|A∩B\|/(\|A\|+\|B\|)`. |
-| `Overlap(qval=1).normalized_similarity(a, b)` | textdistance | `Overlap.Similarity(a, b)` | `\|A∩B\|/min(\|A\|,\|B\|)`. |
-| `Tversky(qval=1).normalized_similarity(a, b)` | textdistance | `Tversky.Similarity(a, b)` | `α=β=1` by default (⇒ Jaccard). |
-| `Cosine(qval=1).normalized_similarity(a, b)` | textdistance | `Cosine.Similarity(a, b)` | `\|A∩B\|/√(\|A\|·\|B\|)`. Pass `qval:2` for character bigrams. |
+| `Jaccard(qval=1).normalized_similarity(a, b)` | textdistance | [`Jaccard.Similarity(a, b)`](reference/text/similarity/jaccard-similarity.md) | Multisets (bags) of q-grams, `qval=1` by default. `\|A∩B\|/\|A∪B\|`. |
+| `Sorensen(qval=1).normalized_similarity(a, b)` | textdistance | [`SorensenDice.Similarity(a, b)`](reference/text/similarity/sorensendice-similarity.md) | `2·\|A∩B\|/(\|A\|+\|B\|)`. |
+| `Overlap(qval=1).normalized_similarity(a, b)` | textdistance | [`Overlap.Similarity(a, b)`](reference/text/similarity/overlap-similarity.md) | `\|A∩B\|/min(\|A\|,\|B\|)`. |
+| `Tversky(qval=1).normalized_similarity(a, b)` | textdistance | [`Tversky.Similarity(a, b)`](reference/text/similarity/tversky-similarity.md) | `α=β=1` by default (⇒ Jaccard). |
+| `Cosine(qval=1).normalized_similarity(a, b)` | textdistance | [`Cosine.Similarity(a, b)`](reference/text/similarity/cosine-similarity.md) | `\|A∩B\|/√(\|A\|·\|B\|)`. Pass `qval:2` for character bigrams. |
 
 > textdistance raises on some empty inputs; Lodestar defines them cleanly: both
-> empty ⇒ `1`, one empty ⇒ `0`. The oracle covers non-empty pairs (`qval=1`);
-> edges are covered by unit tests.
+> empty ⇒ `1`, one empty ⇒ `0`. The one exception is a zero Tversky weight, which
+> leaves the denominator empty as well — [its entry](reference/text/similarity/tversky-similarity.md)
+> says when. The oracle covers non-empty pairs (`qval=1`); edges are covered by
+> unit tests.
 
 ## Lodestar.Text — phonetic encoding
 
@@ -126,8 +128,8 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | Python | Library | C# | Differences |
 | --- | --- | --- | --- |
 | `numpy.save(path, matrix)` | numpy | `index.Save(path)` / `index.Save(stream)` | Versioned JSON whose vector block is base64-encoded raw little-endian IEEE-754 bits, not a `.npy` memory dump. Carries the normalization flag and an optional id per vector — a `.npy` header already carries `shape`/`dtype`, so the per-vector dimension is recoverable as `shape[1]`, but the flag and the ids have nowhere to live in it. |
-| `numpy.load(path)` | numpy | `EmbeddingIndex.Load(path, options?)` | Static, not a constructor. Returns a queryable index rather than an array, and bounds every count against `ArtifactLoadOptions` before it sizes a buffer — the vector block by `MaxTotalBytes` in bytes before parsing, the rest by `MaxArrayLength` in elements. |
-| `faiss.write_index(idx, path)` / `faiss.read_index(path)` | faiss | `index.Save(path)` / `EmbeddingIndex.Load(path)` | Comparable in purpose, not in structure: Lodestar's index is exhaustive (`IndexFlatIP`-shaped), so there is no graph or quantizer to serialize. An approximate index is a separate decision, not made. |
+| `numpy.load(path)` | numpy | [`EmbeddingIndex.Load(path, options?)`](reference/embeddings/search/embeddingindex-load.md) | Static, not a constructor. Returns a queryable index rather than an array, and bounds every count against `ArtifactLoadOptions` before it sizes a buffer — the vector block by `MaxTotalBytes` in bytes before parsing, the rest by `MaxArrayLength` in elements. |
+| `faiss.write_index(idx, path)` / `faiss.read_index(path)` | faiss | [`index.Save(path)`](reference/embeddings/search/embeddingindex-save.md) / [`EmbeddingIndex.Load(path)`](reference/embeddings/search/embeddingindex-load.md) | Comparable in purpose, not in structure: Lodestar's index is exhaustive (`IndexFlatIP`-shaped), so there is no graph or quantizer to serialize. An approximate index is a separate decision, not made. |
 | — (a parallel `list[str]` the caller keeps) | — | `index.Add(vector, id)` / `index.GetId(i)` | Deliberate addition: without ids in the file, a reloaded index is a wall of anonymous integers. |
 
 ## Lodestar.Fuzzy — applied fuzzy matching

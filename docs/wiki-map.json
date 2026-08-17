@@ -20,7 +20,8 @@
         "Lodestar.Text": "docs/reference/text/core",
         "Lodestar.Text.Persistence": "docs/reference/text/persistence",
         "Lodestar.Text.Stemming": "docs/reference/text/stemming",
-        "Lodestar.Text.Phonetics": "docs/reference/text/phonetics"
+        "Lodestar.Text.Phonetics": "docs/reference/text/phonetics",
+        "Lodestar.Text.Similarity": "docs/reference/text/similarity"
       }
     },
     "Lodestar.Embeddings": {
@@ -33,6 +34,7 @@
       "covered": {
         "Lodestar.Embeddings.Onnx": "docs/reference/embeddings/onnx",
         "Lodestar.Embeddings.Tokenization": "docs/reference/embeddings/tokenization",
+        "Lodestar.Embeddings.Search": "docs/reference/embeddings/search",
         "Lodestar.Embeddings.Persistence": "docs/reference/embeddings/persistence"
       }
     },
