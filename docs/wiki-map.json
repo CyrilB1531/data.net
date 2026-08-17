@@ -17,7 +17,8 @@
       "covered": {
         "Lodestar.Text.Distances": "docs/reference/text/distances",
         "Lodestar.Text.Vectorization": "docs/reference/text/vectorization",
-        "Lodestar.Text": "docs/reference/text/core"
+        "Lodestar.Text": "docs/reference/text/core",
+        "Lodestar.Text.Persistence": "docs/reference/text/persistence"
       }
     },
     "Lodestar.Embeddings": {
