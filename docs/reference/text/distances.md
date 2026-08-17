@@ -23,9 +23,8 @@ Two conventions run through the whole namespace, and knowing them saves reading 
   answer. The reasoning is in [decision 0002](../../decisions/0002-unicode-comparison-unit.md).
 
 Comparing two **bags** of words or characters, where position does not matter at all, is a
-different question. It is answered by the `Lodestar.Text.Similarity` namespace — `Jaccard`,
-`SorensenDice`, `Overlap`, `Tversky` and `Cosine` — not by anything here; its members are listed
-under [set similarity in the equivalence table](../../equivalence.md).
+different question. It is answered by the [`Lodestar.Text.Similarity`](similarity.md) namespace —
+`Jaccard`, `SorensenDice`, `Overlap`, `Tversky` and `Cosine` — not by anything here.
 
 ## Which one do I want?
 
