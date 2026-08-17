@@ -23,9 +23,12 @@
       "wiki": "Embeddings",
       "pages": [
         "docs/guides/embeddings.md",
-        "docs/reference/embeddings/*.md"
+        "docs/reference/embeddings/*.md",
+        "docs/reference/embeddings/*/*.md"
       ],
-      "covered": {}
+      "covered": {
+        "Lodestar.Embeddings.Onnx": "docs/reference/embeddings/onnx"
+      }
     },
     "Lodestar.Fuzzy": {
       "wiki": "Fuzzy",
