@@ -283,7 +283,7 @@ follow, and both are worth knowing before they surprise you:
   under-counts what `Encode` can emit. Size an embedding table from the model,
   not from `Count`.
 - An `lstrip`ped added token absorbs the whitespace on its left into the match,
-  and `BpeTokenizer.Decode` — the only decoder here, and the one whose byte-level
+  and [`BpeTokenizer.Decode`](../reference/embeddings/tokenization/bpetokenizer-decode.md) — the only decoder here, and the one whose byte-level
   round trip is otherwise exact — does not put it back: `'a <mask> b'` comes back
   as `'a<mask> b'`. HuggingFace loses it too, so this is parity rather than a
   defect — [decision 0022](../decisions/0022-added-token-matching-flags.md)

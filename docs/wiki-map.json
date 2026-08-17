@@ -29,7 +29,8 @@
         "docs/reference/embeddings/*/*.md"
       ],
       "covered": {
-        "Lodestar.Embeddings.Onnx": "docs/reference/embeddings/onnx"
+        "Lodestar.Embeddings.Onnx": "docs/reference/embeddings/onnx",
+        "Lodestar.Embeddings.Tokenization": "docs/reference/embeddings/tokenization"
       }
     },
     "Lodestar.Fuzzy": {
