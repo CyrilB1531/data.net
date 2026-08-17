@@ -15,7 +15,8 @@
         "docs/reference/text/*/*.md"
       ],
       "covered": {
-        "Lodestar.Text.Distances": "docs/reference/text/distances"
+        "Lodestar.Text.Distances": "docs/reference/text/distances",
+        "Lodestar.Text.Vectorization": "docs/reference/text/vectorization"
       }
     },
     "Lodestar.Embeddings": {
