@@ -39,7 +39,7 @@ was generated from, so the two cannot drift apart.
 
 What is **not** proven end-to-end is a Llama-3 or Qwen2 *encoding* — there is no
 vendored 128 000- or 150 000-entry Llama-3/Qwen2 vocabulary and merge table in
-this repository, and the caller supplies both through `TokenizerJsonLoader.LoadBpe`.
+this repository, and the caller supplies both through [`TokenizerJsonLoader.LoadBpe`](../reference/embeddings/persistence/tokenizerjsonloader-loadbpe.md).
 That is a deliberate scope limit, not an oversight: the merge loop itself is
 already proven by the GPT-2 oracle, byte-identically to what a Llama-3 or Qwen2
 vocabulary would exercise. Vendoring a vocabulary two orders of magnitude larger
@@ -51,7 +51,7 @@ level.
 
 ### 3. `byte_fallback` is refused; Llama-2 and Mistral v0.1 have no path here
 
-`TokenizerJsonLoader.LoadBpe` refuses a model declaring `byte_fallback`, naming
+[`TokenizerJsonLoader.LoadBpe`](../reference/embeddings/persistence/tokenizerjsonloader-loadbpe.md) refuses a model declaring `byte_fallback`, naming
 it in the exception. `BpeFilesLoader` has nothing to check here: `vocab.json` +
 `merges.txt` carries no pipeline flags at all, `byte_fallback` included — the
 only route by which a `byte_fallback` model reaches `BpeVocabulary` is

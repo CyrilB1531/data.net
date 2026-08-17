@@ -4,7 +4,7 @@
 
 ## Context
 
-`TokenizerJsonLoader.LoadBpe` refuses a BPE `model` declaring a non-zero `dropout`, and has since #59. The
+[`TokenizerJsonLoader.LoadBpe`](../reference/embeddings/persistence/tokenizerjsonloader-loadbpe.md) refuses a BPE `model` declaring a non-zero `dropout`, and has since #59. The
 refusal was never written down as a decision; the exception carried its own justification, and
 [#105](https://github.com/CyrilB1531/data.net/issues/105) said explicitly that deciding it was part of the
 work. This records the decision, and one ruling that is wider than it.

@@ -80,7 +80,7 @@ substituting.
 
 ### 6. What was rejected
 
-**Refusing such a model at load.** `TokenizerJsonLoader.LoadBpe` could
+**Refusing such a model at load.** [`TokenizerJsonLoader.LoadBpe`](../reference/embeddings/persistence/tokenizerjsonloader-loadbpe.md) could
 refuse a `tokenizer.json` whose added tokens are not byte-level decodable,
 the way it already refuses `byte_fallback` and other shapes. That addresses
 only the added-token case #149 was filed about — it does nothing for the

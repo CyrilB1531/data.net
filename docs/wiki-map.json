@@ -35,7 +35,8 @@
         "Lodestar.Embeddings.Onnx": "docs/reference/embeddings/onnx",
         "Lodestar.Embeddings.Tokenization": "docs/reference/embeddings/tokenization",
         "Lodestar.Embeddings.Pooling": "docs/reference/embeddings/pooling",
-        "Lodestar.Embeddings.Search": "docs/reference/embeddings/search"
+        "Lodestar.Embeddings.Search": "docs/reference/embeddings/search",
+        "Lodestar.Embeddings.Persistence": "docs/reference/embeddings/persistence"
       }
     },
     "Lodestar.Fuzzy": {
