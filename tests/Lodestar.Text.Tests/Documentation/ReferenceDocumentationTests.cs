@@ -194,10 +194,15 @@ public sealed class ReferenceDocumentationTests
     private static string CopyReference()
     {
         string root = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-        Directory.CreateDirectory(Path.Combine(root, "distances"));
+        Directory.CreateDirectory(root);
+
+        // Every namespace's directory, rather than a named one: this copied only
+        // "distances" until Vectorization became the second covered namespace (#225).
         foreach (string path in Directory.GetFiles(Root, "*.md", SearchOption.AllDirectories))
         {
-            File.Copy(path, Path.Combine(root, Path.GetRelativePath(Root, path)));
+            string destination = Path.Combine(root, Path.GetRelativePath(Root, path));
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.Copy(path, destination);
         }
 
         File.Copy(Map, Path.Combine(root, "wiki-map.json"));
