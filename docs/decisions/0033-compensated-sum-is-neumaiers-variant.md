@@ -61,7 +61,7 @@ and the same metric computed by `CompensatedSum` alone are not guaranteed to
 be bit-identical — both are Neumaier-compensated and both pass the oracle
 corpora's 1e-9 comparison, but the guarantee of an exact match, not the match
 itself, is what is withdrawn. This repository asserts bit-identity elsewhere
-(`Pooler.MeanPoolBatch`); it is deliberately not asserted here. The
+([`Pooler.MeanPoolBatch`](../reference/embeddings/pooling/pooler-meanpoolbatch.md)); it is deliberately not asserted here. The
 `net10.0`/`netstandard2.0` split this type exists for is recorded in
 [`0001`](0001-target-framework.md).
 

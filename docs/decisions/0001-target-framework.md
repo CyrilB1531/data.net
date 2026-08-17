@@ -43,7 +43,7 @@ to .NET Framework 4.6.1+, Mono, Xamarin and Unity for a bounded, one-off cost.
     results for `R2`/`ExplainedVariance` on this path can differ in the last
     few bits. Both stay Neumaier-compensated and both pass the oracle corpora,
     which compare at `1e-9`. This is narrower than the bit-identity
-    `Pooler.MeanPoolBatch` asserts elsewhere in the codebase — a reader should
+    [`Pooler.MeanPoolBatch`](../reference/embeddings/pooling/pooler-meanpoolbatch.md) asserts elsewhere in the codebase — a reader should
     not assume that guarantee extends here.
 - A handful of net-only conveniences are replaced by portable equivalents:
   `ArgumentNullException.ThrowIfNull` (behind a shared `Guard.NotNull`, so a single
