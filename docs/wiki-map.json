@@ -19,6 +19,7 @@
         "Lodestar.Text.Vectorization": "docs/reference/text/vectorizers",
         "Lodestar.Text": "docs/reference/text/core",
         "Lodestar.Text.Persistence": "docs/reference/text/persistence",
+        "Lodestar.Text.Stemming": "docs/reference/text/stemming",
         "Lodestar.Text.Phonetics": "docs/reference/text/phonetics"
       }
     },

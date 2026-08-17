@@ -35,9 +35,10 @@ int empty = Soundex.Encode(missing).Length;  // => 0
 **Remarks** — `L000` is the padding rule doing its work: `Lee` has one codeable consonant and the
 code is still four characters wide, because a fixed width is what lets Soundex be an index key.
 
-That `null` returns `""` rather than throwing is worth knowing, because most of this package
-refuses a `null` argument outright. Here a missing name silently becomes a code that matches every
-other missing name — check for it before encoding if that would be wrong.
+That `null` returns `""` rather than throwing is worth knowing, because it is the opposite of the
+stemmers in [`Lodestar.Text.Stemming`](../stemming.md), which refuse a `null` word. Here a missing
+name silently becomes a code that matches every other missing name — check for it before encoding
+if that would be wrong.
 
 The two overloads are the same algorithm; the span one exists so a word already sliced out of a
 larger buffer can be encoded without copying it.

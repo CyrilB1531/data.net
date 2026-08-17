@@ -73,13 +73,13 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 
 | Python | Library | C# | Differences |
 | --- | --- | --- | --- |
-| `PorterStemmer(mode=ORIGINAL_ALGORITHM).stem(w)` | nltk | `PorterStemmer.Stem(w)` | Porter (1980) algorithm, 5 steps. Exact parity (86 words). |
-| `SnowballStemmer("english").stem(w)` | nltk | `EnglishSnowballStemmer.Stem(w)` | Porter2: R1/R2 regions, exceptions. Exact parity (190 words). |
-| `SnowballStemmer("french").stem(w)` | nltk | `FrenchSnowballStemmer.Stem(w)` | French Snowball: RV region, 6 steps, NFC-normalized input. Exact parity (152 words). |
-| `SnowballStemmer("spanish").stem(w)` | nltk | `SpanishSnowballStemmer.Stem(w)` | Spanish Snowball: attached-pronoun step 0, accents stripped last. Exact parity (127 words). |
-| `SnowballStemmer("portuguese").stem(w)` | nltk | `PortugueseSnowballStemmer.Stem(w)` | Portuguese Snowball: nasal `a~`/`o~` expansion, accents kept. Exact parity (105 words). |
-| `SnowballStemmer("italian").stem(w)` | nltk | `ItalianSnowballStemmer.Stem(w)` | Italian Snowball: acute→grave folding, `u`/`i` marking. Exact parity (96 words); `enza`→`te` follows nltk over the published text, see [0008](decisions/0008-italian-enza-nltk-divergence.md). |
-| `SnowballStemmer("german").stem(w)` | nltk | `GermanSnowballStemmer.Stem(w)` | German Snowball: `ß`→`ss`, `u`/`y` marking, R1 floored at 3, no RV region. Exact parity (88 words). |
+| `PorterStemmer(mode=ORIGINAL_ALGORITHM).stem(w)` | nltk | [`PorterStemmer.Stem(w)`](reference/text/stemming/porterstemmer-stem.md) | Porter (1980) algorithm, 5 steps. Exact parity (86 words). |
+| `SnowballStemmer("english").stem(w)` | nltk | [`EnglishSnowballStemmer.Stem(w)`](reference/text/stemming/englishsnowballstemmer-stem.md) | Porter2: R1/R2 regions, exceptions. Exact parity (190 words). |
+| `SnowballStemmer("french").stem(w)` | nltk | [`FrenchSnowballStemmer.Stem(w)`](reference/text/stemming/frenchsnowballstemmer-stem.md) | French Snowball: RV region, 6 steps, NFC-normalized input. Exact parity (152 words). |
+| `SnowballStemmer("spanish").stem(w)` | nltk | [`SpanishSnowballStemmer.Stem(w)`](reference/text/stemming/spanishsnowballstemmer-stem.md) | Spanish Snowball: attached-pronoun step 0, accents stripped last. Exact parity (127 words). |
+| `SnowballStemmer("portuguese").stem(w)` | nltk | [`PortugueseSnowballStemmer.Stem(w)`](reference/text/stemming/portuguesesnowballstemmer-stem.md) | Portuguese Snowball: nasal `a~`/`o~` expansion, accents kept. Exact parity (105 words). |
+| `SnowballStemmer("italian").stem(w)` | nltk | [`ItalianSnowballStemmer.Stem(w)`](reference/text/stemming/italiansnowballstemmer-stem.md) | Italian Snowball: acute→grave folding, `u`/`i` marking. Exact parity (96 words); `enza`→`te` follows nltk over the published text, see [0008](decisions/0008-italian-enza-nltk-divergence.md). |
+| `SnowballStemmer("german").stem(w)` | nltk | [`GermanSnowballStemmer.Stem(w)`](reference/text/stemming/germansnowballstemmer-stem.md) | German Snowball: `ß`→`ss`, `u`/`y` marking, R1 floored at 3, no RV region. Exact parity (88 words). |
 
 ## Lodestar.Embeddings — sub-word tokenization & pooling
 

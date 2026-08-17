@@ -66,8 +66,9 @@ is usually the one that matters.
   about a name that is not English in origin — which includes many of the names a real dataset
   holds.
 - **Non-letters are ignored**, and the empty string encodes to the empty string.
-- **A `null` word is not refused** — it encodes to the empty string, where most of this package
-  throws on one. [`Soundex.Encode`](phonetics/soundex-encode.md) shows it.
+- **A `null` word is not refused** — it encodes to the empty string, unlike the
+  [stemmers next door](stemming.md), which throw. [`Soundex.Encode`](phonetics/soundex-encode.md)
+  shows it.
 - **Each is a static class with no state**, so all three are safe to call from any number of
   threads at once.
 
