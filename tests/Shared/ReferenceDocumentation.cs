@@ -288,7 +288,7 @@ internal static class ReferenceDocumentation
     /// a method three times while offering no way to find out what it does.
     /// </remarks>
     public static IReadOnlyList<string> CheckLinks(
-        Assembly assembly, string package, string wikiMapPath, string referenceRoot, string docsRoot)
+        Assembly assembly, string package, string wikiMapPath, string docsRoot)
     {
         List<string> complaints = [];
         HashSet<string> linkable = LinkableMembers(assembly, wikiMapPath, package);
@@ -322,7 +322,6 @@ internal static class ReferenceDocumentation
         return members;
     }
 
-    /// <summary>The file names Check itself treats as reference pages, read off the same directory.</summary>
     /// <summary>Whether a document is a reference page, which the page rules check instead.</summary>
     /// <remarks>
     /// By path, not by file name. Selecting on the name excluded any document that merely

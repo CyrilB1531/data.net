@@ -279,7 +279,7 @@ public sealed class ReferenceDocumentationTests
     public void Every_documented_member_named_in_the_docs_links_to_its_entry()
     {
         IReadOnlyList<string> complaints = ReferenceDocumentation.CheckLinks(
-            typeof(Levenshtein).Assembly, "Lodestar.Text", Map, Root, Docs);
+            typeof(Levenshtein).Assembly, "Lodestar.Text", Map, Docs);
 
         Assert.Empty(complaints);
     }
@@ -528,7 +528,7 @@ public sealed class ReferenceDocumentationTests
                 "# A guide\n\nIt calls `Levenshtein.Distance` and links nothing.\n");
 
             IReadOnlyList<string> complaints = ReferenceDocumentation.CheckLinks(
-                typeof(Levenshtein).Assembly, "Lodestar.Text", Map, Root, docs);
+                typeof(Levenshtein).Assembly, "Lodestar.Text", Map, docs);
 
             Assert.Contains(complaints, complaint =>
                 complaint.Contains("guides/distances.md", StringComparison.Ordinal) &&
@@ -548,7 +548,7 @@ public sealed class ReferenceDocumentationTests
         {
             File.WriteAllText(Path.Combine(docs, "page.md"), markdown);
             return ReferenceDocumentation.CheckLinks(
-                typeof(Levenshtein).Assembly, "Lodestar.Text", Map, Root, docs);
+                typeof(Levenshtein).Assembly, "Lodestar.Text", Map, docs);
         }
         finally
         {
