@@ -25,6 +25,7 @@ public static class Pooler
     /// <param name="dim">Embedding dimension.</param>
     /// <param name="attentionMask">Length <paramref name="seqLen"/>; non-zero marks a real token.</param>
     /// <returns>The pooled <c>dim</c>-length vector.</returns>
+    /// <exception cref="ArgumentException"><paramref name="tokenEmbeddings"/> is shorter than <paramref name="seqLen"/> &#215; <paramref name="dim"/> elements, or <paramref name="attentionMask"/> does not cover one mask entry per token.</exception>
     public static float[] MeanPool(ReadOnlySpan<float> tokenEmbeddings, int seqLen, int dim, ReadOnlySpan<long> attentionMask)
     {
         if (tokenEmbeddings.Length != seqLen * dim)
@@ -56,6 +57,7 @@ public static class Pooler
     /// <param name="seqLen">Padded length of every sequence.</param>
     /// <param name="dim">Embedding dimension.</param>
     /// <param name="attentionMask">Row-major <c>[batchSize × seqLen]</c>.</param>
+    /// <exception cref="ArgumentException"><paramref name="tokenEmbeddings"/> is shorter than <paramref name="batchSize"/> &#215; <paramref name="seqLen"/> &#215; <paramref name="dim"/> elements, or <paramref name="attentionMask"/> does not cover one mask entry per token.</exception>
     public static float[][] MeanPoolBatch(ReadOnlySpan<float> tokenEmbeddings, int batchSize, int seqLen, int dim, ReadOnlySpan<long> attentionMask)
     {
         ValidateBatch(tokenEmbeddings, batchSize, seqLen, dim, attentionMask);
@@ -127,6 +129,7 @@ public static class Pooler
     /// <param name="seqLen">Number of tokens.</param>
     /// <param name="dim">Embedding dimension.</param>
     /// <param name="attentionMask">Length <paramref name="seqLen"/>; non-zero marks a real token.</param>
+    /// <exception cref="ArgumentException"><paramref name="tokenEmbeddings"/> is shorter than <paramref name="seqLen"/> &#215; <paramref name="dim"/> elements, or <paramref name="attentionMask"/> does not cover one mask entry per token.</exception>
     public static float[] MeanPoolAndNormalize(ReadOnlySpan<float> tokenEmbeddings, int seqLen, int dim, ReadOnlySpan<long> attentionMask)
     {
         float[] pooled = MeanPool(tokenEmbeddings, seqLen, dim, attentionMask);
@@ -145,6 +148,7 @@ public static class Pooler
     /// <param name="seqLen">Padded length of every sequence.</param>
     /// <param name="dim">Embedding dimension.</param>
     /// <param name="attentionMask">Row-major <c>[batchSize × seqLen]</c>.</param>
+    /// <exception cref="ArgumentException"><paramref name="tokenEmbeddings"/> is shorter than <paramref name="batchSize"/> &#215; <paramref name="seqLen"/> &#215; <paramref name="dim"/> elements, or <paramref name="attentionMask"/> does not cover one mask entry per token.</exception>
     public static float[][] MeanPoolAndNormalizeBatch(ReadOnlySpan<float> tokenEmbeddings, int batchSize, int seqLen, int dim, ReadOnlySpan<long> attentionMask)
     {
         float[][] pooled = MeanPoolBatch(tokenEmbeddings, batchSize, seqLen, dim, attentionMask);

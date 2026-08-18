@@ -37,6 +37,12 @@ TokenizationResult encoded = tokenizer.Encode("token");
 string text = tokenizer.Decode(encoded.Ids);  // => token
 ```
 
+**Exceptions** — `ArgumentOutOfRangeException` when an id falls outside the vocabulary.
+Decoding cannot silently skip one, since the caller would get back a shorter text than it
+asked for with nothing said about it. Nothing else on this path throws: a byte sequence
+that is not well-formed UTF-8 becomes U+FFFD, which is what
+[decision 0023](../../../decisions/0023-byte-level-decode-substitutes.md) settled.
+
 **Remarks** — byte-level BPE round-trips **exactly**, and that is the property that makes decoding
 worth having: the vocabulary covers all 256 byte values through printable stand-ins, so emoji,
 mixed scripts and even malformed UTF-8 come back as they went in.

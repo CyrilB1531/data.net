@@ -39,13 +39,7 @@
         "Lodestar.Embeddings.Search": "docs/reference/embeddings/search",
         "Lodestar.Embeddings.Persistence": "docs/reference/embeddings/persistence"
       },
-      "exceptionsUnchecked": [
-        "Lodestar.Embeddings.Onnx",
-        "Lodestar.Embeddings.Persistence",
-        "Lodestar.Embeddings.Pooling",
-        "Lodestar.Embeddings.Search",
-        "Lodestar.Embeddings.Tokenization"
-      ]
+      "exceptionsUnchecked": []
     },
     "Lodestar.Fuzzy": {
       "wiki": "Fuzzy",

@@ -37,6 +37,12 @@ int length = ids.Length;  // => 3
 long first = ids[0];      // => 4
 ```
 
+**Exceptions** — `ArgumentException` when the sequence exceeds
+[`EncodingOptions.MaxLength`](encodingoptions.md) and
+[`Truncation`](truncationstrategy.md) is `None`. Measured: with `MaxLength = 3` and
+`TruncationStrategy.None` a four-token text throws; the same text with
+`TruncationStrategy.Right` is cut and returns.
+
 **Remarks** — three ids for a one-token text: `[CLS]` is `4`, `text` is `3`, `[SEP]` is `5`. The
 template is the difference between this and
 [`ISubwordTokenizer.Encode`](isubwordtokenizer-encode.md), which gives what the text *is* rather

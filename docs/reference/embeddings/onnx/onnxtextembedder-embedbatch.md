@@ -18,8 +18,12 @@ abandons the run.
 
 **Returns** — `float[][]`, one vector of `Dimension` per input text, in input order.
 
-**Exceptions** — `ObjectDisposedException` after [`Dispose`](onnxtextembedder-dispose.md).
-`OperationCanceledException` when cancelled.
+**Exceptions** — `InvalidOperationException` from the overload taking only texts, when the
+embedder was built without a tokenizer: the other two overloads are the way to supply one.
+`OperationCanceledException` when `cancellationToken` is already cancelled, or is cancelled
+between sub-batches. `ObjectDisposedException` after
+[`Dispose`](onnxtextembedder-dispose.md), for the reason
+[`Embed`](onnxtextembedder-embed.md) gives.
 
 **Example** — the shortest path from strings to vectors.
 

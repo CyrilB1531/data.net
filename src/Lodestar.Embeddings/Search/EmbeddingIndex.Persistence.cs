@@ -33,6 +33,7 @@ public sealed partial class EmbeddingIndex
     /// <summary>Writes the index to <paramref name="path"/>, replacing any existing file.</summary>
     /// <param name="path">The file to write. UTF-8 without a byte-order mark.</param>
     /// <exception cref="InvalidDataException">A vector holds a non-finite component.</exception>
+    /// <exception cref="IOException">The file cannot be written.</exception>
     public void Save(string path)
     {
         // Before opening: OpenWrite truncates, so a refused save would otherwise
@@ -46,6 +47,7 @@ public sealed partial class EmbeddingIndex
     /// <param name="destination">The stream to write to; never disposed by this method.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <exception cref="InvalidDataException">A vector holds a non-finite component.</exception>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
     public Task SaveAsync(Stream destination, CancellationToken cancellationToken = default) =>
         ArtifactIo.SaveAsync(destination, ArtifactName, ArtifactVersion, WriteArtifactBody, cancellationToken);
 
@@ -114,6 +116,7 @@ public sealed partial class EmbeddingIndex
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <exception cref="InvalidDataException">The artifact is malformed, of the wrong kind, of an unsupported version, internally inconsistent, or exceeds a limit.</exception>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
     public static async Task<EmbeddingIndex> LoadAsync(
         Stream source,
         ArtifactLoadOptions? options = null,

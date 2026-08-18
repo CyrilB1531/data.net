@@ -6,6 +6,7 @@ namespace Lodestar.Embeddings.Search;
 public static class VectorMath
 {
     /// <summary>Computes the dot product of two equal-length vectors, vectorized via <see cref="Vector{T}"/>.</summary>
+    /// <exception cref="ArgumentException"><paramref name="a"/> and <paramref name="b"/> differ in length.</exception>
     public static float Dot(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
     {
         if (a.Length != b.Length)

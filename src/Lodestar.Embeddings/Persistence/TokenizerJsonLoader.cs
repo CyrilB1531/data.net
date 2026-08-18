@@ -39,6 +39,7 @@ public static class TokenizerJsonLoader
     /// <param name="source">The <c>tokenizer.json</c> bytes; never disposed by this method.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <exception cref="InvalidDataException">The file is malformed, exceeds a limit, declares a different model type, or describes a pipeline this library does not reproduce.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
     public static WordPieceVocabulary LoadWordPiece(Stream source, ArtifactLoadOptions? options = null)
     {
         ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
@@ -50,6 +51,7 @@ public static class TokenizerJsonLoader
     /// <param name="path">Path to a <c>tokenizer.json</c>.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <exception cref="InvalidDataException">The file is malformed, exceeds a limit, declares a different model type, or describes a pipeline this library does not reproduce.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="path"/> is null.</exception>
     public static WordPieceVocabulary LoadWordPiece(string path, ArtifactLoadOptions? options = null)
     {
         using FileStream file = JsonArtifact.OpenRead(path);
@@ -60,6 +62,9 @@ public static class TokenizerJsonLoader
     /// <param name="source">The <c>tokenizer.json</c> bytes; never disposed by this method.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
+    /// <exception cref="InvalidDataException">The file is malformed, exceeds a limit, declares a different model type, or describes a pipeline this library does not reproduce.</exception>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
     public static async Task<WordPieceVocabulary> LoadWordPieceAsync(
         Stream source,
         ArtifactLoadOptions? options = null,
@@ -75,6 +80,7 @@ public static class TokenizerJsonLoader
     /// <param name="source">The <c>tokenizer.json</c> bytes; never disposed by this method.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <exception cref="InvalidDataException">The file is malformed, exceeds a limit, declares a different model type, or describes a pipeline this library does not reproduce.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
     public static SentencePieceVocabulary LoadUnigram(Stream source, ArtifactLoadOptions? options = null)
     {
         ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
@@ -86,6 +92,7 @@ public static class TokenizerJsonLoader
     /// <param name="path">Path to a <c>tokenizer.json</c>.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <exception cref="InvalidDataException">The file is malformed, exceeds a limit, declares a different model type, or describes a pipeline this library does not reproduce.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="path"/> is null.</exception>
     public static SentencePieceVocabulary LoadUnigram(string path, ArtifactLoadOptions? options = null)
     {
         using FileStream file = JsonArtifact.OpenRead(path);
@@ -96,6 +103,9 @@ public static class TokenizerJsonLoader
     /// <param name="source">The <c>tokenizer.json</c> bytes; never disposed by this method.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
+    /// <exception cref="InvalidDataException">The file is malformed, exceeds a limit, declares a different model type, or describes a pipeline this library does not reproduce.</exception>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
     public static async Task<SentencePieceVocabulary> LoadUnigramAsync(
         Stream source,
         ArtifactLoadOptions? options = null,
@@ -116,6 +126,7 @@ public static class TokenizerJsonLoader
     /// <param name="source">The <c>tokenizer.json</c> bytes; never disposed by this method.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <exception cref="InvalidDataException">The file is malformed, exceeds a limit, declares a different model type, or describes a pipeline this library does not reproduce.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
     public static BpeVocabulary LoadBpe(Stream source, ArtifactLoadOptions? options = null)
     {
         ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
@@ -127,6 +138,7 @@ public static class TokenizerJsonLoader
     /// <param name="path">Path to a <c>tokenizer.json</c>.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <exception cref="InvalidDataException">The file is malformed, exceeds a limit, declares a different model type, or describes a pipeline this library does not reproduce.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="path"/> is null.</exception>
     public static BpeVocabulary LoadBpe(string path, ArtifactLoadOptions? options = null)
     {
         using FileStream file = JsonArtifact.OpenRead(path);
@@ -137,6 +149,9 @@ public static class TokenizerJsonLoader
     /// <param name="source">The <c>tokenizer.json</c> bytes; never disposed by this method.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
+    /// <exception cref="InvalidDataException">The file is malformed, exceeds a limit, declares a different model type, or describes a pipeline this library does not reproduce.</exception>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
     public static async Task<BpeVocabulary> LoadBpeAsync(
         Stream source,
         ArtifactLoadOptions? options = null,

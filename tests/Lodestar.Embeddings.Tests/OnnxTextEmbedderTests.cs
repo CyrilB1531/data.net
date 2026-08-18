@@ -42,4 +42,18 @@ public sealed class OnnxTextEmbedderTests
         using var embedder = new OnnxTextEmbedder(ModelPath);
         Assert.Equal(4, embedder.Dimension);
     }
+
+    // Without the embedder's own flag this reached the disposed InferenceSession and
+    // came back as NullReferenceException, which the reference page never promised.
+    [Fact]
+    public void Embed_after_Dispose_names_the_disposed_object()
+    {
+        var embedder = new OnnxTextEmbedder(ModelPath);
+        embedder.Dispose();
+
+        long[] ids = [101, 2054, 102];
+        long[] mask = [1, 1, 1];
+
+        Assert.Throws<ObjectDisposedException>(() => embedder.Embed(ids, mask));
+    }
 }

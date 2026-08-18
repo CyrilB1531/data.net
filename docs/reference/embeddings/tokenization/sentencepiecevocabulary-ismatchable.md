@@ -37,6 +37,14 @@ bool control = vocabulary.IsMatchable(0);  // => False
 bool normal = vocabulary.IsMatchable(2);  // => True
 ```
 
+**Exceptions** — `ArgumentOutOfRangeException` when `id` falls outside
+[`Types`](sentencepiecevocabulary.md). Measured on a two-piece vocabulary: `5` and `-1`
+both throw, `1` returns. The record is a data carrier and does not itself require
+`Pieces` and `Types` to agree in length —
+[`SentencePieceTokenizer`](sentencepiecetokenizer.md) is what refuses a vocabulary where
+they do not, because reporting it here as a raw index failure would name neither the
+argument nor the reason.
+
 **Remarks** — id `0` is the unknown piece and id `1` is `<s>`; neither may be produced by
 matching text. That is a **security property** as much as a correctness one: if the literal string
 `<s>` encoded to the control token, any input could forge a sequence boundary and change what the
