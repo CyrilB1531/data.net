@@ -49,9 +49,10 @@ than from a `gammaln` series approximation.
 **That table is not exact, and the error grows with the sample count.** A cumulative sum of
 logarithms accumulates: measured against `lgamma` and propagated through the nine-term combination
 the sum uses, the relative error on each term is `5.9e-12` at 1 000 samples, `8.4e-10` at 20 000 and
-`2.0e-08` at 200 000. The corpus that pins this metric is replayed at `1e-9`, so parity is
-established below roughly **20 000 samples** and is not established above it. Past that, treat the
-last digits as indicative.
+`2.0e-08` at 200 000. Two different bounds, worth keeping apart: the table's own error budget stays under `1e-9` up to
+**n ≈ 20 000** (measured above), while the frozen corpus **enforces** parity only up to **n = 10**,
+its largest fixture. Between the two, parity is expected and untested; past 20 000 it is neither.
+Treat the last digits as indicative there.
 
 **Applies to** — net10.0, netstandard2.0.
 

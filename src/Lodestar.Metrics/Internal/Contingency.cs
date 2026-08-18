@@ -63,6 +63,13 @@ internal sealed class Contingency
     /// </remarks>
     public double MutualInformation()
     {
+        // One piece on either side shares no information: the reference answers 0.0
+        // exactly, where summing terms that cancel leaves ~5e-15 at a hundred thousand.
+        if (Rows.Length <= 1 || Columns.Length <= 1)
+        {
+            return 0.0;
+        }
+
         double total = Samples;
         double logTotal = Math.Log(total);
         double sum = 0.0;

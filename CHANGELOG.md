@@ -53,6 +53,7 @@ is one sentence, the issue and the commit; see
 
 #### Changed
 
+- **Numerical change, under `1e-14`.** `NormalizedMutualInformation`, `Homogeneity`, `Completeness` and `VMeasure` return slightly different values on inputs where one labelling is a single cluster: the shared mutual-information term now zeroes each contribution below the machine epsilon before summing and returns `0.0` outright when either side has one label, both of which the reference does. The old values were up to `5.13e-15` from scikit-learn's and the new ones are exact, so anything comparing at the corpus tolerance of `1e-9` is unaffected — this is recorded because the values moved, not because a caller should have to react. ([#191](https://github.com/CyrilB1531/lodestar/issues/191))
 - The reference is one page per member, with a type page and a namespace index above it: the two documents above become 31 type pages and 42 member pages, and the index a reader lands on is 102 lines rather than 1646. ([#189](https://github.com/CyrilB1531/data.net/issues/189))
 - The package is `Lodestar.Metrics`, and its namespaces are `Lodestar.Metrics.*`. ([#194](https://github.com/CyrilB1531/data.net/issues/194))
 
