@@ -16,11 +16,15 @@ public sealed partial class HashingVectorizer
     /// configuration still matters: a pipeline reloaded with a different <c>NumFeatures</c>,
     /// <c>AlternateSign</c> or analyzer silently produces different columns for the same document.
     /// </remarks>
+    /// <exception cref="ArgumentNullException">the stream or path is null.</exception>
+    /// <exception cref="IOException">the stream or file system refuses the write.</exception>
     /// <param name="destination">The stream to write to. It is flushed but never disposed — the caller owns it.</param>
     public void Save(Stream destination) =>
         ArtifactIo.Save(destination, ArtifactName, ArtifactVersion, WriteArtifactBody);
 
     /// <summary>Writes the vectorizer's configuration to <paramref name="path"/>, replacing any existing file.</summary>
+    /// <exception cref="ArgumentNullException">the stream or path is null.</exception>
+    /// <exception cref="IOException">the stream or file system refuses the write.</exception>
     /// <remarks>Equivalent to <c>joblib.dump(vectorizer, path)</c>; the file is UTF-8 without a byte-order mark.</remarks>
     public void Save(string path)
     {
@@ -30,6 +34,8 @@ public sealed partial class HashingVectorizer
 
     /// <summary>Asynchronous counterpart of <see cref="Save(Stream)"/>.</summary>
     /// <param name="destination">The stream to write to; never disposed by this method.</param>
+    /// <exception cref="ArgumentNullException">the stream is null.</exception>
+    /// <exception cref="OperationCanceledException">the token is cancelled.</exception>
     /// <param name="cancellationToken">Cancels the write.</param>
     public Task SaveAsync(Stream destination, CancellationToken cancellationToken = default) =>
         ArtifactIo.SaveAsync(destination, ArtifactName, ArtifactVersion, WriteArtifactBody, cancellationToken);
@@ -39,6 +45,7 @@ public sealed partial class HashingVectorizer
     /// <param name="source">The stream to read from; never disposed by this method.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <exception cref="InvalidDataException">The artifact is malformed, of the wrong kind, of an unsupported version, or exceeds a limit.</exception>
+    /// <exception cref="ArgumentNullException">the stream or path is null.</exception>
     public static HashingVectorizer Load(Stream source, ArtifactLoadOptions? options = null)
     {
         ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
@@ -49,6 +56,7 @@ public sealed partial class HashingVectorizer
     /// <param name="path">The artifact file, as written by <see cref="Save(string)"/>.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <exception cref="InvalidDataException">The artifact is malformed, of the wrong kind, of an unsupported version, or exceeds a limit.</exception>
+    /// <exception cref="ArgumentNullException">the stream or path is null.</exception>
     public static HashingVectorizer Load(string path, ArtifactLoadOptions? options = null)
     {
         using FileStream file = JsonArtifact.OpenRead(path);
@@ -58,6 +66,9 @@ public sealed partial class HashingVectorizer
     /// <summary>Asynchronous counterpart of <see cref="Load(Stream, ArtifactLoadOptions?)"/>.</summary>
     /// <param name="source">The stream to read from; never disposed by this method.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
+    /// <exception cref="ArgumentNullException">the stream is null.</exception>
+    /// <exception cref="InvalidDataException">the content is not a saved vectorizer, or exceeds a bound.</exception>
+    /// <exception cref="OperationCanceledException">the token is cancelled.</exception>
     /// <param name="cancellationToken">Cancels the read.</param>
     public static async Task<HashingVectorizer> LoadAsync(
         Stream source,

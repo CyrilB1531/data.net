@@ -23,11 +23,7 @@
         "Lodestar.Text.Phonetics": "docs/reference/text/phonetics",
         "Lodestar.Text.Similarity": "docs/reference/text/similarity"
       },
-      "exceptionsUnchecked": [
-        "Lodestar.Text.Similarity",
-        "Lodestar.Text.Stemming",
-        "Lodestar.Text.Vectorization"
-      ]
+      "exceptionsUnchecked": []
     },
     "Lodestar.Embeddings": {
       "wiki": "Embeddings",

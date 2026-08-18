@@ -48,6 +48,7 @@ public sealed partial class HashingVectorizer
     /// <summary>Number of hash buckets (columns of the output matrix).</summary>
     public int NumFeatures => _options.NumFeatures;
 
+    /// <exception cref="ArgumentNullException"><paramref name="documents"/> is null.</exception>
     /// <summary>Hashes <paramref name="documents"/> into a sparse matrix. No fitting required.</summary>
     public CsrMatrix Transform(IEnumerable<string> documents)
     {
@@ -97,6 +98,7 @@ public sealed partial class HashingVectorizer
         return matrix;
     }
 
+    /// <exception cref="ArgumentNullException"><paramref name="documents"/> is null.</exception>
     /// <summary>Alias for <see cref="Transform"/> — the vectorizer is stateless.</summary>
     public CsrMatrix FitTransform(IEnumerable<string> documents) => Transform(documents);
 }

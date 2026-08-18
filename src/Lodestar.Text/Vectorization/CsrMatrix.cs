@@ -147,6 +147,7 @@ public sealed class CsrMatrix
     }
 #pragma warning restore CA1814
 
+    /// <exception cref="IndexOutOfRangeException"><paramref name="row"/> is negative or not below <see cref="RowCount"/>.</exception>
     /// <summary>Computes the L1 norm (sum of absolute values) of a row.</summary>
     public double RowL1Norm(int row)
     {
@@ -158,6 +159,7 @@ public sealed class CsrMatrix
         return sum;
     }
 
+    /// <exception cref="IndexOutOfRangeException"><paramref name="row"/> is negative or not below <see cref="RowCount"/>.</exception>
     /// <summary>Computes the L2 (Euclidean) norm of a row.</summary>
     public double RowL2Norm(int row)
     {
@@ -197,6 +199,7 @@ public sealed class CsrMatrix
         }
     }
 
+    /// <exception cref="ArgumentException"><paramref name="vector"/> is not <see cref="ColumnCount"/> long.</exception>
     /// <summary>Computes the matrix-vector product <c>this · vector</c>.</summary>
     public double[] Multiply(ReadOnlySpan<double> vector)
     {

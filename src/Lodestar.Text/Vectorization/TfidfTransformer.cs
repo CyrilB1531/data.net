@@ -38,6 +38,7 @@ public sealed class TfidfTransformer
     /// <summary>The learned inverse-document-frequency vector (one per feature), or empty if not using idf.</summary>
     public IReadOnlyList<double> Idf => _idf ?? throw new InvalidOperationException("Not fitted.");
 
+    /// <exception cref="ArgumentNullException"><paramref name="counts"/> is null.</exception>
     /// <summary>Learns the idf vector from a count matrix.</summary>
     public TfidfTransformer Fit(CsrMatrix counts)
     {
@@ -61,6 +62,9 @@ public sealed class TfidfTransformer
         return this;
     }
 
+    /// <exception cref="ArgumentException"><paramref name="counts"/> has a different column count from the fit.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="counts"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">nothing has been fitted yet.</exception>
     /// <summary>Applies the TF-IDF weighting (and optional normalization) to a count matrix.</summary>
     public CsrMatrix Transform(CsrMatrix counts)
     {
@@ -109,6 +113,7 @@ public sealed class TfidfTransformer
         return result;
     }
 
+    /// <exception cref="ArgumentNullException"><paramref name="counts"/> is null.</exception>
     /// <summary>Fits and transforms in one call.</summary>
     public CsrMatrix FitTransform(CsrMatrix counts) => Fit(counts).Transform(counts);
 
