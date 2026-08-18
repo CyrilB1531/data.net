@@ -64,24 +64,31 @@ jobs:
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "baseline: ${sha:-none}"
 
-      - name: Which classes that makes worth re-running
+      - name: Which classes and comparisons that makes worth re-running
         id: select
         run: |
           set -euo pipefail
           if [ "${{ inputs.all }}" = "true" ] || [ -z "${{ steps.baseline.outputs.sha }}" ]; then
             python tools/select_benchmarks.py --all > selected.txt
+            python tools/select_benchmarks.py --all --harnesses > harnesses.txt
           else
-            python tools/select_benchmarks.py --since "${{ steps.baseline.outputs.sha }}" > selected.txt
+            since="${{ steps.baseline.outputs.sha }}"
+            python tools/select_benchmarks.py --since "$since" > selected.txt
+            python tools/select_benchmarks.py --since "$since" --harnesses > harnesses.txt
           fi
           count=$(wc -l < selected.txt | tr -d ' ')
+          harnesses=$(wc -l < harnesses.txt | tr -d ' ')
           echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "harnesses=$harnesses" >> "$GITHUB_OUTPUT"
+          echo "total=$((count + harnesses))" >> "$GITHUB_OUTPUT"
           echo "selected=$(tr '\n' ' ' < selected.txt)" >> "$GITHUB_OUTPUT"
           echo "$count class(es):"; cat selected.txt
+          echo "$harnesses comparison(s):"; cat harnesses.txt
 
       # generate_vocabs.py imports sentencepiece. Same lock file and same flags as ci.yml:
       # one source of truth for what this repository's Python needs.
       - name: Install tool dependencies
-        if: steps.select.outputs.count != '0'
+        if: steps.select.outputs.total != '0'
         # A block scalar, not a plain one: ':all: ' carries a colon and a space, which
         # ends a plain scalar and made the whole file unparseable. ci.yml writes it the
         # same way, and copying the command without its shape is what broke this.
@@ -92,7 +99,7 @@ jobs:
       # data git ignores on purpose. A fresh runner has none of it and BenchCorpus throws
       # at [GlobalSetup] rather than measuring, so this is not optional.
       - name: Generate the vocabularies the benchmarks read
-        if: steps.select.outputs.count != '0'
+        if: steps.select.outputs.total != '0'
         run: python bench/corpus/generate_vocabs.py
 
       - name: Run them
@@ -108,6 +115,27 @@ jobs:
           dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- \
             --filter $filters --job short --exporters github
 
+      # The claim this project makes -- faster than rapidfuzz -- lives here and nowhere
+      # else: a BenchmarkDotNet class measures us against ourselves. Both sides run in
+      # the same job, on the same VM, in the same minutes, which is what makes the ratio
+      # readable where the absolutes are not.
+      - name: Compare against Python
+        if: steps.select.outputs.harnesses != '0'
+        run: |
+          set -euo pipefail
+          mkdir -p bench/results
+          while read -r name; do
+            [ -n "$name" ] || continue
+            subcommand=$(python -c "import json;print(json.load(open('bench/bench-map.json'))['harnesses']['$name']['subcommand'])")
+            script=$(python -c "import json;print(json.load(open('bench/bench-map.json'))['harnesses']['$name']['python'])")
+            mode=$(python -c "import json;print(json.load(open('bench/bench-map.json'))['harnesses']['$name']['compare'])")
+            echo "::group::$name"
+            python "$script"
+            dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- "$subcommand"
+            python bench/compare.py $mode | tee "bench/results/compare-$name.txt"
+            echo "::endgroup::"
+          done < harnesses.txt
+
       - name: Write the page
         run: |
           set -euo pipefail
@@ -118,7 +146,8 @@ jobs:
             --commit "${{ github.sha }}" \
             --baseline "${{ github.sha }}" \
             --runner "${{ runner.os }} / ${{ runner.arch }} (GitHub hosted)" \
-            --selected $(cat selected.txt | tr '\n' ' ')
+            --selected $(cat selected.txt | tr '\n' ' ') \
+            --harnesses $(cat harnesses.txt | tr '\n' ' ')
 
       - name: Open the pull request
         id: pr

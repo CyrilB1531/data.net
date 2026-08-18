@@ -33,6 +33,10 @@ PAGE = ROOT / "docs" / "guides" / "nightly_run.md"
 # than passed in: no path this script touches comes from an argument.
 ARTIFACTS = ROOT / "BenchmarkDotNet.Artifacts" / "results"
 
+# What bench/compare.py prints, captured per comparison. This is where the claim against
+# rapidfuzz is measured; a BenchmarkDotNet class only measures us against ourselves.
+COMPARISONS = ROOT / "bench" / "results"
+
 HEADER = "# Nightly benchmark run"
 
 MARKER = "<!-- nightly-baseline: {sha} -->"
@@ -49,32 +53,55 @@ against a baseline measured in the same run, on the same VM, in the same minute,
 """
 
 
-def render(args: argparse.Namespace, reports: list[pathlib.Path]) -> str:
+def included(paths: list[pathlib.Path], fence: str = "") -> list[str]:
+    """Each readable file as its own section, skipping the ones a run never produced."""
+    lines: list[str] = []
+    for path in paths:
+        body = path.read_text(encoding="utf-8").strip() if path.exists() else ""
+        if not body:
+            continue
+        lines += [f"### {path.stem}", ""]
+        lines += [f"```{fence}", body, "```", ""] if fence else [body, ""]
+    return lines
+
+
+def listing(title: str, note: str, names: list[str]) -> list[str]:
+    """One section headed by its own reason, then the names it covers."""
+    return ["", f"## {title}", "", note, ""] + [f"- `{name}`" for name in names] + [""]
+
+
+def nothing_ran(reason: str) -> list[str]:
+    return ["## Nothing was re-run", "",
+            reason or "No source a benchmark measures changed since the previous run, so "
+            "nothing needed measuring. `bench/bench-map.json` decides that, and "
+            "`tools/check_bench_map.py` refuses an entry it does not name.", ""]
+
+
+def render(args: argparse.Namespace,
+           reports: list[pathlib.Path],
+           comparisons: list[pathlib.Path] | None = None) -> str:
     lines = [HEADER, "", MARKER.format(sha=args.baseline or "none"), ""]
     lines.append(PREAMBLE.format(performance="performance").strip())
     lines += ["", "## This run", "", f"- Commit: `{args.commit}`",
-              f"- Previous run: `{args.baseline or 'none — every class was selected'}`",
+              f"- Previous run: `{args.baseline or 'none — every entry was selected'}`",
               f"- Runner: {args.runner}", ""]
 
-    if not args.selected:
-        lines += ["## Nothing was re-run", "",
-                  args.reason or "No source a benchmark measures changed since the previous run, "
-                  "so nothing needed measuring. `bench/bench-map.json` decides that, and "
-                  "`tools/check_bench_map.py` refuses a benchmark class it does not name.", ""]
-        return collapse(lines)
+    if not args.selected and not args.harnesses:
+        return collapse(lines + nothing_ran(args.reason))
 
-    lines += ["## Classes re-run", "",
-              "Selected by `tools/select_benchmarks.py` from the sources that changed since the "
-              "previous run:", ""]
-    lines += [f"- `{name}`" for name in args.selected]
-    lines.append("")
+    if args.selected:
+        lines += listing(
+            "Classes re-run",
+            "Selected by `tools/select_benchmarks.py` from the sources that changed since "
+            "the previous run:", args.selected)
+        lines += included(reports)
 
-    for report in reports:
-        if not report.exists():
-            continue
-        body = report.read_text(encoding="utf-8").strip()
-        if body:
-            lines += [f"### {report.stem}", "", body, ""]
+    if args.harnesses:
+        lines += listing(
+            "Against rapidfuzz, in this same run",
+            "Both sides on this VM in these minutes, which is what makes the ratio readable "
+            "where the absolutes are not.", args.harnesses)
+        lines += included(comparisons or [], fence="text")
 
     return collapse(lines)
 
@@ -95,12 +122,14 @@ def main() -> None:
     parser.add_argument("--baseline", default="")
     parser.add_argument("--runner", default="ubuntu-latest")
     parser.add_argument("--selected", nargs="*", default=[])
+    parser.add_argument("--harnesses", nargs="*", default=[])
     parser.add_argument("--reason", default="")
     parser.add_argument("--stdout", action="store_true", help="print instead of writing")
     args = parser.parse_args()
 
     reports = sorted(ARTIFACTS.glob("*-report-github.md")) if ARTIFACTS.is_dir() else []
-    page = render(args, reports)
+    comparisons = sorted(COMPARISONS.glob("compare-*.txt")) if COMPARISONS.is_dir() else []
+    page = render(args, reports, comparisons)
     if args.stdout:
         print(page, end="")
         return

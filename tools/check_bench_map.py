@@ -31,8 +31,11 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 MAP = ROOT / "bench" / "bench-map.json"
 BENCH_DIR = ROOT / "bench" / "Lodestar.Text.Benchmarks"
+PROGRAM = BENCH_DIR / "Program.cs"
+PYTHON_DIR = ROOT / "bench" / "python"
 
 CLASS = re.compile(r"^\s*public\s+class\s+(\w+)", re.MULTILINE)
+SUBCOMMAND = re.compile(r'args\[0\] == "(compare[a-z-]*)"')
 
 
 def declared_classes() -> dict[str, pathlib.Path]:
@@ -46,6 +49,38 @@ def declared_classes() -> dict[str, pathlib.Path]:
         if match:
             found[match.group(1)] = path
     return found
+
+
+def declared_harnesses() -> set[str]:
+    """Every cross-language subcommand Program.cs dispatches, and every bench_*.py."""
+    program = PROGRAM.read_text(encoding="utf-8") if PROGRAM.exists() else ""
+    found = set(SUBCOMMAND.findall(program))
+    found |= {path.name for path in PYTHON_DIR.glob("bench_*.py")}
+    return found
+
+
+def harness_findings(harnesses: dict) -> list[str]:
+    """A comparison the map does not carry is one the nightly never runs."""
+    mapped_subcommands = {entry.get("subcommand") for entry in harnesses.values()}
+    mapped_python = {pathlib.Path(entry.get("python", "")).name for entry in harnesses.values()}
+    declared = declared_harnesses()
+
+    findings = [
+        f"bench/Lodestar.Text.Benchmarks/Program.cs: '{name}' is dispatched and no harness in "
+        f"bench/bench-map.json names it, so the nightly would never run that comparison"
+        for name in sorted(declared & {n for n in declared if n.startswith("compare")})
+        if name not in mapped_subcommands
+    ]
+    findings += [
+        f"bench/python/{name}: no harness in bench/bench-map.json names it"
+        for name in sorted(n for n in declared if n.endswith(".py")) if name not in mapped_python
+    ]
+    findings += [
+        f"bench/bench-map.json: harness '{key}' names {entry['python']}, which does not exist"
+        for key, entry in sorted(harnesses.items())
+        if not (ROOT / entry.get("python", "")).exists()
+    ]
+    return findings
 
 
 def coverage_findings(mapped: dict, declared: dict) -> list[str]:
@@ -70,6 +105,11 @@ def glob_findings(data: dict) -> list[str]:
         for glob in globs if not any(ROOT.glob(glob))
     ]
     findings += [
+        f"bench/bench-map.json: harness {key}'s '{glob}' matches nothing"
+        for key, entry in sorted(data.get("harnesses", {}).items())
+        for glob in entry.get("sources", []) if not any(ROOT.glob(glob))
+    ]
+    findings += [
         f"bench/bench-map.json: 'always' entry '{glob}' matches nothing"
         for glob in data.get("always", []) if not any(ROOT.glob(glob))
     ]
@@ -87,6 +127,7 @@ def main() -> int:
 
     data = json.loads(MAP.read_text(encoding="utf-8"))
     findings = coverage_findings(data.get("benchmarks", {}), declared_classes())
+    findings += harness_findings(data.get("harnesses", {}))
     findings += glob_findings(data)
 
     for finding in findings:

@@ -1,9 +1,12 @@
 {
-  "_why": "Which benchmark classes a change makes worth re-running. Deliberately coarse: a benchmark run for nothing costs minutes, a benchmark not run hides a regression, so the globs are directories rather than files and over-include on purpose. tools/check_bench_map.py refuses a [Benchmark] class that is absent here.",
+  "_why": "Which benchmarks a change makes worth re-running. Deliberately coarse: a benchmark run for nothing costs minutes, one not run hides a regression, so the globs are directories and over-include on purpose. 'benchmarks' are BenchmarkDotNet classes, measured against themselves; 'harnesses' are the cross-language pairs, which is where the claim against rapidfuzz is actually measured. tools/check_bench_map.py refuses either kind if this file does not name it.",
   "always": [
     "src/Shared/**",
     "bench/Lodestar.Text.Benchmarks/BenchCorpus.cs",
     "bench/Lodestar.Text.Benchmarks/Program.cs",
+    "bench/Lodestar.Text.Benchmarks/CrossLang/**",
+    "bench/python/harness.py",
+    "bench/compare.py",
     "bench/corpus/**"
   ],
   "benchmarks": {
@@ -61,5 +64,44 @@
       "src/Lodestar.Text/Vectorization/**",
       "src/Lodestar.Text/Text/**"
     ]
+  },
+  "harnesses": {
+    "levenshtein": {
+      "subcommand": "compare",
+      "python": "bench/python/bench_levenshtein.py",
+      "compare": "",
+      "sources": [
+        "src/Lodestar.Text/Distances/**",
+        "src/Lodestar.Text/Text/**"
+      ]
+    },
+    "indel": {
+      "subcommand": "compare-indel",
+      "python": "bench/python/bench_indel.py",
+      "compare": "indel",
+      "sources": [
+        "src/Lodestar.Text/Distances/**",
+        "src/Lodestar.Text/Text/**"
+      ]
+    },
+    "metrics": {
+      "subcommand": "compare-metrics",
+      "python": "bench/python/bench_metrics.py",
+      "compare": "metrics",
+      "sources": [
+        "src/Lodestar.Metrics/**"
+      ]
+    },
+    "persistence": {
+      "subcommand": "compare-persistence",
+      "python": "bench/python/bench_persistence.py",
+      "compare": "persistence",
+      "sources": [
+        "src/Lodestar.Embeddings/Persistence/**",
+        "src/Lodestar.Embeddings/Search/**",
+        "src/Lodestar.Text/Vectorization/**",
+        "src/Lodestar.Text/Persistence/**"
+      ]
+    }
   }
 }
