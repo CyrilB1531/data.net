@@ -20,6 +20,22 @@ namespace Lodestar.Text.Distances;
 /// </remarks>
 internal static class Myers
 {
+    /// <summary>How many distinct code points a renamed pattern may hold.</summary>
+    /// <remarks>
+    /// 255 rather than 256: one slot is reserved for every text symbol the pattern
+    /// does not contain, and the kernels index a 256-entry table by the symbol.
+    /// </remarks>
+    private const int DenseAlphabet = 255;
+
+    /// <summary>The reserved slot, whose equality mask no pattern symbol ever sets.</summary>
+    private const char Unmatched = (char)DenseAlphabet;
+
+    /// <summary>Probe table size: a power of two, twice the alphabet it must hold.</summary>
+    private const int SlotCapacity = 512;
+
+    /// <summary>The free-slot marker. No code point is negative.</summary>
+    private const int Empty = -1;
+
     /// <summary>
     /// Attempts to compute the Levenshtein distance between <paramref name="pattern"/>
     /// and <paramref name="text"/> using the single-word algorithm.
@@ -41,6 +57,87 @@ internal static class Myers
         return m <= 64
             ? TrySingleWord(pattern, text, out distance)
             : TryBlocked(pattern, text, out distance);
+    }
+
+    /// <summary>The same computation over code points, renamed into a dense alphabet.</summary>
+    /// <returns>
+    /// <c>true</c> and the distance; <c>false</c> when the pattern is empty or
+    /// holds more than <see cref="DenseAlphabet"/> distinct code points, and the
+    /// caller must fall back to the DP.
+    /// </returns>
+    /// <remarks>
+    /// The pattern's distinct code points are numbered <c>0..k-1</c> and every text
+    /// symbol it lacks becomes the one free slot -- already the all-zero mask an
+    /// unmatched character gets. See <c>docs/decisions/0004</c> (#208).
+    /// </remarks>
+    public static bool TryDistance(ReadOnlySpan<int> pattern, ReadOnlySpan<int> text, out int distance)
+    {
+        distance = 0;
+        int m = pattern.Length;
+        if (m == 0)
+        {
+            return false;
+        }
+
+        char[] patternRented = ArrayPool<char>.Shared.Rent(m);
+        char[] textRented = ArrayPool<char>.Shared.Rent(Math.Max(1, text.Length));
+        try
+        {
+            Span<char> renamedPattern = patternRented.AsSpan(0, m);
+            Span<char> renamedText = textRented.AsSpan(0, text.Length);
+
+            Span<int> keys = stackalloc int[SlotCapacity];
+            Span<byte> slots = stackalloc byte[SlotCapacity];
+            keys.Fill(Empty);
+
+            int distinct = 0;
+            for (int i = 0; i < m; i++)
+            {
+                int probe = Probe(keys, pattern[i]);
+                if (keys[probe] == Empty)
+                {
+                    if (distinct == DenseAlphabet)
+                    {
+                        return false; // more symbols than the dense alphabet holds
+                    }
+                    keys[probe] = pattern[i];
+                    slots[probe] = (byte)distinct;
+                    distinct++;
+                }
+                renamedPattern[i] = (char)slots[probe];
+            }
+
+            for (int j = 0; j < text.Length; j++)
+            {
+                int probe = Probe(keys, text[j]);
+                renamedText[j] = keys[probe] == Empty ? Unmatched : (char)slots[probe];
+            }
+
+            return TryDistance((ReadOnlySpan<char>)renamedPattern, (ReadOnlySpan<char>)renamedText, out distance);
+        }
+        finally
+        {
+            ArrayPool<char>.Shared.Return(patternRented);
+            ArrayPool<char>.Shared.Return(textRented);
+        }
+    }
+
+    /// <summary>The slot index of <paramref name="symbol"/>, occupied or free.</summary>
+    /// <remarks>
+    /// Linear probing terminates only because a free slot is guaranteed: at most
+    /// 255 of 512 entries are ever occupied, the 256th distinct symbol being
+    /// refused rather than stored. The multiply is Knuth's, because code points
+    /// cluster hard -- an emoji pattern lives inside U+1F300..U+1FAFF, and masking
+    /// those low bits alone would pile every symbol into a few slots.
+    /// </remarks>
+    private static int Probe(Span<int> keys, int symbol)
+    {
+        int index = (int)(((uint)symbol * 2654435761u) >> 23) & (SlotCapacity - 1);
+        while (keys[index] != Empty && keys[index] != symbol)
+        {
+            index = (index + 1) & (SlotCapacity - 1);
+        }
+        return index;
     }
 
     private static bool TrySingleWord(ReadOnlySpan<char> pattern, ReadOnlySpan<char> text, out int distance)

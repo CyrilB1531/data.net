@@ -10,6 +10,35 @@ Rigorous per-method measurement, for optimizing the C# implementation itself:
 dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- --filter '*Levenshtein*'
 ```
 
+### The Levenshtein corpora, and which one reaches what
+
+There are two classes, and the difference between their corpora is the whole
+point of having both.
+
+`LevenshteinBenchmarks` draws both operands from `"abcdefghijklmnopqrstuvwxyz "`.
+That is the near-duplicate matching case, and it is ASCII — so its
+`Distance_CodePoint` row decodes into a sequence identical to the UTF-16 one and
+measures the decode over a 27-symbol alphabet. It is not a measurement of the
+code-point mode.
+
+`LevenshteinCodePointBenchmarks` is that measurement (#208). Both operands are
+drawn from U+1F300..U+1FAFF, so every character is a surrogate pair and the two
+readings genuinely differ, which is the case
+[decision 0002](../docs/decisions/0002-unicode-comparison-unit.md) points a
+caller at. It carries a second parameter the other does not:
+
+- `Distinct = 32` — the pattern fits the 255-symbol dense alphabet at every
+  length, so the bit-parallel path applies throughout;
+- `Distinct = 512` — the pattern outgrows it as `Length` rises, and the
+  implementation falls back to the dynamic program.
+
+Both are run because reporting only the first would publish the fast path's
+number as though it were the mode's.
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- --filter '*LevenshteinCodePoint*'
+```
+
 ## 2. net10 vs netstandard2.0 — what the broad-reach target costs
 
 `netstandard2.0` is a contract, not a runtime: nothing executes *on* it. What can

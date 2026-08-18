@@ -137,6 +137,39 @@ public static class Levenshtein
         return Dp(a, b);
     }
 
+    /// <summary>Code-point mirror of <see cref="DistanceChars"/>: the Myers route when it applies.</summary>
+    /// <remarks>
+    /// <c>decisions/0002</c> sends a caller wanting Python's answer on
+    /// supplementary characters here, so DP-only meant recommending the slow path
+    /// to whoever needed the correct one (#208). <see cref="Distance{T}"/> over an
+    /// arbitrary <c>int</c> sequence still takes the DP; the fast path is reached
+    /// through the <see cref="TextElement"/> overloads, which document the mode.
+    /// </remarks>
+    private static int DistanceCodePoints(ReadOnlySpan<int> a, ReadOnlySpan<int> b)
+    {
+        Trim(ref a, ref b);
+        if (a.Length == 0)
+        {
+            return b.Length;
+        }
+        if (b.Length == 0)
+        {
+            return a.Length;
+        }
+        if (b.Length > a.Length)
+        {
+            ReadOnlySpan<int> tmp = a;
+            a = b;
+            b = tmp;
+        }
+
+        if (b.Length >= MyersMinPatternLength && Myers.TryDistance(b, a, out int d))
+        {
+            return d;
+        }
+        return Dp(a, b);
+    }
+
     /// <summary>Strips the common prefix and suffix in place (result-preserving).</summary>
     /// <remarks>
     /// Collapses the DP band on near-equal inputs — the common case in record
@@ -227,7 +260,7 @@ public static class Levenshtein
         {
             lenA = CodePoints.Decode(a, bufA);
             lenB = CodePoints.Decode(b, bufB);
-            return Distance<int>(bufA.AsSpan(0, lenA), bufB.AsSpan(0, lenB));
+            return DistanceCodePoints(bufA.AsSpan(0, lenA), bufB.AsSpan(0, lenB));
         }
         finally
         {

@@ -164,11 +164,19 @@ def mutate(rng: SeededRandom, s: str, edits: int, ranges) -> str:
 def build_pairs(rng: SeededRandom):
     """Yield (category, a, b) tuples covering the corpus design.
 
-    long_ascii/long_latin are appended last so every existing case keeps its id
-    and value -- the RNG is consumed in order. They exist because "long" draws
-    from BMP ranges, so its patterns contain CJK and never reach the Latin-1
-    bit-parallel path: the blocked Myers code had no coverage at all until long
-    ASCII/Latin pairs were added.
+    long_ascii/long_latin/long_supplementary are appended last so every existing
+    case keeps its id and value -- the RNG is consumed in order.
+
+    The first two exist because "long" draws from BMP ranges, so its patterns
+    contain CJK and never reach the Latin-1 bit-parallel path: the blocked Myers
+    code had no coverage at all until long ASCII/Latin pairs were added.
+
+    long_supplementary is the same hole one plane up (#208). "supplementary"
+    draws 2-10 characters, and the fast path opens at 16, so measured over the
+    1425 cases before it: 283 reached the Myers gate, 194 of those held a
+    character above U+00FF, and *none* held a supplementary one. Surrogate
+    decoding is what the code-point mode is for, and it was the one part of that
+    path with no case long enough to exercise it.
     """
     # Deterministic edge cases first.
     edge = [
@@ -205,9 +213,12 @@ def build_pairs(rng: SeededRandom):
         ("bmp", RANGES["bmp"], 200, (3, 16), (0, 7)),
         ("supplementary", RANGES["supplementary"], 150, (2, 10), (0, 6)),
         ("long", RANGES["bmp"], 60, (120, 400), (5, 40)),
-        # See this function's docstring for why these two are appended last.
+        # See this function's docstring for why these three are appended last.
         ("long_ascii", RANGES["ascii"], 60, (80, 400), (5, 40)),
         ("long_latin", RANGES["latin"], 60, (80, 400), (5, 40)),
+        # 20, not the 80 its neighbours use: at 80 every case cleared the 64-code-point
+        # word and the single-word kernel got none. Measured on the first attempt.
+        ("long_supplementary", RANGES["supplementary"], 60, (20, 400), (5, 40)),
     ]
     for name, ranges, count, (lo_len, hi_len), (lo_edit, hi_edit) in plans:
         for _ in range(count):

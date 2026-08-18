@@ -64,10 +64,56 @@ an Intel i7-4770S; dev machine — non-authoritative), **after** adding the bloc
 - **The length-32 bucket is the remaining gap**, at 1.4× behind. It already takes
   the single-word path, so this is not the same cause; it wants its own
   measurement rather than a guess.
-- **Scope.** The bit-parallel path requires a Latin-1 pattern. Outside that — CJK,
-  emoji — `Distance` still uses the DP, so the figures above do not describe those
-  inputs. Extending the equality table beyond Latin-1 is unresolved; see
+- **Scope.** The figures above are the **UTF-16 mode**, whose bit-parallel path
+  requires a Latin-1 pattern: outside that — CJK, emoji — `Distance` still uses
+  the DP, and the table does not describe those inputs. The **code-point mode**
+  no longer shares that restriction (#208); its own measurement is below. What
+  remains unresolved is the UTF-16 path's equality table; see
   [`../decisions/0004-levenshtein-myers-backlog.md`](../decisions/0004-levenshtein-myers-backlog.md).
+
+### The code-point mode, on input that leaves the BMP (#208)
+
+The table above is the UTF-16 mode over an ASCII corpus. The code-point mode is a
+different question and needed its own corpus: `LevenshteinCodePointBenchmarks`
+draws both operands from U+1F300..U+1FAFF, so every character is a surrogate pair
+and the two readings genuinely differ — which is the case
+[`../decisions/0002-unicode-comparison-unit.md`](../decisions/0002-unicode-comparison-unit.md)
+points a caller at.
+
+Intel i7-4770S, .NET 10, BenchmarkDotNet short job, `[MemoryDiagnoser]`. **Two
+runs per side, both shown**, interleaved after → before → after → before so that
+any drift in machine state lands on both columns. `Distinct` is how many distinct
+code points the operands are drawn from.
+
+| Length | Distinct | before | after | change |
+| ---: | ---: | ---: | ---: | --- |
+| 32 | 32 | 1.49 / 1.33 µs | 674 / 687 ns | **2.0×–2.2× faster** |
+| 32 | 512 | 1.37 / 1.34 µs | 665 / 679 ns | **2.0×–2.1× faster** |
+| 128 | 32 | 47.1 / 48.5 µs | 3.08 / 3.07 µs | **15.3×–15.8× faster** |
+| 128 | 512 | 39.2 / 38.7 µs | 3.07 / 3.07 µs | **12.6×–12.8× faster** |
+| 512 | 32 | 736 / 788 µs | 22.1 / 23.2 µs | **31.7×–35.6× faster** |
+| 512 | 512 | 583 / 600 µs | 590 / 581 µs | unchanged — see below |
+
+**Zero allocation on both sides**, at every size: the renaming borrows its two
+buffers from `ArrayPool` and the probe table is `stackalloc`.
+
+- **The last row is the ceiling, not a disappointment.** A pattern is renamed
+  into a dense alphabet of 255 symbols, and one holding more falls back to the
+  DP. 512 random draws from 512 symbols hold ~330 distinct, so that row measures
+  the fallback — and measures what the failed attempt costs, which is the number
+  worth having: within noise of doing nothing, ≈1%. At `Length = 128` the same
+  512-symbol alphabet yields ~110 distinct, under the ceiling, and the row is
+  12.6× faster; the ceiling is about the *pattern*, not the alphabet.
+- **The gate was not re-tuned.** `MyersMinPatternLength` is 16 and the shortest
+  bucket measured here is 32, where the fast path already wins 2×. Whether 16
+  remains the right threshold for this path — which pays for its probe table on
+  top of the kernel's equality table — is unmeasured, and 16 is inherited rather
+  than confirmed.
+- **The UTF-16 mode on this same corpus is the DP**, because every character is a
+  surrogate and the Latin-1 check refuses them: 2.80 ms at `Length = 512` against
+  the code-point mode's 22 µs. That is a comparison between two different
+  questions and not a reason to switch modes — but it is the measurement that
+  makes the remaining backlog item concrete.
 
 ## Vectorizers and fuzzy matching
 
