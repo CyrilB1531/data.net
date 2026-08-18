@@ -16,6 +16,9 @@ public static class FBeta
     /// <param name="posLabel">The class reported under <see cref="Averaging.Binary"/>.</param>
     /// <param name="zeroDivision">What to return when the metric is undefined.</param>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="beta"/> is negative, NaN or infinite.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="cm"/> is null.</exception>
+    /// <exception cref="ArgumentException"><see cref="Averaging.Binary"/> on a target with more than two classes, or a <paramref name="posLabel"/> that does not occur.</exception>
+    /// <exception cref="UndefinedMetricException"><paramref name="zeroDivision"/> is <see cref="ZeroDivision.Throw"/> and the metric is undefined.</exception>
     public static double Score(
         ConfusionMatrix cm,
         double beta,
@@ -67,6 +70,8 @@ public static class FBeta
     /// <param name="cm">The matrix to read.</param>
     /// <param name="beta">The weight of recall relative to precision.</param>
     /// <param name="zeroDivision">What to return when the metric is undefined.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="cm"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="beta"/> is negative, NaN or infinite.</exception>
     public static double[] PerClass(ConfusionMatrix cm, double beta, ZeroDivision zeroDivision = ZeroDivision.Zero)
     {
         Guard.NotNull(cm);
@@ -81,6 +86,7 @@ public static class FBeta
     /// <param name="zeroDivision">What to return when the metric is undefined.</param>
     /// <param name="labels">The label set and its order.</param>
     /// <param name="sampleWeight">A weight per sample.</param>
+    /// <exception cref="ArgumentException">The label spans disagree in length or are empty.</exception>
     public static double[] PerClass(
         ReadOnlySpan<int> yTrue,
         ReadOnlySpan<int> yPred,

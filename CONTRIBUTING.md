@@ -110,6 +110,13 @@ A change is not finished until all of these hold:
    Which namespaces are enforced is declared in [`docs/wiki-map.json`](docs/wiki-map.json), and
    `ReferenceDocumentationTests` fails the build when a page and the assembly disagree.
 
+   **Exceptions** is checked against the member's own `<exception cref>` tags: the two must name
+   the same set of types, in either order, so a `throw` added to a member owes both edits in the
+   same commit. The sentence around each type is not compared — *when* it is thrown stays a
+   review question. A namespace still owing that parity is named in the map's
+   `exceptionsUnchecked` list, which only ever shrinks; see
+   [ADR 0038](docs/decisions/0038-the-gate-confronts-an-exception-tag-with-the-page-that-documents-it.md).
+
    A member that has a reference entry is linked to it wherever it is named in prose or in a
    table. Using it obliges the page as well: a member named anywhere on a page — inside a
    ```` ```csharp ```` fence included, where Markdown cannot carry a link — has to be linked to

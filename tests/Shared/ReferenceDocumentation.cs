@@ -4,18 +4,18 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Versioning;
 using System.Text;
 using System.Text.Json;
+using System.Xml.Linq;
 
 namespace Lodestar.Tests.Documentation;
 
-/// <summary>
-/// Checks a reference page against the assembly it documents.
-/// </summary>
+/// <summary>Checks a reference page against the assembly it documents.</summary>
 /// <remarks>
 /// Microsoft derives a declaration, a parameter list and an Applies-to from the assembly;
-/// hand-written here, so four checks replace that derivation — an entry per exported type
+/// hand-written here, so five checks replace that derivation — an entry per exported type
 /// and public method, a declaration block listing exactly the overloads reflection reports,
-/// every parameter named, and Applies to naming the targets that export the member. Each
-/// test assembly references a different build, the only way the last of them sees anything.
+/// every parameter named, Applies to naming the targets, and the Exceptions block agreeing
+/// with the member's own tags (ADR 0038). Each test assembly references a different build,
+/// the only way the last of them sees anything.
 /// </remarks>
 internal static class ReferenceDocumentation
 {
@@ -26,21 +26,26 @@ internal static class ReferenceDocumentation
         Assembly assembly, string package, string wikiMapPath, string referenceRoot)
     {
         List<string> complaints = [];
-        string moniker = Moniker(assembly);
+        Context context = new(
+            Moniker(assembly), Tagged(assembly, complaints), Unenforced(wikiMapPath, package));
 
         foreach (IGrouping<string, string> space in Covered(wikiMapPath, package)
                      .GroupBy(entry => entry.Namespace, entry => entry.Page, StringComparer.Ordinal))
         {
             List<Sheet> sheets = Load(space, referenceRoot, complaints);
-            CheckNamespace(assembly, space.Key, sheets, moniker, complaints);
+            CheckNamespace(assembly, space.Key, sheets, context, complaints);
             foreach (Sheet sheet in sheets)
             {
-                CheckOverClaims(assembly, space.Key, sheet, moniker, complaints);
+                CheckOverClaims(assembly, space.Key, sheet, context.Target, complaints);
             }
         }
 
         return complaints;
     }
+
+    /// <summary>What every check of one run shares: the target, the tags, and the exemptions.</summary>
+    private sealed record Context(
+        string Target, Dictionary<string, HashSet<string>> Tags, HashSet<string> Exempt);
 
     /// <summary>The pages of one namespace, parsed; a page declared and absent is a complaint.</summary>
     /// <remarks>
@@ -126,8 +131,119 @@ internal static class ReferenceDocumentation
         }
     }
 
+    /// <summary>Every exception a member's own documentation tags, keyed 'Namespace.Type.Method'.</summary>
+    /// <remarks>
+    /// The compiler emits this file beside the assembly, so it describes the same build the
+    /// reflection above reads — which is what lets the netstandard2.0 suite see that target's
+    /// tags rather than net10's. Keyed by the group rather than by the overload, because a page
+    /// carries one entry per member name and its Exceptions block covers every overload at once;
+    /// an <c>&lt;inheritdoc/&gt;</c> is emitted verbatim and contributes nothing, which the union
+    /// over the group absorbs whenever a sibling overload tags the same type (ADR 0038).
+    /// </remarks>
+    private static Dictionary<string, HashSet<string>> Tagged(Assembly assembly, List<string> complaints)
+    {
+        Dictionary<string, HashSet<string>> tagged = new(StringComparer.Ordinal);
+        string path = Path.ChangeExtension(assembly.Location, ".xml");
+        if (!File.Exists(path))
+        {
+            // Silence here would leave the exception check passing every page without reading
+            // one, which is worse than not having it: a green gate that asserts nothing.
+            complaints.Add($"{Path.GetFileName(path)}: no documentation file beside the assembly.");
+            return tagged;
+        }
+
+        foreach (XElement member in XDocument.Load(path).Descendants("member"))
+        {
+            string name = member.Attribute("name")?.Value ?? string.Empty;
+            if (!name.StartsWith("M:", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            HashSet<string> thrown = Bucket(tagged, MemberKey(name));
+            foreach (XElement tag in member.Elements("exception"))
+            {
+                thrown.Add(ShortName(tag.Attribute("cref")?.Value ?? string.Empty));
+            }
+        }
+
+        return tagged;
+    }
+
+    private static HashSet<string> Bucket(Dictionary<string, HashSet<string>> tagged, string key)
+    {
+        if (!tagged.TryGetValue(key, out HashSet<string>? thrown))
+        {
+            thrown = new HashSet<string>(StringComparer.Ordinal);
+            tagged[key] = thrown;
+        }
+
+        return thrown;
+    }
+
+    /// <summary>An `M:` documentation id reduced to the group a page has an entry for.</summary>
+    private static string MemberKey(string id)
+    {
+        string signature = id[2..];
+        int arguments = signature.IndexOf('(', StringComparison.Ordinal);
+        return WithoutArity(arguments < 0 ? signature : signature[..arguments]);
+    }
+
+    /// <summary>The `1 a generic type or method carries in metadata, which no page writes.</summary>
+    private static string WithoutArity(string name)
+    {
+        StringBuilder text = new(name.Length);
+        int index = 0;
+        while (index < name.Length)
+        {
+            if (name[index] != '`')
+            {
+                text.Append(name[index]);
+                index++;
+                continue;
+            }
+
+            index++;
+            while (index < name.Length && char.IsAsciiDigit(name[index]))
+            {
+                index++;
+            }
+        }
+
+        return text.ToString();
+    }
+
+    /// <summary>A cref as a page writes it: no `T:` prefix, no namespace.</summary>
+    private static string ShortName(string cref)
+    {
+        string name = cref.Length > 1 && cref[1] == ':' ? cref[2..] : cref;
+        return name[(name.LastIndexOf('.') + 1)..];
+    }
+
+    /// <summary>The namespaces whose exception parity is owed and not yet reached.</summary>
+    /// <remarks>
+    /// Enforced by default, exempted by name: a namespace added later is checked without anyone
+    /// remembering to opt it in, and the debt is one shrinking list rather than a marker on each
+    /// page. Absent from the map means nothing is exempt, which is what a fixture wants.
+    /// </remarks>
+    private static HashSet<string> Unenforced(string wikiMapPath, string package)
+    {
+        using JsonDocument map = JsonDocument.Parse(File.ReadAllText(wikiMapPath));
+        HashSet<string> spaces = new(StringComparer.Ordinal);
+        if (map.RootElement.GetProperty("packages").GetProperty(package)
+            .TryGetProperty("exceptionsUnchecked", out JsonElement listed))
+        {
+            foreach (JsonElement space in listed.EnumerateArray())
+            {
+                spaces.Add(space.GetString()!);
+            }
+        }
+
+        return spaces;
+    }
+
     private static void CheckNamespace(
-        Assembly assembly, string space, List<Sheet> sheets, string moniker, List<string> complaints)
+        Assembly assembly, string space, List<Sheet> sheets, Context context, List<string> complaints)
     {
         string pages = string.Join(", ", sheets.Select(sheet => sheet.Source));
         foreach (Type type in Documented(assembly, space))
@@ -153,7 +269,7 @@ internal static class ReferenceDocumentation
                 CheckTypeLinksItsMembers(type, carrier, complaints);
             }
 
-            CheckMembers(type, sheets, pages, moniker, complaints);
+            CheckMembers(type, sheets, pages, context, complaints);
         }
     }
 
@@ -184,8 +300,9 @@ internal static class ReferenceDocumentation
 
 
     private static void CheckMembers(
-        Type type, List<Sheet> sheets, string pages, string moniker, List<string> complaints)
+        Type type, List<Sheet> sheets, string pages, Context context, List<string> complaints)
     {
+        bool enforced = !context.Exempt.Contains(type.Namespace ?? string.Empty);
         foreach (IGrouping<string, MethodInfo> overloads in Methods(type))
         {
             string title = $"{type.Name}.{overloads.Key}";
@@ -199,8 +316,54 @@ internal static class ReferenceDocumentation
             Entry entry = sheet.Parsed.Entries[title];
             CheckDeclarations(sheet.Source, title, entry, overloads, complaints);
             CheckParameters(sheet.Source, title, entry, overloads, complaints);
-            CheckAppliesTo(sheet.Source, title, entry, moniker, complaints);
+            CheckAppliesTo(sheet.Source, title, entry, context.Target, complaints);
+            if (enforced)
+            {
+                CheckExceptions(sheet.Source, title, entry, overloads, context.Tags, complaints);
+            }
         }
+    }
+
+    /// <summary>The two copies of one member's exception set, confronted (#258, ADR 0038).</summary>
+    /// <remarks>
+    /// Compared as sets, not sequences. Measured on #217's own member: the page lists
+    /// <c>ArgumentOutOfRangeException</c> before <c>ArgumentException</c> and the docstring the
+    /// reverse, both correct — so an order rule would fail the one member the issue holds up
+    /// as fixed. What is compared is the type named on each side, never the sentence around it:
+    /// *when* each is thrown stays a review obligation.
+    /// </remarks>
+    private static void CheckExceptions(
+        string page,
+        string title,
+        Entry entry,
+        IEnumerable<MethodInfo> overloads,
+        Dictionary<string, HashSet<string>> tagged,
+        List<string> complaints)
+    {
+        HashSet<string> documented = new(StringComparer.Ordinal);
+        foreach (MethodInfo method in overloads)
+        {
+            string key = WithoutArity($"{method.DeclaringType!.FullName}.{method.Name}");
+            if (tagged.TryGetValue(key, out HashSet<string>? thrown))
+            {
+                documented.UnionWith(thrown);
+            }
+        }
+
+        if (documented.SetEquals(entry.Exceptions))
+        {
+            return;
+        }
+
+        complaints.Add(
+            $"{page}: {title} tags {Render(documented)} and its Exceptions block names " +
+            $"{Render(entry.Exceptions)}.");
+    }
+
+    private static string Render(IEnumerable<string> names)
+    {
+        string[] sorted = names.OrderBy(name => name, StringComparer.Ordinal).ToArray();
+        return sorted.Length == 0 ? "no exception" : string.Join(", ", sorted);
     }
 
     /// <summary>The exported types of one namespace that owe an entry of their own.</summary>
@@ -805,7 +968,11 @@ internal static class ReferenceDocumentation
 
     // internal rather than private: Parse's rubric-boundary handling is pinned directly by
     // ReferenceDocumentationTests, and both types are compiled into that same test assembly.
-    internal sealed record Entry(List<string> Declarations, HashSet<string> Parameters, string AppliesTo);
+    internal sealed record Entry(
+        List<string> Declarations,
+        HashSet<string> Parameters,
+        HashSet<string> Exceptions,
+        string AppliesTo);
 
     internal sealed record Page(Dictionary<string, Entry> Entries)
     {
@@ -830,6 +997,7 @@ internal static class ReferenceDocumentation
             private string title = string.Empty;
             private Entry current = New();
             private bool inDeclaration;
+            private bool inExceptions;
             private bool inFence;
             private bool inParameters;
 
@@ -843,6 +1011,7 @@ internal static class ReferenceDocumentation
                     title = line.TrimStart('#').Trim();
                     current = New();
                     inDeclaration = false;
+                    inExceptions = false;
                     inParameters = false;
                     return;
                 }
@@ -857,6 +1026,10 @@ internal static class ReferenceDocumentation
                 {
                     inFence = !inFence;
                     inDeclaration = inDeclaration && inFence;
+
+                    // A rubric never survives a fence: an Example that follows Exceptions
+                    // without a rubric between them would otherwise donate its backticks.
+                    inExceptions = false;
                     return;
                 }
 
@@ -885,14 +1058,23 @@ internal static class ReferenceDocumentation
                 {
                     AddParameters(line);
                 }
+                else if (inExceptions)
+                {
+                    AddExceptions(line);
+                }
             }
 
             private void ConsumeRubricStart(string line)
             {
                 inParameters = line.StartsWith("**Parameters**", StringComparison.Ordinal);
+                inExceptions = line.StartsWith("**Exceptions**", StringComparison.Ordinal);
                 if (inParameters)
                 {
                     AddParameters(line);
+                }
+                else if (inExceptions)
+                {
+                    AddExceptions(line);
                 }
                 else if (line.StartsWith("**Applies to**", StringComparison.Ordinal))
                 {
@@ -908,7 +1090,30 @@ internal static class ReferenceDocumentation
                 }
             }
 
-            private static Entry New() => new([], new HashSet<string>(StringComparer.Ordinal), string.Empty);
+            /// <summary>The exception types the rubric names, told from the values beside them.</summary>
+            /// <remarks>
+            /// The rubric is prose, and backticks a parameter, a bound and a literal as readily
+            /// as a type: TopKAccuracy.Score's block alone carries `k`, `classCount` and
+            /// `[1, 1, 1, -3]`. A name ending in "Exception" is what the tags on the other side
+            /// can be confronted with; anything else in the sentence is left to a reviewer.
+            /// </remarks>
+            private void AddExceptions(string line)
+            {
+                foreach (string name in Backticked(line))
+                {
+                    if (name.EndsWith("Exception", StringComparison.Ordinal) &&
+                        name.All(character => char.IsAsciiLetterOrDigit(character)))
+                    {
+                        current.Exceptions.Add(name);
+                    }
+                }
+            }
+
+            private static Entry New() => new(
+                [],
+                new HashSet<string>(StringComparer.Ordinal),
+                new HashSet<string>(StringComparer.Ordinal),
+                string.Empty);
 
             private static void Store(Dictionary<string, Entry> entries, string title, Entry entry)
             {

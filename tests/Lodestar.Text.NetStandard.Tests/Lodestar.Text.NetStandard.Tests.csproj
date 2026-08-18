@@ -15,7 +15,10 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
-    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- Both builds of the suite reflect over the fixtures, so both need the tags beside
+         them; see the sibling project for why this one project emits a documentation file. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
     <AssemblyName>Lodestar.Text.NetStandard.Tests</AssemblyName>
     <RootNamespace>Lodestar.Text.Tests</RootNamespace>
   </PropertyGroup>

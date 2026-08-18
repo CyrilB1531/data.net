@@ -60,6 +60,7 @@ public static class F1
     /// <param name="zeroDivision">What to return when precision and recall are both undefined.</param>
     /// <param name="labels">The label set and its order. Omit for the sorted union of both inputs.</param>
     /// <param name="sampleWeight">A weight per sample. Omit to weight every sample by 1.</param>
+    /// <exception cref="ArgumentException">The label spans disagree in length or are empty.</exception>
     public static double[] PerClass(
         ReadOnlySpan<int> yTrue,
         ReadOnlySpan<int> yPred,
