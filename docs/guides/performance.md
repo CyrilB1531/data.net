@@ -202,6 +202,44 @@ inside it. Both columns pay it equally, so the table is internally comparable;
 it is not comparable to figures taken on this machine in a quieter state, and
 the ratios travel between such sets while the absolute microseconds do not.
 
+## The sort inside the binary ROC curve (issue #206)
+
+Intel Core i7-4770S @ 3.10 GHz, 8 logical cores, .NET 10.0.110, Release. Median of
+11 runs (n = 1 000 000) and 41 runs (n = 100 000) of [`RocAuc.Score`](../reference/metrics/classification/rocauc-score.md), one process,
+same binary — only `BinaryRoc.RadixThreshold` differs between the columns, so the
+two rows of a pair measure nothing but the sort.
+
+| n | equal scores | `Array.Sort` | radix | gain |
+| --- | --- | --- | --- | --- |
+| 100 000 | all distinct | 8.15 ms | **5.56 ms** | 1.47x |
+| 100 000 | ~100 per score | 6.22 ms | **3.94 ms** | 1.58x |
+| 1 000 000 | all distinct | 97.44 ms | **76.91 ms** | 1.27x |
+| 1 000 000 | ~100 per score | 78.87 ms | **59.97 ms** | 1.32x |
+
+The 97.44 ms baseline agrees with the 95.219 ms `roc_auc_binary_n1000000_k2`
+below, measured a different way on the same machine.
+
+**Why the sort at all.** Profiled on the same machine, one binary curve at
+n = 1 000 000 splits 6 ms building the points, **91 ms sorting**, 3 ms
+accumulating — the sort is 91% of it, and at n = 100 000 it is effectively all of
+it. Nothing else in the curve is worth touching until it is.
+
+**Why a radix rather than the alternatives.** Sorting an `int` index array against
+the scores — the cheaper-items idea — was measured and rejected: 6.88 ms against
+7.47 ms at n = 100 000, but 98.23 ms against 86.96 ms at a million, where the
+gather costs more than the smaller items save. Eight-bit digits beat sixteen-bit
+ones below ~16 000 and lose above (77.67 ms against 66.51 ms at a million).
+
+**Why the threshold is 8 192.** The radix carries four passes and a 64 K
+histogram whatever the input, so it loses on small ones: 0.85x at n = 6 000,
+0.98x at 8 000, 1.21x at 10 000, 1.55x at 16 000. Below the threshold the curve
+still sorts by comparison, and the extra buffers are not even rented.
+
+**No parallelism was added.** #86 left this sort as the parallelisable remainder;
+measured, it did not need to be. A parallel sort here would nest inside the
+region #86 already parallelises on the multiclass path, and 1.3x sequential is
+the cheaper answer.
+
 ## Classification metrics (issue #61) — vs scikit-learn
 
 ```bash
