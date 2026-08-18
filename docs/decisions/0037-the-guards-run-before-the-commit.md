@@ -78,6 +78,17 @@ of writing:
 | `check_sample_culture.py` | 0.03 s |
 | **the four in sequence** | **1.18 s** |
 
+> **#11 update: a fifth joined, and the budget still holds.**
+> `check_bench_map.py` refuses a benchmark class that `bench/bench-map.json` does not name,
+> because the nightly run selects what to re-measure from that map and a class missing from it
+> stops being measured in silence. Measured the same way, on the same machine: **0.04 s**, the
+> five in sequence **1.35 s**. It reads the benchmark sources and the map and touches neither
+> the network nor a build, so it belongs in the hook rather than in the exclusions above.
+>
+> `tools/tests/test_pre_commit_hook.py` is what made this an obligation rather than a courtesy:
+> adding the guard to CI and not to the hook failed that test immediately, with a message
+> naming the guard and the two places it could go.
+
 Issue #207 estimated "well under a second" for the four; the real figure is 1.18 s and
 `check_machine_paths.py` is 82% of it. That is still the right side of the line
 this decision draws, and the line is drawn where it is because a hook that

@@ -3,7 +3,8 @@
     "docs/equivalence.md",
     "docs/guides/performance.md",
     "docs/decisions/*.md",
-    "docs/migration/*.md"
+    "docs/migration/*.md",
+    "docs/guides/nightly_run.md"
   ],
   "packages": {
     "Lodestar.Text": {
