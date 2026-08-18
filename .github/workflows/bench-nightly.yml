@@ -1,0 +1,168 @@
+name: Benchmarks (nightly)
+
+# CI compiles the benchmarks -- bench/ is in Lodestar.slnx -- and never runs one, so a
+# change that makes a measurement wrong rather than uncompilable is found by hand or not
+# at all (#11). This runs them, and only the ones a change could have moved:
+# bench/bench-map.json says which classes each source directory feeds, and
+# tools/check_bench_map.py refuses a [Benchmark] class the map does not name.
+#
+# It publishes to docs/guides/nightly_run.md and never to docs/guides/performance.md.
+# That page's numbers are comparable because it names its machine; a hosted runner is a
+# shared VM whose hardware differs between runs, so only ratios taken inside one run mean
+# anything here. The page says so itself.
+#
+# main is protected by a ruleset with no bypass actors, so this cannot push there. It
+# opens a pull request instead, which is also what puts a human in front of the numbers.
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # 02:00 UTC, after the day's merges have settled
+  workflow_dispatch:
+    inputs:
+      all:
+        description: 'Run every mapped class, ignoring what changed'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: bench-nightly
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    name: Measure what changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # the baseline commit is read from the previous page
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      # An absent or unreadable baseline means "we do not know what moved", and the safe
+      # reading of not knowing is to measure everything -- select_benchmarks.py does that.
+      - name: The commit the previous run stopped at
+        id: baseline
+        run: |
+          set -euo pipefail
+          page=docs/guides/nightly_run.md
+          sha=""
+          if [ -f "$page" ]; then
+            sha=$(sed -n 's/.*<!-- nightly-baseline: \([0-9a-f]\{7,40\}\) -->.*/\1/p' "$page" | head -1)
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "baseline: ${sha:-none}"
+
+      - name: Which classes that makes worth re-running
+        id: select
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.all }}" = "true" ] || [ -z "${{ steps.baseline.outputs.sha }}" ]; then
+            python tools/select_benchmarks.py --all > selected.txt
+          else
+            python tools/select_benchmarks.py --since "${{ steps.baseline.outputs.sha }}" > selected.txt
+          fi
+          count=$(wc -l < selected.txt | tr -d ' ')
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "selected=$(tr '\n' ' ' < selected.txt)" >> "$GITHUB_OUTPUT"
+          echo "$count class(es):"; cat selected.txt
+
+      # generate_vocabs.py imports sentencepiece. Same lock file and same flags as ci.yml:
+      # one source of truth for what this repository's Python needs.
+      - name: Install tool dependencies
+        if: steps.select.outputs.count != '0'
+        run: pip install --only-binary :all: --require-hashes -r tools/requirements.lock.txt
+
+      # Six of the thirteen classes read bench/corpus/vocabs, which is ~3 MB of generated
+      # data git ignores on purpose. A fresh runner has none of it and BenchCorpus throws
+      # at [GlobalSetup] rather than measuring, so this is not optional.
+      - name: Generate the vocabularies the benchmarks read
+        if: steps.select.outputs.count != '0'
+        run: python bench/corpus/generate_vocabs.py
+
+      - name: Run them
+        if: steps.select.outputs.count != '0'
+        run: |
+          set -euo pipefail
+          filters=""
+          while read -r name; do
+            [ -n "$name" ] && filters="$filters *$name*"
+          done < selected.txt
+          # --job short: a hosted runner cannot support the default job's iteration count
+          # inside a nightly window, and the ratio it reports is what this page publishes.
+          dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- \
+            --filter $filters --job short --exporters github
+
+      - name: Write the page
+        run: |
+          set -euo pipefail
+          # The reports are found by the script in BenchmarkDotNet's own output directory,
+          # not passed in: no path it touches comes from an argument.
+          # shellcheck disable=SC2046
+          python tools/render_nightly.py \
+            --commit "${{ github.sha }}" \
+            --baseline "${{ github.sha }}" \
+            --runner "${{ runner.os }} / ${{ runner.arch }} (GitHub hosted)" \
+            --selected $(cat selected.txt | tr '\n' ' ')
+
+      - name: Open the pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- docs/guides/nightly_run.md; then
+            echo "the page did not change; nothing to open"
+            exit 0
+          fi
+          branch="bench/nightly-$(date -u +%Y-%m-%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$branch"
+          git add docs/guides/nightly_run.md
+          git commit -m "Nightly benchmark run for $(date -u +%Y-%m-%d)"
+          git push --force-with-lease origin "$branch"
+          gh pr create --head "$branch" --base main \
+            --title "Nightly benchmark run for $(date -u +%Y-%m-%d)" \
+            --body "Generated by \`.github/workflows/bench-nightly.yml\`. Ratios only — see the page for why a hosted runner's absolutes are not comparable. Classes re-run: ${{ steps.select.outputs.selected }}" \
+            || gh pr edit "$branch" --title "Nightly benchmark run for $(date -u +%Y-%m-%d)"
+
+      # The wiki is published from docs/, so the page reaches readers without waiting for
+      # the pull request to be merged. Deliberate: the numbers are the point of the run,
+      # and the pull request is the record of them rather than their gate.
+      #
+      # This publishes the LIVE channel from the tree as checked out, exactly as wiki.yml
+      # does on a push to main. It deliberately passes no --released and no --archive: a
+      # nightly must not freeze an archive directory, which belongs to a release tag.
+      - name: Clone the wiki
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: git clone "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" wiki
+
+      - name: Publish the page
+        run: python tools/build_wiki.py --repo . --out wiki
+
+      - name: Push what changed
+        working-directory: wiki
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "The wiki already matches this tree."
+            exit 0
+          fi
+          git commit -m "Nightly benchmark run for $(date -u +%Y-%m-%d)"
+          git push
