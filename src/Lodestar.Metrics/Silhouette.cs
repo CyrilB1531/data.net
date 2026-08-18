@@ -1,3 +1,5 @@
+using Lodestar.Metrics.Internal;
+
 namespace Lodestar.Metrics;
 
 /// <summary>
@@ -46,7 +48,7 @@ public static class Silhouette
     /// <exception cref="ArgumentException">The inputs disagree in length, or the number of distinct labels is outside <c>[2, n - 1]</c>.</exception>
     public static double[] PerSample(ReadOnlySpan<int> labels, ReadOnlySpan<double> features, int featureCount)
     {
-        int samples = Samples(labels, features, featureCount);
+        int samples = Partition.Samples(labels, features, featureCount);
         if ((long)samples * samples > int.MaxValue)
         {
             throw new ArgumentException(
@@ -82,14 +84,8 @@ public static class Silhouette
     public static double[] PerSampleFromDistances(ReadOnlySpan<int> labels, ReadOnlySpan<double> distances)
     {
         int samples = Square(labels, distances);
-        int[] sizes = ClusterSizes(labels, out int[] ordinals, out int clusters);
-        if (clusters < 2 || clusters > samples - 1)
-        {
-            // scikit-learn's own bound, carrying its own sentence.
-            throw new ArgumentException(
-                $"Number of labels is {clusters}. Valid values are 2 to n_samples - 1 (inclusive)",
-                nameof(labels));
-        }
+        int[] sizes = Partition.Sizes(labels, out int[] ordinals, out int clusters);
+        Partition.RequireScorableCount(clusters, samples, nameof(labels));
 
         double[] scores = new double[samples];
         double[] sums = new double[clusters];
@@ -153,47 +149,6 @@ public static class Silhouette
         }
 
         return Math.Sqrt(total);
-    }
-
-    private static int[] ClusterSizes(ReadOnlySpan<int> labels, out int[] ordinals, out int clusters)
-    {
-        Dictionary<int, int> known = [];
-        List<int> sizes = [];
-        ordinals = new int[labels.Length];
-        for (int i = 0; i < labels.Length; i++)
-        {
-            if (!known.TryGetValue(labels[i], out int ordinal))
-            {
-                ordinal = sizes.Count;
-                known[labels[i]] = ordinal;
-                sizes.Add(0);
-            }
-
-            ordinals[i] = ordinal;
-            sizes[ordinal]++;
-        }
-
-        clusters = sizes.Count;
-        return [.. sizes];
-    }
-
-    private static int Samples(ReadOnlySpan<int> labels, ReadOnlySpan<double> features, int featureCount)
-    {
-        if (featureCount <= 0)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(featureCount), featureCount, "featureCount must be positive.");
-        }
-
-        if (features.Length != labels.Length * featureCount)
-        {
-            throw new ArgumentException(
-                $"features holds {features.Length} values, which is not {labels.Length} samples " +
-                $"of {featureCount}.",
-                nameof(features));
-        }
-
-        return labels.Length;
     }
 
     private static int Square(ReadOnlySpan<int> labels, ReadOnlySpan<double> distances)
