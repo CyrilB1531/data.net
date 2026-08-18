@@ -176,6 +176,36 @@ Results land in `bench/results/` (git-ignored: they are machine-specific and not
 authoritative). The corpus is ASCII, so UTF-16 units and code points coincide and
 both sides compute identical distances.
 
+### Indel, over the same corpus
+
+`Indel` is `len(a) + len(b) - 2·LCS`, so measuring it measures
+`Lcs.SubsequenceLength` — which is also what `fuzz.ratio`, and therefore every
+`process.extract`, runs. It gets the same treatment as Levenshtein over the same
+buckets, so the two distances can be read side by side (#273):
+
+```bash
+python bench/python/bench_indel.py
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- compare-indel
+python bench/compare.py indel
+```
+
+Both C# harnesses share one timing loop (`CrossLang/PairsHarness.cs`), extracted
+rather than copied for the reason `Harness.cs` gives for its own extraction: a
+second loop is free to drift from the first while still printing a table that
+looks comparable.
+
+**What this corpus reaches, and what it cannot.** Measured over all four buckets:
+27 distinct symbols, every one ASCII (`U+007A` at most), 4–27 distinct per
+pattern. Any dense alphabet table fits at every length, so a bit-parallel LCS
+kernel would be exercised throughout — the failure of #52 and #267, where the new
+path was never reached at all, does not apply here. The converse does: nothing in
+this corpus falls back and nothing rises above Latin-1, so it cannot show what a
+refusal costs. That needs its own cases, the way `long_ascii`, `long_latin` and
+`long_supplementary` were appended to the oracle corpora.
+
+`FuzzBenchmarks.Ratio` also runs this path, on one fixed pair of 43-character
+sentences. That is a point, not a curve; `IndelBenchmarks` is the sweep.
+
 ### Reading the numbers
 
 The comparison is deliberately honest about methodology: the Python side times the
