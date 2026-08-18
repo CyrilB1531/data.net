@@ -40,22 +40,7 @@ public class IndelBenchmarks
     {
         // The operands LevenshteinBenchmarks builds, seed included: comparing the
         // two distances is only meaningful over identical inputs.
-        var rng = new Random(42);
-        const string alphabet = "abcdefghijklmnopqrstuvwxyz ";
-        char[] a = new char[Length];
-        for (int i = 0; i < Length; i++)
-        {
-            a[i] = alphabet[rng.Next(alphabet.Length)];
-        }
-
-        char[] b = (char[])a.Clone();
-        for (int i = 0; i < Math.Max(1, Length / 10); i++)
-        {
-            b[rng.Next(Length)] = alphabet[rng.Next(alphabet.Length)];
-        }
-
-        _a = new string(a);
-        _b = new string(b);
+        (_a, _b) = ScatteredPair.Build(Length);
     }
 
     [Benchmark(Baseline = true)]

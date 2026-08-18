@@ -19,6 +19,9 @@ namespace Lodestar.Text.Distances;
 /// </remarks>
 public static class DamerauLevenshtein
 {
+    // Cached so the code-point path allocates no delegate per call.
+    private static readonly CodePointPair.Measure MeasureCodePoints = Distance<int>;
+
     /// <summary>Computes the Damerau-Levenshtein distance between <paramref name="a"/> and <paramref name="b"/>.</summary>
     public static int Distance(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement element = TextElement.Utf16Unit)
     {
@@ -142,20 +145,6 @@ public static class DamerauLevenshtein
         }
     }
 
-    private static int DistanceCodePoints(ReadOnlySpan<char> a, ReadOnlySpan<char> b, out int lenA, out int lenB)
-    {
-        int[] bufA = ArrayPool<int>.Shared.Rent(Math.Max(1, a.Length));
-        int[] bufB = ArrayPool<int>.Shared.Rent(Math.Max(1, b.Length));
-        try
-        {
-            lenA = CodePoints.Decode(a, bufA);
-            lenB = CodePoints.Decode(b, bufB);
-            return Distance<int>(bufA.AsSpan(0, lenA), bufB.AsSpan(0, lenB));
-        }
-        finally
-        {
-            ArrayPool<int>.Shared.Return(bufA);
-            ArrayPool<int>.Shared.Return(bufB);
-        }
-    }
+    private static int DistanceCodePoints(ReadOnlySpan<char> a, ReadOnlySpan<char> b, out int lenA, out int lenB) =>
+        CodePointPair.Distance(a, b, MeasureCodePoints, out lenA, out lenB);
 }

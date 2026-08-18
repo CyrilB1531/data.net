@@ -192,7 +192,13 @@ python bench/compare.py indel
 Both C# harnesses share one timing loop (`CrossLang/PairsHarness.cs`), extracted
 rather than copied for the reason `Harness.cs` gives for its own extraction: a
 second loop is free to drift from the first while still printing a table that
-looks comparable.
+looks comparable. The same reasoning now covers the other two places the Indel
+lot would have copied a Levenshtein one: the Python scripts share
+`bench/python/harness.py` and differ only in which `rapidfuzz` distance they hand
+it, and the two BenchmarkDotNet classes build their operands through
+`ScatteredPair.Build`, seed included — comparing two distances is only meaningful
+over identical inputs, and an extracted builder is what makes that true by
+construction rather than by inspection.
 
 **What this corpus reaches, and what it cannot.** Measured over all four buckets:
 27 distinct symbols, every one ASCII (`U+007A` at most), 4–27 distinct per
