@@ -126,6 +126,26 @@ internal static class BinaryRoc
         }
 
         /// <summary>
+        /// The same sorted walk, summed as scikit-learn's <c>average_precision_score</c>
+        /// rather than integrated as <c>auc</c>.
+        /// </summary>
+        internal double ComputeAveragePrecision(
+            ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int posLabel, ReadOnlySpan<double> sampleWeight)
+        {
+            int n = Validate(yTrue, yScore, sampleWeight);
+            BuildPoints(yTrue, yScore, posLabel, sampleWeight, _keys, _points);
+
+            if (_codes is null || n < RadixThreshold)
+            {
+                Array.Sort(_keys, _points, 0, n);
+                return AccumulateAveragePrecision(_keys, _points, n);
+            }
+
+            RadixSort(n);
+            return AccumulateAveragePrecision(_sortedKeys!, _sortedPoints!, n);
+        }
+
+        /// <summary>
         /// Orders the first <paramref name="n"/> points by ascending key into
         /// <c>_sortedKeys</c>/<c>_sortedPoints</c>, by radix rather than by comparison.
         /// </summary>
@@ -299,6 +319,45 @@ internal static class BinaryRoc
             return area / (truePositives * falsePositives);
         }
 
+        /// <summary>The step sum over the precision-recall curve, not the area under it.</summary>
+        /// <remarks>
+        /// <c>Sum (R_n - R_(n-1)) * P_n</c>, deliberately not the trapezoid, which reads
+        /// two thresholds apart as if the curve were linear between them: measured on
+        /// scikit-learn 1.9.0, y_true = [0, 0, 1, 1] against y_score = [0.1, 0.4, 0.35,
+        /// 0.8] sums to 0.8333333333333333 where the trapezoid gives 0.7916666666666666.
+        /// Dividing by the positive weight waits until the end -- every recall step
+        /// shares that denominator, so once is the reference's own <c>tps / tps[-1]</c>.
+        /// </remarks>
+        private static double AccumulateAveragePrecision(double[] keys, Point[] points, int n)
+        {
+            double truePositives = 0.0;
+            double falsePositives = 0.0;
+            double previousTrue = 0.0;
+            double sum = 0.0;
+
+            for (int i = 0; i < n; i++)
+            {
+                truePositives += points[i].PositiveWeight;
+                falsePositives += points[i].Weight - points[i].PositiveWeight;
+
+                if (!IsLastOfGroup(keys, i, n))
+                {
+                    continue;
+                }
+
+                double positives = truePositives + falsePositives;
+                double precision = positives > 0.0 ? truePositives / positives : 0.0;
+                sum += (truePositives - previousTrue) * precision;
+                previousTrue = truePositives;
+            }
+
+            // No positive sample: scikit-learn warns that recall is taken as one for
+            // all thresholds and returns 0.0, measured on 1.9.0. Dividing would be 0/0.
+#pragma warning disable S1244
+            return truePositives == 0.0 ? 0.0 : sum / truePositives;
+#pragma warning restore S1244
+        }
+
         private static bool IsLastOfGroup(double[] keys, int i, int n)
         {
             // SonarLint S1244 warns against comparing floating point for exact
@@ -367,4 +426,23 @@ internal static class BinaryRoc
         ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int posLabel, ReadOnlySpan<double> sampleWeight,
         Scratch scratch) =>
         scratch.Compute(yTrue, yScore, posLabel, sampleWeight);
+
+    public static double AveragePrecision(
+        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int posLabel, ReadOnlySpan<double> sampleWeight)
+    {
+        Scratch scratch = Scratch.Rent(yTrue.Length);
+        try
+        {
+            return scratch.ComputeAveragePrecision(yTrue, yScore, posLabel, sampleWeight);
+        }
+        finally
+        {
+            scratch.Return();
+        }
+    }
+
+    public static double AveragePrecision(
+        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yScore, int posLabel, ReadOnlySpan<double> sampleWeight,
+        Scratch scratch) =>
+        scratch.ComputeAveragePrecision(yTrue, yScore, posLabel, sampleWeight);
 }

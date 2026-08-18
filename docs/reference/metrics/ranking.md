@@ -6,13 +6,13 @@ Every type on this page scores that ordering, and what
 separates them from the classification metrics is that *position matters*: the same set of documents
 scores differently depending on where in the list the good ones landed.
 
-The page has two halves, and they take different input. The four types of the first table score
+The page has three parts, and they take different input. The four types of the first table score
 **one ordered list** of documents against a relevance judgement. The three of the second score a
 **label matrix** — one boolean per label per sample, which is the shape a multi-label classifier
 answers in — and everything said about ties above them does not apply to them, for the reason the
-second half opens with.
+second half opens with. The last takes either shape.
 
-Six of the seven reproduce scikit-learn exactly. The seventh,
+Seven of the eight reproduce scikit-learn exactly. The eighth,
 [`ReciprocalRank`](ranking/reciprocalrank.md), does not, and says so on its own page.
 
 ## The gains are linear, and much of the literature's are not
@@ -95,3 +95,21 @@ through `numpy.average`. Each page says so next to the number it affects.
 | [`CoverageError`](ranking/coverageerror.md) | How far down the labels you must read to have seen every relevant one. A row with none contributes `0`, so the mean can sit below `1`. |
 | [`LabelRankingAveragePrecision`](ranking/labelrankingaverageprecision.md) | How much of the ranking above each relevant label is itself relevant — `[0, 1]`, `1` is perfect. |
 | [`LabelRankingLoss`](ranking/labelrankingloss.md) | The fraction of (relevant, irrelevant) label pairs the ranking ordered wrongly — `[0, 1]`, `0` is perfect. |
+
+## Either shape, and a sum rather than an area
+
+[`AveragePrecision`](ranking/averageprecision.md) belongs to neither table cleanly: it takes one
+ordered list of samples, as the first four do, **and** a label matrix, as the last three do,
+averaging over the columns of one. What it does not share with the three above is the rank as a
+count — it walks the samples in score order and accumulates, so a tied group is consumed at once
+rather than ranked, and `rankdata` has nothing to say about it.
+
+The number it reports is a **sum over the steps** of the precision-recall curve, not the area under
+that curve. The trapezoid interpolates between two thresholds as though the curve were straight
+there and comes out optimistic: `0.8333…` against `0.7916…` on the worked binary case, and `0.5`
+against `0.75` on a row whose scores are all tied. The frozen corpus carries both numbers for every
+binary case, so a test can hold the two apart rather than a reader having to.
+
+| Type | What it measures |
+| --- | --- |
+| [`AveragePrecision`](ranking/averageprecision.md) | How much of the top of the ranking is positive, summed across the thresholds where recall moves. |

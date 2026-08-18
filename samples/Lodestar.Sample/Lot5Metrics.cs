@@ -168,6 +168,36 @@ internal static class Lot5Metrics
         Console.WriteLine($"    weighted coverage   = {Inv.F3(CoverageError.Score(relevant, labelScores, 3, weights))}");
         Console.WriteLine($"    weighted loss       = {Inv.F3(LabelRankingLoss.Score(relevant, labelScores, 3, weights))}");
         Console.WriteLine();
+
+        AveragePrecisionBothShapes(relevant, labelScores, weights);
+    }
+
+    /// <summary>Average precision, which takes one ordered list and a label matrix alike.</summary>
+    private static void AveragePrecisionBothShapes(bool[] relevant, double[] labelScores, double[] weights)
+    {
+        Console.WriteLine("  average precision, a sum over the curve rather than the area under it");
+
+        int[] truth = [0, 0, 1, 1];
+        double[] scores = [0.1, 0.4, 0.35, 0.8];
+
+        // The trapezoid over the same curve is 0.792: interpolating between two
+        // thresholds as though the curve were straight there reads optimistic.
+        Console.WriteLine($"    binary              = {Inv.F3(AveragePrecision.Score(truth, scores))} (the trapezoid says 0.792)");
+        Console.WriteLine($"    pos_label 0         = {Inv.F3(AveragePrecision.Score(truth, scores, 0))}");
+
+        // No sample carries the positive label: scikit-learn warns and returns a
+        // value rather than refusing, and that value is what comes back here.
+        Console.WriteLine($"    no positive sample  = {Inv.F3(AveragePrecision.Score([0, 0, 0, 0], scores))}");
+
+        Console.WriteLine($"    matrix, macro       = {Inv.F3(AveragePrecision.Score(relevant, labelScores, 3))}");
+        Console.WriteLine($"    matrix, micro       = {Inv.F3(AveragePrecision.Score(relevant, labelScores, 3, Averaging.Micro))}");
+        Console.WriteLine($"    matrix, weighted    = {Inv.F3(AveragePrecision.Score(relevant, labelScores, 3, Averaging.Weighted, weights))}");
+
+        // The middle label is carried by no sample and scores 0, which is the whole
+        // of the gap between the macro mean and the weighted one.
+        double[] perLabel = AveragePrecision.PerLabel(relevant, labelScores, 3);
+        Console.WriteLine($"    per label           = [{Inv.F3(perLabel[0])}, {Inv.F3(perLabel[1])}, {Inv.F3(perLabel[2])}]");
+        Console.WriteLine();
     }
 
     /// <summary>The five agreement metrics, on the case that tells them apart.</summary>

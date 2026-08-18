@@ -2296,6 +2296,105 @@ def generate_label_ranking() -> dict:
     }
 
 
+def _average_precision_binary_fixtures() -> list[dict]:
+    """Binary cases, chosen where the step sum and the trapezoid part company."""
+    return [
+        {"name": "the worked case", "true": [0, 0, 1, 1],
+         "score": [0.1, 0.4, 0.35, 0.8], "pos_label": 1, "weight": None},
+        {"name": "the worked case, pos_label 0", "true": [0, 0, 1, 1],
+         "score": [0.1, 0.4, 0.35, 0.8], "pos_label": 0, "weight": None},
+        {"name": "the worked case, weighted", "true": [0, 0, 1, 1],
+         "score": [0.1, 0.4, 0.35, 0.8], "pos_label": 1, "weight": [1.0, 2.0, 3.0, 4.0]},
+        # Every score tied: the sum takes one step of the full recall at the group's
+        # precision, where the trapezoid interpolates a diagonal that is not there.
+        {"name": "every score tied", "true": [0, 1, 0, 1],
+         "score": [0.5, 0.5, 0.5, 0.5], "pos_label": 1, "weight": None},
+        {"name": "perfectly ranked", "true": [0, 0, 1, 1],
+         "score": [0.1, 0.2, 0.3, 0.4], "pos_label": 1, "weight": None},
+        {"name": "perfectly inverted", "true": [1, 1, 0, 0],
+         "score": [0.1, 0.2, 0.3, 0.4], "pos_label": 1, "weight": None},
+        {"name": "one positive, ranked last", "true": [0, 0, 0, 1],
+         "score": [0.9, 0.8, 0.7, 0.1], "pos_label": 1, "weight": None},
+        # scikit-learn warns here and returns a value rather than refusing.
+        {"name": "no positive sample", "true": [0, 0, 0, 0],
+         "score": [0.1, 0.4, 0.35, 0.8], "pos_label": 1, "weight": None},
+        {"name": "every sample positive", "true": [1, 1, 1, 1],
+         "score": [0.1, 0.4, 0.35, 0.8], "pos_label": 1, "weight": None},
+        {"name": "negative scores", "true": [0, 0, 1, 1],
+         "score": [-0.9, -0.6, -0.65, -0.2], "pos_label": 1, "weight": None},
+        {"name": "labels are -1 and 1", "true": [-1, -1, 1, 1],
+         "score": [0.1, 0.4, 0.35, 0.8], "pos_label": 1, "weight": None},
+        {"name": "a tie spanning both classes", "true": [1, 0, 1, 0, 1],
+         "score": [0.9, 0.5, 0.5, 0.5, 0.1], "pos_label": 1, "weight": None},
+    ]
+
+
+def generate_average_precision() -> dict:
+    """average_precision_score: the binary sum, and the label matrix it averages over."""
+    import numpy as np
+    from sklearn.metrics import average_precision_score, auc, precision_recall_curve
+
+    binary = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for fixture in _average_precision_binary_fixtures():
+            true = np.array(fixture["true"])
+            score = np.array(fixture["score"])
+            kw = {"pos_label": fixture["pos_label"]}
+            if fixture["weight"] is not None:
+                kw["sample_weight"] = np.array(fixture["weight"])
+
+            # The trapezoid is carried beside the sum so the corpus itself records the
+            # difference the metric exists to avoid; nothing in C# reproduces this column.
+            precision, recall, _ = precision_recall_curve(true, score, **kw)
+            binary.append({
+                "name": fixture["name"],
+                "y_true": fixture["true"],
+                "y_score": fixture["score"],
+                "pos_label": fixture["pos_label"],
+                "sample_weight": fixture["weight"],
+                "average_precision": float(average_precision_score(true, score, **kw)),
+                "trapezoid": float(auc(recall, precision)),
+            })
+
+    multilabel = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for fixture in _label_ranking_fixtures():
+            true = np.array(fixture["true"])
+            score = np.array(fixture["score"])
+            kw = {} if fixture["weight"] is None else {
+                "sample_weight": np.array(fixture["weight"])}
+            multilabel.append({
+                "name": fixture["name"],
+                "y_true": [int(v) for row in fixture["true"] for v in row],
+                "y_score": [v for row in fixture["score"] for v in row],
+                "label_count": int(true.shape[1]),
+                "sample_weight": fixture["weight"],
+                "macro": float(average_precision_score(true, score, average="macro", **kw)),
+                "micro": float(average_precision_score(true, score, average="micro", **kw)),
+                "weighted": float(average_precision_score(true, score, average="weighted", **kw)),
+                "per_label": [float(v) for v in np.atleast_1d(
+                    average_precision_score(true, score, average=None, **kw))],
+            })
+
+    return {
+        "metadata": {
+            "algorithm": "AveragePrecision",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.average_precision_score",
+                "sklearn.metrics.auc",
+                "sklearn.metrics.precision_recall_curve",
+            ],
+            "count": len(binary) + len(multilabel),
+        },
+        "binary_cases": binary,
+        "multilabel_cases": multilabel,
+    }
+
+
 def _top_k_fixtures() -> list[dict]:
     """Multiclass score matrices, where k is the question rather than ties.
 
@@ -5185,6 +5284,7 @@ def main() -> None:
         "ranking.json": generate_ranking,
         "ranking_weighted.json": generate_ranking_weighted,
         "label_ranking.json": generate_label_ranking,
+        "average_precision.json": generate_average_precision,
         "top_k_accuracy.json": generate_top_k_accuracy,
         "roc_auc.json": generate_roc_auc,
         "regression.json": generate_regression,
