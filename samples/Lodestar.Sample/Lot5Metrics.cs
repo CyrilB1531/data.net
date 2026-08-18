@@ -191,7 +191,11 @@ internal static class Lot5Metrics
 
         PairConfusionMatrix pairs = PairConfusionMatrix.Compute(reference, split);
         Console.WriteLine($"    pair counts         = {pairs.SameInBoth} together in both, "
-            + $"{pairs.DifferentInBoth} apart in both");
+            + $"{pairs.DifferentInBoth} apart in both, {pairs.SameInPredictedOnly} split-only, "
+            + $"{pairs.SameInTrueOnly} merged-only");
+
+        long[,] grid = pairs.ToArray();
+        Console.WriteLine($"    as a numpy-shaped grid = [[{grid[0, 0]},{grid[0, 1]}],[{grid[1, 0]},{grid[1, 1]}]]");
 
         // One clustering per sample: perfectly homogeneous, and worth nothing --
         // which is the pair of numbers the two families exist to show together.

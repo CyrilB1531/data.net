@@ -104,6 +104,7 @@ internal static class PackagingGate
         ["Lodestar.Fuzzy.ExtractResult..ctor"] = ResultRecordCtor,
         ["Lodestar.Metrics.AverageRow..ctor"] = ResultRecordCtor,
         ["Lodestar.Metrics.ClassRow..ctor"] = ResultRecordCtor,
+        ["Lodestar.Metrics.PairConfusionMatrix..ctor"] = ResultRecordCtor,
         ["Lodestar.Text.Vectorization.CsrMatrix..ctor"] = ResultRecordCtor,
     };
 
