@@ -27,6 +27,8 @@ measured against 1.9.0 and frozen in the oracle corpus rather than reasoned abou
 | Type | What it measures |
 | --- | --- |
 | [`AdjustedRand`](clustering/adjustedrand.md) | How many pairs of samples the two partitions agree about, minus what chance would give. |
+| [`AdjustedMutualInformation`](clustering/adjustedmutualinformation.md) | Shared information between the two labellings, minus what chance would give — the one to use across different cluster counts. |
+| [`FowlkesMallows`](clustering/fowlkesmallows.md) | The geometric mean of pair precision and pair recall, uncorrected for chance. |
 | [`Completeness`](clustering/completeness.md) | Whether every sample of one class landed in the same cluster. |
 | [`Homogeneity`](clustering/homogeneity.md) | Whether each cluster holds samples of a single class. |
 | [`Silhouette`](clustering/silhouette.md) | How well each sample sits in its own cluster rather than the nearest other one — no reference partition needed. |

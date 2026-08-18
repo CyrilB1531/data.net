@@ -8,7 +8,7 @@
    "sklearn.metrics.normalized_mutual_info_score",
    "sklearn.metrics.homogeneity_completeness_v_measure"
   ],
-  "count": 12
+  "count": 13
  },
  "cases": [
   {
@@ -31,6 +31,8 @@
    ],
    "adjusted_rand": 1.0,
    "normalized_mutual_information": 1.0,
+   "fowlkes_mallows": 1.0,
+   "adjusted_mutual_information": 1.0,
    "homogeneity": 1.0,
    "completeness": 1.0,
    "v_measure": 1.0
@@ -55,6 +57,8 @@
    ],
    "adjusted_rand": 1.0,
    "normalized_mutual_information": 1.0,
+   "fowlkes_mallows": 1.0,
+   "adjusted_mutual_information": 1.0,
    "homogeneity": 1.0,
    "completeness": 1.0,
    "v_measure": 1.0
@@ -79,6 +83,8 @@
    ],
    "adjusted_rand": 0.4444444444444444,
    "normalized_mutual_information": 0.7396673768007592,
+   "fowlkes_mallows": 0.5773502691896258,
+   "adjusted_mutual_information": 0.5023607027202738,
    "homogeneity": 0.7103099178571525,
    "completeness": 0.7715561736794712,
    "v_measure": 0.739667376800759
@@ -99,6 +105,8 @@
    ],
    "adjusted_rand": -0.5,
    "normalized_mutual_information": 0.0,
+   "fowlkes_mallows": 0.0,
+   "adjusted_mutual_information": -0.49999999999999944,
    "homogeneity": 0.0,
    "completeness": 0.0,
    "v_measure": 0.0
@@ -123,6 +131,8 @@
    ],
    "adjusted_rand": -0.1111111111111111,
    "normalized_mutual_information": 0.08170416594551037,
+   "fowlkes_mallows": 0.3333333333333333,
+   "adjusted_mutual_information": -0.1111111111111109,
    "homogeneity": 0.08170416594551037,
    "completeness": 0.08170416594551037,
    "v_measure": 0.08170416594551037
@@ -147,6 +157,8 @@
    ],
    "adjusted_rand": 0.4444444444444444,
    "normalized_mutual_information": 0.7336804366512113,
+   "fowlkes_mallows": 0.6546536707079771,
+   "adjusted_mutual_information": 0.6153846153846159,
    "homogeneity": 0.5793801642856953,
    "completeness": 1.0000000000000004,
    "v_measure": 0.7336804366512113
@@ -179,6 +191,8 @@
    ],
    "adjusted_rand": 0.6463654223968566,
    "normalized_mutual_information": 0.6945931642916179,
+   "fowlkes_mallows": 0.8461141122266493,
+   "adjusted_mutual_information": 0.5831830329998599,
    "homogeneity": 0.7830633418060268,
    "completeness": 0.624084366657432,
    "v_measure": 0.694593164291618
@@ -199,6 +213,8 @@
    ],
    "adjusted_rand": 1.0,
    "normalized_mutual_information": 1.0,
+   "fowlkes_mallows": 1.0,
+   "adjusted_mutual_information": 1.0,
    "homogeneity": 1.0,
    "completeness": 1.0,
    "v_measure": 1.0
@@ -219,8 +235,32 @@
    ],
    "adjusted_rand": 0.0,
    "normalized_mutual_information": 0.0,
+   "fowlkes_mallows": 0.5773502691896257,
+   "adjusted_mutual_information": 0.0,
    "homogeneity": 0.0,
    "completeness": 1.0,
+   "v_measure": 0.0
+  },
+  {
+   "name": "one class in truth",
+   "labels_true": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "labels_pred": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "adjusted_rand": 0.0,
+   "normalized_mutual_information": 0.0,
+   "fowlkes_mallows": 0.5773502691896257,
+   "adjusted_mutual_information": 0.0,
+   "homogeneity": 1.0,
+   "completeness": 0.0,
    "v_measure": 0.0
   },
   {
@@ -239,6 +279,8 @@
    ],
    "adjusted_rand": 0.0,
    "normalized_mutual_information": 0.6666666666666666,
+   "fowlkes_mallows": 0.0,
+   "adjusted_mutual_information": 6.40685300762983e-16,
    "homogeneity": 0.9999999999999999,
    "completeness": 0.49999999999999994,
    "v_measure": 0.6666666666666666
@@ -253,6 +295,8 @@
    ],
    "adjusted_rand": 1.0,
    "normalized_mutual_information": 1.0,
+   "fowlkes_mallows": 0.0,
+   "adjusted_mutual_information": 1.0,
    "homogeneity": 1.0,
    "completeness": 1.0,
    "v_measure": 1.0
@@ -263,6 +307,8 @@
    "labels_pred": [],
    "adjusted_rand": 1.0,
    "normalized_mutual_information": 1.0,
+   "fowlkes_mallows": 0.0,
+   "adjusted_mutual_information": 1.0,
    "homogeneity": 1.0,
    "completeness": 1.0,
    "v_measure": 1.0

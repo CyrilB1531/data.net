@@ -11,6 +11,8 @@ namespace Lodestar.Metrics.Internal;
 /// </remarks>
 internal sealed class Contingency
 {
+    private const double Epsilon = 2.220446049250313e-16;
+
     public Contingency(Dictionary<long, int> cells, int[] rows, int[] columns, int samples)
     {
         Cells = cells;
@@ -61,6 +63,13 @@ internal sealed class Contingency
     /// </remarks>
     public double MutualInformation()
     {
+        // One piece on either side shares no information: the reference answers 0.0
+        // exactly, where summing terms that cancel leaves ~5e-15 at a hundred thousand.
+        if (Rows.Length <= 1 || Columns.Length <= 1)
+        {
+            return 0.0;
+        }
+
         double total = Samples;
         double logTotal = Math.Log(total);
         double sum = 0.0;
@@ -72,7 +81,11 @@ internal sealed class Contingency
             double nij = cell.Value;
             double fraction = nij / total;
             double outer = -Math.Log((double)Rows[row] * Columns[column]) + logTotal + logTotal;
-            sum += (fraction * (Math.Log(nij) - logTotal)) + (fraction * outer);
+            double term = (fraction * (Math.Log(nij) - logTotal)) + (fraction * outer);
+
+            // Zeroed per term before summing, as the reference does: a single cluster
+            // cancels each term to ~1e-16, and the sum of those is what callers divide by.
+            sum += Math.Abs(term) < Epsilon ? 0.0 : term;
         }
 
         return Math.Max(sum, 0.0);

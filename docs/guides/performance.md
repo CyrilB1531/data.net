@@ -248,6 +248,36 @@ inside it. Both columns pay it equally, so the table is internally comparable;
 it is not comparable to figures taken on this machine in a quieter state, and
 the ratios travel between such sets while the absolute microseconds do not.
 
+## Clustering agreement from labels (issue #191)
+
+Intel Core i7-4770S @ 3.10 GHz, .NET 10.0.110, Release. Median of 21 runs (n <= 10 000) and 5 runs
+(n = 100 000), one process, two random labellings of `n` samples over `k` clusters.
+
+| n | k | `FowlkesMallows` | `AdjustedMutualInformation` | `AdjustedRand` |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 000 | 5 | 0.36 ms | 0.42 ms | 0.27 ms |
+| 10 000 | 5 | 1.66 ms | 2.84 ms | 2.44 ms |
+| 10 000 | 50 | 8.07 ms | 14.17 ms | 1.73 ms |
+| 100 000 | 10 | 5.46 ms | 26.83 ms | 5.60 ms |
+| 100 000 | 100 | 37.76 ms | **254.89 ms** | 39.63 ms |
+
+**Fowlkes-Mallows costs about what `AdjustedRand` costs**, which is the expected result: it is a
+second reader of the contingency table the other already builds, and it adds one pass over the
+cells.
+
+**Adjusted mutual information is the expensive one, and the cost grows with the number of
+clusters rather than only with the samples.** The correction sums over the hypergeometric
+distribution of every (class, cluster) cell the marginals allow, so the work is bounded by
+`classes x clusters x n` and not by `n` alone: at 100 000 samples it is 4.8x `AdjustedRand` at 10
+clusters and 6.4x at 100. That is inherent to the quantity — scikit-learn sums the same terms —
+and it is the reason to reach for
+[`NormalizedMutualInformation.Score`](../reference/metrics/clustering/normalizedmutualinformation-score.md)
+instead when the two labellings being compared have the same number of clusters and the chance
+correction is not buying anything.
+
+Nothing here was optimised. These are the numbers as first written, published so the next change
+has a baseline rather than an impression to argue against.
+
 ## The sort inside the binary ROC curve (issue #206)
 
 Intel Core i7-4770S @ 3.10 GHz, 8 logical cores, .NET 10.0.110, Release. Median of
