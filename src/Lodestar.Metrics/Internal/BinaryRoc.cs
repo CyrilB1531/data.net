@@ -14,6 +14,17 @@ namespace Lodestar.Metrics.Internal;
 /// </remarks>
 internal static class BinaryRoc
 {
+    // The radix loses below ~8 000 and wins above (1.21x at 10 000, 1.32x at a
+    // million); docs/guides/performance.md has the table and the machine.
+    private const int RadixThreshold = 8_192;
+
+    // 16-bit digits: four passes and a 64 K histogram beat eight passes and a
+    // 256-entry one from 16 000 samples up, by 1.17x at a million.
+    private const int RadixBits = 16;
+    private const int RadixBuckets = 1 << RadixBits;
+    private const ulong RadixMask = RadixBuckets - 1;
+    private const ulong SignBit = 0x8000000000000000UL;
+
     private struct Point
     {
         public double Weight;
@@ -33,12 +44,33 @@ internal static class BinaryRoc
         private readonly double[] _keys;
         private readonly Point[] _points;
 
-        private Scratch(int[] binary, double[] column, double[] keys, Point[] points)
+        // Null below RadixThreshold, where Array.Sort is the faster call and these
+        // would be 48 bytes per sample rented for nothing.
+        private readonly ulong[]? _codes;
+        private readonly ulong[]? _codesAlt;
+        private readonly int[]? _order;
+        private readonly int[]? _orderAlt;
+        private readonly double[]? _sortedKeys;
+        private readonly Point[]? _sortedPoints;
+
+        private Scratch(int[] binary, double[] column, double[] keys, Point[] points, int radixLength)
         {
             Binary = binary;
             Column = column;
             _keys = keys;
             _points = points;
+
+            if (radixLength == 0)
+            {
+                return;
+            }
+
+            _codes = ArrayPool<ulong>.Shared.Rent(radixLength);
+            _codesAlt = ArrayPool<ulong>.Shared.Rent(radixLength);
+            _order = ArrayPool<int>.Shared.Rent(radixLength);
+            _orderAlt = ArrayPool<int>.Shared.Rent(radixLength);
+            _sortedKeys = ArrayPool<double>.Shared.Rent(radixLength);
+            _sortedPoints = ArrayPool<Point>.Shared.Rent(radixLength);
         }
 
         internal int[] Binary { get; }
@@ -52,7 +84,8 @@ internal static class BinaryRoc
                 ArrayPool<int>.Shared.Rent(length),
                 ArrayPool<double>.Shared.Rent(length),
                 ArrayPool<double>.Shared.Rent(length),
-                ArrayPool<Point>.Shared.Rent(length));
+                ArrayPool<Point>.Shared.Rent(length),
+                length >= RadixThreshold ? length : 0);
         }
 
         internal void Return()
@@ -61,6 +94,18 @@ internal static class BinaryRoc
             ArrayPool<double>.Shared.Return(Column);
             ArrayPool<double>.Shared.Return(_keys);
             ArrayPool<Point>.Shared.Return(_points);
+
+            if (_codes is null)
+            {
+                return;
+            }
+
+            ArrayPool<ulong>.Shared.Return(_codes);
+            ArrayPool<ulong>.Shared.Return(_codesAlt!);
+            ArrayPool<int>.Shared.Return(_order!);
+            ArrayPool<int>.Shared.Return(_orderAlt!);
+            ArrayPool<double>.Shared.Return(_sortedKeys!);
+            ArrayPool<Point>.Shared.Return(_sortedPoints!);
         }
 
         // _keys/_points stay private (Point is private to BinaryRoc). Named
@@ -69,8 +114,116 @@ internal static class BinaryRoc
         {
             int n = Validate(yTrue, yScore, sampleWeight);
             BuildPoints(yTrue, yScore, posLabel, sampleWeight, _keys, _points);
-            Array.Sort(_keys, _points, 0, n);
-            return Accumulate(_keys, _points, n);
+
+            if (_codes is null || n < RadixThreshold)
+            {
+                Array.Sort(_keys, _points, 0, n);
+                return Accumulate(_keys, _points, n);
+            }
+
+            RadixSort(n);
+            return Accumulate(_sortedKeys!, _sortedPoints!, n);
+        }
+
+        /// <summary>
+        /// Orders the first <paramref name="n"/> points by ascending key into
+        /// <c>_sortedKeys</c>/<c>_sortedPoints</c>, by radix rather than by comparison.
+        /// </summary>
+        /// <remarks>
+        /// Four LSD passes over 16-bit digits of the order-preserving encoding, carrying
+        /// a position rather than the 16-byte point: the pairs moved are 12 bytes, and
+        /// the points are gathered once at the end instead of on every pass.
+        /// </remarks>
+        private void RadixSort(int n)
+        {
+            ulong[] codes = _codes!;
+            ulong[] codesAlt = _codesAlt!;
+            int[] order = _order!;
+            int[] orderAlt = _orderAlt!;
+
+            for (int i = 0; i < n; i++)
+            {
+                codes[i] = Encode(_keys[i]);
+                order[i] = i;
+            }
+
+            int[] histogram = ArrayPool<int>.Shared.Rent(RadixBuckets);
+            try
+            {
+                for (int shift = 0; shift < 64; shift += RadixBits)
+                {
+                    if (!Pass(codes, order, codesAlt, orderAlt, n, shift, histogram))
+                    {
+                        continue;
+                    }
+
+                    (codes, codesAlt) = (codesAlt, codes);
+                    (order, orderAlt) = (orderAlt, order);
+                }
+            }
+            finally
+            {
+                ArrayPool<int>.Shared.Return(histogram);
+            }
+
+            double[] sortedKeys = _sortedKeys!;
+            Point[] sortedPoints = _sortedPoints!;
+            for (int i = 0; i < n; i++)
+            {
+                int source = order[i];
+                sortedKeys[i] = _keys[source];
+                sortedPoints[i] = _points[source];
+            }
+        }
+
+        /// <summary>One counting pass; false when the digit is constant and the pass would only copy.</summary>
+        private static bool Pass(
+            ulong[] codes, int[] order, ulong[] codesOut, int[] orderOut, int n, int shift, int[] histogram)
+        {
+            Array.Clear(histogram, 0, RadixBuckets);
+            for (int i = 0; i < n; i++)
+            {
+                histogram[(int)((codes[i] >> shift) & RadixMask)]++;
+            }
+
+            // Scores routinely share an exponent, which leaves whole digits constant.
+            // Skipping those passes is most of what makes four passes cheap.
+            if (histogram[(int)((codes[0] >> shift) & RadixMask)] == n)
+            {
+                return false;
+            }
+
+            int total = 0;
+            for (int bucket = 0; bucket < RadixBuckets; bucket++)
+            {
+                int count = histogram[bucket];
+                histogram[bucket] = total;
+                total += count;
+            }
+
+            for (int i = 0; i < n; i++)
+            {
+                int destination = histogram[(int)((codes[i] >> shift) & RadixMask)]++;
+                codesOut[destination] = codes[i];
+                orderOut[destination] = order[i];
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Maps a non-NaN <see cref="double"/> onto a <see cref="ulong"/> whose unsigned
+        /// order is the double's own order.
+        /// </summary>
+        /// <remarks>
+        /// Negatives invert entirely, positives flip only the sign bit — the standard
+        /// transform. NaN is refused by <c>BuildPoints</c> before it can reach here, which
+        /// is what makes a total order available at all.
+        /// </remarks>
+        private static ulong Encode(double value)
+        {
+            ulong bits = (ulong)BitConverter.DoubleToInt64Bits(value);
+            return (bits & SignBit) != 0 ? ~bits : bits | SignBit;
         }
 
         // These five — Validate, BuildPoints, Accumulate, IsLastOfGroup,
