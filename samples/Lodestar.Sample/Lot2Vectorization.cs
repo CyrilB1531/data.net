@@ -68,6 +68,18 @@ internal static class Lot2Vectorization
         CsrMatrix matrix = tfidf.Fit(Documents).FitTransform(Documents);
         Console.WriteLine($"  TfidfVectorizer  : {matrix.RowCount} docs x {matrix.ColumnCount} terms, {matrix.Values.Length} non-zeros");
 
+        // Fit once, transform later: the order a training corpus and a test one need,
+        // and the reason a term the fit never saw is dropped rather than counted.
+        CsrMatrix unseen = tfidf.Transform(["a document about cats and dogs"]);
+        Console.WriteLine($"  Tfidf transform  : {unseen.ColumnCount} terms wide, the fit's width, "
+            + $"idf[0]={Inv.F4(tfidf.Idf[0])}");
+
+        // CountVectorizer.Fit alone, then FitTransform on the counts it learned.
+        CsrMatrix learned = new CountVectorizer(countOptions).Fit(Documents).Transform(Documents);
+        CsrMatrix reweighted = new TfidfTransformer(new TfidfOptions { Norm = SparseNorm.L2 }).FitTransform(learned);
+        Console.WriteLine($"  Fit then weight  : {reweighted.RowCount} x {reweighted.ColumnCount}, "
+            + $"row 0 length {Inv.F4(reweighted.RowL2Norm(0))}");
+
         // Hashing needs no vocabulary, so it never sees the corpus twice.
         var hashing = new HashingVectorizer(new HashingVectorizerOptions
         {
