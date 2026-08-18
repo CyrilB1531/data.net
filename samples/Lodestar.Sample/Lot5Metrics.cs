@@ -370,6 +370,17 @@ internal static class Lot5Metrics
         Console.WriteLine($"  MultiClass ovr macro  = "
             + $"{Inv.F3(RocAuc.MultiClass(truth, probabilities, classCount: 3, new MultiClassRocOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }))}"
             + "  (parallel, same value)");
+
+        // Labels names the class set explicitly, where scikit-learn infers it; SampleWeight
+        // weights the samples. Both are options a caller sets and then reads back.
+        var described = new MultiClassRocOptions
+        {
+            Labels = [0, 1, 2],
+            SampleWeight = [1.0, 1.0, 2.0, 1.0, 1.0, 1.0],
+        };
+        Console.WriteLine($"  MultiClass weighted   = "
+            + $"{Inv.F3(RocAuc.MultiClass(truth, probabilities, classCount: 3, described))} "
+            + $"({described.Labels.Length} labels named, {described.SampleWeight.Length} weights)");
         Console.WriteLine();
     }
 

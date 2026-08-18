@@ -51,6 +51,8 @@ internal static class Lot3Embeddings
         // The same vocabulary as a consumer would actually get it: a vocab.txt.
         WordPieceVocabulary fromTxt = VocabTxtLoader.Load(
             Utf8("[UNK]\ntoken\n##ize\ntext"), bounds, unkToken: Unknown, continuationPrefix: "##", lowercase: true);
+        Console.WriteLine($"  WP token_to_id   : 'text'={(inline.TryGetId("text", out int wpId) ? wpId : -1)} "
+            + "(on the class; the interface call later reaches ISubwordTokenizer instead)");
         Console.WriteLine($"  vocab.txt        : {fromTxt.Count} tokens, unk='{fromTxt.UnkToken}', "
             + $"prefix='{fromTxt.ContinuationPrefix}', lowercase={fromTxt.Lowercase}, dict={fromTxt.Vocab.Count}");
         Console.WriteLine($"  from vocabulary  : [{string.Join(", ", new WordPieceTokenizer(fromTxt, maxCharsPerWord: 100).Encode(SampleText).Tokens)}]");
@@ -89,6 +91,12 @@ internal static class Lot3Embeddings
         Console.WriteLine($"  vocabulary       : {handBuilt.Count} pieces, types[0]={handBuilt.Types[0]}, "
             + $"piece[2]='{handBuilt.Pieces[2].Piece}' score={Inv.F1(handBuilt.Pieces[2].Score)} id={handBuilt.Pieces[2].Id}, "
             + $"matchable(0)={handBuilt.IsMatchable(0)}, unk={handBuilt.UnkId} bos={handBuilt.BosId} eos={handBuilt.EosId} pad={handBuilt.PadId}");
+
+        Console.WriteLine($"  SP token_to_id   : '\u2581alpha'={(sp.TryGetId("\u2581alpha", out int spId) ? spId : -1)}, "
+            + $"bare 'alpha' present={sp.TryGetId("alpha", out _)}");
+
+        BpeVocabulary fromBpeJson = TokenizerJsonLoader.LoadBpe(Utf8(BpeJson), bounds);
+        Console.WriteLine($"  BPE tokenizer.json: {fromBpeJson.Count} tokens, {fromBpeJson.Merges.Count} merge");
 
         SentencePieceVocabulary fromUnigramJson = TokenizerJsonLoader.LoadUnigram(Utf8(UnigramJson), bounds);
         Console.WriteLine($"  unigram json     : {fromUnigramJson.Count} pieces");
@@ -179,6 +187,19 @@ internal static class Lot3Embeddings
             Console.WriteLine($"  byte-level + it  : refused — {refused.Message.Split('.')[0]}.");
         }
 
+        // Everything a tokenizer.json can declare about a BPE model, read back off the
+        // record: these are the flags that decide whether two files tokenize alike.
+        Console.WriteLine($"  BPE model flags  : {bpeModel.Vocab.Count} entries, "
+            + $"{bpeModel.AddedTokens.Count} added, prefix space={bpeModel.AddPrefixSpace}, "
+            + $"ignore merges={bpeModel.IgnoreMerges}, fuse unk={bpeModel.FuseUnk}");
+        Console.WriteLine($"  BPE model markers: end-of-word='{bpeModel.EndOfWordSuffix ?? "(none)"}', "
+            + $"unknown='{bpeModel.UnkToken ?? "(none)"}'");
+        Console.WriteLine($"  BPE token_to_id  : 'token'={(bpe.TryGetId("token", out int bpeId) ? bpeId : -1)}");
+
+        // The fourth pre-tokenizer pattern, and the pattern a Split step carries.
+        Console.WriteLine($"  Qwen2 pattern    : {BpePatterns.Qwen2.Length} characters, "
+            + $"a Split step's own is {llamaSplit.Pattern.Length}");
+
         // The same model as a consumer gets it: vocab.json + merges.txt.
         BpeVocabulary fromFiles = BpeFilesLoader.Load(
             Utf8("""{"Ġ":0,"t":1,"o":2,"k":3,"e":4,"n":5,"to":6,"ken":7,"token":8,"Ġtoken":9,"ke":10}"""),
@@ -222,6 +243,18 @@ internal static class Lot3Embeddings
         Console.WriteLine($"  template         : {options.Template.SpecialTokenCount} special tokens, "
             + $"pad='{options.Template.PadToken}', truncation={options.Truncation}, batch={options.BatchSize}");
         Console.WriteLine($"  Encode           : [{string.Join(", ", batchEncoder.Encode(SampleText))}]");
+        Console.WriteLine($"  encoder options  : max {batchEncoder.Options.MaxLength}, "
+            + $"prefix [{string.Join(", ", options.Template.PrefixTokens)}], "
+            + $"suffix [{string.Join(", ", options.Template.SuffixTokens)}]");
+
+        // The templates a model family expects, and the one that wraps nothing.
+        Console.WriteLine($"  templates        : Bert {SpecialTokenTemplate.Bert.SpecialTokenCount}, "
+            + $"Roberta {SpecialTokenTemplate.Roberta.SpecialTokenCount}, "
+            + $"T5 {SpecialTokenTemplate.T5.SpecialTokenCount}, "
+            + $"None {SpecialTokenTemplate.None.SpecialTokenCount}");
+
+        // Encoding through the interface, which is what BatchEncoder is given.
+        Console.WriteLine($"  via interface    : [{string.Join(", ", subword.Encode(SampleText).Tokens)}]");
 
         // Two texts of different lengths: the batch is padded to the longer of
         // the two, never to MaxLength, and the mask marks what is padding.
@@ -256,6 +289,11 @@ internal static class Lot3Embeddings
         Console.WriteLine($"  MeanPoolBatch    : {batchPooled.Length} vectors, "
             + string.Join(" | ", batchPooled.Select(v => $"[{string.Join(", ", v.Select(Inv.F3))}]")));
 
+        // The same batch without the normalization, which is the other overload.
+        float[][] rawBatch = Pooler.MeanPoolBatch(batchedEmbeddings, batchSize: 2, seqLen: 2, dim: 3, batchedMask);
+        Console.WriteLine($"  MeanPoolBatch raw: "
+            + string.Join(" | ", rawBatch.Select(v => $"[{string.Join(", ", v.Select(Inv.F3))}]")));
+
         // Nearest-neighbour search over those vectors, with the ids a reloaded
         // index is queried by.
         var index = new EmbeddingIndex(dimension: 3, normalize: true);
@@ -263,7 +301,8 @@ internal static class Lot3Embeddings
         index.Add([0f, 1f, 0f], "north");
         index.Add([0.9f, 0.1f, 0f], "east-north-east");
         IReadOnlyList<SearchResult> hits = index.Search([1f, 0f, 0f], k: 2);
-        Console.WriteLine($"  EmbeddingIndex   : {index.Count} vectors of {index.Dimension} dims");
+        Console.WriteLine($"  EmbeddingIndex   : {index.Count} vectors of {index.Dimension} dims, "
+            + $"ids present={index.HasIds}");
         foreach (SearchResult hit in hits)
         {
             Console.WriteLine($"    #{hit.Index} {index.GetId(hit.Index)} score={Inv.F4(hit.Score)}");
@@ -279,6 +318,18 @@ internal static class Lot3Embeddings
             + $"best '{reloaded.GetId(best.Index)}' score={Inv.F4(best.Score)}");
         Console.WriteLine();
     }
+
+    /// <summary>A minimal BPE tokenizer.json, the shape HuggingFace ships.</summary>
+    private const string BpeJson =
+        """
+        {"version":"1.0","truncation":null,"padding":null,"added_tokens":[],
+         "normalizer":null,"pre_tokenizer":{"type":"Whitespace"},"post_processor":null,
+         "decoder":null,
+         "model":{"type":"BPE","dropout":null,"unk_token":null,
+                  "continuing_subword_prefix":null,"end_of_word_suffix":null,
+                  "fuse_unk":false,"byte_fallback":false,"ignore_merges":false,
+                  "vocab":{"t":0,"o":1,"to":2},"merges":["t o"]}}
+        """;
 
     private const string WordPieceJson =
         "{\"version\":\"1.0\",\"truncation\":null,\"padding\":null," +
