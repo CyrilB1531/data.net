@@ -46,6 +46,7 @@ a later decision uses instead.
 | [`0034`](0034-dropout-is-refused-for-want-of-a-user.md) | Distributional proof is admissible, and `dropout` is still refused | accepted | 2026-08-14 | — |
 | [`0035`](0035-a-null-pre-split-is-removed-with-invert-not-isolated.md) | A null pre-split drives `Apply` as Removed with invert, not Isolated | accepted | 2026-08-15 | — |
 | [`0036`](0036-a-member-may-ship-without-an-oracle-if-it-says-so.md) | A member may ship without an oracle, if the documentation says so | accepted | 2026-08-16 | — |
+| [`0037`](0037-the-guards-run-before-the-commit.md) | The guards run before the commit, through `core.hooksPath` and no framework | accepted | 2026-08-18 | extends [`0015`](0015-sonar-rules-in-the-build.md)'s reasoning to the Python guards |
 
 ## What `accepted` means here
 

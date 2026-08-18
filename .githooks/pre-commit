@@ -1,0 +1,51 @@
+#!/bin/sh
+# The four offline guards, run against the index instead of after the push.
+#
+#   install:  git config core.hooksPath .githooks
+#   skip once:  git commit --no-verify
+#
+# CI stays the authority: this runs the guards and nothing else -- not the
+# build, not the tests, not the three gates. Decision 0037 has the reasoning,
+# and CONTRIBUTING.md's "Before committing" is what a contributor reads.
+
+set -u
+
+# python3 on Ubuntu, python on a python.org Windows install, and neither name
+# resolves on both (CLAUDE.md). A machine with no Python still commits: the
+# guards are a development dependency, and refusing a commit for want of one
+# would break work the guards themselves would have passed.
+if command -v python3 >/dev/null 2>&1; then
+    interpreter=python3
+elif command -v python >/dev/null 2>&1; then
+    interpreter=python
+else
+    echo "pre-commit: no python3 or python on PATH, so the guards did not run." >&2
+    echo "pre-commit: CI runs them on the push regardless -- see CONTRIBUTING.md." >&2
+    exit 0
+fi
+
+root=$(git rev-parse --show-toplevel) || exit 1
+cd "$root" || exit 1
+
+# check_nuspec_dependencies.py is absent because it reads a packed ./artifacts,
+# and --check-feed is absent from the floor guard because it reaches nuget.org.
+# Both would make a commit wait on something a commit should not wait on.
+#
+# Spelled as paths rather than bare names so this list and ci.yml's steps read
+# the same, which is what tools/tests/test_pre_commit_hook.py compares.
+failed=''
+for guard in \
+    tools/check_machine_paths.py \
+    tools/check_comment_length.py \
+    tools/check_version_floor.py \
+    tools/check_sample_culture.py
+do
+    "$interpreter" "$guard" || failed="$failed $(basename "$guard" .py)"
+done
+
+if [ -n "$failed" ]; then
+    echo >&2
+    echo "pre-commit: failed --$failed" >&2
+    echo "pre-commit: fix the findings above, or 'git commit --no-verify' to skip them." >&2
+    exit 1
+fi

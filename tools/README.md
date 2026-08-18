@@ -20,6 +20,12 @@ given:
   without saying why.
 - `check_sample_culture.py` refuses a sample that can print a number in the
   contributor's culture rather than the same way everywhere.
+- All of those but `check_nuspec_dependencies.py`, which needs a packed
+  `./artifacts`, also run before a commit for whoever installs
+  `.githooks/pre-commit` with `git config core.hooksPath .githooks` —
+  CONTRIBUTING.md's [*Before
+  committing*](../CONTRIBUTING.md#before-committing-the-guards-one-command-earlier)
+  has what it does and does not cover.
 - `generate_sonar_globalconfig.py` writes the `.globalconfig` that raises the
   Sonar rules `SonarAnalyzer.CSharp` ships disabled, from the SonarCloud
   quality profile that gates the pull request.
