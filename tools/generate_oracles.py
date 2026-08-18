@@ -2416,8 +2416,15 @@ def _deviance_fixtures() -> list[dict]:
          "pred": [1.0, 2.0, 3.0], "weight": None},
         {"name": "far apart", "true": [1.0, 10.0, 2.0],
          "pred": [8.0, 1.0, 9.0], "weight": None},
+        # long-comment: the exclusion below is a reproducibility claim, and a reader
+        # who does not know why will delete the flag and re-break the drift gate.
+        # At power -2 this pair's deviance is a sum of three terms an order of
+        # magnitude larger than the result, so its last bits follow the machine's
+        # reduction order -- measured, a CI runner and this one disagree by one ulp
+        # on it. Freezing either answer makes the gate a lottery. Only this fixture
+        # is affected, and the other five still cover the negative regimes.
         {"name": "small values", "true": [0.01, 0.5, 0.25],
-         "pred": [0.02, 0.4, 0.3], "weight": None},
+         "pred": [0.02, 0.4, 0.3], "weight": None, "skip_negative_powers": True},
     ]
 
 
@@ -2447,6 +2454,8 @@ def _tweedie_row(fixture: dict, true, pred, kw: dict) -> list[dict]:
 
     rows = []
     for power in _tweedie_powers():
+        if power < 0 and fixture.get("skip_negative_powers"):
+            continue
         if not _tweedie_admits(power, fixture["true"], fixture["pred"]):
             continue
         entry = {
@@ -2537,6 +2546,68 @@ def generate_regression_deviance() -> dict:
         },
         "cases": cases,
         "multioutput": multioutput,
+    }
+
+
+def _internal_validity_fixtures() -> list[dict]:
+    """Clusterings chosen where a plausible implementation and the reference part company."""
+    two_by_two = [[1.0, 2.0], [1.5, 1.8], [5.0, 8.0], [8.0, 8.0], [1.0, 0.6], [9.0, 11.0]]
+    return [
+        {"name": WORKED_CASE, "features": two_by_two, "labels": [0, 0, 1, 1, 0, 1]},
+        # Every cluster but one holds a single sample: the widest label count either
+        # metric admits, n - 1, and the one where a singleton's zero spread shows.
+        {"name": "one cluster of two, the rest singletons", "features": two_by_two,
+         "labels": [0, 1, 2, 3, 4, 4]},
+        {"name": "a singleton beside a large cluster", "features": two_by_two,
+         "labels": [0, 0, 0, 0, 0, 1]},
+        {"name": "three clusters", "features": two_by_two, "labels": [0, 1, 2, 0, 1, 2]},
+        # No spread at all: Calinski-Harabasz answers 1 rather than dividing by zero,
+        # and Davies-Bouldin 0 because the centroids coincide.
+        {"name": "four identical points", "features": [[1.0, 1.0]] * 4, "labels": [0, 0, 1, 1]},
+        {"name": "two points, far apart, duplicated",
+         "features": [[0.0, 0.0], [0.0, 0.0], [10.0, 10.0], [10.0, 10.0]], "labels": [0, 0, 1, 1]},
+        # One feature, and five: the shape is a flat span either way.
+        {"name": "one feature", "features": [[1.0], [1.2], [8.0], [8.4], [1.1], [9.0]],
+         "labels": [0, 0, 1, 1, 0, 1]},
+        {"name": "five features",
+         "features": [[1.0, 2.0, 3.0, 4.0, 5.0], [1.1, 2.1, 3.1, 4.1, 5.1],
+                      [9.0, 8.0, 7.0, 6.0, 5.0], [9.1, 8.1, 7.1, 6.1, 5.1]],
+         "labels": [0, 0, 1, 1]},
+    ]
+
+
+def generate_internal_validity() -> dict:
+    """Calinski-Harabasz and Davies-Bouldin, which score a clustering with no reference (#192)."""
+    import numpy as np
+    from sklearn.metrics import calinski_harabasz_score, davies_bouldin_score
+
+    cases = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for fixture in _internal_validity_fixtures():
+            features = np.array(fixture["features"])
+            labels = np.array(fixture["labels"])
+            cases.append({
+                "name": fixture["name"],
+                "features": [v for row in fixture["features"] for v in row],
+                "feature_count": int(features.shape[1]),
+                "labels": fixture["labels"],
+                "calinski_harabasz": float(calinski_harabasz_score(features, labels)),
+                "davies_bouldin": float(davies_bouldin_score(features, labels)),
+            })
+
+    return {
+        "metadata": {
+            "algorithm": "InternalValidity",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.calinski_harabasz_score",
+                "sklearn.metrics.davies_bouldin_score",
+            ],
+            "count": len(cases),
+        },
+        "cases": cases,
     }
 
 
@@ -5426,6 +5497,7 @@ def main() -> None:
         "classification_metrics.json": generate_classification_metrics,
         "clustering_agreement.json": generate_clustering_agreement,
         "silhouette.json": generate_silhouette,
+        "internal_validity.json": generate_internal_validity,
         "ranking.json": generate_ranking,
         "ranking_weighted.json": generate_ranking_weighted,
         "label_ranking.json": generate_label_ranking,

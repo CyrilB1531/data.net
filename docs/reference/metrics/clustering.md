@@ -1,12 +1,17 @@
 # Clustering metrics — `Lodestar.Metrics`
 
-You clustered some samples and you have a reference partition to compare against — labels from a
-human, from an earlier model, or from a dataset that came with them. Every type on this page scores
-how well the two partitions agree, and none of them cares what the clusters are *called*: swapping
-the names of two clusters changes nothing, which is exactly what separates these from the
-classification metrics.
+You clustered some samples. Most of the types on this page score the result against a **reference
+partition** — labels from a human, from an earlier model, or from a dataset that came with them —
+and none of them cares what the clusters are *called*: swapping the names of two clusters changes
+nothing, which is exactly what separates these from the classification metrics.
 
-They disagree on what "agree" means, and the disagreement is the reason there are five.
+Three of them need no reference at all, and score a clustering from the samples themselves. They
+take a feature matrix rather than two label vectors, and they are what you reach for when there is
+nothing to compare against — choosing how many clusters to ask for, for instance. They have their
+own section below.
+
+The reference-partition metrics disagree on what "agree" means, and the disagreement is the
+reason there are several.
 
 - **Corrected for chance or not.** Split every sample into a cluster of its own and
   [`Homogeneity`](clustering/homogeneity.md) scores a perfect `1`, because every cluster does hold
@@ -34,6 +39,28 @@ measured against 1.9.0 and frozen in the oracle corpus rather than reasoned abou
 | [`FowlkesMallows`](clustering/fowlkesmallows.md) | The geometric mean of pair precision and pair recall, uncorrected for chance. |
 | [`Completeness`](clustering/completeness.md) | Whether every sample of one class landed in the same cluster. |
 | [`Homogeneity`](clustering/homogeneity.md) | Whether each cluster holds samples of a single class. |
-| [`Silhouette`](clustering/silhouette.md) | How well each sample sits in its own cluster rather than the nearest other one — no reference partition needed. |
 | [`NormalizedMutualInformation`](clustering/normalizedmutualinformation.md) | How much knowing one labelling tells you about the other, scaled into `[0, 1]`. |
 | [`VMeasure`](clustering/vmeasure.md) | Homogeneity and completeness as one number, their harmonic mean. |
+
+## Scoring a clustering with no reference
+
+These three read the samples, not a second labelling. All of them refuse a label count outside
+`[2, n - 1]` with the same sentence — one cluster leaves nothing to compare against, one cluster per
+sample leaves nothing inside one — and none of them ever answers a non-finite value on an input
+scikit-learn accepts.
+
+**They do not all read in the same direction.** A clustering that improves moves
+[`Silhouette`](clustering/silhouette.md) and [`CalinskiHarabasz`](clustering/calinskiharabasz.md)
+**up** and [`DaviesBouldin`](clustering/daviesbouldin.md) **down**. Reading a table of the three
+without knowing that gets one of them backwards.
+
+Only [`Silhouette`](clustering/silhouette.md) accepts a distance matrix you computed yourself. The
+other two read cluster centroids, which a distance matrix does not carry, so a reader arriving from
+`silhouette_score(metric='precomputed')` will look for the equivalent and find none — the reference
+has none either.
+
+| Type | What it measures | Direction |
+| --- | --- | --- |
+| [`Silhouette`](clustering/silhouette.md) | How well each sample sits in its own cluster rather than the nearest other one. | higher is better |
+| [`CalinskiHarabasz`](clustering/calinskiharabasz.md) | How far the clusters sit from each other against how spread they are inside. | higher is better |
+| [`DaviesBouldin`](clustering/daviesbouldin.md) | The worst pairing each cluster is in, averaged. | **lower** is better |
