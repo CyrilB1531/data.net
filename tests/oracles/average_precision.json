@@ -1,0 +1,657 @@
+{
+ "metadata": {
+  "algorithm": "AveragePrecision",
+  "library": "scikit-learn",
+  "library_version": "1.9.0",
+  "reference_calls": [
+   "sklearn.metrics.average_precision_score",
+   "sklearn.metrics.auc",
+   "sklearn.metrics.precision_recall_curve"
+  ],
+  "count": 24
+ },
+ "binary_cases": [
+  {
+   "name": "the worked case",
+   "y_true": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "y_score": [
+    0.1,
+    0.4,
+    0.35,
+    0.8
+   ],
+   "pos_label": 1,
+   "sample_weight": null,
+   "average_precision": 0.8333333333333333,
+   "trapezoid": 0.7916666666666666
+  },
+  {
+   "name": "the worked case, pos_label 0",
+   "y_true": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "y_score": [
+    0.1,
+    0.4,
+    0.35,
+    0.8
+   ],
+   "pos_label": 0,
+   "sample_weight": null,
+   "average_precision": 0.5,
+   "trapezoid": 0.3333333333333333
+  },
+  {
+   "name": "the worked case, weighted",
+   "y_true": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "y_score": [
+    0.1,
+    0.4,
+    0.35,
+    0.8
+   ],
+   "pos_label": 1,
+   "sample_weight": [
+    1.0,
+    2.0,
+    3.0,
+    4.0
+   ],
+   "average_precision": 0.9047619047619048,
+   "trapezoid": 0.8809523809523809
+  },
+  {
+   "name": "every score tied",
+   "y_true": [
+    0,
+    1,
+    0,
+    1
+   ],
+   "y_score": [
+    0.5,
+    0.5,
+    0.5,
+    0.5
+   ],
+   "pos_label": 1,
+   "sample_weight": null,
+   "average_precision": 0.5,
+   "trapezoid": 0.75
+  },
+  {
+   "name": "perfectly ranked",
+   "y_true": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "y_score": [
+    0.1,
+    0.2,
+    0.3,
+    0.4
+   ],
+   "pos_label": 1,
+   "sample_weight": null,
+   "average_precision": 1.0,
+   "trapezoid": 1.0
+  },
+  {
+   "name": "perfectly inverted",
+   "y_true": [
+    1,
+    1,
+    0,
+    0
+   ],
+   "y_score": [
+    0.1,
+    0.2,
+    0.3,
+    0.4
+   ],
+   "pos_label": 1,
+   "sample_weight": null,
+   "average_precision": 0.41666666666666663,
+   "trapezoid": 0.29166666666666663
+  },
+  {
+   "name": "one positive, ranked last",
+   "y_true": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "y_score": [
+    0.9,
+    0.8,
+    0.7,
+    0.1
+   ],
+   "pos_label": 1,
+   "sample_weight": null,
+   "average_precision": 0.25,
+   "trapezoid": 0.125
+  },
+  {
+   "name": "no positive sample",
+   "y_true": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "y_score": [
+    0.1,
+    0.4,
+    0.35,
+    0.8
+   ],
+   "pos_label": 1,
+   "sample_weight": null,
+   "average_precision": 0.0,
+   "trapezoid": 0.5
+  },
+  {
+   "name": "every sample positive",
+   "y_true": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "y_score": [
+    0.1,
+    0.4,
+    0.35,
+    0.8
+   ],
+   "pos_label": 1,
+   "sample_weight": null,
+   "average_precision": 1.0,
+   "trapezoid": 1.0
+  },
+  {
+   "name": "negative scores",
+   "y_true": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "y_score": [
+    -0.9,
+    -0.6,
+    -0.65,
+    -0.2
+   ],
+   "pos_label": 1,
+   "sample_weight": null,
+   "average_precision": 0.8333333333333333,
+   "trapezoid": 0.7916666666666666
+  },
+  {
+   "name": "labels are -1 and 1",
+   "y_true": [
+    -1,
+    -1,
+    1,
+    1
+   ],
+   "y_score": [
+    0.1,
+    0.4,
+    0.35,
+    0.8
+   ],
+   "pos_label": 1,
+   "sample_weight": null,
+   "average_precision": 0.8333333333333333,
+   "trapezoid": 0.7916666666666666
+  },
+  {
+   "name": "a tie spanning both classes",
+   "y_true": [
+    1,
+    0,
+    1,
+    0,
+    1
+   ],
+   "y_score": [
+    0.9,
+    0.5,
+    0.5,
+    0.5,
+    0.1
+   ],
+   "pos_label": 1,
+   "sample_weight": null,
+   "average_precision": 0.7,
+   "trapezoid": 0.7666666666666666
+  }
+ ],
+ "multilabel_cases": [
+  {
+   "name": "the worked case",
+   "y_true": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1
+   ],
+   "y_score": [
+    0.75,
+    0.5,
+    1.0,
+    1.0,
+    0.2,
+    0.1
+   ],
+   "label_count": 3,
+   "sample_weight": null,
+   "macro": 0.3333333333333333,
+   "micro": 0.3333333333333333,
+   "weighted": 0.5,
+   "per_label": [
+    0.5,
+    0.0,
+    0.5
+   ]
+  },
+  {
+   "name": "the worked case, weighted",
+   "y_true": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1
+   ],
+   "y_score": [
+    0.75,
+    0.5,
+    1.0,
+    1.0,
+    0.2,
+    0.1
+   ],
+   "label_count": 3,
+   "sample_weight": [
+    1.0,
+    2.0
+   ],
+   "macro": 0.3333333333333333,
+   "micro": 0.3055555555555556,
+   "weighted": 0.5555555555555555,
+   "per_label": [
+    0.3333333333333333,
+    0.0,
+    0.6666666666666666
+   ]
+  },
+  {
+   "name": "every label relevant",
+   "y_true": [
+    1,
+    1,
+    1
+   ],
+   "y_score": [
+    0.7,
+    0.2,
+    0.1
+   ],
+   "label_count": 3,
+   "sample_weight": null,
+   "macro": 1.0,
+   "micro": 1.0,
+   "weighted": 1.0,
+   "per_label": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "name": "no label relevant",
+   "y_true": [
+    0,
+    0,
+    0
+   ],
+   "y_score": [
+    0.7,
+    0.2,
+    0.1
+   ],
+   "label_count": 3,
+   "sample_weight": null,
+   "macro": 0.0,
+   "micro": 0.0,
+   "weighted": 0.0,
+   "per_label": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "name": "an empty row beside a scoring one",
+   "y_true": [
+    0,
+    0,
+    0,
+    1,
+    0,
+    0
+   ],
+   "y_score": [
+    0.7,
+    0.2,
+    0.1,
+    0.7,
+    0.2,
+    0.1
+   ],
+   "label_count": 3,
+   "sample_weight": null,
+   "macro": 0.16666666666666666,
+   "micro": 0.5,
+   "weighted": 0.5,
+   "per_label": [
+    0.5,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "name": "every score equal, two of three relevant",
+   "y_true": [
+    1,
+    1,
+    0
+   ],
+   "y_score": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "label_count": 3,
+   "sample_weight": null,
+   "macro": 0.6666666666666666,
+   "micro": 0.6666666666666666,
+   "weighted": 1.0,
+   "per_label": [
+    1.0,
+    1.0,
+    0.0
+   ]
+  },
+  {
+   "name": "negative scores",
+   "y_true": [
+    1,
+    0,
+    0
+   ],
+   "y_score": [
+    -0.7,
+    -0.2,
+    -0.1
+   ],
+   "label_count": 3,
+   "sample_weight": null,
+   "macro": 0.3333333333333333,
+   "micro": 0.3333333333333333,
+   "weighted": 1.0,
+   "per_label": [
+    1.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "name": "relevant on top",
+   "y_true": [
+    1,
+    1,
+    0,
+    0
+   ],
+   "y_score": [
+    0.9,
+    0.8,
+    0.2,
+    0.1
+   ],
+   "label_count": 4,
+   "sample_weight": null,
+   "macro": 0.5,
+   "micro": 1.0,
+   "weighted": 1.0,
+   "per_label": [
+    1.0,
+    1.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "name": "relevant at the bottom",
+   "y_true": [
+    0,
+    0,
+    1,
+    1
+   ],
+   "y_score": [
+    0.9,
+    0.8,
+    0.2,
+    0.1
+   ],
+   "label_count": 4,
+   "sample_weight": null,
+   "macro": 0.5,
+   "micro": 0.41666666666666663,
+   "weighted": 1.0,
+   "per_label": [
+    0.0,
+    0.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "name": "twenty columns, every score tied",
+   "y_true": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1
+   ],
+   "y_score": [
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5,
+    0.5
+   ],
+   "label_count": 20,
+   "sample_weight": null,
+   "macro": 0.15,
+   "micro": 0.15,
+   "weighted": 1.0,
+   "per_label": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  },
+  {
+   "name": "twenty columns, strictly ordered",
+   "y_true": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1
+   ],
+   "y_score": [
+    1.0,
+    0.95,
+    0.9,
+    0.85,
+    0.8,
+    0.75,
+    0.7,
+    0.65,
+    0.6,
+    0.55,
+    0.5,
+    0.45,
+    0.4,
+    0.35,
+    0.3,
+    0.25,
+    0.2,
+    0.15,
+    0.1,
+    0.05
+   ],
+   "label_count": 20,
+   "sample_weight": null,
+   "macro": 0.15,
+   "micro": 0.44999999999999996,
+   "weighted": 1.0,
+   "per_label": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  },
+  {
+   "name": "relevant labels out of score order",
+   "y_true": [
+    1,
+    0,
+    1
+   ],
+   "y_score": [
+    0.2,
+    0.9,
+    0.8
+   ],
+   "label_count": 3,
+   "sample_weight": null,
+   "macro": 0.6666666666666666,
+   "micro": 0.5833333333333333,
+   "weighted": 1.0,
+   "per_label": [
+    1.0,
+    0.0,
+    1.0
+   ]
+  }
+ ]
+}
