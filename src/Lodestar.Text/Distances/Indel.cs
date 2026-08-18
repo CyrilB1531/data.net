@@ -23,8 +23,17 @@ public static class Indel
     {
         return element == TextElement.CodePoint
             ? DistanceCodePoints(a, b, out _, out _)
-            : Distance<char>(a, b);
+            : DistanceChars(a, b);
     }
+
+    /// <summary>The character path, which reaches the bit-parallel LCS kernel (#273).</summary>
+    /// <remarks>
+    /// <see cref="Distance{T}"/> stays on the dynamic program: a generic sequence has no
+    /// dense alphabet to build an equality table over. Routing the character overload here
+    /// rather than through it is what puts <c>fuzz.ratio</c> on the fast path.
+    /// </remarks>
+    private static int DistanceChars(ReadOnlySpan<char> a, ReadOnlySpan<char> b) =>
+        a.Length + b.Length - (2 * Lcs.SubsequenceLengthChars(a, b));
 
     /// <summary>Normalized distance in <c>[0, 1]</c>: <c>distance / (len(a) + len(b))</c>, or <c>0</c> if both empty.</summary>
     public static double NormalizedDistance(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement element = TextElement.Utf16Unit)
@@ -38,7 +47,7 @@ public static class Indel
         }
         else
         {
-            distance = Distance<char>(a, b);
+            distance = DistanceChars(a, b);
             total = a.Length + b.Length;
         }
 
