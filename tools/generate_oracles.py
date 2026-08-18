@@ -2346,8 +2346,7 @@ def generate_average_precision() -> dict:
 
             # The trapezoid is carried beside the sum so the corpus itself records the
             # difference the metric exists to avoid; nothing in C# reproduces this column.
-            curve_kw = {k: v for k, v in kw.items()}
-            precision, recall, _ = precision_recall_curve(true, score, **curve_kw)
+            precision, recall, _ = precision_recall_curve(true, score, **kw)
             binary.append({
                 "name": fixture["name"],
                 "y_true": fixture["true"],
