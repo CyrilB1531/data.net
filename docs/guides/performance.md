@@ -294,6 +294,32 @@ correction is not buying anything.
 Nothing here was optimised. These are the numbers as first written, published so the next change
 has a baseline rather than an impression to argue against.
 
+### The uncorrected halves (issue #213)
+
+Same machine and method, median of 31 runs at `n = 100 000`. All three new members read
+`Internal/Contingency`, the structure the table above's metrics already build.
+
+| n | k | `RandIndex` | `MutualInformation` | `PairConfusionMatrix.Compute` | `AdjustedRand` (reference) |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 100 000 | 10 | 7.22 ms | 6.40 ms | 6.03 ms | 6.00 ms |
+| 100 000 | 100 | 41.04 ms | 40.23 ms | 39.98 ms | 41.26 ms |
+
+All four land in the same band as `AdjustedRand` at both cluster counts, which is what the code
+says should happen: `RandIndex.Score` calls `PairConfusionMatrix.Compute` and adds two numbers,
+so it cannot cost meaningfully more than the call it wraps. None of the three introduces the
+`classes x clusters x n` shape `AdjustedMutualInformation` has above — there is no hypergeometric
+sum here, only the pair counts and the mutual-information term the sequential agreement metrics
+already pay for.
+
+One measurement is worth naming rather than hiding: an earlier pass at 11 runs read `RandIndex` as
+24.6 ms against `PairConfusionMatrix.Compute`'s 6.4 ms at `n = 100 000, k = 10` — four times its
+own dependency, which is not a shape the code can produce. Raising the run count to 31 collapsed
+the gap to the numbers above. This machine runs guarded `dotnet` commands behind a lock shared
+with other sessions (see `CONTRIBUTING.md`), and a contended run landing inside a short sample is
+the likely cause. Reported here because a number that does not survive more samples is exactly
+what a `perf/`-style measurement is supposed to catch before it reaches a PR description, not
+after.
+
 ## The sort inside the binary ROC curve (issue #206)
 
 Intel Core i7-4770S @ 3.10 GHz, 8 logical cores, .NET 10.0.110, Release. Median of

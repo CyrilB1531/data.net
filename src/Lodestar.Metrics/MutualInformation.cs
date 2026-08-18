@@ -20,7 +20,7 @@ public static class MutualInformation
     /// Unbounded above is the practical difference. Two scores are comparable only between
     /// labellings of the same data at the same sizes; across datasets, reach for
     /// <see cref="NormalizedMutualInformation"/>, which divides the same quantity into
-    /// <c>[0, 1]</c>.
+    /// <c>[0, 1]</c>, or <see cref="AdjustedMutualInformation"/>, which also corrects for chance.
     /// </para>
     /// </remarks>
     /// <exception cref="ArgumentException">The two labellings disagree in length.</exception>
