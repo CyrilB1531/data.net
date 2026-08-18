@@ -82,7 +82,11 @@ jobs:
       # one source of truth for what this repository's Python needs.
       - name: Install tool dependencies
         if: steps.select.outputs.count != '0'
-        run: pip install --only-binary :all: --require-hashes -r tools/requirements.lock.txt
+        # A block scalar, not a plain one: ':all: ' carries a colon and a space, which
+        # ends a plain scalar and made the whole file unparseable. ci.yml writes it the
+        # same way, and copying the command without its shape is what broke this.
+        run: |
+          pip install --only-binary :all: --require-hashes -r tools/requirements.lock.txt
 
       # Six of the thirteen classes read bench/corpus/vocabs, which is ~3 MB of generated
       # data git ignores on purpose. A fresh runner has none of it and BenchCorpus throws
