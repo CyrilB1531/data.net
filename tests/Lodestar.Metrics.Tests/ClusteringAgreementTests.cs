@@ -43,6 +43,34 @@ public sealed class ClusteringAgreementTests
                      Completeness.Score(labelsTrue, labelsPred), MetricsCorpus.Tolerance);
         Assert.Equal(c.GetProperty("v_measure").GetDouble(),
                      VMeasure.Score(labelsTrue, labelsPred), MetricsCorpus.Tolerance);
+        Assert.Equal(c.GetProperty("fowlkes_mallows").GetDouble(),
+                     FowlkesMallows.Score(labelsTrue, labelsPred), MetricsCorpus.Tolerance);
+        Assert.Equal(c.GetProperty("adjusted_mutual_information").GetDouble(),
+                     AdjustedMutualInformation.Score(labelsTrue, labelsPred), MetricsCorpus.Tolerance);
+    }
+
+    [Fact]
+    public void Fowlkes_Mallows_scores_zero_where_the_other_five_score_one()
+    {
+        // A fact per metric, not a rule: no agreeing pair exists to count here,
+        // where the other five read an absence of disagreement as agreement.
+        Assert.Equal(0.0, FowlkesMallows.Score([], []), MetricsCorpus.Tolerance);
+        Assert.Equal(0.0, FowlkesMallows.Score([0], [0]), MetricsCorpus.Tolerance);
+        Assert.Equal(1.0, AdjustedMutualInformation.Score([], []), MetricsCorpus.Tolerance);
+        Assert.Equal(1.0, AdjustedMutualInformation.Score([0], [0]), MetricsCorpus.Tolerance);
+    }
+
+    [Fact]
+    public void The_chance_correction_is_what_separates_the_two_new_metrics()
+    {
+        // Two independent partitions of four samples. Only the chance-corrected pair
+        // scores below zero, which is the whole reason to reach for either of them.
+        int[] labelsTrue = [0, 0, 1, 1];
+        int[] labelsPred = [0, 1, 0, 1];
+
+        Assert.True(AdjustedMutualInformation.Score(labelsTrue, labelsPred) < 0.0);
+        Assert.True(AdjustedRand.Score(labelsTrue, labelsPred) < 0.0);
+        Assert.Equal(0.0, NormalizedMutualInformation.Score(labelsTrue, labelsPred), MetricsCorpus.Tolerance);
     }
 
     [Fact]

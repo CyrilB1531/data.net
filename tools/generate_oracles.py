@@ -2107,6 +2107,8 @@ def generate_clustering_agreement() -> dict:
                 "labels_pred": pred,
                 "adjusted_rand": skmetrics.adjusted_rand_score(true, pred),
                 "normalized_mutual_information": skmetrics.normalized_mutual_info_score(true, pred),
+                "fowlkes_mallows": skmetrics.fowlkes_mallows_score(true, pred),
+                "adjusted_mutual_information": skmetrics.adjusted_mutual_info_score(true, pred),
                 "homogeneity": homogeneity,
                 "completeness": completeness,
                 "v_measure": v_measure,

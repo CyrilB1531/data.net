@@ -143,11 +143,14 @@ internal static class Lot5Metrics
         Console.WriteLine($"    Homogeneity         = {Inv.F3(Homogeneity.Score(reference, split))}");
         Console.WriteLine($"    Completeness        = {Inv.F3(Completeness.Score(reference, split))}");
         Console.WriteLine($"    VMeasure            = {Inv.F3(VMeasure.Score(reference, split))}");
+        Console.WriteLine($"    FowlkesMallows      = {Inv.F3(FowlkesMallows.Score(reference, split))}");
+        Console.WriteLine($"    AdjustedMutualInfo  = {Inv.F3(AdjustedMutualInformation.Score(reference, split))}");
 
         // One clustering per sample: perfectly homogeneous, and worth nothing --
         // which is the pair of numbers the two families exist to show together.
         Console.WriteLine($"    every sample alone  = {Inv.F3(Homogeneity.Score(reference, alone))} homogeneity, "
-            + $"{Inv.F3(AdjustedRand.Score(reference, alone))} adjusted Rand");
+            + $"{Inv.F3(AdjustedRand.Score(reference, alone))} adjusted Rand, "
+            + $"{Inv.F3(AdjustedMutualInformation.Score(reference, alone))} adjusted mutual information");
 
         // Silhouette needs no reference partition at all: it reads the samples.
         double[] features = [0.0, 0.0, 0.2, 0.1, 4.0, 4.0, 4.2, 3.9, 0.1, 0.3];
