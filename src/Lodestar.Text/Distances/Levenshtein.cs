@@ -137,18 +137,13 @@ public static class Levenshtein
         return Dp(a, b);
     }
 
-    /// <summary>
-    /// Code-point fast path: identical result to <see cref="Distance{T}"/> over
-    /// <see cref="int"/>, but takes the bit-parallel Myers route when it applies.
-    /// </summary>
+    /// <summary>Code-point mirror of <see cref="DistanceChars"/>: the Myers route when it applies.</summary>
     /// <remarks>
-    /// The mirror of <see cref="DistanceChars"/>, and it exists for the same
-    /// reason: <c>decisions/0002</c> points a caller wanting Python's answer on
-    /// supplementary characters at this mode, so leaving it DP-only recommended
-    /// the slow path to everyone who needed the correct one (#208).
-    /// <see cref="Distance{T}"/> over an arbitrary <c>int</c> sequence still takes
-    /// the DP -- the fast path is reached through the <see cref="TextElement"/>
-    /// overloads, which is the surface that documents the mode.
+    /// <c>decisions/0002</c> sends a caller wanting Python's answer on
+    /// supplementary characters here, so DP-only meant recommending the slow path
+    /// to whoever needed the correct one (#208). <see cref="Distance{T}"/> over an
+    /// arbitrary <c>int</c> sequence still takes the DP; the fast path is reached
+    /// through the <see cref="TextElement"/> overloads, which document the mode.
     /// </remarks>
     private static int DistanceCodePoints(ReadOnlySpan<int> a, ReadOnlySpan<int> b)
     {

@@ -12,13 +12,11 @@ namespace Lodestar.Text.Tests.Distances;
 /// The code-point fast path against the dynamic program it replaces (#208).
 /// </summary>
 /// <remarks>
-/// The oracle corpus proves the answer matches rapidfuzz, which is the contract.
-/// This proves something the oracle cannot: that the two implementations *inside
-/// this repository* agree, at the three boundaries the fast path has and the
-/// oracle's random draws only visit by luck -- the 16-code-point gate, the
-/// 64-code-point word, and the 255-symbol dense alphabet past which the renaming
-/// refuses and the DP takes over. A failure here localizes to the kernel; a
-/// failure in the oracle tests does not.
+/// The oracle proves the answer matches rapidfuzz. This proves what it cannot:
+/// that the two implementations here agree at the three boundaries random draws
+/// visit only by luck -- the 16-code-point gate, the 64-code-point word, and the
+/// 255-symbol alphabet past which the renaming refuses. A failure here localizes
+/// to the kernel; an oracle failure does not.
 /// </remarks>
 public sealed class LevenshteinCodePointFastPathTests
 {
@@ -98,10 +96,8 @@ public sealed class LevenshteinCodePointFastPathTests
     [Fact]
     public void Counts_a_supplementary_character_as_one_edit()
     {
-        // The whole reason the mode exists: one emoji is one code point and two
-        // UTF-16 units, so the two readings must disagree here -- and this pair is
-        // long enough to take the fast path, which the oracle corpus had no case
-        // for before this change.
+        // Long enough to take the fast path, which the oracle corpus had no
+        // supplementary case for before this change.
         string a = string.Concat(Enumerable.Repeat("\U0001F600", 20));
         string b = string.Concat(Enumerable.Repeat("\U0001F600", 19)) + "\U0001F601";
 
@@ -113,9 +109,8 @@ public sealed class LevenshteinCodePointFastPathTests
     [Fact]
     public void Agrees_with_the_dynamic_program_on_a_mixed_alphabet()
     {
-        // Supplementary characters, Latin-1 and CJK in one pattern: the renaming
-        // has to be indifferent to where in Unicode a symbol sits, and a table
-        // keyed by the low byte would collide these.
+        // Supplementary, Latin-1 and CJK in one pattern: a table keyed by the low
+        // byte would collide these, and the renaming must not.
         var rng = new Random(Seed);
         const string bmp = "aéz中文";
 

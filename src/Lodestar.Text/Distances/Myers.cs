@@ -59,25 +59,16 @@ internal static class Myers
             : TryBlocked(pattern, text, out distance);
     }
 
-    /// <summary>
-    /// Attempts the same computation over code points, by renaming the symbols
-    /// into a dense alphabet the <see cref="char"/> kernels already accept.
-    /// </summary>
+    /// <summary>The same computation over code points, renamed into a dense alphabet.</summary>
     /// <returns>
-    /// <c>true</c> and the distance when the fast path applies; <c>false</c> when
-    /// the pattern is empty or holds more than <see cref="DenseAlphabet"/> distinct
-    /// code points, and the caller must fall back to the DP.
+    /// <c>true</c> and the distance; <c>false</c> when the pattern is empty or
+    /// holds more than <see cref="DenseAlphabet"/> distinct code points, and the
+    /// caller must fall back to the DP.
     /// </returns>
     /// <remarks>
-    /// The kernels are indifferent to what a symbol means -- they need an equality
-    /// table, and the Latin-1 restriction is the table's, not the algorithm's
-    /// (#208). So the pattern's distinct code points are numbered <c>0..k-1</c> and
-    /// every text code point the pattern does not contain is renamed to the one
-    /// slot no pattern symbol occupies, which is exactly the all-zero mask the
-    /// kernel already gives an unmatched character. Renaming rather than a second
-    /// kernel keeps the bit algebra in one place, and leaves the character path --
-    /// the hot one, where this file's opening comment records that helper calls
-    /// cost measurably -- untouched.
+    /// The pattern's distinct code points are numbered <c>0..k-1</c> and every text
+    /// symbol it lacks becomes the one free slot -- already the all-zero mask an
+    /// unmatched character gets. See <c>docs/decisions/0004</c> (#208).
     /// </remarks>
     public static bool TryDistance(ReadOnlySpan<int> pattern, ReadOnlySpan<int> text, out int distance)
     {
@@ -133,13 +124,11 @@ internal static class Myers
 
     /// <summary>The slot index of <paramref name="symbol"/>, occupied or free.</summary>
     /// <remarks>
-    /// Linear probing over a power-of-two table, so the loop terminates only
-    /// because a free slot is guaranteed: at most <see cref="DenseAlphabet"/> (255)
-    /// of <see cref="SlotCapacity"/> (512) entries are ever occupied, and the 256th
-    /// distinct symbol is refused rather than stored.
-    /// The multiply is Knuth's, because code points cluster hard -- an emoji
-    /// pattern lives inside U+1F300..U+1FAFF, and masking those low bits alone
-    /// would pile every symbol into a few slots.
+    /// Linear probing terminates only because a free slot is guaranteed: at most
+    /// 255 of 512 entries are ever occupied, the 256th distinct symbol being
+    /// refused rather than stored. The multiply is Knuth's, because code points
+    /// cluster hard -- an emoji pattern lives inside U+1F300..U+1FAFF, and masking
+    /// those low bits alone would pile every symbol into a few slots.
     /// </remarks>
     private static int Probe(Span<int> keys, int symbol)
     {

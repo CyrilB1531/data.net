@@ -6,25 +6,13 @@ namespace Lodestar.Text.Benchmarks;
 // SonarLint S2245: a seeded Random builds a reproducible benchmark corpus; no security use.
 #pragma warning disable S2245, CA5394
 
-/// <summary>
-/// <see cref="Levenshtein"/> in code-point mode, over operands that actually
-/// leave the Basic Multilingual Plane.
-/// </summary>
+/// <summary><see cref="Levenshtein"/> in code-point mode, on operands that leave the BMP.</summary>
 /// <remarks>
-/// <see cref="LevenshteinBenchmarks"/> draws both operands from
-/// <c>"abcdefghijklmnopqrstuvwxyz "</c>, so its <c>Distance_CodePoint</c> row
-/// decodes ASCII into a sequence identical to the UTF-16 one and measures the
-/// decode over a 27-symbol alphabet. That is not the mode's case: decision 0002
-/// points a caller at it precisely for supplementary characters, where the two
-/// readings differ (#208).
-/// <para>
-/// <see cref="Distinct"/> is a parameter rather than a constant because the fast
-/// path has a ceiling: a pattern is renamed into a dense alphabet of 255 symbols,
-/// and one holding more than that falls back to the DP. 32 is the side that takes
-/// the fast path at every length here, 512 the side that stops taking it once the
-/// pattern outgrows the alphabet -- so the pair measures the win and the ceiling
-/// in the same run rather than reporting only the flattering half.
-/// </para>
+/// <see cref="LevenshteinBenchmarks"/> is ASCII, so its <c>Distance_CodePoint</c>
+/// row measures a decode over 27 symbols, not this mode's case (#208).
+/// <see cref="Distinct"/> is a parameter because the fast path has a ceiling at
+/// 255 distinct symbols: 32 stays under it, 512 outgrows it, so one run measures
+/// the win and the ceiling. <c>bench/README.md</c> has the corpus.
 /// </remarks>
 [MemoryDiagnoser]
 public class LevenshteinCodePointBenchmarks
@@ -84,9 +72,8 @@ public class LevenshteinCodePointBenchmarks
     [Benchmark(Baseline = true)]
     public int Distance_CodePoint() => Levenshtein.Distance(_a, _b, TextElement.CodePoint);
 
-    // Context rather than a comparison: the same pair read as UTF-16 units is a
-    // different question with a different answer, and its own fast path already
-    // refuses these operands -- every one of them is a surrogate.
+    // Context, not a comparison: a different question, whose own fast path
+    // refuses these operands because every character here is a surrogate.
     [Benchmark]
     public int Distance_Utf16() => Levenshtein.Distance(_a, _b);
 }

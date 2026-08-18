@@ -216,10 +216,8 @@ def build_pairs(rng: SeededRandom):
         # See this function's docstring for why these three are appended last.
         ("long_ascii", RANGES["ascii"], 60, (80, 400), (5, 40)),
         ("long_latin", RANGES["latin"], 60, (80, 400), (5, 40)),
-        # 20 rather than the 80 its neighbours use: the single-word kernel runs
-        # to 64 and the blocked one past it, and a family starting at 80 covers
-        # only the second. Measured on the first attempt at this family -- all
-        # 92 cases landed above 64.
+        # 20, not the 80 its neighbours use: at 80 every case cleared the 64-code-point
+        # word and the single-word kernel got none. Measured on the first attempt.
         ("long_supplementary", RANGES["supplementary"], 60, (20, 400), (5, 40)),
     ]
     for name, ranges, count, (lo_len, hi_len), (lo_edit, hi_edit) in plans:
