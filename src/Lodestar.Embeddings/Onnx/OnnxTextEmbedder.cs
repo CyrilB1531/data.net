@@ -30,6 +30,7 @@ public sealed class OnnxTextEmbedder : IDisposable
     private readonly string _outputName;
     private readonly string[] _outputNames;
     private readonly ISubwordTokenizer? _tokenizer;
+    private bool _disposed;
 
     /// <summary>Opens an ONNX encoder model from <paramref name="modelPath"/>.</summary>
     /// <param name="modelPath">Path to the <c>.onnx</c> model file.</param>
@@ -133,8 +134,11 @@ public sealed class OnnxTextEmbedder : IDisposable
     /// </remarks>
     /// <param name="inputIds">Token ids.</param>
     /// <param name="attentionMask">Attention mask (same length as <paramref name="inputIds"/>).</param>
+    /// <exception cref="ArgumentException"><paramref name="inputIds"/> and <paramref name="attentionMask"/> differ in length.</exception>
+    /// <exception cref="ObjectDisposedException">The embedder has been disposed.</exception>
     public float[] Embed(ReadOnlySpan<long> inputIds, ReadOnlySpan<long> attentionMask)
     {
+        ThrowIfDisposed();
         if (inputIds.Length != attentionMask.Length)
         {
             throw new ArgumentException("inputIds and attentionMask must have equal length.");
@@ -172,11 +176,14 @@ public sealed class OnnxTextEmbedder : IDisposable
     /// <param name="options">Template, truncation and batching settings; <see langword="null"/> uses the defaults, with <c>MaxLength</c> taken from <see cref="MaxSequenceLength"/>.</param>
     /// <param name="cancellationToken">Observed while tokenizing and between sub-batches.</param>
     /// <exception cref="InvalidOperationException">The embedder was built without a tokenizer.</exception>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
+    /// <exception cref="ObjectDisposedException">The embedder has been disposed.</exception>
     public float[][] EmbedBatch(
         IEnumerable<string> texts,
         EncodingOptions? options = null,
         CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
         if (_tokenizer is null)
         {
             throw new InvalidOperationException(
@@ -195,8 +202,11 @@ public sealed class OnnxTextEmbedder : IDisposable
     /// <param name="texts">The texts to embed.</param>
     /// <param name="encoder">The encoder that owns the tokenizer, template and truncation.</param>
     /// <param name="cancellationToken">Observed while tokenizing and between sub-batches.</param>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
+    /// <exception cref="ObjectDisposedException">The embedder has been disposed.</exception>
     public float[][] EmbedBatch(IEnumerable<string> texts, BatchEncoder encoder, CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
         Guard.NotNull(encoder);
         List<long[]> sequences = encoder.EncodeAll(texts, cancellationToken);
 
@@ -232,15 +242,36 @@ public sealed class OnnxTextEmbedder : IDisposable
     /// </remarks>
     /// <param name="batch">A batch from <see cref="BatchEncoder.EncodeBatch"/>.</param>
     /// <param name="cancellationToken">Observed before the call is made.</param>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
+    /// <exception cref="ObjectDisposedException">The embedder has been disposed.</exception>
     public float[][] EmbedBatch(EncodedBatch batch, CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
         Guard.NotNull(batch);
         cancellationToken.ThrowIfCancellationRequested();
         return batch.Count == 0 ? [] : Run(batch.Ids, batch.Mask, batch.Count, batch.SequenceLength);
     }
 
     /// <summary>Releases the underlying ONNX Runtime session.</summary>
-    public void Dispose() => _session.Dispose();
+    public void Dispose()
+    {
+        _disposed = true;
+        _session.Dispose();
+    }
+
+    // Without this, a call on a disposed embedder reaches into a disposed
+    // InferenceSession and surfaces as NullReferenceException (measured, #266).
+    private void ThrowIfDisposed()
+    {
+#if NET
+        ObjectDisposedException.ThrowIf(_disposed, this);
+#else
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(OnnxTextEmbedder));
+        }
+#endif
+    }
 
     /// <summary>Fills in the model-derived defaults the caller left open.</summary>
     private EncodingOptions ResolveOptions(EncodingOptions? options)
