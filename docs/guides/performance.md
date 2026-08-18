@@ -85,14 +85,27 @@ runs per side, both shown**, interleaved after → before → after → before s
 any drift in machine state lands on both columns. `Distinct` is how many distinct
 code points the operands are drawn from.
 
+Both operands differ at their first and last code point, so `Trim` strips nothing
+and `Length` is the pattern the threshold actually sees. That is not a detail: an
+earlier corpus mutated only scattered positions, and at `Length = 16` a single
+mutation left a pattern of two or three symbols — the fast path was never
+entered, and the row compared the DP against itself while appearing to say the
+threshold cost nothing.
+
 | Length | Distinct | before | after | change |
 | ---: | ---: | ---: | ---: | --- |
-| 32 | 32 | 1.49 / 1.33 µs | 674 / 687 ns | **2.0×–2.2× faster** |
-| 32 | 512 | 1.37 / 1.34 µs | 665 / 679 ns | **2.0×–2.1× faster** |
-| 128 | 32 | 47.1 / 48.5 µs | 3.08 / 3.07 µs | **15.3×–15.8× faster** |
-| 128 | 512 | 39.2 / 38.7 µs | 3.07 / 3.07 µs | **12.6×–12.8× faster** |
-| 512 | 32 | 736 / 788 µs | 22.1 / 23.2 µs | **31.7×–35.6× faster** |
-| 512 | 512 | 583 / 600 µs | 590 / 581 µs | unchanged — see below |
+| 16 | 32 | 793 / 773 ns | 509 / 516 ns | **1.53× faster** |
+| 16 | 512 | 765 / 774 ns | 515 / 515 ns | **1.49× faster** |
+| 24 | 32 | 1.61 / 1.55 µs | 612 / 608 ns | **2.59× faster** |
+| 24 | 512 | 1.48 / 1.43 µs | 624 / 648 ns | **2.29× faster** |
+| 32 | 32 | 3.50 / 3.57 µs | 725 / 725 ns | **4.87× faster** |
+| 32 | 512 | 3.38 / 3.44 µs | 753 / 736 ns | **4.58× faster** |
+| 40 | 32 | 4.13 / 3.92 µs | 860 / 871 ns | **4.65× faster** |
+| 40 | 512 | 4.96 / 4.97 µs | 863 / 870 ns | **5.73× faster** |
+| 128 | 32 | 48.4 / 50.6 µs | 3.18 / 3.14 µs | **15.7× faster** |
+| 128 | 512 | 40.4 / 40.4 µs | 3.10 / 3.08 µs | **13.1× faster** |
+| 512 | 32 | 777 / 818 µs | 23.2 / 23.2 µs | **34.4× faster** |
+| 512 | 512 | 658 / 660 µs | 683 / 632 µs | unchanged — see below |
 
 **Zero allocation on both sides**, at every size: the renaming borrows its two
 buffers from `ArrayPool` and the probe table is `stackalloc`.
@@ -104,11 +117,14 @@ buffers from `ArrayPool` and the probe table is `stackalloc`.
   worth having: within noise of doing nothing, ≈1%. At `Length = 128` the same
   512-symbol alphabet yields ~110 distinct, under the ceiling, and the row is
   12.6× faster; the ceiling is about the *pattern*, not the alphabet.
-- **The gate was not re-tuned.** `MyersMinPatternLength` is 16 and the shortest
-  bucket measured here is 32, where the fast path already wins 2×. Whether 16
-  remains the right threshold for this path — which pays for its probe table on
-  top of the kernel's equality table — is unmeasured, and 16 is inherited rather
-  than confirmed.
+- **The gate holds at 16, and that is measured rather than inherited.**
+  `MyersMinPatternLength` was tuned for the character path, and this one pays for
+  a probe table on top of the kernel's equality table, so it needed its own
+  answer. At a pattern of exactly 16 code points the fast path is already **1.5×**
+  faster, so the threshold is not too low. Whether it is too *high* is a
+  different question and is untested: below 16 both sides take the DP, and the
+  constant is shared with the character path, so lowering it would change the hot
+  path and wants its own measurement.
 - **The UTF-16 mode on this same corpus is the DP**, because every character is a
   surrogate and the Latin-1 check refuses them: 2.80 ms at `Length = 512` against
   the code-point mode's 22 µs. That is a comparison between two different

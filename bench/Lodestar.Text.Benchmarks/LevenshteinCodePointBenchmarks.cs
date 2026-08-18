@@ -26,7 +26,11 @@ public class LevenshteinCodePointBenchmarks
     private string _b = string.Empty;
 
     /// <summary>Length of the generated operands, in code points.</summary>
-    [Params(32, 128, 512)]
+    /// <remarks>
+    /// 16 to 40 straddles <c>MyersMinPatternLength</c>, which was tuned for the
+    /// character path and inherited rather than confirmed here (#255 review).
+    /// </remarks>
+    [Params(16, 24, 32, 40, 128, 512)]
     public int Length { get; set; }
 
     /// <summary>How many distinct code points the operands are drawn from.</summary>
@@ -54,6 +58,11 @@ public class LevenshteinCodePointBenchmarks
         {
             b[rng.Next(Length)] = alphabet[rng.Next(Distinct)];
         }
+
+        // Both ends differ, so Trim strips nothing and the pattern the gate sees is
+        // Length -- scattered mutations alone trimmed 16 to a couple of symbols.
+        b[0] = alphabet[(Array.IndexOf(alphabet, a[0]) + 1) % Distinct];
+        b[Length - 1] = alphabet[(Array.IndexOf(alphabet, a[Length - 1]) + 1) % Distinct];
 
         _a = Compose(a);
         _b = Compose(b);
