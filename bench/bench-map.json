@@ -1,5 +1,5 @@
 {
-  "_why": "Which benchmarks a change makes worth re-running. Deliberately coarse: a benchmark run for nothing costs minutes, one not run hides a regression, so the globs are directories and over-include on purpose. 'benchmarks' are BenchmarkDotNet classes, measured against themselves; 'harnesses' are the cross-language pairs, which is where the claim against rapidfuzz is actually measured. tools/check_bench_map.py refuses either kind if this file does not name it.",
+  "_why": "Which benchmarks a change makes worth re-running. Deliberately coarse: a benchmark run for nothing costs minutes, one not run hides a regression, so the globs are directories and over-include on purpose. 'benchmarks' are BenchmarkDotNet classes, measured against themselves; 'harnesses' are the cross-language pairs, which is where the claim against rapidfuzz is actually measured. tools/check_bench_map.py refuses either kind if this file does not name it. A harness also names the corpus generators it needs: those corpora are written rather than committed, and a runner has none of them.",
   "always": [
     "src/Shared/**",
     "bench/Lodestar.Text.Benchmarks/BenchCorpus.cs",
@@ -70,6 +70,7 @@
       "subcommand": "compare",
       "python": "bench/python/bench_levenshtein.py",
       "compare": "",
+      "generate": [],
       "sources": [
         "src/Lodestar.Text/Distances/**",
         "src/Lodestar.Text/Text/**"
@@ -79,6 +80,7 @@
       "subcommand": "compare-indel",
       "python": "bench/python/bench_indel.py",
       "compare": "indel",
+      "generate": [],
       "sources": [
         "src/Lodestar.Text/Distances/**",
         "src/Lodestar.Text/Text/**"
@@ -88,6 +90,9 @@
       "subcommand": "compare-metrics",
       "python": "bench/python/bench_metrics.py",
       "compare": "metrics",
+      "generate": [
+        "bench/corpus/generate_metrics.py"
+      ],
       "sources": [
         "src/Lodestar.Metrics/**"
       ]
@@ -96,6 +101,9 @@
       "subcommand": "compare-persistence",
       "python": "bench/python/bench_persistence.py",
       "compare": "persistence",
+      "generate": [
+        "bench/corpus/generate_vocabs.py"
+      ],
       "sources": [
         "src/Lodestar.Embeddings/Persistence/**",
         "src/Lodestar.Embeddings/Search/**",
