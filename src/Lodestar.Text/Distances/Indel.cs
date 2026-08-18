@@ -18,13 +18,25 @@ namespace Lodestar.Text.Distances;
 /// </remarks>
 public static class Indel
 {
+    // Cached so the code-point path allocates no delegate per call.
+    private static readonly CodePointPair.Measure MeasureCodePoints = Distance<int>;
+
     /// <summary>Computes the Indel distance between <paramref name="a"/> and <paramref name="b"/>.</summary>
     public static int Distance(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement element = TextElement.Utf16Unit)
     {
         return element == TextElement.CodePoint
             ? DistanceCodePoints(a, b, out _, out _)
-            : Distance<char>(a, b);
+            : DistanceChars(a, b);
     }
+
+    /// <summary>The character path, which reaches the bit-parallel LCS kernel (#273).</summary>
+    /// <remarks>
+    /// <see cref="Distance{T}"/> stays on the dynamic program: a generic sequence has no
+    /// dense alphabet to build an equality table over. Routing the character overload here
+    /// rather than through it is what puts <c>fuzz.ratio</c> on the fast path.
+    /// </remarks>
+    private static int DistanceChars(ReadOnlySpan<char> a, ReadOnlySpan<char> b) =>
+        a.Length + b.Length - (2 * Lcs.SubsequenceLengthChars(a, b));
 
     /// <summary>Normalized distance in <c>[0, 1]</c>: <c>distance / (len(a) + len(b))</c>, or <c>0</c> if both empty.</summary>
     public static double NormalizedDistance(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement element = TextElement.Utf16Unit)
@@ -38,7 +50,7 @@ public static class Indel
         }
         else
         {
-            distance = Distance<char>(a, b);
+            distance = DistanceChars(a, b);
             total = a.Length + b.Length;
         }
 
@@ -58,20 +70,6 @@ public static class Indel
         return a.Length + b.Length - 2 * Lcs.SubsequenceLength(a, b);
     }
 
-    private static int DistanceCodePoints(ReadOnlySpan<char> a, ReadOnlySpan<char> b, out int lenA, out int lenB)
-    {
-        int[] bufA = ArrayPool<int>.Shared.Rent(Math.Max(1, a.Length));
-        int[] bufB = ArrayPool<int>.Shared.Rent(Math.Max(1, b.Length));
-        try
-        {
-            lenA = CodePoints.Decode(a, bufA);
-            lenB = CodePoints.Decode(b, bufB);
-            return Distance<int>(bufA.AsSpan(0, lenA), bufB.AsSpan(0, lenB));
-        }
-        finally
-        {
-            ArrayPool<int>.Shared.Return(bufA);
-            ArrayPool<int>.Shared.Return(bufB);
-        }
-    }
+    private static int DistanceCodePoints(ReadOnlySpan<char> a, ReadOnlySpan<char> b, out int lenA, out int lenB) =>
+        CodePointPair.Distance(a, b, MeasureCodePoints, out lenA, out lenB);
 }

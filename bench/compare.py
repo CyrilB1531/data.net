@@ -21,8 +21,30 @@ def load(side: str, bench: str) -> dict:
 
 
 def main() -> None:
-    py = load("python", "levenshtein")
-    cs = load("csharp", "levenshtein")
+    pairs_report(
+        "levenshtein",
+        "Note: Python times the realistic per-call loop; rapidfuzz's C core uses "
+        "the bit-parallel Myers algorithm, so it scales better on long strings.",
+    )
+
+
+def indel() -> None:
+    pairs_report(
+        "indel",
+        "Note: Indel is len(a)+len(b)-2*LCS on both sides, so this compares the "
+        "subsequence kernels. Lodestar's is a rolling-row dynamic program (#273).",
+    )
+
+
+def pairs_report(bench: str, note: str) -> None:
+    """One length-bucket table, shared by every benchmark over the pair corpus.
+
+    Levenshtein and Indel differ only in which result files they read and what
+    the closing note says. A second copy of this loop would be free to drift from
+    the first while still printing a table that looks comparable.
+    """
+    py = load("python", bench)
+    cs = load("csharp", bench)
 
     cs_by_len = {r["length"]: r["ns_per_pair"] for r in cs["results"]}
 
@@ -43,8 +65,7 @@ def main() -> None:
         faster = f"{ratio:6.2f}x C# faster" if ratio >= 1 else f"{1/ratio:6.2f}x Py faster"
         print(f"{length:>8} | {p:>16.1f} | {c:>14.1f} | {faster:>16}")
     print()
-    print("Note: Python times the realistic per-call loop; rapidfuzz's C core uses "
-          "the bit-parallel Myers algorithm, so it scales better on long strings.")
+    print(note)
 
 
 def persistence() -> None:
@@ -136,5 +157,7 @@ if __name__ == "__main__":
         persistence()
     elif mode == "metrics":
         metrics()
+    elif mode == "indel":
+        indel()
     else:
         main()

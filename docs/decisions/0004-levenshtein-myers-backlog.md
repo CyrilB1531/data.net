@@ -73,6 +73,33 @@ the 2026-08-05 revision below.
 > path too, the constant being shared.
 
 - Extend the fast path to the code-point mode (`Distance<int>`) and to `Indel`.
+
+> **#273 update: the `Indel` half is done, and it was never Indel's.** `Indel` is
+> `len(a) + len(b) - 2·LCS`, so the kernel belongs in
+> [`Lcs.SubsequenceLength`](../reference/text/distances/lcs-subsequencelength.md) —
+> which `fuzz.ratio`, `process.extract` and blocking deduplication all run.
+> Hyyrö's bit-parallel LLCS recurrence over the same alphabet-table machinery,
+> since Myers' own recurrence carries substitution and LCS does not.
+>
+> Two separable wins, and the second was not on this list: `Lcs` was not trimming
+> the common prefix and suffix that `Levenshtein` already stripped. Measured in
+> [`../guides/performance.md`](../guides/performance.md): the 128 and 512 buckets
+> go from 95–98× behind rapidfuzz to **2.07× and 2.15×**, a 46× and 44×
+> improvement, of which trimming alone accounts for 1.94× and 1.10×.
+>
+> **The corpus reached none of it.** Of 1 522 oracle cases, 97 reach the kernel
+> and **zero** reach the blocked path, every pair fitting one machine word once
+> trimmed — the failure this file records for #52, one lot later. Property tests
+> against the dynamic program cover it now, and a mutation is what proved they
+> had power: they were vacuous at first because with two arguments C# resolves
+> [`Lcs.SubsequenceLength`](../reference/text/distances/lcs-subsequencelength.md) to the
+> generic overload, so both sides ran the DP.
+>
+> `BitParallelMinPatternLength` stays at 16, measured this time rather than
+> inherited: at that band the kernel is already 2.85× ahead of the DP. It is
+> likely conservative — the kernel's floor is ~149 ns and the DP costs 161 ns at
+> band 8 — which wants a sweep below 8 rather than a guess.
+
 - **Lift the Latin-1 restriction.** The equality table is 256 entries, so a
   pattern containing CJK or emoji still falls back to the DP — the figures above
   do not describe those inputs. A sparse or hashed table would generalise it.

@@ -18,12 +18,48 @@ namespace Lodestar.Text.Distances;
 /// </remarks>
 public static class Lcs
 {
+    /// <summary>Below this the dynamic program wins: the equality table costs more than it saves.</summary>
+    /// <remarks>Myers' own gate, measured for edit distance in #208 and inherited here until #273 measures its own.</remarks>
+    private const int BitParallelMinPatternLength = 16;
+
     /// <summary>Length of the longest common subsequence (order-preserving, not necessarily contiguous).</summary>
     public static int SubsequenceLength(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement element = TextElement.Utf16Unit)
     {
         return element == TextElement.CodePoint
             ? OverCodePoints(a, b, static (x, y) => SubsequenceLength<int>(x, y))
-            : SubsequenceLength<char>(a, b);
+            : SubsequenceLengthChars(a, b);
+    }
+
+    /// <summary>The character path, which is the one that reaches the bit-parallel kernel.</summary>
+    /// <remarks>
+    /// <see cref="SubsequenceLength{T}"/> over an arbitrary sequence still takes the dynamic
+    /// program, the way <c>Levenshtein.Distance{T}</c> does: a generic caller has no dense
+    /// alphabet to build a table over. The fast path is reached through this overload, which
+    /// is what <see cref="Indel"/> and therefore <c>fuzz.ratio</c> call (#273).
+    /// </remarks>
+    internal static int SubsequenceLengthChars(ReadOnlySpan<char> a, ReadOnlySpan<char> b)
+    {
+        int common = Affixes.Trim(ref a, ref b);
+        if (a.Length == 0 || b.Length == 0)
+        {
+            return common;
+        }
+
+        // b is the shorter operand, so it is the pattern the bit vector spans.
+        if (b.Length > a.Length)
+        {
+            ReadOnlySpan<char> tmp = a;
+            a = b;
+            b = tmp;
+        }
+
+        if (b.Length >= BitParallelMinPatternLength &&
+            BitParallelLcs.TrySubsequenceLength(b, a, out int fast))
+        {
+            return common + fast;
+        }
+
+        return common + Dp(a, b);
     }
 
     /// <summary>Length of the longest common substring (contiguous).</summary>
@@ -35,12 +71,19 @@ public static class Lcs
     }
 
     /// <summary>Longest common subsequence length over any sequence of equatable elements.</summary>
+    /// <remarks>
+    /// The shared ends are counted rather than computed: every element of a common prefix or
+    /// suffix belongs to the subsequence, so the dynamic program only has to see what is left
+    /// between them. On near-duplicate operands — what fuzzy matching feeds this through
+    /// <c>fuzz.ratio</c> — that band collapses to almost nothing (#273).
+    /// </remarks>
     public static int SubsequenceLength<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
         where T : IEquatable<T>
     {
+        int common = Affixes.Trim(ref a, ref b);
         if (a.Length == 0 || b.Length == 0)
         {
-            return 0;
+            return common;
         }
         if (b.Length > a.Length)
         {
@@ -49,6 +92,13 @@ public static class Lcs
             b = tmp;
         }
 
+        return common + Dp(a, b);
+    }
+
+    /// <summary>Rolling-row DP over trimmed operands where <paramref name="b"/> is the shorter.</summary>
+    private static int Dp<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
+        where T : IEquatable<T>
+    {
         int width = b.Length + 1;
         int[] rented = ArrayPool<int>.Shared.Rent(width);
         try
@@ -73,6 +123,9 @@ public static class Lcs
             ArrayPool<int>.Shared.Return(rented);
         }
     }
+
+    // No Affixes.Trim below: a shared prefix is part of the longest common *substring*,
+    // and dropping it would report 0 for "abc" against "abd" where the answer is 2.
 
     /// <summary>Longest common substring length over any sequence of equatable elements.</summary>
     public static int SubstringLength<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b)

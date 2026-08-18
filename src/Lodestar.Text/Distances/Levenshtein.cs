@@ -173,27 +173,12 @@ public static class Levenshtein
     /// <summary>Strips the common prefix and suffix in place (result-preserving).</summary>
     /// <remarks>
     /// Collapses the DP band on near-equal inputs — the common case in record
-    /// matching — to near nothing.
+    /// matching — to near nothing. The count <see cref="Affixes.Trim{T}"/>
+    /// returns is what a subsequence length adds back and an edit distance does
+    /// not, so this discards it.
     /// </remarks>
     private static void Trim<T>(ref ReadOnlySpan<T> a, ref ReadOnlySpan<T> b)
-        where T : IEquatable<T>
-    {
-        int start = 0;
-        int endA = a.Length;
-        int endB = b.Length;
-        while (start < endA && start < endB && a[start].Equals(b[start]))
-        {
-            start++;
-        }
-        while (endA > start && endB > start && a[endA - 1].Equals(b[endB - 1]))
-        {
-            endA--;
-            endB--;
-        }
-
-        a = a[start..endA];
-        b = b[start..endB];
-    }
+        where T : IEquatable<T> => Affixes.Trim(ref a, ref b);
 
     /// <summary>Rolling-row DP over trimmed operands where <paramref name="b"/> is the shorter.</summary>
     private static int Dp<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
