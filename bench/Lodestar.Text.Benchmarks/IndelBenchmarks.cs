@@ -14,12 +14,9 @@ namespace Lodestar.Text.Benchmarks;
 /// Micro-benchmarks for <see cref="Indel"/> and the LCS kernel underneath it.
 /// </summary>
 /// <remarks>
-/// <c>FuzzBenchmarks.Ratio</c> already runs this path, on one fixed pair of
-/// 43-character sentences — a point, not a curve, and one that sits near the
-/// bottom of where a bit-parallel kernel would begin to pay. This class is the
-/// same length sweep <see cref="LevenshteinBenchmarks"/> carries, over the same
-/// operands, so the two distances can be read side by side and the gate constant
-/// for #273 is chosen from a measurement rather than inherited.
+/// <c>FuzzBenchmarks.Ratio</c> runs this path on one fixed 43-character pair — a
+/// point, not a curve. This is <see cref="LevenshteinBenchmarks"/>' sweep over the
+/// same operands, so the two distances can be read side by side (#273).
 /// </remarks>
 [MemoryDiagnoser]
 public class IndelBenchmarks
@@ -27,8 +24,15 @@ public class IndelBenchmarks
     private string _a = string.Empty;
     private string _b = string.Empty;
 
-    /// <summary>Length of the generated operands, matching the cross-language corpus buckets.</summary>
-    [Params(8, 32, 128, 512)]
+    /// <summary>The cross-language corpus buckets, plus the gate's own neighbourhood.</summary>
+    /// <remarks>
+    /// 8, 32, 128 and 512 mirror <c>bench/corpus/pairs.json</c> so the two harnesses can be
+    /// read together. 12, 16, 20 and 24 exist because neither of them measures the gate:
+    /// <c>BitParallelMinPatternLength</c> is 16, inherited from Myers where it was calibrated
+    /// for edit distance, and LCS has a lighter inner loop — so the constant may be wrong in
+    /// either direction and nothing here could have said so (#273).
+    /// </remarks>
+    [Params(8, 12, 16, 20, 24, 32, 128, 512)]
     public int Length { get; set; }
 
     [GlobalSetup]

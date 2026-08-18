@@ -6,20 +6,14 @@ namespace Lodestar.Text.Tests.Distances;
 // SonarLint S2245: a seeded Random builds a reproducible corpus; no security use.
 #pragma warning disable S2245, CA5394
 
-/// <summary>
-/// Pins the bit-parallel kernel against the dynamic program it replaces.
-/// </summary>
+/// <summary>Pins the bit-parallel kernel against the dynamic program it replaces.</summary>
 /// <remarks>
-/// The oracle corpora cannot do this job. Measured on both of them: of 1 522 cases,
-/// 97 reach the kernel and <b>none</b> reaches the blocked path, because every pair is
-/// short enough to fit one machine word once the shared ends are trimmed. So the whole
-/// multi-word carry and borrow propagation shipped unexecuted by a green suite — the
-/// failure ADR 0004's testing note records for #52, one lot later.
-///
-/// The chain these tests close: the DP is conformant because 1 522 frozen rapidfuzz
-/// cases say so, and the kernel is conformant because it agrees with the DP on inputs
-/// the corpus never reaches. <see cref="Lcs.SubsequenceLength{T}"/> is the generic
-/// overload, which stays on the DP by design, so it is the reference here.
+/// The oracle corpora cannot: of their 1 522 cases, 97 reach the kernel and <b>none</b>
+/// reaches the blocked path, every pair fitting one word once trimmed — so the multi-word
+/// carry and borrow shipped unexecuted under a green suite, the failure ADR 0004 records
+/// for #52. The chain closed here: the DP is conformant because the frozen rapidfuzz cases
+/// say so, and the kernel because it agrees with the DP where the corpus never goes.
+/// <see cref="Lcs.SubsequenceLength{T}"/> is the generic overload, the DP, hence reference.
 /// </remarks>
 public sealed class BitParallelLcsTests
 {

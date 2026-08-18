@@ -11,12 +11,9 @@ namespace Lodestar.Text.Benchmarks.CrossLang;
 /// time and taken best-of-N.
 /// </summary>
 /// <remarks>
-/// Factored out of <c>LevenshteinCrossLang</c> for the same reason
-/// <see cref="Harness"/> was factored out of <c>PersistenceCrossLang</c> in #58,
-/// one level over: a second distance over the same corpus (#273) needs the same
-/// loop, and a copy of it would be free to drift from the original while still
-/// reporting comparable-looking numbers. The Python side of each pair mirrors
-/// these constants, so changing one here means changing <c>bench/python/</c> too.
+/// Factored out of <c>LevenshteinCrossLang</c> for the reason <see cref="Harness"/>
+/// gives for its own extraction in #58: a copy would be free to drift while still
+/// reporting comparable-looking numbers. The Python side mirrors these constants.
 /// </remarks>
 internal static class PairsHarness
 {

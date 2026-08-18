@@ -71,6 +71,73 @@ an Intel i7-4770S; dev machine — non-authoritative), **after** adding the bloc
   remains unresolved is the UTF-16 path's equality table; see
   [`../decisions/0004-levenshtein-myers-backlog.md`](../decisions/0004-levenshtein-myers-backlog.md).
 
+## Compared to Python (rapidfuzz) — Indel, and therefore `fuzz.ratio` (#273)
+
+`Indel` is `len(a) + len(b) - 2·LCS`, so what runs is
+[`Lcs.SubsequenceLength`](../reference/text/distances/lcs-subsequencelength.md) —
+and that is also what `fuzz.ratio`, every `process.extract` and every blocking
+deduplication pass runs. Same corpus and same methodology as the Levenshtein
+table above, on the same machine (Intel i7-4770S, .NET 10.0.10, rapidfuzz 3.14.5
+/ Python 3.12), one-minute load average 5.2 to 5.9 across the window; dev
+machine, non-authoritative, and comparable to the Levenshtein figures because it
+was taken under the same conditions rather than an ideal one.
+
+Three states, each measured in its own window with Levenshtein re-run beside it
+as a control:
+
+| Length | rapidfuzz | before | + trimming | + kernel | total |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 8 | 132 ns | 222 ns | 30 ns | 37 ns | 6.0× |
+| 32 | 205 ns | 3 775 ns | 1 084 ns | **326 ns** | **11.6×** |
+| 128 | 590 ns | 58 066 ns | 29 996 ns | **1 252 ns** | **46.4×** |
+| 512 | 6 582 ns | 627 297 ns | 569 521 ns | **14 363 ns** | **43.7×** |
+
+Against rapidfuzz that moves the 128 and 512 buckets from **95–98× behind** to
+**2.07× and 2.15× behind**, the 32 bucket from 18.4× to 1.57×, and leaves the 8
+bucket 3.66× ahead.
+
+- **Trimming came first and is not the kernel.**
+  [`Levenshtein.Distance`](../reference/text/distances/levenshtein-distance.md) already
+  stripped the common prefix and suffix; `Lcs` did not. On a corpus that is a
+  string and a copy with one mutation per ten, that is worth 7.5× at length 8 —
+  where one position differs, so seven characters of eight never reach the band —
+  and 1.10× at 512, where fifty-one scattered mutations leave almost nothing to
+  strip. **It is a best case for record matching and worth nothing on unrelated
+  text**, which is the shape of input the corpus does not contain.
+- **The kernel is what closes the long buckets**, 46× at 128 and 44× at 512.
+- **Still 2× behind at 128 and 512.** The gap is no longer algorithmic; see the
+  gate table below for where it now sits.
+
+### Where the bit-parallel gate belongs, measured (#273)
+
+`IndelBenchmarks` cannot answer this — its operands trim down to an accidental
+band — so `LcsGateBenchmarks` parameterises the differing middle directly and
+runs both routes in one process with the dynamic program as baseline:
+
+| Band | DP | Kernel | Ratio |
+| ---: | ---: | ---: | ---: |
+| 8 | 161 ns | 182 ns | 1.13 |
+| 14 | 347 ns | 402 ns | 1.16 |
+| 16 | 425 ns | **149 ns** | **0.35** |
+| 32 | 1 707 ns | **185 ns** | **0.11** |
+| 64 | 6 926 ns | **264 ns** | **0.04** |
+| 96 | 15 836 ns | 1 504 ns | 0.09 |
+
+- **The gate at 16 is right, and probably conservative.** The kernel's floor is
+  about 149 ns and the DP already costs 161 ns at band 8, so a lower gate may win
+  — but that needs measuring below 8 rather than assuming.
+- **The kernel's cost is nearly flat from 16 to 64** — 149, 154, 160, 168, 185,
+  234, 264 ns while the work quadruples. That is a fixed cost dominating: the
+  256-entry equality table is cleared on every call. Band 96 makes it plain,
+  crossing into the blocked path for 281 → 1 504 ns on one and a half times the
+  work, the table having doubled. **Right-sizing that table to the pattern's own
+  alphabet is where the remaining 2× is most likely to be**, and it is the same
+  change ADR 0004 lists as lifting the Latin-1 restriction.
+- **The character route carries a fixed 25–60 ns overhead** over the generic one,
+  visible below the gate where both take the DP and gone by band 96 where the
+  work dwarfs it. It is not a missing inlining — an `AggressiveInlining` attempt
+  moved the ratios by less than the error bars — and it is not yet explained.
+
 ### The code-point mode, on input that leaves the BMP (#208)
 
 The table above is the UTF-16 mode over an ASCII corpus. The code-point mode is a

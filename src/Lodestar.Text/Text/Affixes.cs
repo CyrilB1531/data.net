@@ -8,13 +8,10 @@ internal static class Affixes
     /// elements went.
     /// </summary>
     /// <remarks>
-    /// Edit distance discards the count — a shared affix costs no edit — while the longest
-    /// common subsequence adds it back, since every stripped element is in the subsequence.
-    /// Both are safe because equal ends can always be matched to each other: an optimal
-    /// alignment that does not already do so can be rewritten to, without getting worse.
-    /// It is <b>not</b> safe for the longest common <i>substring</i>, which is why
-    /// <c>Lcs.SubstringLength</c> does not call this — trimming <c>"abc"</c> against
-    /// <c>"abd"</c> would report 0 where the answer is 2.
+    /// Edit distance discards the count, a shared affix costing no edit; the subsequence
+    /// adds it back, every stripped element being in it. Safe because equal ends can always
+    /// be matched to each other. <b>Not</b> safe for the longest common <i>substring</i>:
+    /// trimming <c>"abc"</c> against <c>"abd"</c> reports 0 where the answer is 2.
     /// </remarks>
     public static int Trim<T>(ref ReadOnlySpan<T> a, ref ReadOnlySpan<T> b)
         where T : IEquatable<T>

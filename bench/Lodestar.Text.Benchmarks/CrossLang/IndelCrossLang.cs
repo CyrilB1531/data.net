@@ -8,11 +8,9 @@ namespace Lodestar.Text.Benchmarks.CrossLang;
 /// Levenshtein pair.
 /// </summary>
 /// <remarks>
-/// <see cref="Indel"/> has no kernel of its own — it is
-/// <c>len(a) + len(b) - 2·LCS</c>, so what this measures is
-/// <c>Lcs.SubsequenceLength</c>, a rolling-row dynamic program. That is also
-/// what <c>fuzz.ratio</c> and therefore every <c>process.extract</c> runs, which
-/// is why the lot has a caller behind it (#273).
+/// <see cref="Indel"/> is <c>len(a) + len(b) - 2·LCS</c>, so this measures
+/// <c>Lcs.SubsequenceLength</c> — which <c>fuzz.ratio</c> and every
+/// <c>process.extract</c> also run (#273).
 /// </remarks>
 public static class IndelCrossLang
 {

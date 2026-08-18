@@ -2,19 +2,13 @@ using System.Buffers;
 
 namespace Lodestar.Text.Distances;
 
-/// <summary>
-/// Bit-parallel longest-common-subsequence length, the fast path under
-/// <see cref="Lcs"/> and therefore under <see cref="Indel"/> and <c>fuzz.ratio</c>.
-/// </summary>
+/// <summary>Bit-parallel LCS length: the fast path under <see cref="Lcs"/>, <see cref="Indel"/> and <c>fuzz.ratio</c>.</summary>
 /// <remarks>
-/// The same machinery <see cref="Myers"/> uses — a per-character equality table over a
-/// dense Latin-1 alphabet, one bit per pattern position, blocked into 64-bit words — over
-/// a different recurrence. Myers computes edit distance, which needs substitution; this
-/// carries the LCS row as the bit vector <c>V</c>, where a set bit is a position whose
-/// running length did not increase, and advances it per text character with
-/// <c>V = (V + (V &amp; P)) | (V - (V &amp; P))</c>. The answer is the number of cleared bits.
-/// Derived from the published recurrence (Crochemore–Iliopoulos–Pinzón–Reid; Hyyrö),
-/// not transcribed from an implementation — see decision 0003 on provenance.
+/// Myers' machinery — a dense Latin-1 equality table, blocked into 64-bit words — over a
+/// different recurrence, Myers carrying substitution and LCS not. <c>V</c> holds the LCS
+/// row, a set bit being a position that did not increment, advanced per text character by
+/// <c>V = (V + (V &amp; P)) | (V - (V &amp; P))</c>; the answer counts the cleared bits.
+/// Derived from the published recurrence (Hyyrö), not transcribed — decision 0003.
 /// </remarks>
 internal static class BitParallelLcs
 {
@@ -44,9 +38,8 @@ internal static class BitParallelLcs
             peq[c] |= 1UL << i;
         }
 
-        // Every position starts with no increment, so the vector starts all ones; the
-        // carries the update relies on run upward, and the bits above m are masked off
-        // at the end rather than kept clean throughout.
+        // All ones: no position has incremented yet. Carries run upward, so the bits
+        // above m are masked at the end rather than kept clean throughout.
         ulong v = ulong.MaxValue;
         for (int j = 0; j < text.Length; j++)
         {
