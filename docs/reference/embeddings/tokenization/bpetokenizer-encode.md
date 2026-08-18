@@ -37,6 +37,15 @@ string first = encoded.Tokens[0];  // => to
 string second = encoded.Tokens[1];  // => ken
 ```
 
+**Exceptions** — `ArgumentException` when a byte-level vocabulary is missing one of the
+256 base alphabet tokens — a broken model rather than ordinary uncovered input — or, once a
+normalizer is declared, when an unpaired surrogate falls in a gap, since
+`string.Normalize` refuses that before the byte-level re-encoding is reached.
+`EncoderFallbackException` when a byte-level model re-encodes text holding an unpaired
+UTF-16 surrogate: byte-level BPE is lossless only over well-formed UTF-16, so it throws
+rather than substituting. **The classic path never encodes to UTF-8 and so cannot raise
+it** — measured, an unpaired surrogate through a classic model returns normally.
+
 **Remarks** — `token` is in the vocabulary as a single entry, and the result is still two tokens.
 That is not a bug: BPE reaches a symbol only by **merging**, and no rule joins `to` with `ken`.
 A vocabulary entry with no path of merges to it is unreachable, which is a real property of hand-built

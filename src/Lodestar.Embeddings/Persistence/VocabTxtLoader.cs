@@ -29,6 +29,7 @@ public static class VocabTxtLoader
     /// <param name="continuationPrefix">Marks non-initial word pieces.</param>
     /// <param name="lowercase">Whether the model was trained on lowercased text.</param>
     /// <exception cref="InvalidDataException">The file is empty, exceeds a limit, or lacks <paramref name="unkToken"/>.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
     public static WordPieceVocabulary Load(
         Stream source,
         ArtifactLoadOptions? options = null,
@@ -47,6 +48,7 @@ public static class VocabTxtLoader
     /// <param name="continuationPrefix">Marks non-initial word pieces.</param>
     /// <param name="lowercase">Whether the model was trained on lowercased text.</param>
     /// <exception cref="InvalidDataException">The file is empty, exceeds a limit, or lacks <paramref name="unkToken"/>.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="path"/> is null.</exception>
     public static WordPieceVocabulary Load(
         string path,
         ArtifactLoadOptions? options = null,
@@ -65,6 +67,9 @@ public static class VocabTxtLoader
     /// <param name="continuationPrefix">Marks non-initial word pieces.</param>
     /// <param name="lowercase">Whether the model was trained on lowercased text.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
+    /// <exception cref="InvalidDataException">The file is empty, exceeds a limit, or lacks <paramref name="unkToken"/>.</exception>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
     public static async Task<WordPieceVocabulary> LoadAsync(
         Stream source,
         ArtifactLoadOptions? options = null,

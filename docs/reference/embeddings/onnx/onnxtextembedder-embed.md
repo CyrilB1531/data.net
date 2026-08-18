@@ -14,7 +14,9 @@ them. `attentionMask` is the same length, `1` for a real token and `0` for paddi
 **Returns** — `float[]` of length `Dimension`, the pooled vector for that text.
 
 **Exceptions** — `ArgumentException` when the two spans differ in length.
-`ObjectDisposedException` after [`Dispose`](onnxtextembedder-dispose.md).
+`ObjectDisposedException` after [`Dispose`](onnxtextembedder-dispose.md) — the type
+checks a flag of its own, because reaching a disposed ONNX Runtime session surfaces as a
+null dereference from inside it, naming neither the object nor the mistake.
 
 **Example** — ids from a tokenizer, one text at a time.
 

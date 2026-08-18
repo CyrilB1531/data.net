@@ -48,6 +48,7 @@ public static class SentencePieceModelLoader
     /// <param name="source">The <c>spiece.model</c> bytes; never disposed by this method.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <exception cref="InvalidDataException">The model is malformed, exceeds a limit, or uses a normalizer this library does not reproduce.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
     public static SentencePieceVocabulary Load(Stream source, ArtifactLoadOptions? options = null)
     {
         ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
@@ -58,6 +59,7 @@ public static class SentencePieceModelLoader
     /// <param name="path">Path to a <c>spiece.model</c>.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <exception cref="InvalidDataException">The model is malformed, exceeds a limit, or uses a normalizer this library does not reproduce.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="path"/> is null.</exception>
     public static SentencePieceVocabulary Load(string path, ArtifactLoadOptions? options = null)
     {
         using FileStream file = JsonArtifact.OpenRead(path);
@@ -68,6 +70,9 @@ public static class SentencePieceModelLoader
     /// <param name="source">The <c>spiece.model</c> bytes; never disposed by this method.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
+    /// <exception cref="InvalidDataException">The model is malformed, exceeds a limit, or uses a normalizer this library does not reproduce.</exception>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
     public static async Task<SentencePieceVocabulary> LoadAsync(
         Stream source,
         ArtifactLoadOptions? options = null,

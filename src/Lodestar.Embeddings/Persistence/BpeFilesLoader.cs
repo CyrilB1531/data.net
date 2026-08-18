@@ -28,6 +28,7 @@ public static class BpeFilesLoader
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <param name="byteLevel">Whether the model tokenizes through the byte alphabet; <see langword="true"/> describes GPT-2.</param>
     /// <exception cref="InvalidDataException">Either file is malformed, empty, or exceeds a limit.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="vocabJson"/> or <paramref name="merges"/> is null.</exception>
     public static BpeVocabulary Load(
         Stream vocabJson,
         Stream merges,
@@ -48,6 +49,7 @@ public static class BpeFilesLoader
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <param name="byteLevel">Whether the model tokenizes through the byte alphabet.</param>
     /// <exception cref="InvalidDataException">Either file is malformed, empty, or exceeds a limit.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="vocabJsonPath"/> or <paramref name="mergesPath"/> is null.</exception>
     public static BpeVocabulary Load(
         string vocabJsonPath,
         string mergesPath,
@@ -65,6 +67,9 @@ public static class BpeFilesLoader
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
     /// <param name="byteLevel">Whether the model tokenizes through the byte alphabet.</param>
     /// <param name="cancellationToken">Cancels the reads.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="vocabJson"/> or <paramref name="merges"/> is null.</exception>
+    /// <exception cref="InvalidDataException">Either file is malformed, empty, or exceeds a limit.</exception>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
     public static async Task<BpeVocabulary> LoadAsync(
         Stream vocabJson,
         Stream merges,

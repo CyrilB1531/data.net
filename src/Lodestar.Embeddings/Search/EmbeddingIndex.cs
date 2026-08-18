@@ -38,6 +38,7 @@ public sealed partial class EmbeddingIndex
     public int Dimension => _dim;
 
     /// <summary>Adds a vector to the index (a normalized copy is stored when normalization is on).</summary>
+    /// <exception cref="ArgumentException"><paramref name="vector"/> is not <see cref="Dimension"/> long.</exception>
     public void Add(ReadOnlySpan<float> vector)
     {
         if (vector.Length != _dim)
@@ -77,6 +78,7 @@ public sealed partial class EmbeddingIndex
     /// <see cref="Add(ReadOnlySpan{float})"/>: adding one would change that method's
     /// signature and break every already-compiled caller.
     /// </remarks>
+    /// <exception cref="ArgumentException"><paramref name="vector"/> is not <see cref="Dimension"/> long.</exception>
     public void Add(ReadOnlySpan<float> vector, string? id)
     {
         Add(vector);
@@ -129,6 +131,8 @@ public sealed partial class EmbeddingIndex
         _ids is not null && index < _ids.Length ? _ids[index] : null;
 
     /// <summary>Returns the <paramref name="k"/> most similar items to <paramref name="query"/>, best first.</summary>
+    /// <exception cref="ArgumentException"><paramref name="query"/> is not <see cref="Dimension"/> long.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="k"/> is below 1.</exception>
     public IReadOnlyList<SearchResult> Search(ReadOnlySpan<float> query, int k)
     {
         if (query.Length != _dim)

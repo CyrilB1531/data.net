@@ -27,6 +27,10 @@ PrecompiledNormalizer normalizer = PrecompiledNormalizer.FromCharsMap(charsMap);
 string folded = normalizer.Normalize("Ｈｅｌｌｏ");
 ```
 
+**Exceptions** — `InvalidDataException` when the charsmap points at a replacement it does
+not itself contain. That is a defect in the model file rather than in the input, and it
+surfaces here because this is where the trie is walked.
+
 **Remarks** — the replacements are the model's, not a standard's. Two models can fold the same
 input differently and both be right, because each was trained on its own folding — which is why
 this is a per-model artifact rather than a call to `string.Normalize`.

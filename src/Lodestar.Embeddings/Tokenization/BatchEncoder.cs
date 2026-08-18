@@ -94,6 +94,7 @@ public sealed class BatchEncoder
     /// </remarks>
     /// <param name="texts">The texts to encode.</param>
     /// <param name="cancellationToken">Observed between texts; tokenizing a large corpus is not instant.</param>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
     public EncodedBatch EncodeBatch(IEnumerable<string> texts, CancellationToken cancellationToken = default)
     {
         List<long[]> sequences = EncodeAll(texts, cancellationToken);
