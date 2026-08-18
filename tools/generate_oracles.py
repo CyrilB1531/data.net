@@ -2708,6 +2708,94 @@ def generate_calibration() -> dict:
     }
 
 
+def generate_label_losses() -> dict:
+    """hamming_loss, zero_one_loss and jaccard_score -- #93's cheap leftovers (#211)."""
+    import numpy as np
+    from sklearn.metrics import hamming_loss, jaccard_score, zero_one_loss
+
+    single = [
+        {"name": WORKED_CASE, "true": [0, 1, 2, 1], "pred": [0, 2, 2, 1], "weight": None},
+        {"name": WORKED_CASE_WEIGHTED, "true": [0, 1, 2, 1], "pred": [0, 2, 2, 1],
+         "weight": [1.0, 2.0, 3.0, 4.0]},
+        {"name": "every prediction right", "true": [0, 1, 2], "pred": [0, 1, 2], "weight": None},
+        {"name": "every prediction wrong", "true": [0, 1, 2], "pred": [1, 2, 0], "weight": None},
+        {"name": "two classes", "true": [0, 1, 1, 0], "pred": [0, 1, 0, 0], "weight": None},
+    ]
+
+    cases = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for fixture in single:
+            true = np.array(fixture["true"])
+            pred = np.array(fixture["pred"])
+            kw = {} if fixture["weight"] is None else {
+                "sample_weight": np.array(fixture["weight"])}
+            case = {
+                "name": fixture["name"],
+                "y_true": fixture["true"],
+                "y_pred": fixture["pred"],
+                "sample_weight": fixture["weight"],
+                "hamming": float(hamming_loss(true, pred, **kw)),
+                "zero_one": float(zero_one_loss(true, pred, **kw)),
+                "zero_one_count": float(zero_one_loss(true, pred, normalize=False, **kw)),
+                "jaccard_per_class": [
+                    float(v) for v in jaccard_score(true, pred, average=None, zero_division=0.0, **kw)],
+            }
+            for average in ("macro", "micro", "weighted"):
+                case[f"jaccard_{average}"] = float(
+                    jaccard_score(true, pred, average=average, zero_division=0.0, **kw))
+            cases.append(case)
+
+    # A label matrix, where hamming counts labels and zero-one counts rows.
+    multi_true = [[1, 0, 1], [0, 1, 1]]
+    multi_pred = [[1, 0, 0], [1, 1, 1]]
+    mt = np.array(multi_true)
+    mp = np.array(multi_pred)
+    weight = np.array([1.0, 3.0])
+    multilabel = {
+        "y_true": [v for row in multi_true for v in row],
+        "y_pred": [v for row in multi_pred for v in row],
+        "label_count": 3,
+        "sample_weight": [1.0, 3.0],
+        "hamming": float(hamming_loss(mt, mp)),
+        "hamming_weighted": float(hamming_loss(mt, mp, sample_weight=weight)),
+        "zero_one": float(zero_one_loss(mt, mp)),
+        "zero_one_count": float(zero_one_loss(mt, mp, normalize=False)),
+        "zero_one_weighted": float(zero_one_loss(mt, mp, sample_weight=weight)),
+    }
+
+    # A label neither side carries: the zero-division case, which needs an explicit
+    # label set to reach at all.
+    undefined = {
+        "y_true": [0, 1],
+        "y_pred": [0, 1],
+        "labels": [0, 1, 2],
+        "jaccard_zero": [float(v) for v in jaccard_score(
+            np.array([0, 1]), np.array([0, 1]), average=None, labels=[0, 1, 2], zero_division=0.0)],
+        "jaccard_one": [float(v) for v in jaccard_score(
+            np.array([0, 1]), np.array([0, 1]), average=None, labels=[0, 1, 2], zero_division=1.0)],
+        "jaccard_macro_zero": float(jaccard_score(
+            np.array([0, 1]), np.array([0, 1]), average="macro", labels=[0, 1, 2], zero_division=0.0)),
+    }
+
+    return {
+        "metadata": {
+            "algorithm": "LabelLosses",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.hamming_loss",
+                "sklearn.metrics.zero_one_loss",
+                "sklearn.metrics.jaccard_score",
+            ],
+            "count": len(cases),
+        },
+        "cases": cases,
+        "multilabel": multilabel,
+        "undefined": undefined,
+    }
+
+
 def _top_k_fixtures() -> list[dict]:
     """Multiclass score matrices, where k is the question rather than ties.
 
@@ -5592,6 +5680,7 @@ def main() -> None:
         "fuzz.json": generate_fuzz,
         "process.json": generate_process,
         "classification_metrics.json": generate_classification_metrics,
+        "label_losses.json": generate_label_losses,
         "clustering_agreement.json": generate_clustering_agreement,
         "silhouette.json": generate_silhouette,
         "internal_validity.json": generate_internal_validity,

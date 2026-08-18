@@ -6,6 +6,7 @@ internal enum PrfMetric
     Precision,
     Recall,
     FScore,
+    Jaccard,
 }
 
 /// <summary>
@@ -117,6 +118,7 @@ internal static class Prf
             {
                 PrfMetric.Precision => Divide(tp[i], predicted[i], zeroDivision, "Precision"),
                 PrfMetric.Recall => Divide(tp[i], support[i], zeroDivision, "Recall"),
+                PrfMetric.Jaccard => Jaccard(tp[i], predicted[i], support[i], zeroDivision),
                 _ => FScore(tp[i], predicted[i], support[i], beta, zeroDivision),
             };
         }
@@ -172,6 +174,18 @@ internal static class Prf
         }
     }
 
+    /// <summary>
+    /// The intersection over the union — precision's numerator over the size of both
+    /// sets together.
+    /// </summary>
+    /// <remarks>
+    /// Predicted plus support double-counts the true positives, so one copy comes back
+    /// out. Undefined when neither set holds anything, which is the same
+    /// <see cref="ZeroDivision"/> case precision and recall answer.
+    /// </remarks>
+    private static double Jaccard(double tp, double predicted, double support, ZeroDivision zeroDivision) =>
+        Divide(tp, predicted + support - tp, zeroDivision, "Jaccard");
+
     private static double Micro(ConfusionMatrix cm, PrfMetric metric, double beta, ZeroDivision zeroDivision)
     {
         double[] tp = TruePositives(cm);
@@ -192,6 +206,7 @@ internal static class Prf
         {
             PrfMetric.Precision => Divide(tpSum, predictedSum, zeroDivision, "Precision"),
             PrfMetric.Recall => Divide(tpSum, supportSum, zeroDivision, "Recall"),
+            PrfMetric.Jaccard => Jaccard(tpSum, predictedSum, supportSum, zeroDivision),
             _ => FScore(tpSum, predictedSum, supportSum, beta, zeroDivision),
         };
     }

@@ -1,0 +1,204 @@
+{
+ "metadata": {
+  "algorithm": "LabelLosses",
+  "library": "scikit-learn",
+  "library_version": "1.9.0",
+  "reference_calls": [
+   "sklearn.metrics.hamming_loss",
+   "sklearn.metrics.zero_one_loss",
+   "sklearn.metrics.jaccard_score"
+  ],
+  "count": 5
+ },
+ "cases": [
+  {
+   "name": "the worked case",
+   "y_true": [
+    0,
+    1,
+    2,
+    1
+   ],
+   "y_pred": [
+    0,
+    2,
+    2,
+    1
+   ],
+   "sample_weight": null,
+   "hamming": 0.25,
+   "zero_one": 0.25,
+   "zero_one_count": 1.0,
+   "jaccard_per_class": [
+    1.0,
+    0.5,
+    0.5
+   ],
+   "jaccard_macro": 0.6666666666666666,
+   "jaccard_micro": 0.6,
+   "jaccard_weighted": 0.625
+  },
+  {
+   "name": "the worked case, weighted",
+   "y_true": [
+    0,
+    1,
+    2,
+    1
+   ],
+   "y_pred": [
+    0,
+    2,
+    2,
+    1
+   ],
+   "sample_weight": [
+    1.0,
+    2.0,
+    3.0,
+    4.0
+   ],
+   "hamming": 0.2,
+   "zero_one": 0.19999999999999996,
+   "zero_one_count": 2.0,
+   "jaccard_per_class": [
+    1.0,
+    0.6666666666666666,
+    0.6
+   ],
+   "jaccard_macro": 0.7555555555555555,
+   "jaccard_micro": 0.6666666666666666,
+   "jaccard_weighted": 0.6799999999999999
+  },
+  {
+   "name": "every prediction right",
+   "y_true": [
+    0,
+    1,
+    2
+   ],
+   "y_pred": [
+    0,
+    1,
+    2
+   ],
+   "sample_weight": null,
+   "hamming": 0.0,
+   "zero_one": 0.0,
+   "zero_one_count": 0.0,
+   "jaccard_per_class": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "jaccard_macro": 1.0,
+   "jaccard_micro": 1.0,
+   "jaccard_weighted": 1.0
+  },
+  {
+   "name": "every prediction wrong",
+   "y_true": [
+    0,
+    1,
+    2
+   ],
+   "y_pred": [
+    1,
+    2,
+    0
+   ],
+   "sample_weight": null,
+   "hamming": 1.0,
+   "zero_one": 1.0,
+   "zero_one_count": 3.0,
+   "jaccard_per_class": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "jaccard_macro": 0.0,
+   "jaccard_micro": 0.0,
+   "jaccard_weighted": 0.0
+  },
+  {
+   "name": "two classes",
+   "y_true": [
+    0,
+    1,
+    1,
+    0
+   ],
+   "y_pred": [
+    0,
+    1,
+    0,
+    0
+   ],
+   "sample_weight": null,
+   "hamming": 0.25,
+   "zero_one": 0.25,
+   "zero_one_count": 1.0,
+   "jaccard_per_class": [
+    0.6666666666666666,
+    0.5
+   ],
+   "jaccard_macro": 0.5833333333333333,
+   "jaccard_micro": 0.6,
+   "jaccard_weighted": 0.5833333333333333
+  }
+ ],
+ "multilabel": {
+  "y_true": [
+   1,
+   0,
+   1,
+   0,
+   1,
+   1
+  ],
+  "y_pred": [
+   1,
+   0,
+   0,
+   1,
+   1,
+   1
+  ],
+  "label_count": 3,
+  "sample_weight": [
+   1.0,
+   3.0
+  ],
+  "hamming": 0.3333333333333333,
+  "hamming_weighted": 0.3333333333333333,
+  "zero_one": 1.0,
+  "zero_one_count": 2.0,
+  "zero_one_weighted": 1.0
+ },
+ "undefined": {
+  "y_true": [
+   0,
+   1
+  ],
+  "y_pred": [
+   0,
+   1
+  ],
+  "labels": [
+   0,
+   1,
+   2
+  ],
+  "jaccard_zero": [
+   1.0,
+   1.0,
+   0.0
+  ],
+  "jaccard_one": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "jaccard_macro_zero": 0.6666666666666666
+ }
+}
