@@ -99,6 +99,7 @@ internal static class QgramCounts
 public static class Jaccard
 {
     /// <summary>Computes the Jaccard similarity of <paramref name="a"/> and <paramref name="b"/>.</summary>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="qval"/> is below 1.</exception>
     public static double Similarity(ReadOnlySpan<char> a, ReadOnlySpan<char> b, int qval = 1, TextElement element = TextElement.Utf16Unit)
     {
         (int inter, int sizeA, int sizeB) = QgramCounts.Compute(a, b, qval, element);
@@ -112,6 +113,7 @@ public static class Jaccard
 public static class SorensenDice
 {
     /// <summary>Computes the Sørensen-Dice similarity of <paramref name="a"/> and <paramref name="b"/>.</summary>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="qval"/> is below 1.</exception>
     public static double Similarity(ReadOnlySpan<char> a, ReadOnlySpan<char> b, int qval = 1, TextElement element = TextElement.Utf16Unit)
     {
         (int inter, int sizeA, int sizeB) = QgramCounts.Compute(a, b, qval, element);
@@ -125,6 +127,7 @@ public static class SorensenDice
 public static class Overlap
 {
     /// <summary>Computes the overlap coefficient of <paramref name="a"/> and <paramref name="b"/>.</summary>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="qval"/> is below 1.</exception>
     public static double Similarity(ReadOnlySpan<char> a, ReadOnlySpan<char> b, int qval = 1, TextElement element = TextElement.Utf16Unit)
     {
         (int inter, int sizeA, int sizeB) = QgramCounts.Compute(a, b, qval, element);
@@ -142,6 +145,7 @@ public static class Overlap
 public static class Tversky
 {
     /// <summary>Computes the Tversky index of <paramref name="a"/> and <paramref name="b"/>.</summary>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="qval"/> is below 1.</exception>
     public static double Similarity(
         ReadOnlySpan<char> a,
         ReadOnlySpan<char> b,
@@ -169,6 +173,7 @@ public static class Tversky
 public static class Cosine
 {
     /// <summary>Computes the cosine similarity of <paramref name="a"/> and <paramref name="b"/> over q-gram multisets.</summary>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="qval"/> is below 1.</exception>
     public static double Similarity(ReadOnlySpan<char> a, ReadOnlySpan<char> b, int qval = 1, TextElement element = TextElement.Utf16Unit)
     {
         (int inter, int sizeA, int sizeB) = QgramCounts.Compute(a, b, qval, element);

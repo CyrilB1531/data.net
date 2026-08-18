@@ -35,6 +35,7 @@ namespace Lodestar.Text.Stemming;
 public static class PortugueseSnowballStemmer
 {
     /// <summary>Returns the Portuguese Snowball stem of <paramref name="word"/>.</summary>
+    /// <exception cref="ArgumentNullException"><paramref name="word"/> is null.</exception>
     public static string Stem(string word)
     {
         Guard.NotNull(word);

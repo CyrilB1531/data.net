@@ -28,12 +28,14 @@ public sealed partial class TfidfVectorizer
         _tfidf = new TfidfTransformer(options.Tfidf);
     }
 
+    /// <exception cref="InvalidOperationException">nothing has been fitted yet.</exception>
     /// <summary>The learned vocabulary, sorted; valid after fitting.</summary>
     public IReadOnlyList<string> GetFeatureNames() => _counts.GetFeatureNames();
 
     /// <summary>The learned inverse-document-frequency vector (one per feature).</summary>
     public IReadOnlyList<double> Idf => _tfidf.Idf;
 
+    /// <exception cref="ArgumentNullException"><paramref name="documents"/> is null.</exception>
     /// <summary>Learns the vocabulary and idf weights.</summary>
     public TfidfVectorizer Fit(IEnumerable<string> documents)
     {
@@ -41,6 +43,7 @@ public sealed partial class TfidfVectorizer
         return this;
     }
 
+    /// <exception cref="ArgumentNullException"><paramref name="documents"/> is null.</exception>
     /// <summary>Learns and returns the TF-IDF matrix in one pass.</summary>
     public CsrMatrix FitTransform(IEnumerable<string> documents)
     {
@@ -48,6 +51,8 @@ public sealed partial class TfidfVectorizer
         return _tfidf.FitTransform(counts);
     }
 
+    /// <exception cref="ArgumentNullException"><paramref name="documents"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">nothing has been fitted yet.</exception>
     /// <summary>Transforms documents using the already-learned vocabulary and idf weights.</summary>
     public CsrMatrix Transform(IEnumerable<string> documents)
     {

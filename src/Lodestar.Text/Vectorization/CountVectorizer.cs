@@ -131,6 +131,7 @@ public sealed partial class CountVectorizer
             _options.StopWords);
     }
 
+    /// <exception cref="InvalidOperationException">nothing has been fitted yet.</exception>
     /// <summary>The learned vocabulary, sorted; valid after <see cref="Fit"/>/<see cref="FitTransform"/>.</summary>
     public IReadOnlyList<string> GetFeatureNames()
     {
@@ -138,6 +139,7 @@ public sealed partial class CountVectorizer
         return _featureNames;
     }
 
+    /// <exception cref="ArgumentNullException"><paramref name="documents"/> is null.</exception>
     /// <summary>Learns the vocabulary from <paramref name="documents"/>.</summary>
     public CountVectorizer Fit(IEnumerable<string> documents)
     {
@@ -145,6 +147,7 @@ public sealed partial class CountVectorizer
         return this;
     }
 
+    /// <exception cref="ArgumentNullException"><paramref name="documents"/> is null.</exception>
     /// <summary>Learns the vocabulary and returns the count matrix in one pass.</summary>
     public CsrMatrix FitTransform(IEnumerable<string> documents)
     {
@@ -215,6 +218,8 @@ public sealed partial class CountVectorizer
         return BuildMatrix(perDoc, remap, _featureNames.Length);
     }
 
+    /// <exception cref="ArgumentNullException"><paramref name="documents"/> is null.</exception>
+    /// <exception cref="InvalidOperationException">nothing has been fitted yet.</exception>
     /// <summary>Transforms <paramref name="documents"/> using the already-learned vocabulary.</summary>
     public CsrMatrix Transform(IEnumerable<string> documents)
     {
