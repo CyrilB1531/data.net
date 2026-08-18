@@ -4,8 +4,14 @@ Every assertion is about a property the wiki reader would notice -- a page in
 the wrong channel, a link that 404s, a banner naming the wrong version, a
 sidebar that omits an archive. The fixtures are built in tmp_path rather than
 read from the repository, so these do not fail when a guide is renamed.
+
+The one exception is the link sweep at the end, which builds the repository's
+own docs/ and is meant to fail when a guide is renamed and a link is not: the
+flat `{channel}-{stem}` names a reader clicks exist nowhere else, so nothing
+upstream of the generated tree can see that one of them 404s (#257).
 """
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -14,6 +20,35 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import build_wiki  # noqa: E402
+
+REPO = Path(__file__).resolve().parents[2]
+
+# Deliberately wider than build_wiki.LINK, which matches only the `.md` targets it
+# has to rewrite: what ships broken is what it declined to rewrite (#257).
+WIKI_LINK = re.compile(r"\[[^\]]*\]\((?P<target>[^)\s]+)\)")
+
+OFF_WIKI = ("http://", "https://", "mailto:", "#")
+
+
+def broken_links(out: Path) -> list[str]:
+    """Every link in a built tree naming a page that tree does not hold.
+
+    Asked here rather than of docs/ because the two trees answer differently: a
+    repository-relative target that resolves on disk still 404s on the wiki
+    unless wiki-map.json publishes it, and the rewritten name it publishes
+    under is not a path anyone can check upstream.
+    """
+    held = {page.stem for page in out.glob("*.md")}
+    found: list[str] = []
+    for page in sorted(out.glob("*.md")):
+        for match in WIKI_LINK.finditer(page.read_text(encoding="utf-8")):
+            target = match.group("target")
+            if target.startswith(OFF_WIKI):
+                continue
+            if target.split("#", 1)[0] not in held:
+                found.append(f"{page.name}: {target}")
+    return found
+
 
 MAP = {
     "root": ["docs/equivalence.md"],
@@ -392,3 +427,46 @@ def test_a_guide_added_after_the_tag_does_not_become_the_banner_target(tmp_path)
     assert "Text-0.2.0-quickstart" not in banner
     assert "Text-0.2.0-distances" in banner
     assert (out / "Text-0.2.0-distances.md").exists()
+
+
+def test_a_link_the_generated_tree_cannot_answer_is_reported(tmp_path):
+    """Both shapes #257 found: a sibling one level off, and a target outside docs/."""
+    repo = make_repo(tmp_path)
+    (repo / "docs" / "reference" / "text" / "distances.md").write_text(
+        "# Distances\n\nSee [the guide](quickstart.md) and "
+        "[the licences](../../../THIRD-PARTY-NOTICES.md).\n",
+        encoding="utf-8",
+    )
+    out = tmp_path / "wiki"
+    build_wiki.build(repo, out, MAP, released={"Lodestar.Text": "0.3.0"})
+
+    assert broken_links(out) == [
+        "Text-distances.md: quickstart.md",
+        "Text-distances.md: ../../../THIRD-PARTY-NOTICES.md",
+    ]
+
+
+def test_a_link_that_was_rewritten_is_not_reported(tmp_path):
+    """The other half: the sweep must not cry wolf over the names it exists to protect."""
+    repo = make_repo(tmp_path)
+    out = tmp_path / "wiki"
+    build_wiki.build(repo, out, MAP, released={"Lodestar.Text": "0.3.0"})
+
+    assert broken_links(out) == []
+
+
+def test_no_link_in_the_published_wiki_names_a_page_it_does_not_hold(tmp_path):
+    """The repository's own docs/, which is the tree a reader actually clicks (#257).
+
+    Not built from a fixture on purpose: the five 404s this closes were all
+    correct-looking in docs/ and only wrong once flattened, so a fixture would
+    have gone on passing. Nothing is archived here, so this reads the live
+    channels only -- an archive's banner is #256's subject, not this one's.
+    """
+    out = tmp_path / "wiki"
+    mapping = build_wiki.load_map(REPO / "docs" / "wiki-map.json")
+    build_wiki.build(REPO, out, mapping, released={})
+
+    broken = broken_links(out)
+
+    assert not broken, "links naming no published page:\n" + "\n".join(broken)
