@@ -41,6 +41,7 @@
   <!-- One source of truth for the benchmark bodies: link, never copy. -->
   <ItemGroup>
     <Compile Include="../Lodestar.Text.Benchmarks/LevenshteinBenchmarks.cs" Link="LevenshteinBenchmarks.cs" />
+    <Compile Include="../Lodestar.Text.Benchmarks/ScatteredPair.cs" Link="ScatteredPair.cs" />
     <Compile Include="../Lodestar.Text.Benchmarks/VectorizerBenchmarks.cs" Link="VectorizerBenchmarks.cs" />
     <Compile Include="../Lodestar.Text.Benchmarks/FuzzBenchmarks.cs" Link="FuzzBenchmarks.cs" />
     <Compile Include="../Lodestar.Text.Benchmarks/VectorMathBenchmarks.cs" Link="VectorMathBenchmarks.cs" />
