@@ -33,8 +33,21 @@ internal static class PairsHarness
             ?? throw new InvalidDataException("corpus deserialized to null");
     }
 
+    /// <summary>One distance, as a struct so the JIT can devirtualize and inline the call.</summary>
+    /// <remarks>
+    /// A <c>Func&lt;string, string, int&gt;</c> would read better and cost a non-inlinable
+    /// indirection on every pair — under 0.01% of the 512 bucket, but 3–5% of the 8 bucket,
+    /// where the whole budget is about 36 ns. A harness may not spend a measurable fraction
+    /// of what it measures, so the delegate is a constrained generic instead.
+    /// </remarks>
+    public interface IPairMeasure
+    {
+        int Measure(string a, string b);
+    }
+
     /// <summary>Times <paramref name="measure"/> over every bucket, printing each as it lands.</summary>
-    public static List<BucketResult> Run(Corpus corpus, Func<string, string, int> measure)
+    public static List<BucketResult> Run<TMeasure>(Corpus corpus, TMeasure measure)
+        where TMeasure : struct, IPairMeasure
     {
         List<BucketResult> results = [];
         foreach (Bucket bucket in corpus.Buckets)
@@ -47,7 +60,8 @@ internal static class PairsHarness
         return results;
     }
 
-    private static double TimeBucket(IReadOnlyList<string[]> pairs, Func<string, string, int> measure)
+    private static double TimeBucket<TMeasure>(IReadOnlyList<string[]> pairs, TMeasure measure)
+        where TMeasure : struct, IPairMeasure
     {
         int n = pairs.Count;
         double best = double.PositiveInfinity;
@@ -64,7 +78,7 @@ internal static class PairsHarness
                     int acc = 0;
                     for (int i = 0; i < n; i++)
                     {
-                        acc += measure(pairs[i][0], pairs[i][1]);
+                        acc += measure.Measure(pairs[i][0], pairs[i][1]);
                     }
                     GC.KeepAlive(acc);
                 }

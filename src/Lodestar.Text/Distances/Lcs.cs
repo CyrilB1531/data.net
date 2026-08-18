@@ -35,12 +35,19 @@ public static class Lcs
     }
 
     /// <summary>Longest common subsequence length over any sequence of equatable elements.</summary>
+    /// <remarks>
+    /// The shared ends are counted rather than computed: every element of a common prefix or
+    /// suffix belongs to the subsequence, so the dynamic program only has to see what is left
+    /// between them. On near-duplicate operands — what fuzzy matching feeds this through
+    /// <c>fuzz.ratio</c> — that band collapses to almost nothing (#273).
+    /// </remarks>
     public static int SubsequenceLength<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b)
         where T : IEquatable<T>
     {
+        int common = Affixes.Trim(ref a, ref b);
         if (a.Length == 0 || b.Length == 0)
         {
-            return 0;
+            return common;
         }
         if (b.Length > a.Length)
         {
@@ -66,13 +73,16 @@ public static class Lcs
                     diagonal = above;
                 }
             }
-            return row[b.Length];
+            return common + row[b.Length];
         }
         finally
         {
             ArrayPool<int>.Shared.Return(rented);
         }
     }
+
+    // No Affixes.Trim below: a shared prefix is part of the longest common *substring*,
+    // and dropping it would report 0 for "abc" against "abd" where the answer is 2.
 
     /// <summary>Longest common substring length over any sequence of equatable elements.</summary>
     public static int SubstringLength<T>(ReadOnlySpan<T> a, ReadOnlySpan<T> b)

@@ -11,13 +11,18 @@ namespace Lodestar.Text.Benchmarks.CrossLang;
 /// </summary>
 public static class LevenshteinCrossLang
 {
+    private readonly struct Edits(TextElement mode) : PairsHarness.IPairMeasure
+    {
+        public int Measure(string a, string b) => Levenshtein.Distance(a, b, mode);
+    }
+
     public static void Run(string[] args)
     {
         TextElement mode = PairsHarness.ModeOf(args);
         Console.WriteLine($"C# Levenshtein cross-lang bench (mode: {mode})");
 
-        List<PairsHarness.BucketResult> results = PairsHarness.Run(
-            PairsHarness.Load(), (a, b) => Levenshtein.Distance(a, b, mode));
+        List<PairsHarness.BucketResult> results =
+            PairsHarness.Run(PairsHarness.Load(), new Edits(mode));
 
         PairsHarness.Write("levenshtein", "Lodestar.Text", mode, results);
     }

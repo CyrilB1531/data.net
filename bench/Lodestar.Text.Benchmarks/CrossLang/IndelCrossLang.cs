@@ -16,13 +16,18 @@ namespace Lodestar.Text.Benchmarks.CrossLang;
 /// </remarks>
 public static class IndelCrossLang
 {
+    private readonly struct Edits(TextElement mode) : PairsHarness.IPairMeasure
+    {
+        public int Measure(string a, string b) => Indel.Distance(a, b, mode);
+    }
+
     public static void Run(string[] args)
     {
         TextElement mode = PairsHarness.ModeOf(args);
         Console.WriteLine($"C# Indel cross-lang bench (mode: {mode})");
 
-        List<PairsHarness.BucketResult> results = PairsHarness.Run(
-            PairsHarness.Load(), (a, b) => Indel.Distance(a, b, mode));
+        List<PairsHarness.BucketResult> results =
+            PairsHarness.Run(PairsHarness.Load(), new Edits(mode));
 
         PairsHarness.Write("indel", "Lodestar.Text", mode, results);
     }
