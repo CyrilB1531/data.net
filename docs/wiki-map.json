@@ -22,7 +22,12 @@
         "Lodestar.Text.Stemming": "docs/reference/text/stemming",
         "Lodestar.Text.Phonetics": "docs/reference/text/phonetics",
         "Lodestar.Text.Similarity": "docs/reference/text/similarity"
-      }
+      },
+      "exceptionsUnchecked": [
+        "Lodestar.Text.Similarity",
+        "Lodestar.Text.Stemming",
+        "Lodestar.Text.Vectorization"
+      ]
     },
     "Lodestar.Embeddings": {
       "wiki": "Embeddings",
@@ -37,7 +42,14 @@
         "Lodestar.Embeddings.Pooling": "docs/reference/embeddings/pooling",
         "Lodestar.Embeddings.Search": "docs/reference/embeddings/search",
         "Lodestar.Embeddings.Persistence": "docs/reference/embeddings/persistence"
-      }
+      },
+      "exceptionsUnchecked": [
+        "Lodestar.Embeddings.Onnx",
+        "Lodestar.Embeddings.Persistence",
+        "Lodestar.Embeddings.Pooling",
+        "Lodestar.Embeddings.Search",
+        "Lodestar.Embeddings.Tokenization"
+      ]
     },
     "Lodestar.Fuzzy": {
       "wiki": "Fuzzy",

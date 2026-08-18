@@ -11,14 +11,34 @@ namespace Lodestar.Tests.Documentation.Fixtures;
 public static class Cabinet
 {
     /// <summary>One number per drawer, which is a <c>double[]</c> and not a <c>Double[]</c>.</summary>
-    public static double[] Measure(int count) => new double[count];
+    /// <param name="count">How many drawers.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is negative.</exception>
+    public static double[] Measure(int count) => count < 0
+        ? throw new ArgumentOutOfRangeException(nameof(count), count, "A cabinet has no negative drawers.")
+        : new double[count];
 
     // CA1814 asks for a jagged array. The shape under test is the one
     // ConfusionMatrix.ToArray really returns, and swapping it for double[][]
     // would leave the rank-2 spelling unmeasured — which is the point of this member.
 #pragma warning disable CA1814
     /// <summary>A rectangular reading, which is a <c>double[,]</c>.</summary>
-    public static double[,] Grid(int rows) => new double[rows, rows];
+    /// <param name="rows">The side of the square.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="rows"/> is negative.</exception>
+    /// <exception cref="ArgumentException"><paramref name="rows"/> is zero, which reads nothing.</exception>
+    public static double[,] Grid(int rows)
+    {
+        if (rows < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(rows), rows, "A grid has no negative side.");
+        }
+
+        if (rows == 0)
+        {
+            throw new ArgumentException("A grid of no rows reads nothing.", nameof(rows));
+        }
+
+        return new double[rows, rows];
+    }
 #pragma warning restore CA1814
 
     // CA1034 asks for this not to be nested and publicly visible. Being exactly

@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Xml.Linq;
 using Lodestar.Tests.Documentation;
 using Lodestar.Tests.Documentation.Fixtures;
 using Lodestar.Text.Distances;
@@ -452,6 +453,8 @@ public sealed class ReferenceDocumentationTests
 
         **Parameters** — `rows` is the side of the square.
 
+        **Exceptions** — `ArgumentException` when `rows` is zero, which reads nothing; `ArgumentOutOfRangeException` when it is negative.
+
         **Applies to** — net10.0, netstandard2.0.
 
         #### Cabinet.Measure
@@ -465,6 +468,8 @@ public sealed class ReferenceDocumentationTests
         ```
 
         **Parameters** — `count` is how many drawers.
+
+        **Exceptions** — `ArgumentOutOfRangeException` when `count` is negative.
 
         **Applies to** — net10.0, netstandard2.0.
         """;
@@ -482,7 +487,11 @@ public sealed class ReferenceDocumentationTests
         """;
 
     /// <summary>Runs the gate over the fixture namespace, with `covered` as a list of pages.</summary>
-    private static IReadOnlyList<string> CheckFixtures(params (string Name, string Markdown)[] pages)
+    private static IReadOnlyList<string> CheckFixtures(params (string Name, string Markdown)[] pages) =>
+        CheckFixtures(enforced: true, pages);
+
+    private static IReadOnlyList<string> CheckFixtures(
+        bool enforced, params (string Name, string Markdown)[] pages)
     {
         string root = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(root);
@@ -496,13 +505,18 @@ public sealed class ReferenceDocumentationTests
             // A placeholder rather than interpolation: the map ends on four closing
             // braces, which no number of '$' can tell apart from an interpolation hole.
             const string template = """
-                {"root":[],"packages":{"Lodestar.Text":{"wiki":"Text","pages":[],
+                {"root":[],"packages":{"Lodestar.Text":{"wiki":"Text","pages":[],EXEMPT
                  "covered":{"Lodestar.Tests.Documentation.Fixtures":[PAGES]}}}}
                 """;
 
             string map = Path.Combine(root, "wiki-map.json");
             string listed = string.Join(",", pages.Select(page => $"\"{page.Name}\""));
-            File.WriteAllText(map, template.Replace("PAGES", listed, StringComparison.Ordinal));
+            File.WriteAllText(map, template
+                .Replace("PAGES", listed, StringComparison.Ordinal)
+                .Replace(
+                    "EXEMPT",
+                    enforced ? string.Empty : "\"exceptionsUnchecked\":[\"Lodestar.Tests.Documentation.Fixtures\"],",
+                    StringComparison.Ordinal));
 
             return ReferenceDocumentation.Check(typeof(Cabinet).Assembly, "Lodestar.Text", map, root);
         }
@@ -510,6 +524,140 @@ public sealed class ReferenceDocumentationTests
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    [Fact]
+    public void A_docstring_and_a_page_that_name_the_same_exceptions_agree()
+    {
+        // Not vacuous: the fixture really does tag two types on Grid, so a check that
+        // read nothing at all would fail this rather than pass it.
+        Assert.Equal(
+            ["ArgumentException", "ArgumentOutOfRangeException"],
+            Tags(nameof(Cabinet.Grid)).OrderBy(name => name, StringComparer.Ordinal));
+
+        Assert.Empty(CheckFixtures(("cabinet.md", CabinetPage), ("slip.md", SlipPage)));
+    }
+
+    [Fact]
+    public void The_217_divergence_is_reported_with_the_list_seen_on_each_side()
+    {
+        // #217 on a fixture, with the wrong name on the page rather than in the docstring:
+        // that is the direction that reaches the wiki, and the one #217 was lucky to avoid.
+        IReadOnlyList<string> complaints = CheckFixtures(
+            ("cabinet.md", CabinetPage.Replace(
+                "**Exceptions** — `ArgumentOutOfRangeException` when `count` is negative.",
+                "**Exceptions** — `ArgumentException` when `count` is negative.",
+                StringComparison.Ordinal)),
+            ("slip.md", SlipPage));
+
+        string complaint = Assert.Single(complaints);
+        Assert.Contains("Cabinet.Measure", complaint, StringComparison.Ordinal);
+        Assert.Contains("tags ArgumentOutOfRangeException", complaint, StringComparison.Ordinal);
+        Assert.Contains("names ArgumentException", complaint, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_page_naming_an_exception_the_member_never_tags_is_reported()
+    {
+        // The commoner direction of the 75 found on main: the page documents a type the
+        // docstring is silent about. Silence on one side is a divergence, not a pass.
+        IReadOnlyList<string> complaints = CheckFixtures(
+            ("cabinet.md", CabinetPage.Replace(
+                "**Exceptions** — `ArgumentOutOfRangeException` when `count` is negative.",
+                "**Exceptions** — `ArgumentOutOfRangeException` when `count` is negative, and "
+                + "`InvalidOperationException` when the cabinet is shut.",
+                StringComparison.Ordinal)),
+            ("slip.md", SlipPage));
+
+        string complaint = Assert.Single(complaints);
+        Assert.Contains("Cabinet.Measure", complaint, StringComparison.Ordinal);
+        Assert.Contains(
+            "names ArgumentOutOfRangeException, InvalidOperationException", complaint, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_order_the_two_sides_list_their_exceptions_in_is_not_significant()
+    {
+        // Measured on #217's own member: its page and its docstring list the same two types
+        // in opposite orders, both correct. Cabinet.Grid reproduces that, and both must pass.
+        Assert.True(
+            CabinetPage.IndexOf("`ArgumentException` when `rows`", StringComparison.Ordinal) <
+            CabinetPage.IndexOf("`ArgumentOutOfRangeException` when it is negative", StringComparison.Ordinal));
+
+        string reordered = CabinetPage.Replace(
+            "`ArgumentException` when `rows` is zero, which reads nothing; "
+            + "`ArgumentOutOfRangeException` when it is negative.",
+            "`ArgumentOutOfRangeException` when `rows` is negative; "
+            + "`ArgumentException` when it is zero, which reads nothing.",
+            StringComparison.Ordinal);
+        Assert.NotEqual(CabinetPage, reordered);
+
+        Assert.Empty(CheckFixtures(("cabinet.md", CabinetPage), ("slip.md", SlipPage)));
+        Assert.Empty(CheckFixtures(("cabinet.md", reordered), ("slip.md", SlipPage)));
+    }
+
+    [Fact]
+    public void An_unchecked_namespace_is_not_confronted()
+    {
+        // The debt list in wiki-map.json, doing its one job: the same page that earns a
+        // complaint above earns none once its namespace is named as still owing parity.
+        string broken = CabinetPage.Replace(
+            "**Exceptions** — `ArgumentOutOfRangeException` when `count` is negative.",
+            "**Exceptions** — `ArgumentException` when `count` is negative.",
+            StringComparison.Ordinal);
+
+        Assert.Empty(CheckFixtures(enforced: false, ("cabinet.md", broken), ("slip.md", SlipPage)));
+    }
+
+    /// <summary>The exception types the fixture assembly's own documentation file tags.</summary>
+    private static HashSet<string> Tags(string member)
+    {
+        string path = Path.ChangeExtension(typeof(Cabinet).Assembly.Location, ".xml");
+        string prefix = $"M:{typeof(Cabinet).FullName}.{member}(";
+        HashSet<string> tags = new(StringComparer.Ordinal);
+        foreach (XElement element in
+                 XDocument.Load(path).Descendants("member"))
+        {
+            if (element.Attribute("name")?.Value.StartsWith(prefix, StringComparison.Ordinal) == true)
+            {
+                foreach (XElement tag in element.Elements("exception"))
+                {
+                    string cref = tag.Attribute("cref")!.Value;
+                    tags.Add(cref[(cref.LastIndexOf('.') + 1)..]);
+                }
+            }
+        }
+
+        return tags;
+    }
+
+    [Fact]
+    public void An_exceptions_rubric_yields_the_types_it_names_and_not_the_values_beside_it()
+    {
+        // TopKAccuracy.Score's block verbatim, the hardest published: two types, a parameter,
+        // a bound and a weight vector backticked alike, then a fence that must not leak in.
+        const string text = """
+            # TopKAccuracy.Score
+
+            **Exceptions** — `ArgumentOutOfRangeException` when `k` is below `1`. `ArgumentException` when
+            `classCount` is below `2`, or when `sampleWeight` sums to zero while `normalize` is true.
+
+            **Example** — four samples over three classes.
+
+            ```csharp
+            double hit = TopKAccuracy.Score(yTrue, yScore, classCount: 3, k: 2);   // InvalidCastException
+            ```
+
+            **Applies to** — net10.0, netstandard2.0.
+            """;
+
+        ReferenceDocumentation.Entry entry =
+            ReferenceDocumentation.Page.Parse(text).Entries["TopKAccuracy.Score"];
+
+        Assert.Equal(
+            ["ArgumentException", "ArgumentOutOfRangeException"],
+            entry.Exceptions.OrderBy(name => name, StringComparer.Ordinal));
+        Assert.DoesNotContain("InvalidCastException", entry.Exceptions);
     }
 
     [Fact]
