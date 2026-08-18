@@ -2416,8 +2416,15 @@ def _deviance_fixtures() -> list[dict]:
          "pred": [1.0, 2.0, 3.0], "weight": None},
         {"name": "far apart", "true": [1.0, 10.0, 2.0],
          "pred": [8.0, 1.0, 9.0], "weight": None},
+        # long-comment: the exclusion below is a reproducibility claim, and a reader
+        # who does not know why will delete the flag and re-break the drift gate.
+        # At power -2 this pair's deviance is a sum of three terms an order of
+        # magnitude larger than the result, so its last bits follow the machine's
+        # reduction order -- measured, a CI runner and this one disagree by one ulp
+        # on it. Freezing either answer makes the gate a lottery. Only this fixture
+        # is affected, and the other five still cover the negative regimes.
         {"name": "small values", "true": [0.01, 0.5, 0.25],
-         "pred": [0.02, 0.4, 0.3], "weight": None},
+         "pred": [0.02, 0.4, 0.3], "weight": None, "skip_negative_powers": True},
     ]
 
 
@@ -2447,6 +2454,8 @@ def _tweedie_row(fixture: dict, true, pred, kw: dict) -> list[dict]:
 
     rows = []
     for power in _tweedie_powers():
+        if power < 0 and fixture.get("skip_negative_powers"):
+            continue
         if not _tweedie_admits(power, fixture["true"], fixture["pred"]):
             continue
         entry = {
