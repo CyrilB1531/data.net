@@ -80,7 +80,8 @@ internal static class Probabilities
     /// <summary>Checks a row-major probability block and returns the sample count.</summary>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="classCount"/> is below two.</exception>
     /// <exception cref="ArgumentException">The block is not <c>yTrue.Length × classCount</c>, or a label is outside <c>[0, classCount)</c>.</exception>
-    public static int Samples(ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yProba, int classCount)
+    public static int Samples(
+        ReadOnlySpan<int> yTrue, ReadOnlySpan<double> yProba, int classCount, ReadOnlySpan<double> sampleWeight)
     {
         if (classCount < 2)
         {
@@ -103,6 +104,13 @@ internal static class Probabilities
                     $"yTrue[{i}] is {yTrue[i]}, which is not a class index below {classCount}.",
                     nameof(yTrue));
             }
+        }
+
+        if (!sampleWeight.IsEmpty && sampleWeight.Length != yTrue.Length)
+        {
+            throw new ArgumentException(
+                $"sampleWeight holds {sampleWeight.Length} values for {yTrue.Length} samples.",
+                nameof(sampleWeight));
         }
 
         return yTrue.Length;

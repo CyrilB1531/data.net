@@ -66,14 +66,8 @@ public static class LogLoss
         bool normalize = true,
         ReadOnlySpan<double> sampleWeight = default)
     {
-        int samples = Probabilities.Samples(yTrue, yProba, classCount);
+        int samples = Probabilities.Samples(yTrue, yProba, classCount, sampleWeight);
         Probabilities.RequireProbabilities(yProba, "lower than");
-        if (!sampleWeight.IsEmpty && sampleWeight.Length != samples)
-        {
-            throw new ArgumentException(
-                $"sampleWeight holds {sampleWeight.Length} values for {samples} samples.",
-                nameof(sampleWeight));
-        }
 
         CompensatedSum total = default;
         double weights = 0.0;

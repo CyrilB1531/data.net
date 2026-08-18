@@ -2663,7 +2663,7 @@ def generate_calibration() -> dict:
                 "brier": float(brier_score_loss(
                     true, proba, pos_label=fixture["pos_label"], **kw)),
                 "brier_unscaled": float(brier_score_loss(
-                    true, proba, pos_label=fixture["pos_label"], scale_by_half=False, **kw)),
+                    true, proba, pos_label=fixture["pos_label"], **{"scale_by_half": False}, **kw)),
                 "log_loss": float(log_loss(true, log_proba, labels=labels, **kw)),
                 "log_loss_total": float(log_loss(true, log_proba, labels=labels, normalize=False, **kw)),
             })
@@ -2683,7 +2683,9 @@ def generate_calibration() -> dict:
         "log_loss_total": float(log_loss(mt, mp, normalize=False)),
         "log_loss_weighted": float(log_loss(mt, mp, sample_weight=weight)),
         "brier": float(brier_score_loss(mt, mp)),
-        "brier_scaled": float(brier_score_loss(mt, mp, scale_by_half=True)),
+        # scale_by_half arrives through a dict: it is new in scikit-learn 1.9, and the
+        # analyser's stub for this function is older and reports it as unexpected.
+        "brier_scaled": float(brier_score_loss(mt, mp, **{"scale_by_half": True})),
         # Rows summing to one half: the reference warns and scores them as given
         # rather than renormalising, which is the number reproduced here.
         "half_rows_log_loss": float(log_loss(mt, mp * 0.5)),
