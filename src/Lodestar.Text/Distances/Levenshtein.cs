@@ -137,6 +137,44 @@ public static class Levenshtein
         return Dp(a, b);
     }
 
+    /// <summary>
+    /// Code-point fast path: identical result to <see cref="Distance{T}"/> over
+    /// <see cref="int"/>, but takes the bit-parallel Myers route when it applies.
+    /// </summary>
+    /// <remarks>
+    /// The mirror of <see cref="DistanceChars"/>, and it exists for the same
+    /// reason: <c>decisions/0002</c> points a caller wanting Python's answer on
+    /// supplementary characters at this mode, so leaving it DP-only recommended
+    /// the slow path to everyone who needed the correct one (#208).
+    /// <see cref="Distance{T}"/> over an arbitrary <c>int</c> sequence still takes
+    /// the DP -- the fast path is reached through the <see cref="TextElement"/>
+    /// overloads, which is the surface that documents the mode.
+    /// </remarks>
+    private static int DistanceCodePoints(ReadOnlySpan<int> a, ReadOnlySpan<int> b)
+    {
+        Trim(ref a, ref b);
+        if (a.Length == 0)
+        {
+            return b.Length;
+        }
+        if (b.Length == 0)
+        {
+            return a.Length;
+        }
+        if (b.Length > a.Length)
+        {
+            ReadOnlySpan<int> tmp = a;
+            a = b;
+            b = tmp;
+        }
+
+        if (b.Length >= MyersMinPatternLength && Myers.TryDistance(b, a, out int d))
+        {
+            return d;
+        }
+        return Dp(a, b);
+    }
+
     /// <summary>Strips the common prefix and suffix in place (result-preserving).</summary>
     /// <remarks>
     /// Collapses the DP band on near-equal inputs — the common case in record
@@ -227,7 +265,7 @@ public static class Levenshtein
         {
             lenA = CodePoints.Decode(a, bufA);
             lenB = CodePoints.Decode(b, bufB);
-            return Distance<int>(bufA.AsSpan(0, lenA), bufB.AsSpan(0, lenB));
+            return DistanceCodePoints(bufA.AsSpan(0, lenA), bufB.AsSpan(0, lenB));
         }
         finally
         {

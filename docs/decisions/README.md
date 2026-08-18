@@ -13,7 +13,7 @@ a later decision uses instead.
 | [`0001`](0001-target-framework.md) | Target frameworks: `net10.0` and `netstandard2.0` | accepted | 2026-08-01 (revised 2026-08-04) | — |
 | [`0002`](0002-unicode-comparison-unit.md) | Unicode comparison unit | accepted | 2026-08-01 | — |
 | [`0003`](0003-provenance-and-licensing.md) | Code provenance and license | accepted | 2026-08-01 | — |
-| [`0004`](0004-levenshtein-myers-backlog.md) | Levenshtein: bit-parallel (Myers) optimization | accepted | 2026-08-01 (revised 2026-08-05) | — |
+| [`0004`](0004-levenshtein-myers-backlog.md) | Levenshtein: bit-parallel (Myers) optimization | accepted | 2026-08-01 (revised 2026-08-05) | backlog partially cleared by issue #208 (not an ADR — see the two `> **#208 update:**` blocks) |
 | [`0005`](0005-hamming-jellyfish-divergence.md) | Accepted divergence from jellyfish on combining marks (Hamming, Jaro) | accepted | 2026-08-01 | — |
 | [`0006`](0006-ratcliff-autojunk.md) | Ratcliff-Obershelp: difflib's autojunk heuristic | accepted | 2026-08-01 | — |
 | [`0007`](0007-metaphone-scope.md) | Metaphone: validation scope (real words) | accepted | 2026-08-01 | — |
