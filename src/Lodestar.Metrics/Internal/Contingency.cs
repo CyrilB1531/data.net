@@ -76,9 +76,8 @@ internal sealed class Contingency
             double outer = -Math.Log((double)Rows[row] * Columns[column]) + logTotal + logTotal;
             double term = (fraction * (Math.Log(nij) - logTotal)) + (fraction * outer);
 
-            // scikit-learn zeroes a term below the machine epsilon before summing, not
-            // the total after: a single cluster makes every term cancel to ~1e-16, and
-            // summing those leaves a residue its own callers then divide by.
+            // Zeroed per term before summing, as the reference does: a single cluster
+            // cancels each term to ~1e-16, and the sum of those is what callers divide by.
             sum += Math.Abs(term) < Epsilon ? 0.0 : term;
         }
 

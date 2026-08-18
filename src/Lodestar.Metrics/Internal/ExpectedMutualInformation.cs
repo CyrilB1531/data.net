@@ -7,19 +7,16 @@ namespace Lodestar.Metrics.Internal;
 /// <remarks>
 /// A sum over the hypergeometric distribution of every cell the marginals allow,
 /// which is what <see cref="AdjustedMutualInformation"/> subtracts to correct for
-/// chance. The grouping below is the reference's, term for term, for the reason
-/// <see cref="Contingency.MutualInformation"/> gives about its own — including the
-/// early return, which is what keeps a single-cluster input exactly zero instead of
-/// one rounding step below it.
+/// chance. The grouping is the reference's term for term, early return included —
+/// the reason <see cref="Contingency.MutualInformation"/> gives about its own.
 /// </remarks>
 internal static class ExpectedMutualInformation
 {
     /// <summary>The expected mutual information of two labellings with these marginals.</summary>
     public static double Compute(int[] rows, int[] columns, int samples)
     {
-        // One labelling in a single piece has zero entropy, so chance shares nothing
-        // with it: the reference returns before summing, exactly rather than by
-        // cancellation, and the sum below is not exact at that shape.
+        // Zero entropy on either side means chance shares nothing: the reference
+        // returns exactly 0.0 here rather than reaching it by cancellation.
         if (samples == 0 || rows.Length <= 1 || columns.Length <= 1)
         {
             return 0.0;
