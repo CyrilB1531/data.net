@@ -40,12 +40,17 @@ public sealed class CalibrationTests
         Assert.Equal(c.GetProperty("brier_unscaled").GetDouble(),
                      BrierScore.Score(yTrue, yProba, posLabel, false, weight),
                      MetricsCorpus.Tolerance);
-        Assert.Equal(c.GetProperty("log_loss").GetDouble(),
-                     LogLoss.Score(yTrue, yProba, posLabel, true, weight),
-                     MetricsCorpus.Tolerance);
-        Assert.Equal(c.GetProperty("log_loss_total").GetDouble(),
-                     LogLoss.Score(yTrue, yProba, posLabel, false, weight),
-                     MetricsCorpus.Tolerance);
+        // One fixture carries no log loss: a perfect prediction scores -log(1 - eps),
+        // whose last bits are not the same on every machine, so it is not frozen.
+        if (c.TryGetProperty("log_loss", out JsonElement loss))
+        {
+            Assert.Equal(loss.GetDouble(),
+                         LogLoss.Score(yTrue, yProba, posLabel, true, weight),
+                         MetricsCorpus.Tolerance);
+            Assert.Equal(c.GetProperty("log_loss_total").GetDouble(),
+                         LogLoss.Score(yTrue, yProba, posLabel, false, weight),
+                         MetricsCorpus.Tolerance);
+        }
     }
 
     [Fact]

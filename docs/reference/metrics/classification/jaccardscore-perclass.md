@@ -5,18 +5,15 @@ One coefficient per class, in label order — `jaccard_score(average=None)`.
 <!-- docs-declaration -->
 
 ```csharp
-public static double[] PerClass(ConfusionMatrix cm, ZeroDivision zeroDivision = ZeroDivision.Zero)
 public static double[] PerClass(ReadOnlySpan<int> yTrue, ReadOnlySpan<int> yPred, ZeroDivision zeroDivision = ZeroDivision.Zero, ReadOnlySpan<int> labels = default, ReadOnlySpan<double> sampleWeight = default)
 ```
 
-**Parameters** — `cm` is a matrix you already have, or `yTrue` and `yPred` are the labels to count
-one from. `zeroDivision` is the answer for a class neither side carries. `labels` fixes the label set
+**Parameters** — `yTrue` and `yPred` are the labels to count a matrix from. `zeroDivision` is the answer for a class neither side carries. `labels` fixes the label set
 and its order. `sampleWeight` is one weight per sample.
 
 **Returns** — a fresh `double[]`, one entry per class in label order.
 
-**Exceptions** — `ArgumentNullException` when `cm` is null. `ArgumentException` when the inputs
-disagree in length or the weights do not match. `UndefinedMetricException` when a class is empty on
+**Exceptions** — `ArgumentException` when the inputs disagree in length or the weights do not match. `UndefinedMetricException` when a class is empty on
 both sides and `zeroDivision` is `ZeroDivision.Throw`.
 
 **Example** — the per-class view the averages hide.

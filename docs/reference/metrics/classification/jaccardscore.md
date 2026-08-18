@@ -10,7 +10,12 @@ strictest of the three and a test asserts.
 
 It takes the same four [`Averaging`](averaging.md) modes and the same
 [`ZeroDivision`](zerodivision.md) as precision and recall, because it is the same shape with a
-different ratio — the reason #211 called it the cheapest of its six.
+different ratio — the reason issue #211 called it the cheapest of its six.
+
+**Labels only**, where [`Precision`](precision.md) and its two siblings also read a
+[`ConfusionMatrix`](confusionmatrix.md) directly. Those overloads exist because
+[`ClassificationReport`](classificationreport.md) reads them; nothing reads a Jaccard coefficient
+from a report, and `jaccard_score` has no matrix form of its own.
 
 ## A class neither side carries
 

@@ -2624,8 +2624,15 @@ def _calibration_fixtures() -> list[dict]:
         # clip decides the number instead; brier reads the same input as an ordinary 1.
         {"name": "certain and wrong", "true": [1, 0], "proba": [0.0, 0.5],
          "pos_label": 1, "weight": None},
+        # long-comment: the exclusion below is a reproducibility claim, and a reader
+        # who does not know why will delete the flag and re-break the drift gate.
+        # A perfect prediction scores -log(1 - eps), whose last bits follow the libm
+        # that computed it -- measured, a CI runner and this one disagree by one ulp
+        # on 2.220446049250313e-16. The brier score on the same fixture is exactly 0
+        # and is kept; what the log loss does at the clip is asserted by a test with
+        # a tolerance rather than frozen here.
         {"name": "certain and right", "true": [0, 1], "proba": [0.0, 1.0],
-         "pos_label": 1, "weight": None},
+         "pos_label": 1, "weight": None, "skip_log_loss": True},
         {"name": "just above the clip", "true": [1, 0], "proba": [1e-15, 0.5],
          "pos_label": 1, "weight": None},
         {"name": "just below the clip", "true": [1, 0], "proba": [1e-20, 0.5],
@@ -2664,9 +2671,11 @@ def generate_calibration() -> dict:
                     true, proba, pos_label=fixture["pos_label"], **kw)),
                 "brier_unscaled": float(brier_score_loss(
                     true, proba, pos_label=fixture["pos_label"], **{"scale_by_half": False}, **kw)),
-                "log_loss": float(log_loss(true, log_proba, labels=labels, **kw)),
-                "log_loss_total": float(log_loss(true, log_proba, labels=labels, normalize=False, **kw)),
             })
+            if not fixture.get("skip_log_loss"):
+                cases[-1]["log_loss"] = float(log_loss(true, log_proba, labels=labels, **kw))
+                cases[-1]["log_loss_total"] = float(
+                    log_loss(true, log_proba, labels=labels, normalize=False, **kw))
 
     # A probability matrix, where scale_by_half's 'auto' resolves the other way.
     multi_true = [0, 1, 2, 1]
