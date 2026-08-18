@@ -11,19 +11,13 @@ namespace Lodestar.Sample;
 
 /// <summary>
 /// Fails the build when a public <em>member</em> of the four packages is not
-/// reachable from this sample (ADR 0009, amended by #265). The exported surface
-/// is read by reflection from the assemblies <em>NuGet resolved for this
-/// project</em> — the packaged ones, not the <c>src/</c> outputs — and matched
-/// against this assembly's own metadata: a <see cref="MemberReference"/>, not a
-/// <see cref="TypeReference"/>, since <c>typeof(T)</c> emits only the latter.
-/// An enum is the documented exception — its members never produce a member
-/// reference, so naming the type is all a consumer can do.
+/// reachable from this sample (ADR 0009, amended by #265).
 /// </summary>
 /// <remarks>
-/// Type granularity hid three real gaps that shipped green — #262, #263 and
-/// #264 — because one referenced member made every other overload, accessor and
-/// optional parameter on that type invisible. Reverting any of those three now
-/// fails this gate, which is the test that the granularity actually changed.
+/// The surface comes from the assemblies NuGet resolved here, matched against this
+/// assembly's <see cref="MemberReference"/> entries — <c>typeof(T)</c> emits only a
+/// <see cref="TypeReference"/>. An enum is the documented exception. ADR 0009's
+/// <em>Member granularity</em> section records what leaving type granularity cost.
 /// </remarks>
 internal static class PackagingGate
 {

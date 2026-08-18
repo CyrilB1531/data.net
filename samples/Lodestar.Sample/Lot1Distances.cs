@@ -23,8 +23,8 @@ internal static class Lot1Distances
 
         // Edit distances. Every one of them takes an optional TextElement, which
         // selects UTF-16 units or code points as the unit of comparison.
-        // The pairs each measurement is shown on, named once: the new normalized
-        // and distance readings repeat them, which S1192 counts.
+
+        // Each pair named once: the normalized readings repeat them.
         const string Kitten = "kitten";
         const string Sitting = "sitting";
         const string Martha = "martha";
@@ -49,9 +49,7 @@ internal static class Lot1Distances
         Console.WriteLine($"  JaroWinkler(martha, marhta)         = {Inv.F4(JaroWinkler.Similarity(Martha, Marhta))}");
         Console.WriteLine($"  RatcliffObershelp(pineapple, pen)   = {Inv.F4(RatcliffObershelp.Similarity(Pineapple, Pen))}");
 
-        // Every edit distance also answers normalized, in [0, 1], and the three
-        // similarity scorers answer as a distance -- the same measurement read the
-        // other way round, which is what a threshold usually wants.
+        // Normalized readings, in [0, 1], and the similarity scorers as distances.
         Console.WriteLine($"  Levenshtein normalized              = {Inv.F4(Levenshtein.NormalizedDistance(Kitten, Sitting))} distance");
         Console.WriteLine($"  DamerauLevenshtein normalized       = {Inv.F4(DamerauLevenshtein.NormalizedDistance(Ca, Abc))} distance, "
             + $"{Inv.F4(DamerauLevenshtein.NormalizedSimilarity(Ca, Abc))} similarity");
