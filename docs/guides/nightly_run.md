@@ -14,7 +14,7 @@ against a baseline measured in the same run, on the same VM, in the same minute,
 ## This run
 
 - Commit: `(none yet)`
-- Previous run: `none — every class was selected`
+- Previous run: `none — every entry was selected`
 - Runner: not run yet
 
 ## Nothing was re-run

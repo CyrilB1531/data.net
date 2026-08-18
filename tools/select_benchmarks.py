@@ -62,19 +62,28 @@ def matches(path: str, glob: str) -> bool:
     return fnmatch.fnmatch(path, glob)
 
 
-def select(data: dict, files: list[str]) -> list[str]:
-    every = sorted(data.get("benchmarks", {}))
+def select(data: dict, files: list[str], kind: str = "benchmarks") -> list[str]:
+    """The entries of one kind the changed files reach; every one when 'always' is hit."""
+    entries = data.get(kind, {})
+    every = sorted(entries)
     if any(matches(path, glob) for glob in data.get("always", []) for path in files):
         return every
+
+    def globs(name: str) -> list[str]:
+        entry = entries[name]
+        return entry["sources"] if isinstance(entry, dict) else entry
+
     return [name for name in every
-            if any(matches(path, glob) for glob in data["benchmarks"][name] for path in files)]
+            if any(matches(path, glob) for glob in globs(name) for path in files)]
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(add_help=True, description=__doc__)
     parser.add_argument("--since", help="baseline commit; omit with --all")
     parser.add_argument("--head", default="HEAD")
-    parser.add_argument("--all", action="store_true", help="select every mapped class")
+    parser.add_argument("--all", action="store_true", help="select every mapped entry")
+    parser.add_argument("--harnesses", action="store_true",
+                        help="the cross-language pairs instead of the BenchmarkDotNet classes")
     args = parser.parse_args()
 
     if not MAP.exists():
@@ -85,12 +94,13 @@ def main() -> int:
 
     # No baseline is not "nothing changed": it is "we do not know", and the safe
     # reading of not knowing is to measure everything.
+    kind = "harnesses" if args.harnesses else "benchmarks"
     if args.all or not args.since:
-        for name in sorted(data.get("benchmarks", {})):
+        for name in sorted(data.get(kind, {})):
             print(name)
         return 0
 
-    for name in select(data, changed_files(args.since, args.head)):
+    for name in select(data, changed_files(args.since, args.head), kind):
         print(name)
     return 0
 
