@@ -2,8 +2,8 @@ namespace Lodestar.Metrics.Internal;
 
 /// <summary>
 /// What one metric does to one <c>(truth, prediction)</c> pair, and nothing
-/// else — the only part of a weighted mean that differs between five of the
-/// eleven regression metrics.
+/// else — the only part of a weighted mean that differs between eight of the
+/// seventeen regression metrics.
 /// </summary>
 /// <remarks>
 /// Implemented by <see langword="struct"/>s, not a
@@ -24,7 +24,7 @@ internal interface IResidualKernel
 /// and reducing the per-output array to a scalar.
 /// </summary>
 /// <remarks>
-/// Five kernels differ in one expression and share the rest; what is not the
+/// Eight kernels differ in one expression and share the rest; what is not the
 /// same keeps its own code — the median sorts, R² and explained variance need
 /// two passes, and <see cref="MaxError"/> takes no weights.
 /// </remarks>
