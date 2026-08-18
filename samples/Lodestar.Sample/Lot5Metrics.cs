@@ -96,7 +96,42 @@ internal static class Lot5Metrics
             + "(no reference implementation — decision 0036)");
         Console.WriteLine();
 
+        WeightedRanking();
         LabelMatrix();
+    }
+
+    /// <summary>A sample weight over two queries, which is the only shape that shows one.</summary>
+    private static void WeightedRanking()
+    {
+        Console.WriteLine("  ranking, weighted: two queries, one ranked well and one reversed");
+
+        // A weight over a single query cancels -- it multiplies both halves of the
+        // mean -- so showing one at all needs two rows that score differently.
+        double[] relevance = [3, 2, 1, 0, 3, 2, 1, 0];
+        double[] scores = [0.9, 0.5, 0.4, 0.1, 0.1, 0.4, 0.5, 0.9];
+        double[] onGood = [3.0, 1.0];
+        double[] onBad = [1.0, 3.0];
+
+        Console.WriteLine($"    Ndcg unweighted     = {Inv.F3(Ndcg.Score(relevance, scores, 4))}");
+        Console.WriteLine($"    Ndcg weight on good = {Inv.F3(Ndcg.Score(relevance, scores, 4, sampleWeight: onGood))}");
+        Console.WriteLine($"    Ndcg weight on bad  = {Inv.F3(Ndcg.Score(relevance, scores, 4, sampleWeight: onBad))}");
+        Console.WriteLine($"    Dcg  weight on good = {Inv.F3(Dcg.Score(relevance, scores, 4, sampleWeight: onGood))}");
+
+        int[] classes = [0, 1, 2, 2];
+        double[] probabilities =
+        [
+            0.7, 0.2, 0.1,
+            0.3, 0.5, 0.2,
+            0.2, 0.3, 0.5,
+            0.5, 0.3, 0.2,
+        ];
+
+        // normalize: false sums the WEIGHTS of the hits rather than counting them,
+        // so the weighted count is 7 where the unweighted one is 3.
+        double[] heavyFirst = [5.0, 1.0, 1.0, 1.0];
+        Console.WriteLine($"    TopK weighted       = {Inv.F3(TopKAccuracy.Score(classes, probabilities, 3, sampleWeight: heavyFirst))} "
+            + $"({Inv.F0(TopKAccuracy.Score(classes, probabilities, 3, normalize: false, sampleWeight: heavyFirst))} of weight, not of samples)");
+        Console.WriteLine();
     }
 
     /// <summary>The three label-matrix metrics, and the places the reference disagrees with itself.</summary>
@@ -126,6 +161,12 @@ internal static class Lot5Metrics
         // The single label column the other two refuse with "binary format is not
         // supported" -- scikit-learn's own inconsistency, reproduced.
         Console.WriteLine($"    one label column    = {Inv.F3(LabelRankingAveragePrecision.Score([true], [0.7], 1))} (the other two refuse it)");
+
+        // The same three, weighted: the second sample counts for three of the four.
+        double[] weights = [1.0, 3.0];
+        Console.WriteLine($"    weighted LRAP       = {Inv.F3(LabelRankingAveragePrecision.Score(relevant, labelScores, 3, weights))}");
+        Console.WriteLine($"    weighted coverage   = {Inv.F3(CoverageError.Score(relevant, labelScores, 3, weights))}");
+        Console.WriteLine($"    weighted loss       = {Inv.F3(LabelRankingLoss.Score(relevant, labelScores, 3, weights))}");
         Console.WriteLine();
     }
 
