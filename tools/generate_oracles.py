@@ -2611,6 +2611,101 @@ def generate_internal_validity() -> dict:
     }
 
 
+def _calibration_fixtures() -> list[dict]:
+    """Binary probability vectors, including the ones the clip decides."""
+    return [
+        {"name": WORKED_CASE, "true": [0, 1, 1, 0], "proba": [0.1, 0.9, 0.8, 0.3],
+         "pos_label": 1, "weight": None},
+        {"name": WORKED_CASE_WEIGHTED, "true": [0, 1, 1, 0], "proba": [0.1, 0.9, 0.8, 0.3],
+         "pos_label": 1, "weight": [1.0, 2.0, 3.0, 4.0]},
+        {"name": "the same, scored about the other class", "true": [0, 1, 1, 0],
+         "proba": [0.1, 0.9, 0.8, 0.3], "pos_label": 0, "weight": None},
+        # A predicted 0 for the true class is where log loss would be infinite and the
+        # clip decides the number instead; brier reads the same input as an ordinary 1.
+        {"name": "certain and wrong", "true": [1, 0], "proba": [0.0, 0.5],
+         "pos_label": 1, "weight": None},
+        {"name": "certain and right", "true": [0, 1], "proba": [0.0, 1.0],
+         "pos_label": 1, "weight": None},
+        {"name": "just above the clip", "true": [1, 0], "proba": [1e-15, 0.5],
+         "pos_label": 1, "weight": None},
+        {"name": "just below the clip", "true": [1, 0], "proba": [1e-20, 0.5],
+         "pos_label": 1, "weight": None},
+        {"name": "uninformative, every probability one half", "true": [0, 1, 1, 0],
+         "proba": [0.5, 0.5, 0.5, 0.5], "pos_label": 1, "weight": None},
+        {"name": "labels are -1 and 1", "true": [-1, 1, 1, -1], "proba": [0.1, 0.9, 0.8, 0.3],
+         "pos_label": 1, "weight": None},
+    ]
+
+
+def generate_calibration() -> dict:
+    """Brier score and log loss -- the calibration family (#174)."""
+    import numpy as np
+    from sklearn.metrics import brier_score_loss, log_loss
+
+    cases = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for fixture in _calibration_fixtures():
+            true = np.array(fixture["true"])
+            proba = np.array(fixture["proba"])
+            kw = {} if fixture["weight"] is None else {
+                "sample_weight": np.array(fixture["weight"])}
+            labels = sorted(set(fixture["true"]))
+            # log_loss has no pos_label -- a 1-D column always describes the greater
+            # label -- so the other class is the same call on the complement.
+            log_proba = proba if fixture["pos_label"] == labels[-1] else 1.0 - proba
+            cases.append({
+                "name": fixture["name"],
+                "y_true": fixture["true"],
+                "y_proba": fixture["proba"],
+                "pos_label": fixture["pos_label"],
+                "sample_weight": fixture["weight"],
+                "brier": float(brier_score_loss(
+                    true, proba, pos_label=fixture["pos_label"], **kw)),
+                "brier_unscaled": float(brier_score_loss(
+                    true, proba, pos_label=fixture["pos_label"], scale_by_half=False, **kw)),
+                "log_loss": float(log_loss(true, log_proba, labels=labels, **kw)),
+                "log_loss_total": float(log_loss(true, log_proba, labels=labels, normalize=False, **kw)),
+            })
+
+    # A probability matrix, where scale_by_half's 'auto' resolves the other way.
+    multi_true = [0, 1, 2, 1]
+    multi_proba = [[0.7, 0.2, 0.1], [0.1, 0.8, 0.1], [0.2, 0.2, 0.6], [0.3, 0.4, 0.3]]
+    mt = np.array(multi_true)
+    mp = np.array(multi_proba)
+    weight = np.array([1.0, 2.0, 3.0, 4.0])
+    multiclass = {
+        "y_true": multi_true,
+        "y_proba": [v for row in multi_proba for v in row],
+        "class_count": 3,
+        "sample_weight": [1.0, 2.0, 3.0, 4.0],
+        "log_loss": float(log_loss(mt, mp)),
+        "log_loss_total": float(log_loss(mt, mp, normalize=False)),
+        "log_loss_weighted": float(log_loss(mt, mp, sample_weight=weight)),
+        "brier": float(brier_score_loss(mt, mp)),
+        "brier_scaled": float(brier_score_loss(mt, mp, scale_by_half=True)),
+        # Rows summing to one half: the reference warns and scores them as given
+        # rather than renormalising, which is the number reproduced here.
+        "half_rows_log_loss": float(log_loss(mt, mp * 0.5)),
+        "half_rows_brier": float(brier_score_loss(mt, mp * 0.5)),
+    }
+
+    return {
+        "metadata": {
+            "algorithm": "Calibration",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.brier_score_loss",
+                "sklearn.metrics.log_loss",
+            ],
+            "count": len(cases),
+        },
+        "cases": cases,
+        "multiclass": multiclass,
+    }
+
+
 def _top_k_fixtures() -> list[dict]:
     """Multiclass score matrices, where k is the question rather than ties.
 
@@ -5504,6 +5599,7 @@ def main() -> None:
         "average_precision.json": generate_average_precision,
         "top_k_accuracy.json": generate_top_k_accuracy,
         "roc_auc.json": generate_roc_auc,
+        "calibration.json": generate_calibration,
         "regression.json": generate_regression,
         "regression_conditioning.json": generate_regression_conditioning,
         "regression_deviance.json": generate_regression_deviance,

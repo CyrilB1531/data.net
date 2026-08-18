@@ -1,0 +1,228 @@
+{
+ "metadata": {
+  "algorithm": "Calibration",
+  "library": "scikit-learn",
+  "library_version": "1.9.0",
+  "reference_calls": [
+   "sklearn.metrics.brier_score_loss",
+   "sklearn.metrics.log_loss"
+  ],
+  "count": 9
+ },
+ "cases": [
+  {
+   "name": "the worked case",
+   "y_true": [
+    0,
+    1,
+    1,
+    0
+   ],
+   "y_proba": [
+    0.1,
+    0.9,
+    0.8,
+    0.3
+   ],
+   "pos_label": 1,
+   "sample_weight": null,
+   "brier": 0.03749999999999999,
+   "brier_unscaled": 0.07499999999999998,
+   "log_loss": 0.19763488164214868,
+   "log_loss_total": 0.7905395265685947
+  },
+  {
+   "name": "the worked case, weighted",
+   "y_true": [
+    0,
+    1,
+    1,
+    0
+   ],
+   "y_proba": [
+    0.1,
+    0.9,
+    0.8,
+    0.3
+   ],
+   "pos_label": 1,
+   "sample_weight": [
+    1.0,
+    2.0,
+    3.0,
+    4.0
+   ],
+   "brier": 0.051000000000000004,
+   "brier_unscaled": 0.10200000000000001,
+   "log_loss": 0.24122119766710376,
+   "log_loss_total": 2.4122119766710375
+  },
+  {
+   "name": "the same, scored about the other class",
+   "y_true": [
+    0,
+    1,
+    1,
+    0
+   ],
+   "y_proba": [
+    0.1,
+    0.9,
+    0.8,
+    0.3
+   ],
+   "pos_label": 0,
+   "sample_weight": null,
+   "brier": 0.6875,
+   "brier_unscaled": 1.375,
+   "log_loss": 1.854645225687032,
+   "log_loss_total": 7.418580902748128
+  },
+  {
+   "name": "certain and wrong",
+   "y_true": [
+    1,
+    0
+   ],
+   "y_proba": [
+    0.0,
+    0.5
+   ],
+   "pos_label": 1,
+   "sample_weight": null,
+   "brier": 0.625,
+   "brier_unscaled": 1.25,
+   "log_loss": 18.36840028483855,
+   "log_loss_total": 36.7368005696771
+  },
+  {
+   "name": "certain and right",
+   "y_true": [
+    0,
+    1
+   ],
+   "y_proba": [
+    0.0,
+    1.0
+   ],
+   "pos_label": 1,
+   "sample_weight": null,
+   "brier": 0.0,
+   "brier_unscaled": 0.0,
+   "log_loss": 2.2204460492503136e-16,
+   "log_loss_total": 4.440892098500627e-16
+  },
+  {
+   "name": "just above the clip",
+   "y_true": [
+    1,
+    0
+   ],
+   "y_proba": [
+    1e-15,
+    0.5
+   ],
+   "pos_label": 1,
+   "sample_weight": null,
+   "brier": 0.624999999999999,
+   "brier_unscaled": 1.249999999999998,
+   "log_loss": 17.615961787735316,
+   "log_loss_total": 35.23192357547063
+  },
+  {
+   "name": "just below the clip",
+   "y_true": [
+    1,
+    0
+   ],
+   "y_proba": [
+    1e-20,
+    0.5
+   ],
+   "pos_label": 1,
+   "sample_weight": null,
+   "brier": 0.625,
+   "brier_unscaled": 1.25,
+   "log_loss": 18.36840028483855,
+   "log_loss_total": 36.7368005696771
+  },
+  {
+   "name": "uninformative, every probability one half",
+   "y_true": [
+    0,
+    1,
+    1,
+    0
+   ],
+   "y_proba": [
+    0.5,
+    0.5,
+    0.5,
+    0.5
+   ],
+   "pos_label": 1,
+   "sample_weight": null,
+   "brier": 0.25,
+   "brier_unscaled": 0.5,
+   "log_loss": 0.6931471805599453,
+   "log_loss_total": 2.772588722239781
+  },
+  {
+   "name": "labels are -1 and 1",
+   "y_true": [
+    -1,
+    1,
+    1,
+    -1
+   ],
+   "y_proba": [
+    0.1,
+    0.9,
+    0.8,
+    0.3
+   ],
+   "pos_label": 1,
+   "sample_weight": null,
+   "brier": 0.03749999999999999,
+   "brier_unscaled": 0.07499999999999998,
+   "log_loss": 0.19763488164214868,
+   "log_loss_total": 0.7905395265685947
+  }
+ ],
+ "multiclass": {
+  "y_true": [
+   0,
+   1,
+   2,
+   1
+  ],
+  "y_proba": [
+   0.7,
+   0.2,
+   0.1,
+   0.1,
+   0.8,
+   0.1,
+   0.2,
+   0.2,
+   0.6,
+   0.3,
+   0.4,
+   0.3
+  ],
+  "class_count": 3,
+  "sample_weight": [
+   1.0,
+   2.0,
+   3.0,
+   4.0
+  ],
+  "log_loss": 0.5017337127232719,
+  "log_loss_total": 2.0069348508930878,
+  "log_loss_weighted": 0.6000601845361745,
+  "brier": 0.245,
+  "brier_scaled": 0.1225,
+  "half_rows_log_loss": 1.1948808932832173,
+  "half_rows_brier": 0.49875
+ }
+}
