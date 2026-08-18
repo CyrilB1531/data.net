@@ -249,6 +249,39 @@ internal static class Lot5Metrics
         Console.WriteLine($"    cityblock instead   = {Inv.F3(Silhouette.ScoreFromDistances(guessed, cityblock))} "
             + "(a metric the feature overload cannot take)");
         Console.WriteLine();
+
+        InternalValidity(features, guessed);
+    }
+
+    /// <summary>The two scores that read centroids, and the direction one of them runs in.</summary>
+    private static void InternalValidity(double[] features, int[] guessed)
+    {
+        Console.WriteLine("  internal validity — no reference partition, and no distance matrix either");
+
+        // Both read cluster centroids, which a distance matrix does not carry, so
+        // neither has the ScoreFromDistances that Silhouette offers.
+        Console.WriteLine($"    CalinskiHarabasz    = {Inv.F3(CalinskiHarabasz.Score(guessed, features, 2))} (higher is better)");
+        Console.WriteLine($"    DaviesBouldin       = {Inv.F3(DaviesBouldin.Score(guessed, features, 2))} (lower is better)");
+
+        // Scattering the same five points across the two clusters moves the three
+        // scores in the directions their pages promise.
+        int[] scattered = [0, 1, 0, 1, 0];
+        Console.WriteLine($"    scattered, Silhouette = {Inv.F3(Silhouette.Score(scattered, features, 2))} (down)");
+        Console.WriteLine($"    scattered, CH       = {Inv.F3(CalinskiHarabasz.Score(scattered, features, 2))} (down)");
+        Console.WriteLine($"    scattered, DB       = {Inv.F3(DaviesBouldin.Score(scattered, features, 2))} (up)");
+
+        // One cluster leaves nothing to compare against, and all three refuse it with
+        // scikit-learn's own sentence.
+        try
+        {
+            CalinskiHarabasz.Score([0, 0, 0, 0, 0], features, 2);
+        }
+        catch (ArgumentException)
+        {
+            Console.WriteLine("    one cluster         = refused, 2 to n_samples - 1 inclusive");
+        }
+
+        Console.WriteLine();
     }
 
     /// <summary>The pairwise distances of two-dimensional points, row-major and square.</summary>
