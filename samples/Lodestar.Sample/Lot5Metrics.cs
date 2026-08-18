@@ -157,7 +157,34 @@ internal static class Lot5Metrics
         int[] guessed = [0, 0, 1, 1, 1];
         Console.WriteLine($"    Silhouette          = {Inv.F3(Silhouette.Score(guessed, features, 2))}");
         Console.WriteLine($"    worst sample        = {Inv.F3(Silhouette.PerSample(guessed, features, 2).Min())}");
+
+        // The same five points as a matrix: the two paths agree exactly. The reason to
+        // take this one is a metric the features cannot express, as cityblock below is.
+        double[] euclidean = SquareDistances(features, guessed.Length, cityblock: false);
+        Console.WriteLine($"    from distances      = {Inv.F3(Silhouette.ScoreFromDistances(guessed, euclidean))} "
+            + $"(worst {Inv.F3(Silhouette.PerSampleFromDistances(guessed, euclidean).Min())}, the same numbers)");
+
+        double[] cityblock = SquareDistances(features, guessed.Length, cityblock: true);
+        Console.WriteLine($"    cityblock instead   = {Inv.F3(Silhouette.ScoreFromDistances(guessed, cityblock))} "
+            + "(a metric the feature overload cannot take)");
         Console.WriteLine();
+    }
+
+    /// <summary>The pairwise distances of two-dimensional points, row-major and square.</summary>
+    private static double[] SquareDistances(double[] features, int samples, bool cityblock)
+    {
+        double[] distances = new double[samples * samples];
+        for (int i = 0; i < samples; i++)
+        {
+            for (int j = 0; j < samples; j++)
+            {
+                double dx = Math.Abs(features[i * 2] - features[j * 2]);
+                double dy = Math.Abs(features[(i * 2) + 1] - features[(j * 2) + 1]);
+                distances[(i * samples) + j] = cityblock ? dx + dy : Math.Sqrt((dx * dx) + (dy * dy));
+            }
+        }
+
+        return distances;
     }
 
     /// <summary>The three multiclass averages, on one matrix, printed together.</summary>
