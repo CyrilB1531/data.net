@@ -367,3 +367,28 @@ def test_an_index_takes_the_name_of_the_directory_it_indexes(tmp_path):
     assert (out / "decisions.md").exists()
     assert (out / "migration.md").exists()
     assert not (out / "README.md").exists()
+
+
+def test_a_guide_added_after_the_tag_does_not_become_the_banner_target(tmp_path):
+    """The live banner points into an archive, so it has to resolve against it.
+
+    Reproduces #256: `quickstart` is declared first in the map, so it is what the
+    banner named — but the archive below was frozen before that guide existed, and
+    a banner naming a page the wiki does not hold is worse than no banner.
+    """
+    repo = make_repo(tmp_path)
+    out = tmp_path / "wiki"
+
+    # The archive as it was cut: distances only, no quickstart.
+    build_wiki.build(repo, out, MAP, released={}, archive=("Lodestar.Text", "0.2.0"))
+    (out / "Text-0.2.0-quickstart.md").unlink()
+
+    build_wiki.build(repo, out, MAP, released={"Lodestar.Text": "0.2.0"})
+
+    banner = "\n".join(
+        line for line in (out / "Text-distances.md").read_text(encoding="utf-8").splitlines()
+        if line.startswith(">")
+    )
+    assert "Text-0.2.0-quickstart" not in banner
+    assert "Text-0.2.0-distances" in banner
+    assert (out / "Text-0.2.0-distances.md").exists()

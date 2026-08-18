@@ -414,13 +414,13 @@ def _build_channel(
         return []
 
     channel = package["wiki"]
-    landing = _declared_landing(package) or min(page_stem(page) for page in pages)
     version = released.get(pkg_name)
-    prefix = (
-        banner(pkg_name, channel, version, landing)
-        if version and version in _archive_stems(out, channel)
-        else ""
-    )
+
+    # Against the archive pointed into, not against main: a declared guide may
+    # postdate the tag, and a banner the wiki cannot hold is worse than none (#256).
+    archives = _archive_stems(out, channel)
+    landing = _resolve_landing(archives[version], package) if version in archives else None
+    prefix = banner(pkg_name, channel, version, landing) if version and landing else ""
     archive_pattern = _archive_pattern(channel)
     for stale in out.glob(f"{channel}-*.md"):
         if not archive_pattern.match(stale.stem):
