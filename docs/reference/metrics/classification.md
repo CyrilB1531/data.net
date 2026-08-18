@@ -78,12 +78,26 @@ flowchart TD
     A --> R["Looking rather than reporting:<br/>ConfusionMatrix, then ClassificationReport"]
 ```
 
+## Two of them ask about the confidence, not the answer
+
+[`Accuracy`](classification/accuracy.md) and its relatives ask whether the prediction was right, and
+[`RocAuc`](classification/rocauc.md) asks whether the ranking was. [`LogLoss`](classification/logloss.md)
+and [`BrierScore`](classification/brierscore.md) ask whether the *confidence* was honest, which is
+the question worth asking before a threshold is chosen — a model can be accurate and badly
+calibrated at once, and neither of the first two would say so.
+
+Both are proper scoring rules, so neither can be gamed by shading a probability toward the safer
+answer. They disagree only about how much one overconfident sample should matter: a probability of
+`0` for a class that occurred costs at most `1` on the Brier score and about `36` on the log loss,
+which is where its clip lands.
+
 | Type | What it is |
 | --- | --- |
 | [`Accuracy`](classification/accuracy.md) | The share of samples the model got right. |
 | [`AverageRow`](classification/averagerow.md) | One averaged line of a `ClassificationReport`. |
 | [`Averaging`](classification/averaging.md) | How per-class scores are reduced to one number. |
 | [`BalancedAccuracy`](classification/balancedaccuracy.md) | Accuracy that counts every class equally, however rare. |
+| [`BrierScore`](classification/brierscore.md) | The mean squared error of a probabilistic prediction — a confident mistake costs at most 1. |
 | [`ClassificationReport`](classification/classificationreport.md) | The per-class table, structured and as printable text. |
 | [`ClassRow`](classification/classrow.md) | One class's line of a `ClassificationReport`. |
 | [`CohenKappa`](classification/cohenkappa.md) | Agreement between two raters, with chance agreement subtracted. |
@@ -91,6 +105,7 @@ flowchart TD
 | [`F1`](classification/f1.md) | The harmonic mean of precision and recall. |
 | [`FBeta`](classification/fbeta.md) | The same, with the balance between the two turned by hand. |
 | [`KappaWeighting`](classification/kappaweighting.md) | How far apart two classes count as being, for `CohenKappa`. |
+| [`LogLoss`](classification/logloss.md) | The cross-entropy of a probabilistic prediction — unbounded, and dominated by one confident mistake. |
 | [`MatthewsCorrelation`](classification/matthewscorrelation.md) | The correlation between prediction and truth, in `[-1, 1]`. |
 | [`MultiClassRocOptions`](classification/multiclassrocoptions.md) | The optional settings of multiclass ROC-AUC. |
 | [`MultiClassStrategy`](classification/multiclassstrategy.md) | One class against the rest, or every pair. |

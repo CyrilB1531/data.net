@@ -48,12 +48,49 @@ internal static class Lot5Metrics
         Weighted();
         Report(cm);
         Roc();
+        Calibration();
         MatrixReaders();
         Clustering();
         Ranking();
     }
 
     /// <summary>The ordered-list ranking metrics, on the rows that tell tie handling apart.</summary>
+    /// <summary>The two calibration metrics, and the clip that decides one of them.</summary>
+    private static void Calibration()
+    {
+        Console.WriteLine("  calibration — was the confidence honest, not was the answer right");
+
+        int[] truth = [0, 1, 1, 0];
+        double[] confidence = [0.1, 0.9, 0.8, 0.3];
+
+        Console.WriteLine($"    BrierScore          = {Inv.F3(BrierScore.Score(truth, confidence))}");
+        Console.WriteLine($"    LogLoss             = {Inv.F3(LogLoss.Score(truth, confidence))}");
+        Console.WriteLine($"    Brier, unscaled     = {Inv.F3(BrierScore.Score(truth, confidence, 1, false))}");
+        Console.WriteLine($"    LogLoss, total      = {Inv.F3(LogLoss.Score(truth, confidence, 1, false))}");
+
+        // A probability of 0 for a class that occurred: bounded on one, and on the
+        // other the clip at machine epsilon is what decides the number.
+        int[] certain = [1, 1];
+        double[] wrong = [0.0, 0.0];
+        Console.WriteLine($"    certain and wrong   = {Inv.F3(BrierScore.Score(certain, wrong))} brier, "
+            + $"{Inv.F3(LogLoss.Score(certain, wrong))} log loss");
+
+        // Both take a probability matrix, and scale_by_half's 'auto' resolves the
+        // other way there -- which is why the two defaults differ.
+        int[] classes = [0, 1, 2, 1];
+        double[] matrix =
+        [
+            0.7, 0.2, 0.1,
+            0.1, 0.8, 0.1,
+            0.2, 0.2, 0.6,
+            0.3, 0.4, 0.3,
+        ];
+        Console.WriteLine($"    matrix, LogLoss     = {Inv.F3(LogLoss.MultiClass(classes, matrix, 3))}");
+        Console.WriteLine($"    matrix, Brier       = {Inv.F3(BrierScore.MultiClass(classes, matrix, 3))} "
+            + $"(halved: {Inv.F3(BrierScore.MultiClass(classes, matrix, 3, true))})");
+        Console.WriteLine();
+    }
+
     private static void Ranking()
     {
         Console.WriteLine("  ranking, one ordered list of four documents");
