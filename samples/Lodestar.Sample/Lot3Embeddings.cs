@@ -148,6 +148,37 @@ internal static class Lot3Embeddings
         Console.WriteLine($"  Whitespace split : \"a b\" -> "
             + $"[{string.Join(", ", new BpeTokenizer(classicSplit).Encode("a b").Tokens.Select(t => $"'{t}'"))}]");
 
+        // continuing_subword_prefix: the marker a non-initial piece opens with, as
+        // WordPiece's "##" does. A classic BPE model may declare it and be tokenized.
+        var classicVocab = new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["a"] = 0, ["b"] = 1, ["##b"] = 2, ["ab"] = 3,
+        };
+        var prefixed = new BpeVocabulary(classicVocab, [new MergePair("a", "##b")])
+        {
+            ContinuingSubwordPrefix = "##",
+            PreTokenizerPattern = BpePatterns.Whitespace,
+        };
+        Console.WriteLine($"  continuing prefix: '{prefixed.ContinuingSubwordPrefix}', \"ab\" -> "
+            + $"[{string.Join(", ", new BpeTokenizer(prefixed).Encode("ab").Tokens.Select(t => $"'{t}'"))}]");
+
+        // Pairing it with ByteLevel is refused: there the space is already a token
+        // character, so a continuation marker would describe a split that never happens.
+        var byteLevelPrefixed = new BpeVocabulary(classicVocab, [new MergePair("a", "##b")])
+        {
+            ContinuingSubwordPrefix = "##",
+            ByteLevel = true,
+            PreTokenizerPattern = BpePatterns.Gpt2,
+        };
+        try
+        {
+            _ = new BpeTokenizer(byteLevelPrefixed);
+        }
+        catch (ArgumentException refused)
+        {
+            Console.WriteLine($"  byte-level + it  : refused — {refused.Message.Split('.')[0]}.");
+        }
+
         // The same model as a consumer gets it: vocab.json + merges.txt.
         BpeVocabulary fromFiles = BpeFilesLoader.Load(
             Utf8("""{"Ġ":0,"t":1,"o":2,"k":3,"e":4,"n":5,"to":6,"ken":7,"token":8,"Ġtoken":9,"ke":10}"""),
