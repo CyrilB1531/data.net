@@ -42,7 +42,7 @@ computation itself is tiny); from 64+ characters the gap closes. Hence the choic
 
 Cross-language bench with **identical methodology on both sides** (same committed
 ASCII corpus, ns/pair throughput, auto-scaling, best-of-5). See
-[`bench/README.md`](../../bench/README.md).
+[`bench/README.md`](https://github.com/CyrilB1531/lodestar/blob/main/bench/README.md).
 
 Indicative measurement (rapidfuzz 3.14.5 / Python 3.12; Lodestar.Text / .NET 10 on
 an Intel i7-4770S; dev machine — non-authoritative), **after** adding the blocked
@@ -223,8 +223,8 @@ netstandard2.0 runs unconditionally. The two builds execute identical pooling on
 this benchmark. It cannot measure the difference between them, and now reports
 that instead of a number. Where the vector path does engage, it is worth 4×–7×
 (`VectorMath` over 384–1024 dimensions, section 2 of
-[`bench/README.md`](../../bench/README.md)). The one
-difference this benchmark does resolve is counted, not timed: the unit-loop path
+[`bench/README.md`](https://github.com/CyrilB1531/lodestar/blob/main/bench/README.md)).
+The one difference this benchmark does resolve is counted, not timed: the unit-loop path
 allocates 0.6 % more on netstandard2.0 (1 887 KB against 1 875 at 128 texts),
 identically in both runs, while the two batch paths allocate byte for byte the
 same on both targets.
@@ -392,7 +392,7 @@ never a factor, so there is no gap between the two columns to explain away.
 
 Full breakdown, including the intra-C# and net10-vs-netstandard2.0 tiers and
 where the two language sides do not do identical work, in
-[`bench/README.md`](../../bench/README.md#5-classification-metrics-issue-61).
+[`bench/README.md`](https://github.com/CyrilB1531/lodestar/blob/main/bench/README.md#5-classification-metrics-issue-61).
 
 ### Balanced accuracy, Matthews correlation, Cohen's kappa (issue #93)
 

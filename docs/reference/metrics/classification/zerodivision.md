@@ -49,7 +49,7 @@ model ignores raises the number.
 **Applies to** — net10.0, netstandard2.0.
 
 **See also** — `UndefinedMetricException`, `Precision.Score`, `Recall.Score`,
-[the regression page](regression.md), the [Python equivalence table](../../../equivalence.md).
+[the regression page](../regression.md), the [Python equivalence table](../../../equivalence.md).
 
 ## Members
 

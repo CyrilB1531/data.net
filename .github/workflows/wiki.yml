@@ -7,13 +7,15 @@ name: Wiki
 
 # One `push` trigger carries both: a `paths` filter narrows branch pushes only, so
 # the tag trigger is not silently filtered by it.
+
+# Only what build_wiki.py reads belongs below. CONTRIBUTING.md was listed and is not
+# published by docs/wiki-map.json, so every edit to it started a run that wrote nothing (#257).
 on:
   push:
     branches: [main]
     tags: ['Lodestar.*/v*']
     paths:
       - 'docs/**'
-      - 'CONTRIBUTING.md'
       - 'tools/build_wiki.py'
       - '.github/workflows/wiki.yml'
   workflow_dispatch:

@@ -3,7 +3,8 @@
 This page is Lodestar's **migration hub**. It answers a simple question: "I do this
 in Python, what do I do in C#?"
 
-The project's guiding principle (see the [rationale](../../README.md)) is
+The project's guiding principle (see the
+[rationale](https://github.com/CyrilB1531/lodestar/blob/main/README.md)) is
 **honest**: we don't rewrite Python's data-science ecosystem. Most of it already
 exists in .NET, and Python's dense linear algebra relies on Fortran BLAS/LAPACK
 kernels there's no point reimplementing. We **use** what exists, and only **write**
@@ -29,8 +30,9 @@ area is missing: a candidate for native code *if your usage justifies it*.
 
 One area truly justifies native code — **text** — and one more turned out to be
 a gap the .NET options do not fill honestly: the **evaluation metrics** every
-sklearn user reaches for. That's [`Lodestar.Text`](../../src/Lodestar.Text) and its
-siblings, delivered as lots (see the brief):
+sklearn user reaches for. That's
+[`Lodestar.Text`](https://github.com/CyrilB1531/lodestar/blob/main/src/Lodestar.Text)
+and its siblings, delivered as lots (see the brief):
 
 1. **String distances & similarity** — Levenshtein, Damerau-Levenshtein,
    Jaro-Winkler, Jaccard, Ratcliff-Obershelp, phonetics… *(done)*
@@ -57,4 +59,4 @@ The **detailed equivalence table** (Python call → C# call, behavioral differen
 performance notes), filled in as we go, is in [`equivalence.md`](../equivalence.md).
 
 > This document is not legal advice; third-party dependency licenses are recorded
-> in [`THIRD-PARTY-NOTICES.md`](../../THIRD-PARTY-NOTICES.md).
+> in [`THIRD-PARTY-NOTICES.md`](https://github.com/CyrilB1531/lodestar/blob/main/THIRD-PARTY-NOTICES.md).
