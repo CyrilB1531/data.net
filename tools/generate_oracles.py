@@ -2395,6 +2395,130 @@ def generate_average_precision() -> dict:
     }
 
 
+def _deviance_fixtures() -> list[dict]:
+    """Pairs chosen so every Tweedie regime is reached, and each one's domain edge."""
+    return [
+        {"name": "the worked case", "true": [1.0, 2.0, 3.0, 4.0],
+         "pred": [1.5, 2.5, 2.0, 4.5], "weight": None},
+        {"name": "the worked case, weighted", "true": [1.0, 2.0, 3.0, 4.0],
+         "pred": [1.5, 2.5, 2.0, 4.5], "weight": [1.0, 2.0, 3.0, 4.0]},
+        {"name": "a perfect prediction", "true": [1.5, 2.5, 2.0],
+         "pred": [1.5, 2.5, 2.0], "weight": None},
+        # y_true at zero is the boundary between the [1, 2) regime, which allows it,
+        # and the >= 2 regimes, which do not -- so it is scored only where it is legal.
+        {"name": "a zero truth", "true": [0.0, 2.0, 3.0],
+         "pred": [1.0, 2.0, 3.0], "weight": None},
+        {"name": "far apart", "true": [1.0, 10.0, 2.0],
+         "pred": [8.0, 1.0, 9.0], "weight": None},
+        {"name": "small values", "true": [0.01, 0.5, 0.25],
+         "pred": [0.02, 0.4, 0.3], "weight": None},
+    ]
+
+
+def _tweedie_powers() -> list[float]:
+    """One power per regime, plus the two the named deviances are."""
+    return [-2.0, -1.0, 0.0, 1.0, 1.5, 2.0, 3.0]
+
+
+def generate_regression_deviance() -> dict:
+    """The three GLM deviances and the three D2 scores -- regression lot 2 (#202)."""
+    import numpy as np
+    from sklearn.metrics import (
+        d2_absolute_error_score,
+        d2_pinball_score,
+        d2_tweedie_score,
+        mean_gamma_deviance,
+        mean_poisson_deviance,
+        mean_tweedie_deviance,
+    )
+
+    def legal(power: float, true, pred) -> bool:
+        """Whether the regime admits this pair, which is what the C# side refuses on."""
+        if power < 0:
+            return min(pred) > 0
+        if power == 0:
+            return True
+        if power < 2:
+            return min(true) >= 0 and min(pred) > 0
+        return min(true) > 0 and min(pred) > 0
+
+    cases = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for fixture in _deviance_fixtures():
+            true = np.array(fixture["true"])
+            pred = np.array(fixture["pred"])
+            kw = {} if fixture["weight"] is None else {
+                "sample_weight": np.array(fixture["weight"])}
+
+            deviances = []
+            for power in _tweedie_powers():
+                if not legal(power, fixture["true"], fixture["pred"]):
+                    continue
+                entry = {
+                    "power": power,
+                    "deviance": float(mean_tweedie_deviance(true, pred, power=power, **kw)),
+                }
+                # d2 needs two samples and a truth that varies; where it does not,
+                # the reference divides by zero and the C# side refuses instead.
+                if len(true) >= 2 and len(set(fixture["true"])) > 1:
+                    entry["d2"] = float(d2_tweedie_score(true, pred, power=power, **kw))
+                deviances.append(entry)
+
+            case = {
+                "name": fixture["name"],
+                "y_true": fixture["true"],
+                "y_pred": fixture["pred"],
+                "sample_weight": fixture["weight"],
+                "tweedie": deviances,
+                "d2_absolute_error": float(d2_absolute_error_score(true, pred, **kw)),
+                "pinball": [
+                    {"alpha": alpha, "d2": float(d2_pinball_score(true, pred, alpha=alpha, **kw))}
+                    for alpha in (0.1, 0.25, 0.5, 0.75, 0.9)
+                ],
+            }
+            if legal(1.0, fixture["true"], fixture["pred"]):
+                case["poisson"] = float(mean_poisson_deviance(true, pred, **kw))
+            if legal(2.0, fixture["true"], fixture["pred"]):
+                case["gamma"] = float(mean_gamma_deviance(true, pred, **kw))
+            cases.append(case)
+
+    # Two outputs, the shape only the two pinball D2 scores accept.
+    multi_true = [[0.5, 1.0], [1.0, 1.0], [7.0, -6.0]]
+    multi_pred = [[0.0, 2.0], [-1.0, 2.0], [8.0, -5.0]]
+    mt = np.array(multi_true)
+    mp = np.array(multi_pred)
+    multioutput = {
+        "y_true": [v for row in multi_true for v in row],
+        "y_pred": [v for row in multi_pred for v in row],
+        "output_count": 2,
+        "uniform_average": float(d2_absolute_error_score(mt, mp)),
+        "raw_values": [float(v) for v in d2_absolute_error_score(mt, mp, multioutput="raw_values")],
+        "pinball_uniform_average": float(d2_pinball_score(mt, mp, alpha=0.75)),
+        "pinball_raw_values": [
+            float(v) for v in d2_pinball_score(mt, mp, alpha=0.75, multioutput="raw_values")],
+    }
+
+    return {
+        "metadata": {
+            "algorithm": "RegressionDeviance",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.mean_tweedie_deviance",
+                "sklearn.metrics.mean_poisson_deviance",
+                "sklearn.metrics.mean_gamma_deviance",
+                "sklearn.metrics.d2_tweedie_score",
+                "sklearn.metrics.d2_pinball_score",
+                "sklearn.metrics.d2_absolute_error_score",
+            ],
+            "count": len(cases),
+        },
+        "cases": cases,
+        "multioutput": multioutput,
+    }
+
+
 def _top_k_fixtures() -> list[dict]:
     """Multiclass score matrices, where k is the question rather than ties.
 
@@ -5289,6 +5413,7 @@ def main() -> None:
         "roc_auc.json": generate_roc_auc,
         "regression.json": generate_regression,
         "regression_conditioning.json": generate_regression_conditioning,
+        "regression_deviance.json": generate_regression_deviance,
         "bpe.json": generate_bpe,
         "orphan_bpe.json": generate_orphan_bpe,
         "bytelevel_bpe.json": generate_bytelevel_bpe,
