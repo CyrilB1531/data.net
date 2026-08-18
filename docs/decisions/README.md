@@ -48,6 +48,7 @@ a later decision uses instead.
 | [`0036`](0036-a-member-may-ship-without-an-oracle-if-it-says-so.md) | A member may ship without an oracle, if the documentation says so | accepted | 2026-08-16 | — |
 | [`0037`](0037-the-guards-run-before-the-commit.md) | The guards run before the commit, through `core.hooksPath` and no framework | accepted | 2026-08-18 | extends [`0015`](0015-sonar-rules-in-the-build.md)'s reasoning to the Python guards |
 | [`0038`](0038-the-gate-confronts-an-exception-tag-with-the-page-that-documents-it.md) | The gate confronts an exception tag with the page that documents it | accepted | 2026-08-18 | — |
+| [`0039`](0039-mutual-information-returns-zero-on-an-empty-input.md) | [`MutualInformation`](../reference/metrics/clustering/mutualinformation.md) returns `0.0` on an empty input; scikit-learn raises | accepted | 2026-08-18 | — |
 
 ## What `accepted` means here
 

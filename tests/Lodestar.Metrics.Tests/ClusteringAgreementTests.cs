@@ -47,6 +47,53 @@ public sealed class ClusteringAgreementTests
                      FowlkesMallows.Score(labelsTrue, labelsPred), MetricsCorpus.Tolerance);
         Assert.Equal(c.GetProperty("adjusted_mutual_information").GetDouble(),
                      AdjustedMutualInformation.Score(labelsTrue, labelsPred), MetricsCorpus.Tolerance);
+        Assert.Equal(c.GetProperty("rand").GetDouble(),
+                     RandIndex.Score(labelsTrue, labelsPred), MetricsCorpus.Tolerance);
+
+        // scikit-learn 1.9.0 raises on this one case -- log(0) inside mutual_info_score.
+        // The corpus records that as null rather than a number to compare against.
+        JsonElement mi = c.GetProperty("mutual_information");
+        if (mi.ValueKind != JsonValueKind.Null)
+        {
+            Assert.Equal(mi.GetDouble(), MutualInformation.Score(labelsTrue, labelsPred), MetricsCorpus.Tolerance);
+        }
+
+        long[] pair = [.. c.GetProperty("pair_confusion").EnumerateArray().Select(x => x.GetInt64())];
+        PairConfusionMatrix confusion = PairConfusionMatrix.Compute(labelsTrue, labelsPred);
+        Assert.Equal(pair, new[]
+        {
+            confusion.DifferentInBoth, confusion.SameInPredictedOnly,
+            confusion.SameInTrueOnly, confusion.SameInBoth,
+        });
+    }
+
+    [Fact]
+    public void Rand_and_AdjustedRand_agree_where_the_correction_is_zero()
+    {
+        // Two labellings that agree on every pair need no correction for chance:
+        // nothing separates "observed" from "what the correction would remove".
+        int[] labelsTrue = [0, 0, 1, 1, 2, 2];
+        int[] labelsPred = [2, 2, 0, 0, 1, 1];
+
+        double rand = RandIndex.Score(labelsTrue, labelsPred);
+        double adjusted = AdjustedRand.Score(labelsTrue, labelsPred);
+
+        Assert.Equal(1.0, rand, MetricsCorpus.Tolerance);
+        Assert.Equal(rand, adjusted, MetricsCorpus.Tolerance);
+    }
+
+    [Fact]
+    public void MutualInformation_raises_on_empty_where_this_package_does_not()
+    {
+        // scikit-learn 1.9.0 raises ValueError on this input, a log(0) inside it --
+        // decision 0039 records why this package returns 0.0 there instead.
+        double empty = MutualInformation.Score([], []);
+        Assert.Equal(0.0, empty, MetricsCorpus.Tolerance);
+
+        // A single sample carries no information to share, and unlike the six
+        // agreement metrics this family started with, that is 0.0 here, not 1.0.
+        double single = MutualInformation.Score([0], [0]);
+        Assert.Equal(0.0, single, MetricsCorpus.Tolerance);
     }
 
     [Fact]
