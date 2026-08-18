@@ -66,6 +66,11 @@ the 2026-08-05 revision below.
 > branch, not a change smuggled in beside a code-point lot. `Indel` and the
 > length-32 bucket remain untouched; #208 is an umbrella and this was one of its
 > three lots.
+>
+> `MyersMinPatternLength` stays at 16, now measured rather than inherited: at a
+> pattern of exactly that length the code-point fast path is 1.5× ahead of the DP.
+> Whether a lower gate would win more is untested and would move the character
+> path too, the constant being shared.
 
 - Extend the fast path to the code-point mode (`Distance<int>`) and to `Indel`.
 - **Lift the Latin-1 restriction.** The equality table is 256 entries, so a

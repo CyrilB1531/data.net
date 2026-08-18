@@ -14,8 +14,9 @@ namespace Lodestar.Text.Distances;
 /// patterns up to 64 characters, <see cref="TryBlocked"/> beyond that.
 /// </summary>
 /// <remarks>
-/// <c>O(n·⌈m/w⌉)</c> against the DP's <c>O(n·m)</c> (Myers 1999; Hyyrö 2003),
-/// restricted to Latin-1 patterns; remaining backlog in
+/// <c>O(n·⌈m/w⌉)</c> against the DP's <c>O(n·m)</c> (Myers 1999; Hyyrö 2003). The
+/// <see cref="char"/> entry point is restricted to Latin-1 patterns; the code-point
+/// one is not, being renamed into a dense alphabet first. Remaining backlog in
 /// <c>docs/decisions/0004-levenshtein-myers-backlog.md</c>.
 /// </remarks>
 internal static class Myers
@@ -33,8 +34,14 @@ internal static class Myers
     /// <summary>Probe table size: a power of two, twice the alphabet it must hold.</summary>
     private const int SlotCapacity = 512;
 
-    /// <summary>The free-slot marker. No code point is negative.</summary>
-    private const int Empty = -1;
+    /// <summary>The free-slot marker.</summary>
+    /// <remarks>
+    /// Zero, and keys are stored as <c>symbol + 1</c> so no code point produces it.
+    /// That makes an unwritten table already correct -- <c>stackalloc</c> zeroes,
+    /// and nothing here disables <c>localsinit</c> -- so the 512-entry fill a
+    /// sentinel of -1 would need does not happen at all.
+    /// </remarks>
+    private const int Empty = 0;
 
     /// <summary>
     /// Attempts to compute the Levenshtein distance between <paramref name="pattern"/>
@@ -88,11 +95,17 @@ internal static class Myers
 
             Span<int> keys = stackalloc int[SlotCapacity];
             Span<byte> slots = stackalloc byte[SlotCapacity];
-            keys.Fill(Empty);
 
             int distinct = 0;
             for (int i = 0; i < m; i++)
             {
+                // A negative symbol would store Empty and read back free forever. Callers
+                // decode code points, so refusing keeps that true in Release too.
+                if (pattern[i] < 0)
+                {
+                    return false;
+                }
+
                 int probe = Probe(keys, pattern[i]);
                 if (keys[probe] == Empty)
                 {
@@ -100,7 +113,7 @@ internal static class Myers
                     {
                         return false; // more symbols than the dense alphabet holds
                     }
-                    keys[probe] = pattern[i];
+                    keys[probe] = pattern[i] + 1;
                     slots[probe] = (byte)distinct;
                     distinct++;
                 }
@@ -125,15 +138,19 @@ internal static class Myers
     /// <summary>The slot index of <paramref name="symbol"/>, occupied or free.</summary>
     /// <remarks>
     /// Linear probing terminates only because a free slot is guaranteed: at most
-    /// 255 of 512 entries are ever occupied, the 256th distinct symbol being
-    /// refused rather than stored. The multiply is Knuth's, because code points
-    /// cluster hard -- an emoji pattern lives inside U+1F300..U+1FAFF, and masking
-    /// those low bits alone would pile every symbol into a few slots.
+    /// <see cref="DenseAlphabet"/> of <see cref="SlotCapacity"/> entries are ever
+    /// occupied, the next distinct symbol being refused rather than stored. The
+    /// multiply is Knuth's, because code points cluster hard -- an emoji pattern
+    /// lives inside U+1F300..U+1FAFF, and masking those low bits alone would pile
+    /// every symbol into a few slots.
     /// </remarks>
     private static int Probe(Span<int> keys, int symbol)
     {
+        // Stored as symbol + 1, so a negative symbol from the text reads as free
+        // rather than colliding: every stored key is at least 1.
+        int stored = symbol + 1;
         int index = (int)(((uint)symbol * 2654435761u) >> 23) & (SlotCapacity - 1);
-        while (keys[index] != Empty && keys[index] != symbol)
+        while (keys[index] != Empty && keys[index] != stored)
         {
             index = (index + 1) & (SlotCapacity - 1);
         }
