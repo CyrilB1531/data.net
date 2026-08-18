@@ -165,6 +165,54 @@ and other system paths are allowed too. An ordinary account name can still
 collide with the probes derived from `$HOME`; `--no-environment` skips those
 and keeps the named shapes enforcing.
 
+## Before committing: the guards, one command earlier
+
+The four guards above are CI steps, so by default the first thing that tells you
+a machine path reached a tracked file is a red job on a pull request. A tracked
+hook removes that round trip, and installing it is one command with no
+dependency:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+```powershell
+git config core.hooksPath .githooks
+```
+
+`.githooks/pre-commit` then runs `check_machine_paths.py`,
+`check_comment_length.py`, `check_version_floor.py` and
+`check_sample_culture.py` before every commit, reports every one that failed
+rather than the first, and refuses the commit if any did. It resolves `python3`
+then `python` — neither name is safe to assume on both platforms — and, on a
+machine with neither, says so and lets the commit through rather than blocking
+work over a development dependency.
+
+**It is skippable, on purpose.** `git commit --no-verify` bypasses it for one
+commit, and its failure message says so. A hook that presents itself as
+mandatory is a hook that gets deleted rather than skipped, and a deleted hook is
+silent next time.
+
+Three things are worth knowing before relying on it.
+
+- **It is not a rehearsal of CI.** It runs the guards and nothing else: not the
+  build, not the tests, not the packaging, doc-snippets or reference gates, not
+  Sonar. A green commit is not a green pull request.
+- **It runs in about a second, and that is the whole budget.** Measured on one
+  machine over the whole tree: 0.97 s for `check_machine_paths.py`, 0.12 s for
+  `check_comment_length.py`, 0.06 s for `check_version_floor.py`, 0.03 s for
+  `check_sample_culture.py` — **1.18 s** for the four in sequence. Anything that
+  reached `dotnet build` would be uninstalled within a week.
+- **It reads the worktree, not the commit.** `git ls-files` reports the index,
+  so a newly `git add`ed file *is* checked — which running the scripts by hand
+  does not do. Their contents are then read from disk, so a file staged in one
+  state and edited in another is judged in its worktree state.
+
+Two guards CI runs stay out of it: `check_nuspec_dependencies.py` needs a packed
+`./artifacts`, and `check_version_floor.py --check-feed` reaches nuget.org. The
+reasoning, and the alternative of adopting `pre-commit` instead, are in
+[decision 0037](docs/decisions/0037-the-guards-run-before-the-commit.md).
+
 ## Before pushing: the half the build cannot see
 
 `dotnet build` enforces the Sonar rules that live in `.globalconfig` (see

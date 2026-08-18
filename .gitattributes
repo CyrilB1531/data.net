@@ -1,0 +1,5 @@
+# A hook is executed by its shebang, and `#!/bin/sh\r` is not a program any
+# kernel finds. Git for Windows checks text out as CRLF by default, so without
+# this line the hook installs cleanly on Windows and then fails on every commit
+# with an error naming a file that plainly exists.
+.githooks/** text eol=lf
