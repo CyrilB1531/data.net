@@ -2120,6 +2120,14 @@ def generate_clustering_agreement() -> dict:
                 "adjusted_rand": skmetrics.adjusted_rand_score(true, pred),
                 "normalized_mutual_information": skmetrics.normalized_mutual_info_score(true, pred),
                 "fowlkes_mallows": skmetrics.fowlkes_mallows_score(true, pred),
+                # scikit-learn 1.9.0 raises on an empty input here -- log(0) inside
+                # mutual_info_score -- where every other metric in this corpus returns.
+                "mutual_information": skmetrics.mutual_info_score(true, pred) if true else None,
+                "rand": skmetrics.rand_score(true, pred),
+                "pair_confusion": [
+                    int(v) for v in
+                    skmetrics.cluster.pair_confusion_matrix(true, pred).ravel()
+                ] if true else [0, 0, 0, 0],
                 "adjusted_mutual_information": skmetrics.adjusted_mutual_info_score(true, pred),
                 "homogeneity": homogeneity,
                 "completeness": completeness,
