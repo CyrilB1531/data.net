@@ -3,15 +3,13 @@ using Lodestar.Metrics.Internal;
 namespace Lodestar.Metrics;
 
 /// <summary>
-/// How two labellings pair the samples up: for every ordered pair, whether each
-/// labelling put the two together — the equivalent of
-/// <c>sklearn.metrics.cluster.pair_confusion_matrix</c>.
+/// How two labellings pair the samples up: for every ordered pair, whether each labelling put
+/// the two together — the equivalent of <c>sklearn.metrics.cluster.pair_confusion_matrix</c>.
 /// </summary>
 /// <remarks>
-/// Not a <see cref="ConfusionMatrix"/>, which counts labels. This counts <b>ordered
-/// pairs of samples</b>, so the four values sum to <c>n²</c> and reach about
-/// <c>5·10⁹</c> at a hundred thousand samples — which is why they are
-/// <see cref="long"/>.
+/// Not a <see cref="ConfusionMatrix"/>, which counts labels: this counts <b>ordered pairs of
+/// samples</b>, so the four values sum to <c>n²</c> and are <see cref="long"/> — about
+/// <c>5·10⁹</c> at a hundred thousand samples.
 /// </remarks>
 /// <param name="DifferentInBoth">Pairs both labellings split apart.</param>
 /// <param name="SameInPredictedOnly">Pairs only <c>labelsPred</c> put together.</param>

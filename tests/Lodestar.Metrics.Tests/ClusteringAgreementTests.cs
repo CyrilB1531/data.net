@@ -50,9 +50,8 @@ public sealed class ClusteringAgreementTests
         Assert.Equal(c.GetProperty("rand").GetDouble(),
                      RandIndex.Score(labelsTrue, labelsPred), MetricsCorpus.Tolerance);
 
-        // scikit-learn 1.9.0 raises on this one case -- log(0) inside mutual_info_score,
-        // where an empty input returns everywhere else in this family. The corpus records
-        // that as null rather than a number, and there is nothing to compare it against.
+        // scikit-learn 1.9.0 raises on this one case -- log(0) inside mutual_info_score.
+        // The corpus records that as null rather than a number to compare against.
         JsonElement mi = c.GetProperty("mutual_information");
         if (mi.ValueKind != JsonValueKind.Null)
         {
@@ -72,8 +71,7 @@ public sealed class ClusteringAgreementTests
     public void Rand_and_AdjustedRand_agree_where_the_correction_is_zero()
     {
         // Two labellings that agree on every pair need no correction for chance:
-        // there is nothing between "what was observed" and "what the correction
-        // would have removed" to disagree about, uncorrected or not.
+        // nothing separates "observed" from "what the correction would remove".
         int[] labelsTrue = [0, 0, 1, 1, 2, 2];
         int[] labelsPred = [2, 2, 0, 0, 1, 1];
 
@@ -87,8 +85,7 @@ public sealed class ClusteringAgreementTests
     [Fact]
     public void MutualInformation_raises_on_empty_where_this_package_does_not()
     {
-        // Measured against scikit-learn 1.9.0: mutual_info_score([], []) raises
-        // ValueError (log(0) inside it), which is not a documented refusal --
+        // scikit-learn 1.9.0 raises ValueError on this input, a log(0) inside it --
         // decision 0039 records why this package returns 0.0 there instead.
         double empty = MutualInformation.Score([], []);
         Assert.Equal(0.0, empty, MetricsCorpus.Tolerance);
