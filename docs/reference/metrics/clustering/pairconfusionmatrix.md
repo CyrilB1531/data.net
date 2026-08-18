@@ -23,7 +23,7 @@ long agreeing = pairs.SameInBoth;   // => 0
 long disagreeing = pairs.SameInTrueOnly;   // => 4
 ```
 
-**Remarks** — four fields, all `long`. **This is not a [`ConfusionMatrix`](confusionmatrix.md)**,
+**Remarks** — four fields, all `long`. **This is not a [`ConfusionMatrix`](../classification/confusionmatrix.md)**,
 which is a different type answering a different question: `ConfusionMatrix` counts *labels*, one
 cell per (true class, predicted class); this type counts **ordered pairs of samples**, one cell
 per (were-they-together-in-truth, were-they-together-in-the-prediction). Reusing the name would
@@ -42,7 +42,7 @@ both) = pairs;` works, in declaration order.
 
 **Applies to** — net10.0, netstandard2.0.
 
-**See also** — [`ConfusionMatrix`](confusionmatrix.md), [`RandIndex.Score`](randindex-score.md),
+**See also** — [`ConfusionMatrix`](../classification/confusionmatrix.md), [`RandIndex.Score`](randindex-score.md),
 [the clustering index](../clustering.md).
 
 ## Members
