@@ -36,5 +36,7 @@ tools/__pycache__/
 *.user
 .DS_Store
 
-# Guide snippets are extracted from the Markdown on every run (tools/extract_doc_snippets.py)
-samples/Lodestar.DocSnippets/Generated/
+# Guide snippets are extracted from the Markdown on every run (tools/extract_doc_snippets.py).
+# Any sample project, not the one that has it today: naming a single project left the
+# vestige of an older name showing as untracked noise in every git status (#260).
+samples/*/Generated/
