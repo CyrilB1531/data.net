@@ -299,20 +299,20 @@ has a baseline rather than an impression to argue against.
 Same machine and method, median of 31 runs at `n = 100 000`. All three new members read
 `Internal/Contingency`, the structure the table above's metrics already build.
 
-| n | k | `RandIndex` | `MutualInformation` | `PairConfusionMatrix.Compute` | `AdjustedRand` (reference) |
+| n | k | `RandIndex` | `MutualInformation` | [`PairConfusionMatrix.Compute`](../reference/metrics/clustering/pairconfusionmatrix-compute.md) | `AdjustedRand` (reference) |
 | ---: | ---: | ---: | ---: | ---: | ---: |
 | 100 000 | 10 | 7.22 ms | 6.40 ms | 6.03 ms | 6.00 ms |
 | 100 000 | 100 | 41.04 ms | 40.23 ms | 39.98 ms | 41.26 ms |
 
 All four land in the same band as `AdjustedRand` at both cluster counts, which is what the code
-says should happen: `RandIndex.Score` calls `PairConfusionMatrix.Compute` and adds two numbers,
+says should happen: [`RandIndex.Score`](../reference/metrics/clustering/randindex-score.md) calls [`PairConfusionMatrix.Compute`](../reference/metrics/clustering/pairconfusionmatrix-compute.md) and adds two numbers,
 so it cannot cost meaningfully more than the call it wraps. None of the three introduces the
 `classes x clusters x n` shape `AdjustedMutualInformation` has above — there is no hypergeometric
 sum here, only the pair counts and the mutual-information term the sequential agreement metrics
 already pay for.
 
 One measurement is worth naming rather than hiding: an earlier pass at 11 runs read `RandIndex` as
-24.6 ms against `PairConfusionMatrix.Compute`'s 6.4 ms at `n = 100 000, k = 10` — four times its
+24.6 ms against [`PairConfusionMatrix.Compute`](../reference/metrics/clustering/pairconfusionmatrix-compute.md)'s 6.4 ms at `n = 100 000, k = 10` — four times its
 own dependency, which is not a shape the code can produce. Raising the run count to 31 collapsed
 the gap to the numbers above. This machine runs guarded `dotnet` commands behind a lock shared
 with other sessions (see `CONTRIBUTING.md`), and a contended run landing inside a short sample is
