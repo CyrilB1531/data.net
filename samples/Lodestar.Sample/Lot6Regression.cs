@@ -37,6 +37,8 @@ internal static class Lot6Regression
         LogErrors();
         Explained();
         MultiOutput();
+        Deviances();
+        ExplainedDeviances();
     }
 
     /// <summary>The error family, all on one prediction so the numbers compare.</summary>
@@ -142,12 +144,81 @@ internal static class Lot6Regression
         Console.WriteLine($"    MSLE raw values     = {Inv.List(MeanSquaredLogError.PerOutput(PositiveTruth, PositivePredicted, outputCount: 2))}");
         Console.WriteLine($"    RMSLE raw values    = {Inv.List(RootMeanSquaredLogError.PerOutput(PositiveTruth, PositivePredicted, outputCount: 2))}");
 
-        // variance_weighted applies to two of the eleven metrics, so it's a method
+        // variance_weighted applies to two of the seventeen metrics, so it's a method
         // on just those two — an invalid call fails to compile, not at run time.
         Console.WriteLine($"    R2 raw values       = {Inv.List(R2.PerOutput(WideTruth, WidePredicted, outputCount: 2))}");
         Console.WriteLine($"    R2 variance-weighted= {Inv.F3(R2.VarianceWeighted(WideTruth, WidePredicted, outputCount: 2))}");
         Console.WriteLine($"    EV raw values       = {Inv.List(ExplainedVariance.PerOutput(WideTruth, WidePredicted, outputCount: 2))}");
         Console.WriteLine($"    EV variance-weighted= {Inv.F3(ExplainedVariance.VarianceWeighted(WideTruth, WidePredicted, outputCount: 2))}");
+        Console.WriteLine();
+    }
+
+    /// <summary>The three GLM deviances, and the regimes their power selects.</summary>
+    private static void Deviances()
+    {
+        Console.WriteLine("  deviances — one function with a power, and three names for it");
+
+        double[] truth = [1.0, 2.0, 3.0, 4.0];
+        double[] predicted = [1.5, 2.5, 2.0, 4.5];
+
+        // Power 0 is the squared error, so these two print the same number.
+        Console.WriteLine($"    Tweedie power 0     = {Inv.F3(TweedieDeviance.Score(truth, predicted))}");
+        Console.WriteLine($"    MeanSquaredError    = {Inv.F3(MeanSquaredError.Score(truth, predicted))}");
+        Console.WriteLine($"    Tweedie power 1     = {Inv.F3(TweedieDeviance.Score(truth, predicted, power: 1.0))}");
+        Console.WriteLine($"    PoissonDeviance     = {Inv.F3(PoissonDeviance.Score(truth, predicted))}");
+        Console.WriteLine($"    Tweedie power 2     = {Inv.F3(TweedieDeviance.Score(truth, predicted, power: 2.0))}");
+        Console.WriteLine($"    GammaDeviance       = {Inv.F3(GammaDeviance.Score(truth, predicted))}");
+
+        // The gamma depends on the two only through their ratio, so scaling both
+        // by ten leaves it where it was. The Poisson does not.
+        double[] scaledTruth = [10.0, 20.0, 30.0, 40.0];
+        double[] scaledPredicted = [15.0, 25.0, 20.0, 45.0];
+        Console.WriteLine($"    Gamma, x10          = {Inv.F3(GammaDeviance.Score(scaledTruth, scaledPredicted))} (unchanged)");
+        Console.WriteLine($"    Poisson, x10        = {Inv.F3(PoissonDeviance.Score(scaledTruth, scaledPredicted))} (not)");
+
+        // A zero count is ordinary data from power 1 up to but not including 2.
+        double[] withZero = [0.0, 2.0, 3.0];
+        double[] rates = [1.0, 2.0, 3.0];
+        Console.WriteLine($"    zero count, Poisson = {Inv.F3(PoissonDeviance.Score(withZero, rates))}");
+        Console.WriteLine();
+    }
+
+    /// <summary>The three D² scores, and the two places they answer a zero denominator differently.</summary>
+    private static void ExplainedDeviances()
+    {
+        Console.WriteLine("  D² — what share of a deviance the model explains");
+
+        double[] truth = [1.0, 2.0, 3.0, 4.0];
+        double[] predicted = [1.5, 2.5, 2.0, 4.5];
+        double[] weights = [1.0, 2.0, 3.0, 4.0];
+
+        // At power 0 the deviance is the squared error and the baseline the mean,
+        // so this is R2 to the last bit.
+        Console.WriteLine($"    D2Tweedie power 0   = {Inv.F3(D2Tweedie.Score(truth, predicted))}");
+        Console.WriteLine($"    R2                  = {Inv.F3(R2.Score(truth, predicted))}");
+        Console.WriteLine($"    D2Tweedie power 1   = {Inv.F3(D2Tweedie.Score(truth, predicted, power: 1.0))}");
+        Console.WriteLine($"    D2AbsoluteError     = {Inv.F3(D2AbsoluteError.Score(truth, predicted))}");
+        Console.WriteLine($"    D2Pinball a=0.5     = {Inv.F3(D2Pinball.Score(truth, predicted))} (the same, by construction)");
+        Console.WriteLine($"    D2Pinball a=0.9     = {Inv.F3(D2Pinball.Score(truth, predicted, alpha: 0.9))} (a poor upper quantile)");
+        Console.WriteLine($"    D2AE weighted       = {Inv.F3(D2AbsoluteError.Score(truth, predicted, 1, weights))}");
+
+        Console.WriteLine($"    D2AE raw values     = {Inv.List(D2AbsoluteError.PerOutput(WideTruth, WidePredicted, outputCount: 2))}");
+        Console.WriteLine($"    D2Pinball raw values= {Inv.List(D2Pinball.PerOutput(WideTruth, WidePredicted, alpha: 0.75, outputCount: 2))}");
+
+        // A truth that never varies: one of these masks that denominator and the
+        // other divides by it, which is the reference's own split.
+        double[] flat = [2.0, 2.0, 2.0];
+        double[] moving = [1.0, 2.0, 3.0];
+        Console.WriteLine($"    flat truth, D2AE    = {Inv.F3(D2AbsoluteError.Score(flat, moving))}");
+        try
+        {
+            D2Tweedie.Score(flat, moving, power: 1.0);
+        }
+        catch (UndefinedMetricException)
+        {
+            Console.WriteLine("    flat truth, D2Tweedie = refused, as scikit-learn divides by zero there");
+        }
+
         Console.WriteLine();
     }
 

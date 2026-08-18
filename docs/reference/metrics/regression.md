@@ -18,8 +18,9 @@ Two families sit here, and it is worth knowing which one you are reading.
 
 ## How the parameters fit together
 
-Everything here except `MaxError` shares one shape, and reading it once saves reading it eleven
-times.
+Everything here except `MaxError` shares one shape, and reading it once saves reading it sixteen
+times. The three deviances read it with one parameter more — a `power` that moves the domain of
+validity as well as the formula — and `TweedieDeviance` has that table.
 
 ```mermaid
 flowchart TD
@@ -82,3 +83,9 @@ flowchart TD
 | [`R2`](regression/r2.md) | How much better than always predicting the mean, as a unitless score. |
 | [`RootMeanSquaredError`](regression/rootmeansquarederror.md) | `MeanSquaredError` back in the target's units. |
 | [`RootMeanSquaredLogError`](regression/rootmeansquaredlogerror.md) | `MeanSquaredLogError` back in log units. |
+| [`TweedieDeviance`](regression/tweediedeviance.md) | The deviance a squared error becomes when the target is not normally distributed. |
+| [`PoissonDeviance`](regression/poissondeviance.md) | `TweedieDeviance` at power 1 — the deviance for a count. |
+| [`GammaDeviance`](regression/gammadeviance.md) | `TweedieDeviance` at power 2 — scale-invariant, for a positive quantity. |
+| [`D2Tweedie`](regression/d2tweedie.md) | What share of a deviance the model explains, against a constant baseline. |
+| [`D2Pinball`](regression/d2pinball.md) | The same for a quantile prediction, against the best constant quantile. |
+| [`D2AbsoluteError`](regression/d2absoluteerror.md) | `D2Pinball` at the median — `R2`'s question with an outlier-proof baseline. |
