@@ -7,12 +7,10 @@ namespace Lodestar.Metrics;
 /// over the precision-recall curve.
 /// </summary>
 /// <remarks>
-/// Deliberately not the area under that curve: the reference sums
-/// <c>(R_n - R_(n-1)) * P_n</c> across thresholds rather than applying the
-/// trapezoidal rule, which interpolates between two thresholds as though the curve
-/// were linear there and comes out optimistic. On <c>y_true = [0, 0, 1, 1]</c> and
-/// <c>y_score = [0.1, 0.4, 0.35, 0.8]</c> the sum is <c>0.8333333333333333</c> where
-/// the trapezoid is <c>0.7916666666666666</c>.
+/// A sum of <c>(R_n - R_(n-1)) * P_n</c> across thresholds, not the area under the
+/// curve: the trapezoid reads two thresholds apart as though the curve were linear
+/// between them and comes out optimistic. Measured, <c>[0, 0, 1, 1]</c> against
+/// <c>[0.1, 0.4, 0.35, 0.8]</c> sums to 0.8333333333333333 and integrates to 0.7916666666666666.
 /// </remarks>
 public static class AveragePrecision
 {
