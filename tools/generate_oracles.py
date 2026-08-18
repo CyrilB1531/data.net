@@ -2085,6 +2085,7 @@ def _clustering_fixtures() -> list[tuple[str, list[int], list[int]]]:
         ("unbalanced", [0] * 8 + [1, 2], [0] * 7 + [1, 1, 2]),
         ("negative labels", [-1, -1, 3, 3], [7, 7, -2, -2]),
         ("one cluster predicted", [0, 0, 1, 1], [0, 0, 0, 0]),
+        ("one class in truth", [0, 0, 0, 0], [0, 0, 1, 1]),
         ("every sample alone", [0, 0, 1, 1], [0, 1, 2, 3]),
         ("single sample", [0], [0]),
         ("empty", [], []),

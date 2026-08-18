@@ -8,14 +8,19 @@ namespace Lodestar.Metrics.Internal;
 /// A sum over the hypergeometric distribution of every cell the marginals allow,
 /// which is what <see cref="AdjustedMutualInformation"/> subtracts to correct for
 /// chance. The grouping below is the reference's, term for term, for the reason
-/// <see cref="Contingency.MutualInformation"/> gives about its own.
+/// <see cref="Contingency.MutualInformation"/> gives about its own — including the
+/// early return, which is what keeps a single-cluster input exactly zero instead of
+/// one rounding step below it.
 /// </remarks>
 internal static class ExpectedMutualInformation
 {
     /// <summary>The expected mutual information of two labellings with these marginals.</summary>
     public static double Compute(int[] rows, int[] columns, int samples)
     {
-        if (samples == 0)
+        // One labelling in a single piece has zero entropy, so chance shares nothing
+        // with it: the reference returns before summing, exactly rather than by
+        // cancellation, and the sum below is not exact at that shape.
+        if (samples == 0 || rows.Length <= 1 || columns.Length <= 1)
         {
             return 0.0;
         }
@@ -40,11 +45,11 @@ internal static class ExpectedMutualInformation
                 for (int nij = start; nij <= end; nij++)
                 {
                     double term1 = nij / (double)samples;
-                    double term2 = logSamples + Math.Log(nij) - logA - logB;
+                    double term2 = logSamples + Math.Log(nij) - (logA + logB);
                     double gln =
                         logFactorial[a] + logFactorial[b] +
                         logFactorial[samples - a] + logFactorial[samples - b] -
-                        logFactorial[samples] - logFactorial[nij] -
+                        (logFactorial[nij] + logFactorial[samples]) -
                         logFactorial[a - nij] - logFactorial[b - nij] -
                         logFactorial[samples - a - b + nij];
 

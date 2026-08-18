@@ -11,6 +11,8 @@ namespace Lodestar.Metrics.Internal;
 /// </remarks>
 internal sealed class Contingency
 {
+    private const double Epsilon = 2.220446049250313e-16;
+
     public Contingency(Dictionary<long, int> cells, int[] rows, int[] columns, int samples)
     {
         Cells = cells;
@@ -72,7 +74,12 @@ internal sealed class Contingency
             double nij = cell.Value;
             double fraction = nij / total;
             double outer = -Math.Log((double)Rows[row] * Columns[column]) + logTotal + logTotal;
-            sum += (fraction * (Math.Log(nij) - logTotal)) + (fraction * outer);
+            double term = (fraction * (Math.Log(nij) - logTotal)) + (fraction * outer);
+
+            // scikit-learn zeroes a term below the machine epsilon before summing, not
+            // the total after: a single cluster makes every term cancel to ~1e-16, and
+            // summing those leaves a residue its own callers then divide by.
+            sum += Math.Abs(term) < Epsilon ? 0.0 : term;
         }
 
         return Math.Max(sum, 0.0);
