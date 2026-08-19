@@ -775,6 +775,12 @@ Lodestar is faster.
 | `embedding_index_save` | 12.419 ms | 15.084 ms | 1.21× | 13.349 ms | 15.083 ms | **1.13×** |
 | `embedding_index_load` | 12.129 ms | 2.492 ms | 0.21× | 13.897 ms | 2.492 ms | **0.18×** |
 
+> **#323 changed the save path after this window.** The row above stays as measured;
+> what it cannot show is that its `1.13×` inverts to `0.27×` on a newer machine,
+> because `numpy.save` is bandwidth-bound where this artifact's base64 encoding is
+> not. The before/after, and why the ratio is a property of the machine as much as
+> of the code, are in [`docs/guides/performance.md`](../docs/guides/performance.md).
+
 Against `main` in the same session, on the same numpy figures:
 `embedding_index_save` read 14.164 ms (0.94× wall, 1.06× cpu) and
 `embedding_index_load` 32.460 ms (0.08× wall, 0.07× cpu).

@@ -892,6 +892,45 @@ fewer rows, so it stamps `filtered` into the file's metadata and
 `bench/compare.py` refuses it. The merge gate above needs the whole matrix, and
 a three-row file would otherwise have printed as a green one.
 
+## Persisting an embedding index — the save path (issue #323)
+
+The nightly reported `embedding_index_save` at **0.27× cpu** against `numpy.save`
+where [`bench/README.md`](https://github.com/CyrilB1531/lodestar/blob/main/bench/README.md)
+had published **1.13×**, Lodestar ahead. Neither figure was wrong: the C# side moved
+by 6% between the two machines and numpy's by a factor of four, because `numpy.save`
+writes a raw block — bandwidth-bound work a newer machine speeds up almost linearly —
+where this artifact base64-encodes into JSON, whose cost per byte barely moves.
+
+Under that, `Base64Numbers.WriteSingles` allocated a full copy of the vector block
+and memcpy'd into it, so that an endianness swap could run in place. That swap is a
+no-op on every platform .NET runs on, and the comment beside it said so. On a
+little-endian machine the bytes to encode are the ones already in the span.
+
+Intel i7-4770S, .NET 10.0.10, median of 3, before and after in one window, on a
+machine under load from a parallel session — which is why these absolutes sit above
+`bench/README.md`'s. `embedding_index_load` is re-run as the control: it reads the
+same artifact through the same harness and this change does not touch it.
+
+| Operation | before | after | change |
+| --- | ---: | ---: | --- |
+| `embedding_index_save`, wall | 15.807 ms | **10.579 ms** | **1.49× faster** |
+| `embedding_index_save`, cpu | 17.139 ms | **11.729 ms** | **1.46× faster** |
+| `embedding_index_load`, wall — control | 13.715 ms | 13.506 ms | unchanged |
+| `embedding_index_load`, cpu — control | 15.739 ms | 15.527 ms | unchanged |
+
+- **One allocation and one copy, on the largest block any artifact holds.** At the
+  benchmark's size that is 15 360 000 bytes allocated on the large-object heap and
+  copied, per save, discarded immediately after.
+- **The bytes on the wire are unchanged**, and that is now pinned rather than
+  argued: the little-endian path hands `WriteBase64String` the same span the copy
+  used to hold, and `Base64NumbersTests` asserts the exact base64 of a known vector,
+  computed from the IEEE-754 bits rather than captured from this build.
+- **This does not settle the ratio the nightly reported.** Encoding is still the
+  dominant cost and still scales with the machine differently from a raw block
+  write; what it removes is the part that was never encoding at all. The load
+  direction, further behind and for a decided reason, is
+  [#324](https://github.com/CyrilB1531/lodestar/issues/324).
+
 ## Multiclass ROC-AUC, sequential against parallel (issue #86)
 
 ```bash

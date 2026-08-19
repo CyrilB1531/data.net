@@ -38,6 +38,12 @@ is one sentence, the issue and the commit; see
 
 - The package is `Lodestar.Embeddings`, and its namespaces are `Lodestar.Embeddings.*`. `Lodestar.Embeddings 0.3.1` holds the same code as `DataNet.Embeddings 0.3.0`. ([#194](https://github.com/CyrilB1531/data.net/issues/194))
 
+### Lodestar.Embeddings
+
+#### Changed
+
+- **Faster, same bytes.** `EmbeddingIndex.Save` no longer allocates and copies the whole vector block before encoding it: on a little-endian machine the bytes to base64 are the ones already in the span, and the copy existed only to carry an endianness swap that is a no-op there. Measured **1.46×** on processor time at the benchmark's size, with the load direction re-run as an untouched control, and the encoding pinned byte for byte by a new test. ([#323](https://github.com/CyrilB1531/lodestar/issues/323))
+
 ### Lodestar.Fuzzy
 
 #### Changed
