@@ -892,6 +892,47 @@ fewer rows, so it stamps `filtered` into the file's metadata and
 `bench/compare.py` refuses it. The merge gate above needs the whole matrix, and
 a three-row file would otherwise have printed as a green one.
 
+#### Vectorized accumulation (issue #321)
+
+`R2` and `ExplainedVariance` got a `Vector<double>` accumulation in #127, gated by
+[decision 0027](../decisions/0027-r2-and-explainedvariance-vectorize-only-a-single-output.md)
+on `outputCount == 1 && Vector.IsHardwareAccelerated`. The shared walk under
+`Outputs.WeightedMean` — which `mse`, `mae` and, through `MeanSquaredError.PerOutput`,
+`RootMeanSquaredError` all take — did not, and stayed a scalar loop.
+
+The table above shows the consequence without naming it: at n = 1 000 000, `r2` does
+**two** passes over the data and cost less than `mse` doing one.
+
+Same machine and method as the table above (Intel i7-4770S, .NET 10.0.10), median of
+3, before and after in the same window, with `r2` re-run beside them as a control
+because nothing in this change touches it:
+
+| Operation | before | after | change |
+| --- | ---: | ---: | --- |
+| `mse_n1000000_k2` | 5.385 ms | **3.261 ms** | **1.65× faster** |
+| `mae_n1000000_k2` | 5.419 ms | **3.393 ms** | **1.60× faster** |
+| `mse_n1000000_k10` | 5.380 ms | **3.234 ms** | **1.66× faster** |
+| `mae_n1000000_k10` | 5.484 ms | **3.395 ms** | **1.62× faster** |
+| `r2_n1000000_k2` — control | 4.428 ms | 4.476 ms | unchanged |
+| `r2_n1000000_k10` — control | 4.397 ms | 4.410 ms | unchanged |
+
+- **The control is the point of the table.** `r2` moving by 1% across the same window
+  is what says the other four rows are the change and not the machine.
+- **`mse` is now cheaper than `r2`**, which is the ordering the work justifies: one
+  pass against two.
+- **This machine is not where the gap was found.** The
+  [nightly run](nightly_run) reported `mse` and `mae` at **0.60×** against numpy on a
+  Xeon 6973P-C with AVX-512, below the gate this page sets, where the rows above have
+  them at 1.04× and 1.12× on Haswell — the regression is visible only where numpy's
+  wider registers pay off and a scalar loop's do not. **The ratio there is not
+  measured here**, and 1.65× is the floor rather than the estimate: `Vector<double>`
+  holds four lanes on AVX2 and eight on AVX-512, so the runner should gain more. The
+  next nightly is what confirms that, not this table.
+- **Four kernels deliberately keep the scalar loop.** The Tweedie deviances reach
+  `Math.Pow` and the log errors `Math.Log`, neither of which `Vector<T>` offers;
+  `MeanAbsolutePercentageError` divides and clamps and was not measured. Only the two
+  kernels that are arithmetic all the way down implement the lane-wise form.
+
 ## Multiclass ROC-AUC, sequential against parallel (issue #86)
 
 ```bash

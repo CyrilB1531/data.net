@@ -46,6 +46,10 @@ is one sentence, the issue and the commit; see
 
 ### Lodestar.Metrics
 
+#### Changed
+
+- **Faster, same answers.** `MeanSquaredError`, `MeanAbsoluteError` and `RootMeanSquaredError` accumulate through `Vector<double>` on `net10.0` when there is a single output, which is the rule [decision 0027](docs/decisions/0027-r2-and-explainedvariance-vectorize-only-a-single-output.md) already set for `R2` and `ExplainedVariance`: **1.65×** on `mse` and **1.60×** on `mae` at a million rows, with `r2` re-run as an untouched control. The lanes reduce in a different order from a scalar loop, so the values can differ in their last bits; the frozen scikit-learn corpora pass unchanged at their `1e-9` comparison. ([#321](https://github.com/CyrilB1531/lodestar/issues/321))
+
 #### Added
 
 - `docs/reference/metrics/classification.md` and `docs/reference/metrics/regression.md` document every type of `Lodestar.Metrics` in the layout of the .NET API reference, and the same test checks each declaration, parameter list and `Applies to` against the assembly. ([#181](https://github.com/CyrilB1531/data.net/issues/181))
