@@ -26,8 +26,9 @@ internal static class BitParallelLcs
         length = 0;
         int m = pattern.Length;
 
+        // Not cleared: stackalloc zeroes and nothing disables localsinit, so a Clear
+        // was a second 2 KB memset (#208). TryBlocked pools, and does need its own.
         Span<ulong> peq = stackalloc ulong[256];
-        peq.Clear();
         for (int i = 0; i < m; i++)
         {
             char c = pattern[i];

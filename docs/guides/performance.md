@@ -61,15 +61,119 @@ an Intel i7-4770S; dev machine — non-authoritative), **after** adding the bloc
   64 characters fell back to the DP. Blocked Myers closed that: the 512 bucket
   went from 684 µs to 21 µs, a 33× improvement, and now edges ahead. It was never
   a language problem, only an algorithmic one.
-- **The length-32 bucket is the remaining gap**, at 1.4× behind. It already takes
-  the single-word path, so this is not the same cause; it wants its own
-  measurement rather than a guess.
+- **The length-32 bucket was the remaining gap**, at 1.4× behind. It is closed,
+  and the cause was not the one this line assumed — see the window below.
 - **Scope.** The figures above are the **UTF-16 mode**, whose bit-parallel path
   requires a Latin-1 pattern: outside that — CJK, emoji — `Distance` still uses
   the DP, and the table does not describe those inputs. The **code-point mode**
   no longer shares that restriction (#208); its own measurement is below. What
   remains unresolved is the UTF-16 path's equality table; see
   [`../decisions/0004-levenshtein-myers-backlog.md`](../decisions/0004-levenshtein-myers-backlog.md).
+
+### The length-32 bucket, which was never the kernel (#208)
+
+Intel i7-4770S, .NET 10.0.10, rapidfuzz 3.14.5 / Python 3.12.3; dev machine,
+non-authoritative. The issue that opened this said the gap was "inside the
+kernel, not in the dispatch". It was the dispatch, and the first measurement is
+the one that says so: `BucketRouteDiagnostics` splits the committed length-32
+bucket on the dispatch's own criterion — the shorter operand after `Affixes.Trim`,
+which is the pattern Myers is handed — and times each half.
+
+| route at the gate of 16 | pairs | median pattern | total | per pair |
+| --- | ---: | ---: | ---: | ---: |
+| DP (pattern < 16) | 474 | 10 | 308.3 µs | **650.4 ns** |
+| Myers (pattern ≥ 16) | 526 | 22 | 134.6 µs | **255.9 ns** |
+
+The two sum to 442.9 ns/pair against the harness's 440.6, so the split accounts
+for the bucket. **47% of the pairs were carrying 70% of its cost**, and they were
+the ones on the *smaller* problem: the DP was 2.5× slower than Myers on a band a
+quarter the size. Nothing was wrong inside either kernel — the gate was simply
+far above where the two curves actually cross.
+
+A constant the dispatch consults cannot be swept from inside the dispatch, so it
+was swept directly, rebuilding between points and reading the committed corpus
+end to end. Single runs, ns/pair:
+
+| gate | Levenshtein len 8 | Levenshtein len 32 | Indel len 8 | Indel len 32 |
+| ---: | ---: | ---: | ---: | ---: |
+| 16 | 31.2 | 451.7 | 37.4 | 316.4 |
+| 12 | 31.4 | 311.2 | 37.2 | 217.5 |
+| 10 | 31.9 | 266.0 | 37.2 | 189.8 |
+| 8 | 32.0 | **239.4** | 37.9 | **177.6** |
+| 6 | 31.8 | 232.4 | 37.4 | 170.0 |
+| 4 | 31.6 | 233.0 | 37.6 | 164.8 |
+| 2 | 31.2 | 233.1 | 37.0 | 166.9 |
+| 1 | **51.2** | 236.6 | — | — |
+
+- **8, and not lower, is a choice about text length rather than pattern length.**
+  Myers costs `setup + O(n)` where the DP costs `O(m·n)`, so they cross at
+  `m ≈ 1 + setup/n` — which *falls as the text grows*. There is no single right
+  gate, only a right one per regime, and the gate sees only `m`. Calibrating on
+  the shortest texts is calibrating on the case where being wrong costs the most,
+  and the gate-of-1 row is that case: the length-8 bucket loses 64% because 32% of
+  its pairs have a pattern of exactly 1 and pay for a 256-entry table to compare
+  one character.
+- **The corpus cannot resolve 2 to 7.** Its length-8 bucket trims to a pattern of
+  0 or 1 and its length-32 bucket is the only one holding patterns in between, so
+  every row above between 2 and 6 rests on one bucket. The flat region there is
+  worth 6 ns and is not worth the exposure.
+
+The second finding is in both kernels and is independent of the gate: `stackalloc`
+zeroes, nothing in the assembly disables `localsinit`, and both single-word
+kernels then called `Clear()` on the 256-entry equality table anyway — a second
+2 KB memset on a call whose real work is `O(n)`. `Myers` already relied on that
+zeroing for its probe table and said so, three constants above the line that
+cleared. Removing it is worth 12% of the length-32 bucket on Levenshtein and 17%
+on Indel, on top of the gate.
+
+Both changes together, **median of 3, before and after interleaved in one
+window** so machine drift lands on both columns:
+
+| Length | Levenshtein before | after | | Indel before | after |
+| ---: | ---: | ---: | --- | ---: | ---: |
+| 8 | 31.9 ns | 30.7 ns | | 37.7 ns | 36.5 ns |
+| 32 | 427.6 ns | **204.8 ns — 2.09×** | | 318.7 ns | **145.6 ns — 2.19×** |
+| 128 | 1 722.5 ns | 1 700.8 ns | | 1 193.6 ns | 1 174.3 ns |
+| 512 | 19 926.8 ns | 19 267.3 ns | | 13 562.6 ns | 13 388.5 ns |
+
+Every bucket but 32 is within noise, which is the expected shape: 128 and 512
+already took the kernel and keep their `Clear()` on the blocked path, and 8 never
+reaches the gate at all.
+
+Against rapidfuzz, **both sides re-run in one window** on a machine under load
+(one-minute average 11.3 falling to 8.0 across it, so the C# column sits above
+the quiet-machine medians above; the ratios are what the shared load makes
+comparable):
+
+| Length | rapidfuzz Lev | C# Lev | rapidfuzz Indel | C# Indel |
+| ---: | ---: | ---: | ---: | ---: |
+| 8 | 188.1 ns | **33.9 ns — 5.55×** | 130.6 ns | **39.2 ns — 3.33×** |
+| 32 | 323.9 ns | **221.9 ns — 1.46×** | 206.9 ns | **158.3 ns — 1.31×** |
+| 128 | 2 590.6 ns | **1 889.0 ns — 1.37×** | 637.9 ns | 1 342.3 ns — 2.10× behind |
+| 512 | 20 863.7 ns | **19 896.4 ns — 1.05×** | 7 335.8 ns | 15 144.0 ns — 2.06× behind |
+
+**The 32 bucket is ahead rather than 1.4× behind**, which is the door this lot
+was opened to close. Indel's 128 and 512 are the 2.07×/2.15× the section below
+already records; they take the blocked path and this lot did not touch it.
+
+#### The gate is now two constants, because the two paths cross at different bands
+
+`MyersMinPatternLength` was shared with the code-point path, which ADR 0004 flagged
+as untested. It is: that path renames both operands through a 512-entry probe table
+before the kernel sees them, so it carries the larger fixed cost and crosses later.
+`LevenshteinCodePointBenchmarks` at the two candidate gates, `Length = 16` acting as
+a control because both gates route it to the kernel:
+
+| Pattern | DP (gate 16) | Kernel (gate 8) | |
+| ---: | ---: | ---: | --- |
+| 8 | **376.6 ns** | 419.3 ns | DP ahead by 11% |
+| 10 | 428.4 ns | 434.1 ns | the tie |
+| 12 | 534.9 ns | **482.6 ns** | kernel ahead by 10% |
+| 16 | 550.1 ns | 532.4 ns | control — 3%, the noise floor |
+
+So `MyersMinCodePointPatternLength` is 10 and `MyersMinPatternLength` is 8. One
+constant would have to give up 11% on one path or the other, and the character
+path is the one `fuzz.ratio` and every `process.extract` run.
 
 ## Compared to Python (rapidfuzz) — Indel, and therefore `fuzz.ratio` (#273)
 
@@ -125,10 +229,15 @@ runs both routes in one process with the dynamic program as baseline:
 
 - **The gate at 16 is right, and probably conservative.** The kernel's floor is
   about 149 ns and the DP already costs 161 ns at band 8, so a lower gate may win
-  — but that needs measuring below 8 rather than assuming.
+  — but that needs measuring below 8 rather than assuming. **It was, in #208, and
+  the guess was right**: the gate is 8 and the length-32 bucket halved. The window
+  above has the sweep.
 - **The kernel's cost is nearly flat from 16 to 64** — 149, 154, 160, 168, 185,
   234, 264 ns while the work quadruples. That is a fixed cost dominating: the
-  256-entry equality table is cleared on every call. Band 96 makes it plain,
+  256-entry equality table is cleared on every call. **Half of that clearing was
+  redundant** and #208 removed it — `stackalloc` had already zeroed the table —
+  which is worth 17% of the length-32 bucket here; right-sizing the table is still
+  open. Band 96 makes it plain,
   crossing into the blocked path for 281 → 1 504 ns on one and a half times the
   work, the table having doubled. **Right-sizing that table to the pattern's own
   alphabet is where the remaining 2× is most likely to be**, and it is the same
@@ -934,6 +1043,45 @@ because nothing in this change touches it:
   `Math.Pow` and the log errors `Math.Log`, neither of which `Vector<T>` offers;
   `MeanAbsolutePercentageError` divides and clamps and was not measured. Only the two
   kernels that are arithmetic all the way down implement the lane-wise form.
+
+## Persisting an embedding index — the save path (issue #323)
+
+The nightly reported `embedding_index_save` at **0.27× cpu** against `numpy.save`
+where [`bench/README.md`](https://github.com/CyrilB1531/lodestar/blob/main/bench/README.md)
+had published **1.13×**, Lodestar ahead. Neither figure was wrong: the C# side moved
+by 6% between the two machines and numpy's by a factor of four, because `numpy.save`
+writes a raw block — bandwidth-bound work a newer machine speeds up almost linearly —
+where this artifact base64-encodes into JSON, whose cost per byte barely moves.
+
+Under that, `Base64Numbers.WriteSingles` allocated a full copy of the vector block
+and memcpy'd into it, so that an endianness swap could run in place. That swap is a
+no-op on every platform .NET runs on, and the comment beside it said so. On a
+little-endian machine the bytes to encode are the ones already in the span.
+
+Intel i7-4770S, .NET 10.0.10, median of 3, before and after in one window, on a
+machine under load from a parallel session — which is why these absolutes sit above
+`bench/README.md`'s. `embedding_index_load` is re-run as the control: it reads the
+same artifact through the same harness and this change does not touch it.
+
+| Operation | before | after | change |
+| --- | ---: | ---: | --- |
+| `embedding_index_save`, wall | 15.807 ms | **10.579 ms** | **1.49× faster** |
+| `embedding_index_save`, cpu | 17.139 ms | **11.729 ms** | **1.46× faster** |
+| `embedding_index_load`, wall — control | 13.715 ms | 13.506 ms | unchanged |
+| `embedding_index_load`, cpu — control | 15.739 ms | 15.527 ms | unchanged |
+
+- **One allocation and one copy, on the largest block any artifact holds.** At the
+  benchmark's size that is 15 360 000 bytes allocated on the large-object heap and
+  copied, per save, discarded immediately after.
+- **The bytes on the wire are unchanged**, and that is now pinned rather than
+  argued: the little-endian path hands `WriteBase64String` the same span the copy
+  used to hold, and `Base64NumbersTests` asserts the exact base64 of a known vector,
+  computed from the IEEE-754 bits rather than captured from this build.
+- **This does not settle the ratio the nightly reported.** Encoding is still the
+  dominant cost and still scales with the machine differently from a raw block
+  write; what it removes is the part that was never encoding at all. The load
+  direction, further behind and for a decided reason, is
+  [#324](https://github.com/CyrilB1531/lodestar/issues/324).
 
 ## Multiclass ROC-AUC, sequential against parallel (issue #86)
 
