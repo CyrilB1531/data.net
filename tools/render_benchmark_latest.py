@@ -52,7 +52,14 @@ COMMIT = re.compile(r"^- Commit: `([0-9a-f]{7,40})`", re.MULTILINE)
 
 
 def commits(wiki: pathlib.Path, limit: int) -> list[str]:
-    """Commits touching the page, newest first, oldest cut off at limit."""
+    """Commits touching the page, newest first, oldest cut off at limit.
+
+    Refuses a non-positive limit: git log reads a leading '-' on this argument
+    as an option rather than a count, the same shape select_benchmarks.py guards
+    against on its own revision arguments.
+    """
+    if limit < 1:
+        raise ValueError(f"--max-commits must be positive, got {limit}")
     out = subprocess.run(
         ["git", "log", f"-{limit}", "--format=%H", "--", WIKI_PAGE],
         cwd=wiki, capture_output=True, text=True, check=True)
