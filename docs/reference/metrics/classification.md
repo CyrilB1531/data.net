@@ -106,6 +106,8 @@ which is where its clip lands.
 | [`DetCurve`](classification/detcurve.md) | The detection error tradeoff curve as plot data — both axes are errors. |
 | [`F1`](classification/f1.md) | The harmonic mean of precision and recall. |
 | [`FBeta`](classification/fbeta.md) | The same, with the balance between the two turned by hand. |
+| [`HammingLoss`](classification/hammingloss.md) | The share of labels predicted wrongly — on a matrix, labels rather than samples. |
+| [`JaccardScore`](classification/jaccardscore.md) | Intersection over union, the strictest of the three ratios precision and recall sit either side of. |
 | [`KappaWeighting`](classification/kappaweighting.md) | How far apart two classes count as being, for `CohenKappa`. |
 | [`LogLoss`](classification/logloss.md) | The cross-entropy of a probabilistic prediction — unbounded, and dominated by one confident mistake. |
 | [`MatthewsCorrelation`](classification/matthewscorrelation.md) | The correlation between prediction and truth, in `[-1, 1]`. |
@@ -119,3 +121,4 @@ which is where its clip lands.
 | [`RocCurve`](classification/roccurve.md) | The ROC curve as plot data, where `RocAuc` gives only its area. |
 | [`UndefinedMetricException`](classification/undefinedmetricexception.md) | Thrown when a metric is undefined and you asked to be told. |
 | [`ZeroDivision`](classification/zerodivision.md) | What an undefined metric returns instead of throwing. |
+| [`ZeroOneLoss`](classification/zerooneloss.md) | The share of samples predicted wrongly — on a matrix, a row is wrong if any label is. |

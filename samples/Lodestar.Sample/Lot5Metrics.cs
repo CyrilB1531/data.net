@@ -50,6 +50,7 @@ internal static class Lot5Metrics
         Roc();
         Calibration();
         Curves();
+        LabelLosses();
         MatrixReaders();
         Clustering();
         Ranking();
@@ -94,6 +95,38 @@ internal static class Lot5Metrics
         double[] spread = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.05];
         Console.WriteLine($"    ten samples, roc    = {RocCurve.Compute(longer, spread).Thresholds.Count} points dropped to, "
             + $"{RocCurve.Compute(longer, spread, 1, default, false).Thresholds.Count} kept whole");
+        Console.WriteLine();
+    }
+
+    /// <summary>The two losses that agree on labels and disagree on a matrix, and the ratio between precision and recall.</summary>
+    private static void LabelLosses()
+    {
+        Console.WriteLine("  label losses — where hamming and zero-one part company");
+
+        int[] truth = [0, 1, 2, 1];
+        int[] predicted = [0, 2, 2, 1];
+
+        Console.WriteLine($"    HammingLoss         = {Inv.F3(HammingLoss.Score(truth, predicted))}");
+        Console.WriteLine($"    ZeroOneLoss         = {Inv.F3(ZeroOneLoss.Score(truth, predicted))} (the same, on labels)");
+        Console.WriteLine($"    ZeroOneLoss, count  = {Inv.F3(ZeroOneLoss.Score(truth, predicted, false))}");
+
+        // On a matrix one counts wrong labels and the other wrong rows, so a single
+        // mistake per row costs a third of a sample here and a whole one there.
+        bool[] matrixTruth = [true, false, true, false, true, true];
+        bool[] matrixPredicted = [true, false, false, true, true, true];
+        Console.WriteLine($"    matrix, Hamming     = {Inv.F3(HammingLoss.Score(matrixTruth, matrixPredicted, 3))} (labels)");
+        Console.WriteLine($"    matrix, ZeroOne     = {Inv.F3(ZeroOneLoss.Score(matrixTruth, matrixPredicted, 3))} (rows)");
+        Console.WriteLine($"    matrix, ZeroOne cnt = {Inv.F3(ZeroOneLoss.Score(matrixTruth, matrixPredicted, 3, false))}");
+
+        // Jaccard divides by the union, so it sits at or below both of the two it is
+        // built from -- the same four averagings, and the same ZeroDivision.
+        Console.WriteLine($"    Jaccard macro       = {Inv.F3(JaccardScore.Score(truth, predicted, Averaging.Macro))}");
+        Console.WriteLine($"    Jaccard micro       = {Inv.F3(JaccardScore.Score(truth, predicted, Averaging.Micro))}");
+        Console.WriteLine($"    Jaccard per class   = {Inv.List(JaccardScore.PerClass(truth, predicted))}");
+        Console.WriteLine($"    Precision per class = {Inv.List(Precision.PerClass(truth, predicted))} (never below it)");
+
+        // A class neither side carries needs an explicit label set to reach at all.
+        Console.WriteLine($"    a class nobody has  = {Inv.List(JaccardScore.PerClass([0, 1], [0, 1], ZeroDivision.One, [0, 1, 2]))}");
         Console.WriteLine();
     }
 
