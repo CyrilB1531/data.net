@@ -102,6 +102,32 @@ jobs:
         if: steps.select.outputs.total != '0'
         run: python bench/corpus/generate_vocabs.py
 
+      # The comparisons need corpora of their own, and which ones is in the map rather than
+      # here: bench/corpus/metrics is 112 MB and takes 19 s, so it is generated when a
+      # comparison asks for it and not otherwise.
+      # The comparisons need corpora of their own, and which ones is in the map rather than
+      # here: bench/corpus/metrics is 112 MB and takes 19 s, so it is generated when a
+      # comparison asks for it and not otherwise. Deduplicated, since two may share one.
+      - name: Generate the corpora the comparisons read
+        if: steps.select.outputs.harnesses != '0'
+        run: |
+          set -euo pipefail
+          python - <<'PY' > generators.txt
+          import json
+          harnesses = json.load(open("bench/bench-map.json"))["harnesses"]
+          wanted, seen = [n.strip() for n in open("harnesses.txt") if n.strip()], []
+          for name in wanted:
+              for script in harnesses[name].get("generate", []):
+                  if script not in seen:
+                      seen.append(script)
+          print("\n".join(seen))
+          PY
+          while read -r script; do
+            [ -n "$script" ] || continue
+            echo "generating $script"
+            python "$script"
+          done < generators.txt
+
       - name: Run them
         if: steps.select.outputs.count != '0'
         run: |

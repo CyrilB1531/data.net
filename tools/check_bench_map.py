@@ -80,6 +80,11 @@ def harness_findings(harnesses: dict) -> list[str]:
         for key, entry in sorted(harnesses.items())
         if not (ROOT / entry.get("python", "")).exists()
     ]
+    findings += [
+        f"bench/bench-map.json: harness '{key}' generates with {script}, which does not exist"
+        for key, entry in sorted(harnesses.items())
+        for script in entry.get("generate", []) if not (ROOT / script).exists()
+    ]
     return findings
 
 
