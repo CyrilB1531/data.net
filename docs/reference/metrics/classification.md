@@ -96,6 +96,7 @@ which is where its clip lands.
 | [`Accuracy`](classification/accuracy.md) | The share of samples the model got right. |
 | [`Auc`](classification/auc.md) | The area under a curve you already have, by the trapezoidal rule. |
 | [`AverageRow`](classification/averagerow.md) | One averaged line of a `ClassificationReport`. |
+| [`BinStrategy`](classification/binstrategy.md) | Where a calibration curve gets its bin edges. |
 | [`Averaging`](classification/averaging.md) | How per-class scores are reduced to one number. |
 | [`BalancedAccuracy`](classification/balancedaccuracy.md) | Accuracy that counts every class equally, however rare. |
 | [`BrierScore`](classification/brierscore.md) | The mean squared error of a probabilistic prediction — a confident mistake costs at most 1. |
@@ -115,6 +116,7 @@ which is where its clip lands.
 | [`MultiClassStrategy`](classification/multiclassstrategy.md) | One class against the rest, or every pair. |
 | [`Normalization`](classification/normalization.md) | Which sum a confusion matrix's cells are divided by. |
 | [`Precision`](classification/precision.md) | Of everything flagged as a class, how much belonged there. |
+| [`CalibrationCurve`](classification/calibrationcurve.md) | The reliability curve as plot data; its arrays are as long as the bins that held something. |
 | [`PrecisionRecallCurve`](classification/precisionrecallcurve.md) | The precision-recall curve as plot data; its thresholds array is one shorter. |
 | [`Recall`](classification/recall.md) | Of everything that belonged to a class, how much was found. |
 | [`RocAuc`](classification/rocauc.md) | How well the scores rank a positive above a negative. |
