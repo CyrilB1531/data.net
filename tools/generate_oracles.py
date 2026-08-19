@@ -2164,7 +2164,7 @@ def _ranking_fixtures() -> list[dict]:
     return [
         {"name": "perfectly ordered", "true": [3.0, 2.0, 1.0, 0.0], "score": [0.9, 0.5, 0.4, 0.1]},
         {"name": "reversed", "true": [3.0, 2.0, 1.0, 0.0], "score": [0.1, 0.4, 0.5, 0.9]},
-        {"name": "every score tied", "true": [3.0, 2.0, 1.0, 0.0], "score": [0.5, 0.5, 0.5, 0.5]},
+        {"name": ALL_TIED, "true": [3.0, 2.0, 1.0, 0.0], "score": [0.5, 0.5, 0.5, 0.5]},
         {"name": "two tied among distinct", "true": [3.0, 2.0, 1.0, 0.0], "score": [0.9, 0.5, 0.5, 0.1]},
         {"name": "a tie across the k boundary", "true": [3.0, 2.0, 1.0, 0.0], "score": [0.9, 0.5, 0.5, 0.2]},
         {"name": "all-zero relevance", "true": [0.0, 0.0, 0.0, 0.0], "score": [0.9, 0.5, 0.4, 0.1]},
@@ -2223,6 +2223,7 @@ def generate_ranking() -> dict:
 # what ties a failing case back to the prose that explains it.
 WORKED_CASE = "the worked case"
 WORKED_CASE_WEIGHTED = "the worked case, weighted"
+ALL_TIED = "every score tied"
 
 
 def _label_ranking_fixtures() -> list[dict]:
@@ -2313,7 +2314,7 @@ def _average_precision_binary_fixtures() -> list[dict]:
          "score": [0.1, 0.4, 0.35, 0.8], "pos_label": 1, "weight": [1.0, 2.0, 3.0, 4.0]},
         # Every score tied: the sum takes one step of the full recall at the group's
         # precision, where the trapezoid interpolates a diagonal that is not there.
-        {"name": "every score tied", "true": [0, 1, 0, 1],
+        {"name": ALL_TIED, "true": [0, 1, 0, 1],
          "score": [0.5, 0.5, 0.5, 0.5], "pos_label": 1, "weight": None},
         {"name": "perfectly ranked", "true": [0, 0, 1, 1],
          "score": [0.1, 0.2, 0.3, 0.4], "pos_label": 1, "weight": None},
@@ -2626,6 +2627,214 @@ def _calibration_fixtures() -> list[dict]:
          "pos_label": 1, "weight": None},
         # long-comment: the exclusion below is a reproducibility claim, and a reader
         # who does not know why will delete the flag and re-break the drift gate.
+        # At power -2 this pair's deviance is a sum of three terms an order of
+        # magnitude larger than the result, so its last bits follow the machine's
+        # reduction order -- measured, a CI runner and this one disagree by one ulp
+        # on it. Freezing either answer makes the gate a lottery. Only this fixture
+        # is affected, and the other five still cover the negative regimes.
+        {"name": "small values", "true": [0.01, 0.5, 0.25],
+         "pred": [0.02, 0.4, 0.3], "weight": None, "skip_negative_powers": True},
+    ]
+
+
+def _tweedie_powers() -> list[float]:
+    """One power per regime, plus the two the named deviances are."""
+    return [-2.0, -1.0, 0.0, 1.0, 1.5, 2.0, 3.0]
+
+
+def _tweedie_admits(power: float, true, pred) -> bool:
+    """Whether the regime admits this pair, which is what the C# side refuses on."""
+    if power < 0:
+        return min(pred) > 0
+    if power == 0:
+        return True
+    if power < 2:
+        return min(true) >= 0 and min(pred) > 0
+    return min(true) > 0 and min(pred) > 0
+
+
+def _tweedie_row(fixture: dict, true, pred, kw: dict) -> list[dict]:
+    """One entry per power the fixture is legal at, with its D2 where that is defined."""
+    from sklearn.metrics import d2_tweedie_score, mean_tweedie_deviance
+
+    # A D2 needs two samples and a truth that varies; where it does not, the
+    # reference divides by zero and the C# side refuses instead.
+    scored = len(true) >= 2 and len(set(fixture["true"])) > 1
+
+    rows = []
+    for power in _tweedie_powers():
+        if power < 0 and fixture.get("skip_negative_powers"):
+            continue
+        if not _tweedie_admits(power, fixture["true"], fixture["pred"]):
+            continue
+        entry = {
+            "power": power,
+            "deviance": float(mean_tweedie_deviance(true, pred, power=power, **kw)),
+        }
+        if scored:
+            entry["d2"] = float(d2_tweedie_score(true, pred, power=power, **kw))
+        rows.append(entry)
+    return rows
+
+
+def _deviance_case(fixture: dict) -> dict:
+    """Every number one fixture contributes, across the powers its values allow."""
+    import numpy as np
+    from sklearn.metrics import (
+        d2_absolute_error_score,
+        d2_pinball_score,
+        mean_gamma_deviance,
+        mean_poisson_deviance,
+    )
+
+    true = np.array(fixture["true"])
+    pred = np.array(fixture["pred"])
+    kw = {} if fixture["weight"] is None else {"sample_weight": np.array(fixture["weight"])}
+
+    case = {
+        "name": fixture["name"],
+        "y_true": fixture["true"],
+        "y_pred": fixture["pred"],
+        "sample_weight": fixture["weight"],
+        "tweedie": _tweedie_row(fixture, true, pred, kw),
+        "d2_absolute_error": float(d2_absolute_error_score(true, pred, **kw)),
+        "pinball": [
+            {"alpha": alpha, "d2": float(d2_pinball_score(true, pred, alpha=alpha, **kw))}
+            for alpha in (0.1, 0.25, 0.5, 0.75, 0.9)
+        ],
+    }
+    if _tweedie_admits(1.0, fixture["true"], fixture["pred"]):
+        case["poisson"] = float(mean_poisson_deviance(true, pred, **kw))
+    if _tweedie_admits(2.0, fixture["true"], fixture["pred"]):
+        case["gamma"] = float(mean_gamma_deviance(true, pred, **kw))
+    return case
+
+
+def _deviance_multioutput() -> dict:
+    """Two outputs, the shape only the two pinball D2 scores accept."""
+    import numpy as np
+    from sklearn.metrics import d2_absolute_error_score, d2_pinball_score
+
+    true = [[0.5, 1.0], [1.0, 1.0], [7.0, -6.0]]
+    pred = [[0.0, 2.0], [-1.0, 2.0], [8.0, -5.0]]
+    mt = np.array(true)
+    mp = np.array(pred)
+    return {
+        "y_true": [v for row in true for v in row],
+        "y_pred": [v for row in pred for v in row],
+        "output_count": 2,
+        "uniform_average": float(d2_absolute_error_score(mt, mp)),
+        "raw_values": [float(v) for v in d2_absolute_error_score(mt, mp, multioutput="raw_values")],
+        "pinball_uniform_average": float(d2_pinball_score(mt, mp, alpha=0.75)),
+        "pinball_raw_values": [
+            float(v) for v in d2_pinball_score(mt, mp, alpha=0.75, multioutput="raw_values")],
+    }
+
+
+def generate_regression_deviance() -> dict:
+    """The three GLM deviances and the three D2 scores -- regression lot 2 (#202)."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        cases = [_deviance_case(fixture) for fixture in _deviance_fixtures()]
+        multioutput = _deviance_multioutput()
+
+    return {
+        "metadata": {
+            "algorithm": "RegressionDeviance",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.mean_tweedie_deviance",
+                "sklearn.metrics.mean_poisson_deviance",
+                "sklearn.metrics.mean_gamma_deviance",
+                "sklearn.metrics.d2_tweedie_score",
+                "sklearn.metrics.d2_pinball_score",
+                "sklearn.metrics.d2_absolute_error_score",
+            ],
+            "count": len(cases),
+        },
+        "cases": cases,
+        "multioutput": multioutput,
+    }
+
+
+def _internal_validity_fixtures() -> list[dict]:
+    """Clusterings chosen where a plausible implementation and the reference part company."""
+    two_by_two = [[1.0, 2.0], [1.5, 1.8], [5.0, 8.0], [8.0, 8.0], [1.0, 0.6], [9.0, 11.0]]
+    return [
+        {"name": WORKED_CASE, "features": two_by_two, "labels": [0, 0, 1, 1, 0, 1]},
+        # Every cluster but one holds a single sample: the widest label count either
+        # metric admits, n - 1, and the one where a singleton's zero spread shows.
+        {"name": "one cluster of two, the rest singletons", "features": two_by_two,
+         "labels": [0, 1, 2, 3, 4, 4]},
+        {"name": "a singleton beside a large cluster", "features": two_by_two,
+         "labels": [0, 0, 0, 0, 0, 1]},
+        {"name": "three clusters", "features": two_by_two, "labels": [0, 1, 2, 0, 1, 2]},
+        # No spread at all: Calinski-Harabasz answers 1 rather than dividing by zero,
+        # and Davies-Bouldin 0 because the centroids coincide.
+        {"name": "four identical points", "features": [[1.0, 1.0]] * 4, "labels": [0, 0, 1, 1]},
+        {"name": "two points, far apart, duplicated",
+         "features": [[0.0, 0.0], [0.0, 0.0], [10.0, 10.0], [10.0, 10.0]], "labels": [0, 0, 1, 1]},
+        # One feature, and five: the shape is a flat span either way.
+        {"name": "one feature", "features": [[1.0], [1.2], [8.0], [8.4], [1.1], [9.0]],
+         "labels": [0, 0, 1, 1, 0, 1]},
+        {"name": "five features",
+         "features": [[1.0, 2.0, 3.0, 4.0, 5.0], [1.1, 2.1, 3.1, 4.1, 5.1],
+                      [9.0, 8.0, 7.0, 6.0, 5.0], [9.1, 8.1, 7.1, 6.1, 5.1]],
+         "labels": [0, 0, 1, 1]},
+    ]
+
+
+def generate_internal_validity() -> dict:
+    """Calinski-Harabasz and Davies-Bouldin, which score a clustering with no reference (#192)."""
+    import numpy as np
+    from sklearn.metrics import calinski_harabasz_score, davies_bouldin_score
+
+    cases = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for fixture in _internal_validity_fixtures():
+            features = np.array(fixture["features"])
+            labels = np.array(fixture["labels"])
+            cases.append({
+                "name": fixture["name"],
+                "features": [v for row in fixture["features"] for v in row],
+                "feature_count": int(features.shape[1]),
+                "labels": fixture["labels"],
+                "calinski_harabasz": float(calinski_harabasz_score(features, labels)),
+                "davies_bouldin": float(davies_bouldin_score(features, labels)),
+            })
+
+    return {
+        "metadata": {
+            "algorithm": "InternalValidity",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.calinski_harabasz_score",
+                "sklearn.metrics.davies_bouldin_score",
+            ],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+def _calibration_fixtures() -> list[dict]:
+    """Binary probability vectors, including the ones the clip decides."""
+    return [
+        {"name": WORKED_CASE, "true": [0, 1, 1, 0], "proba": [0.1, 0.9, 0.8, 0.3],
+         "pos_label": 1, "weight": None},
+        {"name": WORKED_CASE_WEIGHTED, "true": [0, 1, 1, 0], "proba": [0.1, 0.9, 0.8, 0.3],
+         "pos_label": 1, "weight": [1.0, 2.0, 3.0, 4.0]},
+        {"name": "the same, scored about the other class", "true": [0, 1, 1, 0],
+         "proba": [0.1, 0.9, 0.8, 0.3], "pos_label": 0, "weight": None},
+        # A predicted 0 for the true class is where log loss would be infinite and the
+        # clip decides the number instead; brier reads the same input as an ordinary 1.
+        {"name": "certain and wrong", "true": [1, 0], "proba": [0.0, 0.5],
+         "pos_label": 1, "weight": None},
+        # long-comment: the exclusion below is a reproducibility claim, and a reader
+        # who does not know why will delete the flag and re-break the drift gate.
         # A perfect prediction scores -log(1 - eps), whose last bits follow the libm
         # that computed it -- measured, a CI runner and this one disagree by one ulp
         # on 2.220446049250313e-16. The brier score on the same fixture is exactly 0
@@ -2714,6 +2923,89 @@ def generate_calibration() -> dict:
         },
         "cases": cases,
         "multiclass": multiclass,
+    }
+
+
+def _curve_fixtures() -> list[dict]:
+    """Score vectors chosen so drop_intermediate changes a length on some of them."""
+    return [
+        {"name": WORKED_CASE, "true": [0, 0, 1, 1], "score": [0.1, 0.4, 0.35, 0.8],
+         "weight": None},
+        {"name": WORKED_CASE_WEIGHTED, "true": [0, 0, 1, 1], "score": [0.1, 0.4, 0.35, 0.8],
+         "weight": [1.0, 2.0, 3.0, 4.0]},
+        # Ten samples with a long collinear run: the one fixture where every curve's
+        # drop_intermediate actually drops, and by a different amount on each.
+        {"name": "a run drop_intermediate shortens",
+         "true": [0, 0, 0, 0, 1, 1, 1, 1, 0, 1],
+         "score": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.05], "weight": None},
+        {"name": "perfectly separated", "true": [0, 0, 1, 1], "score": [0.1, 0.2, 0.8, 0.9],
+         "weight": None},
+        {"name": "perfectly inverted", "true": [1, 1, 0, 0], "score": [0.1, 0.2, 0.8, 0.9],
+         "weight": None},
+        {"name": ALL_TIED, "true": [0, 1, 0, 1], "score": [0.5, 0.5, 0.5, 0.5],
+         "weight": None},
+        {"name": "a tie spanning both classes", "true": [1, 0, 1, 0, 1],
+         "score": [0.9, 0.5, 0.5, 0.5, 0.1], "weight": None},
+    ]
+
+
+def generate_curves() -> dict:
+    """roc_curve, precision_recall_curve and det_curve as plot data (#212)."""
+    import numpy as np
+    from sklearn.metrics import auc, det_curve, precision_recall_curve, roc_auc_score, roc_curve
+
+    def arrays(triple) -> dict:
+        first, second, thresholds = triple
+        # JSON has no infinity, so the threshold at +inf -- where the model always
+        # answers negative -- travels as a string the C# side reads back.
+        return {
+            "first": [float(v) for v in first],
+            "second": [float(v) for v in second],
+            "thresholds": ["Infinity" if np.isinf(v) else float(v) for v in thresholds],
+        }
+
+    cases = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for fixture in _curve_fixtures():
+            true = np.array(fixture["true"])
+            score = np.array(fixture["score"])
+            kw = {} if fixture["weight"] is None else {
+                "sample_weight": np.array(fixture["weight"])}
+
+            case = {
+                "name": fixture["name"],
+                "y_true": fixture["true"],
+                "y_score": fixture["score"],
+                "sample_weight": fixture["weight"],
+                "roc_auc": float(roc_auc_score(true, score, **kw)),
+            }
+            for drop in (True, False):
+                case[f"roc_{drop}"] = arrays(roc_curve(true, score, drop_intermediate=drop, **kw))
+                case[f"pr_{drop}"] = arrays(
+                    precision_recall_curve(true, score, drop_intermediate=drop, **kw))
+                case[f"det_{drop}"] = arrays(det_curve(true, score, drop_intermediate=drop, **kw))
+
+            # The area the curve's own points integrate to, which is what the trapezoid
+            # must reproduce -- and which roc_auc equals, an invariant no oracle states.
+            fpr, tpr, _ = roc_curve(true, score, **kw)
+            case["roc_trapezoid"] = float(auc(fpr, tpr))
+            cases.append(case)
+
+    return {
+        "metadata": {
+            "algorithm": "Curves",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.roc_curve",
+                "sklearn.metrics.precision_recall_curve",
+                "sklearn.metrics.det_curve",
+                "sklearn.metrics.auc",
+            ],
+            "count": len(cases),
+        },
+        "cases": cases,
     }
 
 
@@ -5699,6 +5991,7 @@ def main() -> None:
         "average_precision.json": generate_average_precision,
         "top_k_accuracy.json": generate_top_k_accuracy,
         "roc_auc.json": generate_roc_auc,
+        "curves.json": generate_curves,
         "calibration.json": generate_calibration,
         "regression.json": generate_regression,
         "regression_conditioning.json": generate_regression_conditioning,
