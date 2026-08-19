@@ -20,6 +20,10 @@ given:
   without saying why.
 - `check_sample_culture.py` refuses a sample that can print a number in the
   contributor's culture rather than the same way everywhere.
+- `check_sample_coverage.py` refuses a public class with no `<Class>Sample.cs`,
+  package by package as each is split (decision 0041). The packaging gate already
+  asks that a type be *referenced*; this asks which file references it, so an
+  example stays where its name says it is.
 - All of those but `check_nuspec_dependencies.py`, which needs a packed
   `./artifacts`, also run before a commit for whoever installs
   `.githooks/pre-commit` with `git config core.hooksPath .githooks` —

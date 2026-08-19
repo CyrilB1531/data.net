@@ -1,5 +1,5 @@
 #!/bin/sh
-# The five offline guards, run against the index instead of after the push.
+# The six offline guards, run against the index instead of after the push.
 #
 #   install:  git config core.hooksPath .githooks
 #   skip once:  git commit --no-verify
@@ -39,7 +39,8 @@ for guard in \
     tools/check_comment_length.py \
     tools/check_version_floor.py \
     tools/check_sample_culture.py \
-    tools/check_bench_map.py
+    tools/check_bench_map.py \
+    tools/check_sample_coverage.py
 do
     "$interpreter" "$guard" || failed="$failed $(basename "$guard" .py)"
 done
