@@ -21,12 +21,6 @@ namespace Lodestar.Sample;
 /// </remarks>
 internal static class PackagingGate
 {
-    /// <summary>
-    /// Types that cannot be exercised here, each with a reason a reviewer can
-    /// disagree with — the standard CONTRIBUTING.md sets for analyzer
-    /// suppressions. A key naming a type that no longer exists fails the gate,
-    /// so this list cannot rot into a silent omission.
-    /// </summary>
     /// <summary>The charsmap a normalizer needs is a model artifact, and none is committed.</summary>
     private const string NoCharsMap =
         "a precompiled charsmap is a binary trie inside a spiece.model, and model artifacts are "
@@ -50,6 +44,12 @@ internal static class PackagingGate
         "a result record the library CONSTRUCTS and the sample reads. Its properties are exercised; "
         + "constructing one by hand is what a consumer never does";
 
+    /// <summary>
+    /// Types that cannot be exercised here, each with a reason a reviewer can
+    /// disagree with — the standard CONTRIBUTING.md sets for analyzer
+    /// suppressions. A key naming a type that no longer exists fails the gate,
+    /// so this list cannot rot into a silent omission.
+    /// </summary>
     private static readonly Dictionary<string, string> Excluded = new(StringComparer.Ordinal)
     {
         ["Lodestar.Embeddings.Onnx.OnnxTextEmbedder"] =
@@ -170,20 +170,7 @@ internal static class PackagingGate
         ref int covered)
     {
         string name = type.FullName!;
-        exported.Add(name);
-        if (Excluded.ContainsKey(name))
-        {
-            return;
-        }
-
-        if (typeRefs.Contains(name))
-        {
-            covered++;
-        }
-        else
-        {
-            uncovered.Add($"{name} (enum) is never named");
-        }
+        Judge(name, "(enum) is never named", typeRefs.Contains(name), exported, uncovered, ref covered);
     }
 
     /// <summary>Every public member of one type, against what the sample referenced.</summary>
@@ -201,9 +188,9 @@ internal static class PackagingGate
         foreach (string member in PublicMembers(type))
         {
             string name = $"{typeName}.{member}";
-            exported.Add(name);
-            if (wholeTypeExcluded || Excluded.ContainsKey(name))
+            if (wholeTypeExcluded)
             {
+                exported.Add(name);
                 continue;
             }
 
@@ -213,14 +200,36 @@ internal static class PackagingGate
                 || (member.StartsWith("get_", StringComparison.Ordinal)
                     && memberRefs.Contains($"{typeName}.set_{member[4..]}"));
 
-            if (reached)
-            {
-                covered++;
-            }
-            else
-            {
-                uncovered.Add($"{name} is never referenced");
-            }
+            Judge(name, "is never referenced", reached, exported, uncovered, ref covered);
+        }
+    }
+
+    /// <summary>
+    /// The one tally <see cref="InspectEnum"/> and <see cref="InspectMembers"/> both
+    /// perform, once per candidate name: record it, skip a documented exclusion, else
+    /// count it covered or report it missing.
+    /// </summary>
+    private static void Judge(
+        string name,
+        string missingSuffix,
+        bool reached,
+        HashSet<string> exported,
+        List<string> uncovered,
+        ref int covered)
+    {
+        exported.Add(name);
+        if (Excluded.ContainsKey(name))
+        {
+            return;
+        }
+
+        if (reached)
+        {
+            covered++;
+        }
+        else
+        {
+            uncovered.Add($"{name} {missingSuffix}");
         }
     }
 
