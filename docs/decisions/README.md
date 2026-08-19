@@ -49,6 +49,7 @@ a later decision uses instead.
 | [`0037`](0037-the-guards-run-before-the-commit.md) | The guards run before the commit, through `core.hooksPath` and no framework | accepted | 2026-08-18 | extends [`0015`](0015-sonar-rules-in-the-build.md)'s reasoning to the Python guards |
 | [`0038`](0038-the-gate-confronts-an-exception-tag-with-the-page-that-documents-it.md) | The gate confronts an exception tag with the page that documents it | accepted | 2026-08-18 | — |
 | [`0039`](0039-mutual-information-returns-zero-on-an-empty-input.md) | [`MutualInformation`](../reference/metrics/clustering/mutualinformation.md) returns `0.0` on an empty input; scikit-learn raises | accepted | 2026-08-18 | — |
+| [`0040`](0040-a-curve-is-a-sealed-class-per-curve.md) | A curve is a sealed class per curve, not a record and not out-parameters; `drop_intermediate`'s asymmetric defaults are reproduced | accepted | 2026-08-18 | — |
 
 ## What `accepted` means here
 

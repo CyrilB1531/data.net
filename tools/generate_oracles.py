@@ -2164,7 +2164,7 @@ def _ranking_fixtures() -> list[dict]:
     return [
         {"name": "perfectly ordered", "true": [3.0, 2.0, 1.0, 0.0], "score": [0.9, 0.5, 0.4, 0.1]},
         {"name": "reversed", "true": [3.0, 2.0, 1.0, 0.0], "score": [0.1, 0.4, 0.5, 0.9]},
-        {"name": "every score tied", "true": [3.0, 2.0, 1.0, 0.0], "score": [0.5, 0.5, 0.5, 0.5]},
+        {"name": ALL_TIED, "true": [3.0, 2.0, 1.0, 0.0], "score": [0.5, 0.5, 0.5, 0.5]},
         {"name": "two tied among distinct", "true": [3.0, 2.0, 1.0, 0.0], "score": [0.9, 0.5, 0.5, 0.1]},
         {"name": "a tie across the k boundary", "true": [3.0, 2.0, 1.0, 0.0], "score": [0.9, 0.5, 0.5, 0.2]},
         {"name": "all-zero relevance", "true": [0.0, 0.0, 0.0, 0.0], "score": [0.9, 0.5, 0.4, 0.1]},
@@ -2223,6 +2223,7 @@ def generate_ranking() -> dict:
 # what ties a failing case back to the prose that explains it.
 WORKED_CASE = "the worked case"
 WORKED_CASE_WEIGHTED = "the worked case, weighted"
+ALL_TIED = "every score tied"
 
 
 def _label_ranking_fixtures() -> list[dict]:
@@ -2313,7 +2314,7 @@ def _average_precision_binary_fixtures() -> list[dict]:
          "score": [0.1, 0.4, 0.35, 0.8], "pos_label": 1, "weight": [1.0, 2.0, 3.0, 4.0]},
         # Every score tied: the sum takes one step of the full recall at the group's
         # precision, where the trapezoid interpolates a diagonal that is not there.
-        {"name": "every score tied", "true": [0, 1, 0, 1],
+        {"name": ALL_TIED, "true": [0, 1, 0, 1],
          "score": [0.5, 0.5, 0.5, 0.5], "pos_label": 1, "weight": None},
         {"name": "perfectly ranked", "true": [0, 0, 1, 1],
          "score": [0.1, 0.2, 0.3, 0.4], "pos_label": 1, "weight": None},
@@ -2705,6 +2706,89 @@ def generate_calibration() -> dict:
         },
         "cases": cases,
         "multiclass": multiclass,
+    }
+
+
+def _curve_fixtures() -> list[dict]:
+    """Score vectors chosen so drop_intermediate changes a length on some of them."""
+    return [
+        {"name": WORKED_CASE, "true": [0, 0, 1, 1], "score": [0.1, 0.4, 0.35, 0.8],
+         "weight": None},
+        {"name": WORKED_CASE_WEIGHTED, "true": [0, 0, 1, 1], "score": [0.1, 0.4, 0.35, 0.8],
+         "weight": [1.0, 2.0, 3.0, 4.0]},
+        # Ten samples with a long collinear run: the one fixture where every curve's
+        # drop_intermediate actually drops, and by a different amount on each.
+        {"name": "a run drop_intermediate shortens",
+         "true": [0, 0, 0, 0, 1, 1, 1, 1, 0, 1],
+         "score": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.05], "weight": None},
+        {"name": "perfectly separated", "true": [0, 0, 1, 1], "score": [0.1, 0.2, 0.8, 0.9],
+         "weight": None},
+        {"name": "perfectly inverted", "true": [1, 1, 0, 0], "score": [0.1, 0.2, 0.8, 0.9],
+         "weight": None},
+        {"name": ALL_TIED, "true": [0, 1, 0, 1], "score": [0.5, 0.5, 0.5, 0.5],
+         "weight": None},
+        {"name": "a tie spanning both classes", "true": [1, 0, 1, 0, 1],
+         "score": [0.9, 0.5, 0.5, 0.5, 0.1], "weight": None},
+    ]
+
+
+def generate_curves() -> dict:
+    """roc_curve, precision_recall_curve and det_curve as plot data (#212)."""
+    import numpy as np
+    from sklearn.metrics import auc, det_curve, precision_recall_curve, roc_auc_score, roc_curve
+
+    def arrays(triple) -> dict:
+        first, second, thresholds = triple
+        # JSON has no infinity, so the threshold at +inf -- where the model always
+        # answers negative -- travels as a string the C# side reads back.
+        return {
+            "first": [float(v) for v in first],
+            "second": [float(v) for v in second],
+            "thresholds": ["Infinity" if np.isinf(v) else float(v) for v in thresholds],
+        }
+
+    cases = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for fixture in _curve_fixtures():
+            true = np.array(fixture["true"])
+            score = np.array(fixture["score"])
+            kw = {} if fixture["weight"] is None else {
+                "sample_weight": np.array(fixture["weight"])}
+
+            case = {
+                "name": fixture["name"],
+                "y_true": fixture["true"],
+                "y_score": fixture["score"],
+                "sample_weight": fixture["weight"],
+                "roc_auc": float(roc_auc_score(true, score, **kw)),
+            }
+            for drop in (True, False):
+                case[f"roc_{drop}"] = arrays(roc_curve(true, score, drop_intermediate=drop, **kw))
+                case[f"pr_{drop}"] = arrays(
+                    precision_recall_curve(true, score, drop_intermediate=drop, **kw))
+                case[f"det_{drop}"] = arrays(det_curve(true, score, drop_intermediate=drop, **kw))
+
+            # The area the curve's own points integrate to, which is what the trapezoid
+            # must reproduce -- and which roc_auc equals, an invariant no oracle states.
+            fpr, tpr, _ = roc_curve(true, score, **kw)
+            case["roc_trapezoid"] = float(auc(fpr, tpr))
+            cases.append(case)
+
+    return {
+        "metadata": {
+            "algorithm": "Curves",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": [
+                "sklearn.metrics.roc_curve",
+                "sklearn.metrics.precision_recall_curve",
+                "sklearn.metrics.det_curve",
+                "sklearn.metrics.auc",
+            ],
+            "count": len(cases),
+        },
+        "cases": cases,
     }
 
 
@@ -5601,6 +5685,7 @@ def main() -> None:
         "average_precision.json": generate_average_precision,
         "top_k_accuracy.json": generate_top_k_accuracy,
         "roc_auc.json": generate_roc_auc,
+        "curves.json": generate_curves,
         "calibration.json": generate_calibration,
         "regression.json": generate_regression,
         "regression_conditioning.json": generate_regression_conditioning,

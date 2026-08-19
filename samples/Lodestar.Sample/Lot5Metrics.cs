@@ -49,12 +49,54 @@ internal static class Lot5Metrics
         Report(cm);
         Roc();
         Calibration();
+        Curves();
         MatrixReaders();
         Clustering();
         Ranking();
     }
 
     /// <summary>The ordered-list ranking metrics, on the rows that tell tie handling apart.</summary>
+    /// <summary>The three curves, and the trapezoid that is right for one of them.</summary>
+    private static void Curves()
+    {
+        Console.WriteLine("  curves — plot data, where the other members give a number");
+
+        int[] truth = [0, 0, 1, 1];
+        double[] scores = [0.1, 0.4, 0.35, 0.8];
+
+        RocCurve roc = RocCurve.Compute(truth, scores);
+        PrecisionRecallCurve pr = PrecisionRecallCurve.Compute(truth, scores);
+        DetCurve det = DetCurve.Compute(truth, scores);
+
+        // The precision-recall curve's thresholds array is one shorter than its other
+        // two: the endpoint at recall 0 is produced by no threshold at all.
+        Console.WriteLine($"    RocCurve            = {roc.Thresholds.Count} points, first threshold infinite");
+        Console.WriteLine($"    PrecisionRecallCurve= {pr.Precision.Count} points, {pr.Thresholds.Count} thresholds");
+        Console.WriteLine($"    DetCurve            = {det.Thresholds.Count} points, the shortest of the three");
+
+        // Both of the DET curve's axes are errors, which is the whole difference from
+        // the ROC curve: a better model sits nearer the origin rather than further.
+        Console.WriteLine($"    DET first point     = {Inv.F3(det.FalsePositiveRate[0])} false positive, "
+            + $"{Inv.F3(det.FalseNegativeRate[0])} false negative");
+
+        // Integrating the ROC curve gives what RocAuc computed without drawing it.
+        double area = Auc.Trapezoid([.. roc.FalsePositiveRate], [.. roc.TruePositiveRate]);
+        Console.WriteLine($"    Auc over the curve  = {Inv.F3(area)} (RocAuc.Score says {Inv.F3(RocAuc.Score(truth, scores))})");
+
+        // Over a precision-recall curve the trapezoid is the wrong reading, which is
+        // the whole reason AveragePrecision sums the steps instead.
+        double optimistic = Auc.Trapezoid([.. pr.Recall], [.. pr.Precision]);
+        Console.WriteLine($"    Auc over the PR curve = {Inv.F3(optimistic)} against "
+            + $"{Inv.F3(AveragePrecision.Score(truth, scores))} from AveragePrecision");
+
+        // drop_intermediate defaults differently per curve, as scikit-learn has it.
+        int[] longer = [0, 0, 0, 0, 1, 1, 1, 1, 0, 1];
+        double[] spread = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.05];
+        Console.WriteLine($"    ten samples, roc    = {RocCurve.Compute(longer, spread).Thresholds.Count} points dropped to, "
+            + $"{RocCurve.Compute(longer, spread, 1, default, false).Thresholds.Count} kept whole");
+        Console.WriteLine();
+    }
+
     /// <summary>The two calibration metrics, and the clip that decides one of them.</summary>
     private static void Calibration()
     {

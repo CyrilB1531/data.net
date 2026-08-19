@@ -94,6 +94,7 @@ which is where its clip lands.
 | Type | What it is |
 | --- | --- |
 | [`Accuracy`](classification/accuracy.md) | The share of samples the model got right. |
+| [`Auc`](classification/auc.md) | The area under a curve you already have, by the trapezoidal rule. |
 | [`AverageRow`](classification/averagerow.md) | One averaged line of a `ClassificationReport`. |
 | [`Averaging`](classification/averaging.md) | How per-class scores are reduced to one number. |
 | [`BalancedAccuracy`](classification/balancedaccuracy.md) | Accuracy that counts every class equally, however rare. |
@@ -102,6 +103,7 @@ which is where its clip lands.
 | [`ClassRow`](classification/classrow.md) | One class's line of a `ClassificationReport`. |
 | [`CohenKappa`](classification/cohenkappa.md) | Agreement between two raters, with chance agreement subtracted. |
 | [`ConfusionMatrix`](classification/confusionmatrix.md) | Predictions counted against truth — the table everything else reads. |
+| [`DetCurve`](classification/detcurve.md) | The detection error tradeoff curve as plot data — both axes are errors. |
 | [`F1`](classification/f1.md) | The harmonic mean of precision and recall. |
 | [`FBeta`](classification/fbeta.md) | The same, with the balance between the two turned by hand. |
 | [`KappaWeighting`](classification/kappaweighting.md) | How far apart two classes count as being, for `CohenKappa`. |
@@ -111,7 +113,9 @@ which is where its clip lands.
 | [`MultiClassStrategy`](classification/multiclassstrategy.md) | One class against the rest, or every pair. |
 | [`Normalization`](classification/normalization.md) | Which sum a confusion matrix's cells are divided by. |
 | [`Precision`](classification/precision.md) | Of everything flagged as a class, how much belonged there. |
+| [`PrecisionRecallCurve`](classification/precisionrecallcurve.md) | The precision-recall curve as plot data; its thresholds array is one shorter. |
 | [`Recall`](classification/recall.md) | Of everything that belonged to a class, how much was found. |
 | [`RocAuc`](classification/rocauc.md) | How well the scores rank a positive above a negative. |
+| [`RocCurve`](classification/roccurve.md) | The ROC curve as plot data, where `RocAuc` gives only its area. |
 | [`UndefinedMetricException`](classification/undefinedmetricexception.md) | Thrown when a metric is undefined and you asked to be told. |
 | [`ZeroDivision`](classification/zerodivision.md) | What an undefined metric returns instead of throwing. |
