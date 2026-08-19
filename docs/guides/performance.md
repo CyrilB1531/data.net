@@ -1141,6 +1141,59 @@ same artifact through the same harness and this change does not touch it.
   direction, further behind and for a decided reason, is
   [#324](https://github.com/CyrilB1531/lodestar/issues/324).
 
+## Persisting an embedding index — the load path (issue #324)
+
+The load direction is the furthest behind Python anything here publishes, and
+[ADR 0011](../decisions/0011-persistence-format.md) priced it: base64 inside JSON
+against `numpy.load`'s raw block. So the obvious question was whether to pay for a
+second format. **The profile says the format is not where the time goes.**
+
+[`EmbeddingIndex.Load`](../reference/embeddings/search/embeddingindex-load.md) instrumented
+phase by phase, Intel i7-4770S, .NET 10.0.10,
+median of the artifact's own 20 589 007 bytes:
+
+| phase | cost | share |
+| --- | ---: | ---: |
+| reading the payload into a buffer | ~4.5 ms | ~29% |
+| vector block — allocation **and** base64 decode | ~10.8 ms | ~50% |
+| finite scan, SIMD | ~1.6 ms | ~9% |
+| 10 000 ids | ~0.7 ms | ~5% |
+
+- **Base64 decoding is close to free.** Measured by replacing the decode with a
+  `memcpy` of the same byte count and re-running: **~1.3 ms**, which is what the
+  decode costs *over* moving the bytes at all. The other ~9.5 ms of that row is the
+  allocation.
+- **So the answer to ADR 0011's open question is that its door is not the one to
+  open.** A binary format would remove 5.2 MB of base64 expansion from a path
+  spending its time on allocation and page commit, not on decoding.
+
+What the allocation was doing that it needed not: the runtime zeroes an array before
+handing it over, and both large buffers here are overwritten in full immediately —
+the payload by the stream, the vector block by the decoder. That is 36 MB of
+large-object-heap writes per load that nothing reads.
+
+Median of 3, before and after interleaved in one window, with `tfidf_save` as the
+control since it writes and does not read:
+
+| Operation | before | after | change |
+| --- | ---: | ---: | --- |
+| `embedding_index_load`, wall | 14.729 ms | **12.510 ms** | **1.18× faster** |
+| `embedding_index_load`, cpu | 16.868 ms | **14.341 ms** | **1.18× faster** |
+| `tfidf_load`, cpu | 7.320 ms | 7.654 ms | 0.96× |
+| `tfidf_save`, cpu — control | 2.380 ms | 2.363 ms | unchanged |
+
+- **`tfidf_load` does not gain, and is not expected to.** Its buffers are far below
+  the large-object heap, where `GC.AllocateUninitializedArray` skips no zeroing at
+  all. The 0.96× sits inside the spread that row shows between windows — it has read
+  6.9 to 7.9 ms across this page's runs — so it is reported rather than claimed as a
+  regression.
+- **1.18× is well under what the allocation phase costs**, and that gap is the
+  finding to carry forward: removing the zeroing returns only part of it, so most of
+  that phase is the operating system committing pages on first touch, which no
+  allocation strategy avoids. **Moving fewer bytes is the remaining lever**, which is
+  [#336](https://github.com/CyrilB1531/lodestar/issues/336) — and its own measurement
+  narrows that further.
+
 ## Multiclass ROC-AUC, sequential against parallel (issue #86)
 
 ```bash

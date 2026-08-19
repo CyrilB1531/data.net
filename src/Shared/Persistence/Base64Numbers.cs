@@ -146,7 +146,9 @@ internal static class Base64Numbers
             && TryDecodedLength(reader.ValueSpan, out int decodedLength)
             && decodedLength % elementSize == 0)
         {
-            var values = new T[decodedLength / elementSize];
+            // Uninitialized: returned only when the decode reports it filled every byte
+            // of `destination`, and discarded for the fallback below otherwise.
+            T[] values = Buffers.AllocateUninitialized<T>(decodedLength / elementSize);
             Span<byte> destination = MemoryMarshal.AsBytes(values.AsSpan());
             if (Base64.DecodeFromUtf8(reader.ValueSpan, destination, out int consumed, out int written) == OperationStatus.Done
                 && consumed == reader.ValueSpan.Length
@@ -157,7 +159,7 @@ internal static class Base64Numbers
         }
 
         byte[] raw = DecodeBase64(ref reader, artifact, propertyName, elementSize);
-        var fallback = new T[raw.Length / elementSize];
+        T[] fallback = Buffers.AllocateUninitialized<T>(raw.Length / elementSize);
         raw.AsSpan().CopyTo(MemoryMarshal.AsBytes(fallback.AsSpan()));
         return fallback;
     }

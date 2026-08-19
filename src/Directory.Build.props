@@ -36,6 +36,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Shared/Persistence/JsonArtifact.cs" Link="Internal/Persistence/JsonArtifact.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared/Persistence/ArtifactIo.cs" Link="Internal/Persistence/ArtifactIo.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared/Persistence/Base64Numbers.cs" Link="Internal/Persistence/Base64Numbers.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/Persistence/Buffers.cs" Link="Internal/Persistence/Buffers.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(LodestarIncludesPersistence)' == 'true' AND '$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="System.Text.Json" />
