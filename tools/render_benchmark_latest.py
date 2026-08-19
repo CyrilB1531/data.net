@@ -106,8 +106,8 @@ def tonight(commit: str) -> dict[str, tuple[str, str, str, str]]:
     can seed with it before the history loop rather than special-case it.
     """
     reports = sorted(rn.ARTIFACTS.glob("*-report-github.md")) if rn.ARTIFACTS.is_dir() else []
-    comparisons = sorted(rn.COMPARISONS.glob("compare-*.txt")) if rn.COMPARISONS.is_dir() else []
-    body = "\n".join(rn.included_reports(reports) + rn.included(comparisons, fence="text"))
+    comparisons = sorted(rn.COMPARISONS.glob("compare-*.md")) if rn.COMPARISONS.is_dir() else []
+    body = "\n".join(rn.included_reports(reports + comparisons))
     today = datetime.date.today().isoformat()
     return {name: (heading, rest, today, commit or "unknown")
             for name, (heading, rest) in sections(body).items()}
