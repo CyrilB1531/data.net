@@ -3800,7 +3800,7 @@ def generate_bytelevel_decode_stream() -> dict:
             "ids": enc.ids,
             "tokens": enc.tokens,
             "per_id_decoded": per_id,
-            "replacement_count": sum(1 for s in per_id if "�" in s),
+            "replacement_count": sum(1 for s in per_id if "\ufffd" in s),
             "decoded": tokenizer.decode(enc.ids),
         })
     return {

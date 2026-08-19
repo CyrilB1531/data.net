@@ -145,6 +145,10 @@ jobs:
       # choice is between a permanent warning and not analysing the file. What
       # is lost is small and named: tools/tests holds one file, whose own
       # correctness is proven by running it in the Lint job, not by reading it.
+      #
+      # assets/** is the same "Invalid character ... UTF-8" warning as
+      # tests/oracles/'s binary fixtures above, on assets/icon.png: a PNG has
+      # nothing for a text-encoding sensor to read.
       - name: Begin analysis
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -159,7 +163,7 @@ jobs:
             /d:sonar.python.version="3.12" \
             /d:sonar.projectBaseDir="$GITHUB_WORKSPACE" \
             /d:sonar.coverage.exclusions="tools/**,bench/**,samples/**" \
-            /d:sonar.exclusions="tests/oracles/**,samples/Lodestar.DocSnippets/Generated/**,tools/tests/**" \
+            /d:sonar.exclusions="tests/oracles/**,samples/Lodestar.DocSnippets/Generated/**,tools/tests/**,assets/**" \
             /d:sonar.test.exclusions="tests/oracles/**"
 
       - name: Build the solution
