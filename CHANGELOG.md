@@ -31,6 +31,7 @@ is one sentence, the issue and the commit; see
 - The toolkit is `Lodestar`: the tags no longer say `datanet`, and every package carries an embedded icon rather than none. ([#194](https://github.com/CyrilB1531/data.net/issues/194))
 - `DamerauLevenshtein`'s documented summary no longer says "Not a proper metric": unit-cost unrestricted Damerau-Levenshtein satisfies the triangle inequality and is a true metric; `Osa` is the one that does not. ([#181](https://github.com/CyrilB1531/data.net/issues/181))
 - The reference is one page per member, with a type page and a namespace index above it: `docs/reference/text/distances.md` becomes 9 type pages and 22 member pages, and the index a reader lands on is 64 lines rather than 1034. ([#189](https://github.com/CyrilB1531/data.net/issues/189))
+- **Faster, same answers.** `Levenshtein.Distance`, `Lcs.SubsequenceLength` and therefore `Indel` and `fuzz.ratio` take the bit-parallel route from a pattern of 8 characters rather than 16, and neither kernel clears an equality table that `stackalloc` has already zeroed: on the pair corpus's length-32 bucket that is **2.09×** for Levenshtein (427.6 → 204.8 ns/pair) and **2.19×** for Indel (318.7 → 145.6 ns/pair), with every other bucket within noise and the 3 905-test suite unchanged. ([#208](https://github.com/CyrilB1531/lodestar/issues/208))
 
 ### Lodestar.Embeddings
 
