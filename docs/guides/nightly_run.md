@@ -37,6 +37,7 @@ Selected by `tools/select_benchmarks.py` from the sources that changed since the
 
 ### Lodestar.Text.Benchmarks.BatchEmbeddingBenchmarks-report-github
 
+````text
 ```
 
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -66,9 +67,11 @@ WarmupCount=3
 | **UnitLoop**           | **128**        | **1,132.055 μs** | **493.2407 μs** | **27.0362 μs** |  **1.00** |    **0.03** | **21.4844** |      **-** | **1874.78 KB** |        **1.00** |
 | EmbedBatch         | 128        |   701.486 μs |  99.4776 μs |  5.4527 μs |  0.62 |    0.01 | 21.4844 | 2.9297 | 1764.42 KB |        0.94 |
 | EmbedBatchBucketed | 128        |   668.984 μs |  28.1772 μs |  1.5445 μs |  0.59 |    0.01 | 20.5078 | 2.9297 |  1696.9 KB |        0.91 |
+````
 
 ### Lodestar.Text.Benchmarks.BpeBenchmarks-report-github
 
+````text
 ```
 
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -85,9 +88,11 @@ WarmupCount=3
 |-------- |---------:|---------:|--------:|------:|----------:|----------:|------------:|
 | Unigram | 456.2 ms | 17.41 ms | 0.95 ms |  1.00 | 6000.0000 | 519.51 MB |        1.00 |
 | Bpe     | 435.0 ms | 27.35 ms | 1.50 ms |  0.95 | 1000.0000 | 112.18 MB |        0.22 |
+````
 
 ### Lodestar.Text.Benchmarks.BpeScalingBenchmarks-report-github
 
+````text
 ```
 
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -106,9 +111,11 @@ WarmupCount=3
 | **BpeOnOnePathologicalToken** | **1024**   | **187.26 μs** |  **5.391 μs** | **0.296 μs** | **0.4883** |  **39.93 KB** |
 | **BpeOnOnePathologicalToken** | **2048**   | **484.47 μs** | **71.341 μs** | **3.910 μs** | **0.4883** |  **78.98 KB** |
 | **BpeOnOnePathologicalToken** | **4096**   | **784.49 μs** | **16.165 μs** | **0.886 μs** | **0.9766** | **157.03 KB** |
+````
 
 ### Lodestar.Text.Benchmarks.FuzzBenchmarks-report-github
 
+````text
 ```
 
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -128,9 +135,11 @@ WarmupCount=3
 | TokenSortRatio |    726.79 ns |    71.731 ns |   3.932 ns |   8.49 |    0.04 | 0.0153 |    1312 B |          NA |
 | TokenSetRatio  |  2,645.26 ns | 2,402.447 ns | 131.686 ns |  30.91 |    1.33 | 0.0687 |    5760 B |          NA |
 | WRatio         |  3,274.12 ns |   857.854 ns |  47.022 ns |  38.25 |    0.48 | 0.0839 |    7200 B |          NA |
+````
 
 ### Lodestar.Text.Benchmarks.IndelBenchmarks-report-github
 
+````text
 ```
 
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -184,9 +193,11 @@ WarmupCount=3
 | Distance_CodePoint         | 512    | 277,099.42 ns | 107,005.495 ns | 5,865.332 ns | 36.90 |    1.86 |         - |          NA |
 | NormalizedSimilarity_Utf16 | 512    |   7,470.12 ns |   6,597.146 ns |   361.612 ns |  0.99 |    0.06 |         - |          NA |
 | SubsequenceLength_Utf16    | 512    |   7,185.56 ns |     100.365 ns |     5.501 ns |  0.96 |    0.04 |         - |          NA |
+````
 
 ### Lodestar.Text.Benchmarks.LcsGateBenchmarks-report-github
 
+````text
 ```
 
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -233,9 +244,11 @@ WarmupCount=3
 |        |      |             |              |           |       |         |           |             |
 | **Dp**     | **96**   | **7,786.50 ns** |   **382.999 ns** | **20.993 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
 | Kernel | 96   |   643.67 ns |   719.474 ns | 39.437 ns |  0.08 |    0.00 |         - |          NA |
+````
 
 ### Lodestar.Text.Benchmarks.LevenshteinBenchmarks-report-github
 
+````text
 ```
 
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -261,9 +274,11 @@ WarmupCount=3
 | **Distance_Utf16**             | **512**    |  **9,059.01 ns** |   **132.932 ns** |   **7.286 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
 | Distance_CodePoint         | 512    | 11,048.12 ns | 7,165.460 ns | 392.763 ns |  1.22 |    0.04 |         - |          NA |
 | NormalizedSimilarity_Utf16 | 512    |  9,078.77 ns |   184.743 ns |  10.126 ns |  1.00 |    0.00 |         - |          NA |
+````
 
 ### Lodestar.Text.Benchmarks.LevenshteinCodePointBenchmarks-report-github
 
+````text
 ```
 
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -313,9 +328,11 @@ WarmupCount=3
 |                    |        |          |                |               |              |        |         |           |             |
 | **Distance_CodePoint** | **512**    | **512**      |   **473,148.1 ns** | **305,787.98 ns** | **16,761.27 ns** |   **1.00** |    **0.04** |         **-** |          **NA** |
 | Distance_Utf16     | 512    | 512      | 1,564,921.9 ns |  16,357.19 ns |    896.59 ns |   3.31 |    0.10 |         - |          NA |
+````
 
 ### Lodestar.Text.Benchmarks.MetricsBenchmarks-report-github
 
+````text
 ```
 
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -360,9 +377,11 @@ WarmupCount=3
 | AccuracyScore  | 1000000 | 10      | 2,381,511.6 ns |    36,705.98 ns |   2,011.98 ns |      - |         - |
 | F1Macro        | 1000000 | 10      | 6,606,728.7 ns |    42,156.74 ns |   2,310.75 ns |      - |    1670 B |
 | Report         | 1000000 | 10      | 6,464,220.3 ns |   928,892.59 ns |  50,915.74 ns |      - |   15886 B |
+````
 
 ### Lodestar.Text.Benchmarks.PersistenceBenchmarks-report-github
 
+````text
 ```
 
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -385,9 +404,11 @@ WarmupCount=3
 | TfidfLoad              |  3.441 ms | 3.7338 ms | 0.2047 ms |  23.4375 |  15.6250 |  15.6250 |   2.86 MB |
 | EmbeddingIndexSave     | 13.047 ms | 0.5437 ms | 0.0298 ms | 562.5000 | 562.5000 | 562.5000 |  54.29 MB |
 | EmbeddingIndexLoad     |  9.525 ms | 3.2917 ms | 0.1804 ms | 437.5000 | 437.5000 | 437.5000 |  35.35 MB |
+````
 
 ### Lodestar.Text.Benchmarks.StopWordBenchmarks-report-github
 
+````text
 ```
 
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -411,9 +432,11 @@ WarmupCount=3
 | CountWithStopWords   | 1000      | 18.275 ms |  1.1160 ms | 0.0612 ms |  0.73 |    0.00 | 500.0000 | 343.7500 | 250.0000 |  30.99 MB |        0.80 |
 | Hashing              | 1000      | 24.265 ms | 21.7848 ms | 1.1941 ms |  0.97 |    0.04 | 875.0000 | 593.7500 | 500.0000 |  39.55 MB |        1.02 |
 | HashingWithStopWords | 1000      | 18.730 ms |  9.7776 ms | 0.5359 ms |  0.75 |    0.02 | 500.0000 | 250.0000 | 250.0000 |  31.83 MB |        0.82 |
+````
 
 ### Lodestar.Text.Benchmarks.VectorMathBenchmarks-report-github
 
+````text
 ```
 
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -436,9 +459,11 @@ WarmupCount=3
 |        |      |           |            |          |       |         |           |             |
 | **Dot**    | **1024** | **103.41 ns** |   **6.809 ns** | **0.373 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
 | L2Norm | 1024 |  70.04 ns |   0.687 ns | 0.038 ns |  0.68 |    0.00 |         - |          NA |
+````
 
 ### Lodestar.Text.Benchmarks.VectorizerBenchmarks-report-github
 
+````text
 ```
 
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -471,6 +496,7 @@ Both sides on this VM in these minutes, which is what makes the ratio readable w
 - `levenshtein`
 - `metrics`
 - `persistence`
+````
 
 ### compare-indel
 
