@@ -175,21 +175,34 @@ jobs:
             --selected $(cat selected.txt | tr '\n' ' ') \
             --harnesses $(cat harnesses.txt | tr '\n' ' ')
 
+      # Cloned here, ahead of "Open the pull request", so the aggregate below can read
+      # this repo's history and land in the same pull request as tonight's own page.
+      - name: Clone the wiki
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: git clone "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" wiki
+
+      # nightly_run.md keeps only tonight's selection; a class quiet for weeks needs
+      # its last reading kept somewhere, which is what this walks the wiki's own git
+      # log for. Tonight's own fresh reports, still on disk, take priority within it.
+      - name: Aggregate the latest known result per method
+        run: python tools/render_benchmark_latest.py --wiki wiki --commit "${{ github.sha }}"
+
       - name: Open the pull request
         id: pr
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if git diff --quiet -- docs/guides/nightly_run.md; then
-            echo "the page did not change; nothing to open"
+          if git diff --quiet -- docs/guides/nightly_run.md docs/guides/benchmark_latest.md; then
+            echo "neither page changed; nothing to open"
             exit 0
           fi
           branch="bench/nightly-$(date -u +%Y-%m-%d)"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B "$branch"
-          git add docs/guides/nightly_run.md
+          git add docs/guides/nightly_run.md docs/guides/benchmark_latest.md
           git commit -m "Nightly benchmark run for $(date -u +%Y-%m-%d)"
           git push --force-with-lease origin "$branch"
           gh pr create --head "$branch" --base main \
@@ -204,11 +217,6 @@ jobs:
       # This publishes the LIVE channel from the tree as checked out, exactly as wiki.yml
       # does on a push to main. It deliberately passes no --released and no --archive: a
       # nightly must not freeze an archive directory, which belongs to a release tag.
-      - name: Clone the wiki
-        env:
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: git clone "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" wiki
-
       - name: Publish the page
         run: python tools/build_wiki.py --repo . --out wiki
 
