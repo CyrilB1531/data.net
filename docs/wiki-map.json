@@ -4,7 +4,8 @@
     "docs/guides/performance.md",
     "docs/decisions/*.md",
     "docs/migration/*.md",
-    "docs/guides/nightly_run.md"
+    "docs/guides/nightly_run.md",
+    "docs/guides/benchmark_latest.md"
   ],
   "packages": {
     "Lodestar.Text": {

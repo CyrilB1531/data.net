@@ -65,7 +65,7 @@ public sealed class ByteLevelDecodeTests
         }
 
         Assert.True(failures.Count == 0, string.Join("\n", failures));
-        Assert.DoesNotContain('�', string.Join("", doc.RootElement.GetProperty("cases")
+        Assert.DoesNotContain('\uFFFD', string.Join("", doc.RootElement.GetProperty("cases")
             .EnumerateArray().Select(c => c.GetProperty("decoded").GetString()!)));
     }
 

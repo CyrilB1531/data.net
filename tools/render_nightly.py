@@ -44,7 +44,8 @@ MARKER = "<!-- nightly-baseline: {sha} -->"
 PREAMBLE = """
 > **Generated. Do not edit.** Produced by `.github/workflows/bench-nightly.yml`; every edit is
 > overwritten by the next run. The curated figures, measured on a named machine, are in
-> [performance]({performance}).
+> [performance]({performance}). The last known reading for a method quiet tonight is in
+> [benchmark_latest](benchmark_latest).
 
 **Read the ratios, not the means.** These run on a GitHub hosted runner: a shared VM whose
 hardware differs from night to night and whose neighbours are unknown. An absolute figure here
@@ -68,6 +69,57 @@ def included(paths: list[pathlib.Path], fence: str = "") -> list[str]:
         lines += [f"### {path.stem}", ""]
         lines += [f"````{fence}", body, "````", ""] if fence else [body, ""]
     return lines
+
+
+def split_report(body: str) -> tuple[str, str] | None:
+    """BenchmarkDotNet's own preamble fence, and the table that follows it.
+
+    A *-report-github.md opens a bare, unlabelled ``` around its host/job
+    summary, closes it, then prints the results as a plain GFM table -- one
+    following the other, never nested. None when a report does not have that
+    shape, so the caller can fall back rather than guess where a table starts.
+    """
+    lines = body.splitlines()
+    fences = [i for i, line in enumerate(lines) if line.strip() == "```"]
+    if len(fences) < 2:
+        return None
+    preamble = "\n".join(lines[fences[0] + 1:fences[1]]).strip()
+    table = "\n".join(lines[fences[1] + 1:]).strip()
+    return preamble, table
+
+
+def included_reports(paths: list[pathlib.Path]) -> list[str]:
+    """Each report's own section: its preamble fenced, its results table native.
+
+    The preamble is prose, always safe to fence. The table is real GFM (a
+    `---:` header row, `**bold**` baseline cells) and renders as a table only
+    when nothing wraps it -- but BenchmarkDotNet pads its own pipes to content
+    width, which this repo's MD060 alignment style does not match, so that one
+    rule is switched off around it: generated content, never hand-edited, has
+    no convention of its own to keep.
+    """
+    lines: list[str] = []
+    for path in paths:
+        body = path.read_text(encoding="utf-8").strip() if path.exists() else ""
+        if not body:
+            continue
+        lines += [f"### {path.stem}", ""]
+        split = split_report(body)
+        if split is None:
+            lines += ["````text", body, "````", ""]
+            continue
+        preamble, table = split
+        if preamble:
+            lines += ["```text", preamble, "```", ""]
+        if table:
+            lines += ["<!-- markdownlint-disable MD060 -->", "", table, "",
+                       "<!-- markdownlint-enable MD060 -->", ""]
+    return lines
+
+
+def has_content(paths: list[pathlib.Path]) -> bool:
+    """Whether at least one path exists and holds more than whitespace."""
+    return any(path.exists() and path.read_text(encoding="utf-8").strip() for path in paths)
 
 
 def listing(title: str, note: str, names: list[str]) -> list[str]:
@@ -99,7 +151,7 @@ def render(args: argparse.Namespace,
             "Classes re-run",
             "Selected by `tools/select_benchmarks.py` from the sources that changed since "
             "the previous run:", args.selected)
-        lines += included(reports, fence="text")
+        lines += included_reports(reports)
 
     if args.harnesses:
         lines += listing(
@@ -137,6 +189,12 @@ def main() -> None:
     page = render(args, reports, comparisons)
     if args.stdout:
         print(page, end="")
+        return
+
+    # Nothing selected, or everything selected produced no result: leaving the file
+    # untouched is what "Open the pull request" and the wiki's own push already skip.
+    if not has_content(reports) and not has_content(comparisons):
+        print("nothing worth publishing; docs/guides/nightly_run.md left unchanged")
         return
 
     PAGE.parent.mkdir(parents=True, exist_ok=True)
