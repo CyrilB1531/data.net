@@ -137,12 +137,22 @@ def print_wallcpu_gfm(rows: list[tuple]) -> None:
         print(f"| {op} | {c_w:.3f} | {p_w:.3f} | {wall} | {c_c:.3f} | {p_c:.3f} | {cpu} |")
 
 
-def persistence(fmt: str = "text") -> None:
-    py = load("python", "persistence")
-    cs = load("csharp", "persistence")
+def wallcpu_rows(bench: str) -> tuple[dict, dict, list[tuple]]:
+    """Both sides loaded, and the rows their shared operations produce.
+
+    persistence() and metrics() differ only in column widths and which lines
+    follow the table, so this is the whole "load, match, compute" step both need.
+    """
+    py = load("python", bench)
+    cs = load("csharp", bench)
     cs_by_op = {r["operation"]: r for r in cs["results"]}
     rows = [wallcpu_row(row["operation"], cs_by_op[row["operation"]], row)
             for row in py["results"] if row["operation"] in cs_by_op]
+    return py, cs, rows
+
+
+def persistence(fmt: str = "text") -> None:
+    py, cs, rows = wallcpu_rows("persistence")
 
     metadata_block(
         fmt,
@@ -159,8 +169,7 @@ def persistence(fmt: str = "text") -> None:
 
 
 def metrics(fmt: str = "text") -> None:
-    py = load("python", "metrics")
-    cs = load("csharp", "metrics")
+    py, cs, rows = wallcpu_rows("metrics")
 
     # A filtered C# run has fewer rows; comparing only what's there would print
     # a partial table as if it were a green, full-matrix gate. Refuse instead.
@@ -170,10 +179,6 @@ def metrics(fmt: str = "text") -> None:
             f"the C# results are from a filtered run ({filtered}); the merge gate "
             "needs the whole matrix — rerun `compare-metrics` with no --only/--shapes"
         )
-
-    cs_by_op = {r["operation"]: r for r in cs["results"]}
-    rows = [wallcpu_row(row["operation"], cs_by_op[row["operation"]], row)
-            for row in py["results"] if row["operation"] in cs_by_op]
 
     metadata_block(
         fmt,
