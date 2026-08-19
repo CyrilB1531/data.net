@@ -2223,6 +2223,7 @@ def generate_ranking() -> dict:
 # what ties a failing case back to the prose that explains it.
 WORKED_CASE = "the worked case"
 WORKED_CASE_WEIGHTED = "the worked case, weighted"
+SIGNED_LABELS = "labels are -1 and 1"
 ALL_TIED = "every score tied"
 
 
@@ -2329,7 +2330,7 @@ def _average_precision_binary_fixtures() -> list[dict]:
          "score": [0.1, 0.4, 0.35, 0.8], "pos_label": 1, "weight": None},
         {"name": "negative scores", "true": [0, 0, 1, 1],
          "score": [-0.9, -0.6, -0.65, -0.2], "pos_label": 1, "weight": None},
-        {"name": "labels are -1 and 1", "true": [-1, -1, 1, 1],
+        {"name": SIGNED_LABELS, "true": [-1, -1, 1, 1],
          "score": [0.1, 0.4, 0.35, 0.8], "pos_label": 1, "weight": None},
         {"name": "a tie spanning both classes", "true": [1, 0, 1, 0, 1],
          "score": [0.9, 0.5, 0.5, 0.5, 0.1], "pos_label": 1, "weight": None},
@@ -2640,7 +2641,7 @@ def _calibration_fixtures() -> list[dict]:
          "pos_label": 1, "weight": None},
         {"name": "uninformative, every probability one half", "true": [0, 1, 1, 0],
          "proba": [0.5, 0.5, 0.5, 0.5], "pos_label": 1, "weight": None},
-        {"name": "labels are -1 and 1", "true": [-1, 1, 1, -1], "proba": [0.1, 0.9, 0.8, 0.3],
+        {"name": SIGNED_LABELS, "true": [-1, 1, 1, -1], "proba": [0.1, 0.9, 0.8, 0.3],
          "pos_label": 1, "weight": None},
     ]
 
@@ -2737,7 +2738,7 @@ def _calibration_curve_fixtures() -> list[dict]:
          "strategy": "uniform"},
         {"name": "the endpoints, zero and one", "true": [0, 1, 0, 1],
          "proba": [0.0, 1.0, 0.0, 1.0], "pos_label": 1, "n_bins": 5, "strategy": "uniform"},
-        {"name": "labels are -1 and 1", "true": [-1, 1, 1, -1],
+        {"name": SIGNED_LABELS, "true": [-1, 1, 1, -1],
          "proba": [0.1, 0.9, 0.8, 0.3], "pos_label": 1, "n_bins": 5, "strategy": "uniform"},
         # Ties under quantile: repeated values collapse bin edges, so bins come out empty
         # on the strategy where the uniform split would have filled them.
