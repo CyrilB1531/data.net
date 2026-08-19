@@ -39,6 +39,45 @@ number as though it were the mode's.
 dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- --filter '*LevenshteinCodePoint*'
 ```
 
+### Where the bit-parallel gate belongs, and why a benchmark cannot say
+
+`MyersGateBenchmarks` and `LcsGateBenchmarks` parameterise the differing middle
+directly, so after `Affixes.Trim` the pattern is exactly `Band` long and the
+dynamic program runs beside the kernel as the baseline. They answer *how much*
+the kernel wins by at a given band.
+
+They cannot answer *where to put the gate*, and it is worth being explicit about
+why, because the shape invites the mistake: below the gate the dispatch sends
+both rows to the DP, so the ratio is 1 and the crossing is invisible exactly
+where you want to read it. The kernels are `internal` and the constants private,
+so no benchmark reaches around the dispatch either.
+
+What answers it is sweeping the constant and reading the committed corpus end to
+end — the metric that is actually reported, on the input that is actually shipped.
+Edit `MyersMinPatternLength` (or `BitParallelMinPatternLength`, or
+`MyersMinCodePointPatternLength`), rebuild, and run the cross-language harness of
+section 3 at each value:
+
+```bash
+dotnet build bench/Lodestar.Text.Benchmarks -c Release
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks --no-build -- compare
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks --no-build -- compare-indel
+```
+
+Three things this corpus will not tell you, all of which cost #208 time:
+
+- **Read every bucket, not the one being tuned.** The length-32 bucket keeps
+  improving as the gate falls, and the length-8 bucket falls off a cliff below 2.
+  A sweep that reports only the bucket it is optimising will happily recommend 1.
+- **The crossing depends on the text length, not just the pattern length.** Myers
+  costs `setup + O(n)` where the DP costs `O(m·n)`, so they meet at
+  `m ≈ 1 + setup/n`. A gate is one number for every `n`, so calibrate it on the
+  shortest texts — the regime where being wrong is expensive.
+- **The corpus has a hole between 2 and 7.** Its length-8 bucket trims to a
+  pattern of 0 or 1 and its length-32 bucket is the only other source, so any
+  conclusion in that range rests on a single bucket. `BucketRouteDiagnostics`
+  prints the split the gate produces on that bucket, which is how to see it.
+
 ## 2. net10 vs netstandard2.0 — what the broad-reach target costs
 
 `netstandard2.0` is a contract, not a runtime: nothing executes *on* it. What can
@@ -170,11 +209,14 @@ dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- compare
 
 # side-by-side table
 python bench/compare.py
+python bench/compare.py --format=gfm   # a real markdown table, read natively by nightly_run.md
 ```
 
 Results land in `bench/results/` (git-ignored: they are machine-specific and not
 authoritative). The corpus is ASCII, so UTF-16 units and code points coincide and
-both sides compute identical distances.
+both sides compute identical distances. `--format=gfm` works on every mode below
+the same way; the plain table stays the default because it is the one meant for
+a terminal.
 
 ### Indel, over the same corpus
 
@@ -774,6 +816,12 @@ Lodestar is faster.
 | --- | --- | --- | --- | --- | --- | --- |
 | `embedding_index_save` | 12.419 ms | 15.084 ms | 1.21× | 13.349 ms | 15.083 ms | **1.13×** |
 | `embedding_index_load` | 12.129 ms | 2.492 ms | 0.21× | 13.897 ms | 2.492 ms | **0.18×** |
+
+> **#323 changed the save path after this window.** The row above stays as measured;
+> what it cannot show is that its `1.13×` inverts to `0.27×` on a newer machine,
+> because `numpy.save` is bandwidth-bound where this artifact's base64 encoding is
+> not. The before/after, and why the ratio is a property of the machine as much as
+> of the code, are in [`docs/guides/performance.md`](../docs/guides/performance.md).
 
 Against `main` in the same session, on the same numpy figures:
 `embedding_index_save` read 14.164 ms (0.94× wall, 1.06× cpu) and

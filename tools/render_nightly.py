@@ -54,23 +54,6 @@ against a baseline measured in the same run, on the same VM, in the same minute,
 """
 
 
-def included(paths: list[pathlib.Path], fence: str = "") -> list[str]:
-    """Each readable file as its own section, skipping the ones a run never produced.
-
-    Four backticks, not three: BenchmarkDotNet's own report already opens an
-    unlabelled fence around its host/job preamble, and three backticks around
-    that would close on the first line of it rather than at the end of ours.
-    """
-    lines: list[str] = []
-    for path in paths:
-        body = path.read_text(encoding="utf-8").strip() if path.exists() else ""
-        if not body:
-            continue
-        lines += [f"### {path.stem}", ""]
-        lines += [f"````{fence}", body, "````", ""] if fence else [body, ""]
-    return lines
-
-
 def split_report(body: str) -> tuple[str, str] | None:
     """BenchmarkDotNet's own preamble fence, and the table that follows it.
 
@@ -158,7 +141,7 @@ def render(args: argparse.Namespace,
             "Against rapidfuzz, in this same run",
             "Both sides on this VM in these minutes, which is what makes the ratio readable "
             "where the absolutes are not.", args.harnesses)
-        lines += included(comparisons or [], fence="text")
+        lines += included_reports(comparisons or [])
 
     return collapse(lines)
 
@@ -185,7 +168,7 @@ def main() -> None:
     args = parser.parse_args()
 
     reports = sorted(ARTIFACTS.glob("*-report-github.md")) if ARTIFACTS.is_dir() else []
-    comparisons = sorted(COMPARISONS.glob("compare-*.txt")) if COMPARISONS.is_dir() else []
+    comparisons = sorted(COMPARISONS.glob("compare-*.md")) if COMPARISONS.is_dir() else []
     page = render(args, reports, comparisons)
     if args.stdout:
         print(page, end="")

@@ -15,6 +15,39 @@ second half opens with. The last takes either shape.
 Seven of the eight reproduce scikit-learn exactly. The eighth,
 [`ReciprocalRank`](ranking/reciprocalrank.md), does not, and says so on its own page.
 
+## Which one do I want?
+
+```mermaid
+flowchart TD
+    A["What shape is your input?"] --> B["one ordered list<br/>of documents"]
+    A --> C["a label matrix — one boolean<br/>per label per sample"]
+    A --> D["either one"]
+
+    B --> B1{"What do you want to know?"}
+    B1 -->|"how much relevance<br/>landed near the top"| B2{"Comparable<br/>across rows?"}
+    B2 -->|"yes, bounded in 0..1"| N["Ndcg"]
+    B2 -->|"no, and I choose<br/>the log base"| G["Dcg<br/>unbounded — rarely reported alone"]
+    B1 -->|"is the true class<br/>among the top k"| T["TopKAccuracy"]
+    B1 -->|"how high the first<br/>relevant one lands"| R["ReciprocalRank<br/>no reference implementation"]
+
+    C --> C1{"What do you want to know?"}
+    C1 -->|"how far down to read to<br/>have seen every relevant label"| CE["CoverageError"]
+    C1 -->|"how many relevant/irrelevant<br/>pairs are ordered wrongly"| LL["LabelRankingLoss"]
+    C1 -->|"how much above each relevant<br/>label is itself relevant"| LA["LabelRankingAveragePrecision"]
+
+    D --> AP["AveragePrecision<br/>a sum over steps, not an area"]
+```
+
+**Two leaves carry a warning the branch cannot.**
+[`ReciprocalRank`](ranking/reciprocalrank.md) is the one member of this package with no reference
+to freeze against — [decision 0036](../../decisions/0036-a-member-may-ship-without-an-oracle-if-it-says-so.md)
+says what would retire that. And [`AveragePrecision`](ranking/averageprecision.md) sums the steps
+of the precision-recall curve where `auc(recall, precision)` takes its area, which is a different
+number on the same input, not a rounding of it — the section at the foot of this page has both.
+
+The rest of this page is the properties behind those branches: how the gains are shaped, what
+happens to ties, and why `Dcg` takes a `logBase` that `Ndcg` does not.
+
 ## The gains are linear, and much of the literature's are not
 
 `Σ relevance / log(rank + 1)` is what [`Dcg.Score`](ranking/dcg-score.md) computes — the relevance

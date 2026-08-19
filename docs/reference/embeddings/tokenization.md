@@ -10,7 +10,42 @@ returns vectors that are confidently wrong rather than an error.
 ## Which tokenizer?
 
 The answer is **whichever the model was trained with** — this is not a choice you get to make. The
-model's own files say which:
+model's own files say which, and which loader reads them:
+
+```mermaid
+flowchart TD
+    A["What did the model ship?"] --> B["vocab.txt"]
+    A --> C["spiece.model"]
+    A --> D["tokenizer.json"]
+    A --> E["vocab.json + merges.txt"]
+
+    B --> W["WordPieceTokenizer<br/>VocabTxtLoader"]
+    C --> C1{"Trained with<br/>byte_fallback?"}
+    C1 -->|no| S["SentencePieceTokenizer<br/>SentencePieceModelLoader"]
+    C1 -->|yes| X["Refused at load, by design"]
+
+    D --> D1{"What does<br/>model.type say?"}
+    D1 -->|WordPiece| W2["WordPieceTokenizer<br/>TokenizerJsonLoader.LoadWordPiece"]
+    D1 -->|Unigram| S2["SentencePieceTokenizer<br/>TokenizerJsonLoader.LoadUnigram"]
+    D1 -->|BPE| D2{"Does the model declare<br/>byte_fallback?"}
+    D2 -->|no| P["BpeTokenizer<br/>TokenizerJsonLoader.LoadBpe"]
+    D2 -->|yes| X
+
+    E --> P2["BpeTokenizer<br/>BpeFilesLoader"]
+```
+
+**A `tokenizer.json` does not say which loader to call — its `model.type` does.** The three
+`Load…` methods each assert it and refuse a file declaring another, so reaching for the wrong one
+fails with a message naming the mismatch rather than producing ids that look plausible.
+
+**`byte_fallback` is refused rather than ignored**, on both paths that can carry it, because
+Python resolves an uncovered character into `<0x..>` byte pieces where these tokenizers emit the
+unknown piece — silently accepting it would return confidently wrong vectors. That is the
+SentencePiece-BPE lineage Llama-2 and Mistral v0.1 need, tracked at
+[#175](https://github.com/CyrilB1531/lodestar/issues/175) and scoped by
+[decision 0017 §3](../../decisions/0017-bpe-parity-scope.md).
+
+The same routing, as a table:
 
 | The model ships | Use | Loaded from |
 | --- | --- | --- |
