@@ -209,11 +209,14 @@ dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- compare
 
 # side-by-side table
 python bench/compare.py
+python bench/compare.py --format=gfm   # a real markdown table, read natively by nightly_run.md
 ```
 
 Results land in `bench/results/` (git-ignored: they are machine-specific and not
 authoritative). The corpus is ASCII, so UTF-16 units and code points coincide and
-both sides compute identical distances.
+both sides compute identical distances. `--format=gfm` works on every mode below
+the same way; the plain table stays the default because it is the one meant for
+a terminal.
 
 ### Indel, over the same corpus
 
