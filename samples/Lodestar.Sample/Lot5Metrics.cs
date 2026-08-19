@@ -49,6 +49,7 @@ internal static class Lot5Metrics
         Report(cm);
         Roc();
         Calibration();
+        HingeLossSample.Run();
         Curves();
         LabelLosses();
         MatrixReaders();
