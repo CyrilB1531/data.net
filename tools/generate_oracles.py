@@ -3017,6 +3017,77 @@ def generate_multilabel_confusion() -> dict:
         }
 
 
+def _likelihood_ratio_fixtures() -> list[dict]:
+    """Binary cases, chosen so each of the four undefined shapes is reached."""
+    return [
+        {"name": WORKED_CASE, "true": [0, 1, 1, 0, 1, 0], "pred": [0, 1, 0, 0, 1, 1],
+         "weight": None},
+        {"name": WORKED_CASE_WEIGHTED, "true": [0, 1, 1, 0, 1, 0], "pred": [0, 1, 0, 0, 1, 1],
+         "weight": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]},
+        # Nothing true-negative: the negative ratio divides by a specificity of zero.
+        {"name": "no true negative", "true": [0, 1, 1], "pred": [1, 1, 1], "weight": None},
+        # Nothing false-positive: the positive ratio divides by zero instead.
+        {"name": "a perfect prediction", "true": [0, 1], "pred": [0, 1], "weight": None},
+        {"name": "nothing predicted positive", "true": [0, 1], "pred": [0, 0], "weight": None},
+        # A class missing from the truth leaves neither ratio a value.
+        {"name": "no positive sample", "true": [0, 0], "pred": [0, 1], "weight": None},
+        {"name": "no negative sample", "true": [1, 1], "pred": [0, 1], "weight": None},
+        {"name": "an ordinary imbalanced case", "true": [0, 0, 0, 0, 1, 1],
+         "pred": [0, 0, 0, 1, 1, 0], "weight": None},
+    ]
+
+
+def generate_likelihood_ratios() -> dict:
+    """class_likelihood_ratios: a pair, and four ways for one of them to have no value (#211)."""
+    import numpy as np
+    from sklearn.metrics import class_likelihood_ratios
+
+    cases = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for fixture in _likelihood_ratio_fixtures():
+            true = np.array(fixture["true"])
+            pred = np.array(fixture["pred"])
+            kw = {} if fixture["weight"] is None else {
+                "sample_weight": np.array(fixture["weight"])}
+
+            default = class_likelihood_ratios(true, pred, **kw)
+            # replace_undefined_by takes a scalar or a per-ratio mapping; both are
+            # two explicit parameters on the C# side, so both are pinned here.
+            scalar = class_likelihood_ratios(true, pred, replace_undefined_by=1.0, **kw)
+            mapping = class_likelihood_ratios(
+                true, pred, replace_undefined_by={"LR+": 10.0, "LR-": 0.5}, **kw)
+
+            # JSON has no nan, so an undefined ratio travels as null. Some stay
+            # undefined even under replace_undefined_by, which is itself a measurement.
+            def maybe(value):
+                return None if np.isnan(value) else float(value)
+
+            cases.append({
+                "name": fixture["name"],
+                "y_true": fixture["true"],
+                "y_pred": fixture["pred"],
+                "sample_weight": fixture["weight"],
+                "positive": maybe(default[0]),
+                "negative": maybe(default[1]),
+                "positive_replaced_by_one": maybe(scalar[0]),
+                "negative_replaced_by_one": maybe(scalar[1]),
+                "positive_replaced_apart": maybe(mapping[0]),
+                "negative_replaced_apart": maybe(mapping[1]),
+            })
+
+    return {
+        "metadata": {
+            "algorithm": "LikelihoodRatios",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": ["sklearn.metrics.class_likelihood_ratios"],
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def _top_k_fixtures() -> list[dict]:
     """Multiclass score matrices, where k is the question rather than ties.
 
@@ -5903,6 +5974,7 @@ def main() -> None:
         "classification_metrics.json": generate_classification_metrics,
         "label_losses.json": generate_label_losses,
         "multilabel_confusion.json": generate_multilabel_confusion,
+        "likelihood_ratios.json": generate_likelihood_ratios,
         "clustering_agreement.json": generate_clustering_agreement,
         "silhouette.json": generate_silhouette,
         "internal_validity.json": generate_internal_validity,
