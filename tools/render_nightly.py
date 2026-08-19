@@ -54,14 +54,19 @@ against a baseline measured in the same run, on the same VM, in the same minute,
 
 
 def included(paths: list[pathlib.Path], fence: str = "") -> list[str]:
-    """Each readable file as its own section, skipping the ones a run never produced."""
+    """Each readable file as its own section, skipping the ones a run never produced.
+
+    Four backticks, not three: BenchmarkDotNet's own report already opens an
+    unlabelled fence around its host/job preamble, and three backticks around
+    that would close on the first line of it rather than at the end of ours.
+    """
     lines: list[str] = []
     for path in paths:
         body = path.read_text(encoding="utf-8").strip() if path.exists() else ""
         if not body:
             continue
         lines += [f"### {path.stem}", ""]
-        lines += [f"```{fence}", body, "```", ""] if fence else [body, ""]
+        lines += [f"````{fence}", body, "````", ""] if fence else [body, ""]
     return lines
 
 
@@ -94,7 +99,7 @@ def render(args: argparse.Namespace,
             "Classes re-run",
             "Selected by `tools/select_benchmarks.py` from the sources that changed since "
             "the previous run:", args.selected)
-        lines += included(reports)
+        lines += included(reports, fence="text")
 
     if args.harnesses:
         lines += listing(
