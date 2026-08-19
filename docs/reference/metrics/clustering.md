@@ -29,6 +29,31 @@ independent partitions of four samples score `-0.5` on `AdjustedRand`, not `0`: 
 chance is a subtraction, and it can go below zero. Every one of those numbers is scikit-learn's,
 measured against 1.9.0 and frozen in the oracle corpus rather than reasoned about.
 
+## Which one do I want?
+
+```mermaid
+flowchart TD
+    A["You clustered some samples"] --> B{"Is there a reference<br/>partition to score against?"}
+
+    B -->|"no, only the samples"| C{"Features, or a distance<br/>matrix you computed?"}
+    C -->|"a distance matrix"| C1["Silhouette<br/>the only one that takes one"]
+    C -->|"a feature matrix"| C2["Silhouette, CalinskiHarabasz<br/>higher is better<br/>DaviesBouldin — lower is better"]
+
+    B -->|yes| D{"What do you want to learn?"}
+    D -->|"one number, and the two<br/>cluster counts differ"| E["AdjustedMutualInformation"]
+    D -->|"one number, comparable<br/>cluster counts"| F{"Corrected for chance?"}
+    F -->|yes| F1["AdjustedRand"]
+    F -->|"no — and read it<br/>knowing that"| F2["RandIndex, FowlkesMallows,<br/>MutualInformation"]
+    D -->|"which way it fails:<br/>split, or merged"| G["Homogeneity — one class per cluster<br/>Completeness — one cluster per class<br/>VMeasure — their harmonic mean"]
+    D -->|"shared information,<br/>scaled into 0..1"| I["NormalizedMutualInformation"]
+    D -->|"the pair counts<br/>underneath the others"| H["PairConfusionMatrix"]
+```
+
+**Corrected for chance is the branch to get right**, and it is the one above that costs most when
+missed: the uncorrected three are easy to reach for by name and rarely what is wanted. The
+paragraph above has the worked case — a clustering that scores a perfect `1` on `Homogeneity` and
+`0` on `AdjustedRand` for the same input.
+
 | Type | What it measures |
 | --- | --- |
 | [`AdjustedRand`](clustering/adjustedrand.md) | How many pairs of samples the two partitions agree about, minus what chance would give. |
