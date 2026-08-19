@@ -1,3 +1,4 @@
+using System.Numerics;
 using Lodestar.Metrics.Internal;
 
 namespace Lodestar.Metrics;
@@ -25,7 +26,7 @@ public static class MeanSquaredError
         int outputCount = 1,
         ReadOnlySpan<double> sampleWeight = default,
         ReadOnlySpan<double> outputWeights = default) =>
-        Outputs.Score<SquaredResidual>(yTrue, yPred, outputCount, sampleWeight, outputWeights);
+        Outputs.ScoreVectorized<SquaredResidual>(yTrue, yPred, outputCount, sampleWeight, outputWeights);
 
     /// <summary>
     /// One number per output — <c>multioutput="raw_values"</c>.
@@ -42,14 +43,20 @@ public static class MeanSquaredError
         ReadOnlySpan<double> yPred,
         int outputCount = 1,
         ReadOnlySpan<double> sampleWeight = default) =>
-        Outputs.PerOutput<SquaredResidual>(yTrue, yPred, outputCount, sampleWeight);
+        Outputs.PerOutputVectorized<SquaredResidual>(yTrue, yPred, outputCount, sampleWeight);
 
     /// <summary>The squared residual, which is what makes this the squared error.</summary>
-    private readonly struct SquaredResidual : IResidualKernel
+    private readonly struct SquaredResidual : IVectorResidualKernel
     {
         public double Apply(double truth, double prediction)
         {
             double residual = truth - prediction;
+            return residual * residual;
+        }
+
+        public Vector<double> Apply(Vector<double> truth, Vector<double> prediction)
+        {
+            Vector<double> residual = truth - prediction;
             return residual * residual;
         }
     }

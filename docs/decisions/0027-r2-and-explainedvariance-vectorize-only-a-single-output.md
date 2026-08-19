@@ -56,3 +56,22 @@ runs the scalar loop.
   mean-then-residual accumulation) can reuse the same guard rather than
   re-deriving it — nothing today shares the accumulation itself, only the
   condition under which it vectorizes.
+
+> **#321 update: the same two conditions now govern the shared walk.** This decision
+> was written about `R2` and `ExplainedVariance`, which carry their own accumulation.
+> `Outputs.WeightedMean` — the walk `mse`, `mae` and `RootMeanSquaredError` take —
+> kept a scalar loop, and the nightly found the cost of that: **0.60× against numpy**
+> at a million rows on a runner with AVX-512, below the gate
+> [`../guides/performance.md`](../guides/performance.md) sets, while `r2` on the same
+> run stayed above it. The published table said the same thing more quietly — `r2`
+> cost less doing *two* passes than `mse` doing one.
+>
+> `Outputs.ScoreVectorized` applies this decision's rule unchanged: `outputCount == 1`
+> for contiguity, `Vector.IsHardwareAccelerated` checked apart from it. Measured
+> 1.65× on `mse` and 1.60× on `mae`, with `r2` re-run as an untouched control.
+>
+> **What is new is which kernels may take it.** `IResidualKernel` gained a sibling,
+> `IVectorResidualKernel`, rather than a second method: four of the six kernels cannot
+> have a lane-wise form at all — the Tweedie deviances reach `Math.Pow` and the log
+> errors `Math.Log`. A single interface would have forced four implementations that
+> could only throw.
