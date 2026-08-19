@@ -2962,6 +2962,62 @@ def generate_label_losses() -> dict:
     }
 
 
+def generate_multilabel_confusion() -> dict:
+    """multilabel_confusion_matrix: one 2x2 per label, or per sample (#211)."""
+    import numpy as np
+    from sklearn.metrics import multilabel_confusion_matrix
+
+    def stack(matrices) -> list[list[float]]:
+        """Each 2x2 flattened as [tn, fp, fn, tp], which is its reading order."""
+        return [[float(v) for v in m.reshape(-1)] for m in matrices]
+
+    multi_true = [[1, 0, 1], [0, 1, 1]]
+    multi_pred = [[1, 0, 0], [1, 1, 1]]
+    mt = np.array(multi_true)
+    mp = np.array(multi_pred)
+    weight = np.array([1.0, 3.0])
+
+    single_true = [0, 1, 2, 1]
+    single_pred = [0, 2, 2, 1]
+    st = np.array(single_true)
+    sp = np.array(single_pred)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return {
+            "metadata": {
+                "algorithm": "MultilabelConfusion",
+                "library": "scikit-learn",
+                "library_version": version("scikit-learn"),
+                "reference_calls": ["sklearn.metrics.multilabel_confusion_matrix"],
+                "count": 5,
+            },
+            "multilabel": {
+                "y_true": [v for row in multi_true for v in row],
+                "y_pred": [v for row in multi_pred for v in row],
+                "label_count": 3,
+                "sample_weight": [1.0, 3.0],
+                "per_label": stack(multilabel_confusion_matrix(mt, mp)),
+                "samplewise": stack(multilabel_confusion_matrix(mt, mp, samplewise=True)),
+                "per_label_weighted": stack(
+                    multilabel_confusion_matrix(mt, mp, sample_weight=weight)),
+                "samplewise_weighted": stack(
+                    multilabel_confusion_matrix(mt, mp, samplewise=True, sample_weight=weight)),
+            },
+            "multiclass": {
+                "y_true": single_true,
+                "y_pred": single_pred,
+                "labels": [0, 1],
+                "sample_weight": [1.0, 2.0, 3.0, 4.0],
+                "per_class": stack(multilabel_confusion_matrix(st, sp)),
+                "selected_labels": stack(multilabel_confusion_matrix(st, sp, labels=[0, 1])),
+                "per_class_weighted": stack(multilabel_confusion_matrix(
+                    st, sp, sample_weight=np.array([1.0, 2.0, 3.0, 4.0]))),
+            },
+        }
+
+
+
 def generate_hinge_loss() -> dict:
     """hinge_loss: the one metric that reads a decision function (#211)."""
     import numpy as np
@@ -5914,6 +5970,7 @@ def main() -> None:
         "process.json": generate_process,
         "classification_metrics.json": generate_classification_metrics,
         "label_losses.json": generate_label_losses,
+        "multilabel_confusion.json": generate_multilabel_confusion,
         "hinge_loss.json": generate_hinge_loss,
         "clustering_agreement.json": generate_clustering_agreement,
         "silhouette.json": generate_silhouette,

@@ -164,8 +164,10 @@ internal static class Myers
 
         // Peq[c] has bit i set where pattern[i] == c; a 256-entry table covers Latin-1,
         // so any text character above it has an all-zero (no-match) mask.
+
+        // Not cleared, for the reason Empty above gives: stackalloc zeroes already,
+        // so a Clear was a second 2 KB memset on a call whose work is O(n) (#208).
         Span<ulong> peq = stackalloc ulong[256];
-        peq.Clear();
         for (int i = 0; i < m; i++)
         {
             char c = pattern[i];

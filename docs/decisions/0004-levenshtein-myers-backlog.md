@@ -1,6 +1,6 @@
 # 0004 — Levenshtein: bit-parallel (Myers) optimization
 
-**Status:** accepted · **Date:** 2026-08-01 · **Revised:** 2026-08-05
+**Status:** accepted · **Date:** 2026-08-01 · **Revised:** 2026-08-19
 
 ## Context
 
@@ -106,6 +106,62 @@ the 2026-08-05 revision below.
 - **The length-32 bucket sits at 1.4× behind rapidfuzz.** It already takes the
   single-word path, so the cause differs from the one fixed here and needs its own
   measurement.
+
+> **#208 update: closed, and this bullet had the cause wrong.** "It already takes
+> the single-word path" was true of 53% of the bucket and false of the rest. Split
+> on the dispatch's own criterion, the pairs falling *under* the gate were 47% of
+> the bucket and 70% of its cost — 650 ns/pair against 255 for the ones taking
+> Myers, on a band a quarter the size. The kernel was never the problem; the gate
+> was 16 where the curves cross at 8.
+>
+> That also retires both "stays at 16" above. Neither was wrong when written —
+> each measured a pattern *at* 16 and found the kernel ahead, which says the gate
+> is not too low and says nothing about it being too high. Sweeping the constant
+> against the committed corpus is what answered the other half, and it is the only
+> way to: a constant the dispatch consults cannot be swept from inside the
+> dispatch. `MyersMinPatternLength` is 8, `BitParallelMinPatternLength` is 8, and
+> the length-32 bucket went 427.6 → 204.8 ns/pair on Levenshtein and 318.7 → 145.6
+> on Indel — 1.46× and 1.31× *ahead* of rapidfuzz where it had been 1.4× behind.
+>
+> **The shared constant is now two.** "Whether a lower gate would win more is
+> untested and would move the character path too, the constant being shared" was
+> the right worry: it would have, and in the wrong direction. The code-point path
+> renames both operands through a 512-entry probe table first, so it carries the
+> larger fixed cost and crosses at 10, not 8 — at a pattern of 8 the DP is 11%
+> ahead of it. `MyersMinCodePointPatternLength` is its own constant for that
+> reason, measured in [`../guides/performance.md`](../guides/performance.md).
+>
+> **A second finding, independent of the gate.** Both single-word kernels called
+> `Clear()` on a 256-entry equality table that `stackalloc` had already zeroed —
+> a second 2 KB memset on a call whose work is `O(n)`. This file's own note that
+> the probe table needs no fill, because "stackalloc zeroes and nothing here
+> disables localsinit", sat three constants above the line that cleared. Worth 12%
+> of the bucket on Levenshtein and 17% on Indel, on top of the gate. **Right-sizing
+> the table to the pattern's own alphabet is still open**, and is still the same
+> change as lifting the Latin-1 restriction above.
+>
+> **#301 update: the remaining memset is worth one kernel's while and not the
+> other's.** `localsinit` zeroes the same 2 KB on every call, which no `Clear()`
+> removal reaches and `AllowUnsafeBlocks=false` forbids `[SkipLocalsInit]` from
+> suppressing. A `[ThreadStatic]` table held all-zero between calls replaces it
+> with a restore loop over the pattern — `O(m)` rather than `O(256)`. Swept over
+> the pair corpus at a longest-held-pattern of 0, 16, 32 and 64, it is worth **13%
+> of the length-32 bucket on Indel** and a **regression at every value on
+> Levenshtein**, so `BitParallelLcs` holds its table at 32 and `Myers` keeps its
+> `stackalloc`. The LCS recurrence is four operations per text character against
+> Myers' dozen, so the identical fixed cost is a far larger share of what its call
+> does. Numbers in [`../guides/performance.md`](../guides/performance.md).
+>
+> **Where this shape goes wrong is the refusal.** A pattern is written character by
+> character and abandoned partway when one leaves Latin-1, so entries are already
+> set when the kernel gives up — and the damage never shows on the call that causes
+> it, only on the next one, whose text reads a mask its predecessor left behind.
+> That is a test rather than a comment, and it failed before it passed.
+>
+> **A microbenchmark said this won in both kernels.** It timed 64 rotating pairs, a
+> working set small enough that the held table never left L1; the corpus evicts it.
+> Sizing a fixed cost in isolation is worth doing first and is not worth believing
+> on its own.
 
 ## Testing note
 

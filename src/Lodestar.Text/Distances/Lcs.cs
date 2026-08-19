@@ -19,8 +19,13 @@ namespace Lodestar.Text.Distances;
 public static class Lcs
 {
     /// <summary>Below this the dynamic program wins: the equality table costs more than it saves.</summary>
-    /// <remarks>Myers' own gate, measured for edit distance in #208 and inherited here until #273 measures its own.</remarks>
-    private const int BitParallelMinPatternLength = 16;
+    /// <remarks>
+    /// Still Myers' gate, but swept on this kernel too rather than inherited (#208).
+    /// Its length-32 bucket is flat from 8 down — 177.6 ns/pair at 8 against 164.8 at
+    /// 4 — so 8 is taken for the reason that constant gives rather than for a crossing
+    /// this corpus can locate: below 8 every row rests on one bucket.
+    /// </remarks>
+    private const int BitParallelMinPatternLength = 8;
 
     /// <summary>Length of the longest common subsequence (order-preserving, not necessarily contiguous).</summary>
     public static int SubsequenceLength(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement element = TextElement.Utf16Unit)

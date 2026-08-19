@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Runtime.CompilerServices;
 
 namespace Lodestar.Text.Distances;
 
@@ -21,23 +22,105 @@ internal static class BitParallelLcs
             : TryBlocked(pattern, text, out length);
     }
 
+    /// <summary>One entry per Latin-1 code unit: a text character above it reads no match.</summary>
+    private const int Entries = 256;
+
+    /// <summary>Longest pattern for which restoring a held table beats letting <c>stackalloc</c> zero one.</summary>
+    /// <remarks>
+    /// Swept over the pair corpus at 0, 16, 32 and 64 (#301). Its length-32 bucket reads 152.2
+    /// ns/pair held nowhere, 138.5 at 16, 132.1 at 32 and 134.2 at 64, so the curve is flat
+    /// either side of 32 and 32 is taken. Myers got the same sweep and every value was a
+    /// regression there — the table is held in this kernel and not in that one, for the reason
+    /// <see cref="Held"/> gives.
+    /// </remarks>
+    private const int MaxHeldPattern = 32;
+
+    // One table per thread, all-zero between calls because every exit restores it -- including
+    // the refusal, which has already written entries by the time it discovers it must give up.
+    [ThreadStatic]
+    private static ulong[]? held;
+
+    /// <summary>The thread's equality table, held rather than zeroed on entry.</summary>
+    /// <remarks>
+    /// <c>Peq[c]</c> has bit <c>i</c> set where <c>pattern[i] == c</c>. Zeroing those 2 KB is a
+    /// fixed cost on work that is <c>O(n)</c>, and <c>stackalloc</c> pays it on every call since
+    /// nothing here disables <c>localsinit</c>; restoring costs the pattern instead, <c>O(m)</c>.
+    /// Myers measured the other way on the same corpus and keeps its <c>stackalloc</c>: this
+    /// recurrence is four operations per text character against that one's dozen, so the same
+    /// fixed cost is a far larger share of what a call does.
+    /// </remarks>
+    private static ulong[] Held => held ??= new ulong[Entries];
+
     private static bool TrySingleWord(ReadOnlySpan<char> pattern, ReadOnlySpan<char> text, out int length)
     {
         length = 0;
-        int m = pattern.Length;
+        if (pattern.Length > MaxHeldPattern)
+        {
+            return TrySingleWordOverStack(pattern, text, out length);
+        }
 
-        Span<ulong> peq = stackalloc ulong[256];
-        peq.Clear();
-        for (int i = 0; i < m; i++)
+        ulong[] peq = Held;
+        if (!TryFill(pattern, peq))
+        {
+            return false; // pattern outside Latin-1: let the DP handle it
+        }
+
+        length = Scan(peq, pattern.Length, text);
+        Restore(pattern, peq);
+        return true;
+    }
+
+    /// <summary>The same kernel over a table zeroed by <c>localsinit</c>, past the length that pays for.</summary>
+    /// <remarks>
+    /// A <c>stackalloc</c> anywhere in a method zeroes on entry to it whether or not its branch
+    /// is taken, so the held path only avoids the memset by living in a method that has none.
+    /// </remarks>
+    private static bool TrySingleWordOverStack(ReadOnlySpan<char> pattern, ReadOnlySpan<char> text, out int length)
+    {
+        length = 0;
+        Span<ulong> peq = stackalloc ulong[Entries];
+        if (!TryFill(pattern, peq))
+        {
+            return false; // pattern outside Latin-1: let the DP handle it
+        }
+
+        length = Scan(peq, pattern.Length, text);
+        return true;
+    }
+
+    /// <summary>Sets each pattern position's bit, or reports a pattern that leaves Latin-1.</summary>
+    /// <returns><c>false</c> when a character exceeds U+00FF, the table restored as it was found.</returns>
+    private static bool TryFill(ReadOnlySpan<char> pattern, Span<ulong> table)
+    {
+        for (int i = 0; i < pattern.Length; i++)
         {
             char c = pattern[i];
             if (c > 0xFF)
             {
-                return false; // pattern outside Latin-1: let the DP handle it
+                // The exit that is easy to miss: i entries are already written, and the next
+                // pattern would read them as its own.
+                Restore(pattern.Slice(0, i), table);
+                return false;
             }
-            peq[c] |= 1UL << i;
+            table[c] |= 1UL << i;
         }
+        return true;
+    }
 
+    /// <summary>Clears what <see cref="TryFill"/> wrote, restoring the all-zero invariant.</summary>
+    private static void Restore(ReadOnlySpan<char> pattern, Span<ulong> table)
+    {
+        for (int i = 0; i < pattern.Length; i++)
+        {
+            table[pattern[i]] = 0UL;
+        }
+    }
+
+    /// <summary>One machine word of the LCS recurrence, over the pattern's equality table.</summary>
+    /// <remarks>Inlined rather than called: this is the hot loop, and a call here costs measurably.</remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int Scan(ReadOnlySpan<ulong> peq, int m, ReadOnlySpan<char> text)
+    {
         // All ones: no position has incremented yet. Carries run upward, so the bits
         // above m are masked at the end rather than kept clean throughout.
         ulong v = ulong.MaxValue;
@@ -50,8 +133,7 @@ internal static class BitParallelLcs
         }
 
         ulong mask = m == 64 ? ulong.MaxValue : (1UL << m) - 1;
-        length = m - PopCount(v & mask);
-        return true;
+        return m - PopCount(v & mask);
     }
 
     private static bool TryBlocked(ReadOnlySpan<char> pattern, ReadOnlySpan<char> text, out int length)
@@ -60,7 +142,7 @@ internal static class BitParallelLcs
         int m = pattern.Length;
         int blocks = (m + 63) / 64;
 
-        int peqLength = 256 * blocks;
+        int peqLength = Entries * blocks;
         ulong[] peqRented = ArrayPool<ulong>.Shared.Rent(peqLength);
         ulong[] vRented = ArrayPool<ulong>.Shared.Rent(blocks);
         try

@@ -115,6 +115,7 @@ which is where its clip lands.
 | [`MatthewsCorrelation`](classification/matthewscorrelation.md) | The correlation between prediction and truth, in `[-1, 1]`. |
 | [`MultiClassRocOptions`](classification/multiclassrocoptions.md) | The optional settings of multiclass ROC-AUC. |
 | [`MultiClassStrategy`](classification/multiclassstrategy.md) | One class against the rest, or every pair. |
+| [`MultilabelConfusionMatrix`](classification/multilabelconfusionmatrix.md) | One 2×2 matrix per label, or per sample — a stack of `ConfusionMatrix`, not a new type. |
 | [`Normalization`](classification/normalization.md) | Which sum a confusion matrix's cells are divided by. |
 | [`Precision`](classification/precision.md) | Of everything flagged as a class, how much belonged there. |
 | [`CalibrationCurve`](classification/calibrationcurve.md) | The reliability curve as plot data; its arrays are as long as the bins that held something. |

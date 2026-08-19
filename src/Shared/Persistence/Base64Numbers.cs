@@ -59,10 +59,17 @@ internal static class Base64Numbers
     /// <see cref="WriteDoubles"/> is. <c>BitConverter.SingleToInt32Bits</c> does not
     /// exist on <c>netstandard2.0</c>, and this block is the largest thing in any
     /// artifact — an embedding index is millions of floats where an idf vector is
-    /// tens of thousands.
+    /// tens of thousands — which is why the little-endian path does not copy it at
+    /// all: the buffer existed only to be swapped in place (#323).
     /// </remarks>
     public static void WriteSingles(Utf8JsonWriter writer, string propertyName, ReadOnlySpan<float> values)
     {
+        if (BitConverter.IsLittleEndian)
+        {
+            writer.WriteBase64String(propertyName, MemoryMarshal.AsBytes(values));
+            return;
+        }
+
         byte[] raw = new byte[values.Length * sizeof(float)];
         MemoryMarshal.AsBytes(values).CopyTo(raw);
         SwapIfBigEndian32(raw);

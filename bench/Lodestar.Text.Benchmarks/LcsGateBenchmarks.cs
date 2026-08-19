@@ -3,9 +3,6 @@ using Lodestar.Text.Distances;
 
 namespace Lodestar.Text.Benchmarks;
 
-// SonarLint S2245: a seeded Random builds a reproducible benchmark corpus; no security use.
-#pragma warning disable S2245, CA5394
-
 // CA1822 (mark members static): BenchmarkDotNet rejects static benchmarks, so
 // following this rule breaks the benchmarks at run time rather than compile time.
 #pragma warning disable CA1822
@@ -22,9 +19,6 @@ namespace Lodestar.Text.Benchmarks;
 [MemoryDiagnoser]
 public class LcsGateBenchmarks
 {
-    private const string Alphabet = "abcdefghijklmnopqrstuvwxyz ";
-    private const int Shared = 24;
-
     private string _a = string.Empty;
     private string _b = string.Empty;
 
@@ -32,18 +26,10 @@ public class LcsGateBenchmarks
     [Params(8, 12, 14, 16, 18, 20, 24, 32, 48, 64, 96)]
     public int Band { get; set; }
 
+    // The seed is BandedPair.GateSeed, so the numbers this published in #273 still
+    // reproduce and the Myers twin measures the same characters.
     [GlobalSetup]
-    public void Setup()
-    {
-        var rng = new Random(20260818);
-        string prefix = Random(rng, Shared);
-        string suffix = Random(rng, Shared);
-
-        // Ends forced apart: drawn independently they share a first or last character
-        // once in 27, and trimming then eats into the band and drops it below the gate.
-        _a = prefix + WithEnds(rng, Band, 'a', 'b') + suffix;
-        _b = prefix + WithEnds(rng, Band, 'c', 'd') + suffix;
-    }
+    public void Setup() => (_a, _b) = BandedPair.Build(Band);
 
     /// <summary>The generic overload, which stays on the dynamic program by design.</summary>
     [Benchmark(Baseline = true)]
@@ -56,24 +42,4 @@ public class LcsGateBenchmarks
     /// </remarks>
     [Benchmark]
     public int Kernel() => Lcs.SubsequenceLength(_a.AsSpan(), _b.AsSpan(), TextElement.Utf16Unit);
-
-    /// <summary>A random middle whose first and last characters are imposed.</summary>
-    private static string WithEnds(Random rng, int length, char first, char last)
-    {
-        char[] text = Random(rng, length).ToCharArray();
-        text[0] = first;
-        text[^1] = last;
-        return new string(text);
-    }
-
-    private static string Random(Random rng, int length)
-    {
-        char[] text = new char[length];
-        for (int i = 0; i < length; i++)
-        {
-            text[i] = Alphabet[rng.Next(Alphabet.Length)];
-        }
-
-        return new string(text);
-    }
 }
