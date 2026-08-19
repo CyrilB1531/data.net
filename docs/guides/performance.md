@@ -236,8 +236,9 @@ runs both routes in one process with the dynamic program as baseline:
   234, 264 ns while the work quadruples. That is a fixed cost dominating: the
   256-entry equality table is cleared on every call. **Half of that clearing was
   redundant** and #208 removed it — `stackalloc` had already zeroed the table —
-  which is worth 17% of the length-32 bucket here; right-sizing the table is still
-  open. Band 96 makes it plain,
+  which is worth 17% of the length-32 bucket here. #301 then stopped zeroing it at
+  all for patterns of 32 or fewer, worth a further 13% of that bucket; right-sizing
+  the table is still open. Band 96 makes it plain,
   crossing into the blocked path for 281 → 1 504 ns on one and a half times the
   work, the table having doubled. **Right-sizing that table to the pattern's own
   alphabet is where the remaining 2× is most likely to be**, and it is the same
@@ -246,6 +247,63 @@ runs both routes in one process with the dynamic program as baseline:
   visible below the gate where both take the DP and gone by band 96 where the
   work dwarfs it. It is not a missing inlining — an `AggressiveInlining` attempt
   moved the ratios by less than the error bars — and it is not yet explained.
+
+### Holding the equality table rather than zeroing it (#301)
+
+Same machine and corpus, own window: Intel i7-4770S, .NET 10.0.110, one-minute
+load average 3.2 to 4.6 across it; dev machine, non-authoritative.
+
+Both single-word kernels built their 256-entry table with `stackalloc`, which
+`localsinit` zeroes on every call — 2 KB of memset for a table of which at most 64
+entries are used, on work that is `O(n)`. #208 removed the redundant *second*
+memset; this is the one that remained, and no `Clear()` removal reaches it
+(`AllowUnsafeBlocks=false` rules out `[SkipLocalsInit]`).
+
+**The prize, sized before anything was built.** A table held in a `[ThreadStatic]`
+array and restored by walking the pattern again costs `O(m)` stores rather than
+`O(256)`. An isolated harness put the memset it replaces at a flat ~25 ns per call
+at every pattern length — the signature of a fixed cost, and consistent with the
+flatness across bands above. That harness also said the change won in **both**
+kernels, which the corpus then contradicted for one of them: a 64-string working
+set never evicts a held table, and a walk over the corpus does.
+
+**Swept over the pair corpus** — longest held pattern at 0 (never held), 16, 32 and
+64 — length-32 bucket, ns/pair, best of two runs interleaved across the four builds:
+
+| longest held pattern | 0 | 16 | 32 | 64 |
+| --- | ---: | ---: | ---: | ---: |
+| `compare-indel` (LCS kernel) | 152.2 | 138.5 | **132.1** | 134.2 |
+| `compare` (Myers) | **215.7** | 222.0 | 233.1 | 231.1 |
+
+**So the table is held in one kernel and not in the other**, which is the same
+split the two gates already carry and for a related reason. The LCS recurrence is
+four operations per text character where Myers' is a dozen, so the identical fixed
+cost is a far larger share of what an LCS call does — and the held table's own
+costs (a thread-static access, a restore loop, and a table a corpus walk evicts
+between calls where a stack frame stays hot) are what Myers cannot cover.
+
+**Before and after**, three runs each, interleaved across the boundary:
+
+| Length | before | after | |
+| ---: | ---: | ---: | ---: |
+| 8 | 38.0 ns/pair | 37.4 ns/pair | +1.6% |
+| 32 | 151.2 ns/pair | **131.6 ns/pair** | **+13.0%** |
+| 128 | 1 241 ns/pair | 1 219 ns/pair | +1.8% |
+| 512 | 14 166 ns/pair | 14 319 ns/pair | −1.1% |
+
+The 128 and 512 buckets take the blocked path, which this did not touch, so their
+movement is the run-to-run spread — as is the 8 bucket, whose pairs trim to a
+pattern below the gate. Levenshtein was re-run beside it as the control and moved
+by less than that at every bucket: 32.4 → 32.5, 215.6 → 214.6, 1 800 → 1 803.
+
+**The gate was re-swept afterwards and did not move.** A cheaper kernel should be
+worth entering at a shorter pattern, and the corpus says so — the length-32 bucket
+reads 132.5 ns/pair at a gate of 8, 124.1 at 6 and 120.8 at 4, with the length-8
+bucket flat at 37–38 throughout. That is the same relationship #208 measured
+(177.6 at 8 against 164.8 at 4) and declined to act on, for a reason this lot does
+not change: below 8 the corpus has a hole, the length-8 bucket trims to a pattern
+of 0 or 1, and every row therefore rests on the one bucket. `BitParallelMinPatternLength`
+stays at 8 until a corpus that can answer it exists.
 
 ### The code-point mode, on input that leaves the BMP (#208)
 
