@@ -159,6 +159,9 @@ jobs:
             python "$script"
             dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- "$subcommand"
             python bench/compare.py $mode | tee "bench/results/compare-$name.txt"
+            # Same numbers, rendered as a real markdown table for the page that shows one --
+            # the .txt file above stays exactly what a human reads in this log and locally.
+            python bench/compare.py $mode --format=gfm > "bench/results/compare-$name.md"
             echo "::endgroup::"
           done < harnesses.txt
 
