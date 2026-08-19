@@ -8,8 +8,8 @@ using Lodestar.Metrics;
 using Lodestar.Sample;
 using Lodestar.Text.Distances;
 
-// A consumer of the published packages, one thing per lot; runs in CI so it can't
-// rot. Also ADR 0009's packaging gate: a new public type needs a call in Lot*.cs.
+// A consumer of the published packages; runs in CI so it can't rot. Also ADR 0009's
+// packaging gate: a new public type needs a call from <ClassName>Sample.cs (ADR 0041).
 
 // Every number below goes through Inv.F3 and friends, which a hole carrying no
 // format specifier cannot; this covers those, so the run reads the same everywhere (#205).
@@ -27,8 +27,7 @@ Console.WriteLine($"Lodestar.Embeddings: {FrameworkOf(typeof(WordPieceTokenizer)
 Console.WriteLine($"Lodestar.Metrics   : {FrameworkOf(typeof(ConfusionMatrix))}");
 Console.WriteLine();
 
-Lot1Distances.Run();
-Lot2Vectorization.Run();
+TextSamples.Run();
 Lot3Embeddings.Run();
 Lot4Fuzzy.Run();
 Lot5Metrics.Run();
