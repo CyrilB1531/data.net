@@ -897,8 +897,10 @@ a three-row file would otherwise have printed as a green one.
 `R2` and `ExplainedVariance` got a `Vector<double>` accumulation in #127, gated by
 [decision 0027](../decisions/0027-r2-and-explainedvariance-vectorize-only-a-single-output.md)
 on `outputCount == 1 && Vector.IsHardwareAccelerated`. The shared walk under
-`Outputs.WeightedMean` — which `mse`, `mae` and, through `MeanSquaredError.PerOutput`,
-`RootMeanSquaredError` all take — did not, and stayed a scalar loop.
+`Outputs.WeightedMean` — which `mse`, `mae` and, through
+[`MeanSquaredError.PerOutput`](../reference/metrics/regression/meansquarederror-peroutput.md),
+[`RootMeanSquaredError`](../reference/metrics/regression/rootmeansquarederror.md) all take —
+did not, and stayed a scalar loop.
 
 The table above shows the consequence without naming it: at n = 1 000 000, `r2` does
 **two** passes over the data and cost less than `mse` doing one.
