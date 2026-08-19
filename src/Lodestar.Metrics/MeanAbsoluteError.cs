@@ -1,3 +1,4 @@
+using System.Numerics;
 using Lodestar.Metrics.Internal;
 
 namespace Lodestar.Metrics;
@@ -25,7 +26,7 @@ public static class MeanAbsoluteError
         int outputCount = 1,
         ReadOnlySpan<double> sampleWeight = default,
         ReadOnlySpan<double> outputWeights = default) =>
-        Outputs.Score<AbsoluteResidual>(yTrue, yPred, outputCount, sampleWeight, outputWeights);
+        Outputs.ScoreVectorized<AbsoluteResidual>(yTrue, yPred, outputCount, sampleWeight, outputWeights);
 
     /// <summary>
     /// One number per output — <c>multioutput="raw_values"</c>.
@@ -42,11 +43,14 @@ public static class MeanAbsoluteError
         ReadOnlySpan<double> yPred,
         int outputCount = 1,
         ReadOnlySpan<double> sampleWeight = default) =>
-        Outputs.PerOutput<AbsoluteResidual>(yTrue, yPred, outputCount, sampleWeight);
+        Outputs.PerOutputVectorized<AbsoluteResidual>(yTrue, yPred, outputCount, sampleWeight);
 
     /// <summary>The absolute residual, which is what makes this the absolute error.</summary>
-    private readonly struct AbsoluteResidual : IResidualKernel
+    private readonly struct AbsoluteResidual : IVectorResidualKernel
     {
         public double Apply(double truth, double prediction) => Math.Abs(truth - prediction);
+
+        public Vector<double> Apply(Vector<double> truth, Vector<double> prediction) =>
+            Vector.Abs(truth - prediction);
     }
 }

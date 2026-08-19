@@ -1,0 +1,190 @@
+{
+ "metadata": {
+  "algorithm": "LikelihoodRatios",
+  "library": "scikit-learn",
+  "library_version": "1.9.0",
+  "reference_calls": [
+   "sklearn.metrics.class_likelihood_ratios"
+  ],
+  "count": 8
+ },
+ "cases": [
+  {
+   "name": "the worked case",
+   "y_true": [
+    0,
+    1,
+    1,
+    0,
+    1,
+    0
+   ],
+   "y_pred": [
+    0,
+    1,
+    0,
+    0,
+    1,
+    1
+   ],
+   "sample_weight": null,
+   "positive": 2.0,
+   "negative": 0.5,
+   "positive_replaced_by_one": 2.0,
+   "negative_replaced_by_one": 0.5,
+   "positive_replaced_apart": 2.0,
+   "negative_replaced_apart": 0.5
+  },
+  {
+   "name": "the worked case, weighted",
+   "y_true": [
+    0,
+    1,
+    1,
+    0,
+    1,
+    0
+   ],
+   "y_pred": [
+    0,
+    1,
+    0,
+    0,
+    1,
+    1
+   ],
+   "sample_weight": [
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0
+   ],
+   "positive": 1.2833333333333334,
+   "negative": 0.66,
+   "positive_replaced_by_one": 1.2833333333333334,
+   "negative_replaced_by_one": 0.66,
+   "positive_replaced_apart": 1.2833333333333334,
+   "negative_replaced_apart": 0.66
+  },
+  {
+   "name": "no true negative",
+   "y_true": [
+    0,
+    1,
+    1
+   ],
+   "y_pred": [
+    1,
+    1,
+    1
+   ],
+   "sample_weight": null,
+   "positive": 1.0,
+   "negative": null,
+   "positive_replaced_by_one": 1.0,
+   "negative_replaced_by_one": 1.0,
+   "positive_replaced_apart": 1.0,
+   "negative_replaced_apart": 0.5
+  },
+  {
+   "name": "a perfect prediction",
+   "y_true": [
+    0,
+    1
+   ],
+   "y_pred": [
+    0,
+    1
+   ],
+   "sample_weight": null,
+   "positive": null,
+   "negative": 0.0,
+   "positive_replaced_by_one": 1.0,
+   "negative_replaced_by_one": 0.0,
+   "positive_replaced_apart": 10.0,
+   "negative_replaced_apart": 0.0
+  },
+  {
+   "name": "nothing predicted positive",
+   "y_true": [
+    0,
+    1
+   ],
+   "y_pred": [
+    0,
+    0
+   ],
+   "sample_weight": null,
+   "positive": null,
+   "negative": 1.0,
+   "positive_replaced_by_one": 1.0,
+   "negative_replaced_by_one": 1.0,
+   "positive_replaced_apart": 10.0,
+   "negative_replaced_apart": 1.0
+  },
+  {
+   "name": "no positive sample",
+   "y_true": [
+    0,
+    0
+   ],
+   "y_pred": [
+    0,
+    1
+   ],
+   "sample_weight": null,
+   "positive": null,
+   "negative": null,
+   "positive_replaced_by_one": null,
+   "negative_replaced_by_one": null,
+   "positive_replaced_apart": null,
+   "negative_replaced_apart": null
+  },
+  {
+   "name": "no negative sample",
+   "y_true": [
+    1,
+    1
+   ],
+   "y_pred": [
+    0,
+    1
+   ],
+   "sample_weight": null,
+   "positive": null,
+   "negative": null,
+   "positive_replaced_by_one": 1.0,
+   "negative_replaced_by_one": 1.0,
+   "positive_replaced_apart": 10.0,
+   "negative_replaced_apart": 0.5
+  },
+  {
+   "name": "an ordinary imbalanced case",
+   "y_true": [
+    0,
+    0,
+    0,
+    0,
+    1,
+    1
+   ],
+   "y_pred": [
+    0,
+    0,
+    0,
+    1,
+    1,
+    0
+   ],
+   "sample_weight": null,
+   "positive": 2.0,
+   "negative": 0.6666666666666666,
+   "positive_replaced_by_one": 2.0,
+   "negative_replaced_by_one": 0.6666666666666666,
+   "positive_replaced_apart": 2.0,
+   "negative_replaced_apart": 0.6666666666666666
+  }
+ ]
+}

@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace Lodestar.Metrics.Internal;
 
 /// <summary>
@@ -16,6 +18,22 @@ internal interface IResidualKernel
     /// <param name="truth">One true value.</param>
     /// <param name="prediction">The prediction for the same sample and output.</param>
     double Apply(double truth, double prediction);
+}
+
+/// <summary>A kernel whose per-pair quantity also has a lane-wise form.</summary>
+/// <remarks>
+/// Separate from <see cref="IResidualKernel"/> because most kernels cannot have one:
+/// the Tweedie deviances reach <c>Math.Pow</c> and the log errors
+/// <c>Math.Log</c>, neither of which <see cref="Vector{T}"/> offers. Only the
+/// two that are arithmetic all the way down implement it, and only they take the
+/// vectorized walk (#321).
+/// </remarks>
+internal interface IVectorResidualKernel : IResidualKernel
+{
+    /// <summary>The same quantity, one lane per element.</summary>
+    /// <param name="truth">One true value per lane.</param>
+    /// <param name="prediction">The prediction for the same sample, per lane.</param>
+    Vector<double> Apply(Vector<double> truth, Vector<double> prediction);
 }
 
 /// <summary>
@@ -132,6 +150,50 @@ internal static class Outputs
         return Reduce(WeightedMean(yTrue, yPred, outputCount, sampleWeight, samples, kernel), outputWeights);
     }
 
+    /// <summary>
+    /// <see cref="Score{TKernel}"/> for a kernel that has a lane-wise form, which takes
+    /// the vectorized walk where the shape allows it. A distinct name rather than an
+    /// overload: C# does not resolve on the constraint, and the two differ in nothing else.
+    /// </summary>
+    /// <typeparam name="TKernel">The per-pair quantity this metric averages.</typeparam>
+    /// <param name="yTrue">The true values, row-major when there is more than one output.</param>
+    /// <param name="yPred">The predicted values, same length as <paramref name="yTrue"/>.</param>
+    /// <param name="outputCount">How many outputs each row holds.</param>
+    /// <param name="sampleWeight">A weight per sample, or empty.</param>
+    /// <param name="outputWeights">A weight per output, or empty for a plain mean.</param>
+    /// <param name="kernel">The kernel instance.</param>
+    public static double ScoreVectorized<TKernel>(
+        ReadOnlySpan<double> yTrue,
+        ReadOnlySpan<double> yPred,
+        int outputCount,
+        ReadOnlySpan<double> sampleWeight,
+        ReadOnlySpan<double> outputWeights,
+        TKernel kernel = default)
+        where TKernel : struct, IVectorResidualKernel
+    {
+        int samples = Validate(yTrue, yPred, outputCount, sampleWeight, outputWeights);
+        return Reduce(WeightedMeanVectorized(yTrue, yPred, outputCount, sampleWeight, samples, kernel), outputWeights);
+    }
+
+    /// <summary><see cref="PerOutput{TKernel}"/> for a kernel that has a lane-wise form.</summary>
+    /// <typeparam name="TKernel">The per-pair quantity this metric averages.</typeparam>
+    /// <param name="yTrue">The true values, row-major.</param>
+    /// <param name="yPred">The predicted values, same length as <paramref name="yTrue"/>.</param>
+    /// <param name="outputCount">How many outputs each row holds.</param>
+    /// <param name="sampleWeight">A weight per sample, or empty.</param>
+    /// <param name="kernel">The kernel instance.</param>
+    public static double[] PerOutputVectorized<TKernel>(
+        ReadOnlySpan<double> yTrue,
+        ReadOnlySpan<double> yPred,
+        int outputCount,
+        ReadOnlySpan<double> sampleWeight,
+        TKernel kernel = default)
+        where TKernel : struct, IVectorResidualKernel
+    {
+        int samples = Validate(yTrue, yPred, outputCount, sampleWeight, default);
+        return WeightedMeanVectorized(yTrue, yPred, outputCount, sampleWeight, samples, kernel);
+    }
+
     /// <summary>The same walk without the reduction — <c>multioutput="raw_values"</c>.</summary>
     /// <typeparam name="TKernel">The per-pair quantity this metric averages.</typeparam>
     /// <param name="yTrue">The true values, row-major.</param>
@@ -221,6 +283,101 @@ internal static class Outputs
 
         return result;
     }
+
+    /// <summary><see cref="WeightedMean{TKernel}"/> with a SIMD walk where the shape permits one.</summary>
+    /// <typeparam name="TKernel">The per-pair quantity to average.</typeparam>
+    /// <param name="yTrue">The true values, row-major.</param>
+    /// <param name="yPred">The predicted values, row-major.</param>
+    /// <param name="outputCount">How many outputs each row holds.</param>
+    /// <param name="sampleWeight">A weight per sample, or empty for weight 1 each.</param>
+    /// <param name="samples">The sample count <see cref="Validate"/> returned.</param>
+    /// <param name="kernel">The kernel instance.</param>
+    /// <remarks>
+    /// Both conditions are <c>decisions/0027</c>'s, settled there for R² and explained
+    /// variance: <c>outputCount == 1</c> is the only contiguous shape, a strided column
+    /// being what a <see cref="Vector{T}"/> load cannot gather, and
+    /// <see cref="Vector.IsHardwareAccelerated"/> is checked apart from it so a runtime
+    /// emulating the type keeps the scalar loop.
+    /// </remarks>
+    private static double[] WeightedMeanVectorized<TKernel>(
+        ReadOnlySpan<double> yTrue,
+        ReadOnlySpan<double> yPred,
+        int outputCount,
+        ReadOnlySpan<double> sampleWeight,
+        int samples,
+        TKernel kernel)
+        where TKernel : struct, IVectorResidualKernel
+    {
+#if NET5_0_OR_GREATER
+        if (outputCount == 1 && Vector.IsHardwareAccelerated)
+        {
+            return [SingleOutputVectorized(yTrue, yPred, sampleWeight, samples, kernel)];
+        }
+#endif
+        return WeightedMean(yTrue, yPred, outputCount, sampleWeight, samples, kernel);
+    }
+
+#if NET5_0_OR_GREATER
+    /// <summary>The weighted mean over one contiguous output, accumulated per lane.</summary>
+    /// <remarks>
+    /// Not guaranteed bit-identical with the scalar loop, for the reason
+    /// <see cref="VectorCompensatedSum"/> gives: each lane is Neumaier-exact on its own
+    /// terms and the lanes are combined in a different order. Both sides pass the
+    /// oracle corpus at its 1e-9 comparison.
+    /// </remarks>
+    private static double SingleOutputVectorized<TKernel>(
+        ReadOnlySpan<double> yTrue,
+        ReadOnlySpan<double> yPred,
+        ReadOnlySpan<double> sampleWeight,
+        int samples,
+        TKernel kernel)
+        where TKernel : struct, IVectorResidualKernel
+    {
+        int width = Vector<double>.Count;
+        VectorCompensatedSum acc = default;
+        int i = 0;
+
+        if (sampleWeight.IsEmpty)
+        {
+            for (; i <= samples - width; i += width)
+            {
+                acc.Add(kernel.Apply(
+                    new Vector<double>(yTrue.Slice(i, width)),
+                    new Vector<double>(yPred.Slice(i, width))));
+            }
+
+            CompensatedSum sum = acc.Reduce();
+            for (; i < samples; i++)
+            {
+                sum.Add(kernel.Apply(yTrue[i], yPred[i]));
+            }
+
+            // Exact: n additions of 1.0 land on n for every n below 2^53.
+            return sum.Value / samples;
+        }
+
+        VectorCompensatedSum weightAcc = default;
+        for (; i <= samples - width; i += width)
+        {
+            var weights = new Vector<double>(sampleWeight.Slice(i, width));
+            weightAcc.Add(weights);
+            acc.Add(weights * kernel.Apply(
+                new Vector<double>(yTrue.Slice(i, width)),
+                new Vector<double>(yPred.Slice(i, width))));
+        }
+
+        CompensatedSum weighted = acc.Reduce();
+        CompensatedSum totalWeight = weightAcc.Reduce();
+        for (; i < samples; i++)
+        {
+            double weight = sampleWeight[i];
+            totalWeight.Add(weight);
+            weighted.Add(weight * kernel.Apply(yTrue[i], yPred[i]));
+        }
+
+        return weighted.Value / totalWeight.Value;
+    }
+#endif
 
     /// <summary>Roots every entry in place, and hands the same array back.</summary>
     /// <param name="perOutput">One value per output, replaced by its square root.</param>

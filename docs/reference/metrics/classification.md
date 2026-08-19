@@ -111,6 +111,7 @@ which is where its clip lands.
 | [`HingeLoss`](classification/hingeloss.md) | The loss a support vector machine minimises — a decision function, and a margin of one. |
 | [`JaccardScore`](classification/jaccardscore.md) | Intersection over union, the strictest of the three ratios precision and recall sit either side of. |
 | [`KappaWeighting`](classification/kappaweighting.md) | How far apart two classes count as being, for `CohenKappa`. |
+| [`LikelihoodRatios`](classification/likelihoodratios.md) | How far a prediction should move a belief — the one pair that does not move with the base rate. |
 | [`LogLoss`](classification/logloss.md) | The cross-entropy of a probabilistic prediction — unbounded, and dominated by one confident mistake. |
 | [`MatthewsCorrelation`](classification/matthewscorrelation.md) | The correlation between prediction and truth, in `[-1, 1]`. |
 | [`MultiClassRocOptions`](classification/multiclassrocoptions.md) | The optional settings of multiclass ROC-AUC. |
