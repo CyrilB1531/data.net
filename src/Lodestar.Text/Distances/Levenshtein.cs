@@ -18,9 +18,25 @@ namespace Lodestar.Text.Distances;
 /// </remarks>
 public static class Levenshtein
 {
-    // Below this length the DP beats Myers (equality-table setup dominates); no
-    // upper bound remains since longer patterns take the blocked path.
-    private const int MyersMinPatternLength = 16;
+    /// <summary>Below this pattern length the DP beats Myers, whose equality-table setup dominates.</summary>
+    /// <remarks>
+    /// No upper bound remains, a longer pattern taking the blocked path. 8 rather than
+    /// 16 because the crossing is <c>m ≈ 1 + setup/n</c> and so falls as the text grows:
+    /// 8 is where it sits for the shortest texts, the regime that can least afford being
+    /// wrong. Swept over the pair corpus in #208 — at 16 the length-32 bucket sent 47% of
+    /// its pairs to a DP costing 2.5× what Myers cost on the rest.
+    /// </remarks>
+    private const int MyersMinPatternLength = 8;
+
+    /// <summary>The same gate for the code-point path, which crosses later.</summary>
+    /// <remarks>
+    /// Not shared with <see cref="MyersMinPatternLength"/>, and #208 measured why: this
+    /// path renames both operands through a 512-entry probe table before the kernel sees
+    /// them, so its fixed cost is the larger one. At a pattern of 8 the DP is 11% ahead
+    /// (377 ns against 419), at 12 the kernel is 10% ahead (483 against 535), and 10 is
+    /// the tie. One constant would have to regress one of the two paths by that much.
+    /// </remarks>
+    private const int MyersMinCodePointPatternLength = 10;
 
     /// <summary>
     /// Computes the Levenshtein distance between <paramref name="a"/> and
@@ -163,7 +179,7 @@ public static class Levenshtein
             b = tmp;
         }
 
-        if (b.Length >= MyersMinPatternLength && Myers.TryDistance(b, a, out int d))
+        if (b.Length >= MyersMinCodePointPatternLength && Myers.TryDistance(b, a, out int d))
         {
             return d;
         }

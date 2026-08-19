@@ -39,6 +39,45 @@ number as though it were the mode's.
 dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- --filter '*LevenshteinCodePoint*'
 ```
 
+### Where the bit-parallel gate belongs, and why a benchmark cannot say
+
+`MyersGateBenchmarks` and `LcsGateBenchmarks` parameterise the differing middle
+directly, so after `Affixes.Trim` the pattern is exactly `Band` long and the
+dynamic program runs beside the kernel as the baseline. They answer *how much*
+the kernel wins by at a given band.
+
+They cannot answer *where to put the gate*, and it is worth being explicit about
+why, because the shape invites the mistake: below the gate the dispatch sends
+both rows to the DP, so the ratio is 1 and the crossing is invisible exactly
+where you want to read it. The kernels are `internal` and the constants private,
+so no benchmark reaches around the dispatch either.
+
+What answers it is sweeping the constant and reading the committed corpus end to
+end — the metric that is actually reported, on the input that is actually shipped.
+Edit `MyersMinPatternLength` (or `BitParallelMinPatternLength`, or
+`MyersMinCodePointPatternLength`), rebuild, and run the cross-language harness of
+section 3 at each value:
+
+```bash
+dotnet build bench/Lodestar.Text.Benchmarks -c Release
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks --no-build -- compare
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks --no-build -- compare-indel
+```
+
+Three things this corpus will not tell you, all of which cost #208 time:
+
+- **Read every bucket, not the one being tuned.** The length-32 bucket keeps
+  improving as the gate falls, and the length-8 bucket falls off a cliff below 2.
+  A sweep that reports only the bucket it is optimising will happily recommend 1.
+- **The crossing depends on the text length, not just the pattern length.** Myers
+  costs `setup + O(n)` where the DP costs `O(m·n)`, so they meet at
+  `m ≈ 1 + setup/n`. A gate is one number for every `n`, so calibrate it on the
+  shortest texts — the regime where being wrong is expensive.
+- **The corpus has a hole between 2 and 7.** Its length-8 bucket trims to a
+  pattern of 0 or 1 and its length-32 bucket is the only other source, so any
+  conclusion in that range rests on a single bucket. `BucketRouteDiagnostics`
+  prints the split the gate produces on that bucket, which is how to see it.
+
 ## 2. net10 vs netstandard2.0 — what the broad-reach target costs
 
 `netstandard2.0` is a contract, not a runtime: nothing executes *on* it. What can
