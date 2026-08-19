@@ -2223,6 +2223,7 @@ def generate_ranking() -> dict:
 # what ties a failing case back to the prose that explains it.
 WORKED_CASE = "the worked case"
 WORKED_CASE_WEIGHTED = "the worked case, weighted"
+SIGNED_LABELS = "labels are -1 and 1"
 ALL_TIED = "every score tied"
 
 
@@ -2329,7 +2330,7 @@ def _average_precision_binary_fixtures() -> list[dict]:
          "score": [0.1, 0.4, 0.35, 0.8], "pos_label": 1, "weight": None},
         {"name": "negative scores", "true": [0, 0, 1, 1],
          "score": [-0.9, -0.6, -0.65, -0.2], "pos_label": 1, "weight": None},
-        {"name": "labels are -1 and 1", "true": [-1, -1, 1, 1],
+        {"name": SIGNED_LABELS, "true": [-1, -1, 1, 1],
          "score": [0.1, 0.4, 0.35, 0.8], "pos_label": 1, "weight": None},
         {"name": "a tie spanning both classes", "true": [1, 0, 1, 0, 1],
          "score": [0.9, 0.5, 0.5, 0.5, 0.1], "pos_label": 1, "weight": None},
@@ -2640,7 +2641,7 @@ def _calibration_fixtures() -> list[dict]:
          "pos_label": 1, "weight": None},
         {"name": "uninformative, every probability one half", "true": [0, 1, 1, 0],
          "proba": [0.5, 0.5, 0.5, 0.5], "pos_label": 1, "weight": None},
-        {"name": "labels are -1 and 1", "true": [-1, 1, 1, -1], "proba": [0.1, 0.9, 0.8, 0.3],
+        {"name": SIGNED_LABELS, "true": [-1, 1, 1, -1], "proba": [0.1, 0.9, 0.8, 0.3],
          "pos_label": 1, "weight": None},
     ]
 
@@ -2715,6 +2716,78 @@ def generate_calibration() -> dict:
         },
         "cases": cases,
         "multiclass": multiclass,
+    }
+
+
+def _calibration_curve_fixtures() -> list[dict]:
+    """Probability vectors chosen so a bin comes out empty on some of them."""
+    return [
+        # Four points over five uniform bins: three bins are empty, which is what makes
+        # the returned arrays shorter than n_bins and their length depend on the data.
+        {"name": WORKED_CASE, "true": [0, 1, 1, 0], "proba": [0.1, 0.9, 0.8, 0.3],
+         "pos_label": 1, "n_bins": 5, "strategy": "uniform"},
+        # The same points binned by quantile: every bin holds one, so nothing is dropped
+        # and the edges come from np.percentile rather than from a linear split.
+        {"name": "the same, binned by quantile", "true": [0, 1, 1, 0],
+         "proba": [0.1, 0.9, 0.8, 0.3], "pos_label": 1, "n_bins": 4, "strategy": "quantile"},
+        {"name": "scored about the other class", "true": [0, 1, 1, 0],
+         "proba": [0.1, 0.9, 0.8, 0.3], "pos_label": 0, "n_bins": 5, "strategy": "uniform"},
+        # Every probability in one bin: one point out, and prob_true is the bin's rate.
+        {"name": "every probability in one bin", "true": [0, 1, 1, 0],
+         "proba": [0.42, 0.44, 0.46, 0.48], "pos_label": 1, "n_bins": 5,
+         "strategy": "uniform"},
+        {"name": "the endpoints, zero and one", "true": [0, 1, 0, 1],
+         "proba": [0.0, 1.0, 0.0, 1.0], "pos_label": 1, "n_bins": 5, "strategy": "uniform"},
+        {"name": SIGNED_LABELS, "true": [-1, 1, 1, -1],
+         "proba": [0.1, 0.9, 0.8, 0.3], "pos_label": 1, "n_bins": 5, "strategy": "uniform"},
+        # Ties under quantile: repeated values collapse bin edges, so bins come out empty
+        # on the strategy where the uniform split would have filled them.
+        {"name": "ties collapse quantile edges", "true": [0, 0, 1, 1, 1, 0],
+         "proba": [0.2, 0.2, 0.2, 0.8, 0.8, 0.8], "pos_label": 1, "n_bins": 4,
+         "strategy": "quantile"},
+        {"name": "ten points over three bins", "true": [0, 0, 1, 0, 1, 1, 0, 1, 1, 1],
+         "proba": [0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95],
+         "pos_label": 1, "n_bins": 3, "strategy": "uniform"},
+    ]
+
+
+def generate_calibration_curve() -> dict:
+    """The reliability curve -- sklearn.calibration, not sklearn.metrics (#286)."""
+    import numpy as np
+    from sklearn.calibration import calibration_curve
+
+    cases = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for fixture in _calibration_curve_fixtures():
+            prob_true, prob_pred = calibration_curve(
+                np.array(fixture["true"]),
+                np.array(fixture["proba"]),
+                pos_label=fixture["pos_label"],
+                n_bins=fixture["n_bins"],
+                strategy=fixture["strategy"])
+            cases.append({
+                "name": fixture["name"],
+                "y_true": fixture["true"],
+                "y_proba": fixture["proba"],
+                "pos_label": fixture["pos_label"],
+                "n_bins": fixture["n_bins"],
+                "strategy": fixture["strategy"],
+                "prob_true": [float(v) for v in prob_true],
+                "prob_pred": [float(v) for v in prob_pred],
+            })
+
+    return {
+        "metadata": {
+            "algorithm": "CalibrationCurve",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            # Not sklearn.metrics: the reliability curve lives in sklearn.calibration,
+            # and naming the other module in the equivalence table would be false.
+            "reference_calls": ["sklearn.calibration.calibration_curve"],
+            "count": len(cases),
+        },
+        "cases": cases,
     }
 
 
@@ -5785,6 +5858,7 @@ def main() -> None:
         "roc_auc.json": generate_roc_auc,
         "curves.json": generate_curves,
         "calibration.json": generate_calibration,
+        "calibration_curve.json": generate_calibration_curve,
         "regression.json": generate_regression,
         "regression_conditioning.json": generate_regression_conditioning,
         "regression_deviance.json": generate_regression_deviance,

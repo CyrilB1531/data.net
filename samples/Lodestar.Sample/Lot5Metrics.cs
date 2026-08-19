@@ -143,6 +143,14 @@ internal static class Lot5Metrics
         Console.WriteLine($"    Brier, unscaled     = {Inv.F3(BrierScore.Score(truth, confidence, 1, false))}");
         Console.WriteLine($"    LogLoss, total      = {Inv.F3(LogLoss.Score(truth, confidence, 1, false))}");
 
+        // The reliability curve says *where* the confidence was dishonest, which one number
+        // cannot: four probabilities over five bins come back as four points, not five.
+        CalibrationCurve reliability = CalibrationCurve.Compute(truth, confidence);
+        CalibrationCurve byQuantile = CalibrationCurve.Compute(
+            truth, confidence, nBins: 4, strategy: BinStrategy.Quantile);
+        Console.WriteLine($"    CalibrationCurve    = {reliability.ProbTrue.Count} points over 5 uniform bins, "
+            + $"{byQuantile.ProbPred.Count} over 4 by quantile");
+
         // A probability of 0 for a class that occurred: bounded on one, and on the
         // other the clip at machine epsilon is what decides the number.
         int[] certain = [1, 1];
