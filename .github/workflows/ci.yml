@@ -62,6 +62,11 @@ jobs:
       # so it is hand-written and this is what keeps it complete.
       - name: Every benchmark class is in the bench map
         run: python tools/check_bench_map.py
+      # Decision 0041 names a sample after its class, so a public type without one is a
+      # type nobody can find an example of. Only the packages already split are enforced;
+      # the rest still carry their Lot* files, and #280 closes when that list is empty.
+      - name: Every public class has a sample of its own
+        run: python tools/check_sample_coverage.py
       # The .globalconfig mirrors a profile that lives on a server, so it can go stale
       # without anything in this repository changing. One call to sonarcloud.io per run
       # buys learning about that on the pull request that first meets it. A profile that

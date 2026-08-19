@@ -88,6 +88,12 @@ of writing:
 > `tools/tests/test_pre_commit_hook.py` is what made this an obligation rather than a courtesy:
 > adding the guard to CI and not to the hook failed that test immediately, with a message
 > naming the guard and the two places it could go.
+>
+> **#280 update: a sixth, same shape.** `check_sample_coverage.py` refuses a public class
+> with no sample named after it, for the packages decision 0041 has already split — the
+> rest still carry their `Lot*` files and would fail every run. Measured the same way:
+> **0.04 s**, the six in sequence **1.36 s**. It reads `src/` and `samples/` and touches
+> neither the network nor a build.
 
 Issue #207 estimated "well under a second" for the four; the real figure is 1.18 s and
 `check_machine_paths.py` is 82% of it. That is still the right side of the line
