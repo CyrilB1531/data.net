@@ -108,6 +108,7 @@ which is where its clip lands.
 | [`F1`](classification/f1.md) | The harmonic mean of precision and recall. |
 | [`FBeta`](classification/fbeta.md) | The same, with the balance between the two turned by hand. |
 | [`HammingLoss`](classification/hammingloss.md) | The share of labels predicted wrongly — on a matrix, labels rather than samples. |
+| [`HingeLoss`](classification/hingeloss.md) | The loss a support vector machine minimises — a decision function, and a margin of one. |
 | [`JaccardScore`](classification/jaccardscore.md) | Intersection over union, the strictest of the three ratios precision and recall sit either side of. |
 | [`KappaWeighting`](classification/kappaweighting.md) | How far apart two classes count as being, for `CohenKappa`. |
 | [`LikelihoodRatios`](classification/likelihoodratios.md) | How far a prediction should move a belief — the one pair that does not move with the base rate. |

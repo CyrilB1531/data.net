@@ -51,6 +51,7 @@ internal static class Lot5Metrics
         Calibration();
         MultilabelConfusionMatrixSample.Run();
         LikelihoodRatiosSample.Run();
+        HingeLossSample.Run();
         Curves();
         LabelLosses();
         MatrixReaders();

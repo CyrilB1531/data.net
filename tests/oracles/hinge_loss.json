@@ -1,0 +1,139 @@
+{
+ "metadata": {
+  "algorithm": "HingeLoss",
+  "library": "scikit-learn",
+  "library_version": "1.9.0",
+  "reference_calls": [
+   "sklearn.metrics.hinge_loss"
+  ],
+  "count": 6
+ },
+ "cases": [
+  {
+   "name": "the worked case",
+   "y_true": [
+    -1,
+    1,
+    1,
+    -1
+   ],
+   "pred_decision": [
+    -0.5,
+    1.2,
+    0.3,
+    0.8
+   ],
+   "sample_weight": null,
+   "hinge": 0.75
+  },
+  {
+   "name": "the worked case, weighted",
+   "y_true": [
+    -1,
+    1,
+    1,
+    -1
+   ],
+   "pred_decision": [
+    -0.5,
+    1.2,
+    0.3,
+    0.8
+   ],
+   "sample_weight": [
+    1.0,
+    2.0,
+    3.0,
+    4.0
+   ],
+   "hinge": 0.9800000000000001
+  },
+  {
+   "name": "labels zero and one",
+   "y_true": [
+    0,
+    1,
+    1,
+    0
+   ],
+   "pred_decision": [
+    -0.5,
+    1.2,
+    0.3,
+    0.8
+   ],
+   "sample_weight": null,
+   "hinge": 0.75
+  },
+  {
+   "name": "every margin past one",
+   "y_true": [
+    -1,
+    1
+   ],
+   "pred_decision": [
+    -2.0,
+    2.0
+   ],
+   "sample_weight": null,
+   "hinge": 0.0
+  },
+  {
+   "name": "a margin exactly one",
+   "y_true": [
+    -1,
+    1
+   ],
+   "pred_decision": [
+    -1.0,
+    1.0
+   ],
+   "sample_weight": null,
+   "hinge": 0.0
+  },
+  {
+   "name": "every sample on the wrong side",
+   "y_true": [
+    -1,
+    1
+   ],
+   "pred_decision": [
+    1.5,
+    -1.5
+   ],
+   "sample_weight": null,
+   "hinge": 2.5
+  }
+ ],
+ "multiclass": {
+  "y_true": [
+   0,
+   1,
+   2,
+   1
+  ],
+  "pred_decision": [
+   1.2,
+   0.3,
+   -0.5,
+   0.1,
+   0.9,
+   0.2,
+   0.4,
+   0.2,
+   0.7,
+   0.3,
+   0.1,
+   0.6
+  ],
+  "class_count": 3,
+  "sample_weight": [
+   1.0,
+   2.0,
+   3.0,
+   4.0
+  ],
+  "hinge": 0.65,
+  "hinge_weighted": 0.8800000000000001
+ }
+}

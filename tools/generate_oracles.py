@@ -3088,6 +3088,73 @@ def generate_likelihood_ratios() -> dict:
     }
 
 
+def generate_hinge_loss() -> dict:
+    """hinge_loss: the one metric that reads a decision function (#211)."""
+    import numpy as np
+    from sklearn.metrics import hinge_loss
+
+    binary = [
+        {"name": WORKED_CASE, "true": [-1, 1, 1, -1],
+         "decision": [-0.5, 1.2, 0.3, 0.8], "weight": None},
+        {"name": WORKED_CASE_WEIGHTED, "true": [-1, 1, 1, -1],
+         "decision": [-0.5, 1.2, 0.3, 0.8], "weight": [1.0, 2.0, 3.0, 4.0]},
+        # The same decisions under 0/1 labels: the mapping is to the sign, so the
+        # number does not move.
+        {"name": "labels zero and one", "true": [0, 1, 1, 0],
+         "decision": [-0.5, 1.2, 0.3, 0.8], "weight": None},
+        # Every sample right by a margin of at least one, which is where the loss
+        # stops charging anything at all.
+        {"name": "every margin past one", "true": [-1, 1],
+         "decision": [-2.0, 2.0], "weight": None},
+        {"name": "a margin exactly one", "true": [-1, 1],
+         "decision": [-1.0, 1.0], "weight": None},
+        {"name": "every sample on the wrong side", "true": [-1, 1],
+         "decision": [1.5, -1.5], "weight": None},
+    ]
+
+    multiclass_true = [0, 1, 2, 1]
+    multiclass_decision = [[1.2, 0.3, -0.5], [0.1, 0.9, 0.2], [0.4, 0.2, 0.7], [0.3, 0.1, 0.6]]
+    mt = np.array(multiclass_true)
+    md = np.array(multiclass_decision)
+
+    cases = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for fixture in binary:
+            true = np.array(fixture["true"])
+            decision = np.array(fixture["decision"])
+            kw = {} if fixture["weight"] is None else {
+                "sample_weight": np.array(fixture["weight"])}
+            cases.append({
+                "name": fixture["name"],
+                "y_true": fixture["true"],
+                "pred_decision": fixture["decision"],
+                "sample_weight": fixture["weight"],
+                "hinge": float(hinge_loss(true, decision, **kw)),
+            })
+
+        multiclass = {
+            "y_true": multiclass_true,
+            "pred_decision": [v for row in multiclass_decision for v in row],
+            "class_count": 3,
+            "sample_weight": [1.0, 2.0, 3.0, 4.0],
+            "hinge": float(hinge_loss(mt, md)),
+            "hinge_weighted": float(hinge_loss(mt, md, sample_weight=np.array([1.0, 2.0, 3.0, 4.0]))),
+        }
+
+    return {
+        "metadata": {
+            "algorithm": "HingeLoss",
+            "library": "scikit-learn",
+            "library_version": version("scikit-learn"),
+            "reference_calls": ["sklearn.metrics.hinge_loss"],
+            "count": len(cases),
+        },
+        "cases": cases,
+        "multiclass": multiclass,
+    }
+
+
 def _top_k_fixtures() -> list[dict]:
     """Multiclass score matrices, where k is the question rather than ties.
 
@@ -5975,6 +6042,7 @@ def main() -> None:
         "label_losses.json": generate_label_losses,
         "multilabel_confusion.json": generate_multilabel_confusion,
         "likelihood_ratios.json": generate_likelihood_ratios,
+        "hinge_loss.json": generate_hinge_loss,
         "clustering_agreement.json": generate_clustering_agreement,
         "silhouette.json": generate_silhouette,
         "internal_validity.json": generate_internal_validity,
