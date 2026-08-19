@@ -56,7 +56,9 @@ What answers it is sweeping the constant and reading the committed corpus end to
 end — the metric that is actually reported, on the input that is actually shipped.
 Edit `MyersMinPatternLength` (or `BitParallelMinPatternLength`, or
 `MyersMinCodePointPatternLength`), rebuild, and run the cross-language harness of
-section 3 at each value:
+section 3 at each value. `BitParallelLcs.MaxHeldPattern` — the longest pattern for
+which the LCS kernel holds its equality table rather than letting `stackalloc` zero
+one — is swept the same way, and #301 did:
 
 ```bash
 dotnet build bench/Lodestar.Text.Benchmarks -c Release
