@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Runtime.CompilerServices;
 
 namespace Lodestar.Text.Distances;
 
@@ -162,8 +163,8 @@ internal static class Myers
         distance = 0;
         int m = pattern.Length;
 
-        // Peq[c] has bit i set where pattern[i] == c; a 256-entry table covers Latin-1,
-        // so any text character above it has an all-zero (no-match) mask.
+        // Peq[c] has bit i set where pattern[i] == c; a 256-entry table covers Latin-1, and a
+        // pattern that leaves it takes the wide path rather than the DP (#302).
 
         // Not cleared, for the reason Empty above gives: stackalloc zeroes already,
         // so a Clear was a second 2 KB memset on a call whose work is O(n) (#208).
@@ -173,11 +174,40 @@ internal static class Myers
             char c = pattern[i];
             if (c > 0xFF)
             {
-                return false; // pattern outside Latin-1: let the DP handle it
+                return TrySingleWordWide(pattern, text, out distance);
             }
             peq[c] |= 1UL << i;
         }
 
+        distance = Scan(peq, default, default, m, text);
+        return true;
+    }
+
+    /// <summary>The kernel for a pattern that leaves Latin-1, which carries a side table beside the dense one.</summary>
+    /// <remarks>
+    /// Its own method because a <c>stackalloc</c> zeroes on entry to the method holding it whether
+    /// or not its branch is taken (#301), and a Latin-1 pattern must not be charged the side
+    /// table's 1.25 KB. The dense table is rebuilt here rather than handed over, the abandoned one
+    /// belonging to a frame this call does not share.
+    /// </remarks>
+    private static bool TrySingleWordWide(ReadOnlySpan<char> pattern, ReadOnlySpan<char> text, out int distance)
+    {
+        Span<ulong> peq = stackalloc ulong[256];
+        Span<char> keys = stackalloc char[WideAlphabet.Capacity];
+        Span<ulong> masks = stackalloc ulong[WideAlphabet.Capacity];
+
+        WideAlphabet.Fill(pattern, peq, keys, masks);
+        distance = Scan(peq, keys, masks, pattern.Length, text);
+        return true;
+    }
+
+    /// <summary>One machine word of Myers' recurrence, over the pattern's equality table.</summary>
+    /// <remarks>Inlined rather than called: this is the hot loop, and a call here costs measurably.</remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int Scan(
+        ReadOnlySpan<ulong> peq, ReadOnlySpan<char> keys, ReadOnlySpan<ulong> masks,
+        int m, ReadOnlySpan<char> text)
+    {
         ulong vp = m == 64 ? ulong.MaxValue : (1UL << m) - 1;
         ulong vn = 0;
         int score = m;
@@ -186,7 +216,7 @@ internal static class Myers
         for (int j = 0; j < text.Length; j++)
         {
             char tc = text[j];
-            ulong eq = tc <= 0xFF ? peq[tc] : 0UL;
+            ulong eq = tc <= 0xFF ? peq[tc] : WideAlphabet.Lookup(keys, masks, tc);
 
             ulong xv = eq | vn;
             ulong xh = (((eq & vp) + vp) ^ vp) | eq;
@@ -208,8 +238,7 @@ internal static class Myers
             vn = ph & xv;
         }
 
-        distance = score;
-        return true;
+        return score;
     }
 
     /// <summary>
