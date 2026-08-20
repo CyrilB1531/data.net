@@ -1,6 +1,6 @@
 # Nightly benchmark run
 
-<!-- nightly-baseline: 6bde87c833c7f936cefed0881eabbccbb2cb2f1f -->
+<!-- nightly-baseline: 9f4cb010f3ac6dbec8b5fb65d31f6b8aecd3f4e9 -->
 
 > **Generated. Do not edit.** Produced by `.github/workflows/bench-nightly.yml`; every edit is
 > overwritten by the next run. The curated figures, measured on a named machine, are in
