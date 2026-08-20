@@ -42,4 +42,10 @@ public sealed class PorterStemmerOracleTests
     {
         Assert.Equal(expected, PorterStemmer.Stem(word));
     }
+
+    [Fact]
+    public void Stem_NullArgument_ThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => PorterStemmer.Stem(null!));
+    }
 }

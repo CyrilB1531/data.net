@@ -75,7 +75,12 @@ public static class Soundex
     }
 
     /// <summary>Encodes a string to its Soundex code.</summary>
-    public static string Encode(string value) => Encode(value.AsSpan());
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
+    public static string Encode(string value)
+    {
+        Guard.NotNull(value);
+        return Encode(value.AsSpan());
+    }
 
     private static int Code(char c) => c switch
     {

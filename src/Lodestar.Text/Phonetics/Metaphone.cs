@@ -19,7 +19,12 @@ namespace Lodestar.Text.Phonetics;
 public static class Metaphone
 {
     /// <summary>Encodes a string to its Metaphone code.</summary>
-    public static string Encode(string value) => Encode(value.AsSpan());
+    /// <exception cref="ArgumentNullException"><paramref name="value"/> is null.</exception>
+    public static string Encode(string value)
+    {
+        Guard.NotNull(value);
+        return Encode(value.AsSpan());
+    }
 
     /// <summary>Encodes <paramref name="value"/> to its Metaphone code (or empty).</summary>
     public static string Encode(ReadOnlySpan<char> value)
