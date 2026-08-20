@@ -3,8 +3,11 @@ name: CI
 on:
   push:
     branches: [main]
+  # No branches filter: a PR stacked on an unmerged feature branch (base is that
+  # branch, not main) still gets every job here, matching sonarcloud.yml's own
+  # unfiltered pull_request trigger. Filtered by base, this workflow used to skip
+  # entirely on such a PR -- only SonarCloud ran, measured on #384 (#386).
   pull_request:
-    branches: [main]
 
 jobs:
   lint:

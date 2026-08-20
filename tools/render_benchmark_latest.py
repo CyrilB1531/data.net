@@ -14,7 +14,7 @@ to each other any more than nightly_run.md's own numbers are comparable across n
 this page exists to say "as of when", not to rank one method's history against another's.
 
 Usage:  python tools/render_benchmark_latest.py --wiki <path to a lodestar.wiki.git clone>
-            [--commit <sha>] [--max-commits N] [--stdout]
+            [--commit <sha>] [--max-commits N] [--branch] [--stdout]
 """
 
 from __future__ import annotations
@@ -29,8 +29,12 @@ import render_nightly as rn
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
-# One home, matching how render_nightly.py fixes nightly_run.md's own path.
+# long-comment: two homes, matching how render_nightly.py fixes nightly_run.md's own
+# pair of paths, and for the same reason (#379) -- BRANCH_PAGE is where a
+# workflow_dispatch off main writes, so it never touches the page a later merge into
+# main could carry along.
 PAGE = ROOT / "docs" / "guides" / "benchmark_latest.md"
+BRANCH_PAGE = ROOT / "docs" / "guides" / "branch" / "benchmark_latest.md"
 
 WIKI_PAGE = "nightly_run.md"
 
@@ -157,6 +161,8 @@ def main() -> None:
     parser.add_argument("--wiki", required=True, type=pathlib.Path)
     parser.add_argument("--commit", default="")
     parser.add_argument("--max-commits", type=int, default=200)
+    parser.add_argument("--branch", action="store_true",
+                        help="write BRANCH_PAGE instead of PAGE (a workflow_dispatch off main)")
     parser.add_argument("--stdout", action="store_true", help="print instead of writing")
     args = parser.parse_args()
 
@@ -165,9 +171,10 @@ def main() -> None:
         print(page, end="")
         return
 
-    PAGE.parent.mkdir(parents=True, exist_ok=True)
-    PAGE.write_text(page, encoding="utf-8")
-    print(f"-> {PAGE.relative_to(ROOT)}")
+    target = BRANCH_PAGE if args.branch else PAGE
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(page, encoding="utf-8")
+    print(f"-> {target.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":
