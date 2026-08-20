@@ -209,7 +209,9 @@ bucket 3.66× ahead.
   strip. **It is a best case for record matching and worth nothing on unrelated
   text**, which is the shape of input the corpus does not contain.
 - **The kernel is what closes the long buckets**, 46× at 128 and 44× at 512.
-- **Still 2× behind at 128 and 512.** The gap is no longer algorithmic; see the
+- **Still 2× behind at 128 and 512.** *(#320 revisits this: the gap **is**
+  algorithmic, and the sentence below was wrong about where it sits — see "The
+  blocked LCS kernel" further down.)* The gap is no longer algorithmic; see the
   gate table below for where it now sits.
 
 ### Where the bit-parallel gate belongs, measured (#273)
@@ -1193,6 +1195,57 @@ control since it writes and does not read:
   allocation strategy avoids. **Moving fewer bytes is the remaining lever**, which is
   [#336](https://github.com/CyrilB1531/lodestar/issues/336) — and its own measurement
   narrows that further.
+
+## The blocked LCS kernel, and the call it made per character (issue #320)
+
+The nightly put `Indel` **2.40× behind rapidfuzz at 512** while `Levenshtein` sat at
+1.08×, on the same run and the same corpus. Both take the blocked bit-parallel path
+and both pay the same equality table, so a cost they share cannot explain a gap only
+one of them has. The asymmetry is sharper still read the other way: rapidfuzz's Indel
+is **3.03×** faster than its own Levenshtein where ours was **1.37×** faster than
+ours. The cheaper recurrence was not being cashed in.
+
+`BitParallelLcs.TryBlocked` called `Advance(…)` once per text character.
+`Myers.TryBlocked` writes its block loop out by hand, and says why in the file's own
+header — *"It is also the hot path: helper calls here cost measurably."* The LCS
+kernel, written later in #273, did not inherit that.
+
+Two changes, both local:
+
+- `Advance` is `AggressiveInlining`, which is what `Myers.TryBlocked` achieves by not
+  having a helper at all;
+- the `peqBase >= 0` test leaves the inner loop. A text character outside Latin-1
+  makes every `u` zero, so `sum == value`, `difference == value`, carry and borrow
+  stay clear and `v[b] = value | value`. **The whole pass is a no-op**, so the call is
+  skipped rather than made with an empty row.
+
+Intel i7-4770S, .NET 10.0.10, before and after **interleaved, four replications**,
+with `Levenshtein` as the control — it takes Myers, which nothing here touches.
+Baseline is post-#334, not the nightly's: that run predates both #299 and #334 and
+was taken on a different machine.
+
+| | before | after | change |
+| --- | ---: | ---: | --- |
+| `Indel`, length 512 | 13 926.5 ns | **12 631.4 ns** | **1.10× faster** |
+| `Indel`, length 128 | 1 210.7 ns | 1 215.8 ns | unchanged |
+| `Levenshtein`, 512 — control | 19 925.5 ns | 20 333.9 ns | 0.98× |
+| `Levenshtein`, 128 — control | 1 781.2 ns | 1 814.1 ns | 0.98× |
+
+- **The medians understate what the runs show.** At 512 the four before values are
+  13 856.8 / 13 911.1 / 13 941.9 / 14 259.2 and the after values 12 572.2 / 12 599.0 /
+  12 663.8 / **15 235.6**. Three of four sit below *every* before value with no
+  overlap; the fourth is a contaminated replication, which also carries the only
+  outlier at 128. It is left in the median rather than dropped.
+- **The control drifts 2% the wrong way**, so if the alternation biases anything it
+  biases against the change.
+- **Nothing at 128, and that is the mechanism.** A 110-character pattern spans two
+  64-bit blocks against eight at 512, so inlining a loop of two iterations saves
+  little.
+- **This does not close the gap, and the remainder is not incidental.** At 12.6 µs
+  against rapidfuzz's 2.9 the kernel is still ~4.3× behind. The blocked path's rented
+  table is cleared per call — 16 KB at this size, about 500 ns of 12 600, or 4% — so
+  that is not where the rest is either. What remains is algorithmic and wants its own
+  measurement before its own lot.
 
 ## Multiclass ROC-AUC, sequential against parallel (issue #86)
 
