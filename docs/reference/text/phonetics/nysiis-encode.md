@@ -15,7 +15,8 @@ case does not matter. The `string` overload forwards to the span one.
 **Returns** — `string`, an uppercase letter code of variable length — 1 to 11 characters over the
 corpus it is pinned to — or the empty string when `value` holds no letter.
 
-**Exceptions** — none. This method does not throw, and `null` encodes to the empty string.
+**Exceptions** — `ArgumentNullException` when `value` is `null` (the `string` overload only; a
+`ReadOnlySpan<char>` cannot be null). An empty string is accepted and encodes to the empty string.
 
 **Example** — two name-specific opening rules, and the `b`/`p` distinction Soundex loses.
 

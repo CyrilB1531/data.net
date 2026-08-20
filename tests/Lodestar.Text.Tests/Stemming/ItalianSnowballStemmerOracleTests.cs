@@ -23,4 +23,10 @@ public sealed class ItalianSnowballStemmerOracleTests
             c => ItalianSnowballStemmer.Stem(c.Word),
             c => $"[#{c.Id}] \"{c.Word}\"");
     }
+
+    [Fact]
+    public void Stem_NullArgument_ThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => ItalianSnowballStemmer.Stem(null!));
+    }
 }
