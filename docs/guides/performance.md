@@ -353,6 +353,10 @@ dynamic program for holding a character above U+00FF. Both halves are recorded i
 [decision 0043](../decisions/0043-the-equality-table-is-sized-to-the-pattern.md),
 which amends 0004's two bullets rather than editing them.
 
+Both halves are recorded in
+[decision 0043](../decisions/0043-the-equality-table-is-sized-to-the-pattern.md),
+which amends 0004's two bullets rather than editing that record.
+
 **What the reach is worth is not measured here**, because this corpus cannot say —
 it is ASCII, by construction. `docs/guides/performance.md`'s code-point section has
 the standing figure for what falling back to the DP costs on such input: 2.80 ms at
