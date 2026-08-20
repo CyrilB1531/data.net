@@ -27,7 +27,10 @@ internal static class Harness
     /// lowest elapsed time — so the pair is internally consistent rather than two
     /// separate best-ofs.
     /// </summary>
-    public static OperationResult Measure(string operation, Func<object> action)
+    /// <param name="operation">The row name, matched against the Python side.</param>
+    /// <param name="action">The operation, its result kept alive against elision.</param>
+    /// <param name="artifactBytes">What the operation moved, <c>0</c> when it moves no artifact.</param>
+    public static OperationResult Measure(string operation, Func<object> action, long artifactBytes = 0)
     {
         Process process = Process.GetCurrentProcess();
         double bestWall = double.PositiveInfinity;
@@ -62,8 +65,15 @@ internal static class Harness
             }
         }
 
-        Console.WriteLine($"  {operation,-28} {bestWall,10:F3} ms/op  cpu {cpuOfBest,8:F3} ms/op  ({cpuOfBest / bestWall:F2}x cores)");
-        return new OperationResult { Operation = operation, MsPerOp = bestWall, CpuMsPerOp = cpuOfBest };
+        string size = artifactBytes > 0 ? $"  {artifactBytes,12:N0} B" : "";
+        Console.WriteLine($"  {operation,-28} {bestWall,10:F3} ms/op  cpu {cpuOfBest,8:F3} ms/op  ({cpuOfBest / bestWall:F2}x cores){size}");
+        return new OperationResult
+        {
+            Operation = operation,
+            MsPerOp = bestWall,
+            CpuMsPerOp = cpuOfBest,
+            ArtifactBytes = artifactBytes,
+        };
     }
 
     /// <summary>Writes the payload as indented JSON, creating the directory if needed.</summary>
@@ -107,5 +117,14 @@ internal static class Harness
         [JsonPropertyName("operation")] public string Operation { get; init; } = "";
         [JsonPropertyName("ms_per_op")] public double MsPerOp { get; init; }
         [JsonPropertyName("cpu_ms_per_op")] public double CpuMsPerOp { get; init; }
+
+        /// <summary>
+        /// The artifact the operation wrote or read, in bytes, absent when it moves none.
+        /// #100's size figures were taken by hand and could not be re-checked; a row that
+        /// carries its own size makes the bytes a published number the way the time is.
+        /// </summary>
+        [JsonPropertyName("artifact_bytes")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public long ArtifactBytes { get; init; }
     }
 }

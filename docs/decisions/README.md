@@ -52,6 +52,7 @@ a later decision uses instead.
 | [`0040`](0040-a-curve-is-a-sealed-class-per-curve.md) | A curve is a sealed class per curve, not a record and not out-parameters; `drop_intermediate`'s asymmetric defaults are reproduced | accepted | 2026-08-18 | — |
 | [`0041`](0041-one-sample-file-per-public-class.md) | One sample file per public class, named after it | accepted | 2026-08-19 | — |
 | [`0042`](0042-phonetic-encoders-refuse-a-null-word.md) | Phonetic encoders refuse a `null` word | accepted | 2026-08-20 | — |
+| [`0043`](0043-compression-belongs-to-the-caller.md) | Compression belongs to the caller, not to the artifact format | accepted | 2026-08-20 | leaves [`0011`](0011-persistence-format.md) untouched: the artifact on disk does not change |
 
 ## What `accepted` means here
 

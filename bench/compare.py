@@ -122,19 +122,39 @@ def wallcpu_row(op: str, cs_row: dict, py_row: dict) -> tuple:
     return op, c_w, p_w, wall, (c_c or 0), (p_c or 0), cpu, cpu_ratio
 
 
-def print_wallcpu_text(rows: list[tuple], op_width: int, num_width: int) -> None:
-    print(f"{'operation':<{op_width}} {'C# ms':>{num_width}} {'Py ms':>{num_width}} "
-          f"{'wall':>7} | {'C# cpu':>{num_width}} {'Py cpu':>{num_width}} {'cpu':>7}")
-    for op, c_w, p_w, wall, c_c, p_c, cpu, _ in rows:
-        print(f"{op:<{op_width}} {c_w:>{num_width}.3f} {p_w:>{num_width}.3f} {wall:>7} | "
-              f"{c_c:>{num_width}.3f} {p_c:>{num_width}.3f} {cpu:>7}")
+def size_columns(sizes: dict | None, op: str) -> tuple[str, str]:
+    """The two byte counts for one row, blank when the operation moves no artifact.
+
+    #378 needs the size and the time on the same line -- a compressed row is only
+    worth reading next to what the compression cost. Rows without a size print
+    nothing extra, so a table whose rows all lack one is unchanged.
+    """
+    if not sizes or op not in sizes:
+        return "", ""
+    c_b, p_b = sizes[op]
+    return (f"{c_b:,}" if c_b else "-"), (f"{p_b:,}" if p_b else "-")
 
 
-def print_wallcpu_gfm(rows: list[tuple]) -> None:
-    print("| operation | C# ms | Py ms | wall | C# cpu | Py cpu | cpu |")
-    print("|:---|---:|---:|---:|---:|---:|---:|")
+def print_wallcpu_text(rows: list[tuple], op_width: int, num_width: int,
+                       sizes: dict | None = None) -> None:
+    head = f"{'operation':<{op_width}} {'C# ms':>{num_width}} {'Py ms':>{num_width}} " \
+           f"{'wall':>7} | {'C# cpu':>{num_width}} {'Py cpu':>{num_width}} {'cpu':>7}"
+    print(head + (f" | {'C# bytes':>13} {'Py bytes':>13}" if sizes else ""))
     for op, c_w, p_w, wall, c_c, p_c, cpu, _ in rows:
-        print(f"| {op} | {c_w:.3f} | {p_w:.3f} | {wall} | {c_c:.3f} | {p_c:.3f} | {cpu} |")
+        line = (f"{op:<{op_width}} {c_w:>{num_width}.3f} {p_w:>{num_width}.3f} {wall:>7} | "
+                f"{c_c:>{num_width}.3f} {p_c:>{num_width}.3f} {cpu:>7}")
+        c_b, p_b = size_columns(sizes, op)
+        print(line + (f" | {c_b:>13} {p_b:>13}" if sizes else ""))
+
+
+def print_wallcpu_gfm(rows: list[tuple], sizes: dict | None = None) -> None:
+    print("| operation | C# ms | Py ms | wall | C# cpu | Py cpu | cpu |"
+          + (" C# bytes | Py bytes |" if sizes else ""))
+    print("|:---|---:|---:|---:|---:|---:|---:|" + ("---:|---:|" if sizes else ""))
+    for op, c_w, p_w, wall, c_c, p_c, cpu, _ in rows:
+        c_b, p_b = size_columns(sizes, op)
+        print(f"| {op} | {c_w:.3f} | {p_w:.3f} | {wall} | {c_c:.3f} | {p_c:.3f} | {cpu} |"
+              + (f" {c_b} | {p_b} |" if sizes else ""))
 
 
 def wallcpu_rows(bench: str) -> tuple[dict, dict, list[tuple]]:
@@ -154,18 +174,26 @@ def wallcpu_rows(bench: str) -> tuple[dict, dict, list[tuple]]:
 def persistence(fmt: str = "text") -> None:
     py, cs, rows = wallcpu_rows("persistence")
 
+    cs_bytes = {r["operation"]: r.get("artifact_bytes", 0) for r in cs["results"]}
+    py_bytes = {r["operation"]: r.get("artifact_bytes", 0) for r in py["results"]}
+    sizes = {op: (cs_bytes.get(op, 0), py_bytes.get(op, 0)) for op, *_ in rows}
+    sizes = sizes if any(c or p for c, p in sizes.values()) else None
+
     metadata_block(
         fmt,
         f"Python: {py['metadata']['libraries']} (py {py['metadata']['python']})",
         f"C#:     Lodestar on .NET {cs['metadata']['runtime']}",
     )
     if fmt == "gfm":
-        print_wallcpu_gfm(rows)
+        print_wallcpu_gfm(rows, sizes)
     else:
-        print_wallcpu_text(rows, op_width=28, num_width=8)
+        print_wallcpu_text(rows, op_width=28, num_width=8, sizes=sizes)
     print()
     print("ratio > 1 means Lodestar is faster. cpu is the honest one: elapsed time")
     print("hides work .NET does on background GC threads; CPython is single-threaded.")
+    if sizes:
+        print("bytes is what the row wrote or read; a results file from before #378")
+        print("carries none, and the two columns then disappear rather than read zero.")
 
 
 def metrics(fmt: str = "text") -> None:

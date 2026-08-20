@@ -58,7 +58,7 @@ def check_corpus() -> None:
         )
 
 
-def measure(operation: str, action) -> dict:
+def measure(operation: str, action, artifact_bytes: int = 0) -> dict:
     """Time one operation, recording both elapsed time and processor time.
 
     The C# harness records the same pair for the same reason: .NET's background
@@ -66,6 +66,10 @@ def measure(operation: str, action) -> dict:
     allocation-heavy operation actually costs. CPython's unpickler is strictly
     single-threaded, so cpu/wall lands at 1.00 here -- which is exactly the point
     of reporting both.
+
+    ``artifact_bytes`` is what the operation wrote or read, mirroring the C# field of
+    the same name: #100's size figures were taken by hand and could not be re-checked,
+    so a row now carries its own size. Zero means the operation moves no artifact.
     """
     best_wall, cpu_of_best = float("inf"), float("nan")
     for _ in range(REPEATS):
@@ -82,8 +86,12 @@ def measure(operation: str, action) -> dict:
         wall_ms = dt / iters * 1e3
         if wall_ms < best_wall:
             best_wall, cpu_of_best = wall_ms, cpu / iters * 1e3
-    print(f"  {operation:<28} {best_wall:10.3f} ms/op  cpu {cpu_of_best:8.3f} ms/op  ({cpu_of_best / best_wall:.2f}x cores)")
-    return {"operation": operation, "ms_per_op": best_wall, "cpu_ms_per_op": cpu_of_best}
+    size = f"  {artifact_bytes:12,d} B" if artifact_bytes else ""
+    print(f"  {operation:<28} {best_wall:10.3f} ms/op  cpu {cpu_of_best:8.3f} ms/op  ({cpu_of_best / best_wall:.2f}x cores){size}")
+    row = {"operation": operation, "ms_per_op": best_wall, "cpu_ms_per_op": cpu_of_best}
+    if artifact_bytes:
+        row["artifact_bytes"] = artifact_bytes
+    return row
 
 
 def build_vectors() -> "np.ndarray":
@@ -128,6 +136,12 @@ def main() -> None:
     np.save(buffer, vectors)
     npy_bytes = buffer.getvalue()
 
+    # numpy's own compressed container, the comparand for the gzip rows: savez_compressed
+    # is a zip of deflate members, which is the same coder GZipStream runs.
+    buffer = io.BytesIO()
+    np.savez_compressed(buffer, vectors=vectors)
+    npz_bytes = buffer.getvalue()
+
     # No row measured the file path before #336, and it is the one a caller takes.
     # Written once, outside the timed loop.
     npy_file = tempfile.NamedTemporaryFile(suffix=".npy", delete=False)
@@ -138,19 +152,23 @@ def main() -> None:
 
     print("Python persistence bench")
     results = [
-        measure("vocab_txt", lambda: WordPiece.from_file(vocab_txt, unk_token="[UNK]")),
-        measure("tokenizer_json_wordpiece", lambda: Tokenizer.from_file(wordpiece_json)),
-        measure("tokenizer_json_unigram", lambda: Tokenizer.from_file(unigram_json)),
-        measure("spiece_model", lambda: spm.SentencePieceProcessor(model_file=spiece)),
-        measure("tfidf_save", lambda: pickle.dumps(fitted)),
-        measure("tfidf_load", lambda: pickle.loads(artifact)),
-        measure("embedding_index_save", lambda: np.save(io.BytesIO(), vectors)),
-        measure("embedding_index_load", lambda: np.load(io.BytesIO(npy_bytes))),
-        measure("embedding_index_load_file", lambda: np.load(npy_file.name)),
-        measure("embedding_index_load_memory", lambda: np.load(io.BytesIO(npy_bytes))),
+        measure("vocab_txt", lambda: WordPiece.from_file(vocab_txt, unk_token="[UNK]"), os.path.getsize(vocab_txt)),
+        measure("tokenizer_json_wordpiece", lambda: Tokenizer.from_file(wordpiece_json), os.path.getsize(wordpiece_json)),
+        measure("tokenizer_json_unigram", lambda: Tokenizer.from_file(unigram_json), os.path.getsize(unigram_json)),
+        measure("spiece_model", lambda: spm.SentencePieceProcessor(model_file=spiece), os.path.getsize(spiece)),
+        measure("tfidf_save", lambda: pickle.dumps(fitted), len(artifact)),
+        measure("tfidf_load", lambda: pickle.loads(artifact), len(artifact)),
+        measure("embedding_index_save", lambda: np.save(io.BytesIO(), vectors), len(npy_bytes)),
+        measure("embedding_index_load", lambda: np.load(io.BytesIO(npy_bytes)), len(npy_bytes)),
+        measure("embedding_index_load_file", lambda: np.load(npy_file.name), len(npy_bytes)),
+        measure("embedding_index_load_memory", lambda: np.load(io.BytesIO(npy_bytes)), len(npy_bytes)),
         # A floor, not a comparand: frombuffer views the bytes without parsing the
         # header or validating anything, so it does strictly less than the rows above.
-        measure("embedding_index_view_floor", lambda: np.frombuffer(npy_bytes, dtype=np.uint8)),
+        measure("embedding_index_view_floor", lambda: np.frombuffer(npy_bytes, dtype=np.uint8), len(npy_bytes)),
+        # What compression costs beside what it saves. np.load on a .npz is lazy, so
+        # the member is read to force the decompression the C# row pays for.
+        measure("embedding_index_save_gzip", lambda: np.savez_compressed(io.BytesIO(), vectors=vectors), len(npz_bytes)),
+        measure("embedding_index_load_gzip", lambda: np.load(io.BytesIO(npz_bytes))["vectors"], len(npz_bytes)),
     ]
 
     os.unlink(npy_file.name)

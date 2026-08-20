@@ -38,16 +38,15 @@ is one sentence, the issue and the commit; see
 
 ### Lodestar.Embeddings
 
-#### Changed
-
-- **An index is no longer capped by the text encoding of its vectors.** An artifact past the CLR's array ceiling was read into one `byte[]` and could not be, so the format's 1.34× expansion came straight off the largest index that could exist — about 1.04 million vectors at 384 dimensions where the raw block allowed 1.40 million. `EmbeddingIndex.Load` now reads such an artifact in segments and hands the parser a `ReadOnlySequence<byte>`, which `Utf8JsonReader` reads natively. **The bytes on disk do not change**, so an artifact written by any earlier version still loads. ([#377](https://github.com/CyrilB1531/lodestar/issues/377))
-
 #### Added
+
+- The embeddings guide documents how to compress an artifact, and what it costs: the caller wraps the stream on both sides, which works today and needed no library change. Deflate takes back the format's 1.33× base64 expansion almost exactly, at **26.67× the save and 7.19× the load** — so the library declines to do it by default, and [decision 0043](docs/decisions/0043-compression-belongs-to-the-caller.md) records why. `compare-persistence` now reports the bytes each row wrote or read, next to its time. ([#378](https://github.com/CyrilB1531/lodestar/issues/378))
 
 - `EmbeddingIndex.Load(ReadOnlyMemory<byte>)` reads an index from bytes the caller already holds — a blob, a cache entry, an embedded resource — where handing them to the `Stream` overload made the loader copy them back out first. Measured **1.40×** on processor time against that overload, both rows in the same run, which is the read phase [#324](https://github.com/CyrilB1531/lodestar/issues/324) profiled at about a third of the load. It checks `MaxTotalBytes` before parsing rather than while reading, the length being known up front, and has no `Async` counterpart because nothing is waited on. It is the only loader to gain one: the saving scales with the artifact and no other is large enough. ([#336](https://github.com/CyrilB1531/lodestar/issues/336))
 
 #### Changed
 
+- **An index is no longer capped by the text encoding of its vectors.** An artifact past the CLR's array ceiling was read into one `byte[]` and could not be, so the format's 1.34× expansion came straight off the largest index that could exist — about 1.04 million vectors at 384 dimensions where the raw block allowed 1.40 million. `EmbeddingIndex.Load` now reads such an artifact in segments and hands the parser a `ReadOnlySequence<byte>`, which `Utf8JsonReader` reads natively. **The bytes on disk do not change**, so an artifact written by any earlier version still loads. ([#377](https://github.com/CyrilB1531/lodestar/issues/377))
 - The package is `Lodestar.Embeddings`, and its namespaces are `Lodestar.Embeddings.*`. `Lodestar.Embeddings 0.3.1` holds the same code as `DataNet.Embeddings 0.3.0`. ([#194](https://github.com/CyrilB1531/data.net/issues/194))
 - **Faster, same answers.** Loading an artifact no longer has the runtime zero the two large buffers it overwrites in full — the payload the stream fills and the vector block the base64 decoder fills. Measured **1.18×** on `embedding_index_load`, with a write-only operation re-run as an untouched control; a small artifact such as a fitted vectorizer sees nothing, its buffers never reaching the large-object heap. ([#324](https://github.com/CyrilB1531/lodestar/issues/324))
 - **Faster, same bytes.** `EmbeddingIndex.Save` no longer allocates and copies the whole vector block before encoding it: on a little-endian machine the bytes to base64 are the ones already in the span, and the copy existed only to carry an endianness swap that is a no-op there. Measured **1.46×** on processor time at the benchmark's size, with the load direction re-run as an untouched control, and the encoding pinned byte for byte by a new test. ([#323](https://github.com/CyrilB1531/lodestar/issues/323))
