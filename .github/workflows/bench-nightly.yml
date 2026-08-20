@@ -55,14 +55,28 @@ jobs:
 
       # An absent or unreadable baseline means "we do not know what moved", and the safe
       # reading of not knowing is to measure everything -- select_benchmarks.py does that.
+      #
+      # On main, "since the page's own recorded baseline" is the right question: consecutive
+      # scheduled runs partition every merge. On a feature branch it is the wrong one -- the
+      # page's baseline travels forward every time the branch merges main in, so it can predate
+      # other PRs already merged to main that the branch picked up that way, and the selection
+      # below would then cover their classes too, not just this branch's own diff (#379). There
+      # the question is "since this branch diverged from main", which is its merge-base with it.
       - name: The commit the previous run stopped at
         id: baseline
+        env:
+          TARGET_REF: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          page=docs/guides/nightly_run.md
-          sha=""
-          if [ -f "$page" ]; then
-            sha=$(sed -n 's/.*<!-- nightly-baseline: \([0-9a-f]\{7,40\}\) -->.*/\1/p' "$page" | head -1)
+          if [ "$TARGET_REF" = "main" ]; then
+            page=docs/guides/nightly_run.md
+            sha=""
+            if [ -f "$page" ]; then
+              sha=$(sed -n 's/.*<!-- nightly-baseline: \([0-9a-f]\{7,40\}\) -->.*/\1/p' "$page" | head -1)
+            fi
+          else
+            git fetch origin main --quiet
+            sha=$(git merge-base origin/main HEAD)
           fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "baseline: ${sha:-none}"
@@ -168,15 +182,28 @@ jobs:
             echo "::endgroup::"
           done < harnesses.txt
 
+      # The marker this writes is what the *next* run reads (render_nightly.py's own docstring).
+      # On main that must advance to tonight's tip, so a scheduled run partitions cleanly against
+      # the next one. On a feature branch it must not: advancing it to the branch's own tip is
+      # what corrupts main's baseline chain if this page ever reaches main by merging the branch
+      # in (#379) -- so a non-main run re-states the same merge-base it just read instead,
+      # a commit already truly on main's own line, which is a no-op if it ever gets there.
       - name: Write the page
+        env:
+          TARGET_REF: ${{ github.ref_name }}
         run: |
           set -euo pipefail
+          if [ "$TARGET_REF" = "main" ]; then
+            baseline_for_page="${{ github.sha }}"
+          else
+            baseline_for_page="${{ steps.baseline.outputs.sha }}"
+          fi
           # The reports are found by the script in BenchmarkDotNet's own output directory,
           # not passed in: no path it touches comes from an argument.
           # shellcheck disable=SC2046
           python tools/render_nightly.py \
             --commit "${{ github.sha }}" \
-            --baseline "${{ github.sha }}" \
+            --baseline "$baseline_for_page" \
             --runner "${{ runner.os }} / ${{ runner.arch }} (GitHub hosted)" \
             --selected $(cat selected.txt | tr '\n' ' ') \
             --harnesses $(cat harnesses.txt | tr '\n' ' ')
