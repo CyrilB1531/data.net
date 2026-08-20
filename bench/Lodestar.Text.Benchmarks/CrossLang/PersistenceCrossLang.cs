@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using Lodestar.Embeddings.Persistence;
 using Lodestar.Embeddings.Search;
@@ -80,6 +81,9 @@ public static class PersistenceCrossLang
             }),
             Harness.Measure("embedding_index_load_file", () => EmbeddingIndex.Load(indexFile)),
             Harness.Measure("embedding_index_load_memory", () => EmbeddingIndex.Load(indexArtifact.AsMemory())),
+            // The floor both sides share, and neither is a load: viewing bytes as floats
+            // parses no header and validates nothing. It bounds the rows above, not ranks them.
+            Harness.Measure("embedding_index_view_floor", () => MemoryMarshal.Cast<byte, float>(indexArtifact.AsSpan()).Length),
         };
 
         File.Delete(indexFile);
