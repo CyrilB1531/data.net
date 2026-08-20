@@ -20,8 +20,26 @@ internal static class WideAlphabet
     /// </remarks>
     internal const int Capacity = 128;
 
+    /// <summary>Slots for a pattern of <paramref name="m"/>, which the blocked path sizes per call.</summary>
+    /// <remarks>
+    /// <see cref="Capacity"/> is sound for one word only because 64 characters hold at most 64
+    /// distinct symbols. A blocked pattern has no length bound, so a fixed table can fill and the
+    /// probe then has no free slot to stop on — a power of two above <c>2m</c> restores the
+    /// guarantee it relies on.
+    /// </remarks>
+    internal static int CapacityFor(int m)
+    {
+        int slots = Capacity;
+        while (slots <= m * 2)
+        {
+            slots *= 2;
+        }
+        return slots;
+    }
+
     /// <summary>The slot for <paramref name="c"/>, occupied by it or free.</summary>
     /// <remarks>
+    /// <paramref name="keys"/> is a power of two long, which is what makes the mask cover it.
     /// Knuth's multiplicative hash rather than the low bits, because the characters that reach
     /// here cluster hard — an emoji pattern lives inside U+1F300..U+1FAFF, and masking those low
     /// bits alone would pile every symbol into a few slots. Myers' code-point path hashes for the
@@ -30,10 +48,11 @@ internal static class WideAlphabet
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static int Probe(ReadOnlySpan<char> keys, char c)
     {
-        int index = (int)(((uint)c * 2654435761u) >> 23) & (Capacity - 1);
+        int mask = keys.Length - 1;
+        int index = (int)(((uint)c * 2654435761u) >> 23) & mask;
         while (keys[index] != '\0' && keys[index] != c)
         {
-            index = (index + 1) & (Capacity - 1);
+            index = (index + 1) & mask;
         }
         return index;
     }
@@ -56,6 +75,19 @@ internal static class WideAlphabet
                 masks[slot] |= 1UL << i;
             }
         }
+    }
+
+    /// <summary>Where a wide character's masks start in a blocked table, or -1 where the pattern lacks it.</summary>
+    /// <remarks>
+    /// The blocked table is one row of <c>blocks</c> words per symbol, so the side entries extend it
+    /// rather than sitting beside it: slot <c>k</c> is row <c>denseEntries + k</c>, read with the
+    /// base arithmetic a Latin-1 character already uses.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static int BlockBase(ReadOnlySpan<char> keys, char c, int blocks, int denseEntries)
+    {
+        int slot = Probe(keys, c);
+        return keys[slot] == c ? (denseEntries + slot) * blocks : -1;
     }
 
     /// <summary>The mask for a text character above Latin-1, or zero where the pattern lacks it.</summary>

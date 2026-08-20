@@ -257,8 +257,10 @@ internal static class Myers
         int blocks = (m + 63) / 64;
 
         // Peq is 256 x blocks: one equality mask per Latin-1 character per word.
-        int peqLength = 256 * blocks;
+        int slots = WideAlphabet.CapacityFor(m);
+        int peqLength = (256 + slots) * blocks;
         ulong[] peqRented = ArrayPool<ulong>.Shared.Rent(peqLength);
+        char[] keysRented = ArrayPool<char>.Shared.Rent(slots);
         ulong[] vpRented = ArrayPool<ulong>.Shared.Rent(blocks);
         ulong[] vnRented = ArrayPool<ulong>.Shared.Rent(blocks);
         try
@@ -266,16 +268,25 @@ internal static class Myers
             Span<ulong> peq = peqRented.AsSpan(0, peqLength);
             Span<ulong> vp = vpRented.AsSpan(0, blocks);
             Span<ulong> vn = vnRented.AsSpan(0, blocks);
+            Span<char> keys = keysRented.AsSpan(0, slots);
             peq.Clear();
+            keys.Clear();
 
             for (int i = 0; i < m; i++)
             {
                 char c = pattern[i];
-                if (c > 0xFF)
+                int row;
+                if (c <= 0xFF)
                 {
-                    return false; // pattern outside Latin-1: let the DP handle it
+                    row = c;
                 }
-                peq[(c * blocks) + (i >> 6)] |= 1UL << (i & 63);
+                else
+                {
+                    int k = WideAlphabet.Probe(keys, c);
+                    keys[k] = c;
+                    row = 256 + k;
+                }
+                peq[(row * blocks) + (i >> 6)] |= 1UL << (i & 63);
             }
 
             for (int b = 0; b < blocks; b++)
@@ -291,7 +302,9 @@ internal static class Myers
             for (int j = 0; j < text.Length; j++)
             {
                 char tc = text[j];
-                int peqBase = tc <= 0xFF ? tc * blocks : -1;
+                int peqBase = tc <= 0xFF
+                    ? tc * blocks
+                    : WideAlphabet.BlockBase(keys, tc, blocks, 256);
 
                 // D[i][0] = i, so the horizontal delta entering the first word is +1.
                 ulong hp = 1UL;
@@ -342,6 +355,7 @@ internal static class Myers
         }
         finally
         {
+            ArrayPool<char>.Shared.Return(keysRented);
             ArrayPool<ulong>.Shared.Return(peqRented);
             ArrayPool<ulong>.Shared.Return(vpRented);
             ArrayPool<ulong>.Shared.Return(vnRented);

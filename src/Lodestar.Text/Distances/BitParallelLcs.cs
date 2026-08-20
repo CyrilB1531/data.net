@@ -160,23 +160,34 @@ internal static class BitParallelLcs
         int m = pattern.Length;
         int blocks = (m + 63) / 64;
 
-        int peqLength = Entries * blocks;
+        int slots = WideAlphabet.CapacityFor(m);
+        int peqLength = (Entries + slots) * blocks;
         ulong[] peqRented = ArrayPool<ulong>.Shared.Rent(peqLength);
+        char[] keysRented = ArrayPool<char>.Shared.Rent(slots);
         ulong[] vRented = ArrayPool<ulong>.Shared.Rent(blocks);
         try
         {
             Span<ulong> peq = peqRented.AsSpan(0, peqLength);
             Span<ulong> v = vRented.AsSpan(0, blocks);
+            Span<char> keys = keysRented.AsSpan(0, slots);
             peq.Clear();
+            keys.Clear();
 
             for (int i = 0; i < m; i++)
             {
                 char c = pattern[i];
-                if (c > 0xFF)
+                int row;
+                if (c <= 0xFF)
                 {
-                    return false; // pattern outside Latin-1: let the DP handle it
+                    row = c;
                 }
-                peq[(c * blocks) + (i >> 6)] |= 1UL << (i & 63);
+                else
+                {
+                    int k = WideAlphabet.Probe(keys, c);
+                    keys[k] = c;
+                    row = Entries + k;
+                }
+                peq[(row * blocks) + (i >> 6)] |= 1UL << (i & 63);
             }
 
             for (int b = 0; b < blocks; b++)
@@ -201,6 +212,7 @@ internal static class BitParallelLcs
         }
         finally
         {
+            ArrayPool<char>.Shared.Return(keysRented);
             ArrayPool<ulong>.Shared.Return(peqRented);
             ArrayPool<ulong>.Shared.Return(vRented);
         }
