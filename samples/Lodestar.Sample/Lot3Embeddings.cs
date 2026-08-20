@@ -316,6 +316,12 @@ internal static class Lot3Embeddings
         SearchResult best = reloaded.Search([1f, 0f, 0f], k: 1)[0];
         Console.WriteLine($"  Reloaded index   : {reloaded.Count} vectors, "
             + $"best '{reloaded.GetId(best.Index)}' score={Inv.F4(best.Score)}");
+
+        // Already holding the bytes -- a blob, a cache, an embedded resource -- there is
+        // nothing for a stream to do but copy them, so this overload reads them in place.
+        EmbeddingIndex fromMemory = EmbeddingIndex.Load(artifact.ToArray().AsMemory());
+        Console.WriteLine($"  From memory      : {fromMemory.Count} vectors, "
+            + $"same best '{fromMemory.GetId(fromMemory.Search([1f, 0f, 0f], k: 1)[0].Index)}'");
         Console.WriteLine();
     }
 
