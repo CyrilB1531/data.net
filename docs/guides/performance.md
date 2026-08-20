@@ -1247,6 +1247,61 @@ was taken on a different machine.
   that is not where the rest is either. What remains is algorithmic and wants its own
   measurement before its own lot.
 
+## The borrow the LCS recurrence never needed (issue #357)
+
+[#320](https://github.com/CyrilB1531/lodestar/issues/320) took the mechanical half of
+the blocked LCS kernel — a helper called once per text character — and left the
+residual gap open as [#357](https://github.com/CyrilB1531/lodestar/issues/357),
+recording that the table's per-call clear was only 4% of the call and that what
+remained was algorithmic. It was, and it was one line.
+
+`Advance` threaded two chains between words: the addition's carry and the
+subtraction's borrow. **The borrow was provably always zero.** `u` is `v & peq`, so its
+set bits are a subset of `v`'s, and subtracting a bit-subset never borrows —
+`v - u` is exactly `v & ~u`. Checked against 200 000 random 64-bit draws before a line
+was changed, and the property tests #273 added against the dynamic program are what
+would have caught the reasoning being wrong.
+
+**The asymmetry is the LCS recurrence's own.** `Myers` carries substitution and its
+subtraction has no such shape, which is why its blocked loop legitimately keeps both
+chains — and why our blocked Myers sat at parity with rapidfuzz's while our blocked
+LCS did not. One serial dependency too many, in the loop that runs `text.Length ×
+blocks` times.
+
+Intel i7-4770S, four replications, before and after interleaved, `Levenshtein` as the
+control since it takes Myers:
+
+| | before | after | change |
+| --- | ---: | ---: | --- |
+| `Indel`, 128 | 1 293.6 ns | **906.2 ns** | **1.43× faster** |
+| `Indel`, 512 | 13 811.1 ns | **8 837.0 ns** | **1.56× faster** |
+| `Levenshtein`, 128 — control | 1 778.5 ns | 1 768.7 ns | 1.006× |
+| `Levenshtein`, 512 — control | 20 422.0 ns | 20 218.6 ns | 1.010× |
+
+**No overlap between the two series, on either bucket.** At 512 the before values are
+12 403.5 / 12 491.5 / 15 130.7 / 15 210.7 and the after values 8 704.3 / 8 832.8 /
+8 841.1 / 8 881.9 — and the after values sit inside 2% of each other where the before
+ones spread over 23%. Removing a serial dependency steadies the measurement as well as
+shortening it, which is what the mechanism predicts.
+
+Unlike #320 this moves the 128 bucket too, and for the reason #320 could not: that lot
+amortised a call over the blocks it covered, so two blocks gained little where eight
+gained more. This removes a dependency from the loop itself, so it pays wherever the
+loop runs.
+
+Against rapidfuzz 3.14.5, both sides re-run in one window after the change:
+
+| length | rapidfuzz | Lodestar | |
+| ---: | ---: | ---: | --- |
+| 8 | 128.5 ns | **37.2 ns** | **3.45× C# faster** |
+| 32 | 203.2 ns | **129.3 ns** | **1.57× C# faster** |
+| 128 | 585.1 ns | 895.4 ns | 1.53× Python faster |
+| 512 | 6 504.9 ns | 8 969.7 ns | **1.38× Python faster** |
+
+The two long buckets were 2.03× and about 2.1× behind before this lot. **What is left
+is no longer a factor of two.** Whether the remainder is worth a third lot is a
+question for a measurement, not for this page.
+
 ## Multiclass ROC-AUC, sequential against parallel (issue #86)
 
 ```bash
