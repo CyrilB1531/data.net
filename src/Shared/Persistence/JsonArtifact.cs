@@ -169,7 +169,9 @@ internal static class JsonArtifact
             return false;
         }
 
-        buffer = new byte[declared];
+        // Uninitialized: the loop below fills it, and the caller is handed only the
+        // prefix `filled` covers, so nothing past what the stream gave is ever read.
+        buffer = Buffers.AllocateUninitialized<byte>((int)declared);
         int read;
         while (filled < buffer.Length && (read = stream.Read(buffer, filled, buffer.Length - filled)) > 0)
         {

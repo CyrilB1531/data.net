@@ -194,6 +194,39 @@ public sealed class EmbeddingIndexHardeningTests
     }
 
     [Fact]
+    public void The_memory_overload_reads_what_the_stream_overload_reads()
+    {
+        using var stream = new MemoryStream();
+        RealisticIndex().Save(stream);
+        byte[] artifact = stream.ToArray();
+
+        EmbeddingIndex fromStream = EmbeddingIndex.Load(new MemoryStream(artifact));
+        EmbeddingIndex fromMemory = EmbeddingIndex.Load(artifact.AsMemory());
+
+        Assert.Equal(fromStream.Count, fromMemory.Count);
+        Assert.Equal(fromStream.Dimension, fromMemory.Dimension);
+        // Same query, same neighbours: the two paths agree on the vectors, not just
+        // on the header they both read first.
+        float[] query = new float[fromStream.Dimension];
+        query[0] = 1f;
+        Assert.Equal(
+            fromStream.Search(query, 5).Select(r => r.Index),
+            fromMemory.Search(query, 5).Select(r => r.Index));
+    }
+
+    [Fact]
+    public void The_memory_overload_refuses_an_artifact_past_MaxTotalBytes()
+    {
+        using var stream = new MemoryStream();
+        RealisticIndex().Save(stream);
+
+        // The stream paths catch this while accumulating; with the length known up front
+        // the memory path refuses before it parses anything at all.
+        Assert.Throws<InvalidDataException>(
+            () => EmbeddingIndex.Load(stream.ToArray().AsMemory(), new ArtifactLoadOptions { MaxTotalBytes = 8 }));
+    }
+
+    [Fact]
     public void An_index_at_a_realistic_scale_loads_with_the_default_options()
     {
         // 3 000 x 384 (1 152 000 values, about 6 MB) is past the old 1 000 000-element MaxArrayLength

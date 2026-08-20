@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using Lodestar.Embeddings.Persistence;
 using Lodestar.Embeddings.Search;
@@ -44,6 +45,11 @@ public static class PersistenceCrossLang
             indexArtifact = stream.ToArray();
         }
 
+        // No row measured the file path before #336, and it is the one a caller
+        // takes: every published index figure came from a MemoryStream.
+        string indexFile = Path.Combine(Path.GetTempPath(), $"lodestar-index-{Environment.ProcessId}.json");
+        File.WriteAllBytes(indexFile, indexArtifact);
+
         Console.WriteLine("C# persistence cross-lang bench");
         var results = new List<Harness.OperationResult>
         {
@@ -73,7 +79,14 @@ public static class PersistenceCrossLang
                 using var stream = new MemoryStream(indexArtifact);
                 return EmbeddingIndex.Load(stream);
             }),
+            Harness.Measure("embedding_index_load_file", () => EmbeddingIndex.Load(indexFile)),
+            Harness.Measure("embedding_index_load_memory", () => EmbeddingIndex.Load(indexArtifact.AsMemory())),
+            // The floor both sides share, and neither is a load: viewing bytes as floats
+            // parses no header and validates nothing. It bounds the rows above, not ranks them.
+            Harness.Measure("embedding_index_view_floor", () => MemoryMarshal.Cast<byte, float>(indexArtifact.AsSpan()).Length),
         };
+
+        File.Delete(indexFile);
 
         var payload = new Harness.Output
         {

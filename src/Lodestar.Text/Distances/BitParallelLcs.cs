@@ -187,8 +187,13 @@ internal static class BitParallelLcs
             for (int j = 0; j < text.Length; j++)
             {
                 char tc = text[j];
-                int peqBase = tc <= 0xFF ? tc * blocks : -1;
-                Advance(v, peq, peqBase, blocks);
+                if (tc <= 0xFF)
+                {
+                    Advance(v, peq.Slice(tc * blocks, blocks), blocks);
+                }
+
+                // A text character the table cannot hold matches nothing, so every u
+                // is zero and Advance would hand v back exactly as it took it.
             }
 
             length = m - Count(v, blocks, m);
@@ -201,30 +206,28 @@ internal static class BitParallelLcs
         }
     }
 
-    /// <summary>One text character, with the add's carry and the subtract's borrow crossing words.</summary>
+    /// <summary>One text character, with only the add's carry crossing words.</summary>
     /// <remarks>
-    /// The single-word update is one addition and one subtraction; over several words each
-    /// becomes multi-precision, and the two propagate independently — which is why the carry
-    /// and the borrow are tracked separately rather than as one flag.
+    /// <c>u</c> is <c>v &amp; peq</c>, a bit-subset of <c>v</c>, and subtracting a subset
+    /// cannot borrow: <c>v - u</c> is <c>v &amp; ~u</c>, so the borrow this threaded between
+    /// words was provably zero (#357). The addition still carries — an asymmetry the LCS
+    /// recurrence owns, <c>Myers</c> carrying substitution and rightly keeping both chains.
+    /// Inlined because it runs once per text character (#320).
     /// </remarks>
-    private static void Advance(Span<ulong> v, ReadOnlySpan<ulong> peq, int peqBase, int blocks)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void Advance(Span<ulong> v, ReadOnlySpan<ulong> peqRow, int blocks)
     {
         ulong carry = 0;
-        ulong borrow = 0;
         for (int b = 0; b < blocks; b++)
         {
             ulong value = v[b];
-            ulong u = value & (peqBase >= 0 ? peq[peqBase + b] : 0UL);
+            ulong u = value & peqRow[b];
 
             ulong sum = value + u;
             ulong carriedSum = sum + carry;
             carry = (sum < value ? 1UL : 0UL) | (carriedSum < sum ? 1UL : 0UL);
 
-            ulong difference = value - u;
-            ulong borrowedDifference = difference - borrow;
-            borrow = (value < u ? 1UL : 0UL) | (difference < borrow ? 1UL : 0UL);
-
-            v[b] = carriedSum | borrowedDifference;
+            v[b] = carriedSum | (value & ~u);
         }
     }
 

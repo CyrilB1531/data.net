@@ -8,7 +8,7 @@
    "llama3": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
    "qwen2": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+"
   },
-  "count": 60
+  "count": 66
  },
  "cases": [
   {
@@ -259,12 +259,36 @@
   },
   {
    "id": 20,
+   "pattern": "gpt2",
+   "text": "𝐀𝐁𝐂 𝟏𝟐𝟑 abc123",
+   "pieces": [
+    "ðĿĲĢðĿĲģðĿĲĤ",
+    "ĠðĿŁıðĿŁĲðĿŁĳ",
+    "Ġabc",
+    "123"
+   ]
+  },
+  {
+   "id": 21,
+   "pattern": "gpt2",
+   "text": "𝔄lphabet mixes 𝟞igits with ascii",
+   "pieces": [
+    "ðĿĶĦlphabet",
+    "Ġmixes",
+    "ĠðĿŁŀ",
+    "igits",
+    "Ġwith",
+    "Ġascii"
+   ]
+  },
+  {
+   "id": 22,
    "pattern": "llama3",
    "text": "",
    "pieces": []
   },
   {
-   "id": 21,
+   "id": 23,
    "pattern": "llama3",
    "text": " ",
    "pieces": [
@@ -272,7 +296,7 @@
    ]
   },
   {
-   "id": 22,
+   "id": 24,
    "pattern": "llama3",
    "text": "   ",
    "pieces": [
@@ -280,7 +304,7 @@
    ]
   },
   {
-   "id": 23,
+   "id": 25,
    "pattern": "llama3",
    "text": "Hello, world!",
    "pieces": [
@@ -291,7 +315,7 @@
    ]
   },
   {
-   "id": 24,
+   "id": 26,
    "pattern": "llama3",
    "text": " leading space",
    "pieces": [
@@ -300,7 +324,7 @@
    ]
   },
   {
-   "id": 25,
+   "id": 27,
    "pattern": "llama3",
    "text": "trailing space ",
    "pieces": [
@@ -310,7 +334,7 @@
    ]
   },
   {
-   "id": 26,
+   "id": 28,
    "pattern": "llama3",
    "text": "double  space",
    "pieces": [
@@ -320,7 +344,7 @@
    ]
   },
   {
-   "id": 27,
+   "id": 29,
    "pattern": "llama3",
    "text": "a\tb\nc\r\nd",
    "pieces": [
@@ -333,7 +357,7 @@
    ]
   },
   {
-   "id": 28,
+   "id": 30,
    "pattern": "llama3",
    "text": "Il était une fois, à Paris — déjà vu.",
    "pieces": [
@@ -351,7 +375,7 @@
    ]
   },
   {
-   "id": 29,
+   "id": 31,
    "pattern": "llama3",
    "text": "naïve café résumé",
    "pieces": [
@@ -361,7 +385,7 @@
    ]
   },
   {
-   "id": 30,
+   "id": 32,
    "pattern": "llama3",
    "text": "東京都から来ました",
    "pieces": [
@@ -369,7 +393,7 @@
    ]
   },
   {
-   "id": 31,
+   "id": 33,
    "pattern": "llama3",
    "text": "中文分词测试",
    "pieces": [
@@ -377,7 +401,7 @@
    ]
   },
   {
-   "id": 32,
+   "id": 34,
    "pattern": "llama3",
    "text": "emoji 👋🏽 family 👨‍👩‍👧‍👦 flag 🇫🇷",
    "pieces": [
@@ -390,7 +414,7 @@
    ]
   },
   {
-   "id": 33,
+   "id": 35,
    "pattern": "llama3",
    "text": "<|endoftext|> is written here literally",
    "pieces": [
@@ -404,7 +428,7 @@
    ]
   },
   {
-   "id": 34,
+   "id": 36,
    "pattern": "llama3",
    "text": "[UNK] [CLS] [SEP] as text",
    "pieces": [
@@ -421,7 +445,7 @@
    ]
   },
   {
-   "id": 35,
+   "id": 37,
    "pattern": "llama3",
    "text": "123 4567 89.01 -42",
    "pieces": [
@@ -438,7 +462,7 @@
    ]
   },
   {
-   "id": 36,
+   "id": 38,
    "pattern": "llama3",
    "text": "https://example.com/path?q=1&r=2",
    "pieces": [
@@ -456,7 +480,7 @@
    ]
   },
   {
-   "id": 37,
+   "id": 39,
    "pattern": "llama3",
    "text": "snake_case camelCase kebab-case SCREAMING_CASE",
    "pieces": [
@@ -470,7 +494,7 @@
    ]
   },
   {
-   "id": 38,
+   "id": 40,
    "pattern": "llama3",
    "text": "the quick brown fox jumps over the lazy dog",
    "pieces": [
@@ -486,7 +510,7 @@
    ]
   },
   {
-   "id": 39,
+   "id": 41,
    "pattern": "llama3",
    "text": "tokenization is embedding embeddings",
    "pieces": [
@@ -497,13 +521,39 @@
    ]
   },
   {
-   "id": 40,
+   "id": 42,
+   "pattern": "llama3",
+   "text": "𝐀𝐁𝐂 𝟏𝟐𝟑 abc123",
+   "pieces": [
+    "ðĿĲĢðĿĲģðĿĲĤ",
+    "Ġ",
+    "ðĿŁıðĿŁĲðĿŁĳ",
+    "Ġabc",
+    "123"
+   ]
+  },
+  {
+   "id": 43,
+   "pattern": "llama3",
+   "text": "𝔄lphabet mixes 𝟞igits with ascii",
+   "pieces": [
+    "ðĿĶĦlphabet",
+    "Ġmixes",
+    "Ġ",
+    "ðĿŁŀ",
+    "igits",
+    "Ġwith",
+    "Ġascii"
+   ]
+  },
+  {
+   "id": 44,
    "pattern": "qwen2",
    "text": "",
    "pieces": []
   },
   {
-   "id": 41,
+   "id": 45,
    "pattern": "qwen2",
    "text": " ",
    "pieces": [
@@ -511,7 +561,7 @@
    ]
   },
   {
-   "id": 42,
+   "id": 46,
    "pattern": "qwen2",
    "text": "   ",
    "pieces": [
@@ -519,7 +569,7 @@
    ]
   },
   {
-   "id": 43,
+   "id": 47,
    "pattern": "qwen2",
    "text": "Hello, world!",
    "pieces": [
@@ -530,7 +580,7 @@
    ]
   },
   {
-   "id": 44,
+   "id": 48,
    "pattern": "qwen2",
    "text": " leading space",
    "pieces": [
@@ -539,7 +589,7 @@
    ]
   },
   {
-   "id": 45,
+   "id": 49,
    "pattern": "qwen2",
    "text": "trailing space ",
    "pieces": [
@@ -549,7 +599,7 @@
    ]
   },
   {
-   "id": 46,
+   "id": 50,
    "pattern": "qwen2",
    "text": "double  space",
    "pieces": [
@@ -559,7 +609,7 @@
    ]
   },
   {
-   "id": 47,
+   "id": 51,
    "pattern": "qwen2",
    "text": "a\tb\nc\r\nd",
    "pieces": [
@@ -572,7 +622,7 @@
    ]
   },
   {
-   "id": 48,
+   "id": 52,
    "pattern": "qwen2",
    "text": "Il était une fois, à Paris — déjà vu.",
    "pieces": [
@@ -590,7 +640,7 @@
    ]
   },
   {
-   "id": 49,
+   "id": 53,
    "pattern": "qwen2",
    "text": "naïve café résumé",
    "pieces": [
@@ -600,7 +650,7 @@
    ]
   },
   {
-   "id": 50,
+   "id": 54,
    "pattern": "qwen2",
    "text": "東京都から来ました",
    "pieces": [
@@ -608,7 +658,7 @@
    ]
   },
   {
-   "id": 51,
+   "id": 55,
    "pattern": "qwen2",
    "text": "中文分词测试",
    "pieces": [
@@ -616,7 +666,7 @@
    ]
   },
   {
-   "id": 52,
+   "id": 56,
    "pattern": "qwen2",
    "text": "emoji 👋🏽 family 👨‍👩‍👧‍👦 flag 🇫🇷",
    "pieces": [
@@ -629,7 +679,7 @@
    ]
   },
   {
-   "id": 53,
+   "id": 57,
    "pattern": "qwen2",
    "text": "<|endoftext|> is written here literally",
    "pieces": [
@@ -643,7 +693,7 @@
    ]
   },
   {
-   "id": 54,
+   "id": 58,
    "pattern": "qwen2",
    "text": "[UNK] [CLS] [SEP] as text",
    "pieces": [
@@ -660,7 +710,7 @@
    ]
   },
   {
-   "id": 55,
+   "id": 59,
    "pattern": "qwen2",
    "text": "123 4567 89.01 -42",
    "pieces": [
@@ -684,7 +734,7 @@
    ]
   },
   {
-   "id": 56,
+   "id": 60,
    "pattern": "qwen2",
    "text": "https://example.com/path?q=1&r=2",
    "pieces": [
@@ -702,7 +752,7 @@
    ]
   },
   {
-   "id": 57,
+   "id": 61,
    "pattern": "qwen2",
    "text": "snake_case camelCase kebab-case SCREAMING_CASE",
    "pieces": [
@@ -716,7 +766,7 @@
    ]
   },
   {
-   "id": 58,
+   "id": 62,
    "pattern": "qwen2",
    "text": "the quick brown fox jumps over the lazy dog",
    "pieces": [
@@ -732,7 +782,7 @@
    ]
   },
   {
-   "id": 59,
+   "id": 63,
    "pattern": "qwen2",
    "text": "tokenization is embedding embeddings",
    "pieces": [
@@ -740,6 +790,36 @@
     "Ġis",
     "Ġembedding",
     "Ġembeddings"
+   ]
+  },
+  {
+   "id": 64,
+   "pattern": "qwen2",
+   "text": "𝐀𝐁𝐂 𝟏𝟐𝟑 abc123",
+   "pieces": [
+    "ðĿĲĢðĿĲģðĿĲĤ",
+    "Ġ",
+    "ðĿŁı",
+    "ðĿŁĲ",
+    "ðĿŁĳ",
+    "Ġabc",
+    "1",
+    "2",
+    "3"
+   ]
+  },
+  {
+   "id": 65,
+   "pattern": "qwen2",
+   "text": "𝔄lphabet mixes 𝟞igits with ascii",
+   "pieces": [
+    "ðĿĶĦlphabet",
+    "Ġmixes",
+    "Ġ",
+    "ðĿŁŀ",
+    "igits",
+    "Ġwith",
+    "Ġascii"
    ]
   }
  ]

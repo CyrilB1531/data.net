@@ -78,6 +78,18 @@ format existing anywhere in the codebase.
 Two formats to keep bit-exact remains the cost this avoids. The door is not
 closed — it is simply not paid for yet.
 
+> **#324 update: measured, and the door is not the one to open.** This section
+> reasoned from a profile of the *vectorizer* load, where parsing 30 000 idf values
+> as JSON numbers was the cost and moving that one vector out of readable JSON was
+> the answer. An embedding index profiles differently: base64 decoding is **~1.3 ms**
+> of a ~15 ms load, measured by replacing the decode with a memcpy of the same byte
+> count. Half the load is allocation, and a third is reading the payload —
+> [`../guides/performance.md`](../guides/performance.md) has the breakdown.
+>
+> A binary format would still remove the 1.34× size expansion base64 costs on disk,
+> which is a real thing to want. It would not buy back the load time this decision
+> was worried about, so it should be argued on the size rather than on the speed.
+
 ### The header
 
 Every artifact opens with the same two properties:

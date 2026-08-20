@@ -37,4 +37,10 @@ public sealed class SoundexOracleTests
     {
         Assert.Equal(expected, Soundex.Encode(word));
     }
+
+    [Fact]
+    public void Encode_NullArgument_ThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => Soundex.Encode(null!));
+    }
 }

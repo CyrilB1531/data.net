@@ -15,9 +15,10 @@ jobs:
     # repository, so a fork-only guard lets them through to fail on an empty
     # token. A dependency bump changes no source, so skip rather than analyse.
     if: >-
-      github.event_name == 'push' ||
+      (github.event_name == 'push' ||
       (github.event.pull_request.head.repo.full_name == github.repository &&
-       github.actor != 'dependabot[bot]')
+       github.actor != 'dependabot[bot]')) &&
+      github.event.pull_request.draft == false
 
     steps:
       - name: Set up JDK 17

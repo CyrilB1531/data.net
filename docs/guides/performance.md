@@ -209,7 +209,9 @@ bucket 3.66× ahead.
   strip. **It is a best case for record matching and worth nothing on unrelated
   text**, which is the shape of input the corpus does not contain.
 - **The kernel is what closes the long buckets**, 46× at 128 and 44× at 512.
-- **Still 2× behind at 128 and 512.** The gap is no longer algorithmic; see the
+- **Still 2× behind at 128 and 512.** *(#320 revisits this: the gap **is**
+  algorithmic, and the sentence below was wrong about where it sits — see "The
+  blocked LCS kernel" further down.)* The gap is no longer algorithmic; see the
   gate table below for where it now sits.
 
 ### Where the bit-parallel gate belongs, measured (#273)
@@ -1140,6 +1142,176 @@ same artifact through the same harness and this change does not touch it.
   write; what it removes is the part that was never encoding at all. The load
   direction, further behind and for a decided reason, is
   [#324](https://github.com/CyrilB1531/lodestar/issues/324).
+
+## Persisting an embedding index — the load path (issue #324)
+
+The load direction is the furthest behind Python anything here publishes, and
+[ADR 0011](../decisions/0011-persistence-format.md) priced it: base64 inside JSON
+against `numpy.load`'s raw block. So the obvious question was whether to pay for a
+second format. **The profile says the format is not where the time goes.**
+
+[`EmbeddingIndex.Load`](../reference/embeddings/search/embeddingindex-load.md) instrumented
+phase by phase, Intel i7-4770S, .NET 10.0.10,
+median of the artifact's own 20 589 007 bytes:
+
+| phase | cost | share |
+| --- | ---: | ---: |
+| reading the payload into a buffer | ~4.5 ms | ~29% |
+| vector block — allocation **and** base64 decode | ~10.8 ms | ~50% |
+| finite scan, SIMD | ~1.6 ms | ~9% |
+| 10 000 ids | ~0.7 ms | ~5% |
+
+- **Base64 decoding is close to free.** Measured by replacing the decode with a
+  `memcpy` of the same byte count and re-running: **~1.3 ms**, which is what the
+  decode costs *over* moving the bytes at all. The other ~9.5 ms of that row is the
+  allocation.
+- **So the answer to ADR 0011's open question is that its door is not the one to
+  open.** A binary format would remove 5.2 MB of base64 expansion from a path
+  spending its time on allocation and page commit, not on decoding.
+
+What the allocation was doing that it needed not: the runtime zeroes an array before
+handing it over, and both large buffers here are overwritten in full immediately —
+the payload by the stream, the vector block by the decoder. That is 36 MB of
+large-object-heap writes per load that nothing reads.
+
+Median of 3, before and after interleaved in one window, with `tfidf_save` as the
+control since it writes and does not read:
+
+| Operation | before | after | change |
+| --- | ---: | ---: | --- |
+| `embedding_index_load`, wall | 14.729 ms | **12.510 ms** | **1.18× faster** |
+| `embedding_index_load`, cpu | 16.868 ms | **14.341 ms** | **1.18× faster** |
+| `tfidf_load`, cpu | 7.320 ms | 7.654 ms | 0.96× |
+| `tfidf_save`, cpu — control | 2.380 ms | 2.363 ms | unchanged |
+
+- **`tfidf_load` does not gain, and is not expected to.** Its buffers are far below
+  the large-object heap, where `GC.AllocateUninitializedArray` skips no zeroing at
+  all. The 0.96× sits inside the spread that row shows between windows — it has read
+  6.9 to 7.9 ms across this page's runs — so it is reported rather than claimed as a
+  regression.
+- **1.18× is well under what the allocation phase costs**, and that gap is the
+  finding to carry forward: removing the zeroing returns only part of it, so most of
+  that phase is the operating system committing pages on first touch, which no
+  allocation strategy avoids. **Moving fewer bytes is the remaining lever**, which is
+  [#336](https://github.com/CyrilB1531/lodestar/issues/336) — and its own measurement
+  narrows that further.
+
+## The blocked LCS kernel, and the call it made per character (issue #320)
+
+The nightly put `Indel` **2.40× behind rapidfuzz at 512** while `Levenshtein` sat at
+1.08×, on the same run and the same corpus. Both take the blocked bit-parallel path
+and both pay the same equality table, so a cost they share cannot explain a gap only
+one of them has. The asymmetry is sharper still read the other way: rapidfuzz's Indel
+is **3.03×** faster than its own Levenshtein where ours was **1.37×** faster than
+ours. The cheaper recurrence was not being cashed in.
+
+`BitParallelLcs.TryBlocked` called `Advance(…)` once per text character.
+`Myers.TryBlocked` writes its block loop out by hand, and says why in the file's own
+header — *"It is also the hot path: helper calls here cost measurably."* The LCS
+kernel, written later in #273, did not inherit that.
+
+Two changes, both local:
+
+- `Advance` is `AggressiveInlining`, which is what `Myers.TryBlocked` achieves by not
+  having a helper at all;
+- the `peqBase >= 0` test leaves the inner loop. A text character outside Latin-1
+  makes every `u` zero, so `sum == value`, `difference == value`, carry and borrow
+  stay clear and `v[b] = value | value`. **The whole pass is a no-op**, so the call is
+  skipped rather than made with an empty row.
+
+Intel i7-4770S, .NET 10.0.10, before and after **interleaved, four replications**,
+with `Levenshtein` as the control — it takes Myers, which nothing here touches.
+Baseline is post-#334, not the nightly's: that run predates both #299 and #334 and
+was taken on a different machine.
+
+| | before | after | change |
+| --- | ---: | ---: | --- |
+| `Indel`, length 512 | 13 926.5 ns | **12 631.4 ns** | **1.10× faster** |
+| `Indel`, length 128 | 1 210.7 ns | 1 215.8 ns | unchanged |
+| `Levenshtein`, 512 — control | 19 925.5 ns | 20 333.9 ns | 0.98× |
+| `Levenshtein`, 128 — control | 1 781.2 ns | 1 814.1 ns | 0.98× |
+
+- **The medians understate what the runs show.** At 512 the four before values are
+  13 856.8 / 13 911.1 / 13 941.9 / 14 259.2 and the after values 12 572.2 / 12 599.0 /
+  12 663.8 / **15 235.6**. Three of four sit below *every* before value with no
+  overlap; the fourth is a contaminated replication, which also carries the only
+  outlier at 128. It is left in the median rather than dropped.
+- **The control drifts 2% the wrong way**, so if the alternation biases anything it
+  biases against the change.
+- **Nothing at 128, and that is the mechanism.** A 110-character pattern spans two
+  64-bit blocks against eight at 512, so inlining a loop of two iterations saves
+  little.
+- **This does not close the gap, and the remainder is not incidental.** At 12.6 µs
+  against rapidfuzz's 2.9 the kernel is still ~4.3× behind. The blocked path's rented
+  table is cleared per call — 16 KB at this size, about 500 ns of 12 600, or 4% — so
+  that is not where the rest is either. What remains is algorithmic and wants its own
+  measurement before its own lot.
+
+## The borrow the LCS recurrence never needed (issue #357)
+
+[#320](https://github.com/CyrilB1531/lodestar/issues/320) took the mechanical half of
+the blocked LCS kernel — a helper called once per text character — and left the
+residual gap open as [#357](https://github.com/CyrilB1531/lodestar/issues/357),
+recording that the table's per-call clear was only 4% of the call and that what
+remained was algorithmic. It was, and it was one line.
+
+`Advance` threaded two chains between words: the addition's carry and the
+subtraction's borrow. **The borrow was provably always zero.** `u` is `v & peq`, so its
+set bits are a subset of `v`'s, and subtracting a bit-subset never borrows —
+`v - u` is exactly `v & ~u`. Checked against 200 000 random 64-bit draws before a line
+was changed, and the property tests #273 added against the dynamic program are what
+would have caught the reasoning being wrong.
+
+**The asymmetry is the LCS recurrence's own.** `Myers` carries substitution and its
+subtraction has no such shape, which is why its blocked loop legitimately keeps both
+chains — and why our blocked Myers sat at parity with rapidfuzz's while our blocked
+LCS did not. One serial dependency too many, in the loop that runs `text.Length ×
+blocks` times.
+
+Intel i7-4770S, four replications, before and after interleaved, `Levenshtein` as the
+control since it takes Myers:
+
+| | before | after | change |
+| --- | ---: | ---: | --- |
+| `Indel`, 128 | 1 293.6 ns | **906.2 ns** | **1.43× faster** |
+| `Indel`, 512 | 13 811.1 ns | **8 837.0 ns** | **1.56× faster** |
+| `Levenshtein`, 128 — control | 1 778.5 ns | 1 768.7 ns | 1.006× |
+| `Levenshtein`, 512 — control | 20 422.0 ns | 20 218.6 ns | 1.010× |
+
+**No overlap between the two series, on either bucket.** At 512 the before values are
+12 403.5 / 12 491.5 / 15 130.7 / 15 210.7 and the after values 8 704.3 / 8 832.8 /
+8 841.1 / 8 881.9 — and the after values sit inside 2% of each other where the before
+ones spread over 23%. Removing a serial dependency steadies the measurement as well as
+shortening it, which is what the mechanism predicts.
+
+Unlike #320 this moves the 128 bucket too, and for the reason #320 could not: that lot
+amortised a call over the blocks it covered, so two blocks gained little where eight
+gained more. This removes a dependency from the loop itself, so it pays wherever the
+loop runs.
+
+**`UInt128` for the carry was tried and is slower — do not retry it.** What remains
+between this kernel and rapidfuzz is about 1.8 cycles per block update (6.69 against
+4.92 on an i7-4770S at length 512), and the shape of the loop suggests the carry: C++
+reaches `_addcarry_u64` and emits one `ADC` where this reconstructs the carry with two
+comparisons and an `or`. Writing it as `UInt128 wide = (UInt128)value + u + carry`,
+which reads better and should let the JIT emit `ADD`/`ADC`, measured **0.914× at 512
+and 0.957× at 128** — four replications interleaved, control steady, no overlap
+between the series. The conversions and the shift cost more than the comparisons they
+replace. The gap is what the JIT will not emit, not something the source is holding
+wrong.
+
+Against rapidfuzz 3.14.5, both sides re-run in one window after the change:
+
+| length | rapidfuzz | Lodestar | |
+| ---: | ---: | ---: | --- |
+| 8 | 128.5 ns | **37.2 ns** | **3.45× C# faster** |
+| 32 | 203.2 ns | **129.3 ns** | **1.57× C# faster** |
+| 128 | 585.1 ns | 895.4 ns | 1.53× Python faster |
+| 512 | 6 504.9 ns | 8 969.7 ns | **1.38× Python faster** |
+
+The two long buckets were 2.03× and about 2.1× behind before this lot. **What is left
+is no longer a factor of two.** Whether the remainder is worth a third lot is a
+question for a measurement, not for this page.
 
 ## Multiclass ROC-AUC, sequential against parallel (issue #86)
 

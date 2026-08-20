@@ -399,6 +399,28 @@ public sealed class TokenizerJsonLoaderTests
         Assert.Equal(3, vocabulary.Count);
     }
 
+    [Fact]
+    public void LoadUnigram_on_a_byte_fallback_BPE_file_names_byte_fallback()
+    {
+        // A Llama-2 or Mistral v0.1 tokenizer.json (#343): LoadBpe would refuse the
+        // same file for byte_fallback, so that is the message worth reading first.
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => LoadUnigramFrom(BpeJson("\"byte_fallback\":true")));
+
+        Assert.Contains("byte_fallback", error.Message, StringComparison.Ordinal);
+        Assert.Contains("LoadBpe", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LoadUnigram_on_a_plain_BPE_file_still_points_at_LoadBpe()
+    {
+        InvalidDataException error = Assert.Throws<InvalidDataException>(
+            () => LoadUnigramFrom(BpeJson("\"byte_fallback\":false")));
+
+        Assert.Contains("declares a 'BPE' model; this loader reads 'Unigram'", error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("byte_fallback", error.Message, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("\"never\"")]
     [InlineData("\"first\"")]
