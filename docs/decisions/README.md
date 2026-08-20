@@ -50,6 +50,7 @@ a later decision uses instead.
 | [`0038`](0038-the-gate-confronts-an-exception-tag-with-the-page-that-documents-it.md) | The gate confronts an exception tag with the page that documents it | accepted | 2026-08-18 | — |
 | [`0039`](0039-mutual-information-returns-zero-on-an-empty-input.md) | [`MutualInformation`](../reference/metrics/clustering/mutualinformation.md) returns `0.0` on an empty input; scikit-learn raises | accepted | 2026-08-18 | — |
 | [`0040`](0040-a-curve-is-a-sealed-class-per-curve.md) | A curve is a sealed class per curve, not a record and not out-parameters; `drop_intermediate`'s asymmetric defaults are reproduced | accepted | 2026-08-18 | — |
+| [`0041`](0041-one-sample-file-per-public-class.md) | One sample file per public class, named after it | accepted | 2026-08-19 | — |
 | [`0042`](0042-phonetic-encoders-refuse-a-null-word.md) | Phonetic encoders refuse a `null` word | accepted | 2026-08-20 | — |
 
 ## What `accepted` means here
