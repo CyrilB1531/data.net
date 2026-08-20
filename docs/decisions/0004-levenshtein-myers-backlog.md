@@ -104,36 +104,6 @@ the 2026-08-05 revision below.
   pattern containing CJK or emoji still falls back to the DP — the figures above
   do not describe those inputs. A sparse or hashed table would generalise it.
 
-> **#302 update: done, and not the way this bullet proposed.** "A sparse or hashed
-> table would generalise it" is what the code-point path already does, and #208
-> measured the cost of that: renaming both operands through a probe table makes it
-> cross the DP at a pattern of 10 where the character path crosses at 8. Reach is
-> far cheaper than generality, because the out-of-range characters are the *rare*
-> case — the 256-entry table stays exactly as it is, and a pattern that leaves
-> Latin-1 gets an open-addressed side table beside it, built only then. The wide
-> kernel is its own method for the reason #301 established: a `stackalloc` zeroes on
-> entry to the method holding it whether or not its branch is taken, so a Latin-1
-> pattern would otherwise be charged the side table's 1.25 KB on every call.
->
-> **The corpus reached it, measured before anything was written** — the check this
-> file's testing note exists to demand. Replayed in the UTF-16 mode, 141 of the 184
-> single-word entries over the BMP cases were refused for leaving Latin-1, and 226
-> of 269 over all of them; those cases now execute the new path under an oracle
-> assertion that already existed. Property tests against the DP cover CJK, mixed
-> patterns, emoji as surrogate pairs, and a pattern of 64 distinct wide characters.
->
-> **#382 update: the blocked path too**, so no pattern above U+00FF falls back to
-> the DP for holding one. Wide symbols become extra *rows* of the blocked table —
-> `(256 + slots) × blocks` words, slot `k` at row `256 + k` — so the multi-word carry
-> and borrow are untouched and only the row index changes.
->
-> Two defects on the way, both caught by lengths 127, 128, 129 and 300. The probe
-> masked against a fixed 128 slots, which is sound for one word only: 64 characters
-> hold at most 64 distinct symbols, and a blocked pattern has no length bound, so the
-> table could fill and leave the probe no free slot to stop on. And the LCS blocked
-> scan skips `Advance` outright for a character the dense table cannot hold — correct
-> while the pattern could never hold one, wrong the moment it can.
-
 - **The length-32 bucket sits at 1.4× behind rapidfuzz.** It already takes the
   single-word path, so the cause differs from the one fixed here and needs its own
   measurement.
@@ -171,29 +141,6 @@ the 2026-08-05 revision below.
 > the table to the pattern's own alphabet is still open**, and is still the same
 > change as lifting the Latin-1 restriction above.
 >
-> **#301 update: the remaining memset is worth one kernel's while and not the
-> other's.** `localsinit` zeroes the same 2 KB on every call, which no `Clear()`
-> removal reaches and `AllowUnsafeBlocks=false` forbids `[SkipLocalsInit]` from
-> suppressing. A `[ThreadStatic]` table held all-zero between calls replaces it
-> with a restore loop over the pattern — `O(m)` rather than `O(256)`. Swept over
-> the pair corpus at a longest-held-pattern of 0, 16, 32 and 64, it is worth **13%
-> of the length-32 bucket on Indel** and a **regression at every value on
-> Levenshtein**, so `BitParallelLcs` holds its table at 32 and `Myers` keeps its
-> `stackalloc`. The LCS recurrence is four operations per text character against
-> Myers' dozen, so the identical fixed cost is a far larger share of what its call
-> does. Numbers in [`../guides/performance.md`](../guides/performance.md).
->
-> **Where this shape goes wrong is the refusal.** A pattern is written character by
-> character and abandoned partway when one leaves Latin-1, so entries are already
-> set when the kernel gives up — and the damage never shows on the call that causes
-> it, only on the next one, whose text reads a mask its predecessor left behind.
-> That is a test rather than a comment, and it failed before it passed.
->
-> **A microbenchmark said this won in both kernels.** It timed 64 rotating pairs, a
-> working set small enough that the held table never left L1; the corpus evicts it.
-> Sizing a fixed cost in isolation is worth doing first and is not worth believing
-> on its own.
-
 ## Testing note
 
 The blocked path shipped with **zero coverage from the existing corpus**, and the
