@@ -42,7 +42,13 @@ REVISION = re.compile(r"^[0-9A-Za-z][0-9A-Za-z._/~^-]{0,254}$")
 
 
 def resolves(rev: str) -> bool:
-    """Whether git can turn rev into a commit -- tells 'unresolvable' from 'no changes'."""
+    """Whether git can turn rev into a commit -- tells 'unresolvable' from 'no changes'.
+
+    Refuses anything REVISION would refuse first, rather than trust a caller to
+    have checked already: the same guard changed_files() gives its own arguments.
+    """
+    if not REVISION.match(rev):
+        return False
     return subprocess.run(
         ["git", "rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}"],
         cwd=ROOT, capture_output=True).returncode == 0

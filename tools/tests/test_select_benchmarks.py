@@ -58,6 +58,10 @@ def test_resolves_is_false_for_a_well_formed_but_orphaned_sha():
     assert not resolves(ORPHAN_SHA)
 
 
+def test_resolves_refuses_a_leading_dash_itself_rather_than_trust_the_caller():
+    assert not resolves("-rf")
+
+
 def test_an_orphaned_baseline_measures_everything_like_an_absent_one():
     orphaned = run("--since", ORPHAN_SHA)
     absent = run()
