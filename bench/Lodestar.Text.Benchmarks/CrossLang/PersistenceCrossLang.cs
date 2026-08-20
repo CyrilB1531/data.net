@@ -44,6 +44,11 @@ public static class PersistenceCrossLang
             indexArtifact = stream.ToArray();
         }
 
+        // No row measured the file path before #336, and it is the one a caller
+        // takes: every published index figure came from a MemoryStream.
+        string indexFile = Path.Combine(Path.GetTempPath(), $"lodestar-index-{Environment.ProcessId}.json");
+        File.WriteAllBytes(indexFile, indexArtifact);
+
         Console.WriteLine("C# persistence cross-lang bench");
         var results = new List<Harness.OperationResult>
         {
@@ -73,8 +78,11 @@ public static class PersistenceCrossLang
                 using var stream = new MemoryStream(indexArtifact);
                 return EmbeddingIndex.Load(stream);
             }),
+            Harness.Measure("embedding_index_load_file", () => EmbeddingIndex.Load(indexFile)),
             Harness.Measure("embedding_index_load_memory", () => EmbeddingIndex.Load(indexArtifact.AsMemory())),
         };
+
+        File.Delete(indexFile);
 
         var payload = new Harness.Output
         {

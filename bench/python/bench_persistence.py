@@ -20,8 +20,10 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import pickle
 import platform
+import tempfile
 from importlib.metadata import version
 from pathlib import Path
 from time import perf_counter, process_time
@@ -126,6 +128,12 @@ def main() -> None:
     np.save(buffer, vectors)
     npy_bytes = buffer.getvalue()
 
+    # No row measured the file path before #336, and it is the one a caller takes.
+    # Written once, outside the timed loop.
+    npy_file = tempfile.NamedTemporaryFile(suffix=".npy", delete=False)
+    npy_file.write(npy_bytes)
+    npy_file.close()
+
     from tokenizers.models import WordPiece
 
     print("Python persistence bench")
@@ -138,11 +146,14 @@ def main() -> None:
         measure("tfidf_load", lambda: pickle.loads(artifact)),
         measure("embedding_index_save", lambda: np.save(io.BytesIO(), vectors)),
         measure("embedding_index_load", lambda: np.load(io.BytesIO(npy_bytes))),
+        measure("embedding_index_load_file", lambda: np.load(npy_file.name)),
         measure("embedding_index_load_memory", lambda: np.load(io.BytesIO(npy_bytes))),
         # A floor, not a comparand: frombuffer views the bytes without parsing the
         # header or validating anything, so it does strictly less than the rows above.
         measure("embedding_index_view_floor", lambda: np.frombuffer(npy_bytes, dtype=np.uint8)),
     ]
+
+    os.unlink(npy_file.name)
 
     payload = {
         "metadata": {
