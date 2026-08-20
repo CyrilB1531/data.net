@@ -14,7 +14,7 @@ survives is the ratio inside one run -- a baseline and its comparands measured i
 the same minute on the same VM -- which is what this page is for.
 
 Usage:  python tools/render_nightly.py --commit <sha> --baseline <sha> \\
-            --runner <label> [--selected Class ...] [--reason text] [--stdout]
+            --runner <label> [--selected Class ...] [--reason text] [--branch] [--stdout]
 """
 
 from __future__ import annotations
@@ -25,9 +25,15 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
-# One home, the one docs/wiki-map.json declares: a constant rather than an argument, so
-# no workflow input can aim a write elsewhere. --stdout is what a local check uses.
+# long-comment: two homes, not an argument -- a workflow input still cannot aim a
+# write anywhere but one of these two constants. PAGE is the one docs/wiki-map.json
+# declares and only a main run may write; BRANCH_PAGE is where a workflow_dispatch on
+# another ref writes instead, so that branch keeps its own run's numbers without ever
+# touching the page a merge into main could carry along (#379). BRANCH_PAGE is not in
+# wiki-map.json's page lists, unlike PAGE, so it never reaches the wiki even if it
+# somehow reached main. --stdout is what a local check uses.
 PAGE = ROOT / "docs" / "guides" / "nightly_run.md"
+BRANCH_PAGE = ROOT / "docs" / "guides" / "branch" / "nightly_run.md"
 
 # BenchmarkDotNet writes here by its own convention, so the reports are found rather
 # than passed in: no path this script touches comes from an argument.
@@ -164,6 +170,8 @@ def main() -> None:
     parser.add_argument("--selected", nargs="*", default=[])
     parser.add_argument("--harnesses", nargs="*", default=[])
     parser.add_argument("--reason", default="")
+    parser.add_argument("--branch", action="store_true",
+                        help="write BRANCH_PAGE instead of PAGE (a workflow_dispatch off main)")
     parser.add_argument("--stdout", action="store_true", help="print instead of writing")
     args = parser.parse_args()
 
@@ -174,17 +182,19 @@ def main() -> None:
         print(page, end="")
         return
 
+    target = BRANCH_PAGE if args.branch else PAGE
+
     # Nothing selected, or everything selected produced no result: leaving the file
     # untouched is what "Open the pull request" and the wiki's own push already skip.
     if not has_content(reports) and not has_content(comparisons):
-        print("nothing worth publishing; docs/guides/nightly_run.md left unchanged")
+        print(f"nothing worth publishing; {target.relative_to(ROOT)} left unchanged")
         return
 
-    PAGE.parent.mkdir(parents=True, exist_ok=True)
-    # S2083 and S8707 read a tainted path here. PAGE is ROOT and three literals, ROOT is
-    # __file__: no argument reaches it, and dropping --out then --report did not convince.
-    PAGE.write_text(page, encoding="utf-8")  # NOSONAR
-    print(f"-> {PAGE.relative_to(ROOT)}")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    # S2083 and S8707 read a tainted path here. target is one of two fixed constants
+    # chosen by a boolean flag, not an argument: dropping --branch did not convince.
+    target.write_text(page, encoding="utf-8")  # NOSONAR
+    print(f"-> {target.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":
