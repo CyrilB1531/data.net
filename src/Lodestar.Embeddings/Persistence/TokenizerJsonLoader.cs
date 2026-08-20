@@ -233,6 +233,7 @@ public static class TokenizerJsonLoader
     private static SentencePieceVocabulary ReadUnigram(JsonElement root, in ArtifactLimits limits)
     {
         JsonElement model = RequireObject(root, "model");
+        EnsureNotByteFallbackBpe(model);
         EnsureModelType(model, "Unigram");
         EnsureByteFallbackIsOff(model);
         EnsurePipelineIsReproduced(root, PipelineKind.Unigram);
@@ -399,6 +400,23 @@ public static class TokenizerJsonLoader
             throw Unsupported(
                 "its model declares byte_fallback",
                 "Python resolves an uncovered character into <0x..> byte pieces where this tokenizer emits the unknown piece");
+        }
+    }
+
+    /// <summary>
+    /// Names byte_fallback ahead of the model-kind mismatch <see cref="EnsureModelType"/> would
+    /// otherwise report first (#343): a Llama-2 or Mistral v0.1 file declares a BPE model with
+    /// byte_fallback, and LoadBpe refuses that by name too, so "wrong loader" would send the
+    /// reader on a round trip to a call that fails for the same reason anyway.
+    /// </summary>
+    private static void EnsureNotByteFallbackBpe(JsonElement model)
+    {
+        string type = OptionalString(model, "type") ?? UntypedName;
+        if (string.Equals(type, "BPE", StringComparison.Ordinal) && OptionalBoolean(model, "byte_fallback") is true)
+        {
+            throw Unsupported(
+                "it declares a 'BPE' model with byte_fallback",
+                "LoadBpe is the call for a BPE model, and it refuses byte_fallback by name too -- neither loader reproduces this checkpoint");
         }
     }
 

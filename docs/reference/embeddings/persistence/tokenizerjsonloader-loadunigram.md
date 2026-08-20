@@ -34,10 +34,12 @@ SentencePieceVocabulary vocab = TokenizerJsonLoader.LoadUnigram("tokenizer.json"
 for a checkpoint that ships `tokenizer.json` rather than `spiece.model`. Both produce the same
 type, so the tokenizer built afterwards does not care which was used.
 
-**It refuses a file that declares a `BPE` model**, which is how a Llama-2 or Mistral v0.1
-`tokenizer.json` fails here: not for the reason those models are actually unsupported, but simply
-for declaring the wrong model kind. [`LoadBpe`](tokenizerjsonloader-loadbpe.md) is the call that
-reaches `byte_fallback` and refuses it by name. Both fail; only one of them explains why.
+**It refuses a file that declares a `BPE` model.** A plain BPE checkpoint is refused for
+declaring the wrong model kind, pointing at [`LoadBpe`](tokenizerjsonloader-loadbpe.md) instead.
+A Llama-2 or Mistral v0.1 `tokenizer.json` is a `BPE` model that also declares `byte_fallback` —
+for that shape the message names `byte_fallback` directly, since `LoadBpe` would refuse the same
+file for the same reason: neither call loads it, and the model-kind mismatch alone would have sent
+the reader on a round trip to find that out.
 
 **Applies to** — net10.0, netstandard2.0.
 

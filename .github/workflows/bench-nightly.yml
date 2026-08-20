@@ -231,10 +231,18 @@ jobs:
       # This publishes the LIVE channel from the tree as checked out, exactly as wiki.yml
       # does on a push to main. It deliberately passes no --released and no --archive: a
       # nightly must not freeze an archive directory, which belongs to a release tag.
+      #
+      # Gated to main: workflow_dispatch can target a feature branch (see the header
+      # comment and #349), and without this guard that branch's whole docs/ tree -- not
+      # just its own nightly_run.md -- would overwrite the live wiki everyone else reads.
+      # The pull request above still opens against whatever ref was dispatched; only this
+      # side-channel publish is restricted (#367).
       - name: Publish the page
+        if: github.ref_name == 'main'
         run: python tools/build_wiki.py --repo . --out wiki
 
       - name: Push what changed
+        if: github.ref_name == 'main'
         working-directory: wiki
         run: |
           set -euo pipefail
