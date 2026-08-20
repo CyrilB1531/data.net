@@ -73,6 +73,7 @@ public static class PersistenceCrossLang
                 using var stream = new MemoryStream(indexArtifact);
                 return EmbeddingIndex.Load(stream);
             }),
+            Harness.Measure("embedding_index_load_memory", () => EmbeddingIndex.Load(indexArtifact.AsMemory())),
         };
 
         var payload = new Harness.Output
