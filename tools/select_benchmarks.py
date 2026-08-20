@@ -41,6 +41,13 @@ MAP = ROOT / "bench" / "bench-map.json"
 REVISION = re.compile(r"^[0-9A-Za-z][0-9A-Za-z._/~^-]{0,254}$")
 
 
+def resolves(rev: str) -> bool:
+    """Whether git can turn rev into a commit -- tells 'unresolvable' from 'no changes'."""
+    return subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}"],
+        cwd=ROOT, capture_output=True).returncode == 0
+
+
 def changed_files(since: str, head: str) -> list[str]:
     """The tracked paths that moved, or none when the range is unusable."""
     if not (REVISION.match(since) and REVISION.match(head)):
@@ -53,6 +60,12 @@ def changed_files(since: str, head: str) -> list[str]:
     except subprocess.CalledProcessError:
         return []
     return [line for line in out.stdout.splitlines() if line]
+
+
+def print_all(data: dict, kind: str) -> None:
+    """Every mapped entry of one kind, one per line -- the safe default in two places."""
+    for name in sorted(data.get(kind, {})):
+        print(name)
 
 
 def matches(path: str, glob: str) -> bool:
@@ -96,8 +109,14 @@ def main() -> int:
     # reading of not knowing is to measure everything.
     kind = "harnesses" if args.harnesses else "benchmarks"
     if args.all or not args.since:
-        for name in sorted(data.get(kind, {})):
-            print(name)
+        print_all(data, kind)
+        return 0
+
+    # Same ignorance, wrongly read as the opposite before this: a rebase can
+    # orphan the SHA the page recorded, and an empty diff looked like none (#354).
+    if REVISION.match(args.since) and not resolves(args.since):
+        print(f"baseline {args.since!r} does not resolve; measuring everything", file=sys.stderr)
+        print_all(data, kind)
         return 0
 
     for name in select(data, changed_files(args.since, args.head), kind):
