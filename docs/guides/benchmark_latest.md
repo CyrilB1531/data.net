@@ -460,13 +460,6 @@ WarmupCount=3
 
 <!-- markdownlint-enable MD060 -->
 
-## Against rapidfuzz, in this same run
-
-Both sides on this VM in these minutes, which is what makes the ratio readable where the absolutes are not.
-
-- `indel`
-- `levenshtein`
-
 ### Lodestar.Text.Benchmarks.PersistenceBenchmarks-report-github
 
 _As of 2026-08-20, measured at commit `6cadb6a76b4e172c36be7cdb3f541d742e24373a`._

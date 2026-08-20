@@ -48,6 +48,10 @@ known reading", never "faster than the section above it".
 """
 
 SECTION = re.compile(r"^### (?P<name>\S.*)$", re.MULTILINE)
+
+# What ends a section, which is not only the next one: a '##' between two methods
+# belongs to the page, and swallowing it emitted MD024's duplicate heading (#356).
+BOUNDARY = re.compile(r"^#{1,3} ", re.MULTILINE)
 COMMIT = re.compile(r"^- Commit: `([0-9a-f]{7,40})`", re.MULTILINE)
 
 
@@ -92,7 +96,9 @@ def sections(body: str) -> dict[str, tuple[str, str]]:
     matches = list(SECTION.finditer(body))
     found: dict[str, tuple[str, str]] = {}
     for i, match in enumerate(matches):
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
+        following = matches[i + 1].start() if i + 1 < len(matches) else len(body)
+        stop = BOUNDARY.search(body, match.end())
+        end = min(following, stop.start()) if stop else following
         block = body[match.start():end].strip()
         heading, _, rest = block.partition("\n")
         found[match.group("name")] = (heading, rest.strip())
