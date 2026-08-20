@@ -47,11 +47,7 @@ runner whose hardware differs night to night, so a number here says "this is the
 known reading", never "faster than the section above it".
 """
 
-SECTION = re.compile(r"^### (?P<name>\S.*)$", re.MULTILINE)
-
-# What ends a section, which is not only the next one: a '##' between two methods
-# belongs to the page, and swallowing it emitted MD024's duplicate heading (#356).
-BOUNDARY = re.compile(r"^#{1,3} ", re.MULTILINE)
+SECTION = re.compile(r"^(?P<level>#{1,3}) (?P<name>\S.*)$", re.MULTILINE)
 COMMIT = re.compile(r"^- Commit: `([0-9a-f]{7,40})`", re.MULTILINE)
 
 
@@ -92,13 +88,19 @@ def source_commit(body: str) -> str:
 
 
 def sections(body: str) -> dict[str, tuple[str, str]]:
-    """Every '### name' block: name to (its heading line, the rest verbatim)."""
+    """Every '### name' block: name to (its heading line, the rest verbatim).
+
+    A block ends at the next heading of level 1-3, not just the next '### ':
+    otherwise a '## ' page header sitting between two '### 's bleeds into the
+    first one's own captured content, repeating once per method whose latest
+    revision happened to carry one (#356).
+    """
     matches = list(SECTION.finditer(body))
     found: dict[str, tuple[str, str]] = {}
     for i, match in enumerate(matches):
-        following = matches[i + 1].start() if i + 1 < len(matches) else len(body)
-        stop = BOUNDARY.search(body, match.end())
-        end = min(following, stop.start()) if stop else following
+        if match.group("level") != "###":
+            continue
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
         block = body[match.start():end].strip()
         heading, _, rest = block.partition("\n")
         found[match.group("name")] = (heading, rest.strip())
