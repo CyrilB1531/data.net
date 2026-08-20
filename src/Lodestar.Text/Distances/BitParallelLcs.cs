@@ -169,8 +169,13 @@ internal static class BitParallelLcs
             for (int j = 0; j < text.Length; j++)
             {
                 char tc = text[j];
-                int peqBase = tc <= 0xFF ? tc * blocks : -1;
-                Advance(v, peq, peqBase, blocks);
+                if (tc <= 0xFF)
+                {
+                    Advance(v, peq.Slice(tc * blocks, blocks), blocks);
+                }
+
+                // A text character the table cannot hold matches nothing, so every u
+                // is zero and Advance would hand v back exactly as it took it.
             }
 
             length = m - Count(v, blocks, m);
@@ -187,16 +192,19 @@ internal static class BitParallelLcs
     /// <remarks>
     /// The single-word update is one addition and one subtraction; over several words each
     /// becomes multi-precision, and the two propagate independently — which is why the carry
-    /// and the borrow are tracked separately rather than as one flag.
+    /// and the borrow are tracked separately rather than as one flag. Inlined for the reason
+    /// <c>Myers.TryBlocked</c> gives for writing its own block loop out: this runs once per
+    /// text character, and a call here costs measurably (#320).
     /// </remarks>
-    private static void Advance(Span<ulong> v, ReadOnlySpan<ulong> peq, int peqBase, int blocks)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void Advance(Span<ulong> v, ReadOnlySpan<ulong> peqRow, int blocks)
     {
         ulong carry = 0;
         ulong borrow = 0;
         for (int b = 0; b < blocks; b++)
         {
             ulong value = v[b];
-            ulong u = value & (peqBase >= 0 ? peq[peqBase + b] : 0UL);
+            ulong u = value & peqRow[b];
 
             ulong sum = value + u;
             ulong carriedSum = sum + carry;

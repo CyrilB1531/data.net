@@ -31,6 +31,7 @@ is one sentence, the issue and the commit; see
 - The toolkit is `Lodestar`: the tags no longer say `datanet`, and every package carries an embedded icon rather than none. ([#194](https://github.com/CyrilB1531/data.net/issues/194))
 - `DamerauLevenshtein`'s documented summary no longer says "Not a proper metric": unit-cost unrestricted Damerau-Levenshtein satisfies the triangle inequality and is a true metric; `Osa` is the one that does not. ([#181](https://github.com/CyrilB1531/data.net/issues/181))
 - The reference is one page per member, with a type page and a namespace index above it: `docs/reference/text/distances.md` becomes 9 type pages and 22 member pages, and the index a reader lands on is 64 lines rather than 1034. ([#189](https://github.com/CyrilB1531/data.net/issues/189))
+- **Faster, same answers.** The blocked bit-parallel LCS kernel — which `Indel` and therefore `fuzz.ratio` reach on long inputs — no longer calls a helper once per text character, and no longer re-tests inside its inner loop whether that character is one the equality table can hold. Measured **1.10×** on the pair corpus's length-512 bucket, interleaved over four replications with `Levenshtein` as an untouched control; the length-128 bucket is unchanged, its patterns spanning two machine words against eight. ([#320](https://github.com/CyrilB1531/lodestar/issues/320))
 - **Faster, same answers.** `Levenshtein.Distance`, `Lcs.SubsequenceLength` and therefore `Indel` and `fuzz.ratio` take the bit-parallel route from a pattern of 8 characters rather than 16, and neither kernel clears an equality table that `stackalloc` has already zeroed: on the pair corpus's length-32 bucket that is **2.09×** for Levenshtein (427.6 → 204.8 ns/pair) and **2.19×** for Indel (318.7 → 145.6 ns/pair), with every other bucket within noise and the 3 905-test suite unchanged. ([#208](https://github.com/CyrilB1531/lodestar/issues/208))
 
 ### Lodestar.Embeddings
@@ -38,11 +39,6 @@ is one sentence, the issue and the commit; see
 #### Changed
 
 - The package is `Lodestar.Embeddings`, and its namespaces are `Lodestar.Embeddings.*`. `Lodestar.Embeddings 0.3.1` holds the same code as `DataNet.Embeddings 0.3.0`. ([#194](https://github.com/CyrilB1531/data.net/issues/194))
-
-### Lodestar.Embeddings
-
-#### Changed
-
 - **Faster, same answers.** Loading an artifact no longer has the runtime zero the two large buffers it overwrites in full — the payload the stream fills and the vector block the base64 decoder fills. Measured **1.18×** on `embedding_index_load`, with a write-only operation re-run as an untouched control; a small artifact such as a fitted vectorizer sees nothing, its buffers never reaching the large-object heap. ([#324](https://github.com/CyrilB1531/lodestar/issues/324))
 - **Faster, same bytes.** `EmbeddingIndex.Save` no longer allocates and copies the whole vector block before encoding it: on a little-endian machine the bytes to base64 are the ones already in the span, and the copy existed only to carry an endianness swap that is a no-op there. Measured **1.46×** on processor time at the benchmark's size, with the load direction re-run as an untouched control, and the encoding pinned byte for byte by a new test. ([#323](https://github.com/CyrilB1531/lodestar/issues/323))
 
