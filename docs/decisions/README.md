@@ -52,6 +52,7 @@ a later decision uses instead.
 | [`0040`](0040-a-curve-is-a-sealed-class-per-curve.md) | A curve is a sealed class per curve, not a record and not out-parameters; `drop_intermediate`'s asymmetric defaults are reproduced | accepted | 2026-08-18 | — |
 | [`0041`](0041-one-sample-file-per-public-class.md) | One sample file per public class, named after it | accepted | 2026-08-19 | — |
 | [`0042`](0042-phonetic-encoders-refuse-a-null-word.md) | Phonetic encoders refuse a `null` word | accepted | 2026-08-20 | — |
+| [`0043`](0043-the-equality-table-is-sized-to-the-pattern.md) | The equality table is sized to the pattern, not to Latin-1 | accepted | 2026-08-20 | amends [`0004`](0004-levenshtein-myers-backlog.md) |
 
 ## What `accepted` means here
 

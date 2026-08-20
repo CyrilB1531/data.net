@@ -348,6 +348,10 @@ are **identical, all 83 instructions**. The Latin-1 path's machine code is uncha
 so the branch costs exactly nothing there — a claim no machine load can weaken, and
 one the corpus timing could only ever have bounded.
 
+Recorded in
+[decision 0043](../decisions/0043-the-equality-table-is-sized-to-the-pattern.md),
+which amends 0004's two bullets rather than editing that record.
+
 **What the reach is worth is not measured here**, because this corpus cannot say —
 it is ASCII, by construction. `docs/guides/performance.md`'s code-point section has
 the standing figure for what falling back to the DP costs on such input: 2.80 ms at
