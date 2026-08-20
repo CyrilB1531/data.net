@@ -103,6 +103,28 @@ the 2026-08-05 revision below.
 - **Lift the Latin-1 restriction.** The equality table is 256 entries, so a
   pattern containing CJK or emoji still falls back to the DP — the figures above
   do not describe those inputs. A sparse or hashed table would generalise it.
+
+> **#302 update: done, and not the way this bullet proposed.** "A sparse or hashed
+> table would generalise it" is what the code-point path already does, and #208
+> measured the cost of that: renaming both operands through a probe table makes it
+> cross the DP at a pattern of 10 where the character path crosses at 8. Reach is
+> far cheaper than generality, because the out-of-range characters are the *rare*
+> case — the 256-entry table stays exactly as it is, and a pattern that leaves
+> Latin-1 gets an open-addressed side table beside it, built only then. The wide
+> kernel is its own method for the reason #301 established: a `stackalloc` zeroes on
+> entry to the method holding it whether or not its branch is taken, so a Latin-1
+> pattern would otherwise be charged the side table's 1.25 KB on every call.
+>
+> **The corpus reached it, measured before anything was written** — the check this
+> file's testing note exists to demand. Replayed in the UTF-16 mode, 141 of the 184
+> single-word entries over the BMP cases were refused for leaving Latin-1, and 226
+> of 269 over all of them; those cases now execute the new path under an oracle
+> assertion that already existed. Property tests against the DP cover CJK, mixed
+> patterns, emoji as surrogate pairs, and a pattern of 64 distinct wide characters.
+>
+> **`TryBlocked` still refuses**, so a pattern above U+00FF longer than 64 remains
+> on the DP. The single-word path is where the refusals measured.
+
 - **The length-32 bucket sits at 1.4× behind rapidfuzz.** It already takes the
   single-word path, so the cause differs from the one fixed here and needs its own
   measurement.

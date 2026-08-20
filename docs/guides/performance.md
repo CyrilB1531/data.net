@@ -307,6 +307,41 @@ not change: below 8 the corpus has a hole, the length-8 bucket trims to a patter
 of 0 or 1, and every row therefore rests on the one bucket. `BitParallelMinPatternLength`
 stays at 8 until a corpus that can answer it exists.
 
+### CJK and emoji stop falling back to the DP (#302)
+
+The 256-entry equality table is indexed by the character, so a pattern above U+00FF
+could not be represented in it and both single-word kernels refused — the tables
+above therefore did not describe those inputs. The dense table now keeps the common
+characters and an open-addressed side table carries the rare ones, built only when
+the pattern holds one, in a method of its own so a Latin-1 pattern is never charged
+its 1.25 KB.
+
+**What had to be established first is that the Latin-1 path — `fuzz.ratio`'s — does
+not pay for the reach.** Same machine and corpus, four runs per side interleaved,
+one-minute load average 6.4 to 8.2; dev machine, non-authoritative. The corpus is
+ASCII throughout, so every bucket of it measures exactly that question:
+
+| Length | path | Levenshtein | Indel |
+| ---: | --- | ---: | ---: |
+| 8 | single-word (changed) | +0.9% | −1.3% |
+| 32 | single-word (changed) | +1.2% | −3.2% |
+| 128 | blocked (**unchanged**) | −4.9% | −0.1% |
+| 512 | blocked (**unchanged**) | −6.4% | −3.5% |
+
+The last two rows are the reading that matters: they run code this change does not
+touch, so their movement is the measurement's own noise floor — up to 6.4% under
+this load. Every changed bucket moves less than that. **So the answer is that no
+cost is detectable at this resolution, not that there is none**; a claim of "no
+regression" here is bounded by about 5%, and a tighter one needs a quieter machine.
+The design is what makes that plausible: the Latin-1 callers pass an empty side
+table, so the extra test folds away where the kernel is inlined rather than costing
+a branch per text character.
+
+**What the reach is worth is not measured here**, because this corpus cannot say —
+it is ASCII, by construction. `docs/guides/performance.md`'s code-point section has
+the standing figure for what falling back to the DP costs on such input: 2.80 ms at
+`Length = 512` against the code-point mode's 22 µs.
+
 ### The code-point mode, on input that leaves the BMP (#208)
 
 The table above is the UTF-16 mode over an ASCII corpus. The code-point mode is a
