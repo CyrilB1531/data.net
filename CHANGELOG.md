@@ -38,6 +38,10 @@ is one sentence, the issue and the commit; see
 
 ### Lodestar.Embeddings
 
+#### Changed
+
+- **An index is no longer capped by the text encoding of its vectors.** An artifact past the CLR's array ceiling was read into one `byte[]` and could not be, so the format's 1.34× expansion came straight off the largest index that could exist — about 1.04 million vectors at 384 dimensions where the raw block allowed 1.40 million. `EmbeddingIndex.Load` now reads such an artifact in segments and hands the parser a `ReadOnlySequence<byte>`, which `Utf8JsonReader` reads natively. **The bytes on disk do not change**, so an artifact written by any earlier version still loads. ([#377](https://github.com/CyrilB1531/lodestar/issues/377))
+
 #### Added
 
 - `EmbeddingIndex.Load(ReadOnlyMemory<byte>)` reads an index from bytes the caller already holds — a blob, a cache entry, an embedded resource — where handing them to the `Stream` overload made the loader copy them back out first. Measured **1.40×** on processor time against that overload, both rows in the same run, which is the read phase [#324](https://github.com/CyrilB1531/lodestar/issues/324) profiled at about a third of the load. It checks `MaxTotalBytes` before parsing rather than while reading, the length being known up front, and has no `Async` counterpart because nothing is waited on. It is the only loader to gain one: the saving scales with the artifact and no other is large enough. ([#336](https://github.com/CyrilB1531/lodestar/issues/336))

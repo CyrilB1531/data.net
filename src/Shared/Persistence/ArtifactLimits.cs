@@ -29,18 +29,29 @@ internal readonly struct ArtifactLimits
     /// <summary>Default cap on the length of any single JSON array (1 000 000).</summary>
     public const int DefaultMaxArrayLength = 1_000_000;
 
+    /// <summary>Largest artifact read into one array, the CLR's own ceiling (#377).</summary>
+    /// <remarks>
+    /// Past this the read is segmented instead, which is not a limit a caller sets but a
+    /// shape the runtime imposes. It is here rather than a <see langword="const"/> so a
+    /// test can reach the segmented path at a few kilobytes: proving it by allocating two
+    /// gibibytes is a test nobody runs, and an untested path is one nobody trusts.
+    /// </remarks>
+    public const long DefaultMaxSingleBuffer = 0x7FFFFFC7;
+
     public ArtifactLimits(
         int maxVocabularySize,
         int maxTokenLength,
         int maxJsonDepth,
         long maxTotalBytes,
-        int maxArrayLength)
+        int maxArrayLength,
+        long maxSingleBuffer = DefaultMaxSingleBuffer)
     {
         MaxVocabularySize = maxVocabularySize;
         MaxTokenLength = maxTokenLength;
         MaxJsonDepth = maxJsonDepth;
         MaxTotalBytes = maxTotalBytes;
         MaxArrayLength = maxArrayLength;
+        MaxSingleBuffer = maxSingleBuffer;
     }
 
     /// <summary>The defaults, used when the caller passes no options.</summary>
@@ -58,6 +69,9 @@ internal readonly struct ArtifactLimits
     public int MaxJsonDepth { get; }
 
     public long MaxTotalBytes { get; }
+
+    /// <summary>Largest artifact read into one array; past it the read is segmented.</summary>
+    public long MaxSingleBuffer { get; }
 
     public int MaxArrayLength { get; }
 
