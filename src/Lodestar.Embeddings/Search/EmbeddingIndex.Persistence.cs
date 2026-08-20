@@ -101,6 +101,26 @@ public sealed partial class EmbeddingIndex
         return FromPayload(JsonArtifact.ReadAllBytes(source, limits), limits);
     }
 
+    /// <summary>Reads an index from bytes already in memory, without copying them.</summary>
+    /// <remarks>
+    /// For a caller holding the artifact already — a blob, a cache entry, an embedded
+    /// resource. The stream overloads must copy such a buffer out before parsing, about a
+    /// third of a large index's load (#336); this one parses it in place, so <b>the bytes
+    /// must not change while it runs</b>. No <c>Async</c> counterpart, and none is needed.
+    /// </remarks>
+    /// <param name="artifact">The artifact, as written by <see cref="Save(Stream)"/>.</param>
+    /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
+    /// <exception cref="InvalidDataException">The artifact is malformed, of the wrong kind, of an unsupported version, internally inconsistent, or exceeds a limit.</exception>
+    public static EmbeddingIndex Load(ReadOnlyMemory<byte> artifact, ArtifactLoadOptions? options = null)
+    {
+        ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
+
+        // The stream paths check this as they accumulate; with the length known up front
+        // it is checked before anything is parsed, which refuses earlier rather than later.
+        limits.CheckTotalBytes(artifact.Length);
+        return FromPayload(artifact, limits);
+    }
+
     /// <summary>Reads an index from <paramref name="path"/>.</summary>
     /// <param name="path">The artifact file, as written by <see cref="Save(string)"/>.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
