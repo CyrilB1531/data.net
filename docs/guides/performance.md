@@ -1289,6 +1289,17 @@ amortised a call over the blocks it covered, so two blocks gained little where e
 gained more. This removes a dependency from the loop itself, so it pays wherever the
 loop runs.
 
+**`UInt128` for the carry was tried and is slower — do not retry it.** What remains
+between this kernel and rapidfuzz is about 1.8 cycles per block update (6.69 against
+4.92 on an i7-4770S at length 512), and the shape of the loop suggests the carry: C++
+reaches `_addcarry_u64` and emits one `ADC` where this reconstructs the carry with two
+comparisons and an `or`. Writing it as `UInt128 wide = (UInt128)value + u + carry`,
+which reads better and should let the JIT emit `ADD`/`ADC`, measured **0.914× at 512
+and 0.957× at 128** — four replications interleaved, control steady, no overlap
+between the series. The conversions and the shift cost more than the comparisons they
+replace. The gap is what the JIT will not emit, not something the source is holding
+wrong.
+
 Against rapidfuzz 3.14.5, both sides re-run in one window after the change:
 
 | length | rapidfuzz | Lodestar | |
