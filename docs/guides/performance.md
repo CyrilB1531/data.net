@@ -330,12 +330,23 @@ ASCII throughout, so every bucket of it measures exactly that question:
 
 The last two rows are the reading that matters: they run code this change does not
 touch, so their movement is the measurement's own noise floor — up to 6.4% under
-this load. Every changed bucket moves less than that. **So the answer is that no
-cost is detectable at this resolution, not that there is none**; a claim of "no
-regression" here is bounded by about 5%, and a tighter one needs a quieter machine.
-The design is what makes that plausible: the Latin-1 callers pass an empty side
-table, so the extra test folds away where the kernel is inlined rather than costing
-a branch per text character.
+this load. Every changed bucket moves less than that, which bounds the cost at about
+5% and no better.
+
+**A timing bound was the wrong instrument, though, and the exact answer is free.**
+The claim being tested — that the Latin-1 callers pass an empty side table, so the
+extra test folds away where the kernel is inlined — is a statement about generated
+code, not about elapsed time. Read it instead of timing it:
+
+```bash
+DOTNET_JitDisasm='SubsequenceLengthChars' DOTNET_TieredCompilation=0 dotnet run -c Release
+```
+
+against a driver that runs the Latin-1 single-word path until the JIT settles, on
+this branch and on the parent commit. Normalise the addresses and the two listings
+are **identical, all 83 instructions**. The Latin-1 path's machine code is unchanged,
+so the branch costs exactly nothing there — a claim no machine load can weaken, and
+one the corpus timing could only ever have bounded.
 
 **What the reach is worth is not measured here**, because this corpus cannot say —
 it is ASCII, by construction. `docs/guides/performance.md`'s code-point section has
