@@ -349,7 +349,9 @@ so the branch costs exactly nothing there — a claim no machine load can weaken
 one the corpus timing could only ever have bounded.
 
 The blocked path was widened the same way in #382, so no pattern falls back to the
-dynamic program for holding a character above U+00FF.
+dynamic program for holding a character above U+00FF. Both halves are recorded in
+[decision 0043](../decisions/0043-the-equality-table-is-sized-to-the-pattern.md),
+which amends 0004's two bullets rather than editing them.
 
 **What the reach is worth is not measured here**, because this corpus cannot say —
 it is ASCII, by construction. `docs/guides/performance.md`'s code-point section has
