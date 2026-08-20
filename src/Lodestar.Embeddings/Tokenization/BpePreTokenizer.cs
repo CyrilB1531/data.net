@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 using Lodestar.Internal;
 
@@ -171,16 +173,83 @@ internal sealed class BpePreTokenizer
     /// </remarks>
     private static void Apply(Regex pattern, SplitRule rule, string text, List<string> pieces)
     {
+        int[]? originalIndex = ClassificationShadow(text, out string shadow);
         int cursor = 0;
         int carried = NoOpenPiece;   // start of a piece still open, or NoOpenPiece
         // Not .Cast<Match>(): MatchCollection's own enumerator binds directly to
         // Match on both target frameworks, so .Cast<Match>() would only add an iterator.
-        foreach (Match match in pattern.Matches(text))
+        foreach (Match match in pattern.Matches(shadow))
         {
-            carried = Step(text, cursor, match.Index, match.Length, rule, carried, pieces);
-            cursor = match.Index + match.Length;
+            int start = originalIndex is null ? match.Index : originalIndex[match.Index];
+            int end = originalIndex is null
+                ? match.Index + match.Length
+                : originalIndex[match.Index + match.Length];
+            carried = Step(text, cursor, start, end - start, rule, carried, pieces);
+            cursor = end;
         }
         Close(text, cursor, rule, carried, pieces);
+    }
+
+    /// <summary>
+    /// A per-rune classification shadow of <paramref name="text"/>, out through
+    /// <paramref name="shadow"/>, and the index each shadow position maps from --
+    /// or <see langword="null"/> when nothing needed shadowing.
+    /// </summary>
+    /// <remarks>
+    /// Neither half of a surrogate pair is ever <c>\p{L}</c> or <c>\p{N}</c> alone,
+    /// so an astral rune fell to the wrong alternative of the vendored pattern
+    /// (issue #341). One placeholder per rune, not two: a bounded repeat like
+    /// Llama-3's <c>\p{N}{1,3}</c> counts characters, and two per rune let it cut
+    /// one in half -- measured, this fix's first shape did that.
+    /// </remarks>
+    private static int[]? ClassificationShadow(string text, out string shadow)
+    {
+        int probe = 0;
+        while (probe < text.Length - 1 && ShadowChar(text, probe) == '\0')
+        {
+            probe++;
+        }
+        if (probe >= text.Length - 1)
+        {
+            shadow = text;
+            return null;
+        }
+
+        var chars = new StringBuilder(text.Length);
+        var originalIndex = new List<int>(text.Length + 1);
+        int at = 0;
+        while (at < text.Length)
+        {
+            char placeholder = at < text.Length - 1 ? ShadowChar(text, at) : '\0';
+            chars.Append(placeholder == '\0' ? text[at] : placeholder);
+            originalIndex.Add(at);
+            at += placeholder == '\0' ? 1 : 2;
+        }
+        originalIndex.Add(text.Length);
+        shadow = chars.ToString();
+        return [.. originalIndex];
+    }
+
+    /// <summary>
+    /// 'A' when the rune at <paramref name="text"/>[<paramref name="at"/>] is a
+    /// surrogate pair in a Letter category, '0' for a Number category, '\0' when
+    /// it is not a surrogate pair at all or is one in neither.
+    /// </summary>
+    private static char ShadowChar(string text, int at)
+    {
+        if (!char.IsHighSurrogate(text[at]) || !char.IsLowSurrogate(text[at + 1]))
+        {
+            return '\0';
+        }
+        return CharUnicodeInfo.GetUnicodeCategory(text, at) switch
+        {
+            UnicodeCategory.UppercaseLetter or UnicodeCategory.LowercaseLetter or
+            UnicodeCategory.TitlecaseLetter or UnicodeCategory.ModifierLetter or
+            UnicodeCategory.OtherLetter => 'A',
+            UnicodeCategory.DecimalDigitNumber or UnicodeCategory.LetterNumber or
+            UnicodeCategory.OtherNumber => '0',
+            _ => '\0',
+        };
     }
 
     /// <summary>

@@ -3700,6 +3700,14 @@ BPE_PATTERNS = {
 }
 
 
+# Astral-plane letters and digits, for issue #341. Kept apart from BPE_TEXTS:
+# that list also feeds generators this fixture has no reason to touch.
+BPE_PRETOKENIZE_ASTRAL_TEXTS = [
+    "\U0001D400\U0001D401\U0001D402 \U0001D7CF\U0001D7D0\U0001D7D1 abc123",
+    "\U0001D504lphabet mixes \U0001D7DEigits with ascii",
+]
+
+
 def generate_bpe_pretokenize() -> dict:
     """Prove the split, not the vocabulary.
 
@@ -3713,7 +3721,7 @@ def generate_bpe_pretokenize() -> dict:
     case_id = 0
     for name, pattern in BPE_PATTERNS.items():
         tokenizer = _gpt2_tokenizer(None if name == "gpt2" else pattern)
-        for text in BPE_TEXTS:
+        for text in BPE_TEXTS + BPE_PRETOKENIZE_ASTRAL_TEXTS:
             pieces = [piece for piece, _ in tokenizer.pre_tokenizer.pre_tokenize_str(text)]
             cases.append({"id": case_id, "pattern": name, "text": text, "pieces": pieces})
             case_id += 1
