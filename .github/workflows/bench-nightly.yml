@@ -188,6 +188,12 @@ jobs:
       # what corrupts main's baseline chain if this page ever reaches main by merging the branch
       # in (#379) -- so a non-main run re-states the same merge-base it just read instead,
       # a commit already truly on main's own line, which is a no-op if it ever gets there.
+      #
+      # --branch, on top of that: a non-main run writes docs/guides/branch/ instead of the
+      # canonical docs/guides/ page. That is what actually keeps this branch's own numbers off
+      # main -- two different files can never collide on merge, where the baseline fix above
+      # only bounded what value a collision would carry. The branch still gets its own current
+      # numbers on every dispatch; main's copy is only ever written by a run on main itself.
       - name: Write the page
         env:
           TARGET_REF: ${{ github.ref_name }}
@@ -195,8 +201,10 @@ jobs:
           set -euo pipefail
           if [ "$TARGET_REF" = "main" ]; then
             baseline_for_page="${{ github.sha }}"
+            branch_flag=""
           else
             baseline_for_page="${{ steps.baseline.outputs.sha }}"
+            branch_flag="--branch"
           fi
           # The reports are found by the script in BenchmarkDotNet's own output directory,
           # not passed in: no path it touches comes from an argument.
@@ -206,7 +214,8 @@ jobs:
             --baseline "$baseline_for_page" \
             --runner "${{ runner.os }} / ${{ runner.arch }} (GitHub hosted)" \
             --selected $(cat selected.txt | tr '\n' ' ') \
-            --harnesses $(cat harnesses.txt | tr '\n' ' ')
+            --harnesses $(cat harnesses.txt | tr '\n' ' ') \
+            $branch_flag
 
       # Cloned here, ahead of "Open the pull request", so the aggregate below can read
       # this repo's history and land in the same pull request as tonight's own page.
@@ -218,8 +227,15 @@ jobs:
       # nightly_run.md keeps only tonight's selection; a class quiet for weeks needs
       # its last reading kept somewhere, which is what this walks the wiki's own git
       # log for. Tonight's own fresh reports, still on disk, take priority within it.
+      # --branch mirrors "Write the page" above, for the same reason (#379).
       - name: Aggregate the latest known result per method
-        run: python tools/render_benchmark_latest.py --wiki wiki --commit "${{ github.sha }}"
+        env:
+          TARGET_REF: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          branch_flag=""
+          [ "$TARGET_REF" = "main" ] || branch_flag="--branch"
+          python tools/render_benchmark_latest.py --wiki wiki --commit "${{ github.sha }}" $branch_flag
 
       - name: Open the pull request
         id: pr
@@ -231,7 +247,13 @@ jobs:
           TARGET_REF: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          if git diff --quiet -- docs/guides/nightly_run.md docs/guides/benchmark_latest.md; then
+          if [ "$TARGET_REF" = "main" ]; then
+            pages="docs/guides/nightly_run.md docs/guides/benchmark_latest.md"
+          else
+            pages="docs/guides/branch/nightly_run.md docs/guides/branch/benchmark_latest.md"
+          fi
+          # shellcheck disable=SC2086
+          if git diff --quiet -- $pages; then
             echo "neither page changed; nothing to open"
             exit 0
           fi
@@ -243,7 +265,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B "$branch"
-          git add docs/guides/nightly_run.md docs/guides/benchmark_latest.md
+          # shellcheck disable=SC2086
+          git add $pages
           git commit -m "Nightly benchmark run for $(date -u +%Y-%m-%d)"
           git push --force-with-lease origin "$branch"
           gh pr create --head "$branch" --base "$TARGET_REF" \
