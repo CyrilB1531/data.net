@@ -122,8 +122,17 @@ the 2026-08-05 revision below.
 > assertion that already existed. Property tests against the DP cover CJK, mixed
 > patterns, emoji as surrogate pairs, and a pattern of 64 distinct wide characters.
 >
-> **`TryBlocked` still refuses**, so a pattern above U+00FF longer than 64 remains
-> on the DP. The single-word path is where the refusals measured.
+> **#382 update: the blocked path too**, so no pattern above U+00FF falls back to
+> the DP for holding one. Wide symbols become extra *rows* of the blocked table —
+> `(256 + slots) × blocks` words, slot `k` at row `256 + k` — so the multi-word carry
+> and borrow are untouched and only the row index changes.
+>
+> Two defects on the way, both caught by lengths 127, 128, 129 and 300. The probe
+> masked against a fixed 128 slots, which is sound for one word only: 64 characters
+> hold at most 64 distinct symbols, and a blocked pattern has no length bound, so the
+> table could fill and leave the probe no free slot to stop on. And the LCS blocked
+> scan skips `Advance` outright for a character the dense table cannot hold — correct
+> while the pattern could never hold one, wrong the moment it can.
 
 - **The length-32 bucket sits at 1.4× behind rapidfuzz.** It already takes the
   single-word path, so the cause differs from the one fixed here and needs its own

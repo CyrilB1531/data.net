@@ -198,13 +198,16 @@ internal static class BitParallelLcs
             for (int j = 0; j < text.Length; j++)
             {
                 char tc = text[j];
-                if (tc <= 0xFF)
+                int row = tc <= 0xFF
+                    ? tc * blocks
+                    : WideAlphabet.BlockBase(keys, tc, blocks, Entries);
+                if (row >= 0)
                 {
-                    Advance(v, peq.Slice(tc * blocks, blocks), blocks);
+                    Advance(v, peq.Slice(row, blocks), blocks);
                 }
 
-                // A text character the table cannot hold matches nothing, so every u
-                // is zero and Advance would hand v back exactly as it took it.
+                // A character neither table holds matches nothing, so every u is zero
+                // and Advance would hand v back exactly as it took it.
             }
 
             length = m - Count(v, blocks, m);
