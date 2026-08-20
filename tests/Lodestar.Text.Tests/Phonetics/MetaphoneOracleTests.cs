@@ -32,4 +32,10 @@ public sealed class MetaphoneOracleTests
     {
         Assert.Equal(expected, Metaphone.Encode(word));
     }
+
+    [Fact]
+    public void Encode_NullArgument_ThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => Metaphone.Encode(null!));
+    }
 }

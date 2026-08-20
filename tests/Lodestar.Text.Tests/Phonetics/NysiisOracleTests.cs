@@ -29,4 +29,10 @@ public sealed class NysiisOracleTests
     {
         Assert.Equal(expected, Nysiis.Encode(word));
     }
+
+    [Fact]
+    public void Encode_NullArgument_ThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => Nysiis.Encode(null!));
+    }
 }
