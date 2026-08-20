@@ -33,8 +33,13 @@ is one sentence, the issue and the commit; see
 - The reference is one page per member, with a type page and a namespace index above it: `docs/reference/text/distances.md` becomes 9 type pages and 22 member pages, and the index a reader lands on is 64 lines rather than 1034. ([#189](https://github.com/CyrilB1531/data.net/issues/189))
 - **Faster, same answers.** The blocked bit-parallel LCS kernel — which `Indel` and therefore `fuzz.ratio` reach on long inputs — no longer calls a helper once per text character, and no longer re-tests inside its inner loop whether that character is one the equality table can hold. Measured **1.10×** on the pair corpus's length-512 bucket, interleaved over four replications with `Levenshtein` as an untouched control; the length-128 bucket is unchanged, its patterns spanning two machine words against eight. ([#320](https://github.com/CyrilB1531/lodestar/issues/320))
 - **Faster, same answers.** `Levenshtein.Distance`, `Lcs.SubsequenceLength` and therefore `Indel` and `fuzz.ratio` take the bit-parallel route from a pattern of 8 characters rather than 16, and neither kernel clears an equality table that `stackalloc` has already zeroed: on the pair corpus's length-32 bucket that is **2.09×** for Levenshtein (427.6 → 204.8 ns/pair) and **2.19×** for Indel (318.7 → 145.6 ns/pair), with every other bucket within noise and the 3 905-test suite unchanged. ([#208](https://github.com/CyrilB1531/lodestar/issues/208))
+- **Breaking.** `Soundex.Encode(string)`, `Nysiis.Encode(string)` and `Metaphone.Encode(string)` now throw `ArgumentNullException` on a `null` word instead of silently returning `""`, matching the stemmers next door — see [decision 0042](docs/decisions/0042-phonetic-encoders-refuse-a-null-word.md). ([#342](https://github.com/CyrilB1531/lodestar/issues/342))
 
 ### Lodestar.Embeddings
+
+#### Added
+
+- `EmbeddingIndex.Load(ReadOnlyMemory<byte>)` reads an index from bytes the caller already holds — a blob, a cache entry, an embedded resource — where handing them to the `Stream` overload made the loader copy them back out first. Measured **1.40×** on processor time against that overload, both rows in the same run, which is the read phase [#324](https://github.com/CyrilB1531/lodestar/issues/324) profiled at about a third of the load. It checks `MaxTotalBytes` before parsing rather than while reading, the length being known up front, and has no `Async` counterpart because nothing is waited on. It is the only loader to gain one: the saving scales with the artifact and no other is large enough. ([#336](https://github.com/CyrilB1531/lodestar/issues/336))
 
 #### Changed
 

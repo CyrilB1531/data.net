@@ -15,7 +15,8 @@ case does not matter. The `string` overload forwards to the span one.
 **Returns** — `string`, a variable-length code drawn from `B X S K J T F H L M N P R 0 W Y`, or
 the empty string when `value` holds no letter.
 
-**Exceptions** — none. This method does not throw, and `null` encodes to the empty string.
+**Exceptions** — `ArgumentNullException` when `value` is `null` (the `string` overload only; a
+`ReadOnlySpan<char>` cannot be null). An empty string is accepted and encodes to the empty string.
 
 **Example** — the digraphs that make the alphabet look strange.
 

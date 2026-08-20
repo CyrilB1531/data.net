@@ -147,6 +147,10 @@ def main() -> None:
         measure("embedding_index_save", lambda: np.save(io.BytesIO(), vectors)),
         measure("embedding_index_load", lambda: np.load(io.BytesIO(npy_bytes))),
         measure("embedding_index_load_file", lambda: np.load(npy_file.name)),
+        measure("embedding_index_load_memory", lambda: np.load(io.BytesIO(npy_bytes))),
+        # A floor, not a comparand: frombuffer views the bytes without parsing the
+        # header or validating anything, so it does strictly less than the rows above.
+        measure("embedding_index_view_floor", lambda: np.frombuffer(npy_bytes, dtype=np.uint8)),
     ]
 
     os.unlink(npy_file.name)

@@ -35,4 +35,10 @@ public sealed class FrenchSnowballStemmerOracleTests
     {
         Assert.Equal(expected, FrenchSnowballStemmer.Stem(word));
     }
+
+    [Fact]
+    public void Stem_NullArgument_ThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => FrenchSnowballStemmer.Stem(null!));
+    }
 }
