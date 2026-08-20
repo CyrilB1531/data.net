@@ -33,6 +33,10 @@ public sealed class WideAlphabetKernelTests
     [InlineData(63)]
     [InlineData(64)]
     [InlineData(65)]
+    [InlineData(127)]
+    [InlineData(128)]
+    [InlineData(129)]
+    [InlineData(300)]
     public void A_cjk_pattern_agrees_with_the_dynamic_program(int length)
     {
         AssertAgrees(length, Cjk, mixed: false);
@@ -44,6 +48,8 @@ public sealed class WideAlphabetKernelTests
     [InlineData(32)]
     [InlineData(64)]
     [InlineData(65)]
+    [InlineData(129)]
+    [InlineData(300)]
     public void A_pattern_of_both_alphabets_agrees_with_the_dynamic_program(int length)
     {
         AssertAgrees(length, Latin + Cjk, mixed: true);

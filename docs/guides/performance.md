@@ -348,7 +348,10 @@ are **identical, all 83 instructions**. The Latin-1 path's machine code is uncha
 so the branch costs exactly nothing there — a claim no machine load can weaken, and
 one the corpus timing could only ever have bounded.
 
-Recorded in
+The blocked path was widened the same way in #382, so no pattern falls back to the
+dynamic program for holding a character above U+00FF.
+
+Both halves are recorded in
 [decision 0043](../decisions/0043-the-equality-table-is-sized-to-the-pattern.md),
 which amends 0004's two bullets rather than editing that record.
 
