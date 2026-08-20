@@ -13,7 +13,7 @@ known reading", never "faster than the section above it".
 
 ### Lodestar.Text.Benchmarks.BatchEmbeddingBenchmarks-report-github
 
-_As of 2026-08-20, measured at commit `6cadb6a76b4e172c36be7cdb3f541d742e24373a`._
+_As of 2026-08-20, measured at commit `abfaf002802c5e98262d1a1d5072a1f6bfa644b0`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -30,27 +30,27 @@ WarmupCount=3
 
 | Method             | CorpusSize | Mean         | Error       | StdDev    | Ratio | Gen0     | Gen1    | Allocated  | Alloc Ratio |
 |------------------- |----------- |-------------:|------------:|----------:|------:|---------:|--------:|-----------:|------------:|
-| **UnitLoop**           | **1**          |     **6.147 μs** |   **0.4325 μs** | **0.0237 μs** |  **1.00** |   **0.1678** |       **-** |    **2.76 KB** |        **1.00** |
-| EmbedBatch         | 1          |     6.426 μs |   1.1243 μs | 0.0616 μs |  1.05 |   0.1907 |       - |    3.16 KB |        1.14 |
-| EmbedBatchBucketed | 1          |     6.512 μs |   0.3421 μs | 0.0187 μs |  1.06 |   0.1907 |       - |    3.16 KB |        1.14 |
+| **UnitLoop**           | **1**          |     **6.323 μs** |   **0.2313 μs** | **0.0127 μs** |  **1.00** |   **0.1678** |       **-** |    **2.76 KB** |        **1.00** |
+| EmbedBatch         | 1          |     6.236 μs |   1.0506 μs | 0.0576 μs |  0.99 |   0.1907 |       - |    3.16 KB |        1.14 |
+| EmbedBatchBucketed | 1          |     6.452 μs |   0.7766 μs | 0.0426 μs |  1.02 |   0.1907 |       - |    3.16 KB |        1.14 |
 |                    |            |              |             |           |       |          |         |            |             |
-| **UnitLoop**           | **8**          |   **111.178 μs** |   **1.2248 μs** | **0.0671 μs** |  **1.00** |   **8.1787** |  **0.2441** |  **134.29 KB** |        **1.00** |
-| EmbedBatch         | 8          |    74.442 μs |  14.5132 μs | 0.7955 μs |  0.67 |   7.6904 |  0.3662 |  127.31 KB |        0.95 |
-| EmbedBatchBucketed | 8          |    73.575 μs |   5.0715 μs | 0.2780 μs |  0.66 |   7.6904 |  0.3662 |  127.31 KB |        0.95 |
+| **UnitLoop**           | **8**          |   **111.773 μs** |   **0.5279 μs** | **0.0289 μs** |  **1.00** |   **8.1787** |  **0.2441** |  **134.29 KB** |        **1.00** |
+| EmbedBatch         | 8          |    70.883 μs |   7.2251 μs | 0.3960 μs |  0.63 |   7.6904 |  0.3662 |  127.31 KB |        0.95 |
+| EmbedBatchBucketed | 8          |    71.845 μs |   3.1481 μs | 0.1726 μs |  0.64 |   7.6904 |  0.3662 |  127.31 KB |        0.95 |
 |                    |            |              |             |           |       |          |         |            |             |
-| **UnitLoop**           | **32**         |   **412.764 μs** |  **26.4858 μs** | **1.4518 μs** |  **1.00** |  **28.3203** |  **0.9766** |  **468.71 KB** |        **1.00** |
-| EmbedBatch         | 32         |   257.827 μs |  59.9502 μs | 3.2861 μs |  0.62 |  26.8555 |  1.4648 |  441.32 KB |        0.94 |
-| EmbedBatchBucketed | 32         |   250.795 μs |  24.6911 μs | 1.3534 μs |  0.61 |  25.8789 |  1.4648 |   427.8 KB |        0.91 |
+| **UnitLoop**           | **32**         |   **403.618 μs** |  **17.6675 μs** | **0.9684 μs** |  **1.00** |  **28.3203** |  **0.9766** |  **468.71 KB** |        **1.00** |
+| EmbedBatch         | 32         |   253.712 μs |   9.3942 μs | 0.5149 μs |  0.63 |  26.8555 |  1.4648 |  441.32 KB |        0.94 |
+| EmbedBatchBucketed | 32         |   250.259 μs |  30.0168 μs | 1.6453 μs |  0.62 |  25.8789 |  1.4648 |   427.8 KB |        0.91 |
 |                    |            |              |             |           |       |          |         |            |             |
-| **UnitLoop**           | **128**        | **1,662.869 μs** | **140.3652 μs** | **7.6939 μs** |  **1.00** | **113.2813** |  **5.8594** | **1874.78 KB** |        **1.00** |
-| EmbedBatch         | 128        | 1,023.228 μs |  71.7800 μs | 3.9345 μs |  0.62 | 107.4219 | 15.6250 | 1764.42 KB |        0.94 |
-| EmbedBatchBucketed | 128        |   946.209 μs |  47.8914 μs | 2.6251 μs |  0.57 | 103.5156 | 15.6250 |  1696.9 KB |        0.91 |
+| **UnitLoop**           | **128**        | **1,627.888 μs** | **137.4659 μs** | **7.5350 μs** |  **1.00** | **113.2813** |  **5.8594** | **1874.78 KB** |        **1.00** |
+| EmbedBatch         | 128        |   996.785 μs |  45.2384 μs | 2.4797 μs |  0.61 | 107.4219 | 15.6250 | 1764.42 KB |        0.94 |
+| EmbedBatchBucketed | 128        |   979.491 μs |  38.7742 μs | 2.1253 μs |  0.60 | 103.5156 | 15.6250 |  1696.9 KB |        0.91 |
 
 <!-- markdownlint-enable MD060 -->
 
 ### Lodestar.Text.Benchmarks.BpeBenchmarks-report-github
 
-_As of 2026-08-20, measured at commit `6cadb6a76b4e172c36be7cdb3f541d742e24373a`._
+_As of 2026-08-20, measured at commit `abfaf002802c5e98262d1a1d5072a1f6bfa644b0`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -67,14 +67,14 @@ WarmupCount=3
 
 | Method  | Mean     | Error    | StdDev  | Ratio | Gen0       | Allocated | Alloc Ratio |
 |-------- |---------:|---------:|--------:|------:|-----------:|----------:|------------:|
-| Unigram | 607.0 ms | 49.79 ms | 2.73 ms |  1.00 | 32000.0000 | 519.51 MB |        1.00 |
-| Bpe     | 559.4 ms | 46.95 ms | 2.57 ms |  0.92 |  7000.0000 | 112.18 MB |        0.22 |
+| Unigram | 591.9 ms | 11.34 ms | 0.62 ms |  1.00 | 32000.0000 | 519.51 MB |        1.00 |
+| Bpe     | 546.2 ms | 13.74 ms | 0.75 ms |  0.92 |  7000.0000 | 112.18 MB |        0.22 |
 
 <!-- markdownlint-enable MD060 -->
 
 ### Lodestar.Text.Benchmarks.BpeScalingBenchmarks-report-github
 
-_As of 2026-08-20, measured at commit `6cadb6a76b4e172c36be7cdb3f541d742e24373a`._
+_As of 2026-08-20, measured at commit `abfaf002802c5e98262d1a1d5072a1f6bfa644b0`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -89,12 +89,12 @@ WarmupCount=3
 
 <!-- markdownlint-disable MD060 -->
 
-| Method                    | Length | Mean     | Error    | StdDev  | Gen0   | Allocated |
-|-------------------------- |------- |---------:|---------:|--------:|-------:|----------:|
-| **BpeOnOnePathologicalToken** | **512**    | **103.7 μs** |  **2.49 μs** | **0.14 μs** | **1.2207** |  **20.38 KB** |
-| **BpeOnOnePathologicalToken** | **1024**   | **221.4 μs** | **32.67 μs** | **1.79 μs** | **2.4414** |  **39.93 KB** |
-| **BpeOnOnePathologicalToken** | **2048**   | **483.9 μs** | **27.12 μs** | **1.49 μs** | **3.9063** |  **78.98 KB** |
-| **BpeOnOnePathologicalToken** | **4096**   | **987.9 μs** | **41.70 μs** | **2.29 μs** | **7.8125** | **157.03 KB** |
+| Method                    | Length | Mean     | Error    | StdDev  | Gen0   | Gen1   | Allocated |
+|-------------------------- |------- |---------:|---------:|--------:|-------:|-------:|----------:|
+| **BpeOnOnePathologicalToken** | **512**    | **104.7 μs** |  **3.36 μs** | **0.18 μs** | **1.2207** |      **-** |  **20.38 KB** |
+| **BpeOnOnePathologicalToken** | **1024**   | **223.5 μs** |  **6.32 μs** | **0.35 μs** | **2.4414** |      **-** |  **39.93 KB** |
+| **BpeOnOnePathologicalToken** | **2048**   | **486.1 μs** | **36.88 μs** | **2.02 μs** | **4.3945** |      **-** |  **78.98 KB** |
+| **BpeOnOnePathologicalToken** | **4096**   | **975.5 μs** | **43.55 μs** | **2.39 μs** | **8.7891** | **0.9766** | **157.03 KB** |
 
 <!-- markdownlint-enable MD060 -->
 
@@ -462,7 +462,7 @@ WarmupCount=3
 
 ### Lodestar.Text.Benchmarks.PersistenceBenchmarks-report-github
 
-_As of 2026-08-20, measured at commit `6cadb6a76b4e172c36be7cdb3f541d742e24373a`._
+_As of 2026-08-20, measured at commit `abfaf002802c5e98262d1a1d5072a1f6bfa644b0`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -479,14 +479,14 @@ WarmupCount=3
 
 | Method                 | Mean      | Error     | StdDev    | Gen0     | Gen1     | Gen2     | Allocated |
 |----------------------- |----------:|----------:|----------:|---------:|---------:|---------:|----------:|
-| VocabTxt               |  4.408 ms | 2.4360 ms | 0.1335 ms | 117.1875 | 109.3750 |  39.0625 |   3.62 MB |
-| TokenizerJsonWordPiece | 11.636 ms | 2.3406 ms | 0.1283 ms | 187.5000 | 171.8750 |  46.8750 |   5.72 MB |
-| TokenizerJsonUnigram   | 12.475 ms | 0.9455 ms | 0.0518 ms |  93.7500 |  78.1250 |  31.2500 |   4.64 MB |
-| SpieceModel            |  3.898 ms | 4.2486 ms | 0.2329 ms | 109.3750 | 101.5625 |  31.2500 |   3.36 MB |
-| TfidfSave              |  1.907 ms | 0.2954 ms | 0.0162 ms |  31.2500 |  25.3906 |  25.3906 |   2.09 MB |
-| TfidfLoad              |  4.436 ms | 0.5713 ms | 0.0313 ms |  85.9375 |  78.1250 |  23.4375 |   2.86 MB |
-| EmbeddingIndexSave     |  6.866 ms | 0.8194 ms | 0.0449 ms | 476.5625 | 476.5625 | 476.5625 |  39.64 MB |
-| EmbeddingIndexLoad     |  6.026 ms | 1.6341 ms | 0.0896 ms | 531.2500 | 500.0000 | 468.7500 |  35.35 MB |
+| VocabTxt               |  4.438 ms | 2.4610 ms | 0.1349 ms | 117.1875 | 109.3750 |  39.0625 |   3.62 MB |
+| TokenizerJsonWordPiece | 11.614 ms | 4.5159 ms | 0.2475 ms | 187.5000 | 171.8750 |  46.8750 |   5.72 MB |
+| TokenizerJsonUnigram   | 12.469 ms | 0.6261 ms | 0.0343 ms |  93.7500 |  78.1250 |  31.2500 |   4.64 MB |
+| SpieceModel            |  3.955 ms | 3.9324 ms | 0.2155 ms | 109.3750 | 101.5625 |  31.2500 |   3.36 MB |
+| TfidfSave              |  1.852 ms | 0.2845 ms | 0.0156 ms |  27.3438 |  23.4375 |  23.4375 |   2.09 MB |
+| TfidfLoad              |  4.441 ms | 1.3868 ms | 0.0760 ms |  85.9375 |  78.1250 |  23.4375 |   2.86 MB |
+| EmbeddingIndexSave     |  6.880 ms | 0.7324 ms | 0.0401 ms | 476.5625 | 476.5625 | 476.5625 |  39.64 MB |
+| EmbeddingIndexLoad     |  6.029 ms | 0.8890 ms | 0.0487 ms | 531.2500 | 500.0000 | 468.7500 |  35.35 MB |
 
 <!-- markdownlint-enable MD060 -->
 
