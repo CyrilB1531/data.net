@@ -1,10 +1,10 @@
 {
-  "_why": "Which benchmarks a change makes worth re-running. Deliberately coarse: a benchmark run for nothing costs minutes, one not run hides a regression, so the globs are directories and over-include on purpose. 'benchmarks' are BenchmarkDotNet classes, measured against themselves; 'harnesses' are the cross-language pairs, which is where the claim against rapidfuzz is actually measured. tools/check_bench_map.py refuses either kind if this file does not name it. A harness also names the corpus generators it needs: those corpora are written rather than committed, and a runner has none of them.",
+  "_why": "Which benchmarks a change makes worth re-running. Deliberately coarse: a benchmark run for nothing costs minutes, one not run hides a regression, so the globs are directories and over-include on purpose. 'benchmarks' are BenchmarkDotNet classes, measured against themselves; 'harnesses' are the cross-language pairs, which is where the claim against rapidfuzz is actually measured. tools/check_bench_map.py refuses either kind if this file does not name it. A harness also names the corpus generators it needs: those corpora are written rather than committed, and a runner has none of them. CrossLang/ is not one 'always' unit (#351): Harness.cs is the base every cross-language file builds on, but each comparison's own file -- PersistenceCrossLang.cs, MetricsCrossLang.cs, and so on -- belongs to that one harness's own sources, not to all four. Measured: a single line added to PersistenceCrossLang.cs previously matched 'always' and selected all 15 benchmark classes and all 4 harnesses; it now selects one.",
   "always": [
     "src/Shared/**",
     "bench/Lodestar.Text.Benchmarks/BenchCorpus.cs",
     "bench/Lodestar.Text.Benchmarks/Program.cs",
-    "bench/Lodestar.Text.Benchmarks/CrossLang/**",
+    "bench/Lodestar.Text.Benchmarks/CrossLang/Harness.cs",
     "bench/python/harness.py",
     "bench/compare.py",
     "bench/corpus/**"
@@ -80,7 +80,9 @@
       "generate": [],
       "sources": [
         "src/Lodestar.Text/Distances/**",
-        "src/Lodestar.Text/Text/**"
+        "src/Lodestar.Text/Text/**",
+        "bench/Lodestar.Text.Benchmarks/CrossLang/LevenshteinCrossLang.cs",
+        "bench/Lodestar.Text.Benchmarks/CrossLang/PairsHarness.cs"
       ]
     },
     "indel": {
@@ -90,7 +92,9 @@
       "generate": [],
       "sources": [
         "src/Lodestar.Text/Distances/**",
-        "src/Lodestar.Text/Text/**"
+        "src/Lodestar.Text/Text/**",
+        "bench/Lodestar.Text.Benchmarks/CrossLang/IndelCrossLang.cs",
+        "bench/Lodestar.Text.Benchmarks/CrossLang/PairsHarness.cs"
       ]
     },
     "metrics": {
@@ -101,7 +105,8 @@
         "bench/corpus/generate_metrics.py"
       ],
       "sources": [
-        "src/Lodestar.Metrics/**"
+        "src/Lodestar.Metrics/**",
+        "bench/Lodestar.Text.Benchmarks/CrossLang/MetricsCrossLang.cs"
       ]
     },
     "persistence": {
@@ -115,7 +120,8 @@
         "src/Lodestar.Embeddings/Persistence/**",
         "src/Lodestar.Embeddings/Search/**",
         "src/Lodestar.Text/Vectorization/**",
-        "src/Lodestar.Text/Persistence/**"
+        "src/Lodestar.Text/Persistence/**",
+        "bench/Lodestar.Text.Benchmarks/CrossLang/PersistenceCrossLang.cs"
       ]
     }
   }
