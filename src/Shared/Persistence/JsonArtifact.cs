@@ -124,16 +124,10 @@ internal static class JsonArtifact
         Guard.NotNull(stream);
         CheckDeclaredLength(stream, limits);
 
-        // Well under the array ceiling, so a segment is always allocatable, and large
-        // enough that even a maximal artifact is a handful of them rather than thousands.
-        int segmentSize = (int)Math.Min(limits.MaxSingleBuffer, 64L * 1024 * 1024);
-        Segment? head = null;
-        Segment? tail = null;
-        long total = 0;
-
+        var chain = new SegmentChain(limits);
         while (true)
         {
-            byte[] block = new byte[segmentSize];
+            byte[] block = chain.NextBlock();
             int filled = 0;
             int read;
             while (filled < block.Length && (read = stream.Read(block, filled, block.Length - filled)) > 0)
@@ -141,9 +135,80 @@ internal static class JsonArtifact
                 filled += read;
             }
 
-            if (filled == 0)
+            if (!chain.Add(block, filled, limits))
             {
                 break;
+            }
+        }
+
+        return chain.Build();
+    }
+
+    /// <summary>Asynchronous counterpart of <see cref="ReadAllSegments"/>.</summary>
+    /// <remarks>
+    /// Same chain, same bounds, same shape: only the read differs, which is why the
+    /// bookkeeping lives in <see cref="SegmentChain"/> rather than twice here. #377 gave
+    /// the synchronous read its ceiling and left this one behind, so the same index loaded
+    /// one way and failed the other (#396).
+    /// </remarks>
+    /// <param name="stream">The stream to read; never disposed here.</param>
+    /// <param name="limits">Bounds applied while reading.</param>
+    /// <param name="cancellationToken">Cancels between reads; a partial chain is discarded.</param>
+    public static async Task<ReadOnlySequence<byte>> ReadAllSegmentsAsync(
+        Stream stream,
+        ArtifactLimits limits,
+        CancellationToken cancellationToken)
+    {
+        Guard.NotNull(stream);
+        CheckDeclaredLength(stream, limits);
+
+        var chain = new SegmentChain(limits);
+        while (true)
+        {
+            byte[] block = chain.NextBlock();
+            int filled = 0;
+            int read;
+            while (filled < block.Length
+                && (read = await ReadChunkAsync(stream, block, filled, block.Length - filled, cancellationToken).ConfigureAwait(false)) > 0)
+            {
+                filled += read;
+            }
+
+            if (!chain.Add(block, filled, limits))
+            {
+                break;
+            }
+        }
+
+        return chain.Build();
+    }
+
+    /// <summary>The chain both segmented reads build, and the bounds both apply to it.</summary>
+    /// <remarks>
+    /// Extracted so the two reads differ only in their read call. Duplicating the
+    /// accumulate-and-check would be how the synchronous and asynchronous paths drift
+    /// apart again, which is the defect #396 exists to close rather than to repeat.
+    /// </remarks>
+    private sealed class SegmentChain
+    {
+        // Well under the array ceiling, so a segment is always allocatable, and large
+        // enough that even a maximal artifact is a handful of them rather than thousands.
+        private readonly int segmentSize;
+        private Segment? head;
+        private Segment? tail;
+        private long total;
+
+        public SegmentChain(in ArtifactLimits limits) =>
+            segmentSize = (int)Math.Min(limits.MaxSingleBuffer, 64L * 1024 * 1024);
+
+        public byte[] NextBlock() => new byte[segmentSize];
+
+        /// <summary>Appends what was read, and answers whether the stream may hold more.</summary>
+        public bool Add(byte[] block, int filled, in ArtifactLimits limits)
+        {
+            if (filled == 0)
+            {
+                return false;
             }
 
             total += filled;
@@ -158,15 +223,13 @@ internal static class JsonArtifact
                 tail = tail.Append(block, filled);
             }
 
-            if (filled < block.Length)
-            {
-                break;
-            }
+            return filled == block.Length;
         }
 
-        return head is null
-            ? ReadOnlySequence<byte>.Empty
-            : new ReadOnlySequence<byte>(head, 0, tail!, tail!.Memory.Length);
+        public ReadOnlySequence<byte> Build() =>
+            head is null
+                ? ReadOnlySequence<byte>.Empty
+                : new ReadOnlySequence<byte>(head, 0, tail!, tail!.Memory.Length);
     }
 
     /// <summary>One link of the read's chain, which is all <see cref="ReadOnlySequence{T}"/> asks for.</summary>
