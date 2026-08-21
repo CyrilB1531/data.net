@@ -659,6 +659,47 @@ placed the gate, not what it is judged on.
   which is the size of the effect being looked for. Publishing each state once and
   alternating only the runs is what made the rows above readable.
 
+### The blocked equality table, sized from the wrong thing (#413)
+
+`#302` sized the blocked routes' side rows from the **pattern's length** rather than from
+its characters above Latin-1, so the table went from `256 × ⌈m/64⌉` words to about
+`m²/32` — for every pattern, an ASCII one included. Past `m ≈ 262 000` the product
+wrapped in `int`, and `Rent` either threw out of a distance function or returned a table
+too small to index. No path produced a wrong distance; the failure was an exception.
+
+The table is arithmetic, so its size is stated rather than measured:
+
+| pattern | before | after |
+| ---: | ---: | ---: |
+| 10 000 ASCII | 41.5 MB | **0.3 MB** |
+| 65 536 ASCII | 2 149 MB | **2.1 MB** |
+| 262 144 ASCII | wrapped | **8.4 MB** |
+| 10 000 CJK | 41.5 MB | 41.5 MB |
+
+**A pattern that genuinely holds wide characters is unchanged**, which is the honest half:
+the count is of occurrences, not of distinct symbols, because distinct costs a set where
+occurrences cost the pass the fill loop makes anyway. A repetitive CJK pattern is
+therefore still sized for an alphabet it does not have.
+
+Intel i7-4770S, .NET 10.0.11, BenchmarkDotNet short job; dev machine, non-authoritative.
+`BlockedTableBenchmarks`, each state published once:
+
+| | before | after | |
+| --- | ---: | ---: | ---: |
+| Latin 10 000 | 8 296 µs | 6 281 µs | −24% |
+| Latin 65 536 | 357 690 µs | 239 203 µs | −33% |
+| CJK 10 000 | 9 658 µs | 9 030 µs | −7%, within noise |
+
+- **`Allocated` reads zero on every row, before and after, and always will.**
+  `ArrayPool.Rent` amortises the buffer across invocations, so nothing is attributed to
+  the benchmark body — the instrument the issue proposed cannot see this claim. What the
+  rows show is the `Clear()` of whatever was rented, and the magnitudes agree with the
+  arithmetic: clearing 2.1 GB costs about 200 ms, and 118 of them are what the ASCII row
+  gives back at 65 536.
+- **The CJK row moving least is the check that the reading is real.** Its table is the
+  one thing this change does not touch, so a row that improved there would have meant the
+  measurement was reading something else.
+
 ### The code-point mode, on input that leaves the BMP (#208)
 
 The table above is the UTF-16 mode over an ASCII corpus. The code-point mode is a

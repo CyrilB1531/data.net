@@ -268,9 +268,18 @@ internal static class Myers
         int m = pattern.Length;
         int blocks = (m + 63) / 64;
 
-        // Peq is 256 x blocks: one equality mask per Latin-1 character per word.
-        int slots = WideAlphabet.CapacityFor(m);
-        int peqLength = (256 + slots) * blocks;
+        // Peq is 256 x blocks: one equality mask per Latin-1 character per word, plus a row
+        // per slot the pattern's characters above Latin-1 need — none, for a Latin-1 one.
+        int slots = WideAlphabet.CapacityFor(WideAlphabet.CountWide(pattern));
+        long rows = (long)(256 + slots) * blocks;
+        if (rows > WideAlphabet.MaxTableLength)
+        {
+            // The DP is O(min(n, m)) in memory where this is O(m·blocks), so a pattern that
+            // cannot be tabulated is handed back rather than rounded into a wrapped Rent (#413).
+            return false;
+        }
+
+        int peqLength = (int)rows;
         ulong[] peqRented = ArrayPool<ulong>.Shared.Rent(peqLength);
         char[] keysRented = ArrayPool<char>.Shared.Rent(slots);
         ulong[] vpRented = ArrayPool<ulong>.Shared.Rent(blocks);

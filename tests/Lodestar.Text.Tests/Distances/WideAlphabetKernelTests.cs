@@ -165,6 +165,62 @@ public sealed class WideAlphabetKernelTests
         Assert.True(Myers.TryDistance(pattern.AsSpan(), text.AsSpan(), out _));
     }
 
+    /// <summary>A Latin-1 pattern against a text that leaves Latin-1, on the blocked route.</summary>
+    /// <remarks>
+    /// The pattern allocates no side rows since #413, so the blocked lookup meets an empty probe
+    /// table — which indexed it and threw until <c>BlockBase</c> gained the guard <c>Lookup</c>
+    /// has had since #302. A pattern of ASCII and a text of CJK is an ordinary pairing, not a
+    /// curiosity, and nothing exercised it above one machine word.
+    /// </remarks>
+    [Theory]
+    [InlineData(65)]
+    [InlineData(200)]
+    [InlineData(1000)]
+    public void A_latin_pattern_against_a_wide_text_agrees_with_the_dynamic_program(int length)
+    {
+        var rng = new Random(length);
+        string pattern = Random(rng, Latin, length);
+        string text = Random(rng, Cjk, length + 5);
+        AssertPair(pattern, text);
+    }
+
+    /// <summary>Past the length at which the table's own arithmetic used to wrap.</summary>
+    /// <remarks>
+    /// The blocked table was <c>(256 + slots) × blocks</c> in unchecked <c>int</c>, and slots came
+    /// from the pattern's length: past about 262 000 the product wrapped, and <c>Rent</c> either
+    /// threw out of a distance function or returned a table too small to index. The answer is
+    /// asserted by construction rather than against the DP, which is quadratic and cannot be run
+    /// at this size (#413).
+    /// </remarks>
+    [Theory]
+    [InlineData(262145, 0)]
+    [InlineData(262145, 10)]
+    public void A_pattern_past_the_old_wrap_point_still_answers(int length, int wideCount)
+    {
+        char[] a = new char[length];
+        for (int i = 0; i < length; i++)
+        {
+            a[i] = Latin[i % Latin.Length];
+        }
+
+        // Spread the wide characters out so none of them lands on an edit below.
+        for (int k = 0; k < wideCount; k++)
+        {
+            a[(k * 7919) % length] = Cjk[k % Cjk.Length];
+        }
+
+        char[] b = (char[])a.Clone();
+        int[] edits = [3, length / 2, length - 4];
+        foreach (int at in edits)
+        {
+            b[at] = b[at] == 'z' ? 'y' : 'z';
+        }
+
+        string x = new(a), y = new(b);
+        Assert.Equal(edits.Length, Levenshtein.Distance(x.AsSpan(), y.AsSpan(), TextElement.Utf16Unit));
+        Assert.Equal(length - edits.Length, Lcs.SubsequenceLength(x.AsSpan(), y.AsSpan(), TextElement.Utf16Unit));
+    }
+
     private static void AssertAgrees(int length, string alphabet, bool mixed)
     {
         var rng = new Random(length + (mixed ? 1000 : 0));
