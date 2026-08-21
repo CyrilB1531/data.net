@@ -420,6 +420,69 @@ each run, is the one to read across the three. Nothing on any row allocates.
   corpus in #208, and on wide input the two kernels no longer cross at the same
   place. Splitting it is its own change and needs that sweep, not this band.
 
+### The corpus gains a wide half, and the two sides slow down differently (#406)
+
+Every bucket was ASCII until now, so no number on this page described what either
+side does above Latin-1. `bench/corpus/pairs.json` carries eight buckets since #406:
+the same four lengths drawn from 27 Latin symbols, and four more drawn from 27 CJK
+ones. Both alphabets stay inside the BMP on purpose — UTF-16 units and code points
+coincide there, so the two sides still measure the same quantity, which a
+supplementary character would break.
+
+**The wide buckets reach the kernel, which is checked rather than assumed.**
+`BucketRouteDiagnostics` splits a length-32 bucket on the dispatch's own criterion
+and reads 833 of 1 000 CJK pairs on the bit-parallel route against 861 Latin. A
+bucket whose pairs trimmed below the gate would have measured the dynamic program
+under a wide-sounding name.
+
+Intel i7-4770S, .NET 10.0.11, rapidfuzz 3.14.5 / Python 3.12.3; dev machine,
+non-authoritative. Each pair of sides back to back, Python first, one-minute load
+average 3.91 falling to 1.71 across the window.
+
+| alphabet | length | Python ns/pair | C# ns/pair | speedup (py/C#) |
+| --- | ---: | ---: | ---: | :--- |
+| latin | 8 | 164.7 | 29.3 | 5.62x C# faster |
+| latin | 32 | 291.2 | 189.2 | 1.54x C# faster |
+| latin | 128 | 2255.6 | 1778.8 | 1.27x C# faster |
+| latin | 512 | 18113.7 | 22308.3 | 1.23x Py faster |
+| cjk | 8 | 162.8 | 29.5 | 5.51x C# faster |
+| cjk | 32 | 404.9 | 311.1 | 1.30x C# faster |
+| cjk | 128 | 3333.7 | 2863.6 | 1.16x C# faster |
+| cjk | 512 | 27670.7 | 26315.1 | 1.05x C# faster |
+
+Levenshtein above, Indel below:
+
+| alphabet | length | Python ns/pair | C# ns/pair | speedup (py/C#) |
+| --- | ---: | ---: | ---: | :--- |
+| latin | 8 | 115.1 | 34.3 | 3.35x C# faster |
+| latin | 32 | 183.9 | 118.5 | 1.55x C# faster |
+| latin | 128 | 561.5 | 883.7 | 1.57x Py faster |
+| latin | 512 | 6037.7 | 10046.4 | 1.66x Py faster |
+| cjk | 8 | 136.3 | 34.6 | 3.94x C# faster |
+| cjk | 32 | 337.5 | 261.2 | 1.29x C# faster |
+| cjk | 128 | 1896.6 | 1501.9 | 1.26x C# faster |
+| cjk | 512 | 15901.1 | 11931.5 | 1.33x C# faster |
+
+- **Read the speedup column last, and only after the two it is made of.** On Indel
+  the ranking flips with the alphabet — Lodestar is 1.66× behind on Latin at 512 and
+  1.33× ahead on CJK — and **it is not Lodestar that got faster.** rapidfuzz goes
+  from 6 038 ns to 15 901 on the same lengths, up 163%; Lodestar goes from 10 046 to
+  11 932, up 19%. The column moved because the other side moved.
+- **What each side pays for is different, and both were measured.** Lodestar's cost
+  is the side table #302 added, and it is the same 1.2×–1.6× the gate benchmarks
+  price on synthetic bands. rapidfuzz's is not about the alphabet at all: it tracks
+  **CPython's internal string kind**. A control over three 27-symbol alphabets at
+  length 512 reads 19 894 ns on ASCII, 19 445 on accented Latin-1 — stored one byte
+  a character, like ASCII — and 29 522 on CJK, stored two. Above U+00FF the
+  interpreter widens the string and rapidfuzz pays for it.
+- **Both implementations draw their line at U+00FF, for unrelated reasons.** One
+  indexes a 256-entry equality table, the other switches storage kind. Nothing
+  arranged that, and it is what makes the wide buckets a fair test rather than a
+  flattering one: the same threshold is crossed on both sides at the same character.
+- **The Latin buckets are byte-identical to the ones this page already published.**
+  One seeded stream feeds the generator and the CJK draws come strictly after the
+  Latin ones, so every figure above the CJK rows still measures what it always did.
+
 ### The code-point mode, on input that leaves the BMP (#208)
 
 The table above is the UTF-16 mode over an ASCII corpus. The code-point mode is a

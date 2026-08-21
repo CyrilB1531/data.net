@@ -50,7 +50,13 @@ internal static class PairsHarness
         foreach (Bucket bucket in corpus.Buckets)
         {
             double ns = TimeBucket(bucket.Pairs, measure);
-            results.Add(new BucketResult { Length = bucket.Length, Pairs = bucket.Pairs.Count, NsPerPair = ns });
+            results.Add(new BucketResult
+            {
+                Length = bucket.Length,
+                Alphabet = bucket.Alphabet,
+                Pairs = bucket.Pairs.Count,
+                NsPerPair = ns,
+            });
         }
 
         return results;
@@ -128,6 +134,15 @@ internal static class PairsHarness
     public sealed record Bucket
     {
         [JsonPropertyName("length")] public int Length { get; init; }
+
+        /// <summary>Which alphabet the pairs are drawn from — <c>latin</c> or <c>cjk</c>.</summary>
+        /// <remarks>
+        /// A bucket's identity was its length until #406 put a wide twin beside every Latin one.
+        /// Anything selecting a bucket has to read both: two buckets answer to 32 now, and a
+        /// selection on the length alone silently takes whichever the file happens to list first.
+        /// </remarks>
+        [JsonPropertyName("alphabet")] public string Alphabet { get; init; } = "";
+
         [JsonPropertyName("pairs")] public IReadOnlyList<string[]> Pairs { get; init; } = [];
     }
 
@@ -151,6 +166,10 @@ internal static class PairsHarness
     public sealed record BucketResult
     {
         [JsonPropertyName("length")] public int Length { get; init; }
+
+        /// <summary>The bucket's alphabet, carried through so <c>bench/compare.py</c> can join on it.</summary>
+        [JsonPropertyName("alphabet")] public string Alphabet { get; init; } = "";
+
         [JsonPropertyName("pairs")] public int Pairs { get; init; }
         [JsonPropertyName("ns_per_pair")] public double NsPerPair { get; init; }
     }

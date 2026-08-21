@@ -229,8 +229,9 @@ python bench/compare.py --format=gfm   # a real markdown table, read natively by
 ```
 
 Results land in `bench/results/` (git-ignored: they are machine-specific and not
-authoritative). The corpus is ASCII, so UTF-16 units and code points coincide and
-both sides compute identical distances. `--format=gfm` works on every mode below
+authoritative). Every bucket stays inside the BMP, so UTF-16 units and code points
+coincide and both sides compute identical distances — and a result is keyed on its
+alphabet as well as its length, two buckets answering to each length since #406. `--format=gfm` works on every mode below
 the same way; the plain table stays the default because it is the one meant for
 a terminal.
 
@@ -258,15 +259,25 @@ it, and the two BenchmarkDotNet classes build their operands through
 over identical inputs, and an extracted builder is what makes that true by
 construction rather than by inspection.
 
-**What this corpus reaches, and what it cannot.** Measured over all four buckets:
-27 distinct symbols, every one ASCII (`U+007A` at most), 4–27 distinct per
-pattern. Any dense alphabet table fits at every length, so a bit-parallel LCS
-kernel would be exercised throughout — the failure of #52 and #267, where the new
-path was never reached at all, does not apply here. The converse does: nothing in
-this corpus falls back and nothing rises above Latin-1, so it cannot show what a
-refusal costs. That needs its own cases, the way `long_ascii`, `long_latin` and
-`long_supplementary` were appended to the oracle corpora — and until the corpus
-grows them, the gate benchmarks' CJK band is where a refusal is priced (#383).
+**What this corpus reaches.** Eight buckets since #406: four lengths drawn from 27
+Latin symbols, every one ASCII (`U+007A` at most), and four more of the same
+lengths drawn from 27 CJK symbols, every one above `U+00FF`. Both alphabets carry
+4–27 distinct symbols per pattern, so the dense equality table fits at every
+length and the bit-parallel kernels are exercised throughout — the failure of #52
+and #267, where the new path was never reached at all, does not apply here.
+
+The wide half is what the corpus could not do until #406, and it is what makes a
+refusal priceable on the input that actually ships rather than on a synthetic
+band. **A wide bucket is only a wide measurement if its pairs reach the kernel**,
+which a timing cannot tell you: run `BucketRouteDiagnostics`, which splits the
+length-32 bucket of either alphabet on the dispatch's own criterion. It reads 833
+of 1 000 CJK pairs on the kernel against 861 Latin.
+
+Both alphabets stay inside the BMP on purpose. UTF-16 units and code points
+coincide there, so the C# default and rapidfuzz measure the same quantity;
+supplementary characters would break that, an emoji being one code point and two
+units. The supplementary case is covered where it can be — the property tests
+against the dynamic program, extended for it in #302.
 
 `FuzzBenchmarks.Ratio` also runs this path, on one fixed pair of 43-character
 sentences. That is a point, not a curve; `IndelBenchmarks` is the sweep.

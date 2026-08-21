@@ -55,10 +55,15 @@ def run(distance, out_name: str) -> None:
     results = []
     for bucket in corpus["buckets"]:
         length = bucket["length"]
+        # Two buckets answer to every length since #406; the alphabet is what tells
+        # them apart, here and in the join bench/compare.py makes downstream.
+        alphabet = bucket["alphabet"]
         pairs = bucket["pairs"]
         ns = time_bucket(pairs, distance)
-        results.append({"length": length, "pairs": len(pairs), "ns_per_pair": ns})
-        print(f"  len={length:>4}  {ns:10.1f} ns/pair")
+        results.append(
+            {"length": length, "alphabet": alphabet, "pairs": len(pairs), "ns_per_pair": ns}
+        )
+        print(f"  {alphabet:>5} len={length:>4}  {ns:10.1f} ns/pair")
 
     payload = {
         "metadata": {
