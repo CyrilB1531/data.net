@@ -46,6 +46,20 @@ directly, so after `Affixes.Trim` the pattern is exactly `Band` long and the
 dynamic program runs beside the kernel as the baseline. They answer *how much*
 the kernel wins by at a given band.
 
+Each runs that band twice, over two alphabets of 27 symbols: the Latin one every
+band used before, and a CJK one above `U+00FF`. Below that boundary the kernels
+index their 256-entry equality table directly; above it a pattern took the DP
+until #302 and #382 gave it a side table beside the dense one. So `Dp_Cjk` is what
+a refusal costs and `Kernel_Cjk` is what the side table costs, on shapes the Latin
+rows measure in the same process — `BandedPair` takes the alphabet as a parameter
+so that the alphabet is the only thing between the two (#383).
+
+**A CJK row is only a CJK measurement if the band reaches the kernel**, and a
+timing cannot tell you it did: both routes return the same number. The gate is 8,
+so bands 4 and 6 take the DP on either alphabet by design, and
+`WideAlphabetKernelTests` asserts the route for every band at or above it rather
+than leaving it to be read off a ratio.
+
 They cannot answer *where to put the gate*, and it is worth being explicit about
 why, because the shape invites the mistake: below the gate the dispatch sends
 both rows to the DP, so the ratio is 1 and the crossing is invisible exactly
@@ -251,7 +265,8 @@ kernel would be exercised throughout — the failure of #52 and #267, where the 
 path was never reached at all, does not apply here. The converse does: nothing in
 this corpus falls back and nothing rises above Latin-1, so it cannot show what a
 refusal costs. That needs its own cases, the way `long_ascii`, `long_latin` and
-`long_supplementary` were appended to the oracle corpora.
+`long_supplementary` were appended to the oracle corpora — and until the corpus
+grows them, the gate benchmarks' CJK band is where a refusal is priced (#383).
 
 `FuzzBenchmarks.Ratio` also runs this path, on one fixed pair of 43-character
 sentences. That is a point, not a curve; `IndelBenchmarks` is the sweep.

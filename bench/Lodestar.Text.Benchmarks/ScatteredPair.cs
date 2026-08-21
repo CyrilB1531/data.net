@@ -14,22 +14,11 @@ namespace Lodestar.Text.Benchmarks;
 /// </remarks>
 internal static class ScatteredPair
 {
-    /// <summary>Latin, one byte a character: the alphabet every band used before #383.</summary>
-    internal const string Latin = "abcdefghijklmnopqrstuvwxyz ";
-
-    /// <summary>CJK, above Latin-1 and inside the BMP — one UTF-16 unit, and off the dense table.</summary>
-    /// <remarks>
-    /// 27 symbols, matching <see cref="Latin"/>, so a band built from either differs only in where
-    /// its characters sit: the equality table for one, the side table for the other. Comparing the
-    /// two bands is only meaningful if that is the single difference.
-    /// </remarks>
-    internal const string Cjk = "一二三四五六七八九十百千万上下左右前後東西南北中大小山";
-
     /// <summary>Builds two strings of <paramref name="length"/> differing in about a tenth of their positions.</summary>
-    internal static (string A, string B) Build(int length, int seed = 42, string? alphabet = null)
+    internal static (string A, string B) Build(int length, int seed = 42)
     {
         var rng = new Random(seed);
-        alphabet ??= Latin;
+        const string alphabet = Alphabets.Latin;
         char[] a = new char[length];
         for (int i = 0; i < length; i++)
         {

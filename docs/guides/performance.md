@@ -349,18 +349,73 @@ so the branch costs exactly nothing there — a claim no machine load can weaken
 one the corpus timing could only ever have bounded.
 
 The blocked path was widened the same way in #382, so no pattern falls back to the
-dynamic program for holding a character above U+00FF. Both halves are recorded in
-[decision 0043](../decisions/0043-the-equality-table-is-sized-to-the-pattern.md),
-which amends 0004's two bullets rather than editing them.
+dynamic program for holding a character above U+00FF.
 
 Both halves are recorded in
 [decision 0043](../decisions/0043-the-equality-table-is-sized-to-the-pattern.md),
 which amends 0004's two bullets rather than editing that record.
 
-**What the reach is worth is not measured here**, because this corpus cannot say —
-it is ASCII, by construction. `docs/guides/performance.md`'s code-point section has
-the standing figure for what falling back to the DP costs on such input: 2.80 ms at
-`Length = 512` against the code-point mode's 22 µs.
+**What the reach is worth is not measured by this corpus**, which is ASCII by
+construction. It took a band of its own, below.
+
+### What the wide path buys, and what its side table costs (#383)
+
+Until this section the gain rested on the code-point mode's standing figure for what
+falling back costs — 2.80 ms at `Length = 512` against 22 µs — which is an argument
+about a different mode, not a measurement of this change. `MyersGateBenchmarks` and
+`LcsGateBenchmarks` now run each band twice, over 27 Latin symbols and over 27 CJK
+ones, so the alphabet is the only difference between the two readings and both are
+taken in one process against the same dynamic program.
+
+Intel i7-4770S, .NET 10.0.11, X64 RyuJIT AVX2, BenchmarkDotNet short job
+(`IterationCount=3`, `WarmupCount=3`), `[MemoryDiagnoser]`; dev machine,
+non-authoritative. **Two runs per class, both shown**, interleaved LCS → Myers → LCS
+→ Myers so that drift in machine state lands on every column. One-minute load average
+1.22 to 4.31 across the window, fifteen-minute 7.03 falling to 4.23. Nothing on any
+row allocates.
+
+| Band | DP | kernel | DP (CJK) | kernel (CJK) | CJK kernel ÷ CJK DP |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 8 | 147 / 160 ns | 72 / 74 ns | 149 / 149 ns | 118 / 140 ns | 0.79 / 0.94 |
+| 12 | 249 / 247 ns | 75 / 81 ns | 247 / 263 ns | 142 / 150 ns | 0.57 / 0.57 |
+| 16 | 422 / 377 ns | 96 / 87 ns | 409 / 388 ns | 147 / 146 ns | 0.36 / 0.38 |
+| 32 | 1 558 / 1 685 ns | 121 / 126 ns | 1 566 / 1 592 ns | 211 / 239 ns | 0.13 / 0.15 |
+| 64 | 6 245 / 6 614 ns | 188 / 205 ns | 6 344 / 6 378 ns | 350 / 380 ns | 0.06 / 0.06 |
+| 96 | 13 962 / 15 729 ns | 840 / 861 ns | 14 752 / 15 079 ns | 1 146 / 1 251 ns | 0.08 / 0.08 |
+
+`LcsGateBenchmarks`, and the edit-distance twin below:
+
+| Band | DP | kernel | DP (CJK) | kernel (CJK) | CJK kernel ÷ CJK DP |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 6 | 127 / 125 ns | 121 / 122 ns | 123 / 124 ns | 119 / 124 ns | 0.97 / 1.00 |
+| 8 | 164 / 168 ns | 111 / 107 ns | 166 / 176 ns | 168 / 162 ns | 1.02 / 0.92 |
+| 10 | 231 / 218 ns | 113 / 115 ns | 218 / 228 ns | 183 / 181 ns | 0.84 / 0.79 |
+| 12 | 290 / 320 ns | 120 / 148 ns | 294 / 367 ns | 202 / 223 ns | 0.69 / 0.61 |
+| 16 | 452 / 464 ns | 139 / 141 ns | 449 / 497 ns | 216 / 233 ns | 0.48 / 0.47 |
+| 32 | 1 905 / 2 030 ns | 209 / 235 ns | 1 616 / 1 951 ns | 299 / 308 ns | 0.19 / 0.16 |
+| 96 | 20 090 / 20 806 ns | 1 441 / 1 403 ns | 19 502 / 20 866 ns | 1 750 / 1 751 ns | 0.09 / 0.08 |
+
+- **What the refusal cost, at last measured rather than argued.** A CJK band of 32
+  took 1 566 ns on the LCS dynamic program and takes 211 on the kernel; at 64 the two
+  are 6 344 and 350 ns. Myers at 96 reads 19 502 against 1 750. That is the whole of
+  what #302 and #382 buy, and it is worth between 7× and 18× wherever a band clears
+  the crossing.
+- **The two `DP` columns are the same measurement twice, which is the point of
+  having both.** The dynamic program compares characters and should not care where
+  they sit; it does not, to within 12% on every row of both tables. That is also this
+  window's noise floor, measured rather than assumed, and it is what the readings
+  below have to clear to mean anything.
+- **The side table is not free: 1.6× to 1.9× on the LCS kernel, 1.2× to 1.5× on
+  Myers'.** A Latin band of 32 runs the LCS kernel in 121 ns and a CJK one in 211.
+  Both are far under the 1 558 ns the DP costs, so the reach is still overwhelmingly
+  worth having — but the fixed cost roughly doubles, which is the probe and the second
+  table, and no earlier section could have said so.
+- **The gate of 8 describes the Latin regime only.** At band 8 the CJK kernel is a
+  wash — four readings across two kernels put it between 0.79 and 1.02 — and the
+  crossing arrives at 10 on Myers and 12 on LCS. Nothing regresses, both routes
+  costing the same where the ratio is 1, but the constant was swept over an ASCII
+  corpus in #208 and now governs a regime that corpus could not reach. Moving it is
+  its own change and needs the sweep #208 ran, not this band.
 
 ### The code-point mode, on input that leaves the BMP (#208)
 
