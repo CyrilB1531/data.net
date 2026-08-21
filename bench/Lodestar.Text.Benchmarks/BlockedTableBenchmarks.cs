@@ -10,16 +10,13 @@ namespace Lodestar.Text.Benchmarks;
 // following this rule breaks the benchmarks at run time rather than compile time.
 #pragma warning disable CA1822
 
-/// <summary>What the blocked kernels' equality table costs, in bytes rather than in time.</summary>
+/// <summary>What the blocked kernels' equality table costs, on patterns the corpus never reaches.</summary>
 /// <remarks>
 /// The table is <c>(256 + slots) × ⌈m/64⌉</c> words, and #302 sized <c>slots</c> from the
-/// pattern's length rather than from its characters above Latin-1 — so an ASCII pattern paid
-/// for an alphabet it never used, quadratically. The pair corpus cannot show it, its buckets
-/// being two orders of magnitude shorter.
-///
-/// <c>Allocated</c> reads zero on every row and always will: <c>ArrayPool.Rent</c> amortises
-/// the buffer across invocations, so nothing is attributed to the body. What the rows show is
-/// the <c>Clear()</c> of whatever was rented, which is the cost the sizing imposes (#413).
+/// pattern's length rather than from its characters above Latin-1, so an ASCII pattern paid for
+/// an alphabet it never used. <c>Allocated</c> reads zero here and always will —
+/// <c>ArrayPool.Rent</c> amortises the buffer across invocations — so what the rows show is the
+/// <c>Clear()</c> of whatever was rented, which is the cost the sizing imposes (#413).
 /// </remarks>
 [MemoryDiagnoser]
 public class BlockedTableBenchmarks
