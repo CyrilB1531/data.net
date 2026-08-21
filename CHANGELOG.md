@@ -19,7 +19,15 @@ is one sentence, the issue and the commit; see
 
 ## [Unreleased]
 
-### Lodestar.Text
+## Released — 2026-08-21
+
+`Lodestar.Fuzzy` is not in this cut. Not one line has changed under
+`src/Lodestar.Fuzzy` since its `0.3.1` tag, and its floor on `Lodestar.Text` stays at
+`0.3.1`: `src/Directory.Packages.props` raises that only when `Lodestar.Fuzzy` needs
+newer `Lodestar.Text` API, and it needs none. A caller who wants the kernel work below
+under `fuzz.ratio` takes `Lodestar.Text 0.4.0` directly.
+
+### Lodestar.Text — 0.4.0
 
 #### Changed
 
@@ -29,7 +37,7 @@ is one sentence, the issue and the commit; see
 - **Faster, same answers.** `Levenshtein.Distance`, `Lcs.SubsequenceLength` and therefore `Indel` and `fuzz.ratio` take the bit-parallel route from a pattern of 8 characters rather than 16, and neither kernel clears an equality table that `stackalloc` has already zeroed: on the pair corpus's length-32 bucket that is **2.09×** for Levenshtein (427.6 → 204.8 ns/pair) and **2.19×** for Indel (318.7 → 145.6 ns/pair), with every other bucket within noise and the 3 905-test suite unchanged. ([#208](https://github.com/CyrilB1531/lodestar/issues/208), [`cae6236`](https://github.com/CyrilB1531/lodestar/commit/cae6236))
 - **Breaking.** `Soundex.Encode(string)`, `Nysiis.Encode(string)` and `Metaphone.Encode(string)` now throw `ArgumentNullException` on a `null` word instead of silently returning `""`, matching the stemmers next door — see [decision 0042](docs/decisions/0042-phonetic-encoders-refuse-a-null-word.md). ([#342](https://github.com/CyrilB1531/lodestar/issues/342), [`4000a05`](https://github.com/CyrilB1531/lodestar/commit/4000a05))
 
-### Lodestar.Embeddings
+### Lodestar.Embeddings — 0.4.0
 
 #### Added
 
@@ -43,7 +51,7 @@ is one sentence, the issue and the commit; see
 - **Faster, same answers.** Loading an artifact no longer has the runtime zero the two large buffers it overwrites in full — the payload the stream fills and the vector block the base64 decoder fills. Measured **1.18×** on `embedding_index_load`, with a write-only operation re-run as an untouched control; a small artifact such as a fitted vectorizer sees nothing, its buffers never reaching the large-object heap. ([#324](https://github.com/CyrilB1531/lodestar/issues/324), [`359d889`](https://github.com/CyrilB1531/lodestar/commit/359d889))
 - **Faster, same bytes.** `EmbeddingIndex.Save` no longer allocates and copies the whole vector block before encoding it: on a little-endian machine the bytes to base64 are the ones already in the span, and the copy existed only to carry an endianness swap that is a no-op there. Measured **1.46×** on processor time at the benchmark's size, with the load direction re-run as an untouched control, and the encoding pinned byte for byte by a new test. ([#323](https://github.com/CyrilB1531/lodestar/issues/323), [`4359d32`](https://github.com/CyrilB1531/lodestar/commit/4359d32))
 
-### Lodestar.Metrics
+### Lodestar.Metrics — 0.3.0
 
 #### Added
 

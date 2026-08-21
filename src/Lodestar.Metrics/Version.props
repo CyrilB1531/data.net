@@ -10,7 +10,7 @@
     trails the other three rather than matching them.
   -->
   <PropertyGroup>
-    <LodestarMetricsVersion>0.2.0</LodestarMetricsVersion>
+    <LodestarMetricsVersion>0.3.0</LodestarMetricsVersion>
   </PropertyGroup>
 
 </Project>
