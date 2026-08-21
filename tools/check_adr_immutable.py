@@ -42,6 +42,10 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 # ADR body, and every new decision adds a row to it by design.
 ADR_PATH = re.compile(r"^docs/decisions/\d{4}-.*\.md$")
 
+# A leading '-' would read to git as an option rather than a revision -- the
+# same guard tools/select_benchmarks.py's REVISION applies to its own --since.
+REVISION = re.compile(r"^[0-9A-Za-z][0-9A-Za-z._/~^-]{0,254}$")
+
 
 def existed_at(base: str, path: str) -> bool:
     """Whether `path` was already a file at `base`, not introduced by this PR."""
@@ -77,6 +81,9 @@ def main(argv: list[str]) -> int:
         print(__doc__, file=sys.stderr)
         return 2
     base = arguments[1]
+    if not REVISION.match(base):
+        print(f"--base {base!r} is not a usable revision", file=sys.stderr)
+        return 2
 
     findings = []
     for path in changed_adr_files(base):

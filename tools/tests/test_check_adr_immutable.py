@@ -136,3 +136,12 @@ def test_bad_usage_exits_2():
     assert main(["prog"]) == 2
     assert main(["prog", "--base"]) == 2
     assert main(["prog", "--base", "x", "--extra"]) == 2
+
+
+def test_a_base_that_looks_like_an_option_is_refused_itself(tmp_path):
+    """--base reaches subprocess.run unvalidated otherwise -- the same guard
+    tools/select_benchmarks.py's REVISION applies to --since."""
+    repo = make_repo(tmp_path)
+    commit(repo, "init")
+    guard.ROOT = repo
+    assert main(["prog", "--base", "-rf"]) == 2
