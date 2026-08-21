@@ -598,6 +598,61 @@ under the dynamic program in both passes.**
   and band 5 on LCS CJK flip between them. Four bands of separation between alphabets
   is an order above that; a boundary band is not.
 
+### Replacing the shared gate, and what each kernel got for it (#411)
+
+The four crossings above are answered by two constants per kernel rather than one: the
+dispatch keeps its test, valued at the Latin-1 crossing, and a second refusal sits where
+each kernel has just discovered that the pattern leaves Latin-1.
+[Decision 0049](../decisions/0049-two-gates-per-kernel-tested-where-the-width-is-known.md)
+has the three shapes it refused.
+
+| | dense gate | wide gate | was |
+| --- | ---: | ---: | ---: |
+| `Lcs` | 2 | 6 | 8 |
+| `Levenshtein` | 5 | 10 | 8 |
+
+**What the Latin-1 path pays is nothing, and that is read rather than timed.** Diffing
+the JIT's output as #302 did — `SubsequenceLengthChars`, `DistanceChars` and both
+single-word kernels, six methods, 492 instructions against 534 — every loop is unchanged
+instruction for instruction. Two once-per-call instructions use a different register, the
+allocator having reshuffled around the new blocks. The 45 added instructions are the
+three refusals, their early-return epilogues and the stack checks those need; none sits
+on a path a Latin-1 pattern reaches.
+
+Intel i7-4770S, .NET 10.0.11; dev machine, non-authoritative. Each state published once
+and only the runs alternated — **nothing compiles inside the window** — three rounds in
+alternating order, medians shown, with the spread of the three *after* runs beside each
+row as that row's own noise floor. Scattered buckets only: the banded ones are what
+placed the gate, not what it is judged on.
+
+| bucket | before | after | change | spread |
+| --- | ---: | ---: | ---: | ---: |
+| Indel latin 8 | 33.4 ns | 33.9 ns | +1.6% | ±10% |
+| Indel latin 32 | 126.3 ns | 106.9 ns | **−15.4%** | ±11% |
+| Indel latin 128 | 913.9 ns | 888.8 ns | −2.7% | ±11% |
+| Indel latin 512 | 10 518.8 ns | 10 481.7 ns | −0.4% | ±10% |
+| Indel cjk 32 | 278.9 ns | 256.4 ns | −8.1% | ±9% |
+| Indel cjk 512 | 12 656.3 ns | 12 398.3 ns | −2.0% | ±6% |
+| Levenshtein latin 8 | 32.4 ns | 35.2 ns | +8.6% | ±11% |
+| Levenshtein latin 32 | 188.3 ns | 197.5 ns | +4.9% | ±9% |
+| Levenshtein latin 512 | 21 474.1 ns | 21 258.8 ns | −1.0% | ±23% |
+| Levenshtein cjk 32 | 310.0 ns | 326.0 ns | +5.1% | ±10% |
+
+- **One row clears its own noise, and it is the hot path's.** `Indel` at length 32 reads
+  −11.9%, −16.3% and −13.7% across the three rounds — negative every time. That bucket is
+  where the gate bites, and `Lcs.SubsequenceLengthChars` is what `fuzz.ratio`,
+  `process.extract` and blocking deduplication run.
+- **Levenshtein shows nothing, and the corpus explains it rather than excusing it.** Its
+  sign flips between rounds (+5.2%, +4.6%, −4.1%). The length-32 bucket has 94% of its
+  pairs above band 4 and 86% above 8, so moving Myers from 8 to 5 touches the 8% that sit
+  between, at 15–30% each — one to two percent overall, under the floor. The change rests
+  on the banded measurement above, not on this table, and 0049 records that distinction.
+- **The first attempt at this table was thrown away, and why is worth keeping.** It
+  rebuilt between every measurement, and `VBCSCompiler` kept burning a quarter of a core
+  into the window that followed: two runs of *identical* code differed by up to 15.2%,
+  which is the size of the effect being looked for. Publishing each state once and
+  alternating only the runs is what made the rows above readable.
+
 ### The code-point mode, on input that leaves the BMP (#208)
 
 The table above is the UTF-16 mode over an ASCII corpus. The code-point mode is a

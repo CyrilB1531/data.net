@@ -20,13 +20,13 @@ public static class Levenshtein
 {
     /// <summary>Below this pattern length the DP beats Myers, whose equality-table setup dominates.</summary>
     /// <remarks>
-    /// No upper bound remains, a longer pattern taking the blocked path. 8 rather than
-    /// 16 because the crossing is <c>m ≈ 1 + setup/n</c> and so falls as the text grows:
-    /// 8 is where it sits for the shortest texts, the regime that can least afford being
-    /// wrong. Swept over the pair corpus in #208 — at 16 the length-32 bucket sent 47% of
-    /// its pairs to a DP costing 2.5× what Myers cost on the rest.
+    /// No upper bound remains, a longer pattern taking the blocked path. The Latin-1
+    /// crossing, measured over bands the corpus could not reach until #409: the kernel is
+    /// 15% ahead at a band of 5 and behind at 4. It governs the dense path only —
+    /// <c>Myers.WideMinPatternLength</c> is where a pattern above Latin-1 crosses, five
+    /// bands later (#411, decision 0049).
     /// </remarks>
-    private const int MyersMinPatternLength = 8;
+    private const int MyersMinPatternLength = 5;
 
     /// <summary>The same gate for the code-point path, which crosses later.</summary>
     /// <remarks>

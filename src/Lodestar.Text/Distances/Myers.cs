@@ -35,6 +35,16 @@ internal static class Myers
     /// <summary>Probe table size: a power of two, twice the alphabet it must hold.</summary>
     private const int SlotCapacity = 512;
 
+    /// <summary>Below this, a pattern above Latin-1 takes the DP rather than the side table.</summary>
+    /// <remarks>
+    /// The side table's probe raises the kernel's floor while leaving the dynamic program's
+    /// cost untouched, so a wide pattern crosses five bands later than a Latin-1 one — 10
+    /// against 5, measured in #409. Tested where the width is established rather than at the
+    /// dispatch, which does not know it: that keeps the Latin-1 path free of the question
+    /// (decision 0049).
+    /// </remarks>
+    internal const int WideMinPatternLength = 10;
+
     /// <summary>The free-slot marker.</summary>
     /// <remarks>
     /// Zero, and keys are stored as <c>symbol + 1</c> so no code point produces it.
@@ -174,7 +184,9 @@ internal static class Myers
             char c = pattern[i];
             if (c > 0xFF)
             {
-                return TrySingleWordWide(pattern, text, out distance);
+                // Refused here, before the wide method's stackalloc: 0043 records that one
+                // zeroes on entry whether or not the branch that needs it is taken.
+                return m >= WideMinPatternLength && TrySingleWordWide(pattern, text, out distance);
             }
             peq[c] |= 1UL << i;
         }

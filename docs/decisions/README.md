@@ -58,6 +58,7 @@ a later decision uses instead.
 | [`0046`](0046-check-adr-immutable-runs-in-ci-only.md) | `check_adr_immutable.py` runs in CI only, not the pre-commit hook | accepted | 2026-08-20 | — |
 | [`0047`](0047-one-gate-per-kernel-not-one-per-alphabet.md) | One bit-parallel gate per kernel, not one per alphabet | accepted | 2026-08-21 | amends [`0043`](0043-the-equality-table-is-sized-to-the-pattern.md) |
 | [`0048`](0048-the-gate-depends-on-the-kernel-and-the-alphabet.md) | The bit-parallel gate depends on the kernel *and* the alphabet | accepted | 2026-08-21 | amends [`0047`](0047-one-gate-per-kernel-not-one-per-alphabet.md) |
+| [`0049`](0049-two-gates-per-kernel-tested-where-the-width-is-known.md) | Two gates per kernel, the second tested where the width is already known | accepted | 2026-08-21 | amends [`0048`](0048-the-gate-depends-on-the-kernel-and-the-alphabet.md) |
 
 ## What `accepted` means here
 

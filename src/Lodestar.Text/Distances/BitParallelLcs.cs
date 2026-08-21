@@ -30,6 +30,16 @@ internal static class BitParallelLcs
     /// <summary>One entry per Latin-1 code unit: a text character above it reads no match.</summary>
     private const int Entries = 256;
 
+    /// <summary>Below this, a pattern above Latin-1 takes the DP rather than the side table.</summary>
+    /// <remarks>
+    /// The side table's probe raises the kernel's floor while leaving the dynamic program's
+    /// cost untouched, so a wide pattern crosses four bands later than a Latin-1 one — 6
+    /// against 2, measured in #409. Tested where the width is established rather than at the
+    /// dispatch, which does not know it: that keeps the Latin-1 path free of the question
+    /// (decision 0049).
+    /// </remarks>
+    internal const int WideMinPatternLength = 6;
+
     /// <summary>Longest pattern for which restoring a held table beats letting <c>stackalloc</c> zero one.</summary>
     /// <remarks>
     /// Swept over the pair corpus at 0, 16, 32 and 64 (#301). Its length-32 bucket reads 152.2
@@ -67,7 +77,10 @@ internal static class BitParallelLcs
         ulong[] peq = Held;
         if (!TryFill(pattern, peq))
         {
-            return TrySingleWordWide(pattern, text, out length);
+            // Refused before the wide method's stackalloc, which 0043 records as zeroing on
+            // entry whether or not the branch needing it is taken. TryFill has restored Held.
+            return pattern.Length >= WideMinPatternLength
+                && TrySingleWordWide(pattern, text, out length);
         }
 
         length = Scan(peq, default, default, pattern.Length, text);
@@ -86,7 +99,10 @@ internal static class BitParallelLcs
         Span<ulong> peq = stackalloc ulong[Entries];
         if (!TryFill(pattern, peq))
         {
-            return TrySingleWordWide(pattern, text, out length);
+            // Unreachable below the gate — this path is past MaxHeldPattern — but the two
+            // reroutes state the same rule, so neither drifts from the other.
+            return pattern.Length >= WideMinPatternLength
+                && TrySingleWordWide(pattern, text, out length);
         }
 
         length = Scan(peq, default, default, pattern.Length, text);

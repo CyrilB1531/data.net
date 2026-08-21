@@ -110,6 +110,49 @@ Three things this corpus will not tell you, all of which cost #208 time:
   opposite order put that drift on both ends instead; #407's agreed to 5.3%, against
   about 12% for the gate benchmarks' short job.
 
+### Measuring a before against an after, and reading the generated code
+
+Two instruments, both of which failed silently before they worked, in #411.
+
+**Nothing may compile inside the window.** Rebuilding between every measurement leaves
+`VBCSCompiler` burning about a quarter of a core into the run that follows: two
+executions of *identical* code differed by up to 15.2%, which was the size of the effect
+being looked for. Publish each state once into its own directory, `dotnet build-server
+shutdown`, then alternate only the runs — which also makes six rounds cheaper than two
+were.
+
+```bash
+dotnet publish bench/Lodestar.Text.Benchmarks -c Release -o /tmp/state-before
+# ... change the source, publish again to /tmp/state-after ...
+dotnet build-server shutdown
+/tmp/state-before/Lodestar.Text.Benchmarks compare     # alternate, several rounds
+/tmp/state-after/Lodestar.Text.Benchmarks compare
+```
+
+Read each row against the spread of the runs of one state, not against a remembered
+figure: that spread is the row's own noise floor, and on this workstation it is 6% to
+25% depending on the bucket.
+
+**Whether a change costs the hot path is a question about generated code**, answered by
+diffing the JIT's output rather than by timing a loaded machine (#302, #411):
+
+```bash
+DOTNET_JitDisasmSummary=1 DOTNET_TieredCompilation=0 ./driver     # what got compiled
+DOTNET_JitDisasm='SubsequenceLengthChars DistanceChars TrySingleWord'   DOTNET_TieredCompilation=0 ./driver > listing.txt
+```
+
+Three traps, each of which produced a diff that read as success:
+
+- **Run the built binary, not `dotnet run`** — the launcher swallows the JIT's listing,
+  and a diff of two empty captures reports "identical".
+- **A method the driver never reaches is never compiled, so never listed.** Run
+  `DOTNET_JitDisasmSummary=1` first and check the method you care about is in it. An
+  empty capture is a failed measurement; make the script refuse it rather than diff it.
+- **The driver's operands must reach the code being compared.** A pair differing in one
+  position trims to a pattern of one character and takes the dynamic program, so the
+  listing describes a route the change does not touch. Move both ends apart, the way
+  `BandedPair` does.
+
 ## 2. net10 vs netstandard2.0 — what the broad-reach target costs
 
 `netstandard2.0` is a contract, not a runtime: nothing executes *on* it. What can

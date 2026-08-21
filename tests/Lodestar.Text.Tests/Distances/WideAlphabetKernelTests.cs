@@ -110,34 +110,59 @@ public sealed class WideAlphabetKernelTests
         }
     }
 
-    /// <summary>The bands the gate benchmarks measure, on the question those rows silently assume.</summary>
+    /// <summary>Each kernel takes a wide pattern from its own crossing, and refuses below it.</summary>
     /// <remarks>
-    /// A CJK row that fell back would measure the dynamic program under a kernel's name, and the
-    /// timing could not tell you: both routes return the same number. So the route is asserted
-    /// here instead of read off a benchmark. Below the gate both alphabets take the DP by design,
-    /// which is why the list starts at 8 — <c>bench/README.md</c> has the gate's own sweep (#383).
+    /// A wide row that fell back would measure the dynamic program under a kernel's name, and no
+    /// timing could tell you: both routes return the same number. So the route is asserted rather
+    /// than read off a benchmark, and it pins the two constants #409 measured — 6 on the LCS
+    /// kernel, 10 on Myers — against a later edit moving one of them silently (#411).
     /// </remarks>
     [Theory]
+    [InlineData(2)]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(6)]
     [InlineData(8)]
+    [InlineData(9)]
     [InlineData(10)]
     [InlineData(12)]
-    [InlineData(14)]
     [InlineData(16)]
-    [InlineData(18)]
-    [InlineData(20)]
-    [InlineData(24)]
     [InlineData(32)]
-    [InlineData(48)]
     [InlineData(64)]
     [InlineData(96)]
-    public void A_cjk_band_the_gate_benchmarks_use_reaches_both_kernels(int band)
+    public void A_wide_pattern_reaches_each_kernel_from_its_own_crossing(int band)
     {
         var rng = new Random(band);
         string pattern = Random(rng, Cjk, band);
         string text = Random(rng, Cjk, band);
 
-        Assert.True(Myers.TryDistance(pattern.AsSpan(), text.AsSpan(), out _));
+        Assert.Equal(band >= BitParallelLcs.WideMinPatternLength,
+            BitParallelLcs.TrySubsequenceLength(pattern.AsSpan(), text.AsSpan(), out _));
+        Assert.Equal(band >= Myers.WideMinPatternLength,
+            Myers.TryDistance(pattern.AsSpan(), text.AsSpan(), out _));
+    }
+
+    /// <summary>And a Latin-1 pattern is never asked the question, at any length.</summary>
+    /// <remarks>
+    /// The refusal above lives in the branch a wide character takes, so a dense pattern reaches
+    /// the kernel from the dispatch's own gate downwards. This is the half that must not have
+    /// moved: it is the path <c>fuzz.ratio</c> runs (#411).
+    /// </remarks>
+    [Theory]
+    [InlineData(2)]
+    [InlineData(5)]
+    [InlineData(6)]
+    [InlineData(9)]
+    [InlineData(64)]
+    [InlineData(96)]
+    public void A_latin_pattern_reaches_both_kernels_at_every_length(int band)
+    {
+        var rng = new Random(band + 500);
+        string pattern = Random(rng, Latin, band);
+        string text = Random(rng, Latin, band);
+
         Assert.True(BitParallelLcs.TrySubsequenceLength(pattern.AsSpan(), text.AsSpan(), out _));
+        Assert.True(Myers.TryDistance(pattern.AsSpan(), text.AsSpan(), out _));
     }
 
     private static void AssertAgrees(int length, string alphabet, bool mixed)
