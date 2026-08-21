@@ -11,10 +11,13 @@ and the difference between the two sets has to be exactly the exclusion decision
 0037 wrote down. Adding a guard to CI without a decision about the hook fails
 here, which is the point.
 
-`OFFLINE_EXCLUSIONS` is the one guard CI runs that the hook deliberately does
-not: `check_nuspec_dependencies.py` reads the `.nuspec` files inside a packed
+`OFFLINE_EXCLUSIONS` is the guards CI runs that the hook deliberately does not.
+`check_nuspec_dependencies.py` reads the `.nuspec` files inside a packed
 `./artifacts`, so running it before a commit would mean packing four projects
-first. It is named there, in 0037, and nowhere else.
+first -- named in decision 0037. `check_adr_immutable.py` needs `--base`, the
+pull request's own base commit, which a commit made before a pull request
+exists has none to name -- decision 0046, its own ADR rather than an edit to
+0037, per the rule 0046 exists to enforce.
 
 The floor guard needs no exclusion. CI passes it `--check-feed` and the hook does
 not, but that is a flag rather than a guard, and its two offline rules run in
@@ -32,7 +35,7 @@ REPO = Path(__file__).resolve().parents[2]
 HOOK = REPO / ".githooks" / "pre-commit"
 WORKFLOWS = REPO / ".github" / "workflows"
 
-OFFLINE_EXCLUSIONS = {"check_nuspec_dependencies"}
+OFFLINE_EXCLUSIONS = {"check_nuspec_dependencies", "check_adr_immutable"}
 
 GUARD = re.compile(r"tools/(check_\w+)\.py")
 

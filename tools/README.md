@@ -32,6 +32,11 @@ given:
   CONTRIBUTING.md's [*Before
   committing*](../CONTRIBUTING.md#before-committing-the-guards-one-command-earlier)
   has what it does and does not cover.
+- `check_adr_immutable.py` refuses a pull request that touches a
+  `docs/decisions/` ADR that already existed at its base commit, addition
+  included — an accepted decision is never edited, only amended by a new one.
+  Not part of the pre-commit set above: it needs the pull request's own base
+  commit, not something a commit made before one exists can name.
 - `generate_sonar_globalconfig.py` writes the `.globalconfig` that raises the
   Sonar rules `SonarAnalyzer.CSharp` ships disabled, from the SonarCloud
   quality profile that gates the pull request.
@@ -462,6 +467,33 @@ time from `$HOME` — the path itself, the account name bounded by a separator o
 a dash, and the dashed form a session scratch directory is named after — which
 catch shapes no fixed list enumerates, on the machine where a path is actually
 created.
+
+## `check_adr_immutable.py`
+
+Refuses a pull request that touches a `docs/decisions/` ADR already present at
+its base commit — addition included, not just removal or rewording. "Amend
+0004 in a decision of its own instead of editing it" is why: even the
+`> **#NNN update:**` blockquote a few earlier ADRs still carry is no longer the
+convention, and nothing enforced either version of the rule before this.
+
+```bash
+python3 tools/check_adr_immutable.py --base <commit>
+python3 tools/check_adr_immutable.py --help
+```
+
+`--base` is the pull request's own base commit (`github.event.pull_request.base.sha`
+in CI); there is no default; comparing against the wrong thing silently on a
+rebased or force-pushed branch is worse than requiring the argument. A file
+absent at `--base` is a new ADR and is unrestricted, and so is
+`docs/decisions/README.md`, the index rather than a decision, which gains a row
+on every one added.
+
+Exit codes:
+
+- `0` — clean.
+- `1` — findings printed, each naming the file and how many lines it added or
+  removed relative to `--base`.
+- `2` — bad usage.
 
 An ordinary account name (`src`, `build`, `net` and the like) can turn a derived
 probe into noise on an otherwise unrelated line. `--no-environment` drops that
