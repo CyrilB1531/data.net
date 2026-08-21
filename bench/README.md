@@ -89,10 +89,22 @@ Three things this corpus will not tell you, all of which cost #208 time:
   costs `setup + O(n)` where the DP costs `O(m·n)`, so they meet at
   `m ≈ 1 + setup/n`. A gate is one number for every `n`, so calibrate it on the
   shortest texts — the regime where being wrong is expensive.
-- **The corpus has a hole between 2 and 7.** Its length-8 bucket trims to a
-  pattern of 0 or 1 and its length-32 bucket is the only other source, so any
-  conclusion in that range rests on a single bucket. `BucketRouteDiagnostics`
-  prints the split the gate produces on that bucket, which is how to see it.
+- **The corpus has a hole between 2 and 7, and the wide buckets do not fill it.**
+  Its length-8 bucket trims to a pattern of 0 or 1 and its length-32 bucket is the
+  only other source, so any conclusion in that range rests on a single bucket.
+  `BucketRouteDiagnostics` prints the split the gate produces on that bucket, which
+  is how to see it. #406's CJK buckets reproduce the hole exactly — a length-8 CJK
+  pair also trims to a median of 0, the 10% edit rate producing that and not the
+  alphabet — so #407 could answer whether the gate needs to differ per alphabet and
+  still not what its value should be.
+- **Never sum ns/pair across buckets to score a gate value.** The 512 bucket is
+  roughly 95% of any such total and no candidate gate can touch it, so the sum
+  reports that bucket's run-to-run noise as a result about the constant, and picks a
+  different winner than the one bucket that can see the gate.
+- **Sweep in both directions.** Each value needs its own build, so the readings are
+  taken in sequence and machine drift maps onto the swept axis. Two passes in
+  opposite order put that drift on both ends instead; #407's agreed to 5.3%, against
+  about 12% for the gate benchmarks' short job.
 
 ## 2. net10 vs netstandard2.0 — what the broad-reach target costs
 

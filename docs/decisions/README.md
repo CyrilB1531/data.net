@@ -56,6 +56,7 @@ a later decision uses instead.
 | [`0044`](0044-compression-belongs-to-the-caller.md) | Compression belongs to the caller, not to the artifact format | accepted | 2026-08-20 | leaves [`0011`](0011-persistence-format.md) untouched: the artifact on disk does not change |
 | [`0045`](0045-a-console-call-carries-its-reason-on-the-line.md) | A `Console` call carries its reason on the line, not in an exemption list | accepted | 2026-08-21 | adds a seventh guard to [`0037`](0037-the-guards-run-before-the-commit.md)'s hook, under the rule it set |
 | [`0046`](0046-check-adr-immutable-runs-in-ci-only.md) | `check_adr_immutable.py` runs in CI only, not the pre-commit hook | accepted | 2026-08-20 | — |
+| [`0047`](0047-one-gate-per-kernel-not-one-per-alphabet.md) | One bit-parallel gate per kernel, not one per alphabet | accepted | 2026-08-21 | amends [`0043`](0043-the-equality-table-is-sized-to-the-pattern.md) |
 
 ## What `accepted` means here
 
