@@ -25,19 +25,14 @@ is one sentence, the issue and the commit; see
 
 - `Lcs.SubsequenceLength` takes the bit-parallel route from a pattern of 2 characters and `Levenshtein.Distance` from 5, while a pattern holding a character above U+00FF is refused below 6 and 10 instead. ([#411](https://github.com/CyrilB1531/lodestar/issues/411), [`a5c0d52`](https://github.com/CyrilB1531/lodestar/commit/a5c0d52))
 
-### Lodestar.Fuzzy
-
-#### Changed
-
-- **`fuzz.ratio` and `process.extract` now require the kernels they were made faster by.** The floor on `Lodestar.Text` moves from `0.3.1` to `0.4.0`, so a caller who references only `Lodestar.Fuzzy` stops resolving a `Lodestar.Text` that predates #208, #320, #357 and #302. No source file changes; `Lodestar.Text 0.4.0` also refuses a `null` word in the phonetic encoders, which a consumer of both packages meets here. ([#415](https://github.com/CyrilB1531/lodestar/issues/415), [`8a1573c`](https://github.com/CyrilB1531/lodestar/commit/8a1573c))
-
 ## Released — 2026-08-21
 
-`Lodestar.Fuzzy` is not in this cut. Not one line has changed under
-`src/Lodestar.Fuzzy` since its `0.3.1` tag, and its floor on `Lodestar.Text` stays at
-`0.3.1`: `src/Directory.Packages.props` raises that only when `Lodestar.Fuzzy` needs
-newer `Lodestar.Text` API, and it needs none. A caller who wants the kernel work below
-under `fuzz.ratio` takes `Lodestar.Text 0.4.0` directly.
+Four deliverables, cut in two steps on the same day. `Lodestar.Text`,
+`Lodestar.Embeddings` and `Lodestar.Metrics` went first; `Lodestar.Fuzzy` followed once
+`Lodestar.Text 0.4.0` was served by nuget.org, which is what
+`src/Directory.Packages.props` requires before its floor may move — and moving that
+floor is the whole of what Fuzzy publishes here, its source being untouched since
+`0.3.1`.
 
 ### Lodestar.Text — 0.4.0
 
@@ -85,6 +80,12 @@ under `fuzz.ratio` takes `Lodestar.Text 0.4.0` directly.
 #### Fixed — ranking
 
 - `Dcg.Score` refuses a `logBase` outside `(0, ∞)` instead of returning a silent `NaN`: zero, a negative, `NaN` and infinity now raise `ArgumentOutOfRangeException`, which is where `dcg_score` raises too. A base below `1` is still accepted, and still takes the score negative. ([#215](https://github.com/CyrilB1531/lodestar/issues/215), [`1eff5e5`](https://github.com/CyrilB1531/lodestar/commit/1eff5e5))
+
+### Lodestar.Fuzzy — 0.4.0
+
+#### Changed
+
+- **`fuzz.ratio` and `process.extract` now require the kernels they were made faster by.** The floor on `Lodestar.Text` moves from `0.3.1` to `0.4.0`, so a caller who references only `Lodestar.Fuzzy` stops resolving a `Lodestar.Text` that predates #208, #320, #357 and #302. No source file changes; `Lodestar.Text 0.4.0` also refuses a `null` word in the phonetic encoders, which a consumer of both packages meets here. ([#415](https://github.com/CyrilB1531/lodestar/issues/415), [`8a1573c`](https://github.com/CyrilB1531/lodestar/commit/8a1573c))
 
 ## Released — 2026-08-16
 
