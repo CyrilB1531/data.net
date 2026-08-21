@@ -55,7 +55,7 @@ PERSISTENCE = {STJ: "10.0.10"}
 
 # Must equal Directory.Packages.props' PackageVersion: a PackageReference
 # emits this floor, but LodestarUseProjectRefs emits Text's own version instead -- catching the escape hatch left on.
-TEXT_FLOOR = "0.3.1"
+TEXT_FLOOR = "0.4.0"
 
 # package id -> target framework -> {dependency id: declared version range}.
 # See this module's docstring for what EXPECTED's shape and ranges prove.
