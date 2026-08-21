@@ -4,7 +4,7 @@
 three terms cannot match a query that uses the fourth. A stemmer cuts each word down to a shared
 key so they collide on purpose.
 
-`Lodestar.Text.Stemming` holds seven stemmers, one static class each, all with the same single
+`Lodestar.Text.Stemming` holds eight stemmers, one static class each, all with the same single
 method: a `string` in, a `string` out.
 
 ## Which stemmer?
@@ -12,14 +12,14 @@ method: a `string` in, a `string` out.
 ```mermaid
 flowchart TD
     A["What language is the text?"] --> B["English"]
-    A --> C["French, German, Italian,<br/>Spanish, Portuguese"]
+    A --> C["Dutch, French, German, Italian,<br/>Portuguese, Spanish"]
     B --> D{"Matching an existing<br/>Porter index?"}
     D -->|"no — this is a new index"| E["EnglishSnowballStemmer"]
     D -->|"yes"| F["PorterStemmer"]
     C --> G["the Snowball stemmer<br/>for that language"]
 ```
 
-Language picks the stemmer, and for six of the seven that is the whole decision. A stemmer is
+Language picks the stemmer, and for seven of the eight that is the whole decision. A stemmer is
 built from one language's suffix rules and has nothing sensible to say about another's:
 [`GermanSnowballStemmer.Stem`](stemming/germansnowballstemmer-stem.md) applied to French returns
 *something*, and that something is noise.
@@ -73,13 +73,13 @@ The consequence for a search index is that both sides must be stemmed by the sam
 documents when they are indexed, the query when it arrives. Stem one and not the other and the
 keys never meet.
 
-## What all seven share
+## What all eight share
 
 - **Input is lowercased first.** The algorithms are defined on lowercase, so `Running` and
   `running` give the same stem, and the result is always lowercase.
 - **A null word is refused**, with `ArgumentNullException`. An empty string is not: it comes back
   empty.
-- **Each is a static class with no state**, so all seven are safe to call from any number of
+- **Each is a static class with no state**, so all eight are safe to call from any number of
   threads at once.
 - **Each is checked word for word against nltk**, and the corpora are in
   [`tests/oracles`](../../equivalence.md). Where a stem looks wrong, it is wrong in the same way
@@ -89,6 +89,7 @@ keys never meet.
 
 | Type | What it is |
 | --- | --- |
+| [`DutchSnowballStemmer`](stemming/dutchsnowballstemmer.md) | Dutch Snowball. |
 | [`EnglishSnowballStemmer`](stemming/englishsnowballstemmer.md) | English Porter2 — the one to use for new English text. |
 | [`FrenchSnowballStemmer`](stemming/frenchsnowballstemmer.md) | French Snowball. |
 | [`GermanSnowballStemmer`](stemming/germansnowballstemmer.md) | German Snowball. |

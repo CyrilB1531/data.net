@@ -1,0 +1,558 @@
+{
+ "metadata": {
+  "algorithm": "DutchSnowballStemmer",
+  "library": "nltk",
+  "library_version": "3.10.1",
+  "reference_calls": [
+   "nltk.stem.snowball.SnowballStemmer('dutch')"
+  ],
+  "count": 109
+ },
+ "cases": [
+  {
+   "id": 0,
+   "word": "ëën",
+   "stem": "een"
+  },
+  {
+   "id": 1,
+   "word": "reeën",
+   "stem": "reeen"
+  },
+  {
+   "id": 2,
+   "word": "provinciën",
+   "stem": "provincien"
+  },
+  {
+   "id": 3,
+   "word": "zeeën",
+   "stem": "zeeen"
+  },
+  {
+   "id": 4,
+   "word": "coördinatie",
+   "stem": "coordinatie"
+  },
+  {
+   "id": 5,
+   "word": "financiën",
+   "stem": "financien"
+  },
+  {
+   "id": 6,
+   "word": "yoghurt",
+   "stem": "yoghurt"
+  },
+  {
+   "id": 7,
+   "word": "bijzonder",
+   "stem": "bijzonder"
+  },
+  {
+   "id": 8,
+   "word": "eieren",
+   "stem": "eier"
+  },
+  {
+   "id": 9,
+   "word": "vrijheid",
+   "stem": "vrijheid"
+  },
+  {
+   "id": 10,
+   "word": "mooie",
+   "stem": "mooi"
+  },
+  {
+   "id": 11,
+   "word": "koeien",
+   "stem": "koei"
+  },
+  {
+   "id": 12,
+   "word": "mogelijkheden",
+   "stem": "mogelijk"
+  },
+  {
+   "id": 13,
+   "word": "waarheden",
+   "stem": "waarheid"
+  },
+  {
+   "id": 14,
+   "word": "gelegenheden",
+   "stem": "geleg"
+  },
+  {
+   "id": 15,
+   "word": "lopen",
+   "stem": "lop"
+  },
+  {
+   "id": 16,
+   "word": "gelopen",
+   "stem": "gelop"
+  },
+  {
+   "id": 17,
+   "word": "kinderen",
+   "stem": "kinder"
+  },
+  {
+   "id": 18,
+   "word": "vogelen",
+   "stem": "vogel"
+  },
+  {
+   "id": 19,
+   "word": "bloemen",
+   "stem": "bloem"
+  },
+  {
+   "id": 20,
+   "word": "gemeenten",
+   "stem": "gemeent"
+  },
+  {
+   "id": 21,
+   "word": "huizen",
+   "stem": "huiz"
+  },
+  {
+   "id": 22,
+   "word": "wolken",
+   "stem": "wolk"
+  },
+  {
+   "id": 23,
+   "word": "handen",
+   "stem": "hand"
+  },
+  {
+   "id": 24,
+   "word": "voeten",
+   "stem": "voet"
+  },
+  {
+   "id": 25,
+   "word": "boeken",
+   "stem": "boek"
+  },
+  {
+   "id": 26,
+   "word": "kranten",
+   "stem": "krant"
+  },
+  {
+   "id": 27,
+   "word": "dagen",
+   "stem": "dag"
+  },
+  {
+   "id": 28,
+   "word": "weken",
+   "stem": "wek"
+  },
+  {
+   "id": 29,
+   "word": "maanden",
+   "stem": "maand"
+  },
+  {
+   "id": 30,
+   "word": "jaren",
+   "stem": "jar"
+  },
+  {
+   "id": 31,
+   "word": "mensen",
+   "stem": "mens"
+  },
+  {
+   "id": 32,
+   "word": "vrouwen",
+   "stem": "vrouw"
+  },
+  {
+   "id": 33,
+   "word": "huis",
+   "stem": "huis"
+  },
+  {
+   "id": 34,
+   "word": "huizes",
+   "stem": "huizes"
+  },
+  {
+   "id": 35,
+   "word": "fiets",
+   "stem": "fiet"
+  },
+  {
+   "id": 36,
+   "word": "fietsen",
+   "stem": "fiets"
+  },
+  {
+   "id": 37,
+   "word": "meisjes",
+   "stem": "meisjes"
+  },
+  {
+   "id": 38,
+   "word": "raadsels",
+   "stem": "raadsel"
+  },
+  {
+   "id": 39,
+   "word": "bedde",
+   "stem": "bed"
+  },
+  {
+   "id": 40,
+   "word": "ratte",
+   "stem": "rat"
+  },
+  {
+   "id": 41,
+   "word": "bakke",
+   "stem": "bak"
+  },
+  {
+   "id": 42,
+   "word": "grote",
+   "stem": "grot"
+  },
+  {
+   "id": 43,
+   "word": "kleine",
+   "stem": "klein"
+  },
+  {
+   "id": 44,
+   "word": "goede",
+   "stem": "goed"
+  },
+  {
+   "id": 45,
+   "word": "lange",
+   "stem": "lang"
+  },
+  {
+   "id": 46,
+   "word": "sterke",
+   "stem": "sterk"
+  },
+  {
+   "id": 47,
+   "word": "zwakke",
+   "stem": "zwak"
+  },
+  {
+   "id": 48,
+   "word": "hoge",
+   "stem": "hog"
+  },
+  {
+   "id": 49,
+   "word": "lage",
+   "stem": "lag"
+  },
+  {
+   "id": 50,
+   "word": "brede",
+   "stem": "bred"
+  },
+  {
+   "id": 51,
+   "word": "diepe",
+   "stem": "diep"
+  },
+  {
+   "id": 52,
+   "word": "waarheid",
+   "stem": "waarheid"
+  },
+  {
+   "id": 53,
+   "word": "schoonheid",
+   "stem": "schoonheid"
+  },
+  {
+   "id": 54,
+   "word": "mogelijkheid",
+   "stem": "mogelijk"
+  },
+  {
+   "id": 55,
+   "word": "gelegenheid",
+   "stem": "geleg"
+  },
+  {
+   "id": 56,
+   "word": "gezondheid",
+   "stem": "gezond"
+  },
+  {
+   "id": 57,
+   "word": "eenheid",
+   "stem": "eenheid"
+  },
+  {
+   "id": 58,
+   "word": "overheid",
+   "stem": "over"
+  },
+  {
+   "id": 59,
+   "word": "lopend",
+   "stem": "lopend"
+  },
+  {
+   "id": 60,
+   "word": "werkend",
+   "stem": "werkend"
+  },
+  {
+   "id": 61,
+   "word": "zingend",
+   "stem": "zingend"
+  },
+  {
+   "id": 62,
+   "word": "lachend",
+   "stem": "lachend"
+  },
+  {
+   "id": 63,
+   "word": "lezing",
+   "stem": "lezing"
+  },
+  {
+   "id": 64,
+   "word": "vergadering",
+   "stem": "vergader"
+  },
+  {
+   "id": 65,
+   "word": "regering",
+   "stem": "reger"
+  },
+  {
+   "id": 66,
+   "word": "opleiding",
+   "stem": "opleid"
+  },
+  {
+   "id": 67,
+   "word": "woning",
+   "stem": "woning"
+  },
+  {
+   "id": 68,
+   "word": "wandeling",
+   "stem": "wandel"
+  },
+  {
+   "id": 69,
+   "word": "grappig",
+   "stem": "grappig"
+  },
+  {
+   "id": 70,
+   "word": "gelukkig",
+   "stem": "gelukk"
+  },
+  {
+   "id": 71,
+   "word": "nodig",
+   "stem": "nodig"
+  },
+  {
+   "id": 72,
+   "word": "vorig",
+   "stem": "vorig"
+  },
+  {
+   "id": 73,
+   "word": "eeuwig",
+   "stem": "eeuwig"
+  },
+  {
+   "id": 74,
+   "word": "machtig",
+   "stem": "machtig"
+  },
+  {
+   "id": 75,
+   "word": "vriendelijk",
+   "stem": "vriendelijk"
+  },
+  {
+   "id": 76,
+   "word": "gemakkelijk",
+   "stem": "gemak"
+  },
+  {
+   "id": 77,
+   "word": "natuurlijk",
+   "stem": "natur"
+  },
+  {
+   "id": 78,
+   "word": "eerlijk",
+   "stem": "eerlijk"
+  },
+  {
+   "id": 79,
+   "word": "duidelijk",
+   "stem": "duidelijk"
+  },
+  {
+   "id": 80,
+   "word": "houdbaar",
+   "stem": "houdbar"
+  },
+  {
+   "id": 81,
+   "word": "leesbaar",
+   "stem": "leesbar"
+  },
+  {
+   "id": 82,
+   "word": "zichtbaar",
+   "stem": "zichtbar"
+  },
+  {
+   "id": 83,
+   "word": "denkbaar",
+   "stem": "denkbar"
+  },
+  {
+   "id": 84,
+   "word": "kostbaar",
+   "stem": "kostbar"
+  },
+  {
+   "id": 85,
+   "word": "maan",
+   "stem": "man"
+  },
+  {
+   "id": 86,
+   "word": "manen",
+   "stem": "man"
+  },
+  {
+   "id": 87,
+   "word": "brood",
+   "stem": "brod"
+  },
+  {
+   "id": 88,
+   "word": "broden",
+   "stem": "brod"
+  },
+  {
+   "id": 89,
+   "word": "boom",
+   "stem": "bom"
+  },
+  {
+   "id": 90,
+   "word": "bomen",
+   "stem": "bom"
+  },
+  {
+   "id": 91,
+   "word": "steen",
+   "stem": "sten"
+  },
+  {
+   "id": 92,
+   "word": "stenen",
+   "stem": "sten"
+  },
+  {
+   "id": 93,
+   "word": "been",
+   "stem": "ben"
+  },
+  {
+   "id": 94,
+   "word": "benen",
+   "stem": "ben"
+  },
+  {
+   "id": 95,
+   "word": "vuur",
+   "stem": "vur"
+  },
+  {
+   "id": 96,
+   "word": "vuren",
+   "stem": "vur"
+  },
+  {
+   "id": 97,
+   "word": "deur",
+   "stem": "deur"
+  },
+  {
+   "id": 98,
+   "word": "deuren",
+   "stem": "deur"
+  },
+  {
+   "id": 99,
+   "word": "de",
+   "stem": "de"
+  },
+  {
+   "id": 100,
+   "word": "het",
+   "stem": "het"
+  },
+  {
+   "id": 101,
+   "word": "een",
+   "stem": "een"
+  },
+  {
+   "id": 102,
+   "word": "en",
+   "stem": "en"
+  },
+  {
+   "id": 103,
+   "word": "is",
+   "stem": "is"
+  },
+  {
+   "id": 104,
+   "word": "zijn",
+   "stem": "zijn"
+  },
+  {
+   "id": 105,
+   "word": "niet",
+   "stem": "niet"
+  },
+  {
+   "id": 106,
+   "word": "aan",
+   "stem": "aan"
+  },
+  {
+   "id": 107,
+   "word": "op",
+   "stem": "op"
+  },
+  {
+   "id": 108,
+   "word": "in",
+   "stem": "in"
+  }
+ ]
+}

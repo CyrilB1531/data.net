@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import functools
 import json
 import math
 import os
@@ -999,6 +1000,36 @@ SNOWBALL_DE_WORDS = [
 ]
 
 
+SNOWBALL_NL_WORDS = [
+    # step 0: accents folded, and y / i held as consonants
+    "ëën", "reeën", "provinciën", "zeeën", "coördinatie", "financiën",
+    "yoghurt", "bijzonder", "eieren", "vrijheid", "mooie", "koeien",
+    # step 1: heden / en / ene / s / se, and the gem- and j- exceptions
+    "mogelijkheden", "waarheden", "gelegenheden",
+    "lopen", "gelopen", "kinderen", "vogelen", "bloemen", "gemeenten",
+    "huizen", "wolken", "handen", "voeten", "boeken", "kranten",
+    "dagen", "weken", "maanden", "jaren", "mensen", "vrouwen",
+    "huis", "huizes", "fiets", "fietsen", "meisjes", "raadsels",
+    # step 2: a final e after a non-vowel, and the undoubling it can leave
+    "bedde", "ratte", "bakke", "grote", "kleine", "goede", "lange",
+    "sterke", "zwakke", "hoge", "lage", "brede", "diepe",
+    # step 3a: heid, and the c that blocks it
+    "vrijheid", "waarheid", "schoonheid", "mogelijkheid", "gelegenheid",
+    "gezondheid", "eenheid", "overheid",
+    # step 3b: end / ing / ig / lijk / baar / bar
+    "lopend", "werkend", "zingend", "lachend",
+    "lezing", "vergadering", "regering", "opleiding", "woning", "wandeling",
+    "grappig", "gelukkig", "nodig", "vorig", "eeuwig", "machtig",
+    "vriendelijk", "gemakkelijk", "natuurlijk", "eerlijk", "duidelijk",
+    "houdbaar", "leesbaar", "zichtbaar", "denkbaar", "kostbaar",
+    # step 4: the doubled vowel in a final CVVD
+    "maan", "manen", "brood", "broden", "boom", "bomen", "steen", "stenen",
+    "been", "benen", "vuur", "vuren", "deur", "deuren",
+    # short / residual
+    "de", "het", "een", "en", "is", "zijn", "niet", "aan", "op", "in",
+]
+
+
 def _snowball_corpus(language: str, algorithm: str, words: list[str]) -> dict:
     """Freeze nltk's Snowball output for one language into an oracle payload.
 
@@ -1023,20 +1054,23 @@ def _snowball_corpus(language: str, algorithm: str, words: list[str]) -> dict:
     }
 
 
-def generate_snowball_es() -> dict:
-    return _snowball_corpus("spanish", "SpanishSnowballStemmer", SNOWBALL_ES_WORDS)
+# One row per language, not one two-line function each: #176 adds nine more, and nine
+# copies of one call is the duplication S1192 has already failed here for.
+SNOWBALL_LANGUAGES = {
+    "es": ("spanish", "SpanishSnowballStemmer", SNOWBALL_ES_WORDS),
+    "pt": ("portuguese", "PortugueseSnowballStemmer", SNOWBALL_PT_WORDS),
+    "it": ("italian", "ItalianSnowballStemmer", SNOWBALL_IT_WORDS),
+    "de": ("german", "GermanSnowballStemmer", SNOWBALL_DE_WORDS),
+    "nl": ("dutch", "DutchSnowballStemmer", SNOWBALL_NL_WORDS),
+}
 
 
-def generate_snowball_pt() -> dict:
-    return _snowball_corpus("portuguese", "PortugueseSnowballStemmer", SNOWBALL_PT_WORDS)
-
-
-def generate_snowball_it() -> dict:
-    return _snowball_corpus("italian", "ItalianSnowballStemmer", SNOWBALL_IT_WORDS)
-
-
-def generate_snowball_de() -> dict:
-    return _snowball_corpus("german", "GermanSnowballStemmer", SNOWBALL_DE_WORDS)
+def _snowball_generators() -> dict:
+    """`snowball_xx.json` -> the callable that builds it, one per SNOWBALL_LANGUAGES row."""
+    return {
+        f"snowball_{code}.json": functools.partial(_snowball_corpus, *args)
+        for code, args in SNOWBALL_LANGUAGES.items()
+    }
 
 
 WORDPIECE_VOCAB = [
@@ -6030,10 +6064,7 @@ def main() -> None:
         "porter.json": generate_porter,
         "snowball_en.json": generate_snowball_en,
         "snowball_fr.json": generate_snowball_fr,
-        "snowball_es.json": generate_snowball_es,
-        "snowball_pt.json": generate_snowball_pt,
-        "snowball_it.json": generate_snowball_it,
-        "snowball_de.json": generate_snowball_de,
+        **_snowball_generators(),
         "wordpiece.json": generate_wordpiece,
         "batch_encoding.json": generate_batch_encoding,
         "pooling.json": generate_pooling,
