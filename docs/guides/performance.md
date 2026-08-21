@@ -483,6 +483,64 @@ Levenshtein above, Indel below:
   One seeded stream feeds the generator and the CJK draws come strictly after the
   Latin ones, so every figure above the CJK rows still measures what it always did.
 
+### Sweeping the gate over both alphabets, and what it can answer (#407)
+
+Since #302 and #382 one constant per kernel governs two regimes, and #383 measured the
+two kernels no longer crossing in the same place on wide input. A gate benchmark cannot
+place a gate — below it the dispatch sends both rows to the DP, so the ratio is 1
+exactly where the crossing would be read. What answers it is #208's method, which #406
+finally made reachable: edit the constant, rebuild, and read the committed corpus end
+to end at each value.
+
+Intel i7-4770S, .NET 10.0.11; dev machine, non-authoritative. Six values per kernel,
+**two passes in opposite order** so drift between successive builds lands on both ends
+of the range rather than on one; one-minute load average 1.69 to 3.80 across the
+window. The Python side is fixed and was not re-run. The two passes agree to **5.3%**.
+
+Bucket 32 only, because it is the only bucket whose patterns straddle any candidate
+gate, and both passes are shown:
+
+| gate | 4 | 6 | 8 | 10 | 12 | 16 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Levenshtein, latin | 178 / 180 | 181 / 184 | 189 / 191 | 216 / 220 | 253 / 257 | 381 / 380 |
+| Levenshtein, cjk | 301 / 317 | 305 / 305 | 313 / 317 | 327 / 330 | 354 / 360 | 469 / 462 |
+| Indel, latin | 108 / 108 | 113 / 113 | 121 / 120 | 143 / 141 | 172 / 167 | 262 / 272 |
+| Indel, cjk | 257 / 245 | 271 / 258 | 275 / 267 | 282 / 282 | 296 / 301 | 382 / 374 |
+
+The same, as a ratio against each row's own gate-4 reading, which is what the decision
+turns on:
+
+| gate | 6 | 8 | 10 | 12 | 16 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Levenshtein, latin | 1.02× | 1.06× | 1.22× | 1.42× | **2.13×** |
+| Levenshtein, cjk | 0.99× | 1.02× | 1.06× | 1.16× | **1.51×** |
+| Indel, latin | 1.05× | 1.11× | 1.31× | 1.57× | **2.47×** |
+| Indel, cjk | 1.05× | 1.08× | 1.12× | 1.19× | **1.50×** |
+
+- **No alphabet wants a different gate.** All four curves rise with it, and the wide
+  regime is consistently the *less* sensitive one: raising the gate from 4 to 16 costs
+  Latin 2.13× and 2.47×, against 1.51× and 1.50× on CJK. That is #383's finding read
+  from the other end — a kernel that wins by less against the DP also loses by less
+  when the gate hands pairs back to it. A gate per alphabet would give precision to the
+  regime that asks for least, and the test it needs would be paid by the Latin-1 path.
+  [Decision 0047](../decisions/0047-one-gate-per-kernel-not-one-per-alphabet.md) has
+  the shapes refused.
+- **The value question is still unanswerable, and the wide buckets do not lift it.**
+  Both alphabets prefer 4 to 8, and that is one bucket saying so. Buckets 128 and 512
+  trim to median patterns of 110 and 493, far above every candidate; bucket 8 trims to a
+  median of **0**, since 10% of 8 characters mutated leaves nothing after `Affixes.Trim`
+  — and CJK's length-8 bucket does exactly the same, the edit rate producing the hole
+  rather than the alphabet. #208's objection stands verbatim.
+- **Do not sum ns/pair across buckets.** The 512 bucket is roughly 95% of any total and
+  the gate cannot touch it, so a sum reports that bucket's run-to-run noise as though it
+  were a result about the constant — and it picks a different winner than the row that
+  can actually see the gate.
+- **The corpus is the more precise instrument, by a factor of two.** The gate
+  benchmarks' bands reproduce to about 12% on a short job; two corpus passes taken in
+  opposite order agree to 5.3%. Where the two disagree, the corpus is the one reading
+  input that ships: #383 read Myers at parity on band 8, yet moving the gate from 8 to
+  10 costs the CJK bucket 4.4% here.
+
 ### The code-point mode, on input that leaves the BMP (#208)
 
 The table above is the UTF-16 mode over an ASCII corpus. The code-point mode is a
