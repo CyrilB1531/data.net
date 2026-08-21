@@ -19,6 +19,12 @@ is one sentence, the issue and the commit; see
 
 ## [Unreleased]
 
+### Lodestar.Fuzzy
+
+#### Changed
+
+- **`fuzz.ratio` and `process.extract` now require the kernels they were made faster by.** The floor on `Lodestar.Text` moves from `0.3.1` to `0.4.0`, so a caller who references only `Lodestar.Fuzzy` stops resolving a `Lodestar.Text` that predates #208, #320, #357 and #302. No source file changes; `Lodestar.Text 0.4.0` also refuses a `null` word in the phonetic encoders, which a consumer of both packages meets here. ([#415](https://github.com/CyrilB1531/lodestar/issues/415), [`8a1573c`](https://github.com/CyrilB1531/lodestar/commit/8a1573c))
+
 ## Released — 2026-08-21
 
 `Lodestar.Fuzzy` is not in this cut. Not one line has changed under
