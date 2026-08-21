@@ -89,14 +89,18 @@ Three things this corpus will not tell you, all of which cost #208 time:
   costs `setup + O(n)` where the DP costs `O(m·n)`, so they meet at
   `m ≈ 1 + setup/n`. A gate is one number for every `n`, so calibrate it on the
   shortest texts — the regime where being wrong is expensive.
-- **The corpus has a hole between 2 and 7, and the wide buckets do not fill it.**
-  Its length-8 bucket trims to a pattern of 0 or 1 and its length-32 bucket is the
-  only other source, so any conclusion in that range rests on a single bucket.
-  `BucketRouteDiagnostics` prints the split the gate produces on that bucket, which
-  is how to see it. #406's CJK buckets reproduce the hole exactly — a length-8 CJK
-  pair also trims to a median of 0, the 10% edit rate producing that and not the
-  alphabet — so #407 could answer whether the gate needs to differ per alphabet and
-  still not what its value should be.
+- **The corpus had a hole between 2 and 7, and #409 filled it.** Its scattered
+  length-8 bucket trims to a pattern of 0 or 1, in either alphabet — the 10% edit
+  rate produces that, not the alphabet — so every conclusion in that range once
+  rested on the length-32 bucket alone, whose median pattern is 16. The twenty
+  banded buckets have a pattern of exactly their band, 2 through 16, and that is
+  what showed the shared gate of 8 to be wrong in three of its four cases.
+- **With bands, a gate question needs two runs and not a sweep.** At a gate of 2
+  every band takes the kernel and at 17 every band takes the dynamic program, so one
+  pair of runs prices both routes over the same pairs and the crossing is where the
+  ratio reaches 1. The catch is that the two readings come from separate builds, so
+  drift enters the ratio where BenchmarkDotNet's in-process baseline would not —
+  about 10% here, which pins a separation of four bands and not a boundary band.
 - **Never sum ns/pair across buckets to score a gate value.** The 512 bucket is
   roughly 95% of any such total and no candidate gate can touch it, so the sum
   reports that bucket's run-to-run noise as a result about the constant, and picks a
@@ -238,7 +242,13 @@ dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- compare
 # side-by-side table
 python bench/compare.py
 python bench/compare.py --format=gfm   # a real markdown table, read natively by nightly_run.md
+python bench/compare.py --bands        # the banded buckets instead of the scattered ones
 ```
+
+The default table is the scattered buckets, which are the claim against rapidfuzz.
+`--bands` shows the banded ones, which exist to place the bit-parallel gate and are
+not such a claim — twenty band rows in the comparison table would bury the eight
+that are (#409).
 
 Results land in `bench/results/` (git-ignored: they are machine-specific and not
 authoritative). Every bucket stays inside the BMP, so UTF-16 units and code points
@@ -271,9 +281,12 @@ it, and the two BenchmarkDotNet classes build their operands through
 over identical inputs, and an extracted builder is what makes that true by
 construction rather than by inspection.
 
-**What this corpus reaches.** Eight buckets since #406: four lengths drawn from 27
-Latin symbols, every one ASCII (`U+007A` at most), and four more of the same
-lengths drawn from 27 CJK symbols, every one above `U+00FF`. Both alphabets carry
+**What this corpus reaches.** Twenty-eight buckets. Eight are *scattered*, whose
+pattern after trimming is an accident of where the mutations fell: four lengths
+drawn from 27 Latin symbols, every one ASCII (`U+007A` at most), and four more of
+the same lengths from 27 CJK symbols, every one above `U+00FF` (#406). Twenty are
+*banded* since #409, whose pattern is exactly the band named — 2 through 16, both
+alphabets, 500 pairs each — and they are what can place a gate. Both alphabets carry
 4–27 distinct symbols per pattern, so the dense equality table fits at every
 length and the bit-parallel kernels are exercised throughout — the failure of #52
 and #267, where the new path was never reached at all, does not apply here.

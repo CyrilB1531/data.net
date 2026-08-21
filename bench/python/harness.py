@@ -58,12 +58,16 @@ def run(distance, out_name: str) -> None:
         # Two buckets answer to every length since #406; the alphabet is what tells
         # them apart, here and in the join bench/compare.py makes downstream.
         alphabet = bucket["alphabet"]
+        kind = bucket["kind"]
+        band = bucket.get("band")
         pairs = bucket["pairs"]
         ns = time_bucket(pairs, distance)
-        results.append(
-            {"length": length, "alphabet": alphabet, "pairs": len(pairs), "ns_per_pair": ns}
-        )
-        print(f"  {alphabet:>5} len={length:>4}  {ns:10.1f} ns/pair")
+        results.append({
+            "length": length, "alphabet": alphabet, "kind": kind, "band": band,
+            "pairs": len(pairs), "ns_per_pair": ns,
+        })
+        label = f"band={band:>3}" if band is not None else f"len={length:>4}"
+        print(f"  {alphabet:>5} {label}  {ns:10.1f} ns/pair")
 
     payload = {
         "metadata": {

@@ -541,6 +541,63 @@ turns on:
   input that ships: #383 read Myers at parity on band 8, yet moving the gate from 8 to
   10 costs the CJK bucket 4.4% here.
 
+### Where each kernel actually crosses, per band and per alphabet (#409)
+
+The sweep above answered the alphabet question from bucket 32, the only bucket whose
+patterns straddled any candidate gate — and its median trimmed pattern is 16, with 70%
+of its pairs at or above 12. That is above the range where the two alphabets separate,
+so the answer it gave was bounded by where it could look.
+
+Issue #409 gave the corpus twenty banded buckets, whose pattern after `Affixes.Trim` is
+**exactly** the band named — checked pair by pair, 500 of 500 at every band — spanning 2
+to 16 in both alphabets. With them the question stops needing a sweep: at a gate of 2
+every band takes the kernel and at 17 every band takes the dynamic program, so one pair
+of runs prices both routes over the same pairs and the crossing is where the ratio
+reaches 1.
+
+Intel i7-4770S, .NET 10.0.11; dev machine, non-authoritative. Two passes per kernel in
+opposite order, both shown, one-minute load 2.03 to 5.65. **Bold means the kernel is
+under the dynamic program in both passes.**
+
+| band | LCS latin | LCS cjk | Myers latin | Myers cjk |
+| ---: | ---: | ---: | ---: | ---: |
+| 2 | **0.76 / 0.72** | 1.28 / 1.36 | 1.07 / 1.22 | 1.53 / 1.75 |
+| 3 | **0.74 / 0.66** | 1.28 / 1.13 | 1.01 / 1.14 | 1.43 / 1.69 |
+| 4 | **0.65 / 0.58** | 1.14 / 1.01 | 0.94 / 1.08 | 1.33 / 1.59 |
+| 5 | **0.58 / 0.53** | 1.04 / 0.97 | **0.85 / 0.96** | 1.23 / 1.46 |
+| 6 | **0.50 / 0.45** | **0.95 / 0.86** | **0.76 / 0.87** | 1.15 / 1.32 |
+| 7 | **0.44 / 0.38** | **0.86 / 0.74** | **0.69 / 0.80** | 1.06 / 1.22 |
+| 8 | **0.39 / 0.33** | **0.78 / 0.65** | **0.62 / 0.72** | 1.00 / 1.08 |
+| 10 | **0.30 / 0.25** | **0.67 / 0.56** | **0.48 / 0.55** | **0.81 / 0.88** |
+| 12 | **0.24 / 0.19** | **0.60 / 0.50** | **0.37 / 0.43** | **0.68 / 0.75** |
+| 16 | **0.16 / 0.13** | **0.46 / 0.39** | **0.26 / 0.30** | **0.52 / 0.56** |
+
+- **Four crossings, not one.** LCS crosses at or below band 2 on Latin and at 6 on CJK;
+  Myers at 5 and at 10. The shipped constants are 8 and 8, so they are three bands too
+  high for Myers on Latin, at least six too high for LCS on Latin, two too high for LCS
+  on CJK — and two too *low* for Myers on CJK.
+- **Two dimensions, independent and both real.** LCS crosses about three bands before
+  Myers, its recurrence being four operations per text character against Myers' dozen —
+  the asymmetry
+  [decision 0043](../decisions/0043-the-equality-table-is-sized-to-the-pattern.md)
+  measured when only one of the two kernels was worth holding a table for. And CJK
+  crosses about four bands after Latin in both, the side table raising the kernel's
+  floor while leaving the dynamic program's cost untouched.
+- **The largest error is on the hottest path.** `Lcs.SubsequenceLengthChars` is what
+  `fuzz.ratio`, `process.extract` and blocking deduplication run. At band 8 its kernel
+  costs 91.6 ns against the dynamic program's 236.2 — 2.6× — and the gate refuses it
+  everything below, where it is still 24% to 56% cheaper.
+- **This reverses what the sweep above concluded**, and
+  [decision 0048](../decisions/0048-the-gate-depends-on-the-kernel-and-the-alphabet.md)
+  records both the reversal and why the earlier reading was bounded rather than wrong.
+  What replaces the shared constant is a change to the hot path and is not decided
+  there.
+- **The ratio is taken across two processes.** Unlike the gate benchmarks, whose DP
+  baseline runs in the same process, the two readings come from separate builds, so
+  drift enters the ratio — about 10% between passes, which is why band 4 on Myers Latin
+  and band 5 on LCS CJK flip between them. Four bands of separation between alphabets
+  is an order above that; a boundary band is not.
+
 ### The code-point mode, on input that leaves the BMP (#208)
 
 The table above is the UTF-16 mode over an ASCII corpus. The code-point mode is a

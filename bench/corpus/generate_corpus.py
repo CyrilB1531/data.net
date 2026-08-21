@@ -29,6 +29,17 @@ SEED = 20260801
 LENGTHS = [8, 32, 128, 512]
 PAIRS_PER_BUCKET = 1000
 
+SCATTERED = "scattered"
+BANDED = "banded"
+
+# The bands no scattered bucket reaches. A pair of length 8 mutated at 10% trims to a
+# median pattern of 0, so every conclusion below the gate rested on one bucket (#409).
+BANDS = [2, 3, 4, 5, 6, 7, 8, 10, 12, 16]
+BANDED_PAIRS = 500
+
+# Affix on each side, long enough that trimming is the common case rather than an edge.
+SHARED = 24
+
 LATIN = "latin"
 CJK = "cjk"
 
@@ -60,6 +71,41 @@ def mutate(rng: SeededRandom, s: str, edits: int, alphabet: str) -> str:
     return "".join(chars)
 
 
+def build_banded(rng: SeededRandom, name: str) -> list[dict]:
+    """One bucket per band, whose pattern after trimming is exactly that band.
+
+    A scattered pair's pattern is an accident of where the mutations fell; here it is
+    the parameter. The middles' first and last characters are forced apart because
+    drawn freely they collide once in 27, and trimming then eats into the band.
+    """
+    alphabet = ALPHABETS[name]
+    buckets = []
+    for band in BANDS:
+        pairs = []
+        for _ in range(BANDED_PAIRS):
+            prefix = rand_string(rng, SHARED, alphabet)
+            suffix = rand_string(rng, SHARED, alphabet)
+            a = with_ends(rng, band, alphabet, 0, 1)
+            b = with_ends(rng, band, alphabet, 2, 3)
+            pairs.append([prefix + a + suffix, prefix + b + suffix])
+        buckets.append({
+            "length": band + 2 * SHARED,
+            "alphabet": name,
+            "kind": BANDED,
+            "band": band,
+            "pairs": pairs,
+        })
+    return buckets
+
+
+def with_ends(rng: SeededRandom, band: int, alphabet: str, first: int, last: int) -> str:
+    """A random middle whose ends are imposed, taken from the alphabet rather than written."""
+    middle = list(rand_string(rng, band, alphabet))
+    middle[0] = alphabet[first]
+    middle[-1] = alphabet[last if band > 1 else first]
+    return "".join(middle)
+
+
 def build(rng: SeededRandom, name: str) -> list[dict]:
     """One bucket per length, all drawn from the alphabet `name` selects."""
     alphabet = ALPHABETS[name]
@@ -71,7 +117,7 @@ def build(rng: SeededRandom, name: str) -> list[dict]:
             a = rand_string(rng, length, alphabet)
             b = mutate(rng, a, edits, alphabet)
             pairs.append([a, b])
-        buckets.append({"length": length, "alphabet": name, "pairs": pairs})
+        buckets.append({"length": length, "alphabet": name, "kind": SCATTERED, "pairs": pairs})
     return buckets
 
 
@@ -80,6 +126,9 @@ def main() -> None:
     # Latin first, CJK strictly after: one stream feeds both, and drawing the wide
     # buckets any earlier would shift every Latin pair already published (#406).
     buckets = build(rng, LATIN) + build(rng, CJK)
+    # Same rule as the CJK draws: strictly after everything already committed, or the
+    # stream shifts and every pair published before this changes silently (#409).
+    buckets += build_banded(rng, LATIN) + build_banded(rng, CJK)
 
     payload = {
         "metadata": {
@@ -88,6 +137,9 @@ def main() -> None:
             "pairs_per_bucket": PAIRS_PER_BUCKET,
             "alphabets": {name: len(a) for name, a in ALPHABETS.items()},
             "edit_rate": 0.10,
+            "bands": BANDS,
+            "banded_pairs_per_bucket": BANDED_PAIRS,
+            "banded_shared_affix": SHARED,
         },
         "buckets": buckets,
     }

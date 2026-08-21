@@ -57,6 +57,7 @@ a later decision uses instead.
 | [`0045`](0045-a-console-call-carries-its-reason-on-the-line.md) | A `Console` call carries its reason on the line, not in an exemption list | accepted | 2026-08-21 | adds a seventh guard to [`0037`](0037-the-guards-run-before-the-commit.md)'s hook, under the rule it set |
 | [`0046`](0046-check-adr-immutable-runs-in-ci-only.md) | `check_adr_immutable.py` runs in CI only, not the pre-commit hook | accepted | 2026-08-20 | — |
 | [`0047`](0047-one-gate-per-kernel-not-one-per-alphabet.md) | One bit-parallel gate per kernel, not one per alphabet | accepted | 2026-08-21 | amends [`0043`](0043-the-equality-table-is-sized-to-the-pattern.md) |
+| [`0048`](0048-the-gate-depends-on-the-kernel-and-the-alphabet.md) | The bit-parallel gate depends on the kernel *and* the alphabet | accepted | 2026-08-21 | amends [`0047`](0047-one-gate-per-kernel-not-one-per-alphabet.md) |
 
 ## What `accepted` means here
 
