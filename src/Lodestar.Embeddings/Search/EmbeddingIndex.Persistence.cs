@@ -157,14 +157,42 @@ public sealed partial class EmbeddingIndex
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <exception cref="InvalidDataException">The artifact is malformed, of the wrong kind, of an unsupported version, internally inconsistent, or exceeds a limit.</exception>
     /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
-    public static async Task<EmbeddingIndex> LoadAsync(
+    public static Task<EmbeddingIndex> LoadAsync(
         Stream source,
         ArtifactLoadOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
-        ReadOnlyMemory<byte> payload = await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false);
-        return FromPayload(payload, limits);
+        // Checked here for the reason the synchronous overload states: choosing the read
+        // below reads source.CanSeek, which a null would fault on before either refused it.
+        Guard.NotNull(source);
+        return LoadAsync(source, ArtifactLoadOptions.LimitsOf(options), cancellationToken);
+    }
+
+    /// <summary>The asynchronous read, on limits already resolved — the seam a test drives.</summary>
+    /// <remarks>
+    /// Mirrors the synchronous seam above, and for the same reason: <c>MaxSingleBuffer</c> is
+    /// the CLR's array ceiling rather than a caller's choice, so a test reaches the segmented
+    /// branch at a size a suite can afford without the limit becoming public (#396).
+    /// The limits pass by value because a <see langword="ref"/> parameter is not allowed on an
+    /// asynchronous method; <c>ArtifactLimits</c> is a readonly struct, so the copy is the same
+    /// bytes the synchronous path passes by reference.
+    /// </remarks>
+    internal static async Task<EmbeddingIndex> LoadAsync(
+        Stream source,
+        ArtifactLimits limits,
+        CancellationToken cancellationToken)
+    {
+        Guard.NotNull(source);
+
+        // Past one array, segments instead — the same decision Load takes, which #377
+        // gave it alone and #396 gives here.
+        return source.CanSeek && source.Length - source.Position > limits.MaxSingleBuffer
+            ? FromSegments(
+                await JsonArtifact.ReadAllSegmentsAsync(source, limits, cancellationToken).ConfigureAwait(false),
+                limits)
+            : FromPayload(
+                await JsonArtifact.ReadAllBytesAsync(source, limits, cancellationToken).ConfigureAwait(false),
+                limits);
     }
 
     private static EmbeddingIndex FromPayload(ReadOnlyMemory<byte> payload, in ArtifactLimits limits)
