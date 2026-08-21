@@ -71,8 +71,10 @@ an Intel i7-4770S; dev machine — non-authoritative), **after** adding the bloc
   ([decision 0043](../decisions/0043-the-equality-table-is-sized-to-the-pattern.md)).
   The **code-point mode** lost the same restriction earlier (#208). What each kernel
   costs on a wide alphabet, and where it crosses the DP there, is the banded sweep
-  below — which found the shipped gate wrong on three of its four crossings
-  ([decision 0048](../decisions/0048-the-gate-depends-on-the-kernel-and-the-alphabet.md)).
+  below — which found the then-shipped gate wrong on three of its four crossings
+  ([decision 0048](../decisions/0048-the-gate-depends-on-the-kernel-and-the-alphabet.md))
+  and led to the two-gate shape each kernel carries now
+  ([decision 0049](../decisions/0049-two-gates-per-kernel-tested-where-the-width-is-known.md)).
 
 ### The length-32 bucket, which was never the kernel (#208)
 
