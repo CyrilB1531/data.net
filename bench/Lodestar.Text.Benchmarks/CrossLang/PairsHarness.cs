@@ -54,6 +54,8 @@ internal static class PairsHarness
             {
                 Length = bucket.Length,
                 Alphabet = bucket.Alphabet,
+                Kind = bucket.Kind,
+                Band = bucket.Band,
                 Pairs = bucket.Pairs.Count,
                 NsPerPair = ns,
             });
@@ -143,6 +145,17 @@ internal static class PairsHarness
         /// </remarks>
         [JsonPropertyName("alphabet")] public string Alphabet { get; init; } = "";
 
+        /// <summary>How the pair was built — <c>scattered</c>, or <c>banded</c> since #409.</summary>
+        /// <remarks>
+        /// A scattered pair's pattern after trimming is an accident of where the generator put
+        /// its mutations; a banded pair's is exactly <see cref="Band"/>. The two answer different
+        /// questions, so a selector that reads only the length would mix them.
+        /// </remarks>
+        [JsonPropertyName("kind")] public string Kind { get; init; } = "";
+
+        /// <summary>The differing middle a banded bucket is named for, or null when scattered.</summary>
+        [JsonPropertyName("band")] public int? Band { get; init; }
+
         [JsonPropertyName("pairs")] public IReadOnlyList<string[]> Pairs { get; init; } = [];
     }
 
@@ -169,6 +182,12 @@ internal static class PairsHarness
 
         /// <summary>The bucket's alphabet, carried through so <c>bench/compare.py</c> can join on it.</summary>
         [JsonPropertyName("alphabet")] public string Alphabet { get; init; } = "";
+
+        /// <summary>The bucket's kind, carried through so a report can separate the two.</summary>
+        [JsonPropertyName("kind")] public string Kind { get; init; } = "";
+
+        /// <summary>The band a banded bucket is named for, or null.</summary>
+        [JsonPropertyName("band")] public int? Band { get; init; }
 
         [JsonPropertyName("pairs")] public int Pairs { get; init; }
         [JsonPropertyName("ns_per_pair")] public double NsPerPair { get; init; }

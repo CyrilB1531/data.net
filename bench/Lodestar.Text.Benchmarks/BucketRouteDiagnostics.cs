@@ -32,10 +32,10 @@ public class BucketRouteDiagnostics
     [GlobalSetup]
     public void Setup()
     {
-        // Selected on the alphabet as well as the length. On the length alone this took
-        // whichever bucket the file listed first, and reported it under either name (#406).
+        // Selected on the alphabet and the kind, not the length: on the length alone this
+        // took whichever bucket the file listed first and named it either way (#406, #409).
         PairsHarness.Bucket bucket = PairsHarness.Load().Buckets
-            .First(b => b.Length == 32 && b.Alphabet == Alphabet);
+            .First(b => b.Length == 32 && b.Alphabet == Alphabet && b.Kind == "scattered");
         List<string[]> pairs = bucket.Pairs.ToList();
         _dp = [.. pairs.Where(p => Pattern(p[0], p[1]) < Gate)];
         _myers = [.. pairs.Where(p => Pattern(p[0], p[1]) >= Gate)];
