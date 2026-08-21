@@ -64,7 +64,6 @@ public static class PersistenceCrossLang
         string indexFile = Path.Combine(Path.GetTempPath(), $"lodestar-index-{Environment.ProcessId}.json");
         File.WriteAllBytes(indexFile, indexArtifact);
 
-        Console.WriteLine("C# persistence cross-lang bench");
         var results = new List<Harness.OperationResult>
         {
             Harness.Measure("vocab_txt", () => VocabTxtLoader.Load(vocabTxt), new FileInfo(vocabTxt).Length),

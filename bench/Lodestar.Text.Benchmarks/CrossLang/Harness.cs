@@ -65,8 +65,6 @@ internal static class Harness
             }
         }
 
-        string size = artifactBytes > 0 ? $"  {artifactBytes,12:N0} B" : "";
-        Console.WriteLine($"  {operation,-28} {bestWall,10:F3} ms/op  cpu {cpuOfBest,8:F3} ms/op  ({cpuOfBest / bestWall:F2}x cores){size}");
         return new OperationResult
         {
             Operation = operation,
@@ -81,7 +79,6 @@ internal static class Harness
     {
         Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
         File.WriteAllText(outPath, JsonSerializer.Serialize(payload, JsonOptions) + "\n");
-        Console.WriteLine($"-> {outPath}");
     }
 
     public sealed record Output

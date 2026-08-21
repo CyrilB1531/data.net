@@ -35,7 +35,6 @@ internal static class RocParallelBench
     {
         string outPath = Path.Combine(BenchCorpus.RepoRoot(), "bench", "results", "csharp-roc-parallel.json");
 
-        Console.WriteLine($"C# multiclass ROC-AUC, sequential vs parallel — {Environment.ProcessorCount} logical cores");
         var results = new List<Harness.OperationResult>();
 
         foreach ((int n, int k) in Shapes)
