@@ -1,0 +1,483 @@
+{
+ "metadata": {
+  "algorithm": "SwedishSnowballStemmer",
+  "library": "nltk",
+  "library_version": "3.10.1",
+  "reference_calls": [
+   "nltk.stem.snowball.SnowballStemmer('swedish')"
+  ],
+  "count": 94
+ },
+ "cases": [
+  {
+   "id": 0,
+   "word": "verksamheterna",
+   "stem": "verksam"
+  },
+  {
+   "id": 1,
+   "word": "verksamheten",
+   "stem": "verksam"
+  },
+  {
+   "id": 2,
+   "word": "möjligheterna",
+   "stem": "möj"
+  },
+  {
+   "id": 3,
+   "word": "möjligheten",
+   "stem": "möj"
+  },
+  {
+   "id": 4,
+   "word": "möjligheter",
+   "stem": "möj"
+  },
+  {
+   "id": 5,
+   "word": "flickornas",
+   "stem": "flick"
+  },
+  {
+   "id": 6,
+   "word": "pojkarnas",
+   "stem": "pojk"
+  },
+  {
+   "id": 7,
+   "word": "barnens",
+   "stem": "barn"
+  },
+  {
+   "id": 8,
+   "word": "husens",
+   "stem": "hus"
+  },
+  {
+   "id": 9,
+   "word": "dagarnas",
+   "stem": "dag"
+  },
+  {
+   "id": 10,
+   "word": "arbetande",
+   "stem": "arbet"
+  },
+  {
+   "id": 11,
+   "word": "arbetandet",
+   "stem": "arbet"
+  },
+  {
+   "id": 12,
+   "word": "arbetaren",
+   "stem": "arbet"
+  },
+  {
+   "id": 13,
+   "word": "arbetarne",
+   "stem": "arbet"
+  },
+  {
+   "id": 14,
+   "word": "arbetarna",
+   "stem": "arbet"
+  },
+  {
+   "id": 15,
+   "word": "arbetare",
+   "stem": "arbet"
+  },
+  {
+   "id": 16,
+   "word": "flickan",
+   "stem": "flickan"
+  },
+  {
+   "id": 17,
+   "word": "flickor",
+   "stem": "flick"
+  },
+  {
+   "id": 18,
+   "word": "flickorna",
+   "stem": "flick"
+  },
+  {
+   "id": 19,
+   "word": "pojkar",
+   "stem": "pojk"
+  },
+  {
+   "id": 20,
+   "word": "pojkarna",
+   "stem": "pojk"
+  },
+  {
+   "id": 21,
+   "word": "husen",
+   "stem": "hus"
+  },
+  {
+   "id": 22,
+   "word": "husets",
+   "stem": "huset"
+  },
+  {
+   "id": 23,
+   "word": "vackraste",
+   "stem": "vackr"
+  },
+  {
+   "id": 24,
+   "word": "vackrare",
+   "stem": "vackr"
+  },
+  {
+   "id": 25,
+   "word": "vackra",
+   "stem": "vackr"
+  },
+  {
+   "id": 26,
+   "word": "snabbaste",
+   "stem": "snabb"
+  },
+  {
+   "id": 27,
+   "word": "snabbare",
+   "stem": "snabb"
+  },
+  {
+   "id": 28,
+   "word": "störst",
+   "stem": "störst"
+  },
+  {
+   "id": 29,
+   "word": "störste",
+   "stem": "störst"
+  },
+  {
+   "id": 30,
+   "word": "talade",
+   "stem": "tal"
+  },
+  {
+   "id": 31,
+   "word": "talades",
+   "stem": "tal"
+  },
+  {
+   "id": 32,
+   "word": "talat",
+   "stem": "tal"
+  },
+  {
+   "id": 33,
+   "word": "talar",
+   "stem": "tal"
+  },
+  {
+   "id": 34,
+   "word": "talas",
+   "stem": "tal"
+  },
+  {
+   "id": 35,
+   "word": "tala",
+   "stem": "tal"
+  },
+  {
+   "id": 36,
+   "word": "talande",
+   "stem": "tal"
+  },
+  {
+   "id": 37,
+   "word": "kallad",
+   "stem": "kall"
+  },
+  {
+   "id": 38,
+   "word": "kallade",
+   "stem": "kall"
+  },
+  {
+   "id": 39,
+   "word": "kallat",
+   "stem": "kall"
+  },
+  {
+   "id": 40,
+   "word": "boken",
+   "stem": "bok"
+  },
+  {
+   "id": 41,
+   "word": "böcker",
+   "stem": "böck"
+  },
+  {
+   "id": 42,
+   "word": "böckerna",
+   "stem": "böck"
+  },
+  {
+   "id": 43,
+   "word": "hus",
+   "stem": "hus"
+  },
+  {
+   "id": 44,
+   "word": "his",
+   "stem": "his"
+  },
+  {
+   "id": 45,
+   "word": "bris",
+   "stem": "bris"
+  },
+  {
+   "id": 46,
+   "word": "ros",
+   "stem": "ros"
+  },
+  {
+   "id": 47,
+   "word": "hals",
+   "stem": "hal"
+  },
+  {
+   "id": 48,
+   "word": "bals",
+   "stem": "bal"
+  },
+  {
+   "id": 49,
+   "word": "fots",
+   "stem": "fot"
+  },
+  {
+   "id": 50,
+   "word": "lands",
+   "stem": "land"
+  },
+  {
+   "id": 51,
+   "word": "stads",
+   "stem": "stad"
+  },
+  {
+   "id": 52,
+   "word": "sjukdd",
+   "stem": "sjukd"
+  },
+  {
+   "id": 53,
+   "word": "godt",
+   "stem": "godt"
+  },
+  {
+   "id": 54,
+   "word": "nytt",
+   "stem": "nytt"
+  },
+  {
+   "id": 55,
+   "word": "matt",
+   "stem": "matt"
+  },
+  {
+   "id": 56,
+   "word": "sant",
+   "stem": "sant"
+  },
+  {
+   "id": 57,
+   "word": "kort",
+   "stem": "kort"
+  },
+  {
+   "id": 58,
+   "word": "starkt",
+   "stem": "stark"
+  },
+  {
+   "id": 59,
+   "word": "svagt",
+   "stem": "svagt"
+  },
+  {
+   "id": 60,
+   "word": "buggd",
+   "stem": "bugg"
+  },
+  {
+   "id": 61,
+   "word": "byggd",
+   "stem": "bygg"
+  },
+  {
+   "id": 62,
+   "word": "vackert",
+   "stem": "vackert"
+  },
+  {
+   "id": 63,
+   "word": "hastigt",
+   "stem": "hast"
+  },
+  {
+   "id": 64,
+   "word": "vänlig",
+   "stem": "vän"
+  },
+  {
+   "id": 65,
+   "word": "vänligt",
+   "stem": "vän"
+  },
+  {
+   "id": 66,
+   "word": "vänliga",
+   "stem": "vän"
+  },
+  {
+   "id": 67,
+   "word": "roligt",
+   "stem": "rol"
+  },
+  {
+   "id": 68,
+   "word": "rolig",
+   "stem": "rol"
+  },
+  {
+   "id": 69,
+   "word": "kraftig",
+   "stem": "kraft"
+  },
+  {
+   "id": 70,
+   "word": "kraftigt",
+   "stem": "kraft"
+  },
+  {
+   "id": 71,
+   "word": "hastig",
+   "stem": "hast"
+  },
+  {
+   "id": 72,
+   "word": "flitig",
+   "stem": "flit"
+  },
+  {
+   "id": 73,
+   "word": "modig",
+   "stem": "mod"
+  },
+  {
+   "id": 74,
+   "word": "farlig",
+   "stem": "far"
+  },
+  {
+   "id": 75,
+   "word": "farligt",
+   "stem": "far"
+  },
+  {
+   "id": 76,
+   "word": "fängels",
+   "stem": "fängel"
+  },
+  {
+   "id": 77,
+   "word": "medels",
+   "stem": "medel"
+  },
+  {
+   "id": 78,
+   "word": "spels",
+   "stem": "spel"
+  },
+  {
+   "id": 79,
+   "word": "kraftfullt",
+   "stem": "kraftfull"
+  },
+  {
+   "id": 80,
+   "word": "meningsfullt",
+   "stem": "meningsfull"
+  },
+  {
+   "id": 81,
+   "word": "hopplöst",
+   "stem": "hopplös"
+  },
+  {
+   "id": 82,
+   "word": "meningslöst",
+   "stem": "meningslös"
+  },
+  {
+   "id": 83,
+   "word": "arbetslöst",
+   "stem": "arbetslös"
+  },
+  {
+   "id": 84,
+   "word": "och",
+   "stem": "och"
+  },
+  {
+   "id": 85,
+   "word": "att",
+   "stem": "att"
+  },
+  {
+   "id": 86,
+   "word": "det",
+   "stem": "det"
+  },
+  {
+   "id": 87,
+   "word": "en",
+   "stem": "en"
+  },
+  {
+   "id": 88,
+   "word": "ett",
+   "stem": "ett"
+  },
+  {
+   "id": 89,
+   "word": "som",
+   "stem": "som"
+  },
+  {
+   "id": 90,
+   "word": "har",
+   "stem": "har"
+  },
+  {
+   "id": 91,
+   "word": "är",
+   "stem": "är"
+  },
+  {
+   "id": 92,
+   "word": "på",
+   "stem": "på"
+  },
+  {
+   "id": 93,
+   "word": "av",
+   "stem": "av"
+  }
+ ]
+}

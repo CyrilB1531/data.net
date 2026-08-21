@@ -148,6 +148,19 @@ internal abstract class SnowballWorkerBase
     }
 
     /// <summary>Replaces the suffix if it lies in R2.</summary>
+    /// <summary>Replaces the suffix when it lies in R1, and leaves the word alone otherwise.</summary>
+    /// <remarks>
+    /// The R1 twin of <see cref="ReplaceIfInR2"/>. The Scandinavian algorithms have no R2 at
+    /// all, so their few replacing rules — Swedish <c>fullt</c> and <c>löst</c> — test R1.
+    /// </remarks>
+    protected void ReplaceIfInR1(int suffixLen, string replacement)
+    {
+        if (InR1(suffixLen))
+        {
+            Replace(suffixLen, replacement);
+        }
+    }
+
     protected void ReplaceIfInR2(int suffixLen, string replacement)
     {
         if (InR2(suffixLen))
@@ -178,6 +191,26 @@ internal abstract class SnowballWorkerBase
     }
 
     /// <summary>The longest candidate that ends the word, or null.</summary>
+    /// <summary>The longest candidate that both ends the word and lies inside R1.</summary>
+    /// <remarks>
+    /// Not the longest match then tested: the published rule searches "the longest among the
+    /// following suffixes *in R1*", so a candidate outside R1 is not a candidate at all and a
+    /// shorter one still wins. Swedish <c>rolig</c> ends both <c>lig</c> and <c>ig</c>; only
+    /// <c>ig</c> is in R1, and taking <c>lig</c> first leaves the word unstemmed (#306).
+    /// </remarks>
+    protected string? LongestSuffixInR1(string[] candidates)
+    {
+        string? best = null;
+        foreach (string c in candidates)
+        {
+            if (Ends(c) && InR1(c.Length) && (best is null || c.Length > best.Length))
+            {
+                best = c;
+            }
+        }
+        return best;
+    }
+
     protected string? LongestSuffix(string[] candidates)
     {
         string? best = null;

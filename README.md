@@ -40,7 +40,7 @@ project map (use / build / decide).
 | Lot | Contents | Status |
 | --- | --- | --- |
 | 1 | String distances & similarity | ✅ **complete** — Levenshtein (+ Myers), OSA, Damerau-Levenshtein, Hamming, Jaro, Jaro-Winkler, Indel, LCS, Ratcliff-Obershelp, Jaccard, Dice, Overlap, Tversky, Cosine, Soundex, Metaphone, NYSIIS |
-| 2 | Tokenization & sparse vectorization | ✅ **complete** — CSR, tokenizers (word/char/char_wb), CountVectorizer, TfidfVectorizer, HashingVectorizer, Porter, Snowball EN/FR/DE/ES/IT/NL/PT, stop words in six languages |
+| 2 | Tokenization & sparse vectorization | ✅ **complete** — CSR, tokenizers (word/char/char_wb), CountVectorizer, TfidfVectorizer, HashingVectorizer, Porter, Snowball EN/FR/DE/ES/IT/NL/PT/SV, stop words in six languages |
 | 3 | Embeddings & semantic search | ✅ **complete** — WordPiece, SentencePiece, BPE and byte-level BPE (GPT-2, Llama-3, Qwen2), pooling, SIMD kNN, ONNX inference |
 | 4 | Applied fuzzy matching | ✅ **complete** — `fuzz.*` (ratio/partial/token_sort/token_set/WRatio), `process.extract`/`extractOne`, blocking deduplication |
 | 5 | Classification metrics | ✅ **complete** — confusion matrix, accuracy, precision/recall/F1/F-beta in all four averaging modes, `classification_report` character for character, ROC-AUC binary and multiclass (`ovr`/`ovo`) |

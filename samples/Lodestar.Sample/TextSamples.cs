@@ -43,6 +43,7 @@ internal static class TextSamples
         ItalianSnowballStemmerSample.Run();
         GermanSnowballStemmerSample.Run();
         DutchSnowballStemmerSample.Run();
+        SwedishSnowballStemmerSample.Run();
         Console.WriteLine();
         Console.WriteLine("  vectorization, and the artifacts it persists");
         CountVectorizerOptionsSample.Run();
