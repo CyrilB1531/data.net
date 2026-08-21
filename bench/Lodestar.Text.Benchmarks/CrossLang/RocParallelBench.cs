@@ -35,7 +35,6 @@ internal static class RocParallelBench
     {
         string outPath = Path.Combine(BenchCorpus.RepoRoot(), "bench", "results", "csharp-roc-parallel.json");
 
-        Console.WriteLine($"C# multiclass ROC-AUC, sequential vs parallel — {Environment.ProcessorCount} logical cores");
         var results = new List<Harness.OperationResult>();
 
         foreach ((int n, int k) in Shapes)
@@ -66,6 +65,7 @@ internal static class RocParallelBench
 
                         if (single.Elapsed > OneVsOnePatience)
                         {
+                            // console-print: why this cell is absent from the table.
                             Console.WriteLine(
                                 $"  {name} skipped: one call already took {single.Elapsed.TotalSeconds:F1}s, " +
                                 $"over the {OneVsOnePatience.TotalSeconds:F0}s patience for this cell");

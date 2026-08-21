@@ -22,7 +22,6 @@ public static class IndelCrossLang
     public static void Run(string[] args)
     {
         TextElement mode = PairsHarness.ModeOf(args);
-        Console.WriteLine($"C# Indel cross-lang bench (mode: {mode})");
 
         List<PairsHarness.BucketResult> results =
             PairsHarness.Run(PairsHarness.Load(), new Edits(mode));

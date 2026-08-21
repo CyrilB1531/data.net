@@ -18,6 +18,8 @@ given:
   someone's home directory.
 - `check_comment_length.py` refuses a comment block that runs past its budget
   without saying why.
+- `check_no_console_writeline.py` refuses a `Console` call in a shipped package,
+  and an unexplained one in a benchmark.
 - `check_sample_culture.py` refuses a sample that can print a number in the
   contributor's culture rather than the same way everywhere.
 - `check_sample_coverage.py` refuses a public class with no `<Class>Sample.cs`,
@@ -324,6 +326,45 @@ navigation, so `Home` names it "no pages yet" instead, the same text it
 already used before this page existed. The entry page is not archived — it
 carries no content of its own to freeze, and the reasoning is in the module
 docstring.
+
+## `check_no_console_writeline.py`
+
+Refuses a `Console` call under `src/`, always, and one under `bench/` that does
+not say why it is there.
+
+```bash
+python3 tools/check_no_console_writeline.py           # findings, exit 1 if any
+python3 tools/check_no_console_writeline.py --report  # the marked ones, always exit 0
+python3 tools/check_no_console_writeline.py --help
+```
+
+**`src/` has no marker and will not get one.** A library that writes to a console
+its caller did not open is deciding for an application it cannot see. The packages
+here have never done it; this is what keeps that true once nobody is watching.
+
+**`bench/` needs a reason, not permission.** Ten calls there narrated a run —
+banners, one line per measured row, `-> path` after a write — and accumulated
+precisely because each was harmless on its own. None was in a timed region and
+none moved a published number. Four remain, each carrying what no file does: that
+the wrong build was measured, which build it was, why a cell is missing from a
+table, and the group sizes a diagnostic class's own rows are read against. Each
+says so on its own line:
+
+```csharp
+// console-print: the wrong build was measured, so every number below is a lie.
+Console.Error.WriteLine(…);
+```
+
+The marker goes above the call or trails it, and an empty one is refused. Whether
+the reason is good is a review's call, not this guard's — the same division
+`check_comment_length.py` draws.
+
+There is deliberately **no exemption list in the script**.
+[`check_machine_paths.py`](#check_machine_pathspy) says why they rot: switched off
+one file at a time, by someone who is not the reviewer. A marker rots in the diff
+that adds it, in front of the person who can refuse it —
+[decision 0045](../docs/decisions/0045-a-console-call-carries-its-reason-on-the-line.md)
+records that choice and what the four marked calls carry.
 
 ## `check_comment_length.py`
 
