@@ -1,4 +1,4 @@
-# 0043 — Compression belongs to the caller, not to the artifact format
+# 0044 — Compression belongs to the caller, not to the artifact format
 
 **Status:** accepted · **Date:** 2026-08-20
 

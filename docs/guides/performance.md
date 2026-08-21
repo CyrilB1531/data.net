@@ -1352,7 +1352,7 @@ rows are comparable to each other:
 So **the library does not compress, and the caller can.** Wrapping the stream works
 on both sides today and costs no API:
 [the embeddings guide](embeddings.md#compressing-the-artifact) has the recipe,
-[ADR 0043](../decisions/0043-compression-belongs-to-the-caller.md) the decision and
+[ADR 0044](../decisions/0044-compression-belongs-to-the-caller.md) the decision and
 its loser. `bench/compare-persistence` now carries `embedding_index_save_gzip` and
 `embedding_index_load_gzip` beside the plain rows, against numpy's
 `savez_compressed`, so the trade is re-measured rather than remembered.
