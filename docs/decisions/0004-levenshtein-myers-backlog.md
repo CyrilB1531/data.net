@@ -103,6 +103,7 @@ the 2026-08-05 revision below.
 - **Lift the Latin-1 restriction.** The equality table is 256 entries, so a
   pattern containing CJK or emoji still falls back to the DP — the figures above
   do not describe those inputs. A sparse or hashed table would generalise it.
+
 - **The length-32 bucket sits at 1.4× behind rapidfuzz.** It already takes the
   single-word path, so the cause differs from the one fixed here and needs its own
   measurement.
@@ -140,29 +141,6 @@ the 2026-08-05 revision below.
 > the table to the pattern's own alphabet is still open**, and is still the same
 > change as lifting the Latin-1 restriction above.
 >
-> **#301 update: the remaining memset is worth one kernel's while and not the
-> other's.** `localsinit` zeroes the same 2 KB on every call, which no `Clear()`
-> removal reaches and `AllowUnsafeBlocks=false` forbids `[SkipLocalsInit]` from
-> suppressing. A `[ThreadStatic]` table held all-zero between calls replaces it
-> with a restore loop over the pattern — `O(m)` rather than `O(256)`. Swept over
-> the pair corpus at a longest-held-pattern of 0, 16, 32 and 64, it is worth **13%
-> of the length-32 bucket on Indel** and a **regression at every value on
-> Levenshtein**, so `BitParallelLcs` holds its table at 32 and `Myers` keeps its
-> `stackalloc`. The LCS recurrence is four operations per text character against
-> Myers' dozen, so the identical fixed cost is a far larger share of what its call
-> does. Numbers in [`../guides/performance.md`](../guides/performance.md).
->
-> **Where this shape goes wrong is the refusal.** A pattern is written character by
-> character and abandoned partway when one leaves Latin-1, so entries are already
-> set when the kernel gives up — and the damage never shows on the call that causes
-> it, only on the next one, whose text reads a mask its predecessor left behind.
-> That is a test rather than a comment, and it failed before it passed.
->
-> **A microbenchmark said this won in both kernels.** It timed 64 rotating pairs, a
-> working set small enough that the held table never left L1; the corpus evicts it.
-> Sizing a fixed cost in isolation is worth doing first and is not worth believing
-> on its own.
-
 ## Testing note
 
 The blocked path shipped with **zero coverage from the existing corpus**, and the

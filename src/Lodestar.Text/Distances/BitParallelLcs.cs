@@ -62,10 +62,10 @@ internal static class BitParallelLcs
         ulong[] peq = Held;
         if (!TryFill(pattern, peq))
         {
-            return false; // pattern outside Latin-1: let the DP handle it
+            return TrySingleWordWide(pattern, text, out length);
         }
 
-        length = Scan(peq, pattern.Length, text);
+        length = Scan(peq, default, default, pattern.Length, text);
         Restore(pattern, peq);
         return true;
     }
@@ -81,10 +81,26 @@ internal static class BitParallelLcs
         Span<ulong> peq = stackalloc ulong[Entries];
         if (!TryFill(pattern, peq))
         {
-            return false; // pattern outside Latin-1: let the DP handle it
+            return TrySingleWordWide(pattern, text, out length);
         }
 
-        length = Scan(peq, pattern.Length, text);
+        length = Scan(peq, default, default, pattern.Length, text);
+        return true;
+    }
+
+    /// <summary>The kernel for a pattern that leaves Latin-1, which carries a side table beside the dense one.</summary>
+    /// <remarks>
+    /// Its own method for the reason <see cref="TrySingleWordOverStack"/> gives, and because the
+    /// side table is 1.25 KB that a Latin-1 pattern must not be charged for.
+    /// </remarks>
+    private static bool TrySingleWordWide(ReadOnlySpan<char> pattern, ReadOnlySpan<char> text, out int length)
+    {
+        Span<ulong> peq = stackalloc ulong[Entries];
+        Span<char> keys = stackalloc char[WideAlphabet.Capacity];
+        Span<ulong> masks = stackalloc ulong[WideAlphabet.Capacity];
+
+        WideAlphabet.Fill(pattern, peq, keys, masks);
+        length = Scan(peq, keys, masks, pattern.Length, text);
         return true;
     }
 
@@ -119,7 +135,9 @@ internal static class BitParallelLcs
     /// <summary>One machine word of the LCS recurrence, over the pattern's equality table.</summary>
     /// <remarks>Inlined rather than called: this is the hot loop, and a call here costs measurably.</remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int Scan(ReadOnlySpan<ulong> peq, int m, ReadOnlySpan<char> text)
+    private static int Scan(
+        ReadOnlySpan<ulong> peq, ReadOnlySpan<char> keys, ReadOnlySpan<ulong> masks,
+        int m, ReadOnlySpan<char> text)
     {
         // All ones: no position has incremented yet. Carries run upward, so the bits
         // above m are masked at the end rather than kept clean throughout.
@@ -127,7 +145,7 @@ internal static class BitParallelLcs
         for (int j = 0; j < text.Length; j++)
         {
             char tc = text[j];
-            ulong p = tc <= 0xFF ? peq[tc] : 0UL;
+            ulong p = tc <= 0xFF ? peq[tc] : WideAlphabet.Lookup(keys, masks, tc);
             ulong u = v & p;
             v = (v + u) | (v - u);
         }
@@ -142,23 +160,34 @@ internal static class BitParallelLcs
         int m = pattern.Length;
         int blocks = (m + 63) / 64;
 
-        int peqLength = Entries * blocks;
+        int slots = WideAlphabet.CapacityFor(m);
+        int peqLength = (Entries + slots) * blocks;
         ulong[] peqRented = ArrayPool<ulong>.Shared.Rent(peqLength);
+        char[] keysRented = ArrayPool<char>.Shared.Rent(slots);
         ulong[] vRented = ArrayPool<ulong>.Shared.Rent(blocks);
         try
         {
             Span<ulong> peq = peqRented.AsSpan(0, peqLength);
             Span<ulong> v = vRented.AsSpan(0, blocks);
+            Span<char> keys = keysRented.AsSpan(0, slots);
             peq.Clear();
+            keys.Clear();
 
             for (int i = 0; i < m; i++)
             {
                 char c = pattern[i];
-                if (c > 0xFF)
+                int row;
+                if (c <= 0xFF)
                 {
-                    return false; // pattern outside Latin-1: let the DP handle it
+                    row = c;
                 }
-                peq[(c * blocks) + (i >> 6)] |= 1UL << (i & 63);
+                else
+                {
+                    int k = WideAlphabet.Probe(keys, c);
+                    keys[k] = c;
+                    row = Entries + k;
+                }
+                peq[(row * blocks) + (i >> 6)] |= 1UL << (i & 63);
             }
 
             for (int b = 0; b < blocks; b++)
@@ -169,13 +198,16 @@ internal static class BitParallelLcs
             for (int j = 0; j < text.Length; j++)
             {
                 char tc = text[j];
-                if (tc <= 0xFF)
+                int row = tc <= 0xFF
+                    ? tc * blocks
+                    : WideAlphabet.BlockBase(keys, tc, blocks, Entries);
+                if (row >= 0)
                 {
-                    Advance(v, peq.Slice(tc * blocks, blocks), blocks);
+                    Advance(v, peq.Slice(row, blocks), blocks);
                 }
 
-                // A text character the table cannot hold matches nothing, so every u
-                // is zero and Advance would hand v back exactly as it took it.
+                // A character neither table holds matches nothing, so every u is zero
+                // and Advance would hand v back exactly as it took it.
             }
 
             length = m - Count(v, blocks, m);
@@ -183,6 +215,7 @@ internal static class BitParallelLcs
         }
         finally
         {
+            ArrayPool<char>.Shared.Return(keysRented);
             ArrayPool<ulong>.Shared.Return(peqRented);
             ArrayPool<ulong>.Shared.Return(vRented);
         }
