@@ -35,15 +35,22 @@ internal abstract class SnowballWorkerBase
     /// <param name="word">The word, already carrying any language-specific preprocessing.</param>
     /// <param name="isVowel">That language's vowel set.</param>
     /// <param name="minR1">
-    /// A floor for R1. German requires the region before R1 to hold at least three
-    /// letters; the Romance algorithms impose no floor.
+    /// A floor for R1. German and Dutch require the region before R1 to hold at least
+    /// three letters; the Romance algorithms impose no floor.
     /// </param>
+    /// <remarks>
+    /// R2 is measured from the *unfloored* R1, and the floor is applied afterwards — which
+    /// is the order the reference takes. Measuring it from the floored one moves R2 further
+    /// right on a short word and silently refuses a suffix that belongs in it: Dutch
+    /// <c>overheid</c> stemmed to itself rather than to <c>over</c> (#304).
+    /// </remarks>
     protected SnowballWorkerBase(string word, Func<char, bool> isVowel, int minR1 = 0)
     {
         S = word;
         _isVowel = isVowel;
-        R1 = Math.Max(Region(word, 0, isVowel), minR1);
-        R2 = Region(word, R1, isVowel);
+        int r1 = Region(word, 0, isVowel);
+        R2 = Region(word, r1, isVowel);
+        R1 = Math.Max(r1, minR1);
     }
 
     /// <summary>Whether <paramref name="c"/> is a vowel in this language.</summary>

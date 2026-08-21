@@ -82,6 +82,7 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | `SnowballStemmer("portuguese").stem(w)` | nltk | [`PortugueseSnowballStemmer.Stem(w)`](reference/text/stemming/portuguesesnowballstemmer-stem.md) | Portuguese Snowball: nasal `a~`/`o~` expansion, accents kept. Exact parity (105 words). |
 | `SnowballStemmer("italian").stem(w)` | nltk | [`ItalianSnowballStemmer.Stem(w)`](reference/text/stemming/italiansnowballstemmer-stem.md) | Italian Snowball: acute→grave folding, `u`/`i` marking. Exact parity (96 words); `enza`→`te` follows nltk over the published text, see [0008](decisions/0008-italian-enza-nltk-divergence.md). |
 | `SnowballStemmer("german").stem(w)` | nltk | [`GermanSnowballStemmer.Stem(w)`](reference/text/stemming/germansnowballstemmer-stem.md) | German Snowball: `ß`→`ss`, `u`/`y` marking, R1 floored at 3, no RV region. Exact parity (88 words). |
+| `SnowballStemmer("dutch").stem(w)` | nltk | [`DutchSnowballStemmer.Stem(w)`](reference/text/stemming/dutchsnowballstemmer-stem.md) | Dutch Snowball: accents folded, `y`/`i` marking, R1 floored at 3 with R2 measured before the floor, `kk`/`dd`/`tt` undoubled. Exact parity (109 words). |
 
 ## Lodestar.Embeddings — sub-word tokenization & pooling
 
