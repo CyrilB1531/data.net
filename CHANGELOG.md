@@ -19,6 +19,12 @@ is one sentence, the issue and the commit; see
 
 ## [Unreleased]
 
+### Lodestar.Text
+
+#### Changed
+
+- `Lcs.SubsequenceLength` takes the bit-parallel route from a pattern of 2 characters and `Levenshtein.Distance` from 5, while a pattern holding a character above U+00FF is refused below 6 and 10 instead. ([#411](https://github.com/CyrilB1531/lodestar/issues/411), [`a5c0d52`](https://github.com/CyrilB1531/lodestar/commit/a5c0d52))
+
 ### Lodestar.Fuzzy
 
 #### Changed
