@@ -4,6 +4,7 @@
 Run both harnesses first (see bench/README.md), then:
     python bench/compare.py
     python bench/compare.py --format=gfm   # a real markdown table, for a page that renders one
+    python bench/compare.py --bands        # the banded buckets instead, which place the gate
 """
 
 from __future__ import annotations
@@ -42,28 +43,39 @@ def metadata_block(fmt: str, *lines: str) -> None:
     print()
 
 
-def main(fmt: str = "text") -> None:
+BANDED_NOTE = (
+    "Note: banded buckets, whose pattern after trimming is exactly the band named. "
+    "They exist to place the bit-parallel gate, which the scattered buckets cannot "
+    "reach below 8 (#409); they are not a claim against rapidfuzz."
+)
+
+
+def main(fmt: str = "text", kind: str = "scattered") -> None:
     pairs_report(
         "levenshtein",
+        BANDED_NOTE if kind == "banded" else
         "Note: Python times the realistic per-call loop; rapidfuzz's C core uses "
         "the bit-parallel Myers algorithm, so it scales better on long strings.",
         fmt,
+        kind,
     )
 
 
-def indel(fmt: str = "text") -> None:
+def indel(fmt: str = "text", kind: str = "scattered") -> None:
     pairs_report(
         "indel",
+        BANDED_NOTE if kind == "banded" else
         "Note: Indel is len(a)+len(b)-2*LCS on both sides, so this compares the "
         "subsequence kernels. Lodestar's is Hyyro's bit-parallel LLCS above a pattern "
         "of 8 and a rolling-row dynamic program below it (#273).",
         fmt,
+        kind,
     )
 
 
-def pairs_row(key: tuple[str, int], p: float, c: float) -> tuple[str, int, float, float, float]:
-    alphabet, length = key
-    return alphabet, length, p, c, p / c
+def pairs_row(key: tuple[str, str, int], band, p: float, c: float) -> tuple:
+    alphabet, _kind, length = key
+    return alphabet, (band if band is not None else length), p, c, p / c
 
 
 def faster_than(ratio: float, width: int = 0) -> str:
@@ -71,22 +83,22 @@ def faster_than(ratio: float, width: int = 0) -> str:
     return side
 
 
-def print_pairs_text(rows: list[tuple[str, int, float, float, float]]) -> None:
-    header = f"{'alphabet':>8} | {'length':>6} | {'Python ns/pair':>16} | {'C# ns/pair':>14}"
+def print_pairs_text(rows: list[tuple], unit: str = "length") -> None:
+    header = f"{'alphabet':>8} | {unit:>6} | {'Python ns/pair':>16} | {'C# ns/pair':>14}"
     print(f"{header} | {'speedup (py/C#)':>16}")
     print(f"{'-' * 8}-+-{'-' * 6}-+-{'-' * 16}-+-{'-' * 14}-+-{'-' * 16}")
     for alphabet, length, p, c, ratio in rows:
         print(f"{alphabet:>8} | {length:>6} | {p:>16.1f} | {c:>14.1f} | {faster_than(ratio, 6):>16}")
 
 
-def print_pairs_gfm(rows: list[tuple[str, int, float, float, float]]) -> None:
-    print("| alphabet | length | Python ns/pair | C# ns/pair | speedup (py/C#) |")
+def print_pairs_gfm(rows: list[tuple], unit: str = "length") -> None:
+    print(f"| alphabet | {unit} | Python ns/pair | C# ns/pair | speedup (py/C#) |")
     print("|---|---:|---:|---:|:---|")
     for alphabet, length, p, c, ratio in rows:
         print(f"| {alphabet} | {length} | {p:.1f} | {c:.1f} | {faster_than(ratio)} |")
 
 
-def pairs_report(bench: str, note: str, fmt: str = "text") -> None:
+def pairs_report(bench: str, note: str, fmt: str = "text", kind: str = "scattered") -> None:
     """One length-bucket table, shared by every benchmark over the pair corpus.
 
     Levenshtein and Indel differ only in which result files they read and what
@@ -95,16 +107,20 @@ def pairs_report(bench: str, note: str, fmt: str = "text") -> None:
     """
     py = load("python", bench)
     cs = load("csharp", bench)
-    # Keyed on the alphabet as well as the length: since #406 two buckets answer to
-    # every length, and a dict keyed on the length alone loses one of each pair.
-    cs_by_bucket = {(r.get("alphabet", ""), r["length"]): r["ns_per_pair"] for r in cs["results"]}
+    # Keyed on the alphabet and the kind too: two buckets answer to every length since
+    # #406, and a dict on the length alone loses one of each group, silently.
+    def key_of(r):
+        return (r.get("alphabet", ""), r.get("kind", "scattered"), r["length"])
+
+    cs_by_bucket = {key_of(r): r["ns_per_pair"] for r in cs["results"]}
 
     rows = []
     for r in py["results"]:
-        key = (r.get("alphabet", ""), r["length"])
-        c = cs_by_bucket.get(key)
+        if r.get("kind", "scattered") != kind:
+            continue
+        c = cs_by_bucket.get(key_of(r))
         if c is not None:
-            rows.append(pairs_row(key, r["ns_per_pair"], c))
+            rows.append(pairs_row(key_of(r), r.get("band"), r["ns_per_pair"], c))
 
     metadata_block(
         fmt,
@@ -112,7 +128,8 @@ def pairs_report(bench: str, note: str, fmt: str = "text") -> None:
         f"C#:     {cs['metadata']['library']} on .NET {cs['metadata']['runtime']} "
         f"(mode {cs['metadata']['mode']})",
     )
-    (print_pairs_gfm if fmt == "gfm" else print_pairs_text)(rows)
+    unit = "band" if kind == "banded" else "length"
+    (print_pairs_gfm if fmt == "gfm" else print_pairs_text)(rows, unit)
     print()
     print(note)
 
@@ -244,7 +261,10 @@ if __name__ == "__main__":
 
     argv = sys.argv[1:]
     output_format = "gfm" if "--format=gfm" in argv else "text"
-    positional = [a for a in argv if a != "--format=gfm"]
+    # The scattered buckets are the claim against rapidfuzz; the banded ones exist to
+    # place the gate. Twenty band rows in the comparison table would bury it (#409).
+    bucket_kind = "banded" if "--bands" in argv else "scattered"
+    positional = [a for a in argv if a not in ("--format=gfm", "--bands")]
     selected = positional[0] if positional else ""
 
     if selected == "persistence":
@@ -252,6 +272,6 @@ if __name__ == "__main__":
     elif selected == "metrics":
         metrics(output_format)
     elif selected == "indel":
-        indel(output_format)
+        indel(output_format, bucket_kind)
     else:
-        main(output_format)
+        main(output_format, bucket_kind)
