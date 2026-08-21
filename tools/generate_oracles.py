@@ -1030,6 +1030,30 @@ SNOWBALL_NL_WORDS = [
 ]
 
 
+SNOWBALL_SV_WORDS = [
+    # step 1: the long -heterna / -ernas / -andet family, down to a bare -a
+    "verksamheterna", "verksamheten", "möjligheterna", "möjligheten", "möjligheter",
+    "flickornas", "pojkarnas", "barnens", "husens", "dagarnas",
+    "arbetande", "arbetandet", "arbetaren", "arbetarne", "arbetarna", "arbetare",
+    "flickan", "flickor", "flickorna", "pojkar", "pojkarna", "husen", "husets",
+    "vackraste", "vackrare", "vackra", "snabbaste", "snabbare", "störst", "störste",
+    "talade", "talades", "talat", "talar", "talas", "tala", "talande",
+    "kallad", "kallade", "kallat", "boken", "böcker", "böckerna",
+    # the s-rule, and a final s that must stay
+    "hus", "his", "bris", "ros", "hals", "bals", "fots", "lands", "stads",
+    # step 2: the doubled or hard endings whose last letter goes
+    "sjukdd", "godt", "nytt", "matt", "sant", "kort", "starkt", "svagt",
+    "buggd", "byggd", "vackert", "hastigt",
+    # step 3: -lig, -ig, -els, and the two replacing rules
+    "vänlig", "vänligt", "vänliga", "roligt", "rolig", "kraftig", "kraftigt",
+    "hastig", "flitig", "modig", "farlig", "farligt",
+    "fängels", "medels", "spels",
+    "kraftfullt", "meningsfullt", "hopplöst", "meningslöst", "arbetslöst",
+    # short / residual
+    "och", "att", "det", "en", "ett", "som", "har", "är", "på", "av",
+]
+
+
 def _snowball_corpus(language: str, algorithm: str, words: list[str]) -> dict:
     """Freeze nltk's Snowball output for one language into an oracle payload.
 
@@ -1062,6 +1086,7 @@ SNOWBALL_LANGUAGES = {
     "it": ("italian", "ItalianSnowballStemmer", SNOWBALL_IT_WORDS),
     "de": ("german", "GermanSnowballStemmer", SNOWBALL_DE_WORDS),
     "nl": ("dutch", "DutchSnowballStemmer", SNOWBALL_NL_WORDS),
+    "sv": ("swedish", "SwedishSnowballStemmer", SNOWBALL_SV_WORDS),
 }
 
 

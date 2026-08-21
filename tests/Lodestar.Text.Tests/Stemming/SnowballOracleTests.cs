@@ -15,11 +15,13 @@ public sealed class SnowballOracleTests
     public static TheoryData<string, string> Languages => new()
     {
         { "snowball_nl.json", "DutchSnowballStemmer" },
+        { "snowball_sv.json", "SwedishSnowballStemmer" },
     };
 
     private static string Stem(string algorithm, string word) => algorithm switch
     {
         "DutchSnowballStemmer" => DutchSnowballStemmer.Stem(word),
+        "SwedishSnowballStemmer" => SwedishSnowballStemmer.Stem(word),
         _ => throw new ArgumentOutOfRangeException(nameof(algorithm), algorithm, "no stemmer for it"),
     };
 
