@@ -1366,6 +1366,81 @@ The two long buckets were 2.03× and about 2.1× behind before this lot. **What 
 is no longer a factor of two.** Whether the remainder is worth a third lot is a
 question for a measurement, not for this page.
 
+## Compressing an index (issue #378)
+
+The artifact is base64 inside JSON, which spends eight bits to carry six, so it is
+about 1.33x the raw block. Deflate takes that back almost exactly — base64 is the
+one expansion a general-purpose coder undoes perfectly. The question was never
+whether the size comes back. **It was what the time costs**, on a path
+[#323](https://github.com/CyrilB1531/lodestar/issues/323),
+[#324](https://github.com/CyrilB1531/lodestar/issues/324),
+[#336](https://github.com/CyrilB1531/lodestar/issues/336) and
+[#377](https://github.com/CyrilB1531/lodestar/issues/377) spent four lots making
+fast.
+
+A synthetic 4 000 × 384 index through the real `Save` and `Load`, Intel i7-4770S,
+.NET 10.0.10 — warmed, median of 7, the five modes interleaved in one window so the
+rows are comparable to each other:
+
+| | bytes | × size | save | × save | load | × load |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| plain | 8 231 006 | 1.000 | 10.2 ms | 1.00 | 7.9 ms | 1.00 |
+| gzip `Fastest` | 6 257 079 | 0.760 | 270.8 ms | **26.67×** | 56.5 ms | 7.19× |
+| gzip `Optimal` | 6 151 764 | 0.747 | 382.1 ms | **37.62×** | 46.6 ms | 5.92× |
+| brotli `Fastest` | 6 074 449 | **0.738** | 37.4 ms | 3.68× | 40.8 ms | 5.19× |
+| brotli `Optimal` | 6 069 780 | 0.737 | 122.1 ms | 12.02× | 38.3 ms | 4.87× |
+
+- **The size claim holds exactly.** 0.747 × 1.333 = 0.996 of the raw block, which is
+  the floor #378 predicted from the other direction. Level 9 gives the same bytes as
+  level 6; there is nothing to tune.
+- **Deflate is dominated on all three axes.** brotli `Fastest` is smaller than gzip
+  at any level, seven times cheaper to write and cheaper to read. `BrotliStream` does
+  not exist on `netstandard2.0`, though, which is why the documented recipe is gzip:
+  a recipe that works on one of two target frameworks is not one this project can
+  publish.
+- **And the price is the whole answer.** The cheapest compression available
+  multiplies the load by 5.19 — spending, several times over, what four lots
+  returned — to buy 26% of a disk.
+
+So **the library does not compress, and the caller can.** Wrapping the stream works
+on both sides today and costs no API:
+[the embeddings guide](embeddings.md#compressing-the-artifact) has the recipe,
+[ADR 0044](../decisions/0044-compression-belongs-to-the-caller.md) the decision and
+its loser. `bench/compare-persistence` now carries `embedding_index_save_gzip` and
+`embedding_index_load_gzip` beside the plain rows, against numpy's
+`savez_compressed`, so the trade is re-measured rather than remembered.
+
+**The corpus is harsher than the synthetic index, and says so.** The nightly's own
+rows, 10 000 × 384 on a hosted runner — ratios only, per that page's warning:
+
+| operation | C# cpu | bytes | Python cpu | Python bytes |
+| --- | ---: | ---: | ---: | ---: |
+| `embedding_index_save` | 5.949 ms | 20 589 007 | 1.337 ms | 15 360 128 |
+| `embedding_index_save_gzip` | 456.995 ms | 15 251 458 | 638.992 ms | 14 022 374 |
+| `embedding_index_load` | 5.519 ms | 20 589 007 | 1.327 ms | 15 360 128 |
+| `embedding_index_load_gzip` | 81.774 ms | 15 251 458 | 72.368 ms | 14 022 374 |
+
+**0.741× the size for 76.8× the save and 14.8× the load**, against 37.62× and 5.92×
+for `Optimal` on the 8 MB synthetic index above. The price grows with the artifact,
+which is the opposite of what would make it worth paying — the indexes big enough for
+26% of a disk to matter are the ones where compressing costs the most.
+
+Two things the pair says that the plain rows cannot:
+
+- **Compressed, we are ahead of numpy on the write and level with it on the read** —
+  1.40× on `savez_compressed`, 0.88× coming back. The deflate coder is the same on
+  both sides, so what is being compared is what each side hands it.
+- **Compression closes most of the format gap.** Uncompressed, the artifact is 1.34×
+  numpy's block, the expansion [ADR 0011](../decisions/0011-persistence-format.md)
+  priced. Compressed, it is 1.09×. The base64 is nearly all of the difference, and a
+  binary format would buy back an eighth of what a general-purpose coder already does.
+
+**Bytes are a published number now.** `Harness.Measure` recorded time only, so
+[#100](https://github.com/CyrilB1531/lodestar/issues/100)'s size figures were taken
+by hand and could not be re-checked. Every persistence row carries `artifact_bytes`
+on both sides, and the comparison prints it next to the time — which is the only way
+a compressed row reads honestly.
+
 ## Multiclass ROC-AUC, sequential against parallel (issue #86)
 
 ```bash
