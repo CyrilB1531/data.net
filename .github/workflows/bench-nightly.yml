@@ -252,8 +252,12 @@ jobs:
           else
             pages="docs/guides/branch/nightly_run.md docs/guides/branch/benchmark_latest.md"
           fi
+          # Staged first: docs/guides/branch/ is untracked on a branch's first-ever
+          # nightly, and a plain `git diff` says nothing about an untracked file --
+          # it looked unchanged and no PR ever opened, generated content included.
           # shellcheck disable=SC2086
-          if git diff --quiet -- $pages; then
+          git add -- $pages
+          if git diff --cached --quiet -- $pages; then
             echo "neither page changed; nothing to open"
             exit 0
           fi

@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Text.Json;
 
 namespace Lodestar.Internal.Persistence;
@@ -55,6 +56,20 @@ internal static class ArtifactIo
 
     /// <summary>Creates a reader over <paramref name="payload"/> positioned on the artifact's opening brace.</summary>
     public static Utf8JsonReader CreateReader(ReadOnlySpan<byte> payload, string artifact, in ArtifactLimits limits)
+    {
+        var reader = new Utf8JsonReader(payload, JsonArtifact.ReaderOptions(limits));
+        if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject)
+        {
+            throw new InvalidDataException($"A '{ArtifactHeader.SchemaFor(artifact)}' artifact must be a JSON object.");
+        }
+        return reader;
+    }
+
+    /// <summary>The same reader over an artifact too large for one array (#377).</summary>
+    /// <param name="payload">The artifact, in segments none of which exceeds one array.</param>
+    /// <param name="artifact">The artifact kind, for the message.</param>
+    /// <param name="limits">Bounds applied while reading.</param>
+    public static Utf8JsonReader CreateReader(ReadOnlySequence<byte> payload, string artifact, in ArtifactLimits limits)
     {
         var reader = new Utf8JsonReader(payload, JsonArtifact.ReaderOptions(limits));
         if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject)
