@@ -10,7 +10,7 @@
     assemblies answer to the same identity.
   -->
   <PropertyGroup>
-    <LodestarEmbeddingsVersion>0.3.1</LodestarEmbeddingsVersion>
+    <LodestarEmbeddingsVersion>0.4.0</LodestarEmbeddingsVersion>
   </PropertyGroup>
 
 </Project>
