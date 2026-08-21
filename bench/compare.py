@@ -55,29 +55,35 @@ def indel(fmt: str = "text") -> None:
     pairs_report(
         "indel",
         "Note: Indel is len(a)+len(b)-2*LCS on both sides, so this compares the "
-        "subsequence kernels. Lodestar's is a rolling-row dynamic program (#273).",
+        "subsequence kernels. Lodestar's is Hyyro's bit-parallel LLCS above a pattern "
+        "of 8 and a rolling-row dynamic program below it (#273).",
         fmt,
     )
 
 
-def pairs_row(length: int, p: float, c: float) -> tuple[int, float, float, float]:
-    return length, p, c, p / c
+def pairs_row(key: tuple[str, int], p: float, c: float) -> tuple[str, int, float, float, float]:
+    alphabet, length = key
+    return alphabet, length, p, c, p / c
 
 
-def print_pairs_text(rows: list[tuple[int, float, float, float]]) -> None:
-    print(f"{'length':>8} | {'Python ns/pair':>16} | {'C# ns/pair':>14} | {'speedup (py/C#)':>16}")
-    print(f"{'-' * 8}-+-{'-' * 16}-+-{'-' * 14}-+-{'-' * 16}")
-    for length, p, c, ratio in rows:
-        faster = f"{ratio:6.2f}x C# faster" if ratio >= 1 else f"{1 / ratio:6.2f}x Py faster"
-        print(f"{length:>8} | {p:>16.1f} | {c:>14.1f} | {faster:>16}")
+def faster_than(ratio: float, width: int = 0) -> str:
+    side = f"{ratio:{width}.2f}x C# faster" if ratio >= 1 else f"{1 / ratio:{width}.2f}x Py faster"
+    return side
 
 
-def print_pairs_gfm(rows: list[tuple[int, float, float, float]]) -> None:
-    print("| length | Python ns/pair | C# ns/pair | speedup (py/C#) |")
-    print("|---:|---:|---:|:---|")
-    for length, p, c, ratio in rows:
-        faster = f"{ratio:.2f}x C# faster" if ratio >= 1 else f"{1 / ratio:.2f}x Py faster"
-        print(f"| {length} | {p:.1f} | {c:.1f} | {faster} |")
+def print_pairs_text(rows: list[tuple[str, int, float, float, float]]) -> None:
+    header = f"{'alphabet':>8} | {'length':>6} | {'Python ns/pair':>16} | {'C# ns/pair':>14}"
+    print(f"{header} | {'speedup (py/C#)':>16}")
+    print(f"{'-' * 8}-+-{'-' * 6}-+-{'-' * 16}-+-{'-' * 14}-+-{'-' * 16}")
+    for alphabet, length, p, c, ratio in rows:
+        print(f"{alphabet:>8} | {length:>6} | {p:>16.1f} | {c:>14.1f} | {faster_than(ratio, 6):>16}")
+
+
+def print_pairs_gfm(rows: list[tuple[str, int, float, float, float]]) -> None:
+    print("| alphabet | length | Python ns/pair | C# ns/pair | speedup (py/C#) |")
+    print("|---|---:|---:|---:|:---|")
+    for alphabet, length, p, c, ratio in rows:
+        print(f"| {alphabet} | {length} | {p:.1f} | {c:.1f} | {faster_than(ratio)} |")
 
 
 def pairs_report(bench: str, note: str, fmt: str = "text") -> None:
@@ -89,13 +95,16 @@ def pairs_report(bench: str, note: str, fmt: str = "text") -> None:
     """
     py = load("python", bench)
     cs = load("csharp", bench)
-    cs_by_len = {r["length"]: r["ns_per_pair"] for r in cs["results"]}
+    # Keyed on the alphabet as well as the length: since #406 two buckets answer to
+    # every length, and a dict keyed on the length alone loses one of each pair.
+    cs_by_bucket = {(r.get("alphabet", ""), r["length"]): r["ns_per_pair"] for r in cs["results"]}
 
     rows = []
     for r in py["results"]:
-        c = cs_by_len.get(r["length"])
+        key = (r.get("alphabet", ""), r["length"])
+        c = cs_by_bucket.get(key)
         if c is not None:
-            rows.append(pairs_row(r["length"], r["ns_per_pair"], c))
+            rows.append(pairs_row(key, r["ns_per_pair"], c))
 
     metadata_block(
         fmt,
