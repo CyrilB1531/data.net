@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Lodestar.Embeddings.Persistence;
@@ -45,45 +46,75 @@ public static class PersistenceCrossLang
             indexArtifact = stream.ToArray();
         }
 
+        // The recipe #378 measured and declined to build in: the caller wraps the
+        // stream, both sides, and no library code knows compression happened.
+        byte[] indexGzip;
+        using (var stream = new MemoryStream())
+        {
+            using (var gzip = new GZipStream(stream, CompressionLevel.Optimal, leaveOpen: true))
+            {
+                index.Save(gzip);
+            }
+
+            indexGzip = stream.ToArray();
+        }
+
         // No row measured the file path before #336, and it is the one a caller
         // takes: every published index figure came from a MemoryStream.
         string indexFile = Path.Combine(Path.GetTempPath(), $"lodestar-index-{Environment.ProcessId}.json");
         File.WriteAllBytes(indexFile, indexArtifact);
 
-        Console.WriteLine("C# persistence cross-lang bench");
         var results = new List<Harness.OperationResult>
         {
-            Harness.Measure("vocab_txt", () => VocabTxtLoader.Load(vocabTxt)),
-            Harness.Measure("tokenizer_json_wordpiece", () => TokenizerJsonLoader.LoadWordPiece(wordPieceJson)),
-            Harness.Measure("tokenizer_json_unigram", () => TokenizerJsonLoader.LoadUnigram(unigramJson)),
-            Harness.Measure("spiece_model", () => SentencePieceModelLoader.Load(spiece)),
+            Harness.Measure("vocab_txt", () => VocabTxtLoader.Load(vocabTxt), new FileInfo(vocabTxt).Length),
+            Harness.Measure("tokenizer_json_wordpiece", () => TokenizerJsonLoader.LoadWordPiece(wordPieceJson), new FileInfo(wordPieceJson).Length),
+            Harness.Measure("tokenizer_json_unigram", () => TokenizerJsonLoader.LoadUnigram(unigramJson), new FileInfo(unigramJson).Length),
+            Harness.Measure("spiece_model", () => SentencePieceModelLoader.Load(spiece), new FileInfo(spiece).Length),
             Harness.Measure("tfidf_save", () =>
             {
                 using var stream = new MemoryStream(artifact.Length);
                 fitted.Save(stream);
                 return stream.Length;
-            }),
+            }, artifact.Length),
             Harness.Measure("tfidf_load", () =>
             {
                 using var stream = new MemoryStream(artifact);
                 return TfidfVectorizer.Load(stream);
-            }),
+            }, artifact.Length),
             Harness.Measure("embedding_index_save", () =>
             {
                 using var stream = new MemoryStream(indexArtifact.Length);
                 index.Save(stream);
                 return stream.Length;
-            }),
+            }, indexArtifact.Length),
             Harness.Measure("embedding_index_load", () =>
             {
                 using var stream = new MemoryStream(indexArtifact);
                 return EmbeddingIndex.Load(stream);
-            }),
-            Harness.Measure("embedding_index_load_file", () => EmbeddingIndex.Load(indexFile)),
-            Harness.Measure("embedding_index_load_memory", () => EmbeddingIndex.Load(indexArtifact.AsMemory())),
+            }, indexArtifact.Length),
+            Harness.Measure("embedding_index_load_file", () => EmbeddingIndex.Load(indexFile), indexArtifact.Length),
+            Harness.Measure("embedding_index_load_memory", () => EmbeddingIndex.Load(indexArtifact.AsMemory()), indexArtifact.Length),
             // The floor both sides share, and neither is a load: viewing bytes as floats
             // parses no header and validates nothing. It bounds the rows above, not ranks them.
-            Harness.Measure("embedding_index_view_floor", () => MemoryMarshal.Cast<byte, float>(indexArtifact.AsSpan()).Length),
+            Harness.Measure("embedding_index_view_floor", () => MemoryMarshal.Cast<byte, float>(indexArtifact.AsSpan()).Length, indexArtifact.Length),
+            // What compression costs, beside what it saves: the size column is the
+            // point of the pair, and the time column is the price on the same line.
+            Harness.Measure("embedding_index_save_gzip", () =>
+            {
+                using var stream = new MemoryStream(indexGzip.Length);
+                using (var gzip = new GZipStream(stream, CompressionLevel.Optimal, leaveOpen: true))
+                {
+                    index.Save(gzip);
+                }
+
+                return stream.Length;
+            }, indexGzip.Length),
+            Harness.Measure("embedding_index_load_gzip", () =>
+            {
+                using var stream = new MemoryStream(indexGzip);
+                using var gzip = new GZipStream(stream, CompressionMode.Decompress);
+                return EmbeddingIndex.Load(gzip);
+            }, indexGzip.Length),
         };
 
         File.Delete(indexFile);

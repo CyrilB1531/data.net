@@ -19,7 +19,6 @@ public static class LevenshteinCrossLang
     public static void Run(string[] args)
     {
         TextElement mode = PairsHarness.ModeOf(args);
-        Console.WriteLine($"C# Levenshtein cross-lang bench (mode: {mode})");
 
         List<PairsHarness.BucketResult> results =
             PairsHarness.Run(PairsHarness.Load(), new Edits(mode));

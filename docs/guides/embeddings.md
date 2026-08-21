@@ -394,6 +394,46 @@ parsing begins. An element-count limit sized for a vocabulary is three orders of
 magnitude away from what a corpus of embeddings needs, and the default one
 refused a 384-dimensional index past 2 604 vectors.
 
+### Compressing the artifact
+
+The artifact is JSON with the vectors in base64, which spends eight bits to carry
+six — so it lands about 1.33x the size of the raw block. Deflate takes that back
+almost exactly. **The library does not do it for you**, and the recipe is one
+wrapper on each side:
+
+```csharp
+using System.IO.Compression;
+using Lodestar.Embeddings.Search;
+
+var index = new EmbeddingIndex(dimension: vector.Length);
+foreach ((float[] v, string id) in corpusWithIds) index.Add(v, id);
+
+using (var file = File.Create("corpus.index.json.gz"))
+using (var compressing = new GZipStream(file, CompressionLevel.Optimal))
+{
+    index.Save(compressing);
+}
+
+using var opened = File.OpenRead("corpus.index.json.gz");
+using var decompressing = new GZipStream(opened, CompressionMode.Decompress);
+EmbeddingIndex fromDisk = EmbeddingIndex.Load(decompressing);
+```
+
+Nothing in the library knows compression happened: a decompressing stream is
+neither seekable nor of known length, so it takes the same growable read path any
+network stream takes, and `ArtifactLoadOptions` still bounds what the artifact
+expands to rather than what it occupies on disk.
+
+**Weigh it before reaching for it.** Compression is the most expensive thing you
+can do to this path — measured at **26.67x the save and 7.19x the load, to buy 26%
+of the disk**, and the price grows with the artifact: at the benchmark corpus's 20 MB
+it is 76.8x and 14.8x. The numbers and the machines are in
+[the performance guide](performance.md#compressing-an-index-issue-378). That is worth it
+for an index shipped over a network and a poor trade for one written once to a
+local disk, which is why the default declines to make the choice for you.
+`GZipStream` is the portable recipe; on .NET 10 `BrotliStream` is smaller and much
+cheaper to write, and does not exist on `netstandard2.0`.
+
 The search is an **exhaustive SIMD-vectorized** cosine (`System.Numerics.Vector`) —
 the right default up to a few hundred thousand vectors. An approximate index
 (HNSW) is only worth adding once a real need is demonstrated.

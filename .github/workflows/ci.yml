@@ -60,6 +60,15 @@ jobs:
         run: |
           python tools/check_comment_length.py
           python tools/check_comment_length.py --report
+      # A library that writes to a console its caller did not open decides for an
+      # application it cannot see, and src/ has never done it -- this keeps that true by
+      # construction. Under bench/ ten calls narrating a run had accumulated because each
+      # was individually harmless; the four that remain carry what no file does and say so
+      # on the line, where a reviewer can disagree with the reason.
+      - name: No unexplained Console call in src/ or bench/
+        run: |
+          python tools/check_no_console_writeline.py
+          python tools/check_no_console_writeline.py --report
       # The nightly run (#11) selects benchmark classes from bench/bench-map.json, so a
       # class missing from it is never re-run and stops being measured in silence. The map
       # cannot be derived -- FuzzBenchmarks names only Fuzz and reaches Lcs through Indel --
@@ -71,6 +80,15 @@ jobs:
       # the rest still carry their Lot* files, and #280 closes when that list is empty.
       - name: Every public class has a sample of its own
         run: python tools/check_sample_coverage.py
+      # An accepted ADR is never edited, addition included -- "Amend 0004 in a decision
+      # of its own instead of editing it" is why even a `> update:` blockquote no longer
+      # passes here (#399). Only a pull_request event has a base commit to diff against;
+      # a push to main is already merged, so there is nothing left for this to catch.
+      - name: No already-accepted ADR is touched by this pull request
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --depth=1 origin "${{ github.event.pull_request.base.sha }}"
+          python tools/check_adr_immutable.py --base "${{ github.event.pull_request.base.sha }}"
       # The .globalconfig mirrors a profile that lives on a server, so it can go stale
       # without anything in this repository changing. One call to sonarcloud.io per run
       # buys learning about that on the pull request that first meets it. A profile that

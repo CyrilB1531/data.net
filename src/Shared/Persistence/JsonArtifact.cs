@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Globalization;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -93,7 +94,7 @@ internal static class JsonArtifact
         Guard.NotNull(stream);
         CheckDeclaredLength(stream, limits);
 
-        if (TryReadDeclaredLength(stream, out byte[] exact, out int filled))
+        if (TryReadDeclaredLength(stream, limits.MaxSingleBuffer, out byte[] exact, out int filled))
         {
             return new ReadOnlyMemory<byte>(exact, 0, filled);
         }
@@ -109,6 +110,82 @@ internal static class JsonArtifact
         return new ReadOnlyMemory<byte>(accumulated.GetBuffer(), 0, (int)accumulated.Length);
     }
 
+    /// <summary>Reads <paramref name="stream"/> into segments none of which exceeds one array.</summary>
+    /// <remarks>
+    /// An artifact past <see cref="ArtifactLimits.MaxSingleBuffer"/> fits in no single
+    /// <see cref="byte"/> array, so it is read into several and handed to the parser as one
+    /// sequence — <c>Utf8JsonReader</c> reads those natively. The ceiling then belongs to the
+    /// decoded data rather than to its text encoding (#377).
+    /// </remarks>
+    /// <param name="stream">The stream to read; never disposed here.</param>
+    /// <param name="limits">Bounds applied while reading.</param>
+    public static ReadOnlySequence<byte> ReadAllSegments(Stream stream, in ArtifactLimits limits)
+    {
+        Guard.NotNull(stream);
+        CheckDeclaredLength(stream, limits);
+
+        // Well under the array ceiling, so a segment is always allocatable, and large
+        // enough that even a maximal artifact is a handful of them rather than thousands.
+        int segmentSize = (int)Math.Min(limits.MaxSingleBuffer, 64L * 1024 * 1024);
+        Segment? head = null;
+        Segment? tail = null;
+        long total = 0;
+
+        while (true)
+        {
+            byte[] block = new byte[segmentSize];
+            int filled = 0;
+            int read;
+            while (filled < block.Length && (read = stream.Read(block, filled, block.Length - filled)) > 0)
+            {
+                filled += read;
+            }
+
+            if (filled == 0)
+            {
+                break;
+            }
+
+            total += filled;
+            limits.CheckTotalBytes(total);
+            if (tail is null)
+            {
+                head = new Segment(block, filled, 0);
+                tail = head;
+            }
+            else
+            {
+                tail = tail.Append(block, filled);
+            }
+
+            if (filled < block.Length)
+            {
+                break;
+            }
+        }
+
+        return head is null
+            ? ReadOnlySequence<byte>.Empty
+            : new ReadOnlySequence<byte>(head, 0, tail!, tail!.Memory.Length);
+    }
+
+    /// <summary>One link of the read's chain, which is all <see cref="ReadOnlySequence{T}"/> asks for.</summary>
+    private sealed class Segment : ReadOnlySequenceSegment<byte>
+    {
+        public Segment(byte[] block, int filled, long runningIndex)
+        {
+            Memory = new ReadOnlyMemory<byte>(block, 0, filled);
+            RunningIndex = runningIndex;
+        }
+
+        public Segment Append(byte[] block, int filled)
+        {
+            var next = new Segment(block, filled, RunningIndex + Memory.Length);
+            Next = next;
+            return next;
+        }
+    }
+
     /// <summary>Asynchronous counterpart of <see cref="ReadAllBytes"/>.</summary>
     public static async Task<ReadOnlyMemory<byte>> ReadAllBytesAsync(
         Stream stream,
@@ -118,7 +195,7 @@ internal static class JsonArtifact
         Guard.NotNull(stream);
         CheckDeclaredLength(stream, limits);
 
-        ReadOnlyMemory<byte>? exact = await TryReadDeclaredLengthAsync(stream, cancellationToken).ConfigureAwait(false);
+        ReadOnlyMemory<byte>? exact = await TryReadDeclaredLengthAsync(stream, limits.MaxSingleBuffer, cancellationToken).ConfigureAwait(false);
         if (exact is ReadOnlyMemory<byte> payload)
         {
             return payload;
@@ -153,7 +230,7 @@ internal static class JsonArtifact
     /// can hold, or the stream holds more than declared — the position is then put back so the caller's
     /// growable path reads the whole thing rather than the prefix this would have truncated it to.
     /// </remarks>
-    private static bool TryReadDeclaredLength(Stream stream, out byte[] buffer, out int filled)
+    private static bool TryReadDeclaredLength(Stream stream, long maxSingleBuffer, out byte[] buffer, out int filled)
     {
         buffer = [];
         filled = 0;
@@ -164,7 +241,7 @@ internal static class JsonArtifact
 
         long origin = stream.Position;
         long declared = stream.Length - origin;
-        if (declared < 0 || declared > MaxSingleBuffer)
+        if (declared < 0 || declared > maxSingleBuffer)
         {
             return false;
         }
@@ -191,6 +268,7 @@ internal static class JsonArtifact
     /// <summary>Asynchronous counterpart of <see cref="TryReadDeclaredLength"/>; <c>null</c> where that one returns <c>false</c>.</summary>
     private static async Task<ReadOnlyMemory<byte>?> TryReadDeclaredLengthAsync(
         Stream stream,
+        long maxSingleBuffer,
         CancellationToken cancellationToken)
     {
         if (!stream.CanSeek)
@@ -200,7 +278,7 @@ internal static class JsonArtifact
 
         long origin = stream.Position;
         long declared = stream.Length - origin;
-        if (declared < 0 || declared > MaxSingleBuffer)
+        if (declared < 0 || declared > maxSingleBuffer)
         {
             return null;
         }
@@ -353,14 +431,6 @@ internal static class JsonArtifact
         new($"A '{artifact}' artifact is internally inconsistent: {detail}");
 
     private const int CopyBufferSize = 81920;
-
-    /// <summary>
-    /// The largest buffer the exact path will allocate — the CLR's own array
-    /// ceiling, which <c>netstandard2.0</c> has no <c>Array.MaxLength</c> to name.
-    /// A caller who raises <c>MaxTotalBytes</c> past it gets the growable path and
-    /// whatever it did before, rather than a new exception from this method.
-    /// </summary>
-    private const long MaxSingleBuffer = 0x7FFFFFC7;
 
     private static void CheckDeclaredLength(Stream stream, in ArtifactLimits limits)
     {

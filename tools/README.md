@@ -18,6 +18,8 @@ given:
   someone's home directory.
 - `check_comment_length.py` refuses a comment block that runs past its budget
   without saying why.
+- `check_no_console_writeline.py` refuses a `Console` call in a shipped package,
+  and an unexplained one in a benchmark.
 - `check_sample_culture.py` refuses a sample that can print a number in the
   contributor's culture rather than the same way everywhere.
 - `check_sample_coverage.py` refuses a public class with no `<Class>Sample.cs`,
@@ -30,6 +32,11 @@ given:
   CONTRIBUTING.md's [*Before
   committing*](../CONTRIBUTING.md#before-committing-the-guards-one-command-earlier)
   has what it does and does not cover.
+- `check_adr_immutable.py` refuses a pull request that touches a
+  `docs/decisions/` ADR that already existed at its base commit, addition
+  included — an accepted decision is never edited, only amended by a new one.
+  Not part of the pre-commit set above: it needs the pull request's own base
+  commit, not something a commit made before one exists can name.
 - `generate_sonar_globalconfig.py` writes the `.globalconfig` that raises the
   Sonar rules `SonarAnalyzer.CSharp` ships disabled, from the SonarCloud
   quality profile that gates the pull request.
@@ -325,6 +332,45 @@ already used before this page existed. The entry page is not archived — it
 carries no content of its own to freeze, and the reasoning is in the module
 docstring.
 
+## `check_no_console_writeline.py`
+
+Refuses a `Console` call under `src/`, always, and one under `bench/` that does
+not say why it is there.
+
+```bash
+python3 tools/check_no_console_writeline.py           # findings, exit 1 if any
+python3 tools/check_no_console_writeline.py --report  # the marked ones, always exit 0
+python3 tools/check_no_console_writeline.py --help
+```
+
+**`src/` has no marker and will not get one.** A library that writes to a console
+its caller did not open is deciding for an application it cannot see. The packages
+here have never done it; this is what keeps that true once nobody is watching.
+
+**`bench/` needs a reason, not permission.** Ten calls there narrated a run —
+banners, one line per measured row, `-> path` after a write — and accumulated
+precisely because each was harmless on its own. None was in a timed region and
+none moved a published number. Four remain, each carrying what no file does: that
+the wrong build was measured, which build it was, why a cell is missing from a
+table, and the group sizes a diagnostic class's own rows are read against. Each
+says so on its own line:
+
+```csharp
+// console-print: the wrong build was measured, so every number below is a lie.
+Console.Error.WriteLine(…);
+```
+
+The marker goes above the call or trails it, and an empty one is refused. Whether
+the reason is good is a review's call, not this guard's — the same division
+`check_comment_length.py` draws.
+
+There is deliberately **no exemption list in the script**.
+[`check_machine_paths.py`](#check_machine_pathspy) says why they rot: switched off
+one file at a time, by someone who is not the reviewer. A marker rots in the diff
+that adds it, in front of the person who can refuse it —
+[decision 0045](../docs/decisions/0045-a-console-call-carries-its-reason-on-the-line.md)
+records that choice and what the four marked calls carry.
+
 ## `check_comment_length.py`
 
 Refuses a comment block that runs past its budget without saying why —
@@ -421,6 +467,33 @@ time from `$HOME` — the path itself, the account name bounded by a separator o
 a dash, and the dashed form a session scratch directory is named after — which
 catch shapes no fixed list enumerates, on the machine where a path is actually
 created.
+
+## `check_adr_immutable.py`
+
+Refuses a pull request that touches a `docs/decisions/` ADR already present at
+its base commit — addition included, not just removal or rewording. "Amend
+0004 in a decision of its own instead of editing it" is why: even the
+`> **#NNN update:**` blockquote a few earlier ADRs still carry is no longer the
+convention, and nothing enforced either version of the rule before this.
+
+```bash
+python3 tools/check_adr_immutable.py --base <commit>
+python3 tools/check_adr_immutable.py --help
+```
+
+`--base` is the pull request's own base commit (`github.event.pull_request.base.sha`
+in CI); there is no default; comparing against the wrong thing silently on a
+rebased or force-pushed branch is worse than requiring the argument. A file
+absent at `--base` is a new ADR and is unrestricted, and so is
+`docs/decisions/README.md`, the index rather than a decision, which gains a row
+on every one added.
+
+Exit codes:
+
+- `0` — clean.
+- `1` — findings printed, each naming the file and how many lines it added or
+  removed relative to `--base`.
+- `2` — bad usage.
 
 An ordinary account name (`src`, `build`, `net` and the like) can turn a derived
 probe into noise on an otherwise unrelated line. `--no-environment` drops that

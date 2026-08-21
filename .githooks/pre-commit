@@ -40,7 +40,8 @@ for guard in \
     tools/check_version_floor.py \
     tools/check_sample_culture.py \
     tools/check_bench_map.py \
-    tools/check_sample_coverage.py
+    tools/check_sample_coverage.py \
+    tools/check_no_console_writeline.py
 do
     "$interpreter" "$guard" || failed="$failed $(basename "$guard" .py)"
 done

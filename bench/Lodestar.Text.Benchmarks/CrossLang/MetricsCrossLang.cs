@@ -43,12 +43,6 @@ public static class MetricsCrossLang
         string corpusDir = Path.Combine(root, "bench", "corpus", "metrics");
         string outPath = Path.Combine(root, "bench", "results", "csharp-metrics.json");
 
-        Console.WriteLine("C# metrics cross-lang bench");
-        if (operations.Length > 0 || shapes.Length > 0)
-        {
-            Console.WriteLine($"  filtered: operations=[{string.Join(",", operations)}] shapes=[{string.Join(",", shapes)}]");
-        }
-
         var results = new List<Harness.OperationResult>();
 
         foreach ((int n, int k) in Shapes)
