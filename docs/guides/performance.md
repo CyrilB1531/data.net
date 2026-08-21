@@ -63,12 +63,16 @@ an Intel i7-4770S; dev machine — non-authoritative), **after** adding the bloc
   a language problem, only an algorithmic one.
 - **The length-32 bucket was the remaining gap**, at 1.4× behind. It is closed,
   and the cause was not the one this line assumed — see the window below.
-- **Scope.** The figures above are the **UTF-16 mode**, whose bit-parallel path
-  requires a Latin-1 pattern: outside that — CJK, emoji — `Distance` still uses
-  the DP, and the table does not describe those inputs. The **code-point mode**
-  no longer shares that restriction (#208); its own measurement is below. What
-  remains unresolved is the UTF-16 path's equality table; see
-  [`../decisions/0004-levenshtein-myers-backlog.md`](../decisions/0004-levenshtein-myers-backlog.md).
+- **Scope.** The figures above are the **UTF-16 mode**, measured on a Latin corpus,
+  so the table describes Latin inputs. The bit-parallel path no longer *requires*
+  them: a pattern above U+00FF used to send `Distance` back to the DP, and a side
+  table now carries those symbols on both the single-word and the blocked route, so
+  CJK and emoji take the kernel too
+  ([decision 0043](../decisions/0043-the-equality-table-is-sized-to-the-pattern.md)).
+  The **code-point mode** lost the same restriction earlier (#208). What each kernel
+  costs on a wide alphabet, and where it crosses the DP there, is the banded sweep
+  below — which found the shipped gate wrong on three of its four crossings
+  ([decision 0048](../decisions/0048-the-gate-depends-on-the-kernel-and-the-alphabet.md)).
 
 ### The length-32 bucket, which was never the kernel (#208)
 
