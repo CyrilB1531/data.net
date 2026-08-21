@@ -426,7 +426,8 @@ expands to rather than what it occupies on disk.
 
 **Weigh it before reaching for it.** Compression is the most expensive thing you
 can do to this path — measured at **26.67x the save and 7.19x the load, to buy 26%
-of the disk**, with the numbers and the machine in
+of the disk**, and the price grows with the artifact: at the benchmark corpus's 20 MB
+it is 76.8x and 14.8x. The numbers and the machines are in
 [the performance guide](performance.md#compressing-an-index-issue-378). That is worth it
 for an index shipped over a network and a poor trade for one written once to a
 local disk, which is why the default declines to make the choice for you.

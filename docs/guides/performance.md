@@ -1357,6 +1357,31 @@ its loser. `bench/compare-persistence` now carries `embedding_index_save_gzip` a
 `embedding_index_load_gzip` beside the plain rows, against numpy's
 `savez_compressed`, so the trade is re-measured rather than remembered.
 
+**The corpus is harsher than the synthetic index, and says so.** The nightly's own
+rows, 10 000 × 384 on a hosted runner — ratios only, per that page's warning:
+
+| operation | C# cpu | bytes | Python cpu | Python bytes |
+| --- | ---: | ---: | ---: | ---: |
+| `embedding_index_save` | 5.949 ms | 20 589 007 | 1.337 ms | 15 360 128 |
+| `embedding_index_save_gzip` | 456.995 ms | 15 251 458 | 638.992 ms | 14 022 374 |
+| `embedding_index_load` | 5.519 ms | 20 589 007 | 1.327 ms | 15 360 128 |
+| `embedding_index_load_gzip` | 81.774 ms | 15 251 458 | 72.368 ms | 14 022 374 |
+
+**0.741× the size for 76.8× the save and 14.8× the load**, against 37.62× and 5.92×
+for `Optimal` on the 8 MB synthetic index above. The price grows with the artifact,
+which is the opposite of what would make it worth paying — the indexes big enough for
+26% of a disk to matter are the ones where compressing costs the most.
+
+Two things the pair says that the plain rows cannot:
+
+- **Compressed, we are ahead of numpy on the write and level with it on the read** —
+  1.40× on `savez_compressed`, 0.88× coming back. The deflate coder is the same on
+  both sides, so what is being compared is what each side hands it.
+- **Compression closes most of the format gap.** Uncompressed, the artifact is 1.34×
+  numpy's block, the expansion [ADR 0011](../decisions/0011-persistence-format.md)
+  priced. Compressed, it is 1.09×. The base64 is nearly all of the difference, and a
+  binary format would buy back an eighth of what a general-purpose coder already does.
+
 **Bytes are a published number now.** `Harness.Measure` recorded time only, so
 [#100](https://github.com/CyrilB1531/lodestar/issues/100)'s size figures were taken
 by hand and could not be re-checked. Every persistence row carries `artifact_bytes`

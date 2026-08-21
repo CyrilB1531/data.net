@@ -36,7 +36,10 @@ has the full table):
 [#336](https://github.com/CyrilB1531/lodestar/issues/336) and
 [#377](https://github.com/CyrilB1531/lodestar/issues/377) are four lots spent taking copies and
 zeroing out of this path. The cheapest compression available multiplies the load by 5.19 and the
-save by 3.68, to buy 26% of a disk.
+save by 3.68, to buy 26% of a disk — and the price grows with the artifact rather than staying
+put: the benchmark corpus's 20 MB index pays 76.8x the save and 14.8x the load at `Optimal`,
+against 37.62x and 5.92x on the 8 MB one. The indexes big enough for the size to matter are the
+ones where compressing costs the most.
 
 ## Decision
 
