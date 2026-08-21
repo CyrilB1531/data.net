@@ -31,6 +31,7 @@ public class BucketRouteDiagnostics
         List<string[]> pairs = PairsHarness.Load().Buckets.First(b => b.Length == 32).Pairs.ToList();
         _dp = [.. pairs.Where(p => Pattern(p[0], p[1]) < Gate)];
         _myers = [.. pairs.Where(p => Pattern(p[0], p[1]) >= Gate)];
+        // console-print: the denominator of both rows below; [GlobalSetup], so untimed.
         Console.WriteLine($"DP group: {_dp.Length} pairs, Myers group: {_myers.Length} pairs");
     }
 

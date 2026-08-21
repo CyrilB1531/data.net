@@ -51,7 +51,6 @@ internal static class PairsHarness
         {
             double ns = TimeBucket(bucket.Pairs, measure);
             results.Add(new BucketResult { Length = bucket.Length, Pairs = bucket.Pairs.Count, NsPerPair = ns });
-            Console.WriteLine($"  len={bucket.Length,4}  {ns,10:F1} ns/pair");
         }
 
         return results;
@@ -113,7 +112,6 @@ internal static class PairsHarness
         string outPath = Path.Combine(BenchCorpus.RepoRoot(), "bench", "results", $"csharp-{bench}.json");
         Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
         File.WriteAllText(outPath, JsonSerializer.Serialize(payload, JsonOptions) + "\n");
-        Console.WriteLine($"-> {outPath}");
     }
 
     /// <summary>The mode a `--codepoint` flag selects, shared by every harness in this family.</summary>

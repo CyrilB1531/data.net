@@ -60,6 +60,15 @@ jobs:
         run: |
           python tools/check_comment_length.py
           python tools/check_comment_length.py --report
+      # A library that writes to a console its caller did not open decides for an
+      # application it cannot see, and src/ has never done it -- this keeps that true by
+      # construction. Under bench/ ten calls narrating a run had accumulated because each
+      # was individually harmless; the four that remain carry what no file does and say so
+      # on the line, where a reviewer can disagree with the reason.
+      - name: No unexplained Console call in src/ or bench/
+        run: |
+          python tools/check_no_console_writeline.py
+          python tools/check_no_console_writeline.py --report
       # The nightly run (#11) selects benchmark classes from bench/bench-map.json, so a
       # class missing from it is never re-run and stops being measured in silence. The map
       # cannot be derived -- FuzzBenchmarks names only Fuzz and reaches Lcs through Indel --

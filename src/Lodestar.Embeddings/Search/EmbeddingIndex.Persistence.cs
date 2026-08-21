@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Numerics;
 using System.Text.Json;
 using Lodestar.Embeddings.Persistence;
@@ -97,8 +98,27 @@ public sealed partial class EmbeddingIndex
     /// <exception cref="InvalidDataException">The artifact is malformed, of the wrong kind, of an unsupported version, internally inconsistent, or exceeds a limit.</exception>
     public static EmbeddingIndex Load(Stream source, ArtifactLoadOptions? options = null)
     {
-        ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
-        return FromPayload(JsonArtifact.ReadAllBytes(source, limits), limits);
+        // Checked here rather than left to the readers below: the choice between them
+        // reads source.CanSeek, so a null would fault before either could refuse it.
+        Guard.NotNull(source);
+        return Load(source, ArtifactLoadOptions.LimitsOf(options));
+    }
+
+    /// <summary>The read, on limits already resolved — the seam a test drives the segmented path from.</summary>
+    /// <remarks>
+    /// <c>ArtifactLoadOptions</c> does not expose <c>MaxSingleBuffer</c> and should not: it
+    /// is the CLR's array ceiling, not a caller's choice. A test still has to reach the
+    /// segmented branch at a size it can afford, so the seam is internal rather than public.
+    /// </remarks>
+    internal static EmbeddingIndex Load(Stream source, in ArtifactLimits limits)
+    {
+        Guard.NotNull(source);
+
+        // Past one array the artifact is read in segments instead. Only this loader needs
+        // it: an index is the one artifact here that reaches the ceiling (#377).
+        return source.CanSeek && source.Length - source.Position > limits.MaxSingleBuffer
+            ? FromSegments(JsonArtifact.ReadAllSegments(source, limits), limits)
+            : FromPayload(JsonArtifact.ReadAllBytes(source, limits), limits);
     }
 
     /// <summary>Reads an index from bytes already in memory, without copying them.</summary>
@@ -159,9 +179,24 @@ public sealed partial class EmbeddingIndex
         }
     }
 
-    private static EmbeddingIndex Parse(ReadOnlyMemory<byte> payload, in ArtifactLimits limits)
+    /// <summary>The same read over an artifact too large for one array (#377).</summary>
+    private static EmbeddingIndex FromSegments(ReadOnlySequence<byte> payload, in ArtifactLimits limits)
     {
-        Utf8JsonReader reader = ArtifactIo.CreateReader(payload.Span, ArtifactName, limits);
+        try
+        {
+            return Parse(ArtifactIo.CreateReader(payload, ArtifactName, limits), limits);
+        }
+        catch (JsonException e)
+        {
+            throw ArtifactIo.Malformed(ArtifactName, e);
+        }
+    }
+
+    private static EmbeddingIndex Parse(ReadOnlyMemory<byte> payload, in ArtifactLimits limits) =>
+        Parse(ArtifactIo.CreateReader(payload.Span, ArtifactName, limits), limits);
+
+    private static EmbeddingIndex Parse(Utf8JsonReader reader, in ArtifactLimits limits)
+    {
         var header = new ArtifactHeader(ArtifactName, ArtifactVersion);
 
         int? dimension = null;
