@@ -25,6 +25,10 @@ is one sentence, the issue and the commit; see
 
 - `Lcs.SubsequenceLength` takes the bit-parallel route from a pattern of 2 characters and `Levenshtein.Distance` from 5, while a pattern holding a character above U+00FF is refused below 6 and 10 instead. ([#411](https://github.com/CyrilB1531/lodestar/issues/411), [`a5c0d52`](https://github.com/CyrilB1531/lodestar/commit/a5c0d52))
 
+#### Fixed
+
+- The blocked bit-parallel equality table is sized from the pattern's characters above U+00FF rather than from its length, and a pattern too long to tabulate takes the dynamic program instead of wrapping the table's length in `int`. ([#413](https://github.com/CyrilB1531/lodestar/issues/413), [`52d68cc`](https://github.com/CyrilB1531/lodestar/commit/52d68cc))
+
 ## Released — 2026-08-21
 
 Four deliverables, cut in two steps on the same day. `Lodestar.Text`,

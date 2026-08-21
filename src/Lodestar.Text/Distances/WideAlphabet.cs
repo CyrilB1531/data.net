@@ -20,17 +20,57 @@ internal static class WideAlphabet
     /// </remarks>
     internal const int Capacity = 128;
 
-    /// <summary>Slots for a pattern of <paramref name="m"/>, which the blocked path sizes per call.</summary>
+    /// <summary>The largest table the blocked routes will build before deferring to the DP.</summary>
+    /// <remarks>
+    /// <c>Array.MaxLength</c>, spelled out because netstandard2.0 has no such constant. The
+    /// length is computed in <c>long</c> and compared against this: past it the multiplication
+    /// wrapped, and <c>Rent</c> then either threw out of a distance function or succeeded on a
+    /// table too small to index (#413).
+    /// </remarks>
+    internal const int MaxTableLength = 0x7FFFFFC7;
+
+    /// <summary>How many of a pattern's characters sit above Latin-1.</summary>
+    /// <remarks>
+    /// Occurrences, not distinct symbols: distinct is what the table holds, counting it costs a
+    /// set, and occurrences bound it from above for one pass the caller makes anyway. Zero is the
+    /// answer that matters — it is what removes the side rows for a Latin-1 pattern (#413).
+    /// </remarks>
+    internal static int CountWide(ReadOnlySpan<char> pattern)
+    {
+        int wide = 0;
+        for (int i = 0; i < pattern.Length; i++)
+        {
+            if (pattern[i] > 0xFF)
+            {
+                wide++;
+            }
+        }
+
+        return wide;
+    }
+
+    /// <summary>Slots for a pattern holding <paramref name="wide"/> characters above Latin-1.</summary>
     /// <remarks>
     /// <see cref="Capacity"/> is sound for one word only because 64 characters hold at most 64
-    /// distinct symbols. A blocked pattern has no length bound, so a fixed table can fill and the
-    /// probe then has no free slot to stop on — a power of two above <c>2m</c> restores the
-    /// guarantee it relies on.
+    /// distinct symbols. A blocked pattern has no length bound, so a power of two above twice
+    /// what it can hold restores the free slot the probe stops on. Sized from the wide count and
+    /// not from the pattern's length, which made a table of <c>m²/32</c> words for an alphabet a
+    /// pure-ASCII pattern never uses (#413).
     /// </remarks>
-    internal static int CapacityFor(int m)
+    internal static int CapacityFor(int wide)
     {
+        if (wide == 0)
+        {
+            return 0;
+        }
+
+        // The BMP holds this many symbols above Latin-1, so no pattern needs more slots
+        // however often it repeats them — and the doubling below cannot overflow.
+        const int DistinctAboveLatin1 = 0xFFFF - 0xFF;
+        int needed = wide < DistinctAboveLatin1 ? wide : DistinctAboveLatin1;
+
         int slots = Capacity;
-        while (slots <= m * 2)
+        while (slots <= needed * 2)
         {
             slots *= 2;
         }
@@ -86,6 +126,13 @@ internal static class WideAlphabet
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static int BlockBase(ReadOnlySpan<char> keys, char c, int blocks, int denseEntries)
     {
+        // Empty since #413, when a Latin-1 pattern stopped allocating side rows at all. The
+        // guard mirrors Lookup's, whose callers have passed an empty table since #302.
+        if (keys.IsEmpty)
+        {
+            return -1;
+        }
+
         int slot = Probe(keys, c);
         return keys[slot] == c ? (denseEntries + slot) * blocks : -1;
     }

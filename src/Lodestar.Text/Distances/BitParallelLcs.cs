@@ -181,8 +181,16 @@ internal static class BitParallelLcs
         int m = pattern.Length;
         int blocks = (m + 63) / 64;
 
-        int slots = WideAlphabet.CapacityFor(m);
-        int peqLength = (Entries + slots) * blocks;
+        // Sized from the pattern's characters above Latin-1, not from its length: a Latin-1
+        // pattern gets no side rows at all, which is the table this route had before #302.
+        int slots = WideAlphabet.CapacityFor(WideAlphabet.CountWide(pattern));
+        long rows = (long)(Entries + slots) * blocks;
+        if (rows > WideAlphabet.MaxTableLength)
+        {
+            return false;
+        }
+
+        int peqLength = (int)rows;
         ulong[] peqRented = ArrayPool<ulong>.Shared.Rent(peqLength);
         char[] keysRented = ArrayPool<char>.Shared.Rent(slots);
         ulong[] vRented = ArrayPool<ulong>.Shared.Rent(blocks);
