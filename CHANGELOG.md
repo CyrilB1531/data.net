@@ -28,6 +28,7 @@ is one sentence, the issue and the commit; see
 #### Added
 
 - `DutchSnowballStemmer.Stem` gives the Snowball stem of a Dutch word, at parity with `nltk.stem.snowball.SnowballStemmer("dutch")`. ([#304](https://github.com/CyrilB1531/lodestar/issues/304), [`266c300`](https://github.com/CyrilB1531/lodestar/commit/266c300))
+- `SwedishSnowballStemmer.Stem` gives the Snowball stem of a Swedish word, at parity with `nltk.stem.snowball.SnowballStemmer("swedish")`. ([#306](https://github.com/CyrilB1531/lodestar/issues/306), [`7fa39f3`](https://github.com/CyrilB1531/lodestar/commit/7fa39f3))
 
 #### Fixed
 
