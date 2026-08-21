@@ -18,7 +18,7 @@ internal static class ScatteredPair
     internal static (string A, string B) Build(int length, int seed = 42)
     {
         var rng = new Random(seed);
-        const string alphabet = "abcdefghijklmnopqrstuvwxyz ";
+        const string alphabet = Alphabets.Latin;
         char[] a = new char[length];
         for (int i = 0; i < length; i++)
         {

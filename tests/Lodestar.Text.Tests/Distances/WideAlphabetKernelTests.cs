@@ -91,6 +91,36 @@ public sealed class WideAlphabetKernelTests
         }
     }
 
+    /// <summary>The bands the gate benchmarks measure, on the question those rows silently assume.</summary>
+    /// <remarks>
+    /// A CJK row that fell back would measure the dynamic program under a kernel's name, and the
+    /// timing could not tell you: both routes return the same number. So the route is asserted
+    /// here instead of read off a benchmark. Below the gate both alphabets take the DP by design,
+    /// which is why the list starts at 8 — <c>bench/README.md</c> has the gate's own sweep (#383).
+    /// </remarks>
+    [Theory]
+    [InlineData(8)]
+    [InlineData(10)]
+    [InlineData(12)]
+    [InlineData(14)]
+    [InlineData(16)]
+    [InlineData(18)]
+    [InlineData(20)]
+    [InlineData(24)]
+    [InlineData(32)]
+    [InlineData(48)]
+    [InlineData(64)]
+    [InlineData(96)]
+    public void A_cjk_band_the_gate_benchmarks_use_reaches_both_kernels(int band)
+    {
+        var rng = new Random(band);
+        string pattern = Random(rng, Cjk, band);
+        string text = Random(rng, Cjk, band);
+
+        Assert.True(Myers.TryDistance(pattern.AsSpan(), text.AsSpan(), out _));
+        Assert.True(BitParallelLcs.TrySubsequenceLength(pattern.AsSpan(), text.AsSpan(), out _));
+    }
+
     private static void AssertAgrees(int length, string alphabet, bool mixed)
     {
         var rng = new Random(length + (mixed ? 1000 : 0));
