@@ -85,42 +85,74 @@ def findings_in(path: str) -> list[tuple[int, str, bool]]:
     return found
 
 
-def main(argv: list[str]) -> int:
-    arguments = argv[1:]
+def _parse_arguments(arguments: list[str]) -> int | None:
+    """Handle `--help`/`-h` and reject anything but `--report`.
+
+    Returns the exit code main() should return immediately, or None to mean "keep
+    going" -- pulled out of main() to keep its cognitive complexity under the limit
+    the rest of the repository holds itself to, the same way
+    `check_machine_paths.py` does.
+    """
     if "--help" in arguments or "-h" in arguments:
         print(__doc__)
         return 0
-    if any(argument != "--report" for argument in arguments):
-        print(__doc__, file=sys.stderr)
-        return 2
 
-    report = "--report" in arguments
+    for argument in arguments:
+        if argument != "--report":
+            print(__doc__, file=sys.stderr)
+            return 2
+
+    return None
+
+
+def _partition() -> tuple[list[str], list[str]]:
+    """Every call found, split into the refused and the marked.
+
+    `src/` never reaches the marked side: a shipped package does not print, and the
+    guard reads no marker there, so a reason written under `src/` is refused with the
+    call it was meant to excuse.
+    """
     refused, marked = [], []
     for path in tracked_sources():
         for line, text, is_marked in findings_in(path):
-            # src/ has no marker: a shipped package does not print, with no exception.
+            entry = f"{path}:{line}: {text}"
             if is_marked and path.startswith("bench/"):
-                marked.append(f"{path}:{line}: {text}")
+                marked.append(entry)
             else:
-                refused.append(f"{path}:{line}: {text}")
+                refused.append(entry)
+    return refused, marked
 
-    if report:
+
+def _refuse(refused: list[str]) -> int:
+    """Print what nothing explains, and how to explain it."""
+    for entry in refused:
+        print(entry, file=sys.stderr)
+
+    print(
+        f"\n{len(refused)} Console call(s) that nothing explains. Under src/ a "
+        "shipped package must not print, and there is no marker for it. Under "
+        f"bench/ add `// {MARKER} <reason>` on the call or the line above it, "
+        "and expect a reviewer to disagree with the reason.",
+        file=sys.stderr)
+    return 1
+
+
+def main(argv: list[str]) -> int:
+    arguments = argv[1:]
+    early = _parse_arguments(arguments)
+    if early is not None:
+        return early
+
+    refused, marked = _partition()
+
+    if "--report" in arguments:
         for entry in marked:
             print(entry)
         print(f"{len(marked)} marked, {len(refused)} unmarked")
         return 0
 
-    for entry in refused:
-        print(entry, file=sys.stderr)
-
     if refused:
-        print(
-            f"\n{len(refused)} Console call(s) that nothing explains. Under src/ a "
-            "shipped package must not print, and there is no marker for it. Under "
-            f"bench/ add `// {MARKER} <reason>` on the call or the line above it, "
-            "and expect a reviewer to disagree with the reason.",
-            file=sys.stderr)
-        return 1
+        return _refuse(refused)
 
     print(f"ok  no unexplained Console call under {', '.join(SCANNED)}"
           f" ({len(marked)} marked in bench)")
