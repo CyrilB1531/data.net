@@ -20,12 +20,12 @@ public static class Lcs
 {
     /// <summary>Below this the dynamic program wins: the equality table costs more than it saves.</summary>
     /// <remarks>
-    /// Still Myers' gate, but swept on this kernel too rather than inherited (#208).
-    /// Its length-32 bucket is flat from 8 down — 177.6 ns/pair at 8 against 164.8 at
-    /// 4 — so 8 is taken for the reason that constant gives rather than for a crossing
-    /// this corpus can locate: below 8 every row rests on one bucket.
+    /// The Latin-1 crossing, measured over bands the corpus could not reach until #409:
+    /// the kernel is already 24% ahead at a band of 2, which is this sweep's floor. It
+    /// governs the dense path only — <c>BitParallelLcs.WideMinPatternLength</c> is where
+    /// a pattern above Latin-1 crosses, four bands later (#411, decision 0049).
     /// </remarks>
-    private const int BitParallelMinPatternLength = 8;
+    private const int BitParallelMinPatternLength = 2;
 
     /// <summary>Length of the longest common subsequence (order-preserving, not necessarily contiguous).</summary>
     public static int SubsequenceLength(ReadOnlySpan<char> a, ReadOnlySpan<char> b, TextElement element = TextElement.Utf16Unit)
