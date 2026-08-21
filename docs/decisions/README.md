@@ -59,10 +59,11 @@ a later decision uses instead.
 | [`0047`](0047-one-gate-per-kernel-not-one-per-alphabet.md) | One bit-parallel gate per kernel, not one per alphabet | accepted | 2026-08-21 | amends [`0043`](0043-the-equality-table-is-sized-to-the-pattern.md) |
 | [`0048`](0048-the-gate-depends-on-the-kernel-and-the-alphabet.md) | The bit-parallel gate depends on the kernel *and* the alphabet | accepted | 2026-08-21 | amends [`0047`](0047-one-gate-per-kernel-not-one-per-alphabet.md) |
 | [`0049`](0049-two-gates-per-kernel-tested-where-the-width-is-known.md) | Two gates per kernel, the second tested where the width is already known | accepted | 2026-08-21 | amends [`0048`](0048-the-gate-depends-on-the-kernel-and-the-alphabet.md) |
+| [`0050`](0050-the-sentencepiece-bpe-lineage-stays-a-bpe-model.md) | The SentencePiece-BPE lineage stays a BPE model, and metaspace becomes one transform | accepted | 2026-08-21 | amends [`0017`](0017-bpe-parity-scope.md) §3, whose `byte_fallback` refusal and "no path here" for Llama-2 and Mistral v0.1 both fall |
 
 ## What `accepted` means here
 
-All forty-five carry `accepted`. None has been rejected or withdrawn — a status this table
+All fifty carry `accepted`. None has been rejected or withdrawn — a status this table
 would otherwise need a second word for. `0004` read a progress sentence
 (`single-word and blocked shipped`) where a status belongs; that sentence is now the opening line
 of its own `## Done` section, and its status reads `accepted` like the other thirty-two.
