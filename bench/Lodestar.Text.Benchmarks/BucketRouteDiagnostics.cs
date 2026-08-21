@@ -8,14 +8,14 @@ namespace Lodestar.Text.Benchmarks;
 // following this rule breaks the benchmarks at run time rather than compile time.
 #pragma warning disable CA1822
 
-/// <summary>Which of the two routes the length-32 bucket's cost actually sits on.</summary>
+/// <summary>Which of the two routes a length-32 bucket's cost actually sits on, per alphabet.</summary>
 /// <remarks>
 /// #208 called the 32 bucket a single-word Myers gap and it was not one: the pairs carry
 /// three scattered edits, so trimming leaves a pattern of 16 on the median, and at the
 /// gate of 16 that shipped then, 47% of them fell under it and took the DP — 70% of the
 /// bucket's whole cost on 47% of its pairs. Splitting the real corpus on the dispatch's
-/// own criterion is what showed that; <c>Gate</c> below has to track the shipped constant
-/// or the two halves stop being the two routes.
+/// own criterion is what showed that; <c>Gate</c> below tracks the shipped constant, and the
+/// split runs per alphabet since #406 — a wide bucket has to be seen reaching the kernel.
 /// </remarks>
 [MemoryDiagnoser]
 public class BucketRouteDiagnostics
@@ -25,14 +25,22 @@ public class BucketRouteDiagnostics
     private string[][] _dp = [];
     private string[][] _myers = [];
 
+    /// <summary>Which length-32 bucket to split — two answer to that length since #406.</summary>
+    [Params("latin", "cjk")]
+    public string Alphabet { get; set; } = "latin";
+
     [GlobalSetup]
     public void Setup()
     {
-        List<string[]> pairs = PairsHarness.Load().Buckets.First(b => b.Length == 32).Pairs.ToList();
+        // Selected on the alphabet as well as the length. On the length alone this took
+        // whichever bucket the file listed first, and reported it under either name (#406).
+        PairsHarness.Bucket bucket = PairsHarness.Load().Buckets
+            .First(b => b.Length == 32 && b.Alphabet == Alphabet);
+        List<string[]> pairs = bucket.Pairs.ToList();
         _dp = [.. pairs.Where(p => Pattern(p[0], p[1]) < Gate)];
         _myers = [.. pairs.Where(p => Pattern(p[0], p[1]) >= Gate)];
         // console-print: the denominator of both rows below; [GlobalSetup], so untimed.
-        Console.WriteLine($"DP group: {_dp.Length} pairs, Myers group: {_myers.Length} pairs");
+        Console.WriteLine($"{Alphabet}: DP group {_dp.Length} pairs, kernel group {_myers.Length} pairs");
     }
 
     [Benchmark]

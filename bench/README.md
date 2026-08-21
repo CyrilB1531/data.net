@@ -46,6 +46,20 @@ directly, so after `Affixes.Trim` the pattern is exactly `Band` long and the
 dynamic program runs beside the kernel as the baseline. They answer *how much*
 the kernel wins by at a given band.
 
+Each runs that band twice, over two alphabets of 27 symbols: the Latin one every
+band used before, and a CJK one above `U+00FF`. Below that boundary the kernels
+index their 256-entry equality table directly; above it a pattern took the DP
+until #302 and #382 gave it a side table beside the dense one. So `Dp_Cjk` is what
+a refusal costs and `Kernel_Cjk` is what the side table costs, on shapes the Latin
+rows measure in the same process — `BandedPair` takes the alphabet as a parameter
+so that the alphabet is the only thing between the two (#383).
+
+**A CJK row is only a CJK measurement if the band reaches the kernel**, and a
+timing cannot tell you it did: both routes return the same number. The gate is 8,
+so bands 4 and 6 take the DP on either alphabet by design, and
+`WideAlphabetKernelTests` asserts the route for every band at or above it rather
+than leaving it to be read off a ratio.
+
 They cannot answer *where to put the gate*, and it is worth being explicit about
 why, because the shape invites the mistake: below the gate the dispatch sends
 both rows to the DP, so the ratio is 1 and the crossing is invisible exactly
@@ -75,10 +89,22 @@ Three things this corpus will not tell you, all of which cost #208 time:
   costs `setup + O(n)` where the DP costs `O(m·n)`, so they meet at
   `m ≈ 1 + setup/n`. A gate is one number for every `n`, so calibrate it on the
   shortest texts — the regime where being wrong is expensive.
-- **The corpus has a hole between 2 and 7.** Its length-8 bucket trims to a
-  pattern of 0 or 1 and its length-32 bucket is the only other source, so any
-  conclusion in that range rests on a single bucket. `BucketRouteDiagnostics`
-  prints the split the gate produces on that bucket, which is how to see it.
+- **The corpus has a hole between 2 and 7, and the wide buckets do not fill it.**
+  Its length-8 bucket trims to a pattern of 0 or 1 and its length-32 bucket is the
+  only other source, so any conclusion in that range rests on a single bucket.
+  `BucketRouteDiagnostics` prints the split the gate produces on that bucket, which
+  is how to see it. #406's CJK buckets reproduce the hole exactly — a length-8 CJK
+  pair also trims to a median of 0, the 10% edit rate producing that and not the
+  alphabet — so #407 could answer whether the gate needs to differ per alphabet and
+  still not what its value should be.
+- **Never sum ns/pair across buckets to score a gate value.** The 512 bucket is
+  roughly 95% of any such total and no candidate gate can touch it, so the sum
+  reports that bucket's run-to-run noise as a result about the constant, and picks a
+  different winner than the one bucket that can see the gate.
+- **Sweep in both directions.** Each value needs its own build, so the readings are
+  taken in sequence and machine drift maps onto the swept axis. Two passes in
+  opposite order put that drift on both ends instead; #407's agreed to 5.3%, against
+  about 12% for the gate benchmarks' short job.
 
 ## 2. net10 vs netstandard2.0 — what the broad-reach target costs
 
@@ -215,8 +241,9 @@ python bench/compare.py --format=gfm   # a real markdown table, read natively by
 ```
 
 Results land in `bench/results/` (git-ignored: they are machine-specific and not
-authoritative). The corpus is ASCII, so UTF-16 units and code points coincide and
-both sides compute identical distances. `--format=gfm` works on every mode below
+authoritative). Every bucket stays inside the BMP, so UTF-16 units and code points
+coincide and both sides compute identical distances — and a result is keyed on its
+alphabet as well as its length, two buckets answering to each length since #406. `--format=gfm` works on every mode below
 the same way; the plain table stays the default because it is the one meant for
 a terminal.
 
@@ -244,14 +271,25 @@ it, and the two BenchmarkDotNet classes build their operands through
 over identical inputs, and an extracted builder is what makes that true by
 construction rather than by inspection.
 
-**What this corpus reaches, and what it cannot.** Measured over all four buckets:
-27 distinct symbols, every one ASCII (`U+007A` at most), 4–27 distinct per
-pattern. Any dense alphabet table fits at every length, so a bit-parallel LCS
-kernel would be exercised throughout — the failure of #52 and #267, where the new
-path was never reached at all, does not apply here. The converse does: nothing in
-this corpus falls back and nothing rises above Latin-1, so it cannot show what a
-refusal costs. That needs its own cases, the way `long_ascii`, `long_latin` and
-`long_supplementary` were appended to the oracle corpora.
+**What this corpus reaches.** Eight buckets since #406: four lengths drawn from 27
+Latin symbols, every one ASCII (`U+007A` at most), and four more of the same
+lengths drawn from 27 CJK symbols, every one above `U+00FF`. Both alphabets carry
+4–27 distinct symbols per pattern, so the dense equality table fits at every
+length and the bit-parallel kernels are exercised throughout — the failure of #52
+and #267, where the new path was never reached at all, does not apply here.
+
+The wide half is what the corpus could not do until #406, and it is what makes a
+refusal priceable on the input that actually ships rather than on a synthetic
+band. **A wide bucket is only a wide measurement if its pairs reach the kernel**,
+which a timing cannot tell you: run `BucketRouteDiagnostics`, which splits the
+length-32 bucket of either alphabet on the dispatch's own criterion. It reads 833
+of 1 000 CJK pairs on the kernel against 861 Latin.
+
+Both alphabets stay inside the BMP on purpose. UTF-16 units and code points
+coincide there, so the C# default and rapidfuzz measure the same quantity;
+supplementary characters would break that, an emoji being one code point and two
+units. The supplementary case is covered where it can be — the property tests
+against the dynamic program, extended for it in #302.
 
 `FuzzBenchmarks.Ratio` also runs this path, on one fixed pair of 43-character
 sentences. That is a point, not a curve; `IndelBenchmarks` is the sweep.

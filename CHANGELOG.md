@@ -27,7 +27,7 @@ is one sentence, the issue and the commit; see
 
 #### Changed
 
-- The package is `Lodestar.Text`, and its namespaces are `Lodestar.Text.*`. `DataNet.Text 0.3.0` and `Lodestar.Text 0.3.1` hold the same code: the id changed, nothing else did. ([#194](https://github.com/CyrilB1531/data.net/issues/194), [`b2911a5`](https://github.com/CyrilB1531/lodestar/commit/b2911a5))
+- The package is `Lodestar.Text`, and its namespaces are `Lodestar.Text.*`. `DataNet.Text 0.3.0` and `Lodestar.Text 0.3.1` hold the same code: the id changed, nothing else did. ([#194](https://github.com/CyrilB1531/data.net/issues/194), [`3a9931a`](https://github.com/CyrilB1531/lodestar/commit/3a9931a))
 - The toolkit is `Lodestar`: the tags no longer say `datanet`, and every package carries an embedded icon rather than none. ([#194](https://github.com/CyrilB1531/data.net/issues/194), [`ec421f6`](https://github.com/CyrilB1531/lodestar/commit/ec421f6))
 - `DamerauLevenshtein`'s documented summary no longer says "Not a proper metric": unit-cost unrestricted Damerau-Levenshtein satisfies the triangle inequality and is a true metric; `Osa` is the one that does not. ([#181](https://github.com/CyrilB1531/data.net/issues/181), [`754a61d`](https://github.com/CyrilB1531/lodestar/commit/754a61d))
 - The reference is one page per member, with a type page and a namespace index above it: `docs/reference/text/distances.md` becomes 9 type pages and 22 member pages, and the index a reader lands on is 64 lines rather than 1034. ([#189](https://github.com/CyrilB1531/data.net/issues/189), [`754a61d`](https://github.com/CyrilB1531/lodestar/commit/754a61d))

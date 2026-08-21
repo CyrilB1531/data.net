@@ -56,10 +56,18 @@ public sealed class WideAlphabetKernelTests
     }
 
     /// <summary>Supplementary characters, which reach the kernel as surrogate pairs in this mode.</summary>
+    /// <remarks>
+    /// Past 64 units the pattern spans more than one word, and that is where the two mechanisms
+    /// meet for the first time: the blocked path sizes its side table per call, and surrogate
+    /// halves crowd into D800..DFFF, which is the clustering the probe's hash exists for (#302).
+    /// </remarks>
     [Theory]
     [InlineData(8)]
     [InlineData(32)]
     [InlineData(64)]
+    [InlineData(66)]
+    [InlineData(130)]
+    [InlineData(300)]
     public void An_emoji_pattern_agrees_with_the_dynamic_program(int units)
     {
         var rng = new Random(units);
@@ -72,23 +80,64 @@ public sealed class WideAlphabetKernelTests
     }
 
     /// <summary>A pattern whose characters are all distinct and all wide: the side table at its fullest.</summary>
-    [Fact]
-    public void A_pattern_of_sixty_four_distinct_wide_characters_agrees_with_the_dynamic_program()
+    /// <remarks>
+    /// 64 is one word's worth, the most a single-word pattern can hold. 300 is the blocked path,
+    /// where the table has no fixed size: <c>WideAlphabet.CapacityFor</c> grows it past the 128
+    /// slots one word is entitled to, and a pattern of distinct symbols is what makes it (#302).
+    /// </remarks>
+    [Theory]
+    [InlineData(64)]
+    [InlineData(300)]
+    public void A_pattern_of_distinct_wide_characters_agrees_with_the_dynamic_program(int length)
     {
-        var rng = new Random(64);
+        var rng = new Random(length);
         for (int trial = 0; trial < 100; trial++)
         {
             char start = (char)(0x4E00 + rng.Next(0, 0x1000));
-            char[] pattern = new char[64];
-            for (int i = 0; i < 64; i++)
+            char[] pattern = new char[length];
+            for (int i = 0; i < length; i++)
             {
                 pattern[i] = (char)(start + i);
             }
 
+            // Both ends are moved, so Affixes.Trim strips nothing and the pattern the kernel
+            // sees is the whole length — mutating at random left it a third of that (#302).
             string a = new(pattern);
-            string b = Mutate(rng, a, rng.Next(1, 20));
-            AssertPair(a, b);
+            char[] other = Mutate(rng, a, rng.Next(1, 20)).ToCharArray();
+            other[0]++;
+            other[^1]++;
+            AssertPair(a, new string(other));
         }
+    }
+
+    /// <summary>The bands the gate benchmarks measure, on the question those rows silently assume.</summary>
+    /// <remarks>
+    /// A CJK row that fell back would measure the dynamic program under a kernel's name, and the
+    /// timing could not tell you: both routes return the same number. So the route is asserted
+    /// here instead of read off a benchmark. Below the gate both alphabets take the DP by design,
+    /// which is why the list starts at 8 — <c>bench/README.md</c> has the gate's own sweep (#383).
+    /// </remarks>
+    [Theory]
+    [InlineData(8)]
+    [InlineData(10)]
+    [InlineData(12)]
+    [InlineData(14)]
+    [InlineData(16)]
+    [InlineData(18)]
+    [InlineData(20)]
+    [InlineData(24)]
+    [InlineData(32)]
+    [InlineData(48)]
+    [InlineData(64)]
+    [InlineData(96)]
+    public void A_cjk_band_the_gate_benchmarks_use_reaches_both_kernels(int band)
+    {
+        var rng = new Random(band);
+        string pattern = Random(rng, Cjk, band);
+        string text = Random(rng, Cjk, band);
+
+        Assert.True(Myers.TryDistance(pattern.AsSpan(), text.AsSpan(), out _));
+        Assert.True(BitParallelLcs.TrySubsequenceLength(pattern.AsSpan(), text.AsSpan(), out _));
     }
 
     private static void AssertAgrees(int length, string alphabet, bool mixed)

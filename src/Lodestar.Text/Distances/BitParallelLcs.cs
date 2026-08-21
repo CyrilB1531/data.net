@@ -13,7 +13,12 @@ namespace Lodestar.Text.Distances;
 /// </remarks>
 internal static class BitParallelLcs
 {
-    /// <summary>The subsequence length, or false when the pattern leaves the dense alphabet.</summary>
+    /// <summary>The subsequence length, over the dense equality table or the side table beside it.</summary>
+    /// <remarks>
+    /// It no longer returns <c>false</c>: a pattern above Latin-1 refused here until #302 gave
+    /// the kernel a side table, so every pattern has a route. The signature is kept because
+    /// <see cref="Lcs"/>'s gate reads it, and because Myers' twin still refuses an empty pattern.
+    /// </remarks>
     public static bool TrySubsequenceLength(
         ReadOnlySpan<char> pattern, ReadOnlySpan<char> text, out int length)
     {

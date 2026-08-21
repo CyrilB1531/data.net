@@ -15,10 +15,10 @@ namespace Lodestar.Text.Distances;
 /// patterns up to 64 characters, <see cref="TryBlocked"/> beyond that.
 /// </summary>
 /// <remarks>
-/// <c>O(n·⌈m/w⌉)</c> against the DP's <c>O(n·m)</c> (Myers 1999; Hyyrö 2003). The
-/// <see cref="char"/> entry point is restricted to Latin-1 patterns; the code-point
-/// one is not, being renamed into a dense alphabet first. Remaining backlog in
-/// <c>docs/decisions/0004-levenshtein-myers-backlog.md</c>.
+/// <c>O(n·⌈m/w⌉)</c> against the DP's <c>O(n·m)</c> (Myers 1999; Hyyrö 2003). Neither entry
+/// point is restricted to an alphabet: the <see cref="char"/> one puts what leaves Latin-1 in
+/// <see cref="WideAlphabet"/>'s side table (#302, #382), the code-point one renames first.
+/// Backlog in <c>docs/decisions/0004-levenshtein-myers-backlog.md</c>.
 /// </remarks>
 internal static class Myers
 {
@@ -49,9 +49,9 @@ internal static class Myers
     /// and <paramref name="text"/> using the single-word algorithm.
     /// </summary>
     /// <returns>
-    /// <c>true</c> and the distance when the fast path applies; <c>false</c> when
-    /// the caller must fall back to the DP (pattern empty, longer than 64, or
-    /// containing a character above U+00FF).
+    /// <c>true</c> and the distance; <c>false</c> only when <paramref name="pattern"/> is
+    /// empty. A character above U+00FF refused here until #302 gave the kernel a side table,
+    /// and a pattern longer than 64 goes to <see cref="TryBlocked"/> rather than to the DP.
     /// </returns>
     public static bool TryDistance(ReadOnlySpan<char> pattern, ReadOnlySpan<char> text, out int distance)
     {

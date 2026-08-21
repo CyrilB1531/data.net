@@ -355,10 +355,191 @@ Both halves are recorded in
 [decision 0043](../decisions/0043-the-equality-table-is-sized-to-the-pattern.md),
 which amends 0004's two bullets rather than editing that record.
 
-**What the reach is worth is not measured here**, because this corpus cannot say —
-it is ASCII, by construction. `docs/guides/performance.md`'s code-point section has
-the standing figure for what falling back to the DP costs on such input: 2.80 ms at
-`Length = 512` against the code-point mode's 22 µs.
+**What the reach is worth is not measured by this corpus**, which is ASCII by
+construction. It took a band of its own, below.
+
+### What the wide path buys, and what its side table costs (#383)
+
+Until this section the gain rested on the code-point mode's standing figure for what
+falling back costs — 2.80 ms at `Length = 512` against 22 µs — which is an argument
+about a different mode, not a measurement of this change. `MyersGateBenchmarks` and
+`LcsGateBenchmarks` now run each band twice, over 27 Latin symbols and over 27 CJK
+ones, so the alphabet is the only difference between the two readings and both are
+taken in one process against the same dynamic program.
+
+Intel i7-4770S, .NET 10.0.11, X64 RyuJIT AVX2, BenchmarkDotNet short job
+(`IterationCount=3`, `WarmupCount=3`), `[MemoryDiagnoser]`; dev machine,
+non-authoritative. **Three runs per class, all shown**, the first two interleaved
+LCS → Myers → LCS → Myers so drift lands on every column, at a one-minute load
+average of 1.22 to 4.31. The third is a control taken after the operand
+construction moved to a shared base class, on a busier machine — 4.56 to 6.38 —
+which is why it reads uniformly slower and why the ratio column, computed inside
+each run, is the one to read across the three. Nothing on any row allocates.
+
+| Band | DP | kernel | DP (CJK) | kernel (CJK) | CJK kernel ÷ CJK DP |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 8 | 147 / 160 / 149 ns | 72 / 74 / 70 ns | 149 / 149 / 195 ns | 118 / 140 / 125 ns | 0.79 / 0.94 / 0.64 |
+| 12 | 249 / 247 / 294 ns | 75 / 81 / 78 ns | 247 / 263 / 267 ns | 142 / 150 / 156 ns | 0.57 / 0.57 / 0.58 |
+| 16 | 422 / 377 / 417 ns | 96 / 87 / 93 ns | 409 / 388 / 410 ns | 147 / 146 / 165 ns | 0.36 / 0.38 / 0.40 |
+| 32 | 1 558 / 1 685 / 1 652 ns | 121 / 126 / 132 ns | 1 566 / 1 592 / 1 720 ns | 211 / 239 / 235 ns | 0.13 / 0.15 / 0.14 |
+| 64 | 6 245 / 6 614 / 6 671 ns | 188 / 205 / 209 ns | 6 344 / 6 378 / 6 724 ns | 350 / 380 / 389 ns | 0.06 / 0.06 / 0.06 |
+| 96 | 13 962 / 15 729 / 16 768 ns | 840 / 861 / 876 ns | 14 752 / 15 079 / 15 571 ns | 1 146 / 1 251 / 1 232 ns | 0.08 / 0.08 / 0.08 |
+
+`LcsGateBenchmarks`, and the edit-distance twin below:
+
+| Band | DP | kernel | DP (CJK) | kernel (CJK) | CJK kernel ÷ CJK DP |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 6 | 127 / 125 / 121 ns | 121 / 122 / 128 ns | 123 / 124 / 122 ns | 119 / 124 / 122 ns | 0.97 / 1.00 / 1.00 |
+| 8 | 164 / 168 / 165 ns | 111 / 107 / 106 ns | 166 / 176 / 169 ns | 168 / 162 / 161 ns | 1.02 / 0.92 / 0.95 |
+| 10 | 231 / 218 / 240 ns | 113 / 115 / 127 ns | 218 / 228 / 235 ns | 183 / 181 / 194 ns | 0.84 / 0.79 / 0.83 |
+| 12 | 290 / 320 / 317 ns | 120 / 148 / 135 ns | 294 / 367 / 291 ns | 202 / 223 / 186 ns | 0.69 / 0.61 / 0.64 |
+| 16 | 452 / 464 / 456 ns | 139 / 141 / 138 ns | 449 / 497 / 451 ns | 216 / 233 / 215 ns | 0.48 / 0.47 / 0.48 |
+| 32 | 1 905 / 2 030 / 1 700 ns | 209 / 235 / 212 ns | 1 616 / 1 951 / 1 910 ns | 299 / 308 / 301 ns | 0.19 / 0.16 / 0.16 |
+| 96 | 20 090 / 20 806 / 19 478 ns | 1 441 / 1 403 / 1 468 ns | 19 502 / 20 866 / 18 742 ns | 1 750 / 1 751 / 1 772 ns | 0.09 / 0.08 / 0.09 |
+
+- **What the refusal cost, measured rather than argued.** A CJK band of 32 takes
+  about 1 650 ns on the LCS dynamic program and 230 on the kernel; at 64, 6 500
+  against 370. Myers at 96 reads roughly 19 700 against 1 760. Between 7× and 18×
+  wherever a band is past the crossing, and that is the whole of what #302 and #382
+  buy.
+- **The two `DP` columns are the same measurement twice, which is why both are
+  here.** The dynamic program compares characters and should not care where in the
+  BMP they sit; it does not — the two agree to under 8% on most rows, 31% at worst
+  on the shortest band. That spread is this job's noise floor, measured rather than
+  asserted, and it is what every reading below has to clear.
+- **The side table is not free: 1.6× to 1.9× on the LCS kernel, 1.2× to 1.5× on
+  Myers'.** A Latin band of 32 runs the LCS kernel in about 125 ns and a CJK one in
+  230. Both are far under the 1 650 ns the DP costs, so the reach is overwhelmingly
+  worth having — but the fixed cost roughly doubles, which is the probe and the
+  second table, and no earlier section could have said so.
+- **The gate of 8 is right for one of the two kernels on this input.** LCS is under
+  the DP at band 8 in all three runs (0.79, 0.94, 0.64), so its crossing is at or
+  below the gate — though that row is the table's noisiest and cannot size the win.
+  Myers is not: three readings of 1.02, 0.92 and 0.95 straddle parity, and it does
+  not clearly win until band 10. The constant is shared, was swept over an ASCII
+  corpus in #208, and on wide input the two kernels no longer cross at the same
+  place. Splitting it is its own change and needs that sweep, not this band.
+
+### The corpus gains a wide half, and the two sides slow down differently (#406)
+
+Every bucket was ASCII until now, so no number on this page described what either
+side does above Latin-1. `bench/corpus/pairs.json` carries eight buckets since #406:
+the same four lengths drawn from 27 Latin symbols, and four more drawn from 27 CJK
+ones. Both alphabets stay inside the BMP on purpose — UTF-16 units and code points
+coincide there, so the two sides still measure the same quantity, which a
+supplementary character would break.
+
+**The wide buckets reach the kernel, which is checked rather than assumed.**
+`BucketRouteDiagnostics` splits a length-32 bucket on the dispatch's own criterion
+and reads 833 of 1 000 CJK pairs on the bit-parallel route against 861 Latin. A
+bucket whose pairs trimmed below the gate would have measured the dynamic program
+under a wide-sounding name.
+
+Intel i7-4770S, .NET 10.0.11, rapidfuzz 3.14.5 / Python 3.12.3; dev machine,
+non-authoritative. Each pair of sides back to back, Python first, one-minute load
+average 3.91 falling to 1.71 across the window.
+
+| alphabet | length | Python ns/pair | C# ns/pair | speedup (py/C#) |
+| --- | ---: | ---: | ---: | :--- |
+| latin | 8 | 164.7 | 29.3 | 5.62x C# faster |
+| latin | 32 | 291.2 | 189.2 | 1.54x C# faster |
+| latin | 128 | 2255.6 | 1778.8 | 1.27x C# faster |
+| latin | 512 | 18113.7 | 22308.3 | 1.23x Py faster |
+| cjk | 8 | 162.8 | 29.5 | 5.51x C# faster |
+| cjk | 32 | 404.9 | 311.1 | 1.30x C# faster |
+| cjk | 128 | 3333.7 | 2863.6 | 1.16x C# faster |
+| cjk | 512 | 27670.7 | 26315.1 | 1.05x C# faster |
+
+Levenshtein above, Indel below:
+
+| alphabet | length | Python ns/pair | C# ns/pair | speedup (py/C#) |
+| --- | ---: | ---: | ---: | :--- |
+| latin | 8 | 115.1 | 34.3 | 3.35x C# faster |
+| latin | 32 | 183.9 | 118.5 | 1.55x C# faster |
+| latin | 128 | 561.5 | 883.7 | 1.57x Py faster |
+| latin | 512 | 6037.7 | 10046.4 | 1.66x Py faster |
+| cjk | 8 | 136.3 | 34.6 | 3.94x C# faster |
+| cjk | 32 | 337.5 | 261.2 | 1.29x C# faster |
+| cjk | 128 | 1896.6 | 1501.9 | 1.26x C# faster |
+| cjk | 512 | 15901.1 | 11931.5 | 1.33x C# faster |
+
+- **Read the speedup column last, and only after the two it is made of.** On Indel
+  the ranking flips with the alphabet — Lodestar is 1.66× behind on Latin at 512 and
+  1.33× ahead on CJK — and **it is not Lodestar that got faster.** rapidfuzz goes
+  from 6 038 ns to 15 901 on the same lengths, up 163%; Lodestar goes from 10 046 to
+  11 932, up 19%. The column moved because the other side moved.
+- **What each side pays for is different, and both were measured.** Lodestar's cost
+  is the side table #302 added, and it is the same 1.2×–1.6× the gate benchmarks
+  price on synthetic bands. rapidfuzz's is not about the alphabet at all: it tracks
+  **CPython's internal string kind**. A control over three 27-symbol alphabets at
+  length 512 reads 19 894 ns on ASCII, 19 445 on accented Latin-1 — stored one byte
+  a character, like ASCII — and 29 522 on CJK, stored two. Above U+00FF the
+  interpreter widens the string and rapidfuzz pays for it.
+- **Both implementations draw their line at U+00FF, for unrelated reasons.** One
+  indexes a 256-entry equality table, the other switches storage kind. Nothing
+  arranged that, and it is what makes the wide buckets a fair test rather than a
+  flattering one: the same threshold is crossed on both sides at the same character.
+- **The Latin buckets are byte-identical to the ones this page already published.**
+  One seeded stream feeds the generator and the CJK draws come strictly after the
+  Latin ones, so every figure above the CJK rows still measures what it always did.
+
+### Sweeping the gate over both alphabets, and what it can answer (#407)
+
+Since #302 and #382 one constant per kernel governs two regimes, and #383 measured the
+two kernels no longer crossing in the same place on wide input. A gate benchmark cannot
+place a gate — below it the dispatch sends both rows to the DP, so the ratio is 1
+exactly where the crossing would be read. What answers it is #208's method, which #406
+finally made reachable: edit the constant, rebuild, and read the committed corpus end
+to end at each value.
+
+Intel i7-4770S, .NET 10.0.11; dev machine, non-authoritative. Six values per kernel,
+**two passes in opposite order** so drift between successive builds lands on both ends
+of the range rather than on one; one-minute load average 1.69 to 3.80 across the
+window. The Python side is fixed and was not re-run. The two passes agree to **5.3%**.
+
+Bucket 32 only, because it is the only bucket whose patterns straddle any candidate
+gate, and both passes are shown:
+
+| gate | 4 | 6 | 8 | 10 | 12 | 16 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Levenshtein, latin | 178 / 180 | 181 / 184 | 189 / 191 | 216 / 220 | 253 / 257 | 381 / 380 |
+| Levenshtein, cjk | 301 / 317 | 305 / 305 | 313 / 317 | 327 / 330 | 354 / 360 | 469 / 462 |
+| Indel, latin | 108 / 108 | 113 / 113 | 121 / 120 | 143 / 141 | 172 / 167 | 262 / 272 |
+| Indel, cjk | 257 / 245 | 271 / 258 | 275 / 267 | 282 / 282 | 296 / 301 | 382 / 374 |
+
+The same, as a ratio against each row's own gate-4 reading, which is what the decision
+turns on:
+
+| gate | 6 | 8 | 10 | 12 | 16 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Levenshtein, latin | 1.02× | 1.06× | 1.22× | 1.42× | **2.13×** |
+| Levenshtein, cjk | 0.99× | 1.02× | 1.06× | 1.16× | **1.51×** |
+| Indel, latin | 1.05× | 1.11× | 1.31× | 1.57× | **2.47×** |
+| Indel, cjk | 1.05× | 1.08× | 1.12× | 1.19× | **1.50×** |
+
+- **No alphabet wants a different gate.** All four curves rise with it, and the wide
+  regime is consistently the *less* sensitive one: raising the gate from 4 to 16 costs
+  Latin 2.13× and 2.47×, against 1.51× and 1.50× on CJK. That is #383's finding read
+  from the other end — a kernel that wins by less against the DP also loses by less
+  when the gate hands pairs back to it. A gate per alphabet would give precision to the
+  regime that asks for least, and the test it needs would be paid by the Latin-1 path.
+  [Decision 0047](../decisions/0047-one-gate-per-kernel-not-one-per-alphabet.md) has
+  the shapes refused.
+- **The value question is still unanswerable, and the wide buckets do not lift it.**
+  Both alphabets prefer 4 to 8, and that is one bucket saying so. Buckets 128 and 512
+  trim to median patterns of 110 and 493, far above every candidate; bucket 8 trims to a
+  median of **0**, since 10% of 8 characters mutated leaves nothing after `Affixes.Trim`
+  — and CJK's length-8 bucket does exactly the same, the edit rate producing the hole
+  rather than the alphabet. #208's objection stands verbatim.
+- **Do not sum ns/pair across buckets.** The 512 bucket is roughly 95% of any total and
+  the gate cannot touch it, so a sum reports that bucket's run-to-run noise as though it
+  were a result about the constant — and it picks a different winner than the row that
+  can actually see the gate.
+- **The corpus is the more precise instrument, by a factor of two.** The gate
+  benchmarks' bands reproduce to about 12% on a short job; two corpus passes taken in
+  opposite order agree to 5.3%. Where the two disagree, the corpus is the one reading
+  input that ships: #383 read Myers at parity on band 8, yet moving the gate from 8 to
+  10 costs the CJK bucket 4.4% here.
 
 ### The code-point mode, on input that leaves the BMP (#208)
 
