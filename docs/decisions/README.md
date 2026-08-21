@@ -54,10 +54,11 @@ a later decision uses instead.
 | [`0042`](0042-phonetic-encoders-refuse-a-null-word.md) | Phonetic encoders refuse a `null` word | accepted | 2026-08-20 | — |
 | [`0043`](0043-the-equality-table-is-sized-to-the-pattern.md) | The equality table is sized to the pattern, not to Latin-1 | accepted | 2026-08-20 | amends [`0004`](0004-levenshtein-myers-backlog.md) |
 | [`0044`](0044-compression-belongs-to-the-caller.md) | Compression belongs to the caller, not to the artifact format | accepted | 2026-08-20 | leaves [`0011`](0011-persistence-format.md) untouched: the artifact on disk does not change |
+| [`0045`](0045-a-console-call-carries-its-reason-on-the-line.md) | A `Console` call carries its reason on the line, not in an exemption list | accepted | 2026-08-21 | adds a seventh guard to [`0037`](0037-the-guards-run-before-the-commit.md)'s hook, under the rule it set |
 
 ## What `accepted` means here
 
-All forty-four carry `accepted`. None has been rejected or withdrawn — a status this table
+All forty-five carry `accepted`. None has been rejected or withdrawn — a status this table
 would otherwise need a second word for. `0004` read a progress sentence
 (`single-word and blocked shipped`) where a status belongs; that sentence is now the opening line
 of its own `## Done` section, and its status reads `accepted` like the other thirty-two.

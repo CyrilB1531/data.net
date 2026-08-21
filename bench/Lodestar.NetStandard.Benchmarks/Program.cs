@@ -32,10 +32,12 @@ static bool AssertLoaded(Type probe, string expectedFramework)
 
     if (string.Equals(actual, expectedFramework, StringComparison.Ordinal))
     {
+        // console-print: which build was measured; the pair of the refusal below.
         Console.WriteLine($"// {name}: {actual}");
         return true;
     }
 
+    // console-print: the wrong build was measured, so every number below is a lie.
     Console.Error.WriteLine(
         $"ERROR: {name} was built for '{actual}', expected '{expectedFramework}'. " +
         "The benchmark is measuring the wrong build; results would be meaningless.");
