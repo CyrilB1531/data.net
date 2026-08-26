@@ -1530,11 +1530,96 @@ same artifact through the same harness and this change does not touch it.
   argued: the little-endian path hands `WriteBase64String` the same span the copy
   used to hold, and `Base64NumbersTests` asserts the exact base64 of a known vector,
   computed from the IEEE-754 bits rather than captured from this build.
-- **This does not settle the ratio the nightly reported.** Encoding is still the
-  dominant cost and still scales with the machine differently from a raw block
-  write; what it removes is the part that was never encoding at all. The load
-  direction, further behind and for a decided reason, is
+- **This does not settle the ratio the nightly reported.** Encoding still scales with
+  the machine differently from a raw block write; what it removes is the part that was
+  never encoding at all. The load direction, further behind and for a decided reason, is
   [#324](https://github.com/CyrilB1531/lodestar/issues/324).
+
+> **Step 0 update: "encoding is the dominant cost" was never measured, and it is
+> wrong.** This bullet read "Encoding is still the dominant cost" for two releases on
+> the strength of an estimate. Measured, the encode is **17.7%** of the save and costs
+> nothing over a memcpy of the same 15.36 MB — the section below has the profile. The
+> claim has been narrowed to the part that survives: encoding scales with the machine
+> differently from a raw block write, which is what made the nightly's ratio move.
+
+## What a save actually spends its time on — step 0
+
+The section above says "encoding is still the dominant cost", and the section below
+settled the same question for the read direction by measurement. **The write direction
+had never been measured.** This is that measurement, and it does not say what the
+sentence above it predicted.
+
+The arithmetic that motivated it: 15.36 MB of vectors, vectorised base64 at roughly
+3 GB/s on one core, gives about 5 ms — near the whole 5.949 ms the nightly reports.
+The first half of that estimate is right. The conclusion drawn from it is not.
+
+`bench/Lodestar.Text.Benchmarks -- save-phases`, four cores of an Intel Xeon @ 2.80GHz
+(AVX2 and AVX-512F present), .NET 10.0.11, a shared cloud container rather than the
+i7-4770S the rest of this page was taken on — **so read the shares and the ratios, not
+the absolutes.** Nine rounds, phases interleaved one round each, median with the spread
+of the runs; one-minute load average 1.36 at the start and 1.22 at the end.
+
+| phase | median | spread | share of save | GB/s |
+| --- | ---: | ---: | ---: | ---: |
+| `save_total` | 18.185 ms | 16.801 – 26.415 | 100% | 0.84 |
+| `write_base64_property` | 16.938 ms | 14.726 – 66.334 | 93.1% | 0.91 |
+| `write_base64_chunked` | 8.022 ms | 7.670 – 14.940 | 44.1% | 1.91 |
+| **`base64_encode`** | **3.211 ms** | 3.059 – 7.730 | **17.7%** | **4.78** |
+| `block_copy_floor` | 3.251 ms | 3.141 – 3.495 | 17.9% | 4.72 |
+| `ensure_finite_simd` | 1.886 ms | 1.825 – 1.946 | 10.4% | 8.14 |
+| `write_ids_only` | 0.444 ms | 0.405 – 1.862 | 2.4% | 34.62 |
+
+Each row is a strict subset of `save_total`, and `base64_encode` is a strict subset of
+`write_base64_property`. `embedding_index_save` through `Harness.Measure` itself — the
+methodology behind the published 5.949 ms — reads 16.9 to 18.5 ms across three windows
+on this machine, so the denominator above is the same row the nightly reports, taken
+the same way.
+
+- **Encoding is 17.7% of the save, not most of it.** Three windows put it at 3.210,
+  3.211 and 3.274 ms, the tightest row in the table. The estimate of ~5 ms at ~3 GB/s
+  was close on throughput — the measurement says **4.78 GB/s** — and the hypothesis it
+  was used to support is still refused, because the budget it was compared against was
+  never 5.949 ms of encoding.
+
+- **The encode costs nothing over moving the bytes.** `block_copy_floor` copies the same
+  15.36 MB and does not encode it: 3.251 ms against the encode's 3.211 ms. The two are
+  the same number. `Base64.EncodeToUtf8` is **bandwidth-bound, not compute-bound** — it
+  already runs at the speed of a memcpy, and the AVX2 path saturates the memory
+  subsystem before it saturates the ALUs. This is the write-direction twin of #324's
+  finding that decoding costs ~1.3 ms over a memcpy of the same count.
+
+- **So parallelising the encode is refused, and this is the measurement that refuses
+  it.** The design worth taking seriously was slicing the block on 12-byte boundaries
+  and encoding the slices on several cores, for an expected 2.5–3× on four physical
+  cores. Nothing can be parallelised past the bandwidth it is already saturating: extra
+  cores would contend for the same memory controller a single core already keeps busy.
+  The gain bar that lot set itself was ≥ 2× on `embedding_index_save`; the lever it
+  would pull is worth 17.7% of that row **in total**, so even a free, perfectly scaling
+  encode could not reach 1.25×. A concurrency surface, an `ArtifactSaveOptions` question
+  ADR 0044 had already refused once, and a second code path to keep bit-identical
+  forever — for a fifth of a row.
+
+- **What is left is the buffer.** `write_base64_property` writes the vector block and
+  nothing else and costs 16.938 ms, of which the encode is 3.211. The other ~13.7 ms is
+  `Utf8JsonWriter` growing its internal buffer by successive doubling to hold the 20.48
+  MB the encode produces — each growth a large-object-heap allocation, the operating
+  system committing its pages on first touch, and a copy of everything written so far.
+  It is the same cost #324 found on the load path wearing different clothes: **the
+  budget is allocation and page commit, in both directions.**
+
+- **Bounding that buffer is worth 2.1× on the phase, already.** `write_base64_chunked`
+  encodes the same block in 240 KB slices into one rented buffer and writes each slice
+  out, so nothing grows to hold 20 MB: 8.022 ms against 16.938. Slices are cut on
+  12-byte boundaries — 3 floats, 4 base64 groups — so none pads mid-stream and the
+  concatenation is byte-for-byte the base64 the one-shot call produces. That is a
+  diagnostic, not the change; it is reported here because it prices the change before
+  anyone writes it.
+
+The `write_base64_property` row's spread — 14.726 to 66.334 ms — is the honest part of
+this table. Its floor is stable and its ceiling is a collection landing inside the
+window, which is what a phase allocating 20 MB per call looks like on a shared machine.
+That spread is itself the argument: the row that varies by 4.5× is the one holding the
+buffer, and the row that varies by nothing is the encode.
 
 ## Persisting an embedding index — the load path (issue #324)
 
