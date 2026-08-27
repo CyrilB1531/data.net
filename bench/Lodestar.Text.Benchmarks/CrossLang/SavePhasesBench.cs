@@ -148,6 +148,8 @@ internal static class SavePhasesBench
                 return status == OperationStatus.Done && consumed == block.Length ? written : -1;
             }),
             ("write_base64_chunked", () => WriteChunked(block, encodedLength)),
+            ("write_b64_presized_abw", () => WritePresized(block, encodedLength)),
+            ("write_b64_presized_pooled", () => WritePooled(block, encodedLength)),
             ("block_copy_floor", () =>
             {
                 block.AsSpan().CopyTo(copyTarget);
@@ -169,10 +171,20 @@ internal static class SavePhasesBench
             return stream.Length;
         }, artifact.Length);
 
+        // The control: it reads the artifact this change does not touch, through the same
+        // harness, which is the row #323 used as its own control for the same reason.
+        Harness.OperationResult control = Harness.Measure("embedding_index_load", () =>
+        {
+            using var stream = new MemoryStream(artifact);
+            return EmbeddingIndex.Load(stream);
+        }, artifact.Length);
+
         Console.WriteLine();
+        Console.WriteLine($"canonical harness (best-of-{Harness.RepeatCount}, the published methodology):");
         Console.WriteLine(
-            $"canonical harness (best-of-{Harness.RepeatCount}, the published methodology): "
-            + $"embedding_index_save = {canonical.MsPerOp:F3} ms wall, {canonical.CpuMsPerOp:F3} ms cpu");
+            $"  embedding_index_save = {canonical.MsPerOp:F3} ms wall, {canonical.CpuMsPerOp:F3} ms cpu");
+        Console.WriteLine(
+            $"  embedding_index_load = {control.MsPerOp:F3} ms wall, {control.CpuMsPerOp:F3} ms cpu   [control]");
     }
 
     /// <summary>
@@ -213,6 +225,72 @@ internal static class SavePhasesBench
             ArrayPool<byte>.Shared.Return(scratch);
         }
         return stream.Length;
+    }
+
+    /// <summary>
+    /// Candidate C: the writer over an <see cref="ArrayBufferWriter{T}"/> sized up front,
+    /// so its buffer never doubles, then one copy of the result to the destination.
+    /// </summary>
+    /// <remarks>
+    /// Keeps <c>WriteBase64String</c> — the point of the row is to find out whether the
+    /// cost is the successive doubling (which pre-sizing removes) or the contiguous
+    /// 20 MB itself (which it cannot).
+    /// </remarks>
+    private static long WritePresized(byte[] block, int encodedLength)
+    {
+        using var stream = new MemoryStream(encodedLength + 64);
+        var buffer = new ArrayBufferWriter<byte>(encodedLength + 64);
+        using (var writer = new Utf8JsonWriter(buffer, JsonWriterOptions))
+        {
+            writer.WriteStartObject();
+            writer.WriteBase64String("vectors", block);
+            writer.WriteEndObject();
+            writer.Flush();
+        }
+        stream.Write(buffer.WrittenSpan);
+        return stream.Length;
+    }
+
+    /// <summary>
+    /// Candidate D: the same, over a buffer rented from the pool rather than allocated,
+    /// so the pages are already committed on the second and every later save.
+    /// </summary>
+    /// <remarks>
+    /// #324 found that most of the load's allocation phase was the operating system
+    /// committing pages on first touch, which no allocation strategy avoids — except
+    /// reuse. This row asks whether the write direction has the same floor.
+    /// </remarks>
+    private static long WritePooled(byte[] block, int encodedLength)
+    {
+        using var stream = new MemoryStream(encodedLength + 64);
+        byte[] rented = ArrayPool<byte>.Shared.Rent(encodedLength + 64);
+        try
+        {
+            var buffer = new PooledBufferWriter(rented);
+            using var writer = new Utf8JsonWriter(buffer, JsonWriterOptions);
+            writer.WriteStartObject();
+            writer.WriteBase64String("vectors", block);
+            writer.WriteEndObject();
+            writer.Flush();
+            stream.Write(rented, 0, buffer.WrittenCount);
+            return stream.Length;
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(rented);
+        }
+    }
+
+    /// <summary>An <see cref="IBufferWriter{T}"/> over one array that is already big enough.</summary>
+    private sealed class PooledBufferWriter(byte[] buffer) : IBufferWriter<byte>
+    {
+        public int WrittenCount { get; private set; }
+
+        public void Advance(int count) => WrittenCount += count;
+
+        public Memory<byte> GetMemory(int sizeHint = 0) => buffer.AsMemory(WrittenCount);
+
+        public Span<byte> GetSpan(int sizeHint = 0) => buffer.AsSpan(WrittenCount);
     }
 
     /// <summary>The writer options the artifacts are written with, so the row is the real one.</summary>
