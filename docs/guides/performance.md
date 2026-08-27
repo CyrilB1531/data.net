@@ -1621,6 +1621,62 @@ window, which is what a phase allocating 20 MB per call looks like on a shared m
 That spread is itself the argument: the row that varies by 4.5× is the one holding the
 buffer, and the row that varies by nothing is the encode.
 
+### Slicing the block, and what it was worth
+
+Step 0 above put the encode at 17.7% and the writer's buffer at most of the rest, so
+that is what the change went after. `Utf8JsonWriter.WriteBase64String` takes the whole
+block in one call; the vector block is now written a slice at a time straight to the
+destination, and the writer never holds more than the head.
+
+Twenty-four runs, both states published once and only the runs alternated, in both
+orders — before/after for twelve and after/before for twelve, because the first twelve
+raised the question the second twelve answered. Medians of all twelve each.
+
+| Operation | before | after | change |
+| --- | ---: | ---: | --- |
+| `embedding_index_save`, wall | 20.550 ms | **12.727 ms** | **1.61× faster** |
+| `block_copy_floor` — control | 4.577 ms | 3.784 ms | 1.21×, noise |
+
+**No overlap.** The slowest of the twelve after (17.417 ms) is faster than the fastest
+of the twelve before (19.165 ms), which is a stronger statement than the medians: on
+this machine the two distributions do not touch. The control is a `memcpy` of the same
+15.36 MB, which no version of this change can reach, and it moved 21% across the same
+windows — so 21% is the noise floor this table is read against, and 61% clears it.
+
+- **The output is byte-for-byte what it was.** Base64 maps each group of 3 input bytes
+  onto 4 output characters independently, so concatenating slice encodings equals
+  encoding the concatenation exactly when every slice but the last is a whole number of
+  groups. The slice is 245 760 bytes — a multiple of 12, so a whole number of groups
+  *and* of floats. `ChunkedBlockTests` pins that at nine sizes around the boundary
+  against `WriteSingles`, which stays in the codebase, off every save path, purely as
+  the oracle.
+
+- **`SaveAsync` lost its intermediate `MemoryStream`.** It was there because the writer
+  flushed synchronously when its buffer filled, so the artifact was buffered twice and
+  both buffers doubled. The head is now the only thing that flushes and it is bounded;
+  the block is written through `WriteAsync`. A test asserts the two paths emit identical
+  bytes.
+
+#### The control that was not one
+
+`embedding_index_load` was the obvious control — it reads the artifact, and this change
+writes it. It moved **1.22× slower** on the after side, and it did so in all eight runs
+of the first window, in both orders. An ordering effect was the first explanation and
+the reversed order refuted it.
+
+The explanation is the change, working: the old save path allocated and discarded a
+~20 MB buffer on every call, which left the large-object heap grown and its pages
+committed for whatever ran next in the same process — and what ran next was the load,
+allocating buffers of its own. The new save path never grows the heap, so the load pays
+the page commits itself. #324 named that cost and this is it moving between two rows.
+
+So the load did not get slower; it stopped being subsidised. It is a fine control for a
+change confined to one direction and a poor one here, and it was replaced with a
+`memcpy` that allocates nothing. The reading worth carrying forward is narrower and
+more useful than the row it came from: **a benchmark process that saves before it loads
+was measuring a warmed heap**, and any figure for either direction taken in one process
+after the other carries that.
+
 ## Persisting an embedding index — the load path (issue #324)
 
 The load direction is the furthest behind Python anything here publishes, and
