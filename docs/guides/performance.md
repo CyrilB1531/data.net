@@ -1598,6 +1598,7 @@ the same way.
   encode could not reach 1.25×. A concurrency surface, an `ArtifactSaveOptions` question
   ADR 0044 had already refused once, and a second code path to keep bit-identical
   forever — for a fifth of a row.
+  [ADR 0051](../decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md) is the record.
 
 - **What is left is the buffer.** `write_base64_property` writes the vector block and
   nothing else and costs 16.938 ms, of which the encode is 3.211. The other ~13.7 ms is
@@ -1622,6 +1623,9 @@ That spread is itself the argument: the row that varies by 4.5× is the one hold
 buffer, and the row that varies by nothing is the encode.
 
 ### Slicing the block, and what it was worth
+
+The decision, and what it amends in [ADR 0044](../decisions/0044-compression-belongs-to-the-caller.md), is
+[ADR 0051](../decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md).
 
 Step 0 above put the encode at 17.7% and the writer's buffer at most of the rest, so
 that is what the change went after. `Utf8JsonWriter.WriteBase64String` takes the whole

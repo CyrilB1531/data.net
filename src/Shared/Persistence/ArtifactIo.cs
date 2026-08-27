@@ -62,23 +62,11 @@ internal static class ArtifactIo
     /// writing that block to <paramref name="destination"/> a slice at a time.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The split exists because <c>Utf8JsonWriter.WriteBase64String</c> takes the whole
-    /// block in one call and so forces the writer's buffer to grow to hold the whole
-    /// encoding — which the save profile in the performance guide measures as the
-    /// dominant cost of saving an index. <paramref name="writeHead"/> writes every
-    /// property before the block; this method writes the block itself.
-    /// </para>
-    /// <para>
-    /// <b>Nothing goes through the <c>Utf8JsonWriter</c> after the block.</b> The writer
-    /// emits the property name and is then flushed and disposed, the value is written to
-    /// the stream directly, and the closing brace is written by hand — because a writer
-    /// left on a property name refuses to close the object, which is
-    /// <c>SkipValidation = false</c> doing exactly the job
-    /// <see cref="JsonArtifact.WriterOptions"/> keeps it on for. Handing the artifacts a
-    /// stranded writer to be careful with would be the alternative; owning the whole
-    /// sequence here means no artifact can get it wrong.
-    /// </para>
+    /// <paramref name="writeHead"/> writes every property before the block. <b>Nothing goes
+    /// through the <c>Utf8JsonWriter</c> after it</b> — the writer is flushed and disposed on
+    /// the property name, the value goes to the stream, and the closing brace is written by
+    /// hand, because a writer left on one refuses to close its object. Owning that sequence
+    /// here means no artifact can get it wrong; ADR 0051 is the decision.
     /// </remarks>
     /// <param name="destination">The stream to write to; flushed but never disposed.</param>
     /// <param name="artifact">The artifact kind, for the header.</param>

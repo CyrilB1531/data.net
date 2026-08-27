@@ -80,14 +80,13 @@ internal static class Base64Numbers
     }
 
     /// <summary>
-    /// How much of the block one slice of the chunked write covers. A few hundred KB,
-    /// and a multiple of 12 — 3 floats, 4 base64 groups — so no slice boundary falls
-    /// inside a group and only the final slice can pad.
+    /// How much of the block one slice of the chunked write covers: 245 760 bytes.
     /// </summary>
     /// <remarks>
-    /// 245 760 bytes is 61 440 floats and encodes to 327 680, so both the source slice
-    /// and its encoding stay well under the large-object-heap threshold and the rented
-    /// scratch buffer is reused for every slice of every save.
+    /// A multiple of 12 — 3 floats, 4 base64 groups — so every slice but the last is a
+    /// whole number of groups, and a concatenation of slice encodings is exactly the
+    /// encoding of the concatenation. Only the final slice can pad. That is the whole
+    /// reason the sliced write is byte-identical to the one-shot one.
     /// </remarks>
     private const int SliceBytes = 240 * 1024;
 
@@ -96,29 +95,11 @@ internal static class Base64Numbers
     /// value straight to <paramref name="destination"/>, encoding it a slice at a time.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// <c>Utf8JsonWriter.WriteBase64String</c> encodes the whole block in one call, so the
-    /// writer's internal buffer has to grow to hold the entire encoding — 20.48 MB for the
-    /// benchmark index — by successive doubling, each growth a large-object-heap allocation
-    /// whose pages the operating system commits on first touch, plus a copy of everything
-    /// written so far. Measured, that is the dominant cost of a save: writing the vector
-    /// block alone costs 16.3 ms of which the encode is 3.4, and the same block written in
-    /// slices costs 8.3. The guide's "What a save actually spends its time on" section has
-    /// the profile.
-    /// </para>
-    /// <para>
-    /// The output is byte-for-byte what the one-shot call produces, and that is a property
-    /// of the slice size rather than of the encoder: base64 maps each group of 3 input bytes
-    /// onto 4 output characters independently, so a concatenation of slice encodings equals
-    /// the encoding of the concatenation <em>exactly when</em> every slice but the last is a
-    /// whole number of groups. <see cref="SliceBytes"/> is a multiple of 3 (and of 4, so a
-    /// slice is also a whole number of floats), which is what makes that hold.
-    /// </para>
-    /// <para>
-    /// The caller is responsible for having flushed the writer and for writing the rest of
-    /// the document itself: nothing may go through the <c>Utf8JsonWriter</c> after this, and
-    /// <see cref="ArtifactIo"/> is the only caller, which is why this takes a raw stream.
-    /// </para>
+    /// Why slices rather than one <c>WriteBase64String</c> call, and what it was worth, is
+    /// <see href="../../../docs/decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md">ADR 0051</see>.
+    /// The invariant that keeps the output byte-identical lives on <see cref="SliceBytes"/>.
+    /// The caller must have flushed the writer and must write the rest of the document
+    /// itself: nothing may go through the <c>Utf8JsonWriter</c> after this.
     /// </remarks>
     public static void WriteSinglesChunked(Stream destination, ReadOnlySpan<float> values)
     {

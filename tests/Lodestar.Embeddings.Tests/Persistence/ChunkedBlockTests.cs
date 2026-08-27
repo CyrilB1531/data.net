@@ -10,19 +10,10 @@ namespace Lodestar.Embeddings.Tests.Persistence;
 /// Holds the sliced write to the one-shot write it replaced, byte for byte.
 /// </summary>
 /// <remarks>
-/// <para>
-/// <see cref="Base64Numbers.WriteSinglesChunked"/> exists only to stop the writer's
-/// buffer growing to hold a whole encoding; it is not allowed to change a single byte
-/// of what reaches the file. <see cref="Base64Numbers.WriteSingles"/> is kept as the
-/// reference implementation these compare against — it is no longer on any save path,
-/// and that is precisely what makes it a useful oracle rather than dead code.
-/// </para>
-/// <para>
-/// The sizes below are chosen around the 245 760-byte slice: one slice exactly, one
-/// short of it, one past it, and the awkward remainders. A slice is a whole number of
-/// base64 groups, so only the final one may pad — a boundary landing inside a group
-/// would show up here as a run of <c>=</c> in the middle of the string.
-/// </para>
+/// <see cref="Base64Numbers.WriteSingles"/> is kept off every save path as the oracle these
+/// compare against — that is what makes it useful rather than dead code. The sizes are chosen
+/// around the 245 760-byte slice, since a boundary landing inside a base64 group would show up
+/// as a run of <c>=</c> mid-string. ADR 0051 is the decision.
 /// </remarks>
 public sealed class ChunkedBlockTests
 {
@@ -80,9 +71,8 @@ public sealed class ChunkedBlockTests
         Assert.Equal(index.Dimension, reloaded.Dimension);
         Assert.Equal(index.Search(vector, 5), reloaded.Search(vector, 5));
 
-        // Saving what was loaded reproduces the artifact byte for byte, which is a
-        // stronger statement than any comparison of the two indexes: it holds the
-        // vectors, the ids and the encoding to exactness in one assertion.
+        // Stronger than comparing the two indexes: this holds the vectors, the ids and
+        // the encoding to exactness in one assertion.
         using var again = new MemoryStream();
         reloaded.Save(again);
         Assert.Equal(stream.ToArray(), again.ToArray());
