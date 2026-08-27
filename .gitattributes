@@ -3,3 +3,15 @@
 # this line the hook installs cleanly on Windows and then fails on every commit
 # with an error naming a file that plainly exists.
 .githooks/** text eol=lf
+
+# The nightly's pages are generated, and git already refuses to auto-merge them --
+# but it refuses hunk by hunk. #446 is what that costs: a hand-merge of the 25th's
+# page against main faced 22 separate conflicts in one file, and one of them was
+# resolved by keeping both sides, so the page carried two nights' numbers under the
+# same heading. markdownlint's MD024 was the only thing that noticed, in CI.
+# Refusing the merge outright leaves the file whole and makes the resolution a
+# generated file actually has -- take one side entire -- the easy one instead of the
+# careful one. Measured on that same merge: 22 conflict markers become 0.
+docs/guides/nightly_run.md -merge
+docs/guides/benchmark_latest.md -merge
+docs/guides/branch/*.md -merge
