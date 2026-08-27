@@ -77,6 +77,11 @@ def split_report(body: str) -> tuple[str, str] | None:
     return preamble, table
 
 
+def heading_for(stem: str, occurrence: int) -> str:
+    """The section heading for one report, unique when a stem repeats within a run."""
+    return stem if occurrence == 1 else f"{stem} (run {occurrence})"
+
+
 def included_reports(paths: list[pathlib.Path]) -> list[str]:
     """Each report's own section: its preamble fenced, its results table native.
 
@@ -86,13 +91,22 @@ def included_reports(paths: list[pathlib.Path]) -> list[str]:
     width, which this repo's MD060 alignment style does not match, so that one
     rule is switched off around it: generated content, never hand-edited, has
     no convention of its own to keep.
+
+    A stem can arrive twice -- the same class measured more than once in one run --
+    and two identical `###` lines fail markdownlint's MD024 and sink the whole
+    lint job. Later occurrences are numbered rather than dropped: the second
+    measurement is real, it is usually not wanted, and a reader who can see it is
+    the one who can go and remove its cause.
     """
     lines: list[str] = []
+    seen: dict[str, int] = {}
     for path in paths:
         body = path.read_text(encoding="utf-8").strip() if path.exists() else ""
         if not body:
             continue
-        lines += [f"### {path.stem}", ""]
+        seen[path.stem] = seen.get(path.stem, 0) + 1
+        occurrence = seen[path.stem]
+        lines += [f"### {heading_for(path.stem, occurrence)}", ""]
         split = split_report(body)
         if split is None:
             lines += ["````text", body, "````", ""]

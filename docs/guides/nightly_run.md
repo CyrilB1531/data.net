@@ -99,7 +99,7 @@ WarmupCount=3
 
 <!-- markdownlint-enable MD060 -->
 
-### Lodestar.Text.Benchmarks.BlockedTableBenchmarks-report-github
+### Lodestar.Text.Benchmarks.BlockedTableBenchmarks-report-github (run 2)
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)

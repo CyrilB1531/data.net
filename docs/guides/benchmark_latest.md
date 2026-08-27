@@ -75,7 +75,7 @@ WarmupCount=3
 
 <!-- markdownlint-enable MD060 -->
 
-### Lodestar.Text.Benchmarks.BlockedTableBenchmarks-report-github
+### Lodestar.Text.Benchmarks.BlockedTableBenchmarks-report-github (run 2)
 
 _As of 2026-08-25, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
