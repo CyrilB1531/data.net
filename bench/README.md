@@ -1005,6 +1005,29 @@ written, with no gap for this session's own overhead to open. The `main` row was
 taken 16 minutes later at a comparable load, which is what makes the before/after
 in this section and in section 4 a comparison rather than two tables.
 
+### Every load row here is measured on a warmed heap
+
+`compare-persistence` runs `embedding_index_save` before `embedding_index_load`,
+in one process, and the save allocates tens of megabytes. That leaves the
+large-object heap grown and its **pages already committed** for the load that
+follows — so the load does not pay the page commits #324 identified as the
+irreducible part of its allocation phase. It is not an artefact of the ordering
+being wrong; it is what any harness measuring both directions of the same format
+will do unless it is built not to.
+
+Step 1 made it visible rather than created it. Removing the save's 20 MB buffer
+withdrew the subsidy, and `embedding_index_load` slowed by 1.22× on the container
+and by 1.10–1.17× on the nightly runner once the runners' own difference is netted
+out — with **the allocation identical to three digits on both sides**, which is
+what says the load is doing the same work and paying for more of it.
+
+So read every `embedding_index_load*` row on this page as **flattered by something
+on the order of 20%**, and do not use one as the control for a change to the save
+path. Section 8's `block_copy_floor` is what a control looks like here: a `memcpy`
+that allocates nothing and therefore cannot be subsidised by anything. Quantifying
+the effect against a fresh process, and deciding whether to split the two
+directions into separate processes, is [#433](https://github.com/CyrilB1531/lodestar/issues/433).
+
 ## 8. Where a save's time goes (issue #429, step 0)
 
 Not a comparison: a **profile of one operation against itself**. Five phases over
