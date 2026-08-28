@@ -27,6 +27,11 @@
     <None Include="../oracles/**/*.model" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
     <!-- merges.txt is a fixture like any other; without this glob the BPE suite cannot find it. -->
     <None Include="../oracles/**/*.txt" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
+    <!-- Every .npy here was written by numpy itself (#450). They are committed rather than
+         generated at test time because the point is to read what numpy produces, and a
+         fixture this project builds from its own understanding of the format proves
+         nothing about the format. -->
+    <None Include="Fixtures/Npy/*.npy" CopyToOutputDirectory="PreserveNewest" LinkBase="Fixtures/Npy" />
   </ItemGroup>
 
   <!-- The reference gate reads the published pages and the map beside the assembly,

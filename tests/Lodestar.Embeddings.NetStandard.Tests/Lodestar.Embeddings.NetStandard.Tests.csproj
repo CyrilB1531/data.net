@@ -49,6 +49,10 @@
     <None Include="../oracles/**/*.model" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
     <!-- merges.txt is a fixture like any other; without this glob the BPE suite cannot find it. -->
     <None Include="../oracles/**/*.txt" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
+    <!-- The .npy fixtures live beside the net10.0 suite that owns them, and this project
+         compiles the same test sources, so it needs them beside its own assembly too (#450). -->
+    <None Include="../Lodestar.Embeddings.Tests/Fixtures/Npy/*.npy" CopyToOutputDirectory="PreserveNewest"
+          LinkBase="Fixtures/Npy" />
   </ItemGroup>
 
   <!-- The mirror links the same test sources, so it compiles the reference gate too

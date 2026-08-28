@@ -1,0 +1,402 @@
+using System.Buffers.Binary;
+using System.Globalization;
+using System.Runtime.InteropServices;
+using System.Text;
+using Lodestar.Internal.Persistence;
+
+namespace Lodestar.Embeddings.Persistence;
+
+/// <summary>A float block read from a <c>.npy</c> file, with the shape it was stored under.</summary>
+/// <param name="Values">The elements, in C order.</param>
+/// <param name="Shape">The dimensions; one entry for a vector, two for a matrix.</param>
+public readonly record struct NpyBlock(ReadOnlyMemory<float> Values, IReadOnlyList<int> Shape);
+
+/// <summary>
+/// Reads and writes a block of <see cref="float"/> in numpy's <c>.npy</c> format —
+/// the counterpart of <c>numpy.load</c> and <c>numpy.save</c> for the one array
+/// shape this library exchanges.
+/// </summary>
+/// <remarks>
+/// <para>
+/// This is an interop format for a float matrix, not a second artifact format:
+/// <c>EmbeddingIndex.Save</c> is untouched, and a <c>.npy</c> file carries no ids, no
+/// normalization flag and no schema header. See issue #450.
+/// </para>
+/// <para>
+/// <b>The header is a Python dict literal, and is never evaluated.</b> numpy writes
+/// <c>{'descr': '&lt;f4', 'fortran_order': False, 'shape': (3, 4), }</c> — executable
+/// source, which is the hazard ADR 0011 refused <c>pickle</c> over. Only a fixed
+/// grammar is accepted here: the three known keys, each with one of a closed set of
+/// values. Anything else is refused rather than tolerated, and <c>descr: '|O'</c> —
+/// numpy's object dtype, whose payload is a pickle — is refused before a byte of it
+/// is read.
+/// </para>
+/// </remarks>
+public static class NpyFile
+{
+    private const string SourceName = ".npy";
+
+    /// <summary>numpy's file magic: <c>\x93NUMPY</c>.</summary>
+    private static readonly byte[] Magic = [0x93, (byte)'N', (byte)'U', (byte)'M', (byte)'P', (byte)'Y'];
+
+    /// <summary>Magic, two version bytes, then the header length.</summary>
+    private const int VersionOffset = 6;
+
+    /// <summary>The only dtype this reads and writes: little-endian IEEE-754 single.</summary>
+    private const string LittleEndianSingle = "<f4";
+
+    /// <summary>
+    /// numpy pads the header so the payload starts on a 64-byte boundary, and this
+    /// writes the same padding so a file we produce is byte-comparable with one numpy
+    /// produced for the same array.
+    /// </summary>
+    private const int PayloadAlignment = 64;
+
+    /// <summary>Reads a <c>.npy</c> file, the counterpart of <c>numpy.load</c>.</summary>
+    /// <param name="source">The file's bytes; never disposed by this method.</param>
+    /// <param name="options">Bounds applied while reading, or <see langword="null"/> for the defaults.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
+    /// <exception cref="InvalidDataException">
+    /// The file is not a <c>.npy</c>, is of an unsupported version, holds a dtype or
+    /// layout this does not read, is truncated, or exceeds a limit.
+    /// </exception>
+    public static NpyBlock Read(Stream source, ArtifactLoadOptions? options = null)
+    {
+        Guard.NotNull(source);
+        ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
+        byte[] payload = JsonArtifact.ReadAllBytes(source, limits).ToArray();
+        return Read(payload, limits);
+    }
+
+    /// <summary>Reads the file at <paramref name="path"/>.</summary>
+    /// <param name="path">The <c>.npy</c> file.</param>
+    /// <param name="options">Bounds applied while reading, or <see langword="null"/> for the defaults.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="path"/> is null.</exception>
+    /// <exception cref="InvalidDataException">As <see cref="Read(Stream, ArtifactLoadOptions?)"/>.</exception>
+    public static NpyBlock Read(string path, ArtifactLoadOptions? options = null)
+    {
+        using FileStream file = JsonArtifact.OpenRead(path);
+        return Read(file, options);
+    }
+
+    /// <summary>Writes <paramref name="values"/> as a <c>.npy</c>, the counterpart of <c>numpy.save</c>.</summary>
+    /// <param name="destination">The stream to write to. Flushed but never disposed — the caller owns it.</param>
+    /// <param name="values">The elements, in C order.</param>
+    /// <param name="shape">
+    /// The dimensions the block is stored under; their product must equal
+    /// <paramref name="values"/>'s length. One entry writes a vector, two a matrix.
+    /// </param>
+    /// <exception cref="ArgumentNullException"><paramref name="destination"/> or <paramref name="shape"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="shape"/> is empty, holds a negative dimension, or does not describe <paramref name="values"/>.</exception>
+    public static void Write(Stream destination, ReadOnlySpan<float> values, params int[] shape)
+    {
+        Guard.NotNull(destination);
+        Guard.NotNull(shape);
+        CheckShape(values.Length, shape);
+
+        byte[] header = BuildHeader(shape);
+        destination.Write(header, 0, header.Length);
+        WriteBlock(destination, values);
+        destination.Flush();
+    }
+
+    /// <summary>Writes <paramref name="values"/> to <paramref name="path"/>, replacing any existing file.</summary>
+    /// <param name="path">The file to write.</param>
+    /// <param name="values">The elements, in C order.</param>
+    /// <param name="shape">As <see cref="Write(Stream, ReadOnlySpan{float}, int[])"/>.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="path"/> or <paramref name="shape"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="shape"/> does not describe <paramref name="values"/>.</exception>
+    public static void Write(string path, ReadOnlySpan<float> values, params int[] shape)
+    {
+        using FileStream file = JsonArtifact.OpenWrite(path);
+        Write(file, values, shape);
+    }
+
+    /// <summary>The read, on a payload already in memory and on resolved limits.</summary>
+    private static NpyBlock Read(ReadOnlySpan<byte> payload, in ArtifactLimits limits)
+    {
+        int dataStart = ReadHeader(payload, out NpyHeader header);
+
+        long elements = 1;
+        foreach (int dimension in header.Shape)
+        {
+            elements *= dimension;
+        }
+
+        limits.CheckArrayLength(elements, "shape");
+
+        long expected = elements * sizeof(float);
+        long available = payload.Length - dataStart;
+        if (available < expected)
+        {
+            throw Malformed(
+                $"holds {available} bytes of data where its shape needs {expected}.");
+        }
+
+        // Uninitialized: every element is written by the copy below.
+        float[] values = Buffers.AllocateUninitialized<float>((int)elements);
+        payload.Slice(dataStart, (int)expected).CopyTo(MemoryMarshal.AsBytes(values.AsSpan()));
+        return new NpyBlock(values, header.Shape);
+    }
+
+    /// <summary>Validates the magic and version, parses the header, and returns where the data starts.</summary>
+    private static int ReadHeader(ReadOnlySpan<byte> payload, out NpyHeader header)
+    {
+        if (payload.Length < 10 || !payload[..Magic.Length].SequenceEqual(Magic))
+        {
+            throw Malformed("does not open with numpy's magic.");
+        }
+
+        byte major = payload[VersionOffset];
+        byte minor = payload[VersionOffset + 1];
+
+        // 1.0 sizes its header with two bytes and 2.0 with four. 3.0 makes the header
+        // UTF-8, which the restricted grammar below would read the same way -- but it
+        // is refused rather than assumed, since nothing here has ever seen one.
+        int lengthSize = (major, minor) switch
+        {
+            (1, 0) => 2,
+            (2, 0) => 4,
+            _ => throw Malformed($"is version {major}.{minor}, which this does not read."),
+        };
+
+        int lengthOffset = VersionOffset + 2;
+        if (payload.Length < lengthOffset + lengthSize)
+        {
+            throw Malformed("ends inside its header length.");
+        }
+
+        int headerLength = lengthSize == 2
+            ? BinaryPrimitives.ReadUInt16LittleEndian(payload[lengthOffset..])
+            : checked((int)BinaryPrimitives.ReadUInt32LittleEndian(payload[lengthOffset..]));
+
+        int headerStart = lengthOffset + lengthSize;
+        if (headerLength < 0 || payload.Length < headerStart + headerLength)
+        {
+            throw Malformed("ends inside its header.");
+        }
+
+        header = ParseHeader(Encoding.UTF8.GetString(payload.Slice(headerStart, headerLength).ToArray()));
+        return headerStart + headerLength;
+    }
+
+    /// <summary>
+    /// Parses the header's three known keys out of numpy's dict literal, accepting a
+    /// fixed grammar and refusing everything else.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately not a Python parser and deliberately not an evaluator: the values
+    /// this accepts are one dtype string, one boolean, and a tuple of non-negative
+    /// integers. A header that carries anything else — a different dtype, a nested
+    /// structure, an extra key — is refused with what it held, rather than
+    /// interpreted. ADR 0011's reasoning about `pickle.load` is the reason this is
+    /// the shape it is.
+    /// </remarks>
+    private static NpyHeader ParseHeader(string header)
+    {
+        string descr = RequiredValue(header, "descr");
+        string fortran = RequiredValue(header, "fortran_order");
+        string shape = RequiredValue(header, "shape");
+
+        // Refused first and by name: '|O' is numpy's object dtype and its payload is a
+        // pickle, which is arbitrary code. ADR 0011 rules that out for artifacts; the
+        // same rule applies to a file numpy wrote.
+        if (descr is "|O" or "O")
+        {
+            throw Malformed(
+                "holds pickled objects ('|O'), which are executable and are never read here.");
+        }
+
+        if (descr != LittleEndianSingle)
+        {
+            throw Malformed(
+                $"holds '{descr}' where only '{LittleEndianSingle}' (little-endian float32) is read.");
+        }
+
+        if (fortran != "False")
+        {
+            throw Malformed($"is stored fortran_order={fortran}; only C order is read.");
+        }
+
+        return new NpyHeader(ParseShape(shape));
+    }
+
+    /// <summary>The value of one key, as the literal text between its quotes or up to the next comma.</summary>
+    private static string RequiredValue(string header, string key)
+    {
+        int at = header.IndexOf($"'{key}':", StringComparison.Ordinal);
+        if (at < 0)
+        {
+            throw Malformed($"has no '{key}' in its header.");
+        }
+
+        int from = at + key.Length + 3;
+        while (from < header.Length && header[from] == ' ')
+        {
+            from++;
+        }
+        if (from >= header.Length)
+        {
+            throw Malformed($"ends inside its '{key}'.");
+        }
+
+        // A quoted dtype, a parenthesised shape, or a bare token up to the comma.
+        return header[from] switch
+        {
+            '\'' => Delimited(header, from, '\'', key, trim: true),
+            '(' => Delimited(header, from, ')', key, trim: false),
+            _ => BareToken(header, from),
+        };
+    }
+
+    /// <summary>The text from one opener to its closer, with the opener implied by the caller.</summary>
+    private static string Delimited(string header, int from, char close, string key, bool trim)
+    {
+        int end = header.IndexOf(close, from + 1);
+        if (end < 0)
+        {
+            throw Malformed($"never closes its '{key}'.");
+        }
+        return trim ? header[(from + 1)..end] : header[from..(end + 1)];
+    }
+
+    /// <summary>A bare value — <c>True</c>, <c>False</c> — up to the next comma or brace.</summary>
+    private static string BareToken(string header, int from)
+    {
+        int end = from;
+        while (end < header.Length && header[end] != ',' && header[end] != '}')
+        {
+            end++;
+        }
+        return header[from..end].Trim();
+    }
+
+    /// <summary>Reads <c>(3, 4)</c> or <c>(5,)</c> into its dimensions.</summary>
+    private static int[] ParseShape(string shape)
+    {
+        string inner = shape.Trim();
+        if (inner.Length < 2 || inner[0] != '(' || inner[^1] != ')')
+        {
+            throw Malformed($"has a shape this does not read: {shape}.");
+        }
+
+        inner = inner[1..^1];
+        var dimensions = new List<int>();
+        foreach (string part in inner.Split(','))
+        {
+            string trimmed = part.Trim();
+            if (trimmed.Length == 0)
+            {
+                continue;
+            }
+            if (!int.TryParse(trimmed, NumberStyles.None, CultureInfo.InvariantCulture, out int dimension))
+            {
+                throw Malformed($"has a shape this does not read: {shape}.");
+            }
+            dimensions.Add(dimension);
+        }
+
+        if (dimensions.Count is 0 or > 2)
+        {
+            throw Malformed(
+                $"is {dimensions.Count}-dimensional; only a vector or a matrix is read.");
+        }
+
+        return [.. dimensions];
+    }
+
+    /// <summary>Builds the magic, version, length and padded dict literal numpy expects.</summary>
+    private static byte[] BuildHeader(int[] shape)
+    {
+        string dimensions = shape.Length == 1
+            ? $"{shape[0].ToString(CultureInfo.InvariantCulture)},"
+            : string.Join(", ", Array.ConvertAll(shape, d => d.ToString(CultureInfo.InvariantCulture)));
+
+        string dictionary =
+            $"{{'descr': '{LittleEndianSingle}', 'fortran_order': False, 'shape': ({dimensions}), }}";
+
+        // The payload starts on a 64-byte boundary, which is what numpy does and what
+        // lets a reader map the block without copying it out of alignment.
+        int prefix = Magic.Length + 2 + 2;
+        int unpadded = prefix + Encoding.ASCII.GetByteCount(dictionary) + 1;
+        int padding = (PayloadAlignment - (unpadded % PayloadAlignment)) % PayloadAlignment;
+        string padded = dictionary + new string(' ', padding) + "\n";
+
+        byte[] text = Encoding.ASCII.GetBytes(padded);
+        var header = new byte[prefix + text.Length];
+        Magic.CopyTo(header, 0);
+        header[VersionOffset] = 1;
+        header[VersionOffset + 1] = 0;
+        BinaryPrimitives.WriteUInt16LittleEndian(header.AsSpan(VersionOffset + 2), checked((ushort)text.Length));
+        text.CopyTo(header, prefix);
+        return header;
+    }
+
+    /// <summary>Writes the block itself, little-endian, a slice at a time.</summary>
+    /// <remarks>
+    /// Sliced on <c>netstandard2.0</c> for the reason the artifact's own base64 writer is
+    /// sliced — nothing here should grow a buffer to hold the whole block. <c>net10.0</c>
+    /// writes the span straight out, which needs no buffer at all.
+    /// </remarks>
+    private static void WriteBlock(Stream destination, ReadOnlySpan<float> values)
+    {
+        ReadOnlySpan<byte> raw = MemoryMarshal.AsBytes(values);
+        if (BitConverter.IsLittleEndian)
+        {
+#if NETSTANDARD2_0
+            byte[] buffer = new byte[Math.Min(raw.Length, 240 * 1024)];
+            for (int offset = 0; offset < raw.Length; offset += buffer.Length)
+            {
+                int take = Math.Min(buffer.Length, raw.Length - offset);
+                raw.Slice(offset, take).CopyTo(buffer);
+                destination.Write(buffer, 0, take);
+            }
+#else
+            destination.Write(raw);
+#endif
+            return;
+        }
+
+        byte[] swapped = new byte[values.Length * sizeof(float)];
+        raw.CopyTo(swapped);
+        Span<int> words = MemoryMarshal.Cast<byte, int>(swapped.AsSpan());
+        for (int i = 0; i < words.Length; i++)
+        {
+            words[i] = BinaryPrimitives.ReverseEndianness(words[i]);
+        }
+        destination.Write(swapped, 0, swapped.Length);
+    }
+
+    /// <summary>Refuses a shape that does not describe the block it is given.</summary>
+    private static void CheckShape(int length, int[] shape)
+    {
+        if (shape.Length is 0 or > 2)
+        {
+            throw new ArgumentException(
+                $"A shape must have one or two dimensions, not {shape.Length}.", nameof(shape));
+        }
+
+        long product = 1;
+        foreach (int dimension in shape)
+        {
+            if (dimension < 0)
+            {
+                throw new ArgumentException(
+                    $"A dimension cannot be negative ({dimension}).", nameof(shape));
+            }
+            product *= dimension;
+        }
+
+        if (product != length)
+        {
+            throw new ArgumentException(
+                $"A shape of {product} elements does not describe {length} values.", nameof(shape));
+        }
+    }
+
+    private static InvalidDataException Malformed(string what) =>
+        new($"A '{SourceName}' file {what}");
+
+    /// <summary>What the restricted parser takes out of the header.</summary>
+    private readonly record struct NpyHeader(int[] Shape);
+}
