@@ -64,6 +64,10 @@ public static class PersistenceCrossLang
         string indexFile = Path.Combine(Path.GetTempPath(), $"lodestar-index-{Environment.ProcessId}.json");
         File.WriteAllBytes(indexFile, indexArtifact);
 
+        // Its own path, not the one above: the save row writes where nothing reads,
+        // so neither direction is measuring a file the other just touched.
+        string saveFile = Path.Combine(Path.GetTempPath(), $"lodestar-index-out-{Environment.ProcessId}.json");
+
         var results = new List<Harness.OperationResult>
         {
             Harness.Measure("vocab_txt", () => VocabTxtLoader.Load(vocabTxt), new FileInfo(vocabTxt).Length),
@@ -86,6 +90,16 @@ public static class PersistenceCrossLang
                 using var stream = new MemoryStream(indexArtifact.Length);
                 index.Save(stream);
                 return stream.Length;
+            }, indexArtifact.Length),
+            // The only save row touching a filesystem, and the call a caller actually makes.
+            // It priced pre-sizing the file -- #432, refused -- and is what would reprice it.
+            Harness.Measure("embedding_index_save_file", () =>
+            {
+                index.Save(saveFile);
+
+                // The path back, not its length: Save writes a file, so nothing here can
+                // be elided, and a FileInfo would put a stat call inside the timed window.
+                return saveFile;
             }, indexArtifact.Length),
             Harness.Measure("embedding_index_load", () =>
             {
@@ -118,6 +132,7 @@ public static class PersistenceCrossLang
         };
 
         File.Delete(indexFile);
+        File.Delete(saveFile);
 
         var payload = new Harness.Output
         {

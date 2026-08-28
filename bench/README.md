@@ -1005,6 +1005,27 @@ written, with no gap for this session's own overhead to open. The `main` row was
 taken 16 minutes later at a comparable load, which is what makes the before/after
 in this section and in section 4 a comparison rather than two tables.
 
+### The save rows are no longer all in memory
+
+Until #432 every row here reporting a save wrote to a `MemoryStream` —
+`embedding_index_save`, `tfidf_save`, `embedding_index_save_gzip`, all of them —
+while `embedding_index_load_file` was the only row touching a filesystem at all.
+That is an odd shape for a comparison to have: #336 added the load half precisely
+because the file path is the one a caller takes, and the write half never followed.
+
+`embedding_index_save_file` closes it, with `np.save` to a path as its Python pair.
+It writes to a path of its own rather than the one `embedding_index_load_file`
+reads, so neither direction is measuring a file the other just touched. Neither
+side flushes to the device, which is what makes them comparable: each measures the
+write path down to the page cache, and `np.save` does no pre-sizing either.
+
+The row was added to price pre-sizing the file — 20 MB through an 80 KB buffer is
+252 extending writes, and telling the filesystem the length up front should let it
+allocate once. It does not, on ext4:
+[ADR 0052](../docs/decisions/0052-pre-sizing-the-artifact-file-buys-nothing-on-a-delayed-allocation-filesystem.md)
+has the measurement and the mechanism. The row outlives the question, and is also
+what would reopen it on a filesystem that charges per extension.
+
 ### Every load row here is measured on a warmed heap
 
 `compare-persistence` runs `embedding_index_save` before `embedding_index_load`,
