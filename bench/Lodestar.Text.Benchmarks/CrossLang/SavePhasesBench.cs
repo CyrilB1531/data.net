@@ -50,12 +50,17 @@ internal static class SavePhasesBench
             ids[i] = $"doc-{i}";
         }
 
+        // console-print: the denominator every share below is a fraction of.
         Console.WriteLine($"artifact       {artifact.Length:N0} bytes");
+        // console-print: 15.36 MB is the block the GB/s column divides by.
         Console.WriteLine($"vector block   {block.Length:N0} bytes");
+        // console-print: the 1.34x expansion, stated rather than inferred.
         Console.WriteLine($"base64 of it   {encodedLength:N0} bytes");
+        // console-print: the machine, without which no absolute here is readable.
         Console.WriteLine($"runtime        {Environment.Version}");
+        // console-print: core count, which decides whether a parallel reading is even possible.
         Console.WriteLine($"cores          {Environment.ProcessorCount}");
-        Console.WriteLine();
+        Console.WriteLine(); // console-print: separates the conditions from the table.
 
         var phases = new List<(string Name, Func<long> Action)>
         {
@@ -139,10 +144,13 @@ internal static class SavePhasesBench
             return EmbeddingIndex.Load(stream);
         }, artifact.Length);
 
-        Console.WriteLine();
+        Console.WriteLine(); // console-print: separates the phase table from the canonical rows.
+        // console-print: names the methodology; the share depends on which denominator it is.
         Console.WriteLine($"canonical harness (best-of-{Harness.RepeatCount}, the published methodology):");
+        // console-print: the row the nightly publishes, so this page can be compared to it.
         Console.WriteLine(
             $"  embedding_index_save = {canonical.MsPerOp:F3} ms wall, {canonical.CpuMsPerOp:F3} ms cpu");
+        // console-print: the control; a window with no noise floor states nothing.
         Console.WriteLine(
             $"  embedding_index_load = {control.MsPerOp:F3} ms wall, {control.CpuMsPerOp:F3} ms cpu   [control]");
     }
@@ -322,18 +330,22 @@ internal static class SavePhasesBench
     {
         double total = phases[0].Median;
 
+        // console-print: this table is the mode's entire output; it writes no artifact.
         Console.WriteLine($"| {"phase",-22} | {"median",9} | {"min",9} | {"max",9} | {"share",7} | {"GB/s",7} |");
+        // console-print: the separator that makes the rows a table a reader can paste.
         Console.WriteLine($"| {new string('-', 22)} | {new string('-', 9)} | {new string('-', 9)} | {new string('-', 9)} | {new string('-', 7)} | {new string('-', 7)} |");
 
         foreach (Phase phase in phases)
         {
             double gbPerSecond = blockBytes / (phase.Median / 1e3) / 1e9;
+            // console-print: one measured phase; these rows are the measurement itself.
             Console.WriteLine(
                 $"| {phase.Name,-22} | {phase.Median,9:F3} | {phase.Min,9:F3} | {phase.Max,9:F3} | "
                 + $"{phase.Median / total,7:P1} | {gbPerSecond,7:F2} |");
         }
 
-        Console.WriteLine();
+        Console.WriteLine(); // console-print: separates the table from the note under it.
+        // console-print: the units, which the guide's protocol asks a table to carry.
         Console.WriteLine("median ms, 9 runs each; share is of save_total; GB/s counts the 15.36 MB input block.");
     }
 
