@@ -15,6 +15,9 @@ namespace Lodestar.Internal.Persistence;
 /// </remarks>
 internal static class ArtifactIo
 {
+    /// <summary>The brace that closes an artifact, written by hand when the writer cannot.</summary>
+    private const byte CloseBrace = (byte)'}';
+
     public static void Save(Stream destination, string artifact, int version, Action<Utf8JsonWriter> writeBody)
     {
         Guard.NotNull(destination);
@@ -52,6 +55,93 @@ internal static class ArtifactIo
 #else
         await destination.WriteAsync(payload.AsMemory(0, (int)buffer.Length), cancellationToken).ConfigureAwait(false);
 #endif
+    }
+
+    /// <summary>
+    /// Saves an artifact whose last property is a float block too large to buffer,
+    /// writing that block to <paramref name="destination"/> a slice at a time.
+    /// </summary>
+    /// <remarks>
+    /// <paramref name="writeHead"/> writes every property before the block. <b>Nothing goes
+    /// through the <c>Utf8JsonWriter</c> after it</b> — the writer is flushed and disposed on
+    /// the property name, the value goes to the stream, and the closing brace is written by
+    /// hand, because a writer left on one refuses to close its object. Owning that sequence
+    /// here means no artifact can get it wrong; ADR 0051 is the decision.
+    /// </remarks>
+    /// <param name="destination">The stream to write to; flushed but never disposed.</param>
+    /// <param name="artifact">The artifact kind, for the header.</param>
+    /// <param name="version">The artifact version, for the header.</param>
+    /// <param name="writeHead">Writes every property that precedes the block.</param>
+    /// <param name="blockProperty">The name of the block's property.</param>
+    /// <param name="block">The float block, written as base64 raw little-endian bits.</param>
+    public static void SaveWithBlock(
+        Stream destination,
+        string artifact,
+        int version,
+        Action<Utf8JsonWriter> writeHead,
+        string blockProperty,
+        ReadOnlySpan<float> block)
+    {
+        Guard.NotNull(destination);
+
+        using (var writer = new Utf8JsonWriter(destination, JsonArtifact.WriterOptions))
+        {
+            writer.WriteStartObject();
+            ArtifactHeader.Write(writer, artifact, version);
+            writeHead(writer);
+            writer.WritePropertyName(blockProperty);
+            writer.Flush();
+        }
+
+        Base64Numbers.WriteSinglesChunked(destination, block);
+        destination.WriteByte(CloseBrace);
+        destination.Flush();
+    }
+
+    /// <summary>The asynchronous counterpart of <see cref="SaveWithBlock"/>.</summary>
+    /// <remarks>
+    /// No intermediate <see cref="MemoryStream"/>, which the synchronous-flush comment on
+    /// <see cref="SaveAsync"/> is the reason for: the head is small and its one flush is
+    /// bounded, and the block — every byte that makes this artifact large — is written
+    /// through <c>WriteAsync</c> a slice at a time. Before the block was sliced there was
+    /// no bounded flush to rely on, and the artifact was buffered twice, both times by
+    /// doubling.
+    /// </remarks>
+    public static async Task SaveWithBlockAsync(
+        Stream destination,
+        string artifact,
+        int version,
+        Action<Utf8JsonWriter> writeHead,
+        string blockProperty,
+        ReadOnlyMemory<float> block,
+        CancellationToken cancellationToken)
+    {
+        Guard.NotNull(destination);
+
+        using (var writer = new Utf8JsonWriter(destination, JsonArtifact.WriterOptions))
+        {
+            writer.WriteStartObject();
+            ArtifactHeader.Write(writer, artifact, version);
+            writeHead(writer);
+            writer.WritePropertyName(blockProperty);
+            // CA1849 / SonarLint S6966: the head is at most a few hundred KB of ids and
+            // scalars, and this is the only synchronous flush left on the path — the
+            // block below, which is the whole reason an index artifact is large, is
+            // written asynchronously.
+#pragma warning disable S6966, CA1849
+            writer.Flush();
+#pragma warning restore S6966, CA1849
+        }
+
+        await Base64Numbers.WriteSinglesChunkedAsync(destination, block, cancellationToken).ConfigureAwait(false);
+
+        byte[] closing = [CloseBrace];
+#if NETSTANDARD2_0
+        await destination.WriteAsync(closing, 0, 1, cancellationToken).ConfigureAwait(false);
+#else
+        await destination.WriteAsync(closing.AsMemory(0, 1), cancellationToken).ConfigureAwait(false);
+#endif
+        await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Creates a reader over <paramref name="payload"/> positioned on the artifact's opening brace.</summary>

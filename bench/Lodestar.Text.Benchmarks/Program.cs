@@ -1,8 +1,8 @@
 using BenchmarkDotNet.Running;
 using Lodestar.Text.Benchmarks.CrossLang;
 
-// Six entry points, the default being BenchmarkDotNet; usage for each of the
-// five "compare*"/"roc-parallel" subcommands is in bench/README.md.
+// Seven entry points, the default being BenchmarkDotNet; usage for each of the
+// six "compare*"/"roc-parallel"/"save-phases" subcommands is in bench/README.md.
 if (args.Length > 0 && args[0] == "compare")
 {
     LevenshteinCrossLang.Run(args);
@@ -30,6 +30,12 @@ if (args.Length > 0 && args[0] == "compare-metrics")
 if (args.Length > 0 && args[0] == "roc-parallel")
 {
     RocParallelBench.Run();
+    return;
+}
+
+if (args.Length > 0 && args[0] == "save-phases")
+{
+    SavePhasesBench.Run();
     return;
 }
 

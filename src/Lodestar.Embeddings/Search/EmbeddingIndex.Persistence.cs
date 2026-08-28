@@ -29,7 +29,8 @@ public sealed partial class EmbeddingIndex
     /// <param name="destination">The stream to write to. Flushed but never disposed — the caller owns it.</param>
     /// <exception cref="InvalidDataException">A vector holds a non-finite component.</exception>
     public void Save(Stream destination) =>
-        ArtifactIo.Save(destination, ArtifactName, ArtifactVersion, WriteArtifactBody);
+        ArtifactIo.SaveWithBlock(
+            destination, ArtifactName, ArtifactVersion, WriteHead, VectorsProperty, _data.AsSpan(0, _length));
 
     /// <summary>Writes the index to <paramref name="path"/>, replacing any existing file.</summary>
     /// <param name="path">The file to write. UTF-8 without a byte-order mark.</param>
@@ -50,9 +51,19 @@ public sealed partial class EmbeddingIndex
     /// <exception cref="InvalidDataException">A vector holds a non-finite component.</exception>
     /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
     public Task SaveAsync(Stream destination, CancellationToken cancellationToken = default) =>
-        ArtifactIo.SaveAsync(destination, ArtifactName, ArtifactVersion, WriteArtifactBody, cancellationToken);
+        ArtifactIo.SaveWithBlockAsync(
+            destination, ArtifactName, ArtifactVersion, WriteHead, VectorsProperty,
+            _data.AsMemory(0, _length), cancellationToken);
 
-    private void WriteArtifactBody(Utf8JsonWriter writer)
+    /// <summary>Writes every property that precedes the vector block.</summary>
+    /// <remarks>
+    /// The block itself is written by <see cref="ArtifactIo.SaveWithBlock"/> rather than
+    /// here, a slice at a time, so the writer's buffer never grows to hold its whole
+    /// encoding. That is why this stops short of the block instead of writing the body
+    /// end to end: see the performance guide's save profile for what the difference is
+    /// worth.
+    /// </remarks>
+    private void WriteHead(Utf8JsonWriter writer)
     {
         EnsureFinite();
         writer.WriteNumber(DimensionProperty, _dim);
@@ -79,8 +90,6 @@ public sealed partial class EmbeddingIndex
             }
             writer.WriteEndArray();
         }
-
-        Base64Numbers.WriteSingles(writer, VectorsProperty, _data.AsSpan(0, _length));
     }
 
     /// <summary>
