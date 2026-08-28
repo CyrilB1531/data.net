@@ -13,7 +13,7 @@ known reading", never "faster than the section above it".
 
 ### Lodestar.Text.Benchmarks.BatchEmbeddingBenchmarks-report-github
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -50,7 +50,7 @@ WarmupCount=3
 
 ### Lodestar.Text.Benchmarks.BlockedTableBenchmarks-report-github
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -75,9 +75,36 @@ WarmupCount=3
 
 <!-- markdownlint-enable MD060 -->
 
+### Lodestar.Text.Benchmarks.BlockedTableBenchmarks-report-github (run 2)
+
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+
+```text
+BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
+AMD EPYC 9V74, 1 CPU, 4 logical and 2 physical cores
+.NET SDK 10.0.400
+  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+
+Job=ShortRun  IterationCount=3  LaunchCount=1  
+WarmupCount=3
+```
+
+<!-- markdownlint-disable MD060 -->
+
+| Method | length | Mean          | Error        | StdDev     | Allocated |
+|------- |------- |--------------:|-------------:|-----------:|----------:|
+| **Latin**  | **1000**   |      **51.93 μs** |     **0.631 μs** |   **0.035 μs** |         **-** |
+| Cjk    | 1000   |      56.06 μs |     2.402 μs |   0.132 μs |         - |
+| **Latin**  | **10000**  |   **5,514.80 μs** | **1,122.506 μs** |  **61.528 μs** |         **-** |
+| Cjk    | 10000  |   6,234.71 μs |   289.373 μs |  15.862 μs |         - |
+| **Latin**  | **65536**  | **202,152.38 μs** | **5,826.234 μs** | **319.356 μs** |         **-** |
+
+<!-- markdownlint-enable MD060 -->
+
 ### Lodestar.Text.Benchmarks.BpeBenchmarks-report-github
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -101,7 +128,7 @@ WarmupCount=3
 
 ### Lodestar.Text.Benchmarks.BpeScalingBenchmarks-report-github
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -127,7 +154,7 @@ WarmupCount=3
 
 ### Lodestar.Text.Benchmarks.BucketRouteDiagnostics-report-github
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -153,7 +180,7 @@ WarmupCount=3
 
 ### Lodestar.Text.Benchmarks.FuzzBenchmarks-report-github
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -180,7 +207,7 @@ WarmupCount=3
 
 ### Lodestar.Text.Benchmarks.IndelBenchmarks-report-github
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -241,7 +268,7 @@ WarmupCount=3
 
 ### Lodestar.Text.Benchmarks.LcsGateBenchmarks-report-github
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -317,7 +344,7 @@ WarmupCount=3
 
 ### Lodestar.Text.Benchmarks.LevenshteinBenchmarks-report-github
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -350,7 +377,7 @@ WarmupCount=3
 
 ### Lodestar.Text.Benchmarks.LevenshteinCodePointBenchmarks-report-github
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -407,7 +434,7 @@ WarmupCount=3
 
 ### Lodestar.Text.Benchmarks.MetricsBenchmarks-report-github
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -459,7 +486,7 @@ WarmupCount=3
 
 ### Lodestar.Text.Benchmarks.MyersGateBenchmarks-report-github
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -535,7 +562,7 @@ WarmupCount=3
 
 ### Lodestar.Text.Benchmarks.PersistenceBenchmarks-report-github
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -565,7 +592,7 @@ WarmupCount=3
 
 ### Lodestar.Text.Benchmarks.StopWordBenchmarks-report-github
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -596,7 +623,7 @@ WarmupCount=3
 
 ### Lodestar.Text.Benchmarks.VectorMathBenchmarks-report-github
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -626,7 +653,7 @@ WarmupCount=3
 
 ### Lodestar.Text.Benchmarks.VectorizerBenchmarks-report-github
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
@@ -657,7 +684,7 @@ WarmupCount=3
 
 ### compare-indel
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 Python: rapidfuzz 3.14.5 (py 3.12.14)
@@ -683,7 +710,7 @@ Note: Indel is len(a)+len(b)-2*LCS on both sides, so this compares the subsequen
 
 ### compare-levenshtein
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 Python: rapidfuzz 3.14.5 (py 3.12.14)
@@ -709,7 +736,7 @@ Note: Python times the realistic per-call loop; rapidfuzz's C core uses the bit-
 
 ### compare-metrics
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 Python: {'scikit-learn': '1.9.0', 'numpy': '2.5.1'} (py 3.12.14)
@@ -805,7 +832,7 @@ BELOW GATE on processor time:
 
 ### compare-persistence
 
-_As of 2026-08-26, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
+_As of 2026-08-27, measured at commit `2483f1a00691271083f00baf3835de96bf0a4076`._
 
 ```text
 Python: {'tokenizers': '0.23.1', 'sentencepiece': '0.2.2', 'scikit-learn': '1.9.0', 'numpy': '2.5.1'} (py 3.12.14)
