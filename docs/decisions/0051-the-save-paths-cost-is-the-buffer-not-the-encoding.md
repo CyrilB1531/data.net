@@ -85,26 +85,48 @@ concatenation, so **the bytes on disk do not change**, and `ChunkedBlockTests` p
 around the slice boundary against `Base64Numbers.WriteSingles`, which stays in the codebase off
 every save path purely as the oracle.
 
-`embedding_index_save` goes from a median of 20.550 ms to 12.727 ms — **1.61×** — over 24 runs in
-both orders, with no overlap between the two sets of twelve. A `memcpy` of the same block carried as
-the noise floor moved 21% across the same windows.
+**What it is worth, measured on the nightly runner rather than on the container.** The container
+put it at 1.61×; that figure did not survive a machine four times faster, and the honest reading is
+narrower and better evidenced. Nightly run 39 on this branch against main's own run, both hosted
+runners, `PersistenceBenchmarks`:
+
+| `EmbeddingIndexSave` | main | this branch |
+| --- | ---: | ---: |
+| allocated | 39.64 MB | **19.87 MB** |
+| Gen0 / Gen1 / Gen2 collections | 445.3 each | 273.4 each |
+| mean | 5.153 ms | 4.950 ms |
+
+**The allocation is the result, and it is the one that does not depend on a machine.** Halved, to
+within a rounding of the 20.48 MB buffer this removes. The collection counts follow it.
+
+The time moved 1.04× raw — but the two runs are a day apart on different hosted VMs, and numpy,
+whose code is identical in both, ran the same row at 1.342 ms and then 1.723: the second runner was
+**1.28× slower**. Raw milliseconds do not survive that, which is why this project publishes ratios
+taken inside one run. On the ratio the nightly actually publishes, `embedding_index_save` against
+`numpy.save` goes from **0.29× to 0.39×** — from 3.45× behind to 2.56× — a **1.35×** improvement.
+
+So: 1.35× on the published ratio, an allocation halved, and 1.61× withdrawn as an artefact of the
+machine that produced it. The container's phase profile above stands, because shares within one
+window are what it measured well; its before-and-after did not transfer and should not have been
+published as the headline.
 
 ### 0044's price table is re-based, and its decision stands
 
-This is the amendment. [0044](0044-compression-belongs-to-the-caller.md) prices compression in
-**multiples of a save**, and that save is now 1.61× faster. Every `× save` figure in its table is
-therefore understated against the current code:
+This is the amendment, and it is narrower than a first draft of this decision claimed.
+[0044](0044-compression-belongs-to-the-caller.md) prices compression in **multiples of a save**, so
+making the save cheaper moves every `× save` figure in its table. That much is certain.
 
-| | 0044 as written | against the sliced save |
-| --- | ---: | ---: |
-| gzip `Fastest` | 26.67× | ~43× |
-| gzip `Optimal` | 37.62× | ~61× |
-| brotli `Fastest` | 3.68× | ~5.9× |
+**By how much is not stated here, because it was not measured under 0044's conditions.** Those
+figures were taken on an Intel i7-4770S at a 4 000 × 384 index; this branch was measured on a hosted
+runner at 10 000 × 384. A first draft extrapolated new multipliers from a 1.61× that has since been
+withdrawn, and the nightly's own gzip rows do not support a clean restatement either — `× save`
+reads 97.6 on main and 92.1 here, which is two noisy points on a different corpus and not a
+correction to publish.
 
-**0044's decision is unaffected, and strengthened.** Compression got relatively more expensive, not
-less, because the thing it is priced against got cheaper. The library still does not compress an
-artifact and still does not offer an option to; the caller still wraps the stream on both sides.
-Only the numbers move, and they move the way 0044 would want them to.
+**What stands is 0044's decision, and the direction.** The library still does not compress an
+artifact and still does not offer an option to; the caller wraps the stream on both sides. The save
+got cheaper, so compression is relatively dearer than 0044's table shows, which is the direction
+0044 would want. Re-measuring it under 0044's own conditions is a small lot of its own.
 
 The `× size` and `× load` columns are untouched — nothing here changes what an artifact occupies or
 what reading one costs.
@@ -132,19 +154,28 @@ only argument for a sidecar, and it remains 0011's to make.
   flushed synchronously when its buffer filled, so the artifact was buffered twice and both buffers
   doubled. The head is now the only thing that flushes and it is bounded; the block goes through
   `WriteAsync`, and a test asserts the two paths emit identical bytes.
-- **`embedding_index_load` is no longer a valid control for a change to the save path**, and this is
-  a measurement obligation rather than a footnote. It moved 1.22× *slower* on the after side, in all
-  eight runs, in both orders. The cause is this change working: the old save path grew the
-  large-object heap by ~20 MB per call and left its pages committed for whatever ran next in the same
-  process, and what ran next was the load. The load did not get slower — it stopped being
-  subsidised. Any load figure taken in a process that saved first carries a warmed heap, which
-  includes rows `compare-persistence` already publishes.
+- **`embedding_index_load` is no longer a valid control for a change to the save path, and it is
+  also a cost this change pays.** It moved 1.22× *slower* on the after side on the container, in all
+  eight runs, in both orders. The nightly agrees: `EmbeddingIndexLoad` allocates **35.35 MB on both
+  sides**, identical to three digits, while its mean moved 5.114 ms to 6.804 — and taking out the
+  1.21× the slower runner shows on `numpy.load` leaves 1.10× on that mean and 1.17× on the
+  cross-language row. Three estimates in a band, all a slowdown with the allocation unchanged, which
+  is what paying in page commits rather than in work looks like. The cause is this change working:
+  the old save path grew the large-object heap by ~20 MB per call and left its pages committed for
+  whatever ran next in the same process, and what ran next was the load. So the load stopped being
+  subsidised rather than getting slower — but on the row this project publishes,
+  `embedding_index_load` against `numpy.load` goes from 0.30× to 0.25×, so **the save's 1.35× is a
+  trade and not a free win**. It is still net: a halved allocation is not undone by the load's page
+  commits. Any load figure taken in a process that saved first carries a warmed heap, which includes
+  rows `compare-persistence` already publishes.
 - `bench/Lodestar.Text.Benchmarks -- save-phases` is committed, so the profile behind this decision
   is re-runnable rather than remembered. Its phases run round-robin rather than one phase to
   completion: a first cut ran them back to back and reported `write_base64_property` at 136.7% of
   `save_total`, which is impossible for a strict subset of the same work.
 - **This decision's absolutes were not taken on the bench machine**, and the section above says so.
-  The shares, the encode-against-`memcpy` comparison and the 1.61× are ratios measured within single
-  windows and transfer; the millisecond figures do not. Re-running `save-phases` on the i7-4770S
-  would refine the table without touching what it decides — unless `base64_encode` and
-  `block_copy_floor` come apart there, which is the one result that would reopen the refusal above.
+  The shares and the encode-against-`memcpy` comparison are ratios measured inside one window and
+  transfer; the millisecond figures do not, and the before-and-after did not — a 1.61× taken on the
+  container did not survive a runner four times faster and has been withdrawn above. Re-running
+  `save-phases` on the i7-4770S would refine the table without touching what it decides — unless
+  `base64_encode` and `block_copy_floor` come apart there, which is the one result that would reopen
+  the refusal above.

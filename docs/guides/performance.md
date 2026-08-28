@@ -1632,20 +1632,31 @@ that is what the change went after. `Utf8JsonWriter.WriteBase64String` takes the
 block in one call; the vector block is now written a slice at a time straight to the
 destination, and the writer never holds more than the head.
 
-Twenty-four runs, both states published once and only the runs alternated, in both
-orders — before/after for twelve and after/before for twelve, because the first twelve
-raised the question the second twelve answered. Medians of all twelve each.
+Twenty-four runs on the container put it at **1.61× faster** — 20.550 ms to 12.727 ms,
+with the twelve after and the twelve before not overlapping. **That figure is
+withdrawn.** It did not survive the nightly runner, which is roughly four times faster
+on this row, and a before-and-after taken where the buffer costs 3× what it costs on
+the bench machine overstates what removing the buffer buys. What follows replaces it.
 
-| Operation | before | after | change |
+Nightly run 39 on this branch against main's own run, both hosted runners,
+`PersistenceBenchmarks`:
+
+| `EmbeddingIndexSave` | main | this branch | change |
 | --- | ---: | ---: | --- |
-| `embedding_index_save`, wall | 20.550 ms | **12.727 ms** | **1.61× faster** |
-| `block_copy_floor` — control | 4.577 ms | 3.784 ms | 1.21×, noise |
+| allocated | 39.64 MB | **19.87 MB** | **halved** |
+| Gen0 / Gen1 / Gen2 collections | 445.3 each | 273.4 each | 1.63× fewer |
+| mean | 5.153 ms | 4.950 ms | 1.04× |
 
-**No overlap.** The slowest of the twelve after (17.417 ms) is faster than the fastest
-of the twelve before (19.165 ms), which is a stronger statement than the medians: on
-this machine the two distributions do not touch. The control is a `memcpy` of the same
-15.36 MB, which no version of this change can reach, and it moved 21% across the same
-windows — so 21% is the noise floor this table is read against, and 61% clears it.
+**The allocation is the result, and it is the one that does not depend on a machine.**
+Halved, to within a rounding of the 20.48 MB buffer this removes; the collection counts
+follow it.
+
+The 1.04× on the mean is not the speedup and should not be read as one: the two runs are
+a day apart on different hosted VMs, and `numpy.save`, whose code is identical in both,
+ran the same row at 1.342 ms and then 1.723 — **the second runner was 1.28× slower.**
+Raw milliseconds do not cross that, which is why the rows this project publishes are
+ratios taken inside one run. On that ratio, `embedding_index_save` against `numpy.save`
+goes from **0.29× to 0.39×** — from 3.45× behind to 2.56× — a **1.35×** improvement.
 
 - **The output is byte-for-byte what it was.** Base64 maps each group of 3 input bytes
   onto 4 output characters independently, so concatenating slice encodings equals
@@ -1674,12 +1685,27 @@ committed for whatever ran next in the same process — and what ran next was th
 allocating buffers of its own. The new save path never grows the heap, so the load pays
 the page commits itself. #324 named that cost and this is it moving between two rows.
 
-So the load did not get slower; it stopped being subsidised. It is a fine control for a
-change confined to one direction and a poor one here, and it was replaced with a
-`memcpy` that allocates nothing. The reading worth carrying forward is narrower and
-more useful than the row it came from: **a benchmark process that saves before it loads
-was measuring a warmed heap**, and any figure for either direction taken in one process
-after the other carries that.
+The nightly runner corroborates it, and prices it. `EmbeddingIndexLoad` allocates
+**35.35 MB on both sides** — identical to three digits, so nothing about what the load
+does has changed — and its mean moved 5.114 ms to 6.804 ms. Some of that is the slower
+runner: `numpy.load`, identical code in both runs, moved 1.366 ms to 1.653. Taking that
+1.21× out leaves **1.10× on the BenchmarkDotNet mean and 1.17× on the cross-language
+row**, against the container's 1.22× — three estimates of the same thing, in a band, all
+of them a slowdown that the unchanged allocation says is paid in page commits rather
+than in work.
+
+**This is a real cost on a published row, not a footnote.** `embedding_index_load`
+against `numpy.load` goes from 0.30× to 0.25×; the save gained 1.35× on its ratio and
+the load gave part of it back. What the change did was stop one row from subsidising the
+other, and the subsidy was worth roughly 15% of a load. The saving is still net — a
+halved allocation on the save is not something the load's page commits undo — but the
+honest statement is a trade, not a free win.
+
+So `embedding_index_load` is a fine control for a change confined to one direction and a
+poor one here, and it was replaced with a `memcpy` that allocates nothing. The reading
+worth carrying forward is narrower and more useful than the row it came from: **a
+benchmark process that saves before it loads was measuring a warmed heap**, and any
+figure for either direction taken in one process after the other carries that.
 
 ## Persisting an embedding index — the load path (issue #324)
 
