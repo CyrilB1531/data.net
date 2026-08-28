@@ -1004,3 +1004,40 @@ C# side inherited from Python's. The C# side started the moment Python's file wa
 written, with no gap for this session's own overhead to open. The `main` row was
 taken 16 minutes later at a comparable load, which is what makes the before/after
 in this section and in section 4 a comparison rather than two tables.
+
+## 8. Where a save's time goes (issue #429, step 0)
+
+Not a comparison: a **profile of one operation against itself**. Five phases over
+the same 10 000 × 384 index as section 7, each a strict subset of the one above
+it, so the shares are readable without a second harness to reconcile.
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- save-phases
+```
+
+| phase | what it does |
+| --- | --- |
+| `save_total` | `EmbeddingIndex.Save` end to end |
+| `write_base64_property` | the vector block alone, through `Utf8JsonWriter.WriteBase64String` |
+| `write_base64_chunked` | the same block in 240 KB slices into one rented buffer |
+| `base64_encode` | `Base64.EncodeToUtf8` on the block and nothing else |
+| `block_copy_floor` | a `memcpy` of the same 15.36 MB, encoding nothing |
+
+The last row is what makes the table decide anything. An encode that costs no more
+than moving the same bytes is bandwidth-bound, and nothing parallelises past a
+bandwidth it is already at — which is how a proposal to thread the base64 was
+refused rather than tried. [ADR 0051](../docs/decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md)
+is that decision, and the numbers are in
+[`docs/guides/performance.md`](../docs/guides/performance.md#what-a-save-actually-spends-its-time-on--step-0).
+
+**The phases run round-robin, one round each, not one phase to completion.** This
+is the whole design and it is not tidiness. A first cut ran each phase's nine runs
+back to back, so a collection storm landed inside one phase's window and the
+harness reported `write_base64_property` at **136.7% of `save_total`** — impossible
+for a strict subset of the same work, and obvious only because the subset relation
+gives the table something to contradict. Interleaving spreads that cost across
+every phase instead of concentrating it in whichever one was unlucky.
+
+Medians of nine runs after three warm-ups, with the full spread printed under the
+table: on a shared machine the floor is the honest half of a row, and a phase that
+allocates 20 MB per call announces itself by varying, not by being slow on average.
