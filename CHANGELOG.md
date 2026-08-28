@@ -29,6 +29,12 @@ is one sentence, the issue and the commit; see
 
 - The blocked bit-parallel equality table is sized from the pattern's characters above U+00FF rather than from its length, and a pattern too long to tabulate takes the dynamic program instead of wrapping the table's length in `int`. ([#413](https://github.com/CyrilB1531/lodestar/issues/413), [`52d68cc`](https://github.com/CyrilB1531/lodestar/commit/52d68cc))
 
+### Lodestar.Embeddings
+
+#### Changed
+
+- **Half the allocation, same bytes on disk.** `EmbeddingIndex.Save` and `SaveAsync` write the vector block a slice at a time instead of handing `Utf8JsonWriter.WriteBase64String` the whole thing, so the writer's buffer no longer doubles its way up to the 20.48 MB the encoding occupies: `EmbeddingIndexSave` allocates **19.87 MB against 39.64**, with a third fewer collections in every generation, and the row against `numpy.save` moves **0.29× to 0.39×**. Slices are 245 760 bytes — a multiple of 12, so a whole number of base64 groups and of floats — which is what makes the artifact byte-for-byte what it was; `SaveAsync` loses its intermediate `MemoryStream` with it. The load pays part of it back, having been subsidised by the buffer the save used to leave behind — see [decision 0051](docs/decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md), which also records why parallelising the base64 was refused: it runs at `memcpy` speed already. ([#430](https://github.com/CyrilB1531/lodestar/issues/430), [`2a50cc1`](https://github.com/CyrilB1531/lodestar/commit/2a50cc1))
+
 ## Released — 2026-08-21
 
 Four deliverables, cut in two steps on the same day. `Lodestar.Text`,
