@@ -128,9 +128,15 @@ Neither can be taken inside an issue that must close exactly one.
 
 Two rows added to `SidecarBench`, interleaved with the four it already has, on the same corpus:
 
-- **`ingest copy`** — `NpyFile.Read` then `FromBlock`. The honest sidecar route as it will exist.
-- **`ingest owned`** — `FromOwnedBlock` on a block already read. The ceiling 0055 can reach once the
-  read yields an owned array.
+- **`ingest copy`** — `NpyFile.Read` then `FromBlock`. The sidecar route as it will exist, and the
+  row the gate is read off.
+- **`ingest only`** — `FromBlock` on a block already in hand. It separates the ingest's own cost
+  from the read's, so a later regression can be attributed to one or the other.
+
+**There is no `ingest owned` row, and its absence is the finding.** `FromOwnedBlock` assigns four
+fields; with `AlreadyNormalized` it is constant time whatever the block's size, so a row for it
+would publish noise. The ceiling adoption reaches is the `read npy block` row that already exists —
+5.236 ms, the read and nothing else. `bench/README.md` says that in a sentence instead.
 
 **`ingest copy` must approach 5.847 ms and not 17.973**, and `load / ingest` must clear 1.0 while
 aiming at the 2.02× that `load / floor` showed. A bulk ingest landing near the rebuild has not
