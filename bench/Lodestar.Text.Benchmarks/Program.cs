@@ -32,8 +32,15 @@ switch (args.Length > 0 ? args[0] : string.Empty)
     case "heap-warmth":
         HeapWarmthBench.Run(args);
         return;
-    default:
+    case "":
         break;
+    default:
+        // An unknown subcommand used to reach BenchmarkSwitcher's menu, which exits 0.
+        // console-print: the refusal, on stderr, that a silently green run would hide.
+        await Console.Error.WriteLineAsync(
+            $"unknown subcommand '{args[0]}'. See bench/README.md for the list.").ConfigureAwait(false);
+        Environment.ExitCode = 2;
+        return;
 }
 
 BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
