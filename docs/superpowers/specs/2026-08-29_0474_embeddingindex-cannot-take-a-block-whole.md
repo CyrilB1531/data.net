@@ -158,6 +158,14 @@ JSON load path and the block path cannot drift. Tests: bit-for-bit equality with
 multiple of the dimension; ids of the wrong length. Both target frameworks pick them up through the
 linked `*.NetStandard.Tests` sources.
 
-Documentation: reference pages for the three new members, `embeddingindex.md` updated, three member
-references in `samples/Lodestar.Sample/Lot3Embeddings.cs` for the packaging gate, the `bench/README.md`
-row descriptions, the ADR, and the `CHANGELOG.md` entry item 7 of the definition of done requires.
+Documentation: reference pages for the three new members and `embeddingindex.md` updated, for the
+reference gate; two calls in `samples/Lodestar.Sample/Lot3Embeddings.cs` referencing all three
+members between them, so the packaged API is exercised from outside the assembly; the
+`bench/README.md` row descriptions; the ADR; and the `CHANGELOG.md` entry item 7 of the definition
+of done requires.
+
+No `*Sample.cs` file is due. `check_sample_coverage.py` enforces one sample file per public class
+only for the packages in its `CONVERTED` list, and `Lodestar.Embeddings` is still in `WAITING`
+([#280](https://github.com/CyrilB1531/lodestar/issues/280) closes when that half empties). ADR 0041's
+first rule gives an enum no file of its own in any case: it is demonstrated through the class whose
+parameter it is.
