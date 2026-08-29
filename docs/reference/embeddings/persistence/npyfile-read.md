@@ -25,6 +25,7 @@ layout this does not read, is truncated against its own shape, or exceeds a boun
 
 ```csharp
 using Lodestar.Embeddings.Persistence;
+using Lodestar.Embeddings.Search;
 
 NpyBlock block = NpyFile.Read("vectors.npy");
 var index = new EmbeddingIndex(block.Shape[1], normalize: true);
