@@ -50,9 +50,8 @@ internal static class HeapWarmthBench
         byte[] artifact = File.ReadAllBytes(path);
         EmbeddingIndex? source = warm ? PersistenceBenchmarks.BuildIndex() : null;
 
-        // The whole experiment, and it happens BEFORE the loop rather than inside it.
-        // compare-persistence measures every save, then every load; a save between two loads
-        // would add garbage competing with the load instead of leaving a heap behind it.
+        // Before the loop, not inside it: compare-persistence measures every save then every
+        // load, and a save between two loads competes with it rather than warming for it.
         for (int warming = 0; warming < WarmingSaves && source is not null; warming++)
         {
             using var scratch = new MemoryStream(artifact.Length);
@@ -84,10 +83,13 @@ internal static class HeapWarmthBench
 
         samples.Sort();
 
-        // console-print: this subcommand's whole output is the four lines below.
-        Console.WriteLine($"state           {(warm ? "warm" : "cold")}");
-        Console.WriteLine($"load ms         median {samples[Repeats / 2]:F3}  min {samples[0]:F3}  p25 {samples[Repeats / 4]:F3}  p75 {samples[Repeats * 3 / 4]:F3}  max {samples[^1]:F3}");
-        Console.WriteLine($"load allocated  {loadAllocated / Repeats:N0} bytes per load");
-        Console.WriteLine($"collections     {GC.CollectionCount(0) - before[0]}/{GC.CollectionCount(1) - before[1]}/{GC.CollectionCount(2) - before[2]}");
+        string report =
+            $"state           {(warm ? "warm" : "cold")}{Environment.NewLine}" +
+            $"load ms         median {samples[Repeats / 2]:F3}  min {samples[0]:F3}  p25 {samples[Repeats / 4]:F3}  p75 {samples[Repeats * 3 / 4]:F3}  max {samples[^1]:F3}{Environment.NewLine}" +
+            $"load allocated  {loadAllocated / Repeats:N0} bytes per load{Environment.NewLine}" +
+            $"collections     {GC.CollectionCount(0) - before[0]}/{GC.CollectionCount(1) - before[1]}/{GC.CollectionCount(2) - before[2]}";
+
+        // console-print: this subcommand's whole output, and one call so one marker covers it.
+        Console.WriteLine(report);
     }
 }

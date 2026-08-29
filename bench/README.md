@@ -1074,3 +1074,52 @@ every phase instead of concentrating it in whichever one was unlucky.
 Medians of nine runs after three warm-ups, with the full spread printed under the
 table: on a shared machine the floor is the honest half of a row, and a phase that
 allocates 20 MB per call announces itself by varying, not by being slow on average.
+
+## 9. Is a load measured on a warmed heap (issue #433)
+
+Not a comparison and not a profile: **one operation, two processes.**
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- heap-warmth prepare
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- heap-warmth cold
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- heap-warmth warm
+```
+
+`compare-persistence` measures every save, then every load, in one process — so by
+the time a load is timed the large-object heap has already been grown and its pages
+committed by the saves. The question is what that is worth, and **it cannot be two
+rows of one run**: a save warms the heap for everything after it, and nothing inside
+a process honestly undoes that. Hence three subcommands.
+
+`prepare` writes the artifact once. **`cold` then reads those bytes having built and
+saved nothing** — that is what makes it cold, and it is why the artifact comes off
+disk rather than from a save. `warm` does its saves **first** and then loads, which
+is the order the harness uses; a save between two loads would add garbage competing
+with the load instead of leaving a heap behind it.
+
+Both states report **allocation per load**, and they must agree. If they do not, the
+two are running different workloads and no timing comparison between them is valid —
+the claim under test is that the load does identical work and pays for more of it.
+
+**On a shared machine this does not reproduce.** Measured on the container: allocation
+agreed to 200 bytes in 37 MB, and the timing put warm faster, level, then slower over
+three alternating rounds, with one state's median swinging 4× between rounds. That is
+what the on-demand workflow below exists for.
+
+## Running a diagnostic on a second machine
+
+Sections 6, 8 and 9 are C#-only subcommands rather than `[Benchmark]` classes, so
+`bench-map.json` does not name them and the nightly never runs one. That is
+deliberate — they answer a question a lot asks once, not a regression worth
+watching every night.
+
+The cost of that was that they ran only on a contributor's own machine, and for
+some of them the machine is the finding. **`Benchmark (on demand)`** closes it:
+dispatch `.github/workflows/bench-ondemand.yml` against any branch, pick the
+subcommand, and read the job summary.
+
+It **prints and does not publish** — nothing there writes a page, opens a pull
+request or touches the wiki. A number becomes a published figure when a person
+reads it and decides, which is what `performance.md`'s name-the-machine rule is
+for. The workflow records `uptime`, the core count and the CPU model beside every
+run so that decision has what it needs.
