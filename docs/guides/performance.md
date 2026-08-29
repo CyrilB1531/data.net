@@ -1707,6 +1707,40 @@ worth carrying forward is narrower and more useful than the row it came from: **
 benchmark process that saves before it loads was measuring a warmed heap**, and any
 figure for either direction taken in one process after the other carries that.
 
+##### What the subsidy is worth, measured (issue #433)
+
+The paragraph above priced it at "roughly 15% of a load" by subtraction across two
+machines. Asked directly, it is smaller. `heap-warmth` loads the same artifact in two
+processes that differ only in whether they have ever saved — nine alternating rounds,
+both languages, one hosted runner, all four states inside each round:
+
+| | cold | warm | warm/cold |
+| --- | ---: | ---: | ---: |
+| [`EmbeddingIndex.Load`](../reference/embeddings/search/embeddingindex-load.md) | 18.101 ms | 16.559 ms | **0.919** |
+| `np.load` | 1.382 ms | 1.316 ms | **1.001** |
+
+**Conditions.** AMD EPYC 7763, 4 cores, .NET 10 and numpy 2.5.1 on one hosted runner,
+load average 4.20 falling to 2.75. Medians of nine round medians; the ratio column is
+the median of the nine **paired** ratios. Absolutes do not transfer off this machine —
+these are 2.7× the nightly's `EmbeddingIndexLoad` mean of 6.804 ms, because two warm-up
+runs is not what BenchmarkDotNet gives a row. The ratio is what transfers.
+
+**The subsidy is real and it is 8.1%**, not 15% and not the 20% `bench/README.md`
+inferred. Warm is faster in **nine rounds of nine** (sign test p = 0.004). The timing is
+the weaker half of the evidence: allocation is 37 069 648 bytes cold against 37 069 848
+warm — 200 bytes apart in 37 MB — while collections are **4/4/4 cold against 3/3/3
+warm**, in every round. Same work, same allocation, one fewer garbage collection.
+
+**numpy has no such asymmetry**: warm faster in four rounds of nine, median paired ratio
+1.001. A coin toss, which is what no effect looks like.
+
+**So the published `embedding_index_load` ratio flatters us, and #324's "furthest
+behind" framing is understated rather than overstated.** `compare-persistence` saves
+before it loads, so our side collects the 8.1% and numpy's side collects nothing. Taking
+it back off ours moves the published row from 0.25× to **0.23×** — from 4.0× behind
+`numpy.load` to **4.3×**. The gap #324 called the largest in this comparison is larger
+than the table says.
+
 ### Pre-sizing the file, and why it is not done (issue #432)
 
 Step 1's fourth item, and the decision is

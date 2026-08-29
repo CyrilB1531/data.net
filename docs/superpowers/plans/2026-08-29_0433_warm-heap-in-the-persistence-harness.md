@@ -385,6 +385,153 @@ The gates read declarations and replay corpora. None of them reads whether a mea
 
 Body carries the four numbers, the machine, the load averages, and `Closes #433`.
 
+## Execution log — Task 1, run 2026-08-29
+
+**Task 1 is built and Step 5 stopped the lot**, which is what Step 5 is for.
+
+**Two design faults the plan's own checks caught.**
+
+The first was mine before a line ran: the draft used `GC.Collect` to make the cold state cold,
+and SonarAnalyzer's S1215 refused it. The analyser was right for a better reason than it knew —
+a process that has already *built and saved* an index to obtain the artifact bytes is not cold,
+and no collection makes it so. Hence a `prepare` subcommand: it writes the artifact once, and the
+cold process then only reads bytes, having built and saved nothing.
+
+The second was real and would have published a wrong finding. The first warm state saved **before
+each load**, and measured cold *faster* than warm, stably, across three rounds — the opposite of
+the hypothesis. That is not the subsidy reversing; it is a save inside the measured loop producing
+20 MB of garbage per round that competes with the load. `compare-persistence` does not do that: it
+measures every save, then every load. Moved the warming saves ahead of the loop and the stable
+"result" dissolved.
+
+**Step 4's soundness check passes.** Load allocation is **37 069 648 bytes cold against
+37 069 848 warm** — 200 bytes apart on 37 MB. The two states run the same workload on two heaps,
+which is the premise the whole comparison rests on.
+
+**Step 5's stability check fails, so there is no figure.**
+
+| round | cold median | warm median | cold min | warm min |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 93.389 ms | 35.686 ms | 13.466 | 12.341 |
+| 2 | 40.472 ms | 40.104 ms | 14.114 | 12.117 |
+| 3 | 23.854 ms | 30.545 ms | 14.823 | 16.299 |
+
+Warm faster, level, then slower. The median of one state swings **4× between rounds** — 93 to 40
+to 24 cold — with p75 values of 116–146 ms against minima of 13. Something on this shared
+container takes time in large blocks, and a row that allocates 37 MB per iteration is where it
+lands hardest.
+
+**Conditions.** Four cores of an Intel Xeon @ 2.80GHz, .NET 10, a shared cloud container, load
+average 0.79–1.27. The same machine ADR 0051 measured on, and the same lesson: shares taken inside
+one window transfer, absolutes do not.
+
+**What this leaves.** Tasks 2 to 5 are unchanged and unstarted. The instrument is committed, so
+the measurement is one command away from a machine that can hold still — and the machine is what
+[#461](https://github.com/CyrilB1531/lodestar/issues/461) provides: `Benchmark (on demand)`, a
+dispatch-only workflow, which has to land before it can be used because `workflow_dispatch` only
+sees a workflow on the default branch. Running `heap-warmth` there, or on the i7-4770S, is what
+unblocks this lot and therefore #435.
+
+## Execution log — Task 2, run 2026-08-29
+
+**The script as this plan wrote it was wrong in two ways, both inherited from being written
+before Task 1 ran.** Task 1 discovered its structure during execution; Task 2 was drafted
+against the structure Task 1 was expected to have.
+
+**It saved inside the timed loop.** `np.save(io.BytesIO(), vectors)` before each load is the
+exact shape that made the C# side report cold as *faster* than warm, stably, over three rounds —
+20 MB of garbage competing with the load rather than leaving a heap behind it. Moved to
+`WARMING_SAVES = 12` before the loop, mirroring `HeapWarmthBench.WarmingSaves`.
+
+**Its cold state was not cold.** The draft called `build_vectors()` and `np.save` unconditionally
+to construct the payload, so the process being measured as cold had already built 15 MB of floats
+and saved them. That is what the C# side's `prepare` subcommand exists to prevent. The Python
+script now has the same three subcommands, and `cold` reads bytes off disk.
+
+**A third, smaller.** `io.BytesIO(payload)` inside the loop copies 15 MB into the timed region;
+C# loads from a `byte[]` read before the loop. The stream is built once and rewound per run.
+
+**Soundness check: passes.** Both states report `array bytes 15,360,000`, and the artifact is
+15 360 128 on disk — the block plus numpy's 128-byte header, the same block the C# side writes.
+So this is one workload on two heaps.
+
+**Stability check: fails, as Task 1's did.** Three alternating rounds on the container:
+
+| round | cold median | warm median |
+| ---: | ---: | ---: |
+| 1 | 1.434 ms | 1.624 ms |
+| 2 | 1.589 ms | 1.461 ms |
+| 3 | 1.583 ms | 1.395 ms |
+
+Warm slower, then faster, then faster. Two of three one way is not a direction, and the gaps
+(~0.15 ms on 1.5) sit inside each state's own spread. Far quieter than the C# side's 4× swing —
+numpy's load is 1.5 ms where ours is 24–93 — but unstable is unstable, and the plan's own Step 3
+says only an unstable ordering is a non-result.
+
+**Conditions.** Same container as Task 1, load average 0.22–0.34.
+
+**A fourth correction, after that table was taken.** The warming saves went to a
+`tempfile.TemporaryFile()`, where the C# side saves to a `MemoryStream`. That warms the page
+cache rather than the process's own allocator, which is the thing under test. Changed to
+`io.BytesIO()` and re-run: cold 1.499 / 1.420 / 1.546, warm 1.545 / 1.661 / 1.556 — warm slower
+in three of three now, where the disk-warmed table had it slower in one. Both readings are inside
+the container's noise and neither is being published; what it shows is that the two versions were
+not measuring the same thing, and the table above is kept only as the record of that.
+
+**What this changes about the remaining tasks.** Nothing in their content. One thing in the
+method: `Benchmark (on demand)` had no Python step, so a dispatch would have measured the C# ratio
+on a runner and left the numpy ratio on the container. Two ratios from two machines compare the
+machines as much as the languages, which is the failure this whole lot exists to name. The
+workflow now installs `tools/requirements.lock.txt` when — and only when — the subcommand is
+`heap-warmth`, and runs all four states inside one round.
+
+**Task 3 stays blocked**, and on the same thing it was: a machine that holds still.
+
+## Execution log — Tasks 3 and 4, run 2026-08-29
+
+**Three dispatches, and the first two were mine to fix.** Run 1 caught the merge commit,
+before the Python half existed, so it measured one language. Run 2 measured both and the
+numpy side came back unstable — warm slower in one round of three, faster in two, with
+the spread wider than the C# effect it would be compared against. Three rounds was not
+enough to say "numpy has no subsidy", and that sentence is half of what Task 3 Step 3
+exists to write, so nothing was published off it. Run 3 took nine.
+
+**Run 3.** AMD EPYC 7763, 4 cores, load average 4.20 → 2.75, nine alternating rounds,
+all four states inside each round.
+
+| | cold | warm | warm/cold | warm faster |
+| --- | ---: | ---: | ---: | ---: |
+| `EmbeddingIndex.Load` | 18.101 ms | 16.559 ms | 0.919 | 9 of 9 |
+| `np.load` | 1.382 ms | 1.316 ms | 1.001 | 4 of 9 |
+
+Sign test on the paired ratios: p = 0.004 for C#, p = 1.0 for numpy. **The ratio column
+is the median of nine paired ratios, not the quotient of the two medians** — that
+quotient puts numpy at 1.05× and is an artefact of pairing a cold median from one round
+with a warm median from another. The alternation exists to make the pairing available;
+not using it would have thrown the design away at the last step and reported a numpy
+subsidy that is not there.
+
+**The GC counts decide it, not the milliseconds.** 4/4/4 cold against 3/3/3 warm, every
+round, with allocation 200 bytes apart in 37 MB. One fewer collection for the same work
+is a mechanism; 1.5 ms on 18 is a number that needs nine rounds to be believed.
+
+**Task 3 written.** `bench/README.md` §7's "on the order of 20%" is replaced by 8.1% and
+says so, including that the two disagree by 2.5× and why the inference was too wide a
+thing to quote to a digit. §9 carries the table and the conditions. The guide carries
+both, plus the consequence Step 3 asks for in its own words: the published ratio flatters
+us, 0.25× → 0.23×, and #324's "furthest behind" is **understated**.
+
+**Task 4 decided against the split, per Step 2b.** 8.1% moves a published row from 4.0×
+behind to 4.3× behind, which changes no reader's conclusion, and a split would cost the
+back-to-back pairing that makes the cross-language rows comparable at all. No ADR, a
+paragraph in §7, and `heap-warmth` stays committed so the next doubt is re-run rather
+than re-argued.
+
+**Two things this did to neighbouring files.** `bench/README.md`'s last section was
+unnumbered where every other one is numbered, and §9 needed to point at it; it is
+section 10 now. And `Benchmark (on demand)` grew a Python step and a `tee`, both
+recorded in the Task 2 log above.
+
 ## What this plan does not do
 
 - **It does not optimise the load.** #434 is closed as already done; #435 reuses buffers; #436 memory-maps and is blocked on a format. A subsidy this lot merely measures is one those lots will each change, and fixing it here would take their evidence away.
