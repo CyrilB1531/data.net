@@ -1,3 +1,5 @@
+using System.Text;
+using System.Buffers.Binary;
 using Lodestar.Embeddings.Persistence;
 using Xunit;
 
@@ -158,5 +160,74 @@ public sealed class NpyFileTests
     public void A_shape_that_does_not_describe_the_block_is_refused(int[] shape)
     {
         Assert.Throws<ArgumentException>(() => NpyFile.Write(new MemoryStream(), [1f, 2f, 3f, 4f], shape));
+    }
+    [Fact]
+    public void A_block_past_a_million_elements_reads_at_the_default_options()
+    {
+        // 2 605 x 384 is a small embedding block and 1 000 320 elements, refused before #468
+        // because MaxArrayLength was applied to elements rather than to the vectors it counts.
+        const int Rows = 2_605, Columns = 384;
+        var values = new float[Rows * Columns];
+        for (int i = 0; i < values.Length; i++)
+        {
+            values[i] = i % 97;
+        }
+
+        using var written = new MemoryStream();
+        NpyFile.Write(written, values, Rows, Columns);
+        written.Position = 0;
+
+        NpyBlock read = NpyFile.Read(written);
+
+        Assert.Equal(values.Length, read.Values.Length);
+        Assert.Equal([Rows, Columns], read.Shape);
+        Assert.Equal(values[^1], read.Values.Span[^1]);
+    }
+
+    [Fact]
+    public void A_header_declaring_more_elements_than_MaxTotalBytes_allows_is_refused()
+    {
+        // Hand-built, because numpy will not write a header whose shape its data does not
+        // hold. That is the only way to reach the bound: a real file is refused earlier.
+        byte[] hostile = Declaring("1000000, 1000");
+
+        InvalidDataException refused =
+            Assert.Throws<InvalidDataException>(() => NpyFile.Read(new MemoryStream(hostile)));
+
+        Assert.Contains("1000000000 elements", refused.Message, StringComparison.Ordinal);
+        Assert.Contains("MaxTotalBytes", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_payload_past_MaxTotalBytes_is_refused_while_being_read()
+    {
+        const int Rows = 2_605, Columns = 384;
+        using var written = new MemoryStream();
+        NpyFile.Write(written, new float[Rows * Columns], Rows, Columns);
+        written.Position = 0;
+
+        // Refused by the read, before the header is parsed at all -- which is why the test
+        // above has to build its own header to reach the shape bound.
+        var options = new ArtifactLoadOptions { MaxTotalBytes = (Rows * Columns * sizeof(float)) - 1 };
+
+        Assert.Throws<InvalidDataException>(() => NpyFile.Read(written, options));
+    }
+
+    /// <summary>A well-formed v1.0 header for <paramref name="shape"/>, and no data at all.</summary>
+    private static byte[] Declaring(string shape)
+    {
+        string dictionary = $"{{'descr': '<f4', 'fortran_order': False, 'shape': ({shape}), }}";
+        int unpadded = 10 + dictionary.Length + 1;
+        string padded = dictionary + new string(' ', (64 - (unpadded % 64)) % 64) + "\n";
+        byte[] header = Encoding.ASCII.GetBytes(padded);
+
+        var file = new byte[10 + header.Length];
+        Encoding.ASCII.GetBytes("\u0093NUMPY").CopyTo(file, 0);
+        file[0] = 0x93;
+        file[6] = 1;
+        file[7] = 0;
+        BinaryPrimitives.WriteUInt16LittleEndian(file.AsSpan(8), (ushort)header.Length);
+        header.CopyTo(file, 10);
+        return file;
     }
 }
