@@ -1763,7 +1763,15 @@ curve to land. That memory is then held for the life of the process, not the lif
 
 So the trade is **20.5 MB not allocated per load against 33.5 MB resident forever**, which
 break-even puts at 1.63 loads. A caller who loads one index and serves queries from it — the
-ordinary case for an embedding index — pays the residency and collects nothing.
+ordinary case for an embedding index, and the shape every guide here demonstrates — pays the
+residency and collects nothing.
+
+**So it is not done**, and the decision is
+[ADR 0053](../decisions/0053-the-payload-buffer-is-not-pooled-because-residency-outlives-the-load.md).
+The change worked; it was refused on the sign of the trade rather than on its size. A caller who
+does load repeatedly can have the win without the library choosing it for everyone: rent a buffer,
+read into it, and hand it to [`EmbeddingIndex.Load`](../reference/embeddings/search/embeddingindex-load.md)`(ReadOnlyMemory<byte>)`, which parses in place
+and pools nothing.
 
 ### Pre-sizing the file, and why it is not done (issue #432)
 

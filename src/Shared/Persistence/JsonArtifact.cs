@@ -94,40 +94,11 @@ internal static class JsonArtifact
         Guard.NotNull(stream);
         CheckDeclaredLength(stream, limits);
 
-        if (TryReadDeclaredLength(stream, limits.MaxSingleBuffer, pooled: false, out byte[] exact, out int filled))
+        if (TryReadDeclaredLength(stream, limits.MaxSingleBuffer, out byte[] exact, out int filled))
         {
             return new ReadOnlyMemory<byte>(exact, 0, filled);
         }
 
-        return ReadGrowable(stream, limits);
-    }
-
-    /// <summary>As <see cref="ReadAllBytes"/>, but the buffer is rented and the caller returns it.</summary>
-    /// <remarks>
-    /// For a call site that parses the payload and keeps nothing of it, which is the load
-    /// paths: the bytes become strings and arrays of their own, so the buffer is dead the
-    /// moment parsing ends. <b>Never below a method that also serves a caller's own memory</b>
-    /// — <c>EmbeddingIndex.FromPayload</c> is reached from a public overload taking
-    /// <see cref="ReadOnlyMemory{T}"/>, and pooling there would return a caller's buffer.
-    /// </remarks>
-    public static Buffers.RentedPayload ReadAllBytesPooled(Stream stream, in ArtifactLimits limits)
-    {
-        Guard.NotNull(stream);
-        CheckDeclaredLength(stream, limits);
-
-        if (TryReadDeclaredLength(stream, limits.MaxSingleBuffer, pooled: true, out byte[] rented, out int filled))
-        {
-            return Buffers.RentedPayload.Rented(rented, filled);
-        }
-
-        // Nothing to rent against without a declared length: the growable path sizes itself
-        // as it reads and owns the buffer it grows, which is not the pool's to take back.
-        return Buffers.RentedPayload.Borrowed(ReadGrowable(stream, limits));
-    }
-
-    /// <summary>Reads to the end of a stream whose length is not known up front.</summary>
-    private static ReadOnlyMemory<byte> ReadGrowable(Stream stream, in ArtifactLimits limits)
-    {
         var buffer = new byte[CopyBufferSize];
         using var accumulated = new MemoryStream();
         int read;
@@ -322,8 +293,7 @@ internal static class JsonArtifact
     /// can hold, or the stream holds more than declared — the position is then put back so the caller's
     /// growable path reads the whole thing rather than the prefix this would have truncated it to.
     /// </remarks>
-    private static bool TryReadDeclaredLength(
-        Stream stream, long maxSingleBuffer, bool pooled, out byte[] buffer, out int filled)
+    private static bool TryReadDeclaredLength(Stream stream, long maxSingleBuffer, out byte[] buffer, out int filled)
     {
         buffer = [];
         filled = 0;
@@ -339,28 +309,18 @@ internal static class JsonArtifact
             return false;
         }
 
-        // Every bound below is `length`, never buffer.Length: a rented array is at least as
-        // long as asked, so the two are the same number only on the allocating path.
-        int length = (int)declared;
-
-        // Uninitialized or rented: the loop fills it, and the caller is handed only the
+        // Uninitialized: the loop below fills it, and the caller is handed only the
         // prefix `filled` covers, so nothing past what the stream gave is ever read.
-        buffer = pooled
-            ? ArrayPool<byte>.Shared.Rent(length)
-            : Buffers.AllocateUninitialized<byte>(length);
+        buffer = Buffers.AllocateUninitialized<byte>((int)declared);
         int read;
-        while (filled < length && (read = stream.Read(buffer, filled, length - filled)) > 0)
+        while (filled < buffer.Length && (read = stream.Read(buffer, filled, buffer.Length - filled)) > 0)
         {
             filled += read;
         }
 
-        if (filled == length && stream.ReadByte() >= 0)
+        if (filled == buffer.Length && stream.ReadByte() >= 0)
         {
             stream.Position = origin;
-            if (pooled)
-            {
-                ArrayPool<byte>.Shared.Return(buffer);
-            }
             buffer = [];
             filled = 0;
             return false;

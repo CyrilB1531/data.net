@@ -1,5 +1,3 @@
-using System.Buffers;
-
 namespace Lodestar.Internal.Persistence;
 
 /// <summary>Allocation for the two blocks an artifact load fills whole.</summary>
@@ -30,45 +28,4 @@ internal static class Buffers
 #else
         new T[length];
 #endif
-
-    /// <summary>A payload buffer and the exact bytes that were read into it.</summary>
-    /// <remarks>
-    /// The rent and the return live together so no call site can hold one without the
-    /// other, the way <c>ArtifactIo.SaveWithBlock</c> owns the writer sequence (ADR 0051).
-    /// <see cref="Memory"/> is sliced to what was read, never to the buffer: a rented array
-    /// is at least as long as asked and <b>its tail holds the previous artifact</b>.
-    /// A payload that could not be rented against is carried here too, owning nothing, so
-    /// the call site has one shape rather than a branch it could get wrong.
-    /// </remarks>
-    internal readonly struct RentedPayload : IDisposable
-    {
-        private readonly byte[]? _rented;
-
-        private RentedPayload(byte[]? rented, ReadOnlyMemory<byte> memory)
-        {
-            _rented = rented;
-            Memory = memory;
-        }
-
-        /// <summary>The bytes read, and only those.</summary>
-        public ReadOnlyMemory<byte> Memory { get; }
-
-        /// <summary>Takes ownership of <paramref name="buffer"/>, exposing its first <paramref name="filled"/> bytes.</summary>
-        public static RentedPayload Rented(byte[] buffer, int filled) =>
-            new(buffer, new ReadOnlyMemory<byte>(buffer, 0, filled));
-
-        /// <summary>Carries memory this does not own; <see cref="Dispose"/> is then a no-op.</summary>
-        public static RentedPayload Borrowed(ReadOnlyMemory<byte> memory) => new(null, memory);
-
-        /// <summary>Returns the buffer to the pool, if there was one.</summary>
-        public void Dispose()
-        {
-            // Not cleared. Returning 20 MB zeroed costs the memset this lot exists to avoid,
-            // and the pool is process-local: the bytes were already the caller's own artifact.
-            if (_rented is not null)
-            {
-                ArrayPool<byte>.Shared.Return(_rented);
-            }
-        }
-    }
 }
