@@ -322,6 +322,33 @@ internal static class Lot3Embeddings
         EmbeddingIndex fromMemory = EmbeddingIndex.Load(artifact.ToArray().AsMemory());
         Console.WriteLine($"  From memory      : {fromMemory.Count} vectors, "
             + $"same best '{fromMemory.GetId(fromMemory.Search([1f, 0f, 0f], k: 1)[0].Index)}'");
+
+        // Interop, not a second artifact format: a .npy carries the floats and their
+        // shape, and none of the ids or flags an index needs (#450).
+        float[] matrix = [1f, 0f, 0f, 0f, 1f, 0f];
+        using var npy = new MemoryStream();
+        NpyFile.Write(npy, matrix, 2, 3);
+        npy.Position = 0;
+        NpyBlock block = NpyFile.Read(npy);
+        Console.WriteLine($"  .npy round trip  : {string.Join("x", block.Shape)} "
+            + $"= {block.Values.Length} floats, first {Inv.F4(block.Values.Span[0])}");
+
+        string npyPath = Path.Combine(Path.GetTempPath(), $"lodestar-sample-{Environment.ProcessId}.npy");
+        try
+        {
+            NpyFile.Write(npyPath, matrix, 3, 2);
+            NpyBlock fromFile = NpyFile.Read(npyPath);
+            Console.WriteLine($"  .npy from a file : {string.Join("x", fromFile.Shape)}");
+        }
+        finally
+        {
+            File.Delete(npyPath);
+        }
+
+        // Constructed rather than read: the same shape a caller hands to Write.
+        var literal = new NpyBlock(matrix.AsMemory(), [2, 3]);
+        Console.WriteLine($"  .npy block       : {string.Join("x", literal.Shape)} "
+            + $"over {literal.Values.Length} floats");
         Console.WriteLine();
     }
 
