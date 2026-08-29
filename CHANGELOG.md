@@ -33,6 +33,8 @@ is one sentence, the issue and the commit; see
 
 #### Added
 
+- `bench/Lodestar.Text.Benchmarks -- sidecar` prices a binary sidecar against the JSON artifact in bytes and in time, and [decision 0055](docs/decisions/0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md) takes one — conditional on a bulk ingest into `EmbeddingIndex`, without which the sidecar route is slower than what it replaces. No shipped behaviour changes yet. ([#436](https://github.com/CyrilB1531/lodestar/issues/436), [`7ab80d1`](https://github.com/CyrilB1531/lodestar/commit/7ab80d1))
+
 - **numpy's `.npy` reads and writes, for the vector block only.** `NpyFile.Read` and `NpyFile.Write` carry a contiguous `float32` block in numpy's own format, returning an `NpyBlock` of the values and the shape; the header is parsed against a fixed grammar and never evaluated, so `descr: '|O'` — numpy's pickle-backed dtype — is refused by name before the payload is touched. It is interop and not a second artifact format: a `.npy` carries no ids, no normalize flag and no schema, so `EmbeddingIndex.Save` is untouched and [decision 0011](docs/decisions/0011-persistence-format.md) is not reopened. ([#450](https://github.com/CyrilB1531/lodestar/issues/450), [`0f05972`](https://github.com/CyrilB1531/lodestar/commit/0f05972))
 
 #### Fixed

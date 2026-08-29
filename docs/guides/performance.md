@@ -1775,6 +1775,40 @@ what costs is the large-object collection the allocation provokes and not the al
 amends 0053 and takes the trade: 33.5 MB resident is a price this library pays for load time,
 which is what it publishes.
 
+### What a binary sidecar would buy, and what it needs first (issue #436)
+
+[ADR 0011](../decisions/0011-persistence-format.md) said to argue a binary format on size rather
+than speed, and [0051](../decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md)
+agreed for the write side. **Both are statements about base64**, and both are right about it. A
+JSON artifact is base64 *inside a document that has to be scanned and validated*, and nobody had
+measured that difference. `sidecar` does.
+
+**Size**, exact: the artifact is 20 589 007 bytes, of which 20 480 000 is the encoded block and
+109 007 is the head — schema, flags and 10 000 ids. A `.npy` block plus that same head is
+15 469 135, so **1.331× smaller**, 5.12 MB.
+
+**Time**, medians of nine on a hosted runner:
+
+| | median |
+| --- | ---: |
+| [`EmbeddingIndex.Load`](../reference/embeddings/search/embeddingindex-load.md), payload pooled | 11.834 ms |
+| [`NpyFile.Read`](../reference/embeddings/persistence/npyfile-read.md) | 5.236 ms |
+| sidecar floor — the read plus one copy into a backing store | **5.847 ms** |
+| rebuild the index through `Add`, per vector | 17.973 ms |
+
+**`load / floor` is 2.02×**, so a sidecar has half the artifact load's cost available to it — a
+time argument 0011 did not expect to exist, because the base64 is not where it lives.
+
+**`load / rebuild` is 0.66×**, and that is the sentence to carry away. `EmbeddingIndex` has no way
+to take a block whole: `Add` copies one vector at a time and costs three times the read it
+follows, so **the sidecar route that exists today is slower than the artifact it would replace.**
+[ADR 0055](../decisions/0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md)
+takes the sidecar and makes the bulk ingest its precondition, in that order.
+
+**Do not take these numbers from a container.** The same four rows there put `load / floor` at
+0.73× — the opposite conclusion — with the floor row spread over 12–43 ms against the runner's
+4.0–8.5.
+
 ### Pre-sizing the file, and why it is not done (issue #432)
 
 Step 1's fourth item, and the decision is
