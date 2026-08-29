@@ -37,6 +37,15 @@ skill answers to `subagent-driven-development`. Existing plans keep the namespac
 they were written against the plugin and rewriting history to match a packaging choice would be the
 wrong repair.
 
+## What CI does with them
+
+`sonar.exclusions` and `sonar.coverage.exclusions` in `.github/workflows/sonarcloud.yml` name
+`.claude/**`. The quality gate judges **new** code, so the twelve scripts these skills carry
+arrived as new code and failed it — and a finding in a dependency this project does not maintain
+is one it cannot act on without forking. The other guards are **not** excluded: `check_machine_paths`
+and `check_comment_length` see every tracked file and pass over this tree, which is worth knowing
+before taking an upstream version that would not.
+
 ## Updating
 
 Re-clone at a chosen tag, copy `skills/` and `LICENSE` over, and update the version and commit at

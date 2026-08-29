@@ -108,6 +108,15 @@ jobs:
       # directory is ~4.5 MB of generated JSON corpora, which are frozen
       # reference data rather than something to analyse.
       #
+      # .claude/skills/ is vendored third-party code — obra/superpowers, MIT, at a
+      # pinned commit — and the gate judges *new* code, so the twelve scripts those
+      # skills carry (JavaScript, TypeScript, shell) arrived as new code and failed
+      # it. Excluding them is not lowering the bar: a finding in a dependency we do
+      # not maintain is one we cannot act on without forking it, and the gate exists
+      # to hold this project to its own standard. Updating the vendored copy is a
+      # deliberate commit (.claude/skills/README.md), which is where a decision to
+      # take or refuse upstream's code belongs.
+      #
       # Both exclusion properties are set because a file is indexed as either
       # main or test source, and these belong to no project's compilation — they
       # are copied to output as `None Include=...`, so which bucket the MSBuild
@@ -163,8 +172,8 @@ jobs:
             /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
             /d:sonar.python.version="3.12" \
             /d:sonar.projectBaseDir="$GITHUB_WORKSPACE" \
-            /d:sonar.coverage.exclusions="tools/**,bench/**,samples/**" \
-            /d:sonar.exclusions="tests/oracles/**,samples/Lodestar.DocSnippets/Generated/**,tools/tests/**,assets/**" \
+            /d:sonar.coverage.exclusions="tools/**,bench/**,samples/**,.claude/**" \
+            /d:sonar.exclusions="tests/oracles/**,samples/Lodestar.DocSnippets/Generated/**,tools/tests/**,assets/**,.claude/**" \
             /d:sonar.test.exclusions="tests/oracles/**"
 
       - name: Build the solution
