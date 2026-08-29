@@ -51,12 +51,28 @@ wrong repair.
 
 ## What CI does with them
 
-**Nothing is excluded from anything.** The vendored tree goes through the same guards and the same
-Sonar analysis as the rest of the repository — `check_machine_paths`, `check_comment_length` and
-the quality gate all see it and all pass. That is deliberate: an exclusion would mean the next
-upstream version could bring in anything without a single check noticing. **If a future update
-trips a gate, the answer is to decide about that file — take it, drop it as the companion was
-dropped, or fork it — rather than to widen an exclusion.**
+`sonar.exclusions` and `sonar.coverage.exclusions` name `.claude/**`, and that was established by
+experiment rather than assumed. Three runs on [#455](https://github.com/CyrilB1531/lodestar/pull/455):
+
+| `.claude/**` excluded | companion present | quality gate | code scanning |
+| :---: | :---: | --- | --- |
+| no | yes | FAILED | 9 alerts |
+| yes | yes | PASSED | 9 alerts |
+| no | no | FAILED | clean |
+
+The gate follows the exclusion and the security alerts follow the companion — two independent
+things, and an earlier commit here claimed "nothing is excluded from anything", which the third
+run disproved. **The gate's condition is not one better code would satisfy**: it wants coverage on
+new code, and a dependency's shell helpers cannot be unit-tested into this project's coverage
+report.
+
+**What the exclusion does not silence is the part that matters.** SonarCloud also exports to GitHub
+code scanning, and that channel found the 723-line HTTP server regardless. Security findings still
+arrive.
+
+`check_machine_paths` and `check_comment_length` are **not** excluded either — they see every
+tracked file and pass over this tree, which is worth knowing before taking an upstream version
+that would not.
 
 ## Updating
 
