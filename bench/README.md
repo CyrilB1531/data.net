@@ -1200,17 +1200,40 @@ is what that decided, amending 0053, which had refused pooling without ever timi
 
 ## 12. What a binary sidecar would buy (issue #436)
 
-Four rows, interleaved one round each:
+Six rows, interleaved one round each:
 
 ```bash
 dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- sidecar
 ```
 
-The artifact against a `.npy` block plus the head a sidecar would still have to write, and four
+The artifact against a `.npy` block plus the head a sidecar would still have to write, and six
 timings: the artifact load, the block read, a **floor** — the read plus one copy into a backing
-store, which is what a bulk ingest would do — and the rebuild through `Add` that is what exists
-today. The floor is a bound in the sense section 8's `block_copy_floor` is one: a route
-`EmbeddingIndex` has no method for, measured so the method can be judged against it.
+store, which is what a bulk ingest would do — the rebuild through `Add` that was the only route
+before issue #474, and the two rows that lot added:
+
+- `ingest copy` is the sidecar route as it will exist: the block read, then
+  `EmbeddingIndex.FromBlock`. It is the row #474's gate is read off — landing with `sidecar floor`
+  is the finding, and landing near `rebuild index` instead is the refusal.
+- `ingest only` is the ingest alone, on a block already in hand, so a later regression in the read
+  or in the ingest can be attributed to one of them rather than to their sum.
+
+The floor is a bound in the sense section 8's `block_copy_floor` is one: a route measured so the
+method that would take it can be judged against it.
+
+**The floor and the ingest do not allocate the same way, and the asymmetry runs in the ingest's
+favour.** `sidecar floor` takes its backing store from `new float[...]`, which the CLR zero-fills,
+while `EmbeddingIndex.FromBlock` allocates through the library's own uninitialized allocation and
+skips the zeroing. Both are one copy, and not the same kind of one: the ingest is ahead by one
+memset of the block, about 15 MB at this corpus. It is stated rather than equalised, because the
+uninitialized allocation is internal to the library and this project consumes the published
+packages, and because re-cutting `sidecar floor` would invalidate the 5.847 ms
+[ADR 0055](../docs/decisions/0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md)
+published, which is the bar this lot is judged against. So `ingest copy` landing at or above the
+floor is still a sound refusal, while `ingest copy` landing below it must not be read as beating
+the floor by the whole margin.
+
+There is no row for `FromOwnedBlock`. It assigns four fields and is constant time whatever the
+block's size, so its ceiling is the `read npy block` row and a row of its own would publish noise.
 
 On a hosted runner: the sidecar is **1.331× smaller** and its floor is **2.02× faster** than the
 artifact load, while the rebuild route is **0.66×** — slower than what it would replace.
