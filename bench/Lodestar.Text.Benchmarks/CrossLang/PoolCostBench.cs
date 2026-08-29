@@ -36,7 +36,7 @@ internal static class PoolCostBench
             ("rent    ", RentAndReturn),
         ];
 
-        double[][] samples = Interleave(rows);
+        double[][] samples = Rounds.Interleave(rows, Repeats, WarmupRuns);
 
         string report =
             $"payload         {PayloadBytes,12:N0} bytes{Environment.NewLine}" +
@@ -45,10 +45,10 @@ internal static class PoolCostBench
             string.Join(
                 Environment.NewLine,
                 rows.Select((row, i) =>
-                    $"{row.Name}        median {Median(samples[i]),7:F3}  min {samples[i].Min(),7:F3}  max {samples[i].Max(),7:F3} ms")) +
+                    $"{row.Name}        median {Rounds.Median(samples[i]),7:F3}  min {samples[i].Min(),7:F3}  max {samples[i].Max(),7:F3} ms")) +
             Environment.NewLine +
-            $"{Environment.NewLine}rent is {Median(samples[0]) / Median(samples[1]):F2}x the allocation, " +
-            $"saving {Median(samples[0]) - Median(samples[1]):F3} ms per load";
+            $"{Environment.NewLine}rent is {Rounds.Median(samples[0]) / Rounds.Median(samples[1]):F2}x the allocation, " +
+            $"saving {Rounds.Median(samples[0]) - Rounds.Median(samples[1]):F3} ms per load";
 
         // console-print: this subcommand's whole output, and one call so one marker covers it.
         Console.WriteLine(report);
@@ -83,34 +83,5 @@ internal static class PoolCostBench
         }
     }
 
-    private static double[][] Interleave((string Name, Action Work)[] rows)
-    {
-        foreach ((_, Action work) in rows)
-        {
-            for (int warmup = 0; warmup < WarmupRuns; warmup++)
-            {
-                work();
-            }
-        }
 
-        double[][] samples = [.. rows.Select(_ => new double[Repeats])];
-        for (int run = 0; run < Repeats; run++)
-        {
-            for (int row = 0; row < rows.Length; row++)
-            {
-                long start = Stopwatch.GetTimestamp();
-                rows[row].Work();
-                samples[row][run] = (Stopwatch.GetTimestamp() - start) * 1000.0 / Stopwatch.Frequency;
-            }
-        }
-
-        return samples;
-    }
-
-    private static double Median(double[] samples)
-    {
-        var sorted = (double[])samples.Clone();
-        Array.Sort(sorted);
-        return sorted[sorted.Length / 2];
-    }
 }

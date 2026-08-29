@@ -57,8 +57,8 @@ internal static class SidecarBench
             ("sidecar floor ", () => Floor(npy, count, dimension)),
         ];
 
-        double[][] samples = Interleave(rows);
-        double[] medians = [.. samples.Select(Median)];
+        double[][] samples = Rounds.Interleave(rows, Repeats, WarmupRuns);
+        double[] medians = [.. samples.Select(Rounds.Median)];
 
         string report =
             $"artifact        {artifact.Length,12:N0} bytes{Environment.NewLine}" +
@@ -129,34 +129,5 @@ internal static class SidecarBench
         GC.KeepAlive(backing);
     }
 
-    private static double[][] Interleave((string Name, Action Work)[] rows)
-    {
-        foreach ((_, Action work) in rows)
-        {
-            for (int warmup = 0; warmup < WarmupRuns; warmup++)
-            {
-                work();
-            }
-        }
 
-        double[][] samples = [.. rows.Select(_ => new double[Repeats])];
-        for (int run = 0; run < Repeats; run++)
-        {
-            for (int row = 0; row < rows.Length; row++)
-            {
-                long start = Stopwatch.GetTimestamp();
-                rows[row].Work();
-                samples[row][run] = (Stopwatch.GetTimestamp() - start) * 1000.0 / Stopwatch.Frequency;
-            }
-        }
-
-        return samples;
-    }
-
-    private static double Median(double[] samples)
-    {
-        var sorted = (double[])samples.Clone();
-        Array.Sort(sorted);
-        return sorted[sorted.Length / 2];
-    }
 }
