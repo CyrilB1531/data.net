@@ -21,9 +21,8 @@ public sealed class EmbeddingIndexBlockTests
 
         EmbeddingIndex bulk = EmbeddingIndex.FromBlock(block, 2, BlockNormalization.Normalize);
 
-        // The index exposes no vector accessor, so equal scores for a query is what
-        // "the same bits" is observable as. Both paths call NormalizeStored, so this is
-        // exact equality rather than a tolerance.
+        // The index exposes no vector accessor, so equal scores for a query is what "the
+        // same bits" is observable as; both paths call NormalizeStored, making this exact.
         Assert.Equal(added.Search([1f, 1f], 3), bulk.Search([1f, 1f], 3));
     }
 

@@ -23,7 +23,7 @@ public sealed partial class EmbeddingIndex
         BlockNormalization normalization,
         IReadOnlyList<string?>? ids = null)
     {
-        int count = CheckBlock(block.Length, dimension, normalization, ids);
+        int count = CheckBlock(block.Length, dimension, normalization, ids, nameof(block));
 
         // Uninitialized: every element is written by the copy that follows.
         float[] data = Buffers.AllocateUninitialized<float>(block.Length);
@@ -36,7 +36,8 @@ public sealed partial class EmbeddingIndex
         int length,
         int dimension,
         BlockNormalization normalization,
-        IReadOnlyList<string?>? ids)
+        IReadOnlyList<string?>? ids,
+        string blockParamName)
     {
         Guard.NotLessThan(dimension, 1);
 
@@ -52,12 +53,11 @@ public sealed partial class EmbeddingIndex
 
         if (length % dimension != 0)
         {
-            // "block" as a literal, not nameof: the parameter belongs to the two factories
-            // that call this, and theirs is the name a caller has to read.
-#pragma warning disable S3928, CA2208
+            // The name comes from the caller: this validates for two factories, and the
+            // parameter a caller has to read is theirs, not this method's `length`.
             throw new ArgumentException(
-                $"block length {length} is not a multiple of dimension {dimension}.", "block");
-#pragma warning restore S3928, CA2208
+                $"block length {length} is not a multiple of dimension {dimension}.",
+                blockParamName);
         }
 
         int count = length / dimension;
