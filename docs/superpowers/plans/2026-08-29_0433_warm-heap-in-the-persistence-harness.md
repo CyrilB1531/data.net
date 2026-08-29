@@ -432,6 +432,53 @@ dispatch-only workflow, which has to land before it can be used because `workflo
 sees a workflow on the default branch. Running `heap-warmth` there, or on the i7-4770S, is what
 unblocks this lot and therefore #435.
 
+## Execution log — Task 2, run 2026-08-29
+
+**The script as this plan wrote it was wrong in two ways, both inherited from being written
+before Task 1 ran.** Task 1 discovered its structure during execution; Task 2 was drafted
+against the structure Task 1 was expected to have.
+
+**It saved inside the timed loop.** `np.save(io.BytesIO(), vectors)` before each load is the
+exact shape that made the C# side report cold as *faster* than warm, stably, over three rounds —
+20 MB of garbage competing with the load rather than leaving a heap behind it. Moved to
+`WARMING_SAVES = 12` before the loop, mirroring `HeapWarmthBench.WarmingSaves`.
+
+**Its cold state was not cold.** The draft called `build_vectors()` and `np.save` unconditionally
+to construct the payload, so the process being measured as cold had already built 15 MB of floats
+and saved them. That is what the C# side's `prepare` subcommand exists to prevent. The Python
+script now has the same three subcommands, and `cold` reads bytes off disk.
+
+**A third, smaller.** `io.BytesIO(payload)` inside the loop copies 15 MB into the timed region;
+C# loads from a `byte[]` read before the loop. The stream is built once and rewound per run.
+
+**Soundness check: passes.** Both states report `array bytes 15,360,000`, and the artifact is
+15 360 128 on disk — the block plus numpy's 128-byte header, the same block the C# side writes.
+So this is one workload on two heaps.
+
+**Stability check: fails, as Task 1's did.** Three alternating rounds on the container:
+
+| round | cold median | warm median |
+| ---: | ---: | ---: |
+| 1 | 1.434 ms | 1.624 ms |
+| 2 | 1.589 ms | 1.461 ms |
+| 3 | 1.583 ms | 1.395 ms |
+
+Warm slower, then faster, then faster. Two of three one way is not a direction, and the gaps
+(~0.15 ms on 1.5) sit inside each state's own spread. Far quieter than the C# side's 4× swing —
+numpy's load is 1.5 ms where ours is 24–93 — but unstable is unstable, and the plan's own Step 3
+says only an unstable ordering is a non-result.
+
+**Conditions.** Same container as Task 1, load average 0.22–0.34.
+
+**What this changes about the remaining tasks.** Nothing in their content. One thing in the
+method: `Benchmark (on demand)` had no Python step, so a dispatch would have measured the C# ratio
+on a runner and left the numpy ratio on the container. Two ratios from two machines compare the
+machines as much as the languages, which is the failure this whole lot exists to name. The
+workflow now installs `tools/requirements.lock.txt` when — and only when — the subcommand is
+`heap-warmth`, and runs all four states inside one round.
+
+**Task 3 stays blocked**, and on the same thing it was: a machine that holds still.
+
 ## What this plan does not do
 
 - **It does not optimise the load.** #434 is closed as already done; #435 reuses buffers; #436 memory-maps and is blocked on a format. A subsidy this lot merely measures is one those lots will each change, and fixing it here would take their evidence away.

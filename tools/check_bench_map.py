@@ -36,6 +36,7 @@ PYTHON_DIR = ROOT / "bench" / "python"
 
 CLASS = re.compile(r"^\s*public\s+class\s+(\w+)", re.MULTILINE)
 SUBCOMMAND = re.compile(r'args\[0\] == "(compare[a-z-]*)"')
+ANY_SUBCOMMAND = re.compile(r'args\[0\] == "([a-z][a-z-]*)"')
 
 
 def declared_classes() -> dict[str, pathlib.Path]:
@@ -59,10 +60,39 @@ def declared_harnesses() -> set[str]:
     return found
 
 
-def harness_findings(harnesses: dict) -> list[str]:
+def diagnostic_findings(diagnostics: list) -> list[str]:
+    """A diagnostic is exempt from the nightly, not from existing.
+
+    roc-parallel, save-phases and heap-warmth answer a question a lot asks once, so no
+    harness names them and the nightly never runs one. That is deliberate. What is not
+    deliberate is a renamed subcommand or a deleted script leaving an entry pointing at
+    nothing, which is the same rot the harness rules catch.
+    """
+    program = PROGRAM.read_text(encoding="utf-8") if PROGRAM.exists() else ""
+    dispatched = set(ANY_SUBCOMMAND.findall(program))
+
+    findings = [
+        f"bench/bench-map.json: diagnostic '{entry['subcommand']}' is not dispatched by "
+        f"bench/Lodestar.Text.Benchmarks/Program.cs"
+        for entry in diagnostics if entry.get("subcommand") not in dispatched
+    ]
+    findings += [
+        f"bench/bench-map.json: diagnostic '{entry['subcommand']}' names {entry['python']}, "
+        f"which does not exist"
+        for entry in diagnostics
+        if "python" in entry and not (ROOT / entry["python"]).exists()
+    ]
+    return findings
+
+
+def harness_findings(harnesses: dict, diagnostics: list) -> list[str]:
     """A comparison the map does not carry is one the nightly never runs."""
     mapped_subcommands = {entry.get("subcommand") for entry in harnesses.values()}
     mapped_python = {pathlib.Path(entry.get("python", "")).name for entry in harnesses.values()}
+    # A diagnostic's Python half is named here rather than by a harness, on purpose.
+    mapped_python |= {
+        pathlib.Path(entry["python"]).name for entry in diagnostics if "python" in entry
+    }
     declared = declared_harnesses()
 
     findings = [
@@ -131,8 +161,10 @@ def main() -> int:
         return 1
 
     data = json.loads(MAP.read_text(encoding="utf-8"))
+    diagnostics = data.get("diagnostics", [])
     findings = coverage_findings(data.get("benchmarks", {}), declared_classes())
-    findings += harness_findings(data.get("harnesses", {}))
+    findings += harness_findings(data.get("harnesses", {}), diagnostics)
+    findings += diagnostic_findings(diagnostics)
     findings += glob_findings(data)
 
     for finding in findings:

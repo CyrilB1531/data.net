@@ -1083,7 +1083,17 @@ Not a comparison and not a profile: **one operation, two processes.**
 dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- heap-warmth prepare
 dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- heap-warmth cold
 dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- heap-warmth warm
+
+python bench/python/bench_heap_warmth.py prepare
+python bench/python/bench_heap_warmth.py cold
+python bench/python/bench_heap_warmth.py warm
 ```
+
+**Both languages, or neither.** The finding is a ratio per language and the two ratios
+are then compared, so taking them on two machines compares the machines as much as the
+languages. `Benchmark (on demand)` runs all four states inside one round for that
+reason, and the Python side mirrors the C# structure rather than its code — three
+subcommands, the warming saves before the loop, the stream built outside the timer.
 
 `compare-persistence` measures every save, then every load, in one process — so by
 the time a load is timed the large-object heap has already been grown and its pages
