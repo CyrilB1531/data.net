@@ -281,3 +281,50 @@ Every `AsMemory`, `AsSpan` and `Slice` on the pooled path, against the byte coun
 - **It does not touch `Load(ReadOnlyMemory<byte>)`.** That overload parses the caller's memory and must keep doing so.
 - **It does not pool the tf-idf or vectorizer artifacts** unless Task 3 says they gain. They sit below the large-object-heap threshold, where none of this applies.
 - **It does not assume the trade is worth taking.**
+
+## Execution log — Task 1, run 2026-08-29
+
+**Answer: the payload escapes nowhere, so it is poolable — with two constraints the plan did not
+have and one it half-anticipated.**
+
+**The plan's Interfaces line was wrong about the scope.** It reads as though `ReadAllBytes` served
+the embedding path; it has **ten call sites across two packages** — the three vectorizers,
+`EmbeddingIndex`, `VocabTxtLoader`, `BpeFilesLoader`, `SentencePieceModelLoader`,
+`TokenizerJsonLoader` (three of them) and `NpyFile`. Pooling is per-call-site, because the site
+that consumes the buffer is the site that must return it, so this is the size of Task 2 rather
+than a detail.
+
+**Retention: none.** Every consumer takes `ReadOnlyMemory<byte>` as a *parameter* and none stores
+it in a field. `EmbeddingIndex.Parse` takes `payload.Span` and hands it to a `Utf8JsonReader`;
+ids come back from `reader.GetString()` as new strings and vectors from `Base64Numbers.ReadSingles`
+as its own `float[]`. The vectorizers, the vocabulary loaders and the SentencePiece loader return
+dictionaries, lists and strings that are allocated, not sliced.
+
+**Constraint 1 — `JsonDocument` does not copy.** `JsonDocument.Parse(ReadOnlyMemory<byte>, …)`
+retains the memory for the document's lifetime rather than copying it. Seven sites do this:
+six in `TokenizerJsonLoader`, one in `BpeFilesLoader.ParseVocab`. All are `using`-scoped, so the
+retention ends inside the method and nothing escapes — but **a pooled buffer must be returned
+after the document is disposed**, not merely before the method returns, and three of those sites
+pass `JsonArtifact.ReadAllBytes(...)` inline with no variable to return. Those three need
+restructuring before they can pool at all.
+
+**Constraint 2 — the shared helper the plan warned about is real.** Step 3 asked whether the two
+paths share a helper that would pool on both. They do: `EmbeddingIndex.Load(ReadOnlyMemory<byte>)`,
+which parses **the caller's** memory in place, and `Load(Stream)`, which parses ours, both call
+`FromPayload`. **Pooling inside `FromPayload` would return a caller's buffer to `ArrayPool.Shared`**
+— the exposure defect this plan's Global Constraints call a security defect, reachable from public
+API in one step. The rent and the return therefore belong at the `Load(Stream)` call site, above
+`FromPayload`, and no pooling may go inside it or inside `Parse`.
+
+**An unrelated finding, recorded rather than fixed here.** `NpyFile.Read(Stream)` calls
+`JsonArtifact.ReadAllBytes(source, limits).ToArray()`. `ReadAllBytes`'s own documentation names
+that as the thing not to do — *"reaching for the array behind it, or for `.ToArray()`, both
+reintroduce the copy this return type exists to remove"* — so every `.npy` read pays a full extra
+copy of the block, about 15 MB at the corpus size. It came in with #450 and wants its own issue,
+not this branch.
+
+**The ceiling is known now, which is why this lot could start.** [#433](https://github.com/CyrilB1531/lodestar/issues/433)
+measured the warm-heap subsidy at **8.1%**, with the mechanism being one fewer garbage collection
+per load window rather than anything mysterious. That is the most this lot can return in time.
+Whether it is worth 33.5 MB held by the pool for the life of the process is Task 4's decision,
+and Task 4 now has its number.
