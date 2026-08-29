@@ -399,12 +399,14 @@ public sealed partial class EmbeddingIndex
         }
         EnsureFinite(vectors, dim);
 
-        var index = new EmbeddingIndex(dim, normalizeFlag);
-        index._data = vectors;
-        index._length = vectors.Length;
-        index._count = itemCount;
-        index._ids = ids;
-        return index;
+        // AlreadyNormalized, never Normalize: a stored vector is restored exactly as it was
+        // written, and normalizing a second time would move its bits.
+        return Seed(
+            vectors,
+            dim,
+            itemCount,
+            normalizeFlag ? BlockNormalization.AlreadyNormalized : BlockNormalization.Off,
+            ids);
     }
 
     /// <summary>Throws unless every stored component is a finite number.</summary>
