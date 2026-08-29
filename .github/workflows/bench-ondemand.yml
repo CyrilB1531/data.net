@@ -1,0 +1,91 @@
+name: Benchmark (on demand)
+
+# The C#-only diagnostics -- save-phases, roc-parallel, heap-warmth -- are subcommands of
+# bench/Lodestar.Text.Benchmarks rather than [Benchmark] classes, so bench-map.json does not
+# name them and the nightly never runs one. That is deliberate: they answer a question a lot
+# asks once, not a regression the nightly watches, and putting them in the nightly would tax
+# every run forever for a measurement wanted twice a year.
+#
+# What it left is a gap this closes. Until now they ran only on a contributor's own machine,
+# which for some of them is the wrong machine: save-phases measures shares inside one window
+# and those transfer, but heap-warmth compares two processes and its absolutes do not.
+# ADR 0051 withdrew a 1.61x taken on a shared container for exactly that reason. A hosted
+# runner is not quiet either, but it is a second machine, and two disagreeing machines is a
+# result where one is a guess.
+#
+# It prints and does not publish. Nothing here writes to a page, opens a pull request or
+# touches the wiki: a number becomes a published figure by a person reading it and deciding,
+# which is what docs/guides/performance.md's "name the machine" rule is for.
+
+on:
+  workflow_dispatch:
+    inputs:
+      subcommand:
+        # Free text, not a choice. A choice enumerates what exists on the default branch,
+        # and this workflow is dispatched against any ref -- a branch that adds a
+        # subcommand would have to edit the workflow before it could run its own.
+        description: 'Subcommand to run, as bench/README.md names it (save-phases, roc-parallel, ...)'
+        type: string
+        default: save-phases
+      rounds:
+        description: 'How many times to repeat it, alternating states where it has two'
+        type: number
+        default: 3
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    name: Run one diagnostic
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build
+        run: dotnet build bench/Lodestar.Text.Benchmarks -c Release
+
+      # uptime goes beside every table this project publishes, and a run whose load average
+      # is not recorded cannot be compared with one whose is.
+      - name: The machine
+        run: |
+          echo "### Machine" >> "$GITHUB_STEP_SUMMARY"
+          echo '```text' >> "$GITHUB_STEP_SUMMARY"
+          uptime >> "$GITHUB_STEP_SUMMARY"
+          nproc --all | sed 's/^/cores: /' >> "$GITHUB_STEP_SUMMARY"
+          grep -m1 'model name' /proc/cpuinfo >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      # heap-warmth is the one with two states, and they are two processes on purpose: the
+      # variable under test is whether this process has ever saved. Alternating them means a
+      # drift in the machine lands on both rather than on whichever ran second. Any other
+      # subcommand is run as given, once per round.
+      - name: Run it
+        env:
+          SUBCOMMAND: ${{ inputs.subcommand }}
+          ROUNDS: ${{ inputs.rounds }}
+        run: |
+          run() { dotnet run -c Release --project bench/Lodestar.Text.Benchmarks --no-build -- "$@"; }
+          {
+            echo "### $SUBCOMMAND"
+            echo '```text'
+            if [ "$SUBCOMMAND" = "heap-warmth" ]; then
+              run heap-warmth prepare
+              for i in $(seq 1 "$ROUNDS"); do
+                echo "--- round $i   $(uptime | sed 's/.*load average/load average/')"
+                run heap-warmth cold
+                run heap-warmth warm
+              done
+            else
+              for i in $(seq 1 "$ROUNDS"); do
+                echo "--- round $i   $(uptime | sed 's/.*load average/load average/')"
+                run "$SUBCOMMAND"
+              done
+            fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
