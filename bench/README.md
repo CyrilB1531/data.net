@@ -1228,12 +1228,15 @@ memset of the block, about 15 MB at this corpus. It is stated rather than equali
 uninitialized allocation is internal to the library and this project consumes the published
 packages, and because re-cutting `sidecar floor` would invalidate the 5.847 ms
 [ADR 0055](../docs/decisions/0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md)
-published, which is the bar this lot is judged against. So `ingest copy` landing at or above the
-floor is still a sound refusal, while `ingest copy` landing below it must not be read as beating
-the floor by the whole margin.
+published, which is the bar this lot is judged against. The bias runs in the ingest's favour, so a
+slow `ingest copy` is not an artefact of it: landing near `rebuild index` remains the refusal it
+looks like. What it does mean is that `ingest copy` coming in *below* the floor must not be read as
+beating it by the whole margin — part of that gap is the memset the floor pays and the ingest does
+not.
 
-There is no row for `FromOwnedBlock`. It assigns four fields and is constant time whatever the
-block's size, so its ceiling is the `read npy block` row and a row of its own would publish noise.
+There is no row for `FromOwnedBlock`. With `AlreadyNormalized` it assigns four fields and is
+constant time whatever the block's size, so its ceiling is the `read npy block` row and a row of
+its own would publish noise.
 
 On a hosted runner: the sidecar is **1.331× smaller** and its floor is **2.02× faster** than the
 artifact load, while the rebuild route is **0.66×** — slower than what it would replace.

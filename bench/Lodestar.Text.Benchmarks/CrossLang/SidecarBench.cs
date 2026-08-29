@@ -150,9 +150,10 @@ internal static class SidecarBench
     /// <summary>The ingest alone, on a block already in hand.</summary>
     /// <remarks>
     /// Separates the ingest's cost from the read's, so a later regression in either can be
-    /// attributed. There is deliberately no row for <c>FromOwnedBlock</c>: it assigns four
-    /// fields and is constant time whatever the block's size, so its ceiling is the
-    /// <c>read npy block</c> row and a row of its own would publish noise.
+    /// attributed. There is deliberately no row for <c>FromOwnedBlock</c>: with
+    /// <c>AlreadyNormalized</c>, which is what these rows pass, it assigns four fields and is
+    /// constant time whatever the block's size, so its ceiling is the <c>read npy block</c> row
+    /// and a row of its own would publish noise.
     /// </remarks>
     private static void IngestOnly(float[] block, int dimension)
     {

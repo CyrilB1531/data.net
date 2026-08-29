@@ -26,7 +26,7 @@ float scored = normalizing.Search(new float[] { 3f, 4f }, 1)[0].Score;  // => 1
 float unscored = verbatim.Search(new float[] { 3f, 4f }, 1)[0].Score;  // => 25
 ```
 
-Both indexes hold `(3, 4)`. The first normalized it to `(0.6, 0.8)` and normalizes the query the
+Both were given `(3, 4)`. The first normalized it to `(0.6, 0.8)` and normalizes the query the
 same way, so a vector queried against itself scores `1` however long it was. The second compares
 the two verbatim, and `3² + 4²` is `25` — a number that grows with the length of whatever is being
 compared, which is exactly what cosine exists to remove.

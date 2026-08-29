@@ -75,6 +75,10 @@ walking into it.
 - **The invariant is asserted, not only written down.** `EmbeddingIndexBlockTests` writes to an
   adopted array after the index was built and watches the score move, so a future change that
   quietly copies instead of adopting fails a test rather than passing one.
-- **There is no benchmark row for adoption**, and none is missing. It assigns four fields and is
-  constant time whatever the block's size, so its ceiling is the block read that already has a row;
-  a row of its own would publish noise. `bench/README.md` §12 says so beside the rows.
+- **There is no benchmark row for adoption**, and none is missing. With `AlreadyNormalized` — the
+  case the ceiling argument is about, and the one the benchmark passes — it assigns four fields and
+  is constant time whatever the block's size, so its ceiling is the block read that already has a
+  row and a row of its own would publish noise. `Normalize` is the other case, and it is a pass
+  over the block that
+  [`FromBlock`](../reference/embeddings/search/embeddingindex-fromblock.md) pays too.
+  `bench/README.md` §12 says the same beside the rows.
