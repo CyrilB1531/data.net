@@ -1104,22 +1104,5 @@ the claim under test is that the load does identical work and pays for more of i
 **On a shared machine this does not reproduce.** Measured on the container: allocation
 agreed to 200 bytes in 37 MB, and the timing put warm faster, level, then slower over
 three alternating rounds, with one state's median swinging 4× between rounds. That is
-what the on-demand workflow below exists for.
-
-## Running a diagnostic on a second machine
-
-Sections 6, 8 and 9 are C#-only subcommands rather than `[Benchmark]` classes, so
-`bench-map.json` does not name them and the nightly never runs one. That is
-deliberate — they answer a question a lot asks once, not a regression worth
-watching every night.
-
-The cost of that was that they ran only on a contributor's own machine, and for
-some of them the machine is the finding. **`Benchmark (on demand)`** closes it:
-dispatch `.github/workflows/bench-ondemand.yml` against any branch, pick the
-subcommand, and read the job summary.
-
-It **prints and does not publish** — nothing there writes a page, opens a pull
-request or touches the wiki. A number becomes a published figure when a person
-reads it and decides, which is what `performance.md`'s name-the-machine rule is
-for. The workflow records `uptime`, the core count and the CPU model beside every
-run so that decision has what it needs.
+what `Benchmark (on demand)` exists for — [#461](https://github.com/CyrilB1531/lodestar/issues/461)
+adds it, and this lot waits on it.

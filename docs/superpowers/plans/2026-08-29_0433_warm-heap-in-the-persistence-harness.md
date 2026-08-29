@@ -426,9 +426,11 @@ average 0.79–1.27. The same machine ADR 0051 measured on, and the same lesson:
 one window transfer, absolutes do not.
 
 **What this leaves.** Tasks 2 to 5 are unchanged and unstarted. The instrument is committed, so
-the measurement is one command away from a machine that can hold still — the nightly runner is
-where #430's figures were finally obtained after the container withdrew its own. Re-running
-`heap-warmth` there, or on the i7-4770S, is what unblocks this lot and therefore #435.
+the measurement is one command away from a machine that can hold still — and the machine is what
+[#461](https://github.com/CyrilB1531/lodestar/issues/461) provides: `Benchmark (on demand)`, a
+dispatch-only workflow, which has to land before it can be used because `workflow_dispatch` only
+sees a workflow on the default branch. Running `heap-warmth` there, or on the i7-4770S, is what
+unblocks this lot and therefore #435.
 
 ## What this plan does not do
 
