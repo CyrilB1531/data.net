@@ -288,6 +288,14 @@ own self-review ([#454](https://github.com/CyrilB1531/lodestar/issues/454)), mos
 its **No Placeholders** rule: a step that says what to do without showing how is a plan failure,
 and code steps carry code.
 
+**A spec may be written after the fact; a plan may not.** A spec records measured facts and
+rejected options, and is still a record when written late — issues #202 to #446 were backfilled
+that way, from the commits that closed them. A plan is an instrument for work that has not
+started, with checkbox steps and a `Branch:` line, so one written for merged work is checkboxes
+nobody may tick and a branch that no longer exists. **Date a backfilled spec by the work, not by
+the day it was written**, or the directory loses its ordering; its status line says it is
+retrospective.
+
 ### SonarQube MCP server
 
 `.github/instructions/sonarqube_mcp.instructions.md` applies to this repository:
