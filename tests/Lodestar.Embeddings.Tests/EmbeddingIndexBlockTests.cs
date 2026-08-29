@@ -1,3 +1,4 @@
+using System.IO;
 using Lodestar.Embeddings.Search;
 using Xunit;
 
@@ -167,5 +168,21 @@ public sealed class EmbeddingIndexBlockTests
             () => EmbeddingIndex.FromOwnedBlock([1f, 2f, 3f], 2, BlockNormalization.Off));
 
         Assert.Contains("not a multiple", e.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_reloaded_AlreadyNormalized_block_is_not_normalized_a_second_time()
+    {
+        // The stored vector (3, 4) is not unit length; the query normalizes to (0.6, 0.8).
+        // Score is |(3,4)| = 5, unless reload normalizes it again and drops it to 1.
+        EmbeddingIndex index = EmbeddingIndex.FromBlock(
+            [3f, 4f], 2, BlockNormalization.AlreadyNormalized);
+
+        using var stream = new MemoryStream();
+        index.Save(stream);
+        stream.Position = 0;
+        EmbeddingIndex reloaded = EmbeddingIndex.Load(stream);
+
+        Assert.Equal(5f, reloaded.Search([3f, 4f], 1)[0].Score, Places);
     }
 }

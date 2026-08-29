@@ -57,6 +57,10 @@ governs the query as well as the store. `Normalize` normalizes the copy;
 taken that way scores wrong and raises nothing; `Off` leaves both sides alone, which is a raw dot
 product rather than a cosine.
 
+**A block holding `NaN` or an infinity is accepted here, exactly as [`Add`](embeddingindex-add.md)
+accepts one** — the two ingest paths cannot disagree about what an index may hold. It is
+[`Save`](embeddingindex-save.md) that refuses it.
+
 **Applies to** — net10.0, netstandard2.0.
 
 **See also** — [`BlockNormalization`](blocknormalization.md),

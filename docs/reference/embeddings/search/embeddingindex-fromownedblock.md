@@ -54,7 +54,15 @@ library can see is unnecessary.
 
 The array whose ownership is easiest to give up is one nobody else has ever held — the freshly
 allocated block that [`NpyFile.Read`](../persistence/npyfile-read.md) returns is the shape this
-exists for.
+exists for. That block is not yet reachable from here: `NpyFile.Read` hands it back as a
+`ReadOnlyMemory<float>`, and there is no supported way from that back to the array. Closing that
+gap is
+[decision 0055](../../../decisions/0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md)'s
+work.
+
+**A block holding `NaN` or an infinity is accepted here, exactly as [`Add`](embeddingindex-add.md)
+accepts one** — the two ingest paths cannot disagree about what an index may hold. It is
+[`Save`](embeddingindex-save.md) that refuses it.
 
 **Applies to** — net10.0, netstandard2.0.
 

@@ -9,7 +9,11 @@ namespace Lodestar.Embeddings.Search;
 /// </remarks>
 public enum BlockNormalization
 {
-    /// <summary>The index normalizes, and the block is normalized in place once it is taken.</summary>
+    /// <summary>
+    /// The index normalizes, and what it stores is normalized — the copy for
+    /// <see cref="EmbeddingIndex.FromBlock"/>, the caller's own array for
+    /// <see cref="EmbeddingIndex.FromOwnedBlock"/>.
+    /// </summary>
     Normalize,
 
     /// <summary>
