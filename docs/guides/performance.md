@@ -1741,6 +1741,30 @@ it back off ours moves the published row from 0.25× to **0.23×** — from 4.0�
 `numpy.load` to **4.3×**. The gap #324 called the largest in this comparison is larger
 than the table says.
 
+##### Renting the payload instead of allocating it (issue #435)
+
+The obvious use of #433's finding: if a warmed heap is worth 8.1%, warm it deliberately by
+renting the payload buffer from `ArrayPool<byte>.Shared` rather than allocating one per load.
+`heap-warmth cold` on the same container, before and after:
+
+| | allocated per load | collections (gen0/1/2) |
+| --- | ---: | ---: |
+| allocating | 37 069 648 bytes | 4 / 4 / 4 |
+| rented | **16 480 488 bytes** | **1 / 1 / 1** |
+
+**2.25× less allocated, and a quarter of the collections.** The 20 589 160 bytes removed are the
+payload itself — the artifact on disk is 20 589 007 — so the figure is not an estimate of
+anything, it is the buffer no longer being allocated.
+
+**What it costs, which is the part that decides.** The shared pool serves a 20 MB rent, contrary
+to the common belief that it caps at 1 MiB, but it rounds up to a power of two: asking for
+20 589 008 returns **33 554 432**, or 1.63× the ask. Just past 16 MiB is the worst place on that
+curve to land. That memory is then held for the life of the process, not the life of the load.
+
+So the trade is **20.5 MB not allocated per load against 33.5 MB resident forever**, which
+break-even puts at 1.63 loads. A caller who loads one index and serves queries from it — the
+ordinary case for an embedding index — pays the residency and collects nothing.
+
 ### Pre-sizing the file, and why it is not done (issue #432)
 
 Step 1's fourth item, and the decision is
