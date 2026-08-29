@@ -1,7 +1,15 @@
 # 0435 — Reuse the payload buffer across loads, so its pages are already committed
 
 **Issue:** [#435](https://github.com/CyrilB1531/lodestar/issues/435) ·
-**Status:** proposed · **Date:** 2026-08-29
+**Status:** superseded in part — see the amendment at the end · **Date:** 2026-08-29
+
+> **#470 amendment, 2026-08-29.** This spec's body is left as written. It framed the lot
+> around the warm-heap subsidy, and [ADR 0053](../../decisions/0053-the-payload-buffer-is-not-pooled-because-residency-outlives-the-load.md)
+> refused pooling on that framing without ever timing it. Renting is 42× the allocation and
+> **1.74 ms a load**; the cost is the large-object collection, not the allocation, and
+> [ADR 0054](../../decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)
+> takes the trade. [Spec 0470](2026-08-29_0470_pooling-was-refused-without-being-timed.md)
+> records what the method missed.
 
 ## Problem
 
