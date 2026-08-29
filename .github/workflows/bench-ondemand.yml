@@ -69,12 +69,14 @@ jobs:
       # is not recorded cannot be compared with one whose is.
       - name: The machine
         run: |
-          echo "### Machine" >> "$GITHUB_STEP_SUMMARY"
-          echo '```text' >> "$GITHUB_STEP_SUMMARY"
-          uptime >> "$GITHUB_STEP_SUMMARY"
-          nproc --all | sed 's/^/cores: /' >> "$GITHUB_STEP_SUMMARY"
-          grep -m1 'model name' /proc/cpuinfo >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "### Machine"
+            echo '```text'
+            uptime
+            nproc --all | sed 's/^/cores: /'
+            grep -m1 'model name' /proc/cpuinfo
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       # heap-warmth is the one with two states, and they are two processes on purpose: the
       # variable under test is whether this process has ever saved. Alternating them means a
@@ -85,6 +87,9 @@ jobs:
           SUBCOMMAND: ${{ inputs.subcommand }}
           ROUNDS: ${{ inputs.rounds }}
         run: |
+          # pipefail, because the block below is piped into tee: without it the pipeline's
+          # status is tee's and a subcommand that died would leave the job green.
+          set -o pipefail
           run() { dotnet run -c Release --project bench/Lodestar.Text.Benchmarks --no-build -- "$@"; }
           {
             echo "### $SUBCOMMAND"
@@ -108,4 +113,7 @@ jobs:
               done
             fi
             echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          # tee, not a plain redirect. The step summary is a page a person reads; the log is
+          # what an API, a diff or a bug report can quote. A measurement only one of the two
+          # can see is one nobody can check later.
+          } | tee -a "$GITHUB_STEP_SUMMARY"

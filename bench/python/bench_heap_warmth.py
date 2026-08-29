@@ -55,7 +55,9 @@ def measure(warm: bool, path: Path) -> None:
     if warm:
         vectors = build_vectors()
         for _ in range(WARMING_SAVES):
-            np.save(tempfile.TemporaryFile(), vectors)
+            # In memory, mirroring the C# side's MemoryStream. A temp file would exercise
+            # the page cache, and the thing under test is the process's own allocator.
+            np.save(io.BytesIO(), vectors)
 
     # Wrapped once, rewound per run. Building the stream inside the loop would copy the
     # payload into the timed region, which the C# side does not do -- it loads from a

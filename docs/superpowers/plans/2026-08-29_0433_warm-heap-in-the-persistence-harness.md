@@ -470,6 +470,14 @@ says only an unstable ordering is a non-result.
 
 **Conditions.** Same container as Task 1, load average 0.22–0.34.
 
+**A fourth correction, after that table was taken.** The warming saves went to a
+`tempfile.TemporaryFile()`, where the C# side saves to a `MemoryStream`. That warms the page
+cache rather than the process's own allocator, which is the thing under test. Changed to
+`io.BytesIO()` and re-run: cold 1.499 / 1.420 / 1.546, warm 1.545 / 1.661 / 1.556 — warm slower
+in three of three now, where the disk-warmed table had it slower in one. Both readings are inside
+the container's noise and neither is being published; what it shows is that the two versions were
+not measuring the same thing, and the table above is kept only as the record of that.
+
 **What this changes about the remaining tasks.** Nothing in their content. One thing in the
 method: `Benchmark (on demand)` had no Python step, so a dispatch would have measured the C# ratio
 on a runner and left the numpy ratio on the container. Two ratios from two machines compare the
