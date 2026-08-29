@@ -159,4 +159,43 @@ public sealed class NpyFileTests
     {
         Assert.Throws<ArgumentException>(() => NpyFile.Write(new MemoryStream(), [1f, 2f, 3f, 4f], shape));
     }
+    [Fact]
+    public void A_block_past_a_million_elements_reads_at_the_default_options()
+    {
+        // 2 605 x 384 is a small embedding block and 1 000 320 elements, refused before #468
+        // because MaxArrayLength was applied to elements rather than to the vectors it counts.
+        const int Rows = 2_605, Columns = 384;
+        var values = new float[Rows * Columns];
+        for (int i = 0; i < values.Length; i++)
+        {
+            values[i] = i % 97;
+        }
+
+        using var written = new MemoryStream();
+        NpyFile.Write(written, values, Rows, Columns);
+        written.Position = 0;
+
+        NpyBlock read = NpyFile.Read(written);
+
+        Assert.Equal(values.Length, read.Values.Length);
+        Assert.Equal([Rows, Columns], read.Shape);
+        Assert.Equal(values[^1], read.Values.Span[^1]);
+    }
+
+    [Fact]
+    public void A_block_past_MaxTotalBytes_is_still_refused()
+    {
+        const int Rows = 2_605, Columns = 384;
+        var values = new float[Rows * Columns];
+
+        using var written = new MemoryStream();
+        NpyFile.Write(written, values, Rows, Columns);
+        written.Position = 0;
+
+        // One byte under what the block needs, so the bound that replaced MaxArrayLength is
+        // the one doing the refusing rather than the shape-against-payload check.
+        var options = new ArtifactLoadOptions { MaxTotalBytes = (Rows * Columns * sizeof(float)) - 1 };
+
+        Assert.Throws<InvalidDataException>(() => NpyFile.Read(written, options));
+    }
 }

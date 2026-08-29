@@ -109,7 +109,14 @@ public static class NpyFile
             elements *= dimension;
         }
 
-        limits.CheckArrayLength(elements, "shape");
+        // Bounded by bytes, not MaxArrayLength: that option exempts a vector block, and a
+        // .npy is one (#468). Divided, because two large dimensions overflow the product.
+        if (elements > limits.MaxTotalBytes / sizeof(float))
+        {
+            throw Malformed(
+                $"declares {elements} elements, more than ArtifactLoadOptions.MaxTotalBytes "
+                + $"({limits.MaxTotalBytes}) allows.");
+        }
 
         long expected = elements * sizeof(float);
         long available = payload.Length - dataStart;
