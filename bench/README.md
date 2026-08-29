@@ -1004,3 +1004,73 @@ C# side inherited from Python's. The C# side started the moment Python's file wa
 written, with no gap for this session's own overhead to open. The `main` row was
 taken 16 minutes later at a comparable load, which is what makes the before/after
 in this section and in section 4 a comparison rather than two tables.
+
+### The save rows are no longer all in memory
+
+`embedding_index_save_file` is the write counterpart of `embedding_index_load_file`,
+which #336 added because the file path is the one a caller takes — every other save
+row here writes to a `MemoryStream`. It uses a path of its own, so neither direction
+measures a file the other just touched, and neither side flushes to the device. It
+priced pre-sizing the file, which
+[ADR 0052](../docs/decisions/0052-pre-sizing-the-artifact-file-buys-nothing-on-a-delayed-allocation-filesystem.md)
+refused, and it outlives that question.
+
+### Every load row here is measured on a warmed heap
+
+`compare-persistence` runs `embedding_index_save` before `embedding_index_load`,
+in one process, and the save allocates tens of megabytes. That leaves the
+large-object heap grown and its **pages already committed** for the load that
+follows — so the load does not pay the page commits #324 identified as the
+irreducible part of its allocation phase. It is not an artefact of the ordering
+being wrong; it is what any harness measuring both directions of the same format
+will do unless it is built not to.
+
+Step 1 made it visible rather than created it. Removing the save's 20 MB buffer
+withdrew the subsidy, and `embedding_index_load` slowed by 1.22× on the container
+and by 1.10–1.17× on the nightly runner once the runners' own difference is netted
+out — with **the allocation identical to three digits on both sides**, which is
+what says the load is doing the same work and paying for more of it.
+
+So read every `embedding_index_load*` row on this page as **flattered by something
+on the order of 20%**, and do not use one as the control for a change to the save
+path. Section 8's `block_copy_floor` is what a control looks like here: a `memcpy`
+that allocates nothing and therefore cannot be subsidised by anything. Quantifying
+the effect against a fresh process, and deciding whether to split the two
+directions into separate processes, is [#433](https://github.com/CyrilB1531/lodestar/issues/433).
+
+## 8. Where a save's time goes (issue #429, step 0)
+
+Not a comparison: a **profile of one operation against itself**. Five phases over
+the same 10 000 × 384 index as section 7, each a strict subset of the one above
+it, so the shares are readable without a second harness to reconcile.
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- save-phases
+```
+
+| phase | what it does |
+| --- | --- |
+| `save_total` | `EmbeddingIndex.Save` end to end |
+| `write_base64_property` | the vector block alone, through `Utf8JsonWriter.WriteBase64String` |
+| `write_base64_chunked` | the same block in 240 KB slices into one rented buffer |
+| `base64_encode` | `Base64.EncodeToUtf8` on the block and nothing else |
+| `block_copy_floor` | a `memcpy` of the same 15.36 MB, encoding nothing |
+
+The last row is what makes the table decide anything. An encode that costs no more
+than moving the same bytes is bandwidth-bound, and nothing parallelises past a
+bandwidth it is already at — which is how a proposal to thread the base64 was
+refused rather than tried. [ADR 0051](../docs/decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md)
+is that decision, and the numbers are in
+[`docs/guides/performance.md`](../docs/guides/performance.md#what-a-save-actually-spends-its-time-on--step-0).
+
+**The phases run round-robin, one round each, not one phase to completion.** This
+is the whole design and it is not tidiness. A first cut ran each phase's nine runs
+back to back, so a collection storm landed inside one phase's window and the
+harness reported `write_base64_property` at **136.7% of `save_total`** — impossible
+for a strict subset of the same work, and obvious only because the subset relation
+gives the table something to contradict. Interleaving spreads that cost across
+every phase instead of concentrating it in whichever one was unlucky.
+
+Medians of nine runs after three warm-ups, with the full spread printed under the
+table: on a shared machine the floor is the honest half of a row, and a phase that
+allocates 20 MB per call announces itself by varying, not by being slow on average.

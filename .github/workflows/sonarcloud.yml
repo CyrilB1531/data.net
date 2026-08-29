@@ -108,6 +108,21 @@ jobs:
       # directory is ~4.5 MB of generated JSON corpora, which are frozen
       # reference data rather than something to analyse.
       #
+      # .claude/skills/ is vendored third-party code — obra/superpowers, MIT, at a
+      # pinned commit — and it is excluded on evidence rather than on principle.
+      # Three runs on pull request 455 make a 2x2: the gate fails whenever this tree
+      # is analysed and passes whenever it is excluded, independently of which files
+      # it holds. The condition is not one better code would satisfy — the gate wants
+      # coverage on new code, and a dependency's shell helpers cannot be unit-tested
+      # into this project's coverage report.
+      #
+      # What this does not silence is the part that matters. SonarCloud also exports
+      # to GitHub code scanning, and that channel is not governed by this property:
+      # it raised three high-severity alerts on a 723-line HTTP server the vendored
+      # tree carried, which is why that server is no longer in it
+      # (.claude/skills/README.md). Security findings still arrive; the gate's
+      # coverage condition, which vendored code can never meet, does not.
+      #
       # Both exclusion properties are set because a file is indexed as either
       # main or test source, and these belong to no project's compilation — they
       # are copied to output as `None Include=...`, so which bucket the MSBuild
@@ -163,8 +178,8 @@ jobs:
             /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
             /d:sonar.python.version="3.12" \
             /d:sonar.projectBaseDir="$GITHUB_WORKSPACE" \
-            /d:sonar.coverage.exclusions="tools/**,bench/**,samples/**" \
-            /d:sonar.exclusions="tests/oracles/**,samples/Lodestar.DocSnippets/Generated/**,tools/tests/**,assets/**" \
+            /d:sonar.coverage.exclusions="tools/**,bench/**,samples/**,.claude/**" \
+            /d:sonar.exclusions="tests/oracles/**,samples/Lodestar.DocSnippets/Generated/**,tools/tests/**,assets/**,.claude/**" \
             /d:sonar.test.exclusions="tests/oracles/**"
 
       - name: Build the solution

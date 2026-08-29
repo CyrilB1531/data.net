@@ -31,6 +31,7 @@ you whether to correct the document itself or something upstream of it.
 | `CHANGELOG.md` | the merged pull requests, per release | what changed, per release |
 | `docs/decisions/` | the ADRs' own `**Status:**` lines, indexed in [`docs/decisions/README.md`](docs/decisions/README.md) | a decision, with its options and its loser |
 | root `README.md` | the project as it stands, hand-maintained | what the project is, and where to go next |
+| `.claude/skills/` | [obra/superpowers](https://github.com/obra/superpowers), vendored at a pinned commit | how a spec and a plan are written; `.claude/skills/README.md` says what was taken and what was not |
 
 ## Commands
 
@@ -278,7 +279,22 @@ names the machine.
 clean Sonar, and a finding introduced by a pull request blocks its merge.
 
 Design specs and implementation plans live in `docs/superpowers/specs/` and
-`docs/superpowers/plans/`, named `<date>_<issue id padded to 4>_<slug>.md`.
+`docs/superpowers/plans/`, named `<date>_<issue id padded to 4>_<slug>.md` — the repository's
+naming, which overrides the skills' own default. The skills that write them are vendored under
+[`.claude/skills/`](.claude/skills/README.md) rather than installed, so they are reachable from a
+hosted session; `writing-plans` and `brainstorming` are the two to read first. **Do not reproduce
+the format by copying a neighbouring file.** Two plans written that way failed `writing-plans`'
+own self-review ([#454](https://github.com/CyrilB1531/lodestar/issues/454)), most visibly against
+its **No Placeholders** rule: a step that says what to do without showing how is a plan failure,
+and code steps carry code.
+
+**A spec may be written after the fact; a plan may not.** A spec records measured facts and
+rejected options, and is still a record when written late — issues #202 to #446 were backfilled
+that way, from the commits that closed them. A plan is an instrument for work that has not
+started, with checkbox steps and a `Branch:` line, so one written for merged work is checkboxes
+nobody may tick and a branch that no longer exists. **Date a backfilled spec by the work, not by
+the day it was written**, or the directory loses its ordering; its status line says it is
+retrospective.
 
 ### SonarQube MCP server
 
