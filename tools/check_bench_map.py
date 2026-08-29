@@ -35,8 +35,10 @@ PROGRAM = BENCH_DIR / "Program.cs"
 PYTHON_DIR = ROOT / "bench" / "python"
 
 CLASS = re.compile(r"^\s*public\s+class\s+(\w+)", re.MULTILINE)
-SUBCOMMAND = re.compile(r'args\[0\] == "(compare[a-z-]*)"')
-ANY_SUBCOMMAND = re.compile(r'args\[0\] == "([a-z][a-z-]*)"')
+# Program.cs dispatches with `case "name":`. It used a chain of `args[0] == "name"` until
+# the ninth subcommand took that past the analyser's cognitive-complexity bar.
+SUBCOMMAND = re.compile(r'case "(compare[a-z-]*)"')
+ANY_SUBCOMMAND = re.compile(r'case "([a-z][a-z-]*)"')
 
 
 def declared_classes() -> dict[str, pathlib.Path]:
