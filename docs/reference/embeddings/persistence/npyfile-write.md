@@ -25,7 +25,7 @@ using Lodestar.Embeddings.Persistence;
 
 using var buffer = new MemoryStream();
 NpyFile.Write(buffer, [1f, 2f, 3f, 4f, 5f, 6f], 2, 3);
-Console.WriteLine(buffer.Length); // => 176
+long written = buffer.Length;   // => 152
 ```
 
 **Remarks** — the output is **byte-for-byte what numpy writes** for the same array: the same magic,
