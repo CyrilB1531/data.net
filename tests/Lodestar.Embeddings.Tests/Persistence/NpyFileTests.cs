@@ -51,9 +51,8 @@ public sealed class NpyFileTests
     [Fact]
     public void Non_finite_values_survive_the_read()
     {
-        // The artifact format refuses these on write, because a NaN idf poisons every
-        // later score. A .npy is not our artifact: it is somebody else's data, and
-        // silently changing it on the way in would be worse than carrying it.
+        // Our artifact refuses these on write; a .npy is somebody else's data, and
+        // altering it on the way in would be the worse failure.
         float[] values = NpyFile.Read(Fixture("f4_nonfinite.npy")).Values.ToArray();
 
         Assert.True(float.IsNaN(values[0]));

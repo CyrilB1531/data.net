@@ -21,7 +21,7 @@ NpyFile.Write(buffer, [1f, 2f, 3f, 4f, 5f, 6f], 2, 3);
 buffer.Position = 0;
 
 NpyBlock block = NpyFile.Read(buffer);
-Console.WriteLine(string.Join("x", block.Shape)); // => 2x3
+string shape = string.Join("x", block.Shape);   // => 2x3
 ```
 
 **Remarks** — `Values` is `ReadOnlyMemory<float>` rather than an array because the block is the

@@ -20,7 +20,7 @@ NpyFile.Write(buffer, vectors, 3, 2);
 buffer.Position = 0;
 
 NpyBlock block = NpyFile.Read(buffer);
-Console.WriteLine($"{block.Shape[0]}x{block.Shape[1]} {block.Values.Length}"); // => 3x2 6
+string read = $"{block.Shape[0]}x{block.Shape[1]} {block.Values.Length}";   // => 3x2 6
 ```
 
 **Remarks** — this is an **interop format for a float matrix, not a second artifact format**.

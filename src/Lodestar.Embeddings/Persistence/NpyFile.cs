@@ -11,26 +11,12 @@ namespace Lodestar.Embeddings.Persistence;
 /// <param name="Shape">The dimensions; one entry for a vector, two for a matrix.</param>
 public readonly record struct NpyBlock(ReadOnlyMemory<float> Values, IReadOnlyList<int> Shape);
 
-/// <summary>
-/// Reads and writes a block of <see cref="float"/> in numpy's <c>.npy</c> format —
-/// the counterpart of <c>numpy.load</c> and <c>numpy.save</c> for the one array
-/// shape this library exchanges.
-/// </summary>
+/// <summary>Reads and writes a <see cref="float"/> block in numpy's <c>.npy</c> format.</summary>
 /// <remarks>
-/// <para>
-/// This is an interop format for a float matrix, not a second artifact format:
-/// <c>EmbeddingIndex.Save</c> is untouched, and a <c>.npy</c> file carries no ids, no
-/// normalization flag and no schema header. See issue #450.
-/// </para>
-/// <para>
-/// <b>The header is a Python dict literal, and is never evaluated.</b> numpy writes
-/// <c>{'descr': '&lt;f4', 'fortran_order': False, 'shape': (3, 4), }</c> — executable
-/// source, which is the hazard ADR 0011 refused <c>pickle</c> over. Only a fixed
-/// grammar is accepted here: the three known keys, each with one of a closed set of
-/// values. Anything else is refused rather than tolerated, and <c>descr: '|O'</c> —
-/// numpy's object dtype, whose payload is a pickle — is refused before a byte of it
-/// is read.
-/// </para>
+/// Interop for a float matrix, not a second artifact format: a <c>.npy</c> carries no ids,
+/// no normalize flag and no schema, and <c>EmbeddingIndex.Save</c> is untouched (#450).
+/// <b>Its header is a Python dict literal and is never evaluated</b> — a fixed grammar only,
+/// and <c>'|O'</c>, numpy's pickle-backed dtype, is refused by name (ADR 0011).
 /// </remarks>
 public static class NpyFile
 {
@@ -150,9 +136,8 @@ public static class NpyFile
         byte major = payload[VersionOffset];
         byte minor = payload[VersionOffset + 1];
 
-        // 1.0 sizes its header with two bytes and 2.0 with four. 3.0 makes the header
-        // UTF-8, which the restricted grammar below would read the same way -- but it
-        // is refused rather than assumed, since nothing here has ever seen one.
+        // 1.0 sizes its header with two bytes, 2.0 with four. 3.0 is UTF-8 and would
+        // likely read the same, but is refused rather than assumed: none has been seen.
         int lengthSize = (major, minor) switch
         {
             (1, 0) => 2,
@@ -185,12 +170,10 @@ public static class NpyFile
     /// fixed grammar and refusing everything else.
     /// </summary>
     /// <remarks>
-    /// Deliberately not a Python parser and deliberately not an evaluator: the values
-    /// this accepts are one dtype string, one boolean, and a tuple of non-negative
-    /// integers. A header that carries anything else — a different dtype, a nested
-    /// structure, an extra key — is refused with what it held, rather than
-    /// interpreted. ADR 0011's reasoning about `pickle.load` is the reason this is
-    /// the shape it is.
+    /// Not a Python parser and not an evaluator: it accepts one dtype string, one
+    /// boolean and a tuple of non-negative integers. Anything else — another dtype, a
+    /// nested structure, an extra key — is refused with what it held. ADR 0011's
+    /// reasoning about <c>pickle.load</c> is why it has this shape.
     /// </remarks>
     private static NpyHeader ParseHeader(string header)
     {
@@ -198,9 +181,8 @@ public static class NpyFile
         string fortran = RequiredValue(header, "fortran_order");
         string shape = RequiredValue(header, "shape");
 
-        // Refused first and by name: '|O' is numpy's object dtype and its payload is a
-        // pickle, which is arbitrary code. ADR 0011 rules that out for artifacts; the
-        // same rule applies to a file numpy wrote.
+        // First and by name: '|O' is numpy's object dtype and its payload is a pickle,
+        // which is arbitrary code. ADR 0011 rules that out, wherever the file came from.
         if (descr is "|O" or "O")
         {
             throw Malformed(
