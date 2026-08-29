@@ -25,9 +25,21 @@ they are pinned: an update is a deliberate commit rather than a drift under a ru
 (`brainstorming`'s browser companion, `subagent-driven-development`'s workspace helpers,
 `systematic-debugging`'s polluter finder, `writing-skills`' graph renderer).
 
-**Left upstream:** the repository's own `hooks/`. Wiring a hook changes how every session in this
-repository behaves before anyone asks it to, which is a decision of its own and not part of making
-a documented format reachable.
+**Left upstream, and why each:**
+
+- **`hooks/`.** Wiring a hook changes how every session in this repository behaves before anyone
+  asks it to, which is a decision of its own and not part of making a documented format reachable.
+- **`brainstorming/scripts/`, the visual companion.** 1 319 lines including a 723-line local HTTP
+  server, and the skill's own text calls it optional — offered "just-in-time … if no visual
+  question ever arises, never offer it". It also cannot work from a hosted session, which has no
+  browser tab to open. It is where SonarCloud's code scanning raised three high-severity alerts on
+  [#455](https://github.com/CyrilB1531/lodestar/pull/455), and removing it is the fix; excluding
+  `.claude/**` from analysis was tried first and is the wrong shape, because it silences a detector
+  rather than removing what it detected. **Anyone wanting the companion has it in their own
+  install**, which is where a browser feature belongs.
+
+`subagent-driven-development/scripts/` **stays**: its SKILL.md instructs `scripts/sdd-workspace`
+and `scripts/task-brief` by name, so those three helpers are load-bearing rather than optional.
 
 ## One difference from the installed plugin
 
@@ -39,12 +51,12 @@ wrong repair.
 
 ## What CI does with them
 
-`sonar.exclusions` and `sonar.coverage.exclusions` in `.github/workflows/sonarcloud.yml` name
-`.claude/**`. The quality gate judges **new** code, so the twelve scripts these skills carry
-arrived as new code and failed it — and a finding in a dependency this project does not maintain
-is one it cannot act on without forking. The other guards are **not** excluded: `check_machine_paths`
-and `check_comment_length` see every tracked file and pass over this tree, which is worth knowing
-before taking an upstream version that would not.
+**Nothing is excluded from anything.** The vendored tree goes through the same guards and the same
+Sonar analysis as the rest of the repository — `check_machine_paths`, `check_comment_length` and
+the quality gate all see it and all pass. That is deliberate: an exclusion would mean the next
+upstream version could bring in anything without a single check noticing. **If a future update
+trips a gate, the answer is to decide about that file — take it, drop it as the companion was
+dropped, or fork it — rather than to widen an exclusion.**
 
 ## Updating
 
