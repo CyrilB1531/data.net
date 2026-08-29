@@ -40,7 +40,9 @@ DEFAULT_PATH = Path(tempfile.gettempdir()) / "lodestar-heap-warmth.npy"
 
 
 def prepare(path: Path) -> None:
-    np.save(path, build_vectors())
+    # allow_pickle is stated, not defaulted: np.save defaults it to True, and NpyFile.cs
+    # refuses numpy's pickle-backed '|O' dtype by name (ADR 0011). Same policy, said here.
+    np.save(path, build_vectors(), allow_pickle=False)
     print(f"prepared        {path} ({path.stat().st_size:,} bytes)")
 
 
@@ -56,7 +58,7 @@ def measure(warm: bool, path: Path) -> None:
         for _ in range(WARMING_SAVES):
             # In memory, mirroring the C# side's MemoryStream. A temp file would exercise
             # the page cache, and the thing under test is the process's own allocator.
-            np.save(io.BytesIO(), vectors)
+            np.save(io.BytesIO(), vectors, allow_pickle=False)
 
     # Wrapped once, rewound per run. Building it inside the loop would copy 15 MB into
     # the timed region; the C# side loads from a byte[] it read before the loop.
@@ -67,7 +69,7 @@ def measure(warm: bool, path: Path) -> None:
     for run in range(WARMUP + REPEATS):
         stream.seek(0)
         start = time.perf_counter()
-        loaded = np.load(stream)
+        loaded = np.load(stream, allow_pickle=False)
         elapsed = (time.perf_counter() - start) * 1000.0
         array_bytes = loaded.nbytes
         del loaded
