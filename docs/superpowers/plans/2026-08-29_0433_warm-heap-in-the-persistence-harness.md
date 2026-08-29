@@ -385,6 +385,51 @@ The gates read declarations and replay corpora. None of them reads whether a mea
 
 Body carries the four numbers, the machine, the load averages, and `Closes #433`.
 
+## Execution log — Task 1, run 2026-08-29
+
+**Task 1 is built and Step 5 stopped the lot**, which is what Step 5 is for.
+
+**Two design faults the plan's own checks caught.**
+
+The first was mine before a line ran: the draft used `GC.Collect` to make the cold state cold,
+and SonarAnalyzer's S1215 refused it. The analyser was right for a better reason than it knew —
+a process that has already *built and saved* an index to obtain the artifact bytes is not cold,
+and no collection makes it so. Hence a `prepare` subcommand: it writes the artifact once, and the
+cold process then only reads bytes, having built and saved nothing.
+
+The second was real and would have published a wrong finding. The first warm state saved **before
+each load**, and measured cold *faster* than warm, stably, across three rounds — the opposite of
+the hypothesis. That is not the subsidy reversing; it is a save inside the measured loop producing
+20 MB of garbage per round that competes with the load. `compare-persistence` does not do that: it
+measures every save, then every load. Moved the warming saves ahead of the loop and the stable
+"result" dissolved.
+
+**Step 4's soundness check passes.** Load allocation is **37 069 648 bytes cold against
+37 069 848 warm** — 200 bytes apart on 37 MB. The two states run the same workload on two heaps,
+which is the premise the whole comparison rests on.
+
+**Step 5's stability check fails, so there is no figure.**
+
+| round | cold median | warm median | cold min | warm min |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 93.389 ms | 35.686 ms | 13.466 | 12.341 |
+| 2 | 40.472 ms | 40.104 ms | 14.114 | 12.117 |
+| 3 | 23.854 ms | 30.545 ms | 14.823 | 16.299 |
+
+Warm faster, level, then slower. The median of one state swings **4× between rounds** — 93 to 40
+to 24 cold — with p75 values of 116–146 ms against minima of 13. Something on this shared
+container takes time in large blocks, and a row that allocates 37 MB per iteration is where it
+lands hardest.
+
+**Conditions.** Four cores of an Intel Xeon @ 2.80GHz, .NET 10, a shared cloud container, load
+average 0.79–1.27. The same machine ADR 0051 measured on, and the same lesson: shares taken inside
+one window transfer, absolutes do not.
+
+**What this leaves.** Tasks 2 to 5 are unchanged and unstarted. The instrument is committed, so
+the measurement is one command away from a machine that can hold still — the nightly runner is
+where #430's figures were finally obtained after the container withdrew its own. Re-running
+`heap-warmth` there, or on the i7-4770S, is what unblocks this lot and therefore #435.
+
 ## What this plan does not do
 
 - **It does not optimise the load.** #434 is closed as already done; #435 reuses buffers; #436 memory-maps and is blocked on a format. A subsidy this lot merely measures is one those lots will each change, and fixing it here would take their evidence away.
