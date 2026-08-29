@@ -25,21 +25,41 @@ they are pinned: an update is a deliberate commit rather than a drift under a ru
 (`brainstorming`'s browser companion, `subagent-driven-development`'s workspace helpers,
 `systematic-debugging`'s polluter finder, `writing-skills`' graph renderer).
 
-**Left upstream, and why each:**
+**Left upstream:** the repository's own `hooks/`. Wiring a hook changes how every session in this
+repository behaves before anyone asks it to, which is a decision of its own and not part of making
+a documented format reachable.
 
-- **`hooks/`.** Wiring a hook changes how every session in this repository behaves before anyone
-  asks it to, which is a decision of its own and not part of making a documented format reachable.
-- **`brainstorming/scripts/`, the visual companion.** 1 319 lines including a 723-line local HTTP
-  server, and the skill's own text calls it optional — offered "just-in-time … if no visual
-  question ever arises, never offer it". It also cannot work from a hosted session, which has no
-  browser tab to open. It is where SonarCloud's code scanning raised three high-severity alerts on
-  [#455](https://github.com/CyrilB1531/lodestar/pull/455), and removing it is the fix; excluding
-  `.claude/**` from analysis was tried first and is the wrong shape, because it silences a detector
-  rather than removing what it detected. **Anyone wanting the companion has it in their own
-  install**, which is where a browser feature belongs.
+## The nine code-scanning alerts, and why the companion is here anyway
 
-`subagent-driven-development/scripts/` **stays**: its SKILL.md instructs `scripts/sdd-workspace`
-and `scripts/task-brief` by name, so those three helpers are load-bearing rather than optional.
+`brainstorming/scripts/` — the visual companion, 1 319 lines including a 723-line local HTTP server
+— makes SonarCloud's GitHub code-scanning check report **9 alerts, 3 of them high severity**. It was
+removed once and put back, because the companion is wanted. What follows is what those alerts are,
+read from the source, so the badge is a decision rather than something inherited.
+
+**That check does not block a merge.** [`CONTRIBUTING.md`](../../CONTRIBUTING.md) names the four
+required checks, and SonarCloud's own two are deliberately not among them — the required Sonar check
+is this repository's `Build and analyze` job, for a reason that section gives. `Build and analyze`
+is green.
+
+**What the server actually does**, checked line by line:
+
+- **`cp.exec(process.env.BRAINSTORM_OPEN_CMD + …)`** (line 540) is a real shell execution built from
+  an environment variable, and is almost certainly the high-severity finding. It is gated three
+  ways — `BRAINSTORM_OPEN` must be set, the host must be loopback, no client may already be
+  connected — and the source calls the variable "trusted operator input". A scanner cannot know
+  that, and never will. Directly beneath it the platform launchers use `execFile` with no shell,
+  with a comment saying why.
+- **`/files/` is not traversable.** The name goes through `path.basename`, dotfiles are refused, and
+  `isRegularFileInsideContentDir` rejects symlinks, non-regular files, hard links (`nlink !== 1`)
+  and anything whose `realpath` escapes the content directory. A scanner still flags `path.join` on
+  request-derived input as a hotspot.
+- **It binds loopback by default** (`BRAINSTORM_HOST || '127.0.0.1'`), gates requests on a token
+  file and a cookie, and sets security headers on every response including its 404s.
+
+**The honest summary**: this is careful code with patterns a static analyser cannot prove safe, plus
+one deliberate operator escape hatch. That is what a human dismisses with a reason — which only a
+maintainer can do, in the repository's security tab. Until then the check stays red and informative
+rather than wrong.
 
 ## One difference from the installed plugin
 
