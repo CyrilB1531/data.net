@@ -109,4 +109,63 @@ public sealed class EmbeddingIndexBlockTests
         Assert.Throws<ArgumentOutOfRangeException>(
             () => EmbeddingIndex.FromBlock([1f, 0f], 2, (BlockNormalization)99));
     }
+
+    [Fact]
+    public void FromOwnedBlock_takes_the_array_rather_than_copying_it()
+    {
+        float[] block = [1f, 0f];
+        EmbeddingIndex index = EmbeddingIndex.FromOwnedBlock(
+            block, 2, BlockNormalization.AlreadyNormalized);
+
+        Assert.Equal(1f, index.Search([1f, 0f], 1)[0].Score, Places);
+
+        // long-comment: the invariant FromOwnedBlock documents, asserted rather than only
+        // written down. Ownership transferred, so writing to the array afterwards changes
+        // what the index scores — and the next reader who breaks that learns it from a
+        // failure instead of from a wrong search result in production.
+        block[0] = 0f;
+        block[1] = 1f;
+
+        Assert.Equal(0f, index.Search([1f, 0f], 1)[0].Score, Places);
+    }
+
+    [Fact]
+    public void FromOwnedBlock_normalizes_the_callers_array_in_place()
+    {
+        float[] block = [3f, 4f];
+        EmbeddingIndex index = EmbeddingIndex.FromOwnedBlock(
+            block, 2, BlockNormalization.Normalize);
+
+        Assert.Equal(0.6f, block[0], Places);
+        Assert.Equal(0.8f, block[1], Places);
+        Assert.Equal(1f, index.Search([3f, 4f], 1)[0].Score, Places);
+    }
+
+    [Fact]
+    public void FromOwnedBlock_scores_exactly_as_FromBlock()
+    {
+        float[] copied = [3f, 4f, 0f, 1f];
+        float[] owned = [3f, 4f, 0f, 1f];
+
+        EmbeddingIndex a = EmbeddingIndex.FromBlock(copied, 2, BlockNormalization.Normalize);
+        EmbeddingIndex b = EmbeddingIndex.FromOwnedBlock(owned, 2, BlockNormalization.Normalize);
+
+        Assert.Equal(a.Search([1f, 1f], 2), b.Search([1f, 1f], 2));
+    }
+
+    [Fact]
+    public void FromOwnedBlock_refuses_a_null_block()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => EmbeddingIndex.FromOwnedBlock(null!, 2, BlockNormalization.Off));
+    }
+
+    [Fact]
+    public void FromOwnedBlock_refuses_a_block_that_is_not_a_multiple_of_the_dimension()
+    {
+        ArgumentException e = Assert.Throws<ArgumentException>(
+            () => EmbeddingIndex.FromOwnedBlock([1f, 2f, 3f], 2, BlockNormalization.Off));
+
+        Assert.Contains("not a multiple", e.Message, StringComparison.Ordinal);
+    }
 }

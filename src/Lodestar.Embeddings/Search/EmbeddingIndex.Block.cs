@@ -31,6 +31,33 @@ public sealed partial class EmbeddingIndex
         return Seed(data, dimension, count, normalization, CopyIds(ids));
     }
 
+    /// <summary>Builds an index that <b>takes</b> <paramref name="block"/>, without copying it.</summary>
+    /// <remarks>
+    /// <b>Ownership transfers.</b> The index reads this array for as long as it lives, so the
+    /// caller must not write to it, and must not return it to an <c>ArrayPool</c> — a later
+    /// renter's bytes would become this index's embeddings, and no exception marks the moment.
+    /// With <see cref="BlockNormalization.Normalize"/> the array is normalized <b>in place</b>,
+    /// so the caller's own values change. <see cref="FromBlock"/> is the one to reach for unless
+    /// the copy has been measured and matters: it costs one pass and asks nothing of the caller. Decision 0056 has the trade.
+    /// </remarks>
+    /// <param name="block">The vectors, row after row, in C order. Handed over, not borrowed.</param>
+    /// <param name="dimension">The embedding dimension; <paramref name="block"/>'s length must be a multiple of it.</param>
+    /// <param name="normalization">What is to be done about normalization, and what the index's own flag becomes.</param>
+    /// <param name="ids">One id per vector, or <see langword="null"/> for an anonymous index. Copied, never retained.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="block"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="dimension"/> is below 1, or <paramref name="normalization"/> is not one of the enum's values.</exception>
+    /// <exception cref="ArgumentException"><paramref name="block"/>'s length is not a multiple of <paramref name="dimension"/>, or <paramref name="ids"/> holds a number of entries other than the vector count.</exception>
+    public static EmbeddingIndex FromOwnedBlock(
+        float[] block,
+        int dimension,
+        BlockNormalization normalization,
+        IReadOnlyList<string?>? ids = null)
+    {
+        Guard.NotNull(block);
+        int count = CheckBlock(block.Length, dimension, normalization, ids, nameof(block));
+        return Seed(block, dimension, count, normalization, CopyIds(ids));
+    }
+
     /// <summary>Validates the three arguments that can disagree, and returns the vector count.</summary>
     private static int CheckBlock(
         int length,
