@@ -49,9 +49,8 @@ def measure(warm: bool, path: Path) -> None:
     # loop, and the warm one makes it too, so it cancels.
     payload = path.read_bytes()
 
-    # Before the loop, not inside it. A save between two loads competes with the load
-    # rather than warming for it -- which is what made the C# side's first cut report
-    # cold as faster than warm, stably, over three rounds.
+    # Before the loop, not inside it: a save between two loads competes with the load
+    # rather than warming for it, which is what made the C# side's first cut invert.
     if warm:
         vectors = build_vectors()
         for _ in range(WARMING_SAVES):
@@ -59,9 +58,8 @@ def measure(warm: bool, path: Path) -> None:
             # the page cache, and the thing under test is the process's own allocator.
             np.save(io.BytesIO(), vectors)
 
-    # Wrapped once, rewound per run. Building the stream inside the loop would copy the
-    # payload into the timed region, which the C# side does not do -- it loads from a
-    # byte[] it read before the loop.
+    # Wrapped once, rewound per run. Building it inside the loop would copy 15 MB into
+    # the timed region; the C# side loads from a byte[] it read before the loop.
     stream = io.BytesIO(payload)
 
     samples = []

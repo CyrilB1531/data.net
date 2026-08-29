@@ -487,6 +487,51 @@ workflow now installs `tools/requirements.lock.txt` when — and only when — t
 
 **Task 3 stays blocked**, and on the same thing it was: a machine that holds still.
 
+## Execution log — Tasks 3 and 4, run 2026-08-29
+
+**Three dispatches, and the first two were mine to fix.** Run 1 caught the merge commit,
+before the Python half existed, so it measured one language. Run 2 measured both and the
+numpy side came back unstable — warm slower in one round of three, faster in two, with
+the spread wider than the C# effect it would be compared against. Three rounds was not
+enough to say "numpy has no subsidy", and that sentence is half of what Task 3 Step 3
+exists to write, so nothing was published off it. Run 3 took nine.
+
+**Run 3.** AMD EPYC 7763, 4 cores, load average 4.20 → 2.75, nine alternating rounds,
+all four states inside each round.
+
+| | cold | warm | warm/cold | warm faster |
+| --- | ---: | ---: | ---: | ---: |
+| `EmbeddingIndex.Load` | 18.101 ms | 16.559 ms | 0.919 | 9 of 9 |
+| `np.load` | 1.382 ms | 1.316 ms | 1.001 | 4 of 9 |
+
+Sign test on the paired ratios: p = 0.004 for C#, p = 1.0 for numpy. **The ratio column
+is the median of nine paired ratios, not the quotient of the two medians** — that
+quotient puts numpy at 1.05× and is an artefact of pairing a cold median from one round
+with a warm median from another. The alternation exists to make the pairing available;
+not using it would have thrown the design away at the last step and reported a numpy
+subsidy that is not there.
+
+**The GC counts decide it, not the milliseconds.** 4/4/4 cold against 3/3/3 warm, every
+round, with allocation 200 bytes apart in 37 MB. One fewer collection for the same work
+is a mechanism; 1.5 ms on 18 is a number that needs nine rounds to be believed.
+
+**Task 3 written.** `bench/README.md` §7's "on the order of 20%" is replaced by 8.1% and
+says so, including that the two disagree by 2.5× and why the inference was too wide a
+thing to quote to a digit. §9 carries the table and the conditions. The guide carries
+both, plus the consequence Step 3 asks for in its own words: the published ratio flatters
+us, 0.25× → 0.23×, and #324's "furthest behind" is **understated**.
+
+**Task 4 decided against the split, per Step 2b.** 8.1% moves a published row from 4.0×
+behind to 4.3× behind, which changes no reader's conclusion, and a split would cost the
+back-to-back pairing that makes the cross-language rows comparable at all. No ADR, a
+paragraph in §7, and `heap-warmth` stays committed so the next doubt is re-run rather
+than re-argued.
+
+**Two things this did to neighbouring files.** `bench/README.md`'s last section was
+unnumbered where every other one is numbered, and §9 needed to point at it; it is
+section 10 now. And `Benchmark (on demand)` grew a Python step and a `tee`, both
+recorded in the Task 2 log above.
+
 ## What this plan does not do
 
 - **It does not optimise the load.** #434 is closed as already done; #435 reuses buffers; #436 memory-maps and is blocked on a format. A subsidy this lot merely measures is one those lots will each change, and fixing it here would take their evidence away.

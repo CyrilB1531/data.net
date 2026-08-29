@@ -1031,12 +1031,30 @@ and by 1.10–1.17× on the nightly runner once the runners' own difference is n
 out — with **the allocation identical to three digits on both sides**, which is
 what says the load is doing the same work and paying for more of it.
 
-So read every `embedding_index_load*` row on this page as **flattered by something
-on the order of 20%**, and do not use one as the control for a change to the save
-path. Section 8's `block_copy_floor` is what a control looks like here: a `memcpy`
-that allocates nothing and therefore cannot be subsidised by anything. Quantifying
-the effect against a fresh process, and deciding whether to split the two
-directions into separate processes, is [#433](https://github.com/CyrilB1531/lodestar/issues/433).
+So read every `embedding_index_load*` row on this page as **flattered by 8.1% — the
+printed figure times 1.088 is what a load costs unsubsidised** — and do not use one
+as the control for a change to the save path. Section 8's
+`block_copy_floor` is what a control looks like here: a `memcpy` that allocates
+nothing and therefore cannot be subsidised by anything.
+
+**That 8.1% is measured, and it replaces an inference of "on the order of 20%" that
+stood here until [#433](https://github.com/CyrilB1531/lodestar/issues/433) ran. The
+two do not agree: the inference overstated the subsidy by about 2.5×.** It was read
+off a band of before-and-after figures spanning two changes and two machines, which
+is a wide enough thing to read a number off that it should not have been quoted to a
+digit. Section 9 has the measurement and the conditions.
+
+**The harness is not split into two processes, and that is #433's answer.** Loading in
+a process that has never saved is the obvious fix and it was refused on the number.
+8.1% moves the published `embedding_index_load` row from 0.25× to 0.23× — from 4.0×
+behind `numpy.load` to 4.3×. Nobody reads those two differently. Against that, a split
+costs a process launch per row and, worse, the back-to-back pairing that the
+measurement-conditions section above argues is the only reason the C# and Python rows
+are comparable: two processes started minutes apart are two machines' worth of drift
+inside what is supposed to be one window. **Stating the subsidy is worth more than
+removing it**, so it is stated here, in section 9, and in the performance guide, and
+`heap-warmth` stays committed so the next person to doubt it can re-run it rather than
+re-argue it.
 
 ## 8. Where a save's time goes (issue #429, step 0)
 
@@ -1091,8 +1109,8 @@ python bench/python/bench_heap_warmth.py warm
 
 **Both languages, or neither.** The finding is a ratio per language and the two ratios
 are then compared, so taking them on two machines compares the machines as much as the
-languages. `Benchmark (on demand)` runs all four states inside one round for that
-reason, and the Python side mirrors the C# structure rather than its code — three
+languages. `Benchmark (on demand)` (section 10) runs all four states inside one round for
+that reason, and the Python side mirrors the C# structure rather than its code — three
 subcommands, the warming saves before the loop, the stream built outside the timer.
 
 `compare-persistence` measures every save, then every load, in one process — so by
@@ -1111,13 +1129,32 @@ Both states report **allocation per load**, and they must agree. If they do not,
 two are running different workloads and no timing comparison between them is valid —
 the claim under test is that the load does identical work and pays for more of it.
 
-**On a shared machine this does not reproduce.** Measured on the container: allocation
-agreed to 200 bytes in 37 MB, and the timing put warm faster, level, then slower over
-three alternating rounds, with one state's median swinging 4× between rounds. So the
-figures below were not taken there — they come from `Benchmark (on demand)`, which the
-section after this one describes.
+**The result.** Nine alternating rounds on one hosted runner, all four states inside
+each round, `Benchmark (on demand)` run 3:
 
-## Running a diagnostic on a second machine
+| | cold | warm | warm/cold |
+| --- | ---: | ---: | ---: |
+| `EmbeddingIndex.Load` | 18.101 ms | 16.559 ms | **0.919** |
+| `np.load` | 1.382 ms | 1.316 ms | **1.001** |
+
+Medians of the nine round medians; the `warm/cold` column is the median of the nine
+**paired** ratios, which is the statistic the alternation is for — pairing an unpaired
+cold median against an unpaired warm one puts numpy at 1.05× and is an artefact.
+
+**We have the subsidy: warm is faster in 9 rounds of 9** (sign test p = 0.004),
+by 8.1%. **numpy does not have it: 4 of 9**, median ratio 1.001 — a coin toss.
+
+**The timing is the weaker half of the evidence.** Every round, on both sides of the
+C# comparison: allocation 37 069 648 bytes cold against 37 069 848 warm — 200 bytes
+apart in 37 MB — and collections **4/4/4 cold against 3/3/3 warm**. Same work, same
+allocation, one fewer garbage collection. That is the mechanism, and it is discrete
+and reproducible where a millisecond is neither.
+
+**On a shared machine none of this reproduces.** The same instrument on the container
+put warm faster, level, then slower over three rounds with one state's median swinging
+4× between them. That is why section 10 exists.
+
+## 10. Running a diagnostic on a second machine (issue #461)
 
 `roc-parallel` (section 6), `save-phases` (section 8) and `heap-warmth` (section 9)
 are C#-only subcommands rather than `[Benchmark]` classes, so `bench-map.json` does not name them and the
