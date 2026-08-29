@@ -27,9 +27,10 @@ internal static class HeapWarmthBench
     public static void Run(string[] args)
     {
         string state = args.Length > 1 ? args[1] : "cold";
-        string path = args.Length > 2
-            ? args[2]
-            : Path.Combine(Path.GetTempPath(), "lodestar-heap-warmth.json");
+
+        // Fixed, not an argument: three processes must agree on one file, and no caller ever
+        // chose it -- a path from argv reached nothing but File.ReadAllBytes.
+        string path = Path.Combine(Path.GetTempPath(), "lodestar-heap-warmth.json");
 
         if (state == "prepare")
         {

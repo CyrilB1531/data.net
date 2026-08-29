@@ -90,7 +90,10 @@ def measure(warm: bool, path: Path) -> None:
 
 def main() -> None:
     state = sys.argv[1] if len(sys.argv) > 1 else "cold"
-    path = Path(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_PATH
+
+    # Fixed, not an argument, for the reason HeapWarmthBench.Run gives: three processes
+    # must agree on one file, and no caller ever chose it.
+    path = DEFAULT_PATH
 
     if state == "prepare":
         prepare(path)
