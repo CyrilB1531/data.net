@@ -1103,6 +1103,31 @@ the claim under test is that the load does identical work and pays for more of i
 
 **On a shared machine this does not reproduce.** Measured on the container: allocation
 agreed to 200 bytes in 37 MB, and the timing put warm faster, level, then slower over
-three alternating rounds, with one state's median swinging 4× between rounds. That is
-what `Benchmark (on demand)` exists for — [#461](https://github.com/CyrilB1531/lodestar/issues/461)
-adds it, and this lot waits on it.
+three alternating rounds, with one state's median swinging 4× between rounds. So the
+figures below were not taken there — they come from `Benchmark (on demand)`, which the
+section after this one describes.
+
+## Running a diagnostic on a second machine
+
+`roc-parallel` (section 6), `save-phases` (section 8) and `heap-warmth` (section 9)
+are C#-only subcommands rather than `[Benchmark]` classes, so `bench-map.json` does not name them and the
+nightly never runs one. That is deliberate — they answer a question a lot asks
+once, not a regression worth watching every night.
+
+The cost of that was that they ran only on a contributor's own machine, and for
+some of them the machine is the finding: `save-phases` measures shares inside one
+window and those transfer, but a subcommand comparing two processes has absolutes
+that do not. [ADR 0051](../docs/decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md)
+withdrew a 1.61× taken on a shared container for exactly that reason.
+
+**`Benchmark (on demand)`** closes it: dispatch
+`.github/workflows/bench-ondemand.yml` against any branch, name the subcommand,
+and read the job summary. The subcommand is free text rather than a list, because
+the list would be a promise about a ref the workflow has not checked out yet — a
+branch adding one runs it the day it exists, without editing the workflow.
+
+It **prints and does not publish** — nothing there writes a page, opens a pull
+request or touches the wiki. A number becomes a published figure when a person
+reads it and decides, which is what `performance.md`'s name-the-machine rule is
+for. The workflow records `uptime`, the core count and the CPU model beside every
+run so that decision has what it needs.
