@@ -1,3 +1,5 @@
+using System.Text;
+using System.Buffers.Binary;
 using Lodestar.Embeddings.Persistence;
 using Xunit;
 
@@ -183,19 +185,49 @@ public sealed class NpyFileTests
     }
 
     [Fact]
-    public void A_block_past_MaxTotalBytes_is_still_refused()
+    public void A_header_declaring_more_elements_than_MaxTotalBytes_allows_is_refused()
+    {
+        // Hand-built, because numpy will not write a header whose shape its data does not
+        // hold. That is the only way to reach the bound: a real file is refused earlier.
+        byte[] hostile = Declaring("1000000, 1000");
+
+        InvalidDataException refused =
+            Assert.Throws<InvalidDataException>(() => NpyFile.Read(new MemoryStream(hostile)));
+
+        Assert.Contains("1000000000 elements", refused.Message, StringComparison.Ordinal);
+        Assert.Contains("MaxTotalBytes", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_payload_past_MaxTotalBytes_is_refused_while_being_read()
     {
         const int Rows = 2_605, Columns = 384;
-        var values = new float[Rows * Columns];
-
         using var written = new MemoryStream();
-        NpyFile.Write(written, values, Rows, Columns);
+        NpyFile.Write(written, new float[Rows * Columns], Rows, Columns);
         written.Position = 0;
 
-        // One byte under what the block needs, so the bound that replaced MaxArrayLength is
-        // the one doing the refusing rather than the shape-against-payload check.
+        // Refused by the read, before the header is parsed at all -- which is why the test
+        // above has to build its own header to reach the shape bound.
         var options = new ArtifactLoadOptions { MaxTotalBytes = (Rows * Columns * sizeof(float)) - 1 };
 
         Assert.Throws<InvalidDataException>(() => NpyFile.Read(written, options));
+    }
+
+    /// <summary>A well-formed v1.0 header for <paramref name="shape"/>, and no data at all.</summary>
+    private static byte[] Declaring(string shape)
+    {
+        string dictionary = $"{{'descr': '<f4', 'fortran_order': False, 'shape': ({shape}), }}";
+        int unpadded = 10 + dictionary.Length + 1;
+        string padded = dictionary + new string(' ', (64 - (unpadded % 64)) % 64) + "\n";
+        byte[] header = Encoding.ASCII.GetBytes(padded);
+
+        var file = new byte[10 + header.Length];
+        Encoding.ASCII.GetBytes("\u0093NUMPY").CopyTo(file, 0);
+        file[0] = 0x93;
+        file[6] = 1;
+        file[7] = 0;
+        BinaryPrimitives.WriteUInt16LittleEndian(file.AsSpan(8), (ushort)header.Length);
+        header.CopyTo(file, 10);
+        return file;
     }
 }
