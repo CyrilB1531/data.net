@@ -55,6 +55,8 @@ internal static class SidecarBench
             ("read npy block", () => GC.KeepAlive(NpyFile.Read(new MemoryStream(npy), Unbounded))),
             ("rebuild index ", () => Rebuild(block, count, dimension)),
             ("sidecar floor ", () => Floor(npy, count, dimension)),
+            ("ingest copy   ", () => IngestCopy(npy, dimension)),
+            ("ingest only   ", () => IngestOnly(block, dimension)),
         ];
 
         double[][] samples = Rounds.Interleave(rows, Repeats, WarmupRuns);
@@ -74,7 +76,9 @@ internal static class SidecarBench
                     $"{row.Name}  median {medians[i],8:F3}  min {samples[i].Min(),8:F3}  max {samples[i].Max(),8:F3} ms")) +
             Environment.NewLine +
             $"{Environment.NewLine}load / floor    {medians[0] / medians[3]:F2}x   " +
-            $"load / rebuild  {medians[0] / medians[2]:F2}x";
+            $"load / rebuild  {medians[0] / medians[2]:F2}x   " +
+            $"load / ingest   {medians[0] / medians[4]:F2}x   " +
+            $"ingest / floor  {medians[4] / medians[3]:F2}x";
 
         // console-print: this subcommand's whole output, and one call so one marker covers it.
         Console.WriteLine(report);
@@ -129,5 +133,30 @@ internal static class SidecarBench
         GC.KeepAlive(backing);
     }
 
+    /// <summary>The sidecar route as it will exist: the block read, then the bulk ingest.</summary>
+    /// <remarks>
+    /// This is the row issue #474's gate is read off. It is what <c>sidecar floor</c> bounds —
+    /// the floor pays a read and one copy, and this pays a read and one copy into an index —
+    /// so the two landing together is the finding, and this landing near
+    /// <c>rebuild index</c> instead is the refusal.
+    /// </remarks>
+    private static void IngestCopy(byte[] npy, int dimension)
+    {
+        NpyBlock read = NpyFile.Read(new MemoryStream(npy), Unbounded);
+        GC.KeepAlive(EmbeddingIndex.FromBlock(
+            read.Values.Span, dimension, BlockNormalization.AlreadyNormalized));
+    }
 
+    /// <summary>The ingest alone, on a block already in hand.</summary>
+    /// <remarks>
+    /// Separates the ingest's cost from the read's, so a later regression in either can be
+    /// attributed. There is deliberately no row for <c>FromOwnedBlock</c>: it assigns four
+    /// fields and is constant time whatever the block's size, so its ceiling is the
+    /// <c>read npy block</c> row and a row of its own would publish noise.
+    /// </remarks>
+    private static void IngestOnly(float[] block, int dimension)
+    {
+        GC.KeepAlive(EmbeddingIndex.FromBlock(
+            block, dimension, BlockNormalization.AlreadyNormalized));
+    }
 }
