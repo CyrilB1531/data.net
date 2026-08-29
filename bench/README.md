@@ -1005,6 +1005,16 @@ written, with no gap for this session's own overhead to open. The `main` row was
 taken 16 minutes later at a comparable load, which is what makes the before/after
 in this section and in section 4 a comparison rather than two tables.
 
+### The save rows are no longer all in memory
+
+`embedding_index_save_file` is the write counterpart of `embedding_index_load_file`,
+which #336 added because the file path is the one a caller takes — every other save
+row here writes to a `MemoryStream`. It uses a path of its own, so neither direction
+measures a file the other just touched, and neither side flushes to the device. It
+priced pre-sizing the file, which
+[ADR 0052](../docs/decisions/0052-pre-sizing-the-artifact-file-buys-nothing-on-a-delayed-allocation-filesystem.md)
+refused, and it outlives that question.
+
 ### Every load row here is measured on a warmed heap
 
 `compare-persistence` runs `embedding_index_save` before `embedding_index_load`,

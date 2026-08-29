@@ -1707,6 +1707,43 @@ worth carrying forward is narrower and more useful than the row it came from: **
 benchmark process that saves before it loads was measuring a warmed heap**, and any
 figure for either direction taken in one process after the other carries that.
 
+### Pre-sizing the file, and why it is not done (issue #432)
+
+Step 1's fourth item, and the decision is
+[ADR 0052](../decisions/0052-pre-sizing-the-artifact-file-buys-nothing-on-a-delayed-allocation-filesystem.md).
+The save writes ~20 MB through an 80 KB buffer — 252 `write` calls, each extending
+the file — so telling the filesystem the length up front should let it allocate
+once. It could not be shown against any published row, because every save row this
+project reported wrote to a `MemoryStream`. `compare-persistence` now carries
+`embedding_index_save_file`, and the question got its answer.
+
+**Conditions.** Four cores of an Intel Xeon @ 2.80GHz, .NET 10, a shared cloud
+container, writing to **ext4 on a block device** — not a tmpfs, which would have
+made the exercise meaningless. Interleaved round-robin, one round each.
+
+The hypothesis on its own: 20 589 008 bytes through an 80 KB-buffered
+`FileStream`, no JSON and no base64, 25 rounds per run.
+
+| | run 1 | run 2 | run 3 |
+| --- | ---: | ---: | ---: |
+| plain | 5.149 ms | 4.998 ms | 5.135 ms |
+| `SetLength` first | 5.177 ms | 5.081 ms | 5.016 ms |
+
+**The same number.** Under 2% apart and apart in *both directions* across three
+runs. On the real save path it is the same answer — pre-sizing came out slower in
+two runs of three.
+
+The floor is the part worth keeping. `File.WriteAllBytes` of the finished artifact
+costs 4.86 ms against the whole save's 7.67, and the 2.8 ms between them is the
+base64 encode the step 0 table above prices at 3.211 ms on this machine. **That
+leaves nothing for file extension to be costing**, which is the mechanism: ext4
+defers allocation to writeback and sizes it to what is there, so the per-write
+extension the change would absorb never happens.
+
+What would reopen it is a filesystem that charges per extension — NTFS advances a
+valid-data-length and zero-fills rather than deferring. Nothing here was measured
+on Windows, and `embedding_index_save_file` is what would settle it there.
+
 ## Persisting an embedding index — the load path (issue #324)
 
 The load direction is the furthest behind Python anything here publishes, and
