@@ -1156,8 +1156,9 @@ put warm faster, level, then slower over three rounds with one state's median sw
 
 ## 10. Running a diagnostic on a second machine (issue #461)
 
-`roc-parallel` (section 6), `save-phases` (section 8), `heap-warmth` (section 9) and
-`pool-cost` (section 11) are C#-only subcommands rather than `[Benchmark]` classes, so `bench-map.json` does not name them and the
+`roc-parallel` (section 6), `save-phases` (section 8), `heap-warmth` (section 9),
+`pool-cost` (section 11) and `sidecar` (section 12) are C#-only subcommands rather than
+`[Benchmark]` classes, so `bench-map.json` does not name them and the
 nightly never runs one. That is deliberate — they answer a question a lot asks
 once, not a regression worth watching every night.
 
@@ -1196,3 +1197,25 @@ On a hosted runner: allocate **1.783 ms** median against rent's **0.042**, so 42
 load. The allocation's own minimum is 0.071 ms, as cheap as the rent — **what costs is the
 large-object collection it provokes**, not the allocation. [ADR 0054](../docs/decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)
 is what that decided, amending 0053, which had refused pooling without ever timing it.
+
+## 12. What a binary sidecar would buy (issue #436)
+
+Four rows, interleaved one round each:
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- sidecar
+```
+
+The artifact against a `.npy` block plus the head a sidecar would still have to write, and four
+timings: the artifact load, the block read, a **floor** — the read plus one copy into a backing
+store, which is what a bulk ingest would do — and the rebuild through `Add` that is what exists
+today. The floor is a bound in the sense section 8's `block_copy_floor` is one: a route
+`EmbeddingIndex` has no method for, measured so the method can be judged against it.
+
+On a hosted runner: the sidecar is **1.331× smaller** and its floor is **2.02× faster** than the
+artifact load, while the rebuild route is **0.66×** — slower than what it would replace.
+[ADR 0055](../docs/decisions/0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md)
+takes the sidecar and makes the bulk ingest its precondition.
+
+**Not on a container.** There the same rows put the floor at 0.73×, the opposite conclusion, with
+the floor row spread over 12–43 ms against the runner's 4.0–8.5.

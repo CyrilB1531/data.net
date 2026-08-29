@@ -1,8 +1,18 @@
 # 0436 — Memory-mapping is blocked on a format, not on a measurement
 
 **Issue:** [#436](https://github.com/CyrilB1531/lodestar/issues/436) ·
-**Status:** proposed — records the blocking condition; **no plan, because there is nothing to
-execute** · **Date:** 2026-08-29
+**Status:** superseded — see the amendment below · **Date:** 2026-08-29
+
+> **Amendment, 2026-08-29.** This spec's body is left as written, and two of its claims did
+> not survive being measured. It says the case for a sidecar is *"size, and only size"* and
+> that #436 *"cannot start"*. Both were inherited from ADR 0011's update block, which is a
+> statement about base64 rather than about the JSON scan around it: on a runner the sidecar
+> floor is **2.02×** the artifact load. And #436 could start — it carried the format decision
+> itself, which is
+> [ADR 0055](../../decisions/0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md).
+> What the measurement added that nothing here anticipated: the rebuild through `Add` costs
+> three times the read, so the sidecar route that exists today is **0.66×** — slower than
+> what it would replace. The bulk ingest is the precondition, and it is the finding.
 
 ## Why this has a spec and no plan
 
