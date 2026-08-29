@@ -280,6 +280,14 @@ clean Sonar, and a finding introduced by a pull request blocks its merge.
 Design specs and implementation plans live in `docs/superpowers/specs/` and
 `docs/superpowers/plans/`, named `<date>_<issue id padded to 4>_<slug>.md`.
 
+**A spec may be written after the fact; a plan may not.** A spec records measured facts and
+rejected options, and is still a record when written late — issues #202 to #446 were backfilled
+that way, from the commits that closed them. A plan is an instrument for work that has not
+started, with checkbox steps and a `Branch:` line, so one written for merged work is checkboxes
+nobody may tick and a branch that no longer exists. **Date a backfilled spec by the work, not by
+the day it was written**, or the directory loses its ordering; its status line says it is
+retrospective.
+
 ### SonarQube MCP server
 
 `.github/instructions/sonarqube_mcp.instructions.md` applies to this repository:
