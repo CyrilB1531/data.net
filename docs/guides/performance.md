@@ -1766,12 +1766,14 @@ break-even puts at 1.63 loads. A caller who loads one index and serves queries f
 ordinary case for an embedding index, and the shape every guide here demonstrates — pays the
 residency and collects nothing.
 
-**So it is not done**, and the decision is
-[ADR 0053](../decisions/0053-the-payload-buffer-is-not-pooled-because-residency-outlives-the-load.md).
-The change worked; it was refused on the sign of the trade rather than on its size. A caller who
-does load repeatedly can have the win without the library choosing it for everyone: rent a buffer,
-read into it, and hand it to [`EmbeddingIndex.Load`](../reference/embeddings/search/embeddingindex-load.md)`(ReadOnlyMemory<byte>)`, which parses in place
-and pools nothing.
+**It is done, and 0053 was wrong to refuse it.** That refusal weighed the residency against
+nothing, because the lot never timed the pooled path — the 8.1% it cited is #433's warm-heap
+figure, which prices *pages already committed*, not an allocation removed. Asked directly on a
+runner, renting is **42× the allocation and saves 1.74 ms a load**, about a tenth of one, because
+what costs is the large-object collection the allocation provokes and not the allocation itself.
+[ADR 0054](../decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)
+amends 0053 and takes the trade: 33.5 MB resident is a price this library pays for load time,
+which is what it publishes.
 
 ### Pre-sizing the file, and why it is not done (issue #432)
 

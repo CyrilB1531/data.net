@@ -1156,8 +1156,8 @@ put warm faster, level, then slower over three rounds with one state's median sw
 
 ## 10. Running a diagnostic on a second machine (issue #461)
 
-`roc-parallel` (section 6), `save-phases` (section 8) and `heap-warmth` (section 9)
-are C#-only subcommands rather than `[Benchmark]` classes, so `bench-map.json` does not name them and the
+`roc-parallel` (section 6), `save-phases` (section 8), `heap-warmth` (section 9) and
+`pool-cost` (section 11) are C#-only subcommands rather than `[Benchmark]` classes, so `bench-map.json` does not name them and the
 nightly never runs one. That is deliberate — they answer a question a lot asks
 once, not a regression worth watching every night.
 
@@ -1178,3 +1178,21 @@ request or touches the wiki. A number becomes a published figure when a person
 reads it and decides, which is what `performance.md`'s name-the-machine rule is
 for. The workflow records `uptime`, the core count and the CPU model beside every
 run so that decision has what it needs.
+
+## 11. What renting the payload costs against allocating it (issue #470)
+
+One primitive, two rows, interleaved in one process:
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- pool-cost
+```
+
+Allocating a 20 589 007-byte buffer against renting and returning one, both touching every page.
+**Against an uninitialized allocation**, because `Buffers.AllocateUninitialized` is what the read
+path uses — comparing a zeroed `new byte[]` would charge the pool's rival for a memset the code
+does not do and inflate the saving by the whole zeroing.
+
+On a hosted runner: allocate **1.783 ms** median against rent's **0.042**, so 42× and 1.74 ms a
+load. The allocation's own minimum is 0.071 ms, as cheap as the rent — **what costs is the
+large-object collection it provokes**, not the allocation. [ADR 0054](../docs/decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)
+is what that decided, amending 0053, which had refused pooling without ever timing it.

@@ -125,9 +125,15 @@ public sealed partial class EmbeddingIndex
 
         // Past one array the artifact is read in segments instead. Only this loader needs
         // it: an index is the one artifact here that reaches the ceiling (#377).
-        return source.CanSeek && source.Length - source.Position > limits.MaxSingleBuffer
-            ? FromSegments(JsonArtifact.ReadAllSegments(source, limits), limits)
-            : FromPayload(JsonArtifact.ReadAllBytes(source, limits), limits);
+        if (source.CanSeek && source.Length - source.Position > limits.MaxSingleBuffer)
+        {
+            return FromSegments(JsonArtifact.ReadAllSegments(source, limits), limits);
+        }
+
+        // Owned here, not in FromPayload: the public Load(ReadOnlyMemory) overload reaches
+        // that too, so pooling below this point would return a caller's own buffer (#435).
+        using Buffers.RentedPayload payload = JsonArtifact.ReadAllBytesPooled(source, limits);
+        return FromPayload(payload.Memory, limits);
     }
 
     /// <summary>Reads an index from bytes already in memory, without copying them.</summary>
