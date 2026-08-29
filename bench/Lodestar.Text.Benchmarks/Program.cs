@@ -3,7 +3,7 @@ using Lodestar.Text.Benchmarks.CrossLang;
 
 // long-comment: the entry points, and why the chain of ifs became a switch.
 // Nine entry points, the default being BenchmarkDotNet; usage for each of the eight
-// "compare*"/"roc-parallel"/"save-phases"/"heap-warmth"/"sidecar" is in bench/README.md.
+// "compare*"/"roc-parallel"/"save-phases"/"pool-cost"/"sidecar"/"heap-warmth" -- bench/README.md.
 // A switch rather than a chain of ifs: the ninth took the chain past the cognitive-complexity
 // bar, and tools/check_bench_map.py reads these cases by name.
 switch (args.Length > 0 ? args[0] : string.Empty)
@@ -26,14 +26,24 @@ switch (args.Length > 0 ? args[0] : string.Empty)
     case "save-phases":
         SavePhasesBench.Run();
         return;
+    case "pool-cost":
+        PoolCostBench.Run();
+        return;
     case "sidecar":
         SidecarBench.Run();
         return;
     case "heap-warmth":
         HeapWarmthBench.Run(args);
         return;
-    default:
+    case "":
         break;
+    default:
+        // An unknown subcommand used to reach BenchmarkSwitcher's menu, which exits 0.
+        // console-print: the refusal, on stderr, that a silently green run would hide.
+        await Console.Error.WriteLineAsync(
+            $"unknown subcommand '{args[0]}'. See bench/README.md for the list.").ConfigureAwait(false);
+        Environment.ExitCode = 2;
+        return;
 }
 
 BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);

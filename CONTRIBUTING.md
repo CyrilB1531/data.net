@@ -128,6 +128,16 @@ A change is not finished until all of these hold:
    name linked to its own `###` entry — `` [`Levenshtein`](#levenshtein) ``. The anchor is
    GitHub's slug rule, lower-cased with dots dropped, and `ReferenceDocumentationTests` fails
    the build on a row with no link.
+7. **A change to shipped behaviour carries its `CHANGELOG.md` entry**, under the package's
+   heading in `[Unreleased]`, in the shape [Releasing](#releasing) sets: one sentence, the issue
+   and the commit. New public surface, a fixed defect and a measured performance change all
+   qualify; a refusal does not, because it changed nothing a caller can observe — the decision
+   record is where that lives.
+
+   This is item 7 rather than a line under *Releasing* because it was one, and four lots shipped
+   without it — including [#450](https://github.com/CyrilB1531/lodestar/issues/450), a whole
+   public API. Every other item here is checked by a gate that fails the build; this one is not,
+   which is exactly why it needs to be read alongside them rather than at release time.
 
 ```bash
 dotnet build Lodestar.slnx -c Release

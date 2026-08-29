@@ -13,6 +13,7 @@
     { "subcommand": "roc-parallel" },
     { "subcommand": "save-phases" },
     { "subcommand": "heap-warmth", "python": "bench/python/bench_heap_warmth.py" },
+    { "subcommand": "pool-cost" },
     { "subcommand": "sidecar" }
   ],
   "benchmarks": {
