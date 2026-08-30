@@ -1,6 +1,6 @@
 # 0057 — The `.npy` read serves a stream and a buffer differently
 
-**Status:** accepted · **Date:** 2026-08-30
+**Status:** accepted · **Date:** 2026-08-30 · **Refines:** [`0056`](0056-a-block-may-be-adopted-and-the-invariant-is-the-callers-to-keep.md)
 
 ## Context
 
@@ -19,9 +19,10 @@ once.** The stream became a bounded buffer, the buffer became an exact `byte[]`,
 became the `float[]` a block carries — and the block was copied once more into the index's store.
 
 Removing the second of those alone, in this lot's first commit, moved the row to **0.34–0.36×
-wall and 0.29–0.30× cpu** on the same runner: about 1.8 ms, the shape of one `memcpy` of this
-block. That is the measurement this decision argues from. One copy of 15.36 MB is worth roughly a
-fifth of the row, so the remaining two are worth taking too.
+wall and 0.29–0.30× cpu** on the same runner: **6.106 / 5.645 / 6.035 ms before it, 4.039 /
+4.317 ms after**, which is about 1.8 ms and the shape of one `memcpy` of this block. That is the
+measurement this decision argues from — one copy of 15.36 MB costs what those two readings differ
+by — and it says the remaining two are worth taking as well.
 
 Two callers reach the reader, and they do not want the same thing. One holds a `Stream` and has
 no bytes of its own. The other already holds the whole file — a blob, a cache entry, an embedded

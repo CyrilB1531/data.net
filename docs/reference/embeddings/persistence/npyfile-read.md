@@ -43,7 +43,7 @@ using Lodestar.Embeddings.Persistence;
 using var written = new MemoryStream();
 NpyFile.Write(written, [1f, 0f, 0f, 1f], 2, 2);
 
-NpyBlock borrowedBlock = NpyFile.Read(written.ToArray().AsMemory());
+NpyBlock borrowedBlock = NpyFile.Read(written.GetBuffer().AsMemory(0, (int)written.Length));
 
 int rank = borrowedBlock.Shape.Count;  // => 2
 bool borrowed = borrowedBlock.OwnedArray is null;  // => True

@@ -1,7 +1,7 @@
 # 0466 — The .npy read copies the block three times, where numpy copies it once
 
 **Issue:** [#466](https://github.com/CyrilB1531/lodestar/issues/466) ·
-**Status:** proposed · **Date:** 2026-08-30
+**Status:** proposed, amended in part — see the amendment at the end · **Date:** 2026-08-30
 
 ## Problem
 
