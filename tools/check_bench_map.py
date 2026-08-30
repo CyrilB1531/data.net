@@ -33,12 +33,19 @@ MAP = ROOT / "bench" / "bench-map.json"
 BENCH_DIR = ROOT / "bench" / "Lodestar.Text.Benchmarks"
 PROGRAM = BENCH_DIR / "Program.cs"
 PYTHON_DIR = ROOT / "bench" / "python"
+WORKFLOWS = ROOT / ".github" / "workflows"
 
 CLASS = re.compile(r"^\s*public\s+class\s+(\w+)", re.MULTILINE)
 # Program.cs dispatches with `case "name":`. It used a chain of `args[0] == "name"` until
 # the ninth subcommand took that past the analyser's cognitive-complexity bar.
 SUBCOMMAND = re.compile(r'case "(compare[a-z-]*)"')
 ANY_SUBCOMMAND = re.compile(r'case "([a-z][a-z-]*)"')
+# `dotnet run --project ... -- <first>`: the space before the bare `--` is what tells it
+# apart from `--project`, whose dashes are not followed by one.
+INVOCATION = re.compile(r"dotnet run\b.*?\s--\s+(\S+)")
+CONTINUATION = re.compile(r"\\\n\s*")
+# Whether Program.cs's default arm lets an option through to BenchmarkSwitcher (#478).
+FORWARDS_OPTIONS = re.compile(r"StartsWith\('-'\)")
 
 
 def declared_classes() -> dict[str, pathlib.Path]:
@@ -153,6 +160,45 @@ def glob_findings(data: dict) -> list[str]:
     return findings
 
 
+def invocation_findings() -> list[str]:
+    """A workflow's own arguments, against what Program.cs accepts.
+
+    #478: the refusal added for a mistyped subcommand also caught `--filter`, which is
+    BenchmarkDotNet's and not a subcommand at all, so every scheduled nightly exited 2
+    before its first measurement. Nothing saw it because the nightly is the only caller
+    that leads with an option, and it is the one workflow no pull request runs -- so the
+    check for it belongs where a pull request does run, which is here.
+
+    Only the first argument, which is the one Program.cs judges. A mistyped option later
+    in the line is a hazard this does not cover and #470's refusal never reached either:
+    BenchmarkDotNet answers an unknown option with its help screen and exit 0, so such a
+    nightly is green having measured nothing. Verified, not assumed -- `--nonsense-option`
+    exits 0 here.
+    """
+    program = PROGRAM.read_text(encoding="utf-8") if PROGRAM.exists() else ""
+    dispatched = set(ANY_SUBCOMMAND.findall(program))
+    forwards_options = bool(FORWARDS_OPTIONS.search(program))
+
+    findings = []
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        text = CONTINUATION.sub(" ", path.read_text(encoding="utf-8"))
+        for first in INVOCATION.findall(text):
+            token = first.strip('"\'')
+            if "$" in token:
+                continue  # A subcommand read from bench-map.json; the map rules check it.
+            if token.startswith("-"):
+                if not forwards_options:
+                    findings.append(
+                        f".github/workflows/{path.name}: passes '{token}' first, which "
+                        f"bench/Lodestar.Text.Benchmarks/Program.cs refuses as an unknown "
+                        f"subcommand rather than forwarding to BenchmarkDotNet")
+            elif token not in dispatched:
+                findings.append(
+                    f".github/workflows/{path.name}: passes '{token}' first, which "
+                    f"bench/Lodestar.Text.Benchmarks/Program.cs does not dispatch")
+    return findings
+
+
 def main() -> int:
     if len(sys.argv) > 1:
         print(__doc__)
@@ -167,6 +213,7 @@ def main() -> int:
     findings = coverage_findings(data.get("benchmarks", {}), declared_classes())
     findings += harness_findings(data.get("harnesses", {}), diagnostics)
     findings += diagnostic_findings(diagnostics)
+    findings += invocation_findings()
     findings += glob_findings(data)
 
     for finding in findings:

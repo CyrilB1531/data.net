@@ -38,6 +38,13 @@ switch (args.Length > 0 ? args[0] : string.Empty)
     case "":
         break;
     default:
+        // BenchmarkDotNet owns everything option-shaped -- --filter, --job, --exporters --
+        // so those reach BenchmarkSwitcher below instead of being refused here (#478).
+        if (args[0].StartsWith('-'))
+        {
+            break;
+        }
+
         // An unknown subcommand used to reach BenchmarkSwitcher's menu, which exits 0.
         // console-print: the refusal, on stderr, that a silently green run would hide.
         await Console.Error.WriteLineAsync(
