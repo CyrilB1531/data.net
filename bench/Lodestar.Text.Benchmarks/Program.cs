@@ -32,6 +32,9 @@ switch (args.Length > 0 ? args[0] : string.Empty)
     case "sidecar":
         SidecarBench.Run();
         return;
+    case "ingest-phases":
+        IngestPhasesBench.Run();
+        return;
     case "heap-warmth":
         HeapWarmthBench.Run(args);
         return;

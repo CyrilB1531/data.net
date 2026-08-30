@@ -9,12 +9,17 @@
     "bench/compare.py",
     "bench/corpus/**"
   ],
+  "_why_dispatch_only": "Program.cs is in 'always' for the BenchmarkSwitcher call every class goes through, not for the switch above it: a dispatch arm names a subcommand the nightly never runs, so adding one used to select all 16 classes for zero information (#465). select_benchmarks.py compares the two revisions with the named construct removed, and lets the file trigger 'always' only when something outside it moved. The construct is named here rather than hard-coded there, so a file that stops having a switch stops being exempt instead of silently staying so.",
+  "dispatch_only": {
+    "bench/Lodestar.Text.Benchmarks/Program.cs": "switch"
+  },
   "diagnostics": [
     { "subcommand": "roc-parallel" },
     { "subcommand": "save-phases" },
     { "subcommand": "heap-warmth", "python": "bench/python/bench_heap_warmth.py" },
     { "subcommand": "pool-cost" },
-    { "subcommand": "sidecar" }
+    { "subcommand": "sidecar" },
+    { "subcommand": "ingest-phases" }
   ],
   "benchmarks": {
     "BatchEmbeddingBenchmarks": [

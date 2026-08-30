@@ -1234,6 +1234,37 @@ load. The allocation's own minimum is 0.071 ms, as cheap as the rent — **what 
 large-object collection it provokes**, not the allocation. [ADR 0054](../docs/decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)
 is what that decided, amending 0053, which had refused pooling without ever timing it.
 
+## 13. Where the .npy ingest's time goes (issue #480)
+
+Ten phases, interleaved, each with the collections it provoked beside its milliseconds:
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- ingest-phases
+```
+
+Issue #466 removed a whole copy of the 15.36 MB block from `NpyFile.Read(Stream)` and the
+published row did not move; removing the copy into the index moved it by more than a copy is worth. Both
+readings came from subtracting whole rows, which cannot say where the time went. This takes the
+ingest apart instead: the staged read, the zero-copy overload beside it, the `float[]` allocation
+cold and reused, the payload read into an array that already exists, the header alone, `FromBlock`
+against `FromOwnedBlock`, and a bare `memcpy` of the block as the floor every share is read
+against.
+
+**Two independent subtractions have to agree, and that is the point of the mode.**
+`read_stream_owned - stream_copy_floor` is what the read's allocation costs inside the read;
+`allocate_cold - allocate_reused` prices the same allocation on its own. If they disagree, the
+allocation is not what the difference between those rows is made of.
+
+The gen columns are collections **summed over the nine runs**, not per run: a block this size
+provokes at most one gen2 per run, and a column of zeroes and ones says less than a total.
+[ADR 0054](../docs/decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)
+is why they are there at all — on the artifact buffer the time and the collection count told
+different stories, and only the second one explained the first.
+
+Nothing here is published. It prints a table and writes no page: what it measures becomes a figure
+when a person reads it on a named machine and decides, which is [section 10](#10-running-a-diagnostic-on-a-second-machine-issue-461)'s
+rule and not this mode's exception.
+
 ## 12. What a binary sidecar would buy (issue #436)
 
 Six rows, interleaved one round each:

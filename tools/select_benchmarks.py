@@ -8,7 +8,9 @@ those files match -- one per line, empty when nothing relevant moved.
 Two deliberate biases, both toward running too much rather than too little:
 
   * an entry under "always" (src/Shared, the corpus, the harness entry point)
-    selects every class, because a change there can move any measurement;
+    selects every class, because a change there can move any measurement -- with
+    one exception, "dispatch_only", where a file earns its place in "always" for
+    one part of itself and the rest of it is a dispatch table nothing measures;
   * the globs are directory-wide, so a class runs whenever its neighbourhood
     moved. A benchmark run for nothing costs minutes; one not run hides a
     regression, and nothing goes red when it does.
@@ -81,11 +83,71 @@ def matches(path: str, glob: str) -> bool:
     return fnmatch.fnmatch(path, glob)
 
 
-def select(data: dict, files: list[str], kind: str = "benchmarks") -> list[str]:
+def strip_construct(source: str, keyword: str) -> str | None:
+    """The file with its first `keyword (...) { ... }` block removed, or None if absent.
+
+    Brace counting rather than a parser: the construct this serves is one switch in a
+    top-level file, and a regex cannot match balanced braces at all. A file that has
+    stopped containing the construct returns None, which the caller reads as "no longer
+    exempt" rather than as "unchanged" -- the safe direction, as everything here is.
+    """
+    start = source.find(keyword)
+    if start < 0:
+        return None
+    opened = source.find("{", start)
+    if opened < 0:
+        return None
+    depth = 0
+    for i in range(opened, len(source)):
+        if source[i] == "{":
+            depth += 1
+        elif source[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return source[:start] + source[i + 1:]
+    return None
+
+
+def file_at(rev: str, path: str) -> str | None:
+    """One file's contents at one revision, or None when it is absent or unreadable."""
+    if not REVISION.match(rev):
+        return None
+    out = subprocess.run(["git", "show", f"{rev}:{path}"],
+                         cwd=ROOT, capture_output=True, text=True)
+    return out.stdout if out.returncode == 0 else None
+
+
+def dispatch_only(data: dict, path: str, since: str, head: str) -> bool:
+    """Whether path's change touched only the construct bench-map.json exempts.
+
+    #465: Program.cs is in "always" for the BenchmarkSwitcher call below its switch, and
+    adding a subcommand -- which the nightly never runs -- selected all 16 classes for no
+    information. Both revisions are compared with the construct removed; anything else
+    moving means the file changed in the way that put it in "always".
+    """
+    keyword = data.get("dispatch_only", {}).get(path)
+    if keyword is None:
+        return False
+    before, after = file_at(since, path), file_at(head, path)
+    if before is None or after is None:
+        return False
+    stripped_before = strip_construct(before, keyword)
+    stripped_after = strip_construct(after, keyword)
+    if stripped_before is None or stripped_after is None:
+        return False
+    return stripped_before == stripped_after
+
+
+def select(data: dict, files: list[str], kind: str = "benchmarks",
+           since: str | None = None, head: str = "HEAD") -> list[str]:
     """The entries of one kind the changed files reach; every one when 'always' is hit."""
     entries = data.get(kind, {})
     every = sorted(entries)
-    if any(matches(path, glob) for glob in data.get("always", []) for path in files):
+    hits = [path for path in files
+            for glob in data.get("always", []) if matches(path, glob)]
+    if since is not None:
+        hits = [path for path in hits if not dispatch_only(data, path, since, head)]
+    if hits:
         return every
 
     def globs(name: str) -> list[str]:
@@ -125,7 +187,8 @@ def main() -> int:
         print_all(data, kind)
         return 0
 
-    for name in select(data, changed_files(args.since, args.head), kind):
+    for name in select(data, changed_files(args.since, args.head), kind,
+                       since=args.since, head=args.head):
         print(name)
     return 0
 
