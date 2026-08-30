@@ -22,11 +22,22 @@ in [the performance guide](../guides/performance.md#where-the-ingests-time-actua
 | | round 1 | round 2 | round 3 |
 | --- | ---: | ---: | ---: |
 | `read_stream_owned` − `stream_copy_floor` | 0.022 ms | 0.072 ms | 0.018 ms |
+| … less `parse_header_only` | 0.016 ms | 0.067 ms | 0.013 ms |
 | `allocate_cold` − `allocate_reused` | 0.016 ms | 0.016 ms | 0.018 ms |
 
-**Two independent subtractions agree at about 0.02 ms.** The first prices the reader's `float[]`
-allocation from inside the read; the second prices the same allocation on its own, cold against a
-reused buffer. Either way it is roughly 2% of the ingest.
+**Two subtractions, built differently, and neither puts the allocation near a copy.** The first
+prices the reader's `float[]` from inside the read; the second prices the same allocation on its
+own, cold against a reused buffer. They are not pricing quite the same thing: the read-side
+figure also carries the header parse — measured separately as `parse_header_only`, 0.005–0.006 ms
+— and the difference between a fresh destination and a warm one, which is the middle row above.
+With the header out, rounds 1 and 3 agree with the allocation side to a thousandth; round 2 does
+not, its 0.072 against 0.016 driven by a `stream_copy_floor` reading 0.889 ms where the other two
+read 0.965 and 0.967.
+
+So two estimators put the allocation at 0.013–0.018 ms in two rounds of three, and no reading of
+either puts it within a tenth of a copy. Against the canonical harness's 1.11 ms ingest that is
+roughly 2%; against `ingest_total`'s own median, 0.9%. The denominator matters to the percentage
+and not at all to the conclusion.
 
 What costs is the block moving. A bare `CopyTo` of the 15.36 MB reads 0.94–0.98 ms; the staged
 read reads 0.96–0.99, one copy;
@@ -72,8 +83,16 @@ larger number would have replaced one unmeasured attribution with another.
   worth more than 0057 argued, not less: at 0.005–0.008 ms
   against the stream read's 0.96–0.99, a caller who already holds the bytes skips the whole cost
   of the ingest rather than a copy of it.
-- **What would change this decision** is the gap `ingest_total` still carries. Its minimum equals
-  the sum of its parts and its median is a copy higher, so most single calls pay something a
-  best-of-five never sees — and it is the only phase that hands the block to an index and drops
-  it. If that turns out to be a collection provoked by retention, 0054's mechanism is on this path
-  after all, one step further along than 0057 placed it.
+- **What would change this decision** is the gap `ingest_total` still carries, and it is left
+  unexplained rather than attributed. Its minimum, 0.92–1.00 ms, equals the sum of its parts and
+  its median is a copy higher, so the row is bimodal. It carries 2 gen0, 2 gen1 and 2 gen2 over
+  nine runs where `from_block_copy` — which allocates 15.36 MB, fills it, hands it to an index and
+  drops the index, at one copy — carries none, so retention alone does not pick it out; and
+  `from_owned_adopt` carries 4 of each at 0.010–0.016 ms, so on this table a collection count does
+  not predict a cost. `ingest_total` is also always the first phase of every round, which makes it
+  where the collector settles what the round before it left — a property of the harness, the
+  likeliest of these candidates, and still a candidate. The canonical harness measures the same
+  chain at 1.109–1.134 ms, close to the sum of the parts and not to `ingest_total`. Telling these
+  apart needs a run that reorders the phases, which this lot did not make. An unexplained gap named
+  honestly is worth more than a second unmeasured mechanism, which is what this decision refuses
+  above.

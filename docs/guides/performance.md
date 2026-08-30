@@ -1949,51 +1949,95 @@ whose window is the one the #474 section measured. Reading the payload straight 
 — one copy fewer between the stream and the block — moved the row by nothing. Adopting the array
 instead of copying it into the index moved all of it.
 
-> **The two paragraphs that stood here were wrong, and #480 measured them wrong.** They read the
-> fall as **2.6–3.1 ms** and attributed it to a second large-object allocation `FromBlock` made,
-> citing [ADR 0054](../decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)'s
+> **One of the two paragraphs that stood here was wrong, the other was right, and #480 measured
+> how.** The first read the fall as **2.6–3.1 ms** and attributed it to a second large-object
+> allocation `FromBlock` made, citing
+> [ADR 0054](../decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)'s
 > allocate-against-rent mechanism. The phase table below prices that allocation at **0.02 ms** and
-> `FromBlock` at exactly one `memcpy`. The derivation's flaw was treating 0.88–0.99 of a
-> `load_memory` as a property the row carries, when it was measured on a chain with a different
-> number of copies and does not transfer.
+> `FromBlock` at exactly one `memcpy`. Its flaw was treating 0.88–0.99 of a `load_memory` as a
+> property the row carries, when it was measured on a chain with a different number of copies and
+> does not transfer.
 > [ADR 0058](../decisions/0058-the-npy-ingest-is-memcpy-bound-and-the-allocation-is-not-the-cost.md)
 > amends [0057](../decisions/0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md) for the
-> same reason. **The measured table above is unaffected** — it is the reading of it that was.
+> same reason.
+>
+> **The second was right, and the table below answers it.** It disclosed that removing a whole
+> copy from the read should have been worth about 1.2 ms and was worth nothing measurable. The
+> table confirms its premise — a copy of this block is 0.94–0.98 ms — and its answer is that no
+> copy of the block came out: the staged read costs one `memcpy`, and so did what it replaced.
+> The count of three above was a count of *buffers*, not of block moves, so `9873e23` took a
+> buffer out of the chain and left the block moving exactly as often as before, which is why the
+> row did not move. **The measured table above is unaffected** — it is the reading of it that was.
 
 #### Where the ingest's time actually goes (issue #480)
 
 `ingest-phases` on `e3be432`, a hosted runner, .NET 10.0.11, 4 cores, workstation GC, three
 rounds, one-minute load average 4.08 / 3.61 / 3.21. Medians of nine runs each, interleaved.
 
-| phase | round 1 | round 2 | round 3 |
-| --- | ---: | ---: | ---: |
-| `ingest_total` | 2.166 ms | 2.192 ms | 2.259 ms |
-| `read_stream_owned` | 0.987 ms | 0.961 ms | 0.985 ms |
-| `stream_copy_floor` | 0.965 ms | 0.889 ms | 0.967 ms |
-| `allocate_cold` | 0.065 ms | 0.063 ms | 0.066 ms |
-| `allocate_reused` | 0.049 ms | 0.047 ms | 0.048 ms |
-| `parse_header_only` | 0.006 ms | 0.005 ms | 0.005 ms |
-| `from_block_copy` | 1.089 ms | 0.964 ms | 1.055 ms |
-| `from_owned_adopt` | 0.016 ms | 0.011 ms | 0.010 ms |
-| `read_memory_view` | 0.006 ms | 0.005 ms | 0.008 ms |
-| `block_copy_floor` | 0.972 ms | 0.936 ms | 0.976 ms |
+| phase | round 1 | round 2 | round 3 | gen0 / gen1 / gen2 |
+| --- | ---: | ---: | ---: | ---: |
+| `ingest_total` | 2.166 ms | 2.192 ms | 2.259 ms | 2 / 2 / 2 |
+| `read_stream_owned` | 0.987 ms | 0.961 ms | 0.985 ms | 1 / 1 / 1 |
+| `read_memory_view` | 0.006 ms | 0.005 ms | 0.008 ms | 0 / 0 / 0 |
+| `stream_copy_floor` | 0.965 ms | 0.889 ms | 0.967 ms | 0 / 0 / 0 |
+| `allocate_cold` | 0.065 ms | 0.063 ms | 0.066 ms | 0 / 0 / 0 |
+| `allocate_reused` | 0.049 ms | 0.047 ms | 0.048 ms | 0 / 0 / 0 |
+| `parse_header_only` | 0.006 ms | 0.005 ms | 0.005 ms | 0 / 0 / 0 |
+| `from_block_copy` | 1.089 ms | 0.964 ms | 1.055 ms | 0 / 0 / 0 |
+| `from_owned_adopt` | 0.016 ms | 0.011 ms | 0.010 ms | 4 / 4 / 4 |
+| `block_copy_floor` | 0.972 ms | 0.936 ms | 0.976 ms | 0 / 0 / 0 |
 
-**The two independent subtractions agree.** `read_stream_owned - stream_copy_floor` is
-0.022 / 0.072 / 0.018 ms; `allocate_cold - allocate_reused` is 0.016 / 0.016 / 0.018 ms. The
-`float[]` the reader allocates costs **about 0.02 ms**, some 2% of the ingest — not the
-milliseconds the paragraphs above assigned to it.
+The rows are in the order the mode prints them, so a re-run's table lines up with this one. The
+collection column is **summed over each round's nine runs**, not per run — the convention and its
+reason are
+[`bench/README.md`](https://github.com/CyrilB1531/lodestar/blob/main/bench/README.md#12-where-the-npy-ingests-time-goes-issue-480)'s.
+All three rounds gave the same counts, which is why one column carries them rather than three.
+They are collected at all because
+[ADR 0054](../decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)
+found time and collection count telling different stories on the artifact buffer, and only the
+second explained the first. Here they tell a third, below.
+
+**Two subtractions built differently, and what each of them contains.**
+`read_stream_owned - stream_copy_floor` is 0.022 / 0.072 / 0.018 ms; `allocate_cold -
+allocate_reused` is 0.016 / 0.016 / 0.018 ms. The two do not price quite the same thing: besides
+the allocation, the read-side subtraction carries the header parse — separately measured as
+`parse_header_only` at 0.005–0.006 ms — and the difference between a fresh destination and a warm
+one. Subtracting the header leaves 0.016 / 0.067 / 0.013 ms, so rounds 1 and 3 agree with the
+allocation side to a thousandth and round 2 does not: 0.072 against 0.016, driven by that round's
+`stream_copy_floor` reading 0.889 where the other two read 0.965 and 0.967.
+
+**Two estimators built differently put the reader's `float[]` at 0.013–0.018 ms in two rounds of
+three, and no reading of either puts it within a tenth of a copy.** That is roughly 2% of the
+canonical harness's 1.11 ms ingest, and 0.9% against `ingest_total`'s own median — either
+denominator, not the milliseconds the paragraphs above assigned to it.
 
 **Everything that costs is a `memcpy` of the block.** A bare `CopyTo` of the 15.36 MB is
 0.94–0.98 ms; the staged read is 0.96–0.99, one copy; `FromBlock` is 0.96–1.09, one copy.
-`FromOwnedBlock` is 0.010–0.016 and the memory overload 0.005–0.008 — both free, because neither
-moves the block. **So adopting is worth one `memcpy`**, about 0.96 ms, and no more.
+[`FromOwnedBlock`](../reference/embeddings/search/embeddingindex-fromownedblock.md) is
+0.010–0.016 and the memory overload 0.005–0.008 — both free, because neither moves the block.
+**So adopting is worth one `memcpy`**, about 0.96 ms, and no more.
 
-**What the table does not account for, stated rather than hidden.** `ingest_total` measures
-2.17–2.26 where its own parts sum to 0.97–1.00, and where the canonical harness measures the same
-chain at **1.109–1.134 ms wall**. Its own minimum, 0.92–1.00, is the sum of the parts, so the row
-is bimodal: most single calls pay about 1.2 ms that a best-of-five never sees, and it is the only
-phase that hands the block to an index and drops it. That is 0054's mechanism on **retention**
-rather than on allocation, and it is what a further lot would take.
+**What this does not explain, and is not explained away.** `ingest_total` measures 2.17–2.26 ms
+where its own parts sum to 0.97–1.00, and where the canonical harness measures the same chain at
+**1.109–1.134 ms wall**. The gap has no explanation here. What is known about it:
+
+- its own minimum is 0.92–1.00 ms — the sum of the parts — so the row is **bimodal** rather than
+  uniformly slow;
+- it carries 2 gen0, 2 gen1 and 2 gen2 over the nine runs, where `from_block_copy` carries none,
+  and `from_block_copy` does the same thing: allocate 15.36 MB, fill it, hand it to an index,
+  drop the index. Retention alone therefore does not pick out the anomalous row;
+- `from_owned_adopt` carries 4 of each while costing 0.010–0.016 ms, so **on this table a
+  collection count does not predict a cost**;
+- `ingest_total` is always the **first phase of every round**, so it is where the collector
+  settles whatever the round before it left. That is a property of the harness rather than of the
+  ingest, and it is the likeliest of these — but it is a candidate, not a finding;
+- the canonical harness, which runs the same chain in a scaled loop rather than interleaved with
+  nine other phases, measures 1.109–1.134 ms — close to the sum of the parts, not to
+  `ingest_total`.
+
+Telling these apart needs a run that reorders the phases — `ingest_total` moved to the end of the
+list, or run on its own — and this lot did not make one. The gap is named rather than attributed,
+which is the whole difference between this section and the paragraphs it replaced.
 
 ### Pre-sizing the file, and why it is not done (issue #432)
 

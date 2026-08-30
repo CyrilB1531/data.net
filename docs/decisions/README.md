@@ -90,6 +90,14 @@ Two pairs supersede or amend each other in the body only, not in the status line
   blocks inside 0015 itself, and 0019's own text says so directly — "this ADR amends 0015
   accordingly."
 
+A third kind is a back-reference the amended decision cannot carry itself.
+[`0057`](0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md) is amended by
+[`0058`](0058-the-npy-ingest-is-memcpy-bound-and-the-allocation-is-not-the-cost.md): 0058's
+`**Status:**` line says so, and 0057's row above says so in the other direction. 0057 is accepted
+and therefore immutable, and its own body names no successor, so this index is the only place a
+reader arriving at 0057 first can learn that its Consequences were corrected. That is why the
+`Amended by` sits here rather than in the ADR.
+
 `0013`'s partial supersession by `0014` is the one relationship already on a status line; its
 body adds the detail that only §1 (the oracle's normalizer scope) is superseded — §2 (the
 unknown-piece penalty floor) stands, unaffected by 0014.
