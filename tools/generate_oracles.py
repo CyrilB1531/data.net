@@ -3970,6 +3970,151 @@ def generate_bpe_normalizer() -> dict:
     }
 
 
+# The SentencePiece meta symbol, U+2581 LOWER ONE EIGHTH BLOCK, which both
+# spellings of the whitespace escape substitute for a literal space.
+META_SYMBOL = "▁"
+
+# One text per place the three prepend schemes and the two spellings can part;
+# each line below says which place it is.
+BPE_METASPACE_TEXTS = [
+    "the cat",                    # the control: a space at neither end
+    " the cat",                   # leading space -- where the two spellings part
+    "the cat ",                   # trailing space: a lone symbol ends the stream
+    "the  cat",                   # an interior run, which nothing collapses here
+    META_SYMBOL + "the cat",      # already begins with the symbol, not with a space
+    "\tthe cat",                  # a tab, which neither spelling rewrites
+    "café",                  # non-ASCII, and no space to escape at all
+    "the café ",             # non-ASCII beside a trailing space
+    "",                           # nothing to escape and nothing to prepend
+]
+
+# Merges in rank order. Each right-hand side is a single character, so the
+# vocabulary below is the alphabet plus what every merge produces.
+BPE_METASPACE_MERGES = [
+    (META_SYMBOL, "t"), (META_SYMBOL + "t", "h"), (META_SYMBOL + "th", "e"),
+    (META_SYMBOL, "c"), (META_SYMBOL + "c", "a"), (META_SYMBOL + "ca", "t"),
+    (META_SYMBOL + "ca", "f"), (META_SYMBOL + "caf", "é"),
+    (META_SYMBOL, "a"),
+    ("t", "h"), ("th", "e"),
+    ("c", "a"), ("ca", "t"), ("ca", "f"), ("caf", "é"),
+]
+
+# Every character BPE_METASPACE_TEXTS can present after the escape has run, the
+# tab included: an uncovered one would be dropped, and drop the case with it.
+BPE_METASPACE_ALPHABET = ["a", "c", "e", "f", "h", "t", "é", "\t", META_SYMBOL]
+
+
+def _small_metaspace_bpe_tokenizer():
+    """A SentencePiece-BPE model whose merges only fire once the escape has run.
+
+    Not _small_bytelevel_bpe_tokenizer(): that one is byte-level, and this
+    lineage -- Llama-2, Mistral v0.1 -- is not. Half of these merges are spelled
+    with the meta symbol, so "the cat" reaches a whole-word token only when a
+    space has become one, and a corpus built on a model without them would pass
+    with the escape switched off. byte_fallback stays off: it is refused until
+    issue #317, and a fixture declaring it would not load.
+
+    Carries no pre_tokenizer, no normalizer and no decoder -- each case sets the
+    first two itself, and the third is left out because neither `tokenizers` nor
+    `BpeTokenizer` would undo the escape the same way; see the corpus docstring.
+    """
+    from tokenizers import Tokenizer, models  # noqa: PLC0415
+
+    vocab = {}
+    for symbol in BPE_METASPACE_ALPHABET:
+        vocab[symbol] = len(vocab)
+    for left, right in BPE_METASPACE_MERGES:
+        vocab.setdefault(left + right, len(vocab))
+    tokenizer = Tokenizer(models.BPE(vocab, BPE_METASPACE_MERGES))
+    tokenizer.pre_tokenizer = None
+    tokenizer.normalizer = None
+    tokenizer.decoder = None
+    return tokenizer
+
+
+def _metaspace_pipeline(base: str, pre_tokenizer, normalizer) -> str:
+    """Puts one pipeline's two blocks into the model's own serialized file."""
+    raw = json.loads(base)
+    raw["pre_tokenizer"] = pre_tokenizer
+    raw["normalizer"] = normalizer
+    return json.dumps(raw, ensure_ascii=False)
+
+
+def generate_bpe_metaspace() -> dict:
+    """The whitespace escape a SentencePiece-BPE file writes, in both spellings.
+
+    Six pipelines over one model. Mistral v0.1 writes a `Metaspace`
+    pre-tokenizer with `split` off, Llama-2 a `Prepend` + `Replace` normalizer
+    with a null pre-tokenizer, and decision 0050 §2 calls those two writings of
+    one value -- so the first two cases carry the same texts and the equality is
+    the corpus's subject. `never` and `always` are here because the loader maps
+    three prepend schemes and the two model files between them exercise one.
+
+    The last two carry the pre-0.14 spelling, `add_prefix_space` where a newer
+    file writes `prepend_scheme`, which nothing else measures: `tokenizers`
+    0.23.1 still reads it, mapping a bare `true` onto `always` and letting an
+    explicit `prepend_scheme` win over it. A bare `false` is not here because
+    `tokenizers` refuses that file outright -- see docs/equivalence.md, which
+    records that Lodestar reads it as `never` instead.
+
+    Each case carries its own whole tokenizer_json so the C# side parses the
+    exact bytes `tokenizers` was handed, the two legacy blocks above all: they
+    are written by hand and read back, since `to_str()` would rewrite them into
+    the modern spelling and measure nothing. No `decoded` column: with no
+    decoder `tokenizers` joins the tokens with a space, with a `Metaspace` one it
+    undoes the escape, and `BpeTokenizer` does neither -- the escape is an
+    encode-side transform in this lot, and a decode column would claim a
+    reproduction that is not there.
+    """
+    from tokenizers import Tokenizer  # noqa: PLC0415
+
+    base = _small_metaspace_bpe_tokenizer().to_str()
+    metaspace = {"type": "Metaspace", "replacement": META_SYMBOL, "split": False}
+    prepend_replace = {
+        "type": "Sequence",
+        "normalizers": [
+            {"type": "Prepend", "prepend": META_SYMBOL},
+            {"type": "Replace", "pattern": {"String": " "}, "content": META_SYMBOL},
+        ],
+    }
+    pipelines = [
+        # The two spellings, first: same texts, and the same stream is the point.
+        ("metaspace_first", {**metaspace, "prepend_scheme": "first"}, None),
+        ("prepend_replace_normalizer", None, prepend_replace),
+        ("metaspace_never", {**metaspace, "prepend_scheme": "never"}, None),
+        ("metaspace_always", {**metaspace, "prepend_scheme": "always"}, None),
+        # The pre-0.14 spelling alone, then beside the field that supersedes it.
+        ("legacy_add_prefix_space", {**metaspace, "add_prefix_space": True}, None),
+        ("legacy_add_prefix_space_beside_prepend_scheme",
+         {**metaspace, "add_prefix_space": True, "prepend_scheme": "never"}, None),
+    ]
+
+    cases = []
+    for name, pre_tokenizer, normalizer in pipelines:
+        tokenizer_json = _metaspace_pipeline(base, pre_tokenizer, normalizer)
+        tokenizer = Tokenizer.from_str(tokenizer_json)
+        texts = []
+        for text in BPE_METASPACE_TEXTS:
+            enc = tokenizer.encode(text)
+            texts.append({"text": text, "tokens": enc.tokens, "ids": enc.ids})
+        cases.append({
+            "id": len(cases),
+            "name": name,
+            "tokenizer_json": tokenizer_json,
+            "texts": texts,
+        })
+
+    return {
+        "metadata": {
+            "algorithm": "BPE metaspace",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 # Two CJK texts, an emoji sequence and two controls: a byte-level token is a
 # fragment of a multi-byte character far more often than not.
 BYTELEVEL_STREAM_TEXTS = [
@@ -6072,6 +6217,7 @@ def main() -> None:
         "bpe_pretokenize.json": generate_bpe_pretokenize,
         "bpe_tokenizer_json.json": generate_bpe_tokenizer_json,
         "bpe_normalizer.json": generate_bpe_normalizer,
+        "bpe_metaspace.json": generate_bpe_metaspace,
         "bytelevel_decode_stream.json": generate_bytelevel_decode_stream,
         "unicode_forms.json": generate_unicode_forms,
         "bpe_added_tokens.json": generate_bpe_added_tokens,
