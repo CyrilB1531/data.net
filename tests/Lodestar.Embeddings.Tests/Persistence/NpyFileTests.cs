@@ -348,6 +348,38 @@ public sealed class NpyFileTests
         Assert.Contains("does not open with numpy's magic.", refused.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void The_memory_overload_reads_the_same_block()
+    {
+        byte[] npy = WrittenBlock([1f, 2f, 3f, 4f], 2, 2);
+
+        NpyBlock block = NpyFile.Read(npy.AsMemory());
+
+        Assert.Equal([1f, 2f, 3f, 4f], block.Values.ToArray());
+        Assert.Equal([2, 2], block.Shape);
+    }
+
+    [Fact]
+    public void The_memory_overload_borrows_rather_than_copies()
+    {
+        byte[] npy = WrittenBlock([1f, 2f], 2);
+        NpyBlock block = NpyFile.Read(npy.AsMemory());
+
+        // The contract this asserts: Values aliases the caller's bytes, so changing them
+        // changes what the block reports. Written down and raised by nothing, so tested.
+        BitConverter.GetBytes(9f).CopyTo(npy, npy.Length - (2 * sizeof(float)));
+
+        Assert.Equal(9f, block.Values.Span[0]);
+    }
+
+    [Fact]
+    public void A_borrowed_block_owns_nothing()
+    {
+        NpyBlock block = NpyFile.Read(WrittenBlock([1f, 2f], 2).AsMemory());
+
+        Assert.Null(block.OwnedArray);
+    }
+
     /// <summary>A .npy of the given block, as NpyFile writes one.</summary>
     private static byte[] WrittenBlock(float[] values, params int[] shape)
     {

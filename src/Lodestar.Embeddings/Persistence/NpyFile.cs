@@ -69,13 +69,11 @@ public static class NpyFile
         // array the block keeps. No buffer holds the block on its way past (#466).
         Span<byte> prefix = stackalloc byte[MaxPrefix];
         int got = StreamFill.UpTo(source, prefix);
-        if (got < MinPrefix)
-        {
-            return Read(prefix[..got], limits);
-        }
-
         ReadOnlySpan<byte> read = prefix[..got];
-        if (!HasMagic(read))
+
+        // ReadHeader's own first guard, on the prefix: under ten bytes there is no header
+        // length to read, so a file that short cannot be a .npy whatever it opens with.
+        if (got < MinPrefix || !HasMagic(read))
         {
             throw Malformed("does not open with numpy's magic.");
         }
@@ -97,6 +95,35 @@ public static class NpyFile
             ShortPayload(elements * sizeof(float)));
 
         return new NpyBlock(values, header.Shape) { OwnedArray = values };
+    }
+
+    /// <summary>Reads a <c>.npy</c> from bytes already in memory, copying nothing.</summary>
+    /// <remarks>
+    /// For a caller holding the file already — a blob, a cache entry, an embedded resource.
+    /// <b>The returned block aliases those bytes, so they must not change while it is read</b>,
+    /// the contract <c>EmbeddingIndex.Load(ReadOnlyMemory)</c> states for the same reason.
+    /// <see cref="NpyBlock.OwnedArray"/> is therefore null: a borrowed block has no array to
+    /// hand over. Decision 0057 has the trade.
+    /// </remarks>
+    /// <param name="npy">The file's bytes, which outlive the block.</param>
+    /// <param name="options">Bounds applied while reading, or <see langword="null"/> for the defaults.</param>
+    /// <exception cref="InvalidDataException">As <see cref="Read(Stream, ArtifactLoadOptions?)"/>.</exception>
+    public static NpyBlock Read(ReadOnlyMemory<byte> npy, ArtifactLoadOptions? options = null)
+    {
+        ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
+        int dataStart = ReadHeader(npy.Span, out NpyHeader header);
+        long elements = Elements(header, limits);
+
+        long expected = elements * sizeof(float);
+        long available = npy.Length - dataStart;
+        if (available < expected)
+        {
+            throw Malformed(
+                $"holds {available} bytes of data where its shape needs {expected}.");
+        }
+
+        var manager = new NpyPayloadManager(npy.Slice(dataStart, (int)expected));
+        return new NpyBlock(manager.Memory, header.Shape);
     }
 
     /// <summary>Reads the file at <paramref name="path"/>.</summary>
@@ -138,7 +165,7 @@ public static class NpyFile
         return elements;
     }
 
-    /// <summary>The message a payload shorter than its shape gets, on either read path.</summary>
+    /// <summary>The message a payload shorter than its shape gets, on the staged stream read.</summary>
     private static string ShortPayload(long expected) =>
         $"holds fewer than {expected} bytes of data where its shape needs {expected}.";
 
@@ -173,26 +200,6 @@ public static class NpyFile
     {
         using FileStream file = JsonArtifact.OpenWrite(path);
         Write(file, values, shape);
-    }
-
-    /// <summary>The read, on a payload already in memory and on resolved limits.</summary>
-    private static NpyBlock Read(ReadOnlySpan<byte> payload, in ArtifactLimits limits)
-    {
-        int dataStart = ReadHeader(payload, out NpyHeader header);
-        long elements = Elements(header, limits);
-
-        long expected = elements * sizeof(float);
-        long available = payload.Length - dataStart;
-        if (available < expected)
-        {
-            throw Malformed(
-                $"holds {available} bytes of data where its shape needs {expected}.");
-        }
-
-        // Uninitialized: every element is written by the copy below.
-        float[] values = Buffers.AllocateUninitialized<float>((int)elements);
-        payload.Slice(dataStart, (int)expected).CopyTo(MemoryMarshal.AsBytes(values.AsSpan()));
-        return new NpyBlock(values, header.Shape);
     }
 
     /// <summary>Whether <paramref name="data"/> opens with numpy's magic bytes.</summary>
