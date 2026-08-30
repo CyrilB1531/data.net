@@ -1856,6 +1856,44 @@ separated even though their medians are. The ratios hold in all three rounds and
 direction, which is what makes them worth publishing; a difference this size read off one round
 would not be.
 
+#### Against numpy, on the same format (issue #474)
+
+The bulk ingest made a like-for-like row possible, and `embedding_index_ingest_npy` is it: both
+sides read the same `.npy` and return something searchable — `np.load` against
+[`NpyFile.Read`](../reference/embeddings/persistence/npyfile-read.md) plus
+[`FromBlock`](../reference/embeddings/search/embeddingindex-fromblock.md). For a flat cosine index
+the matrix *is* the index, so `np.load` alone is the counterpart, and neither side normalizes.
+
+`compare-persistence`, same hosted runner, .NET 10.0.11 against numpy 2.5.1 on Python 3.12.14,
+three rounds, one-minute load average 2.81 / 1.06 / 1.01 at each round's start. Both sides read
+**15 360 128 bytes** — the same file, which is the point of the row.
+
+| round | Lodestar wall | numpy wall | wall | Lodestar cpu | numpy cpu | **cpu** |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 6.106 ms | 1.410 ms | 0.23× | 6.913 ms | 1.410 ms | **0.20×** |
+| 2 | 5.645 ms | 1.233 ms | 0.22× | 6.347 ms | 1.233 ms | **0.19×** |
+| 3 | 6.035 ms | 1.280 ms | 0.21× | 6.889 ms | 1.280 ms | **0.19×** |
+
+**numpy is between four and five times faster, and taking the format advantage away made the gap
+wider rather than narrower.** `embedding_index_load` reads our 20 589 007-byte JSON artifact
+against numpy's 15 360 128-byte block and lands at 0.24–0.27×; on the same bytes we land at
+0.21–0.23×. The format was flattering us, not hurting us: it was letting numpy's row be compared
+against a different quantity of work.
+
+That is a finding about this repository's own claim, so it is stated rather than footnoted. **On
+moving a raw float block, this project is behind CPython and the reason is not the language.**
+`np.load` parses a short header and reads once into the output array;
+[#466](https://github.com/CyrilB1531/lodestar/issues/466) records that our path copies the
+15.36 MB block **four times where numpy copies once**, two of them removable — the `.ToArray()` in
+`NpyFile.Read`, and the `byte[]` to `float[]` copy that the accepted `'<f4'` dtype and numpy's own
+64-byte payload alignment make a `MemoryMarshal.Cast` rather than a copy.
+
+**Where the thesis does hold, on the same run**, and it is the half this project was built for:
+`spiece_model` **5.90–5.98×**, `tokenizer_json_unigram` **2.51–2.56×**, `vocab_txt`
+**1.90–2.09×**, `tokenizer_json_wordpiece` **1.23–1.30×**, `tfidf_save` **1.47–1.54×**. Loading
+vocabularies and tokenizers — the gap .NET actually had — is where the margin is. Moving a block
+of floats is not, and now there is a row that says so instead of a table that could not.
+
 ### Pre-sizing the file, and why it is not done (issue #432)
 
 Step 1's fourth item, and the decision is

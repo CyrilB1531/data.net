@@ -924,6 +924,13 @@ and neither side normalizes — which is what a block written by an embedding pi
 It was added with the bulk ingest (#474); before that there was nothing on the C# side to pair it
 with, because `Add` was the only way in.
 
+**Its first runner reading is 0.21–0.23× wall, 0.19× cpu across three rounds** — numpy four to
+five times faster, on the same 15 360 128 bytes. Taking the format advantage away made the gap
+*wider* than `embedding_index_load`'s 0.24–0.27×, because that row was letting numpy be compared
+against 5 MB less work. The figures, and the rows on the same run where this project is 1.2× to
+6× ahead, are in
+[the performance guide](../docs/guides/performance.md#against-numpy-on-the-same-format-issue-474).
+
 > **#323 changed the save path after this window.** The row above stays as measured;
 > what it cannot show is that its `1.13×` inverts to `0.27×` on a newer machine,
 > because `numpy.save` is bandwidth-bound where this artifact's base64 encoding is
