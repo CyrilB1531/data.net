@@ -50,8 +50,11 @@ public static class NpyFile
     {
         Guard.NotNull(source);
         ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
-        byte[] payload = JsonArtifact.ReadAllBytes(source, limits).ToArray();
-        return Read(payload, limits);
+
+        // The span, not .ToArray(): ReadAllBytes returns a ReadOnlyMemory bounded to the
+        // bytes actually read, so copying it out buys nothing and costs the block (#466).
+        ReadOnlyMemory<byte> payload = JsonArtifact.ReadAllBytes(source, limits);
+        return Read(payload.Span, limits);
     }
 
     /// <summary>Reads the file at <paramref name="path"/>.</summary>
