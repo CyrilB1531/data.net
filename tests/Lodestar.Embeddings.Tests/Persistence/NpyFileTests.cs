@@ -206,8 +206,8 @@ public sealed class NpyFileTests
         NpyFile.Write(written, new float[Rows * Columns], Rows, Columns);
         written.Position = 0;
 
-        // Refused by the read, before the header is parsed at all -- which is why the test
-        // above has to build its own header to reach the shape bound.
+        // Enforced by Elements once the header is parsed, unlike the test above: a real
+        // file's honest shape crosses a caller's own (tighter) MaxTotalBytes just as well.
         var options = new ArtifactLoadOptions { MaxTotalBytes = (Rows * Columns * sizeof(float)) - 1 };
 
         Assert.Throws<InvalidDataException>(() => NpyFile.Read(written, options));
@@ -278,7 +278,38 @@ public sealed class NpyFileTests
         InvalidDataException refused =
             Assert.Throws<InvalidDataException>(() => NpyFile.Read(new MemoryStream(bytes)));
 
-        Assert.Contains("more than 65536 bytes allows", refused.Message, StringComparison.Ordinal);
+        Assert.Contains("more than NpyFile.MaxHeaderLength (65536) allows", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_version_2_header_cut_short_inside_its_length_field_is_refused_by_name()
+    {
+        // Eleven bytes: magic, version 2.0, three of the four length bytes -- HeaderTotal
+        // must see only what the stream gave it, not a stackalloc byte it never read (#466).
+        byte[] bytes =
+        [
+            0x93, (byte)'N', (byte)'U', (byte)'M', (byte)'P', (byte)'Y',
+            2, 0, // version 2.0
+            1, 2, 3, // three of the four length bytes
+        ];
+
+        InvalidDataException refused =
+            Assert.Throws<InvalidDataException>(() => NpyFile.Read(new MemoryStream(bytes)));
+
+        Assert.Contains("ends inside its header length.", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_ten_byte_non_numpy_stream_is_refused_by_its_magic()
+    {
+        // At least MinPrefix bytes, so the staged path parses it directly rather than
+        // falling back to the short-prefix buffered path (#466 regression).
+        byte[] bytes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+        InvalidDataException refused =
+            Assert.Throws<InvalidDataException>(() => NpyFile.Read(new MemoryStream(bytes)));
+
+        Assert.Contains("does not open with numpy's magic.", refused.Message, StringComparison.Ordinal);
     }
 
     /// <summary>A .npy of the given block, as NpyFile writes one.</summary>

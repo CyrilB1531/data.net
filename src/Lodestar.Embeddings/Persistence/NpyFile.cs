@@ -60,7 +60,13 @@ public static class NpyFile
             return Read(prefix[..got], limits);
         }
 
-        int total = HeaderTotal(prefix, out _);
+        ReadOnlySpan<byte> read = prefix[..got];
+        if (!HasMagic(read))
+        {
+            throw Malformed("does not open with numpy's magic.");
+        }
+
+        int total = HeaderTotal(read, out _);
         byte[] head = new byte[total];
         prefix[..Math.Min(got, total)].CopyTo(head);
         if (total > got)
@@ -159,21 +165,7 @@ public static class NpyFile
     private static NpyBlock Read(ReadOnlySpan<byte> payload, in ArtifactLimits limits)
     {
         int dataStart = ReadHeader(payload, out NpyHeader header);
-
-        long elements = 1;
-        foreach (int dimension in header.Shape)
-        {
-            elements *= dimension;
-        }
-
-        // Bounded by bytes, not MaxArrayLength: that option exempts a vector block, and a
-        // .npy is one (#468). Divided, because two large dimensions overflow the product.
-        if (elements > limits.MaxTotalBytes / sizeof(float))
-        {
-            throw Malformed(
-                $"declares {elements} elements, more than ArtifactLoadOptions.MaxTotalBytes "
-                + $"({limits.MaxTotalBytes}) allows.");
-        }
+        long elements = Elements(header, limits);
 
         long expected = elements * sizeof(float);
         long available = payload.Length - dataStart;
@@ -189,10 +181,14 @@ public static class NpyFile
         return new NpyBlock(values, header.Shape);
     }
 
+    /// <summary>Whether <paramref name="data"/> opens with numpy's magic bytes.</summary>
+    private static bool HasMagic(ReadOnlySpan<byte> data) =>
+        data.Length >= Magic.Length && data[..Magic.Length].SequenceEqual(Magic);
+
     /// <summary>Validates the magic and version, parses the header, and returns where the data starts.</summary>
     private static int ReadHeader(ReadOnlySpan<byte> payload, out NpyHeader header)
     {
-        if (payload.Length < 10 || !payload[..Magic.Length].SequenceEqual(Magic))
+        if (payload.Length < MinPrefix || !HasMagic(payload))
         {
             throw Malformed("does not open with numpy's magic.");
         }
@@ -220,7 +216,12 @@ public static class NpyFile
         _ => throw Malformed($"is version {major}.{minor}, which this does not read."),
     };
 
-    /// <summary>Header text refused beyond this; no numpy-written header comes near it.</summary>
+    /// <summary>Header text refused beyond this.</summary>
+    /// <remarks>
+    /// Not because numpy stays under it -- a 2.0 header exists precisely for when it
+    /// doesn't -- but because of what this reader accepts: one dtype and at most two
+    /// dimensions parse to well under a kilobyte of text.
+    /// </remarks>
     private const int MaxHeaderLength = 65_536;
 
     /// <summary>How many bytes the header occupies, prefix included, and where its text starts.</summary>
@@ -247,7 +248,8 @@ public static class NpyFile
         if (declared > MaxHeaderLength)
         {
             throw Malformed(
-                $"declares a header of {declared} bytes, more than {MaxHeaderLength} bytes allows.");
+                $"declares a header of {declared} bytes, more than NpyFile.MaxHeaderLength "
+                + $"({MaxHeaderLength}) allows.");
         }
 
         headerStart = lengthOffset + size;
