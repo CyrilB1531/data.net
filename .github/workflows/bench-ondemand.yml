@@ -1,0 +1,137 @@
+name: Benchmark (on demand)
+
+# The C#-only diagnostics -- save-phases, roc-parallel, heap-warmth -- are subcommands of
+# bench/Lodestar.Text.Benchmarks rather than [Benchmark] classes, so bench-map.json does not
+# name them and the nightly never runs one. That is deliberate: they answer a question a lot
+# asks once, not a regression the nightly watches, and putting them in the nightly would tax
+# every run forever for a measurement wanted twice a year.
+#
+# What it left is a gap this closes. Until now they ran only on a contributor's own machine,
+# which for some of them is the wrong machine: save-phases measures shares inside one window
+# and those transfer, but heap-warmth compares two processes and its absolutes do not.
+# ADR 0051 withdrew a 1.61x taken on a shared container for exactly that reason. A hosted
+# runner is not quiet either, but it is a second machine, and two disagreeing machines is a
+# result where one is a guess.
+#
+# It prints and does not publish. Nothing here writes to a page, opens a pull request or
+# touches the wiki: a number becomes a published figure by a person reading it and deciding,
+# which is what docs/guides/performance.md's "name the machine" rule is for.
+
+on:
+  workflow_dispatch:
+    inputs:
+      subcommand:
+        # Free text, not a choice. A choice enumerates what exists on the default branch,
+        # and this workflow is dispatched against any ref -- a branch that adds a
+        # subcommand would have to edit the workflow before it could run its own.
+        description: 'Subcommand to run, as bench/README.md names it (save-phases, roc-parallel, ...)'
+        type: string
+        default: save-phases
+      rounds:
+        description: 'How many times to repeat it, alternating states where it has two'
+        type: number
+        default: 3
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    name: Run one diagnostic
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build
+        run: dotnet build bench/Lodestar.Text.Benchmarks -c Release
+
+      # Two subcommands have a Python half, and it is the reason this job exists: the
+      # finding is a ratio per language, and two ratios taken on two machines compare the
+      # machines as much as the languages. Every other subcommand skips the install.
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        if: inputs.subcommand == 'heap-warmth' || inputs.subcommand == 'compare-persistence'
+        with:
+          python-version: '3.12'
+
+      - name: Install tool dependencies
+        if: inputs.subcommand == 'heap-warmth' || inputs.subcommand == 'compare-persistence'
+        # A block scalar, not a plain one: ':all: ' carries a colon and a space, which ends
+        # a plain scalar. bench-nightly.yml and ci.yml write it the same way.
+        run: |
+          pip install --only-binary :all: --require-hashes -r tools/requirements.lock.txt
+
+      # compare-persistence reads the vocabulary corpus from disk on both sides, and it is
+      # git-ignored -- three megabytes of generated data, where comparability comes from
+      # both languages opening the same file rather than from committed bytes. Without this
+      # the C# side threw before the first round and the job exited 134 (#474).
+      - name: Generate the benchmark corpus
+        if: inputs.subcommand == 'compare-persistence'
+        run: python bench/corpus/generate_vocabs.py
+
+      # uptime goes beside every table this project publishes, and a run whose load average
+      # is not recorded cannot be compared with one whose is.
+      - name: The machine
+        run: |
+          {
+            echo "### Machine"
+            echo '```text'
+            uptime
+            nproc --all | sed 's/^/cores: /'
+            grep -m1 'model name' /proc/cpuinfo
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # heap-warmth is the one with two states, and they are two processes on purpose: the
+      # variable under test is whether this process has ever saved. Alternating them means a
+      # drift in the machine lands on both rather than on whichever ran second. Any other
+      # subcommand is run as given, once per round.
+      - name: Run it
+        env:
+          SUBCOMMAND: ${{ inputs.subcommand }}
+          ROUNDS: ${{ inputs.rounds }}
+        run: |
+          # pipefail, because the block below is piped into tee: without it the pipeline's
+          # status is tee's and a subcommand that died would leave the job green.
+          set -o pipefail
+          run() { dotnet run -c Release --project bench/Lodestar.Text.Benchmarks --no-build -- "$@"; }
+          {
+            echo "### $SUBCOMMAND"
+            echo '```text'
+            if [ "$SUBCOMMAND" = "heap-warmth" ]; then
+              run heap-warmth prepare
+              python bench/python/bench_heap_warmth.py prepare
+              # Both languages inside one round, so a drift in the machine lands on all
+              # four states rather than on whichever language ran second.
+              for i in $(seq 1 "$ROUNDS"); do
+                echo "--- round $i   $(uptime | sed 's/.*load average/load average/')"
+                run heap-warmth cold
+                run heap-warmth warm
+                python bench/python/bench_heap_warmth.py cold
+                python bench/python/bench_heap_warmth.py warm
+              done
+            elif [ "$SUBCOMMAND" = "compare-persistence" ]; then
+              # Both languages inside one round, C# first, then the paired table. Same
+              # reason heap-warmth alternates: a drift in the machine has to land on both
+              # sides rather than on whichever ran second.
+              for i in $(seq 1 "$ROUNDS"); do
+                echo "--- round $i   $(uptime | sed 's/.*load average/load average/')"
+                run compare-persistence
+                python bench/python/bench_persistence.py
+                python bench/compare.py persistence
+              done
+            else
+              for i in $(seq 1 "$ROUNDS"); do
+                echo "--- round $i   $(uptime | sed 's/.*load average/load average/')"
+                run "$SUBCOMMAND"
+              done
+            fi
+            echo '```'
+          # tee, not a plain redirect. The step summary is a page a person reads; the log is
+          # what an API, a diff or a bug report can quote. A measurement only one of the two
+          # can see is one nobody can check later.
+          } | tee -a "$GITHUB_STEP_SUMMARY"

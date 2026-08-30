@@ -1530,11 +1530,551 @@ same artifact through the same harness and this change does not touch it.
   argued: the little-endian path hands `WriteBase64String` the same span the copy
   used to hold, and `Base64NumbersTests` asserts the exact base64 of a known vector,
   computed from the IEEE-754 bits rather than captured from this build.
-- **This does not settle the ratio the nightly reported.** Encoding is still the
-  dominant cost and still scales with the machine differently from a raw block
-  write; what it removes is the part that was never encoding at all. The load
-  direction, further behind and for a decided reason, is
+- **This does not settle the ratio the nightly reported.** Encoding still scales with
+  the machine differently from a raw block write; what it removes is the part that was
+  never encoding at all. The load direction, further behind and for a decided reason, is
   [#324](https://github.com/CyrilB1531/lodestar/issues/324).
+
+> **Step 0 update: "encoding is the dominant cost" was never measured, and it is
+> wrong.** This bullet read "Encoding is still the dominant cost" for two releases on
+> the strength of an estimate. Measured, the encode is **17.7%** of the save and costs
+> nothing over a memcpy of the same 15.36 MB — the section below has the profile. The
+> claim has been narrowed to the part that survives: encoding scales with the machine
+> differently from a raw block write, which is what made the nightly's ratio move.
+
+## What a save actually spends its time on — step 0
+
+The section above says "encoding is still the dominant cost", and the section below
+settled the same question for the read direction by measurement. **The write direction
+had never been measured.** This is that measurement, and it does not say what the
+sentence above it predicted.
+
+The arithmetic that motivated it: 15.36 MB of vectors, vectorised base64 at roughly
+3 GB/s on one core, gives about 5 ms — near the whole 5.949 ms the nightly reports.
+The first half of that estimate is right. The conclusion drawn from it is not.
+
+`bench/Lodestar.Text.Benchmarks -- save-phases`, four cores of an Intel Xeon @ 2.80GHz
+(AVX2 and AVX-512F present), .NET 10.0.11, a shared cloud container rather than the
+i7-4770S the rest of this page was taken on — **so read the shares and the ratios, not
+the absolutes.** Nine rounds, phases interleaved one round each, median with the spread
+of the runs; one-minute load average 1.36 at the start and 1.22 at the end.
+
+| phase | median | spread | share of save | GB/s |
+| --- | ---: | ---: | ---: | ---: |
+| `save_total` | 18.185 ms | 16.801 – 26.415 | 100% | 0.84 |
+| `write_base64_property` | 16.938 ms | 14.726 – 66.334 | 93.1% | 0.91 |
+| `write_base64_chunked` | 8.022 ms | 7.670 – 14.940 | 44.1% | 1.91 |
+| **`base64_encode`** | **3.211 ms** | 3.059 – 7.730 | **17.7%** | **4.78** |
+| `block_copy_floor` | 3.251 ms | 3.141 – 3.495 | 17.9% | 4.72 |
+| `ensure_finite_simd` | 1.886 ms | 1.825 – 1.946 | 10.4% | 8.14 |
+| `write_ids_only` | 0.444 ms | 0.405 – 1.862 | 2.4% | 34.62 |
+
+Each row is a strict subset of `save_total`, and `base64_encode` is a strict subset of
+`write_base64_property`. `embedding_index_save` through `Harness.Measure` itself — the
+methodology behind the published 5.949 ms — reads 16.9 to 18.5 ms across three windows
+on this machine, so the denominator above is the same row the nightly reports, taken
+the same way.
+
+- **Encoding is 17.7% of the save, not most of it.** Three windows put it at 3.210,
+  3.211 and 3.274 ms, the tightest row in the table. The estimate of ~5 ms at ~3 GB/s
+  was close on throughput — the measurement says **4.78 GB/s** — and the hypothesis it
+  was used to support is still refused, because the budget it was compared against was
+  never 5.949 ms of encoding.
+
+- **The encode costs nothing over moving the bytes.** `block_copy_floor` copies the same
+  15.36 MB and does not encode it: 3.251 ms against the encode's 3.211 ms. The two are
+  the same number. `Base64.EncodeToUtf8` is **bandwidth-bound, not compute-bound** — it
+  already runs at the speed of a memcpy, and the AVX2 path saturates the memory
+  subsystem before it saturates the ALUs. This is the write-direction twin of #324's
+  finding that decoding costs ~1.3 ms over a memcpy of the same count.
+
+- **So parallelising the encode is refused, and this is the measurement that refuses
+  it.** The design worth taking seriously was slicing the block on 12-byte boundaries
+  and encoding the slices on several cores, for an expected 2.5–3× on four physical
+  cores. Nothing can be parallelised past the bandwidth it is already saturating: extra
+  cores would contend for the same memory controller a single core already keeps busy.
+  The gain bar that lot set itself was ≥ 2× on `embedding_index_save`; the lever it
+  would pull is worth 17.7% of that row **in total**, so even a free, perfectly scaling
+  encode could not reach 1.25×. A concurrency surface, an `ArtifactSaveOptions` question
+  ADR 0044 had already refused once, and a second code path to keep bit-identical
+  forever — for a fifth of a row.
+  [ADR 0051](../decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md) is the record.
+
+- **What is left is the buffer.** `write_base64_property` writes the vector block and
+  nothing else and costs 16.938 ms, of which the encode is 3.211. The other ~13.7 ms is
+  `Utf8JsonWriter` growing its internal buffer by successive doubling to hold the 20.48
+  MB the encode produces — each growth a large-object-heap allocation, the operating
+  system committing its pages on first touch, and a copy of everything written so far.
+  It is the same cost #324 found on the load path wearing different clothes: **the
+  budget is allocation and page commit, in both directions.**
+
+- **Bounding that buffer is worth 2.1× on the phase, already.** `write_base64_chunked`
+  encodes the same block in 240 KB slices into one rented buffer and writes each slice
+  out, so nothing grows to hold 20 MB: 8.022 ms against 16.938. Slices are cut on
+  12-byte boundaries — 3 floats, 4 base64 groups — so none pads mid-stream and the
+  concatenation is byte-for-byte the base64 the one-shot call produces. That is a
+  diagnostic, not the change; it is reported here because it prices the change before
+  anyone writes it.
+
+The `write_base64_property` row's spread — 14.726 to 66.334 ms — is the honest part of
+this table. Its floor is stable and its ceiling is a collection landing inside the
+window, which is what a phase allocating 20 MB per call looks like on a shared machine.
+That spread is itself the argument: the row that varies by 4.5× is the one holding the
+buffer, and the row that varies by nothing is the encode.
+
+### Slicing the block, and what it was worth
+
+The decision, and what it amends in [ADR 0044](../decisions/0044-compression-belongs-to-the-caller.md), is
+[ADR 0051](../decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md).
+
+Step 0 above put the encode at 17.7% and the writer's buffer at most of the rest, so
+that is what the change went after. `Utf8JsonWriter.WriteBase64String` takes the whole
+block in one call; the vector block is now written a slice at a time straight to the
+destination, and the writer never holds more than the head.
+
+Twenty-four runs on the container put it at **1.61× faster** — 20.550 ms to 12.727 ms,
+with the twelve after and the twelve before not overlapping. **That figure is
+withdrawn.** It did not survive the nightly runner, which is roughly four times faster
+on this row, and a before-and-after taken where the buffer costs 3× what it costs on
+the bench machine overstates what removing the buffer buys. What follows replaces it.
+
+Nightly run 39 on this branch against main's own run, both hosted runners,
+`PersistenceBenchmarks`:
+
+| `EmbeddingIndexSave` | main | this branch | change |
+| --- | ---: | ---: | --- |
+| allocated | 39.64 MB | **19.87 MB** | **halved** |
+| Gen0 / Gen1 / Gen2 collections | 445.3 each | 273.4 each | 1.63× fewer |
+| mean | 5.153 ms | 4.950 ms | 1.04× |
+
+**The allocation is the result, and it is the one that does not depend on a machine.**
+Halved, to within a rounding of the 20.48 MB buffer this removes; the collection counts
+follow it.
+
+The 1.04× on the mean is not the speedup and should not be read as one: the two runs are
+a day apart on different hosted VMs, and `numpy.save`, whose code is identical in both,
+ran the same row at 1.342 ms and then 1.723 — **the second runner was 1.28× slower.**
+Raw milliseconds do not cross that, which is why the rows this project publishes are
+ratios taken inside one run. On that ratio, `embedding_index_save` against `numpy.save`
+goes from **0.29× to 0.39×** — from 3.45× behind to 2.56× — a **1.35×** improvement.
+
+- **The output is byte-for-byte what it was.** Base64 maps each group of 3 input bytes
+  onto 4 output characters independently, so concatenating slice encodings equals
+  encoding the concatenation exactly when every slice but the last is a whole number of
+  groups. The slice is 245 760 bytes — a multiple of 12, so a whole number of groups
+  *and* of floats. `ChunkedBlockTests` pins that at nine sizes around the boundary
+  against `WriteSingles`, which stays in the codebase, off every save path, purely as
+  the oracle.
+
+- **`SaveAsync` lost its intermediate `MemoryStream`.** It was there because the writer
+  flushed synchronously when its buffer filled, so the artifact was buffered twice and
+  both buffers doubled. The head is now the only thing that flushes and it is bounded;
+  the block is written through `WriteAsync`. A test asserts the two paths emit identical
+  bytes.
+
+#### The control that was not one
+
+`embedding_index_load` was the obvious control — it reads the artifact, and this change
+writes it. It moved **1.22× slower** on the after side, and it did so in all eight runs
+of the first window, in both orders. An ordering effect was the first explanation and
+the reversed order refuted it.
+
+The explanation is the change, working: the old save path allocated and discarded a
+~20 MB buffer on every call, which left the large-object heap grown and its pages
+committed for whatever ran next in the same process — and what ran next was the load,
+allocating buffers of its own. The new save path never grows the heap, so the load pays
+the page commits itself. #324 named that cost and this is it moving between two rows.
+
+The nightly runner corroborates it, and prices it. `EmbeddingIndexLoad` allocates
+**35.35 MB on both sides** — identical to three digits, so nothing about what the load
+does has changed — and its mean moved 5.114 ms to 6.804 ms. Some of that is the slower
+runner: `numpy.load`, identical code in both runs, moved 1.366 ms to 1.653. Taking that
+1.21× out leaves **1.10× on the BenchmarkDotNet mean and 1.17× on the cross-language
+row**, against the container's 1.22× — three estimates of the same thing, in a band, all
+of them a slowdown that the unchanged allocation says is paid in page commits rather
+than in work.
+
+**This is a real cost on a published row, not a footnote.** `embedding_index_load`
+against `numpy.load` goes from 0.30× to 0.25×; the save gained 1.35× on its ratio and
+the load gave part of it back. What the change did was stop one row from subsidising the
+other, and the subsidy was worth roughly 15% of a load. The saving is still net — a
+halved allocation on the save is not something the load's page commits undo — but the
+honest statement is a trade, not a free win.
+
+So `embedding_index_load` is a fine control for a change confined to one direction and a
+poor one here, and it was replaced with a `memcpy` that allocates nothing. The reading
+worth carrying forward is narrower and more useful than the row it came from: **a
+benchmark process that saves before it loads was measuring a warmed heap**, and any
+figure for either direction taken in one process after the other carries that.
+
+##### What the subsidy is worth, measured (issue #433)
+
+The paragraph above priced it at "roughly 15% of a load" by subtraction across two
+machines. Asked directly, it is smaller. `heap-warmth` loads the same artifact in two
+processes that differ only in whether they have ever saved — nine alternating rounds,
+both languages, one hosted runner, all four states inside each round:
+
+| | cold | warm | warm/cold |
+| --- | ---: | ---: | ---: |
+| [`EmbeddingIndex.Load`](../reference/embeddings/search/embeddingindex-load.md) | 18.101 ms | 16.559 ms | **0.919** |
+| `np.load` | 1.382 ms | 1.316 ms | **1.001** |
+
+**Conditions.** AMD EPYC 7763, 4 cores, .NET 10 and numpy 2.5.1 on one hosted runner,
+load average 4.20 falling to 2.75. Medians of nine round medians; the ratio column is
+the median of the nine **paired** ratios. Absolutes do not transfer off this machine —
+these are 2.7× the nightly's `EmbeddingIndexLoad` mean of 6.804 ms, because two warm-up
+runs is not what BenchmarkDotNet gives a row. The ratio is what transfers.
+
+**The subsidy is real and it is 8.1%**, not 15% and not the 20% `bench/README.md`
+inferred. Warm is faster in **nine rounds of nine** (sign test p = 0.004). The timing is
+the weaker half of the evidence: allocation is 37 069 648 bytes cold against 37 069 848
+warm — 200 bytes apart in 37 MB — while collections are **4/4/4 cold against 3/3/3
+warm**, in every round. Same work, same allocation, one fewer garbage collection.
+
+**numpy has no such asymmetry**: warm faster in four rounds of nine, median paired ratio
+1.001. A coin toss, which is what no effect looks like.
+
+**So the published `embedding_index_load` ratio flatters us, and #324's "furthest
+behind" framing is understated rather than overstated.** `compare-persistence` saves
+before it loads, so our side collects the 8.1% and numpy's side collects nothing. Taking
+it back off ours moves the published row from 0.25× to **0.23×** — from 4.0× behind
+`numpy.load` to **4.3×**. The gap #324 called the largest in this comparison is larger
+than the table says.
+
+##### Renting the payload instead of allocating it (issue #435)
+
+The obvious use of #433's finding: if a warmed heap is worth 8.1%, warm it deliberately by
+renting the payload buffer from `ArrayPool<byte>.Shared` rather than allocating one per load.
+`heap-warmth cold` on the same container, before and after:
+
+| | allocated per load | collections (gen0/1/2) |
+| --- | ---: | ---: |
+| allocating | 37 069 648 bytes | 4 / 4 / 4 |
+| rented | **16 480 488 bytes** | **1 / 1 / 1** |
+
+**2.25× less allocated, and a quarter of the collections.** The 20 589 160 bytes removed are the
+payload itself — the artifact on disk is 20 589 007 — so the figure is not an estimate of
+anything, it is the buffer no longer being allocated.
+
+**What it costs, which is the part that decides.** The shared pool serves a 20 MB rent, contrary
+to the common belief that it caps at 1 MiB, but it rounds up to a power of two: asking for
+20 589 008 returns **33 554 432**, or 1.63× the ask. Just past 16 MiB is the worst place on that
+curve to land. That memory is then held for the life of the process, not the life of the load.
+
+So the trade is **20.5 MB not allocated per load against 33.5 MB resident forever**, which
+break-even puts at 1.63 loads. A caller who loads one index and serves queries from it — the
+ordinary case for an embedding index, and the shape every guide here demonstrates — pays the
+residency and collects nothing.
+
+**It is done, and 0053 was wrong to refuse it.** That refusal weighed the residency against
+nothing, because the lot never timed the pooled path — the 8.1% it cited is #433's warm-heap
+figure, which prices *pages already committed*, not an allocation removed. Asked directly on a
+runner, renting is **42× the allocation and saves 1.74 ms a load**, about a tenth of one, because
+what costs is the large-object collection the allocation provokes and not the allocation itself.
+[ADR 0054](../decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)
+amends 0053 and takes the trade: 33.5 MB resident is a price this library pays for load time,
+which is what it publishes.
+
+### What a binary sidecar would buy, and what it needs first (issue #436)
+
+[ADR 0011](../decisions/0011-persistence-format.md) said to argue a binary format on size rather
+than speed, and [0051](../decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md)
+agreed for the write side. **Both are statements about base64**, and both are right about it. A
+JSON artifact is base64 *inside a document that has to be scanned and validated*, and nobody had
+measured that difference. `sidecar` does.
+
+**Size**, exact: the artifact is 20 589 007 bytes, of which 20 480 000 is the encoded block and
+109 007 is the head — schema, flags and 10 000 ids. A `.npy` block plus that same head is
+15 469 135, so **1.331× smaller**, 5.12 MB.
+
+**Time**, medians of nine on a hosted runner:
+
+| | median |
+| --- | ---: |
+| [`EmbeddingIndex.Load`](../reference/embeddings/search/embeddingindex-load.md), payload pooled | 11.834 ms |
+| [`NpyFile.Read`](../reference/embeddings/persistence/npyfile-read.md) | 5.236 ms |
+| sidecar floor — the read plus one copy into a backing store | **5.847 ms** |
+| rebuild the index through `Add`, per vector | 17.973 ms |
+
+**`load / floor` is 2.02×**, so a sidecar has half the artifact load's cost available to it — a
+time argument 0011 did not expect to exist, because the base64 is not where it lives.
+
+**`load / rebuild` is 0.66×**, and that is the sentence to carry away. `EmbeddingIndex` has no way
+to take a block whole: `Add` copies one vector at a time and costs three times the read it
+follows, so **the sidecar route that exists today is slower than the artifact it would replace.**
+[ADR 0055](../decisions/0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md)
+takes the sidecar and makes the bulk ingest its precondition, in that order.
+
+**Do not take these numbers from a container.** The same four rows there put `load / floor` at
+0.73× — the opposite conclusion — with the floor row spread over 12–43 ms against the runner's
+4.0–8.5.
+
+### The bulk ingest that unblocks it (issue #474)
+
+The precondition above, built and measured. `sidecar` on a hosted `ubuntu-latest` runner
+(`ubuntu-24.04`, 4 vCPU), .NET 10, three rounds of nine on the same 10 000 × 384 corpus, load
+average 3.95–4.12 at the start of each round. Round medians, then the median of the three:
+
+| | round 1 | round 2 | round 3 | median |
+| --- | ---: | ---: | ---: | ---: |
+| load artifact | 11.659 | 11.540 | 11.894 | **11.659 ms** |
+| read `.npy` block | 5.677 | 5.638 | 6.384 | **5.677 ms** |
+| rebuild through `Add` | 18.767 | 18.205 | 18.228 | **18.228 ms** |
+| sidecar floor | 5.876 | 7.021 | 5.809 | **5.876 ms** |
+| **ingest copy** — the read then [`FromBlock`](../reference/embeddings/search/embeddingindex-fromblock.md) | 7.325 | 7.933 | 7.323 | **7.325 ms** |
+| ingest only — `FromBlock` on a block in hand | 2.128 | 2.169 | 2.139 | **2.139 ms** |
+
+| ratio | round 1 | round 2 | round 3 |
+| --- | ---: | ---: | ---: |
+| `load / rebuild` | 0.62× | 0.63× | 0.65× |
+| **`load / ingest`** | **1.59×** | **1.45×** | **1.62×** |
+| `ingest / floor` | 1.25× | 1.13× | 1.26× |
+| `load / floor` | 1.98× | 1.64× | 2.05× |
+
+**`load / ingest` is 1.45–1.62× where `load / rebuild` is 0.62–0.65×.** That is the finding: the
+sidecar route stops being slower than the artifact it would replace and becomes about half again
+faster. The precondition [ADR 0055](../decisions/0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md)
+set is cleared.
+
+Three things the ratio does not say, each worth more than the headline.
+
+**The ingest does not reach the floor.** `ingest / floor` is 1.13–1.26×, so `FromBlock` costs
+13–26% more than the bare read-plus-copy the floor models. And the floor is the *flattered* side
+of that comparison: it allocates its backing store with `new float[]`, which the CLR zero-fills,
+while `FromBlock` allocates uninitialized. The floor pays a 15.36 MB memset the ingest does not,
+and is still faster — so the real gap is wider than 1.26×, not narrower. `ingest only` puts the
+ingest's own cost at 2.139 ms against the floor's 0.199 ms of copy over its read, which is where
+that difference sits.
+
+**A sidecar will buy less than the floor promised.** `load / floor` is 1.98–2.05×, `load / ingest`
+is 1.45–1.62×. The floor was always a bound rather than a forecast, and the third of it that the
+ingest spends is the part a real method costs over a `memcpy`.
+
+**The spreads are wide and overlap.** `ingest copy` ranges 3.557–13.240 ms across its nine
+samples and `sidecar floor` 4.457–10.688; on a shared runner the two rows' distributions are not
+separated even though their medians are. The ratios hold in all three rounds and in the same
+direction, which is what makes them worth publishing; a difference this size read off one round
+would not be.
+
+#### Against numpy, on the same format (issue #474)
+
+The bulk ingest made a like-for-like row possible, and `embedding_index_ingest_npy` is it: both
+sides read the same `.npy` and return something searchable — `np.load` against
+[`NpyFile.Read`](../reference/embeddings/persistence/npyfile-read.md) plus
+[`FromBlock`](../reference/embeddings/search/embeddingindex-fromblock.md). For a flat cosine index
+the matrix *is* the index, so `np.load` alone is the counterpart, and neither side normalizes.
+
+`compare-persistence`, same hosted runner, .NET 10.0.11 against numpy 2.5.1 on Python 3.12.14,
+three rounds, one-minute load average 2.81 / 1.06 / 1.01 at each round's start. Both sides read
+**15 360 128 bytes** — the same file, which is the point of the row.
+
+| round | Lodestar wall | numpy wall | wall | Lodestar cpu | numpy cpu | **cpu** |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 6.106 ms | 1.410 ms | 0.23× | 6.913 ms | 1.410 ms | **0.20×** |
+| 2 | 5.645 ms | 1.233 ms | 0.22× | 6.347 ms | 1.233 ms | **0.19×** |
+| 3 | 6.035 ms | 1.280 ms | 0.21× | 6.889 ms | 1.280 ms | **0.19×** |
+
+**numpy is between four and five times faster, and taking the format advantage away made the gap
+wider rather than narrower.** `embedding_index_load` reads our 20 589 007-byte JSON artifact
+against numpy's 15 360 128-byte block and lands at 0.24–0.27×; on the same bytes we land at
+0.21–0.23×. The format was flattering us, not hurting us: it was letting numpy's row be compared
+against a different quantity of work.
+
+That is a finding about this repository's own claim, so it is stated rather than footnoted. **On
+moving a raw float block, this project is behind CPython and the reason is not the language.**
+`np.load` parses a short header and reads once into the output array;
+[#466](https://github.com/CyrilB1531/lodestar/issues/466) records that our path copies the
+15.36 MB block **four times where numpy copies once**, two of them removable — the `.ToArray()` in
+[`NpyFile.Read`](../reference/embeddings/persistence/npyfile-read.md), and the `byte[]` to
+`float[]` copy that the accepted `'<f4'` dtype and numpy's own 64-byte payload alignment make a
+`MemoryMarshal.Cast` rather than a copy.
+
+**Where the thesis does hold, on the same run**, and it is the half this project was built for:
+`spiece_model` **5.90–5.98×**, `tokenizer_json_unigram` **2.51–2.56×**, `vocab_txt`
+**1.90–2.09×**, `tokenizer_json_wordpiece` **1.23–1.30×**, `tfidf_save` **1.47–1.54×**. Loading
+vocabularies and tokenizers — the gap .NET actually had — is where the margin is. Moving a block
+of floats is not, and now there is a row that says so instead of a table that could not.
+
+> **#466 changed this row's C# side after this window, and it inverted.** The table above stays
+> as measured; the one below is the same row on the same workflow after the copies came out. It
+> also called `FromBlock`, which the section below explains was the wrong counterpart.
+
+#### The same row, once the block is adopted (issue #466)
+
+`compare-persistence` on `1c43fc0`, a hosted runner, .NET 10.0.11 against numpy 2.5.1 on
+Python 3.12.14, three rounds, one-minute load average 4.65 / 1.12 / 1.01 at each round's start.
+Both sides read the same **15 360 128 bytes**.
+
+| round | Lodestar wall | numpy wall | wall | Lodestar cpu | numpy cpu | **cpu** |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 1.376 ms | 1.661 ms | 1.21× | 1.660 ms | 1.660 ms | **1.00×** |
+| 2 | 1.197 ms | 1.469 ms | 1.23× | 1.337 ms | 1.469 ms | **1.10×** |
+| 3 | 1.236 ms | 1.543 ms | 1.25× | 1.361 ms | 1.543 ms | **1.13×** |
+
+**Ahead of numpy on wall in all three rounds; on cpu, parity in the first and 1.10–1.13× in the
+other two.** The cpu column is the one this page trusts, so the honest headline is *parity to
+slightly ahead*, not the wall figure.
+
+**Why the two windows can be compared at all.** They are different runner instances, and this
+page's own #323 note is about exactly that hazard, so the rows neither lot touched are the check:
+
+| row (untouched by #466) | #474's window | this window |
+| --- | ---: | ---: |
+| `embedding_index_load` | 5.24–5.50 ms | 5.42–5.53 ms |
+| `embedding_index_load_memory` | 4.28–4.51 ms | 4.21–4.49 ms |
+| `embedding_index_save` | 4.16–4.33 ms | 4.27–4.38 ms |
+
+The `#474's window` column is that dispatch's own untouched rows; its section above published
+only the ingest row and `embedding_index_load`'s ratio, so the three anchors appear here for the
+first time. The two machines agree to a few percent on every one of them, so the ingest row's move
+is the change and not the hardware. A third dispatch, on a runner whose anchors sat 20–25% slower
+on large blocks and 33–36% faster on the text rows, has milliseconds that cannot be put beside
+these — which is why the comparison below is made in a different unit rather than in this one.
+
+**Two dispatches separated the two causes, and only one of them paid.** Three dispatches are in
+play below and each landed on a different runner instance, so each is read against an untouched
+neighbour *inside its own run* — the ingest row against `embedding_index_load_memory`, never one run's milliseconds
+against another's. That normalisation is exactly what lets the excluded runner carry evidence: its
+anchors cannot be set beside this window's, and its own two rows can be set beside each other.
+
+| dispatch | ingest, three rounds | `load_memory`, three rounds | ingest ÷ `load_memory` |
+| --- | ---: | ---: | ---: |
+| `f9bfef7`, the `.ToArray()` gone | 3.775 / 4.039 / 4.317 ms | 4.294 / 4.279 / 4.514 ms | 0.88 / 0.94 / 0.96 |
+| `9873e23`, the payload read into the `float[]` | 4.380 / 4.762 / 4.751 ms | 4.845 / 4.931 / 4.809 ms | 0.90 / 0.97 / 0.99 |
+| `1c43fc0`, the array adopted | 1.376 / 1.197 / 1.236 ms | 4.486 / 4.210 / 4.360 ms | **0.31 / 0.28 / 0.28** |
+
+`9873e23` is the runner excluded from the anchor table above, and its milliseconds are published
+here so its ratios can be recomputed rather than taken on trust; the same holds for `f9bfef7`,
+whose window is the one the #474 section measured. Reading the payload straight into the `float[]`
+— one copy fewer between the stream and the block — moved the row by nothing. Adopting the array
+instead of copying it into the index moved all of it.
+
+> **One of the two paragraphs that stood here was wrong, the other was right, and #480 measured
+> how.** The first read the fall as **2.6–3.1 ms** and attributed it to a second large-object
+> allocation `FromBlock` made, citing
+> [ADR 0054](../decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)'s
+> allocate-against-rent mechanism. The phase table below prices that allocation at **0.02 ms** and
+> `FromBlock` at exactly one `memcpy`. Its flaw was treating 0.88–0.99 of a `load_memory` as a
+> property the row carries, when it was measured on a chain with a different number of copies and
+> does not transfer.
+> [ADR 0058](../decisions/0058-the-npy-ingest-is-memcpy-bound-and-the-allocation-is-not-the-cost.md)
+> amends [0057](../decisions/0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md) for the
+> same reason.
+>
+> **The second was right, and the table below answers it.** It disclosed that removing a whole
+> copy from the read should have been worth about 1.2 ms and was worth nothing measurable. The
+> table confirms its premise — a copy of this block is 0.94–0.98 ms — and its answer is that no
+> copy of the block came out: the staged read costs one `memcpy`, and so did what it replaced.
+> The count of three above was a count of *buffers*, not of block moves, so `9873e23` took a
+> buffer out of the chain and left the block moving exactly as often as before, which is why the
+> row did not move. **The measured table above is unaffected** — it is the reading of it that was.
+
+#### Where the ingest's time actually goes (issue #480)
+
+`ingest-phases` on `e3be432`, a hosted runner, .NET 10.0.11, 4 cores, workstation GC, three
+rounds, one-minute load average 4.08 / 3.61 / 3.21. Medians of nine runs each, interleaved.
+
+| phase | round 1 | round 2 | round 3 | gen0 / gen1 / gen2 |
+| --- | ---: | ---: | ---: | ---: |
+| `ingest_total` | 2.166 ms | 2.192 ms | 2.259 ms | 2 / 2 / 2 |
+| `read_stream_owned` | 0.987 ms | 0.961 ms | 0.985 ms | 1 / 1 / 1 |
+| `read_memory_view` | 0.006 ms | 0.005 ms | 0.008 ms | 0 / 0 / 0 |
+| `stream_copy_floor` | 0.965 ms | 0.889 ms | 0.967 ms | 0 / 0 / 0 |
+| `allocate_cold` | 0.065 ms | 0.063 ms | 0.066 ms | 0 / 0 / 0 |
+| `allocate_reused` | 0.049 ms | 0.047 ms | 0.048 ms | 0 / 0 / 0 |
+| `parse_header_only` | 0.006 ms | 0.005 ms | 0.005 ms | 0 / 0 / 0 |
+| `from_block_copy` | 1.089 ms | 0.964 ms | 1.055 ms | 0 / 0 / 0 |
+| `from_owned_adopt` | 0.016 ms | 0.011 ms | 0.010 ms | 4 / 4 / 4 |
+| `block_copy_floor` | 0.972 ms | 0.936 ms | 0.976 ms | 0 / 0 / 0 |
+
+The rows are in the order the mode prints them, so a re-run's table lines up with this one. The
+collection column is **summed over each round's nine runs**, not per run — the convention and its
+reason are
+[`bench/README.md`](https://github.com/CyrilB1531/lodestar/blob/main/bench/README.md#12-where-the-npy-ingests-time-goes-issue-480)'s.
+All three rounds gave the same counts, which is why one column carries them rather than three.
+They are collected at all because
+[ADR 0054](../decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)
+found time and collection count telling different stories on the artifact buffer, and only the
+second explained the first. Here they tell a third, below.
+
+**Two subtractions built differently, and what each of them contains.**
+`read_stream_owned - stream_copy_floor` is 0.022 / 0.072 / 0.018 ms; `allocate_cold -
+allocate_reused` is 0.016 / 0.016 / 0.018 ms. The two do not price quite the same thing: besides
+the allocation, the read-side subtraction carries the header parse — separately measured as
+`parse_header_only` at 0.005–0.006 ms — and the difference between a fresh destination and a warm
+one. Subtracting the header leaves 0.016 / 0.067 / 0.013 ms, so rounds 1 and 3 agree with the
+allocation side to a thousandth and round 2 does not: 0.072 against 0.016, driven by that round's
+`stream_copy_floor` reading 0.889 where the other two read 0.965 and 0.967.
+
+**Two estimators built differently put the reader's `float[]` at 0.013–0.018 ms in two rounds of
+three, and no reading of either puts it within a tenth of a copy.** That is roughly 2% of the
+canonical harness's 1.11 ms ingest, and 0.9% against `ingest_total`'s own median — either
+denominator, not the milliseconds the paragraphs above assigned to it.
+
+**Everything that costs is a `memcpy` of the block.** A bare `CopyTo` of the 15.36 MB is
+0.94–0.98 ms; the staged read is 0.96–0.99, one copy; `FromBlock` is 0.96–1.09, one copy.
+[`FromOwnedBlock`](../reference/embeddings/search/embeddingindex-fromownedblock.md) is
+0.010–0.016 and the memory overload 0.005–0.008 — both free, because neither moves the block.
+**So adopting is worth one `memcpy`**, about 0.96 ms, and no more.
+
+**What this does not explain, and is not explained away.** `ingest_total` measures 2.17–2.26 ms
+where its own parts sum to 0.97–1.00, and where the canonical harness measures the same chain at
+**1.109–1.134 ms wall**. The gap has no explanation here. What is known about it:
+
+- its own minimum is 0.92–1.00 ms — the sum of the parts — so the row is **bimodal** rather than
+  uniformly slow;
+- it carries 2 gen0, 2 gen1 and 2 gen2 over the nine runs, where `from_block_copy` carries none,
+  and `from_block_copy` does the same thing: allocate 15.36 MB, fill it, hand it to an index,
+  drop the index. Retention alone therefore does not pick out the anomalous row;
+- `from_owned_adopt` carries 4 of each while costing 0.010–0.016 ms, so **on this table a
+  collection count does not predict a cost**;
+- `ingest_total` is always the **first phase of every round**, so it is where the collector
+  settles whatever the round before it left. That is a property of the harness rather than of the
+  ingest, and it is the likeliest of these — but it is a candidate, not a finding;
+- the canonical harness, which runs the same chain in a scaled loop rather than interleaved with
+  nine other phases, measures 1.109–1.134 ms — close to the sum of the parts, not to
+  `ingest_total`.
+
+Telling these apart needs a run that reorders the phases — `ingest_total` moved to the end of the
+list, or run on its own — and this lot did not make one. The gap is named rather than attributed,
+which is the whole difference between this section and the paragraphs it replaced.
+
+### Pre-sizing the file, and why it is not done (issue #432)
+
+Step 1's fourth item, and the decision is
+[ADR 0052](../decisions/0052-pre-sizing-the-artifact-file-buys-nothing-on-a-delayed-allocation-filesystem.md).
+The save writes ~20 MB through an 80 KB buffer — 252 `write` calls, each extending
+the file — so telling the filesystem the length up front should let it allocate
+once. It could not be shown against any published row, because every save row this
+project reported wrote to a `MemoryStream`. `compare-persistence` now carries
+`embedding_index_save_file`, and the question got its answer.
+
+**Conditions.** Four cores of an Intel Xeon @ 2.80GHz, .NET 10, a shared cloud
+container, writing to **ext4 on a block device** — not a tmpfs, which would have
+made the exercise meaningless. Interleaved round-robin, one round each.
+
+The hypothesis on its own: 20 589 008 bytes through an 80 KB-buffered
+`FileStream`, no JSON and no base64, 25 rounds per run.
+
+| | run 1 | run 2 | run 3 |
+| --- | ---: | ---: | ---: |
+| plain | 5.149 ms | 4.998 ms | 5.135 ms |
+| `SetLength` first | 5.177 ms | 5.081 ms | 5.016 ms |
+
+**The same number.** Under 2% apart and apart in *both directions* across three
+runs. On the real save path it is the same answer — pre-sizing came out slower in
+two runs of three.
+
+The floor is the part worth keeping. `File.WriteAllBytes` of the finished artifact
+costs 4.86 ms against the whole save's 7.67, and the 2.8 ms between them is the
+base64 encode the step 0 table above prices at 3.211 ms on this machine. **That
+leaves nothing for file extension to be costing**, which is the mechanism: ext4
+defers allocation to writeback and sizes it to what is there, so the per-write
+extension the change would absorb never happens.
+
+What would reopen it is a filesystem that charges per extension — NTFS advances a
+valid-data-length and zero-fills rather than deferring. Nothing here was measured
+on Windows, and `embedding_index_save_file` is what would settle it there.
 
 ## Persisting an embedding index — the load path (issue #324)
 

@@ -148,6 +148,11 @@ def main() -> None:
     npy_file.write(npy_bytes)
     npy_file.close()
 
+    # Its own path, so neither direction measures a file the other just touched. The
+    # .npy suffix is given because np.save appends one, and the unlink would then miss it.
+    save_file = tempfile.NamedTemporaryFile(suffix=".npy", delete=False)
+    save_file.close()
+
     from tokenizers.models import WordPiece
 
     print("Python persistence bench")
@@ -159,9 +164,15 @@ def main() -> None:
         measure("tfidf_save", lambda: pickle.dumps(fitted), len(artifact)),
         measure("tfidf_load", lambda: pickle.loads(artifact), len(artifact)),
         measure("embedding_index_save", lambda: np.save(io.BytesIO(), vectors), len(npy_bytes)),
+        # The write counterpart of embedding_index_load_file. Neither side flushes to the
+        # device and np.save pre-sizes nothing either, so the two are matched. ADR 0052.
+        measure("embedding_index_save_file", lambda: np.save(save_file.name, vectors), len(npy_bytes)),
         measure("embedding_index_load", lambda: np.load(io.BytesIO(npy_bytes)), len(npy_bytes)),
         measure("embedding_index_load_file", lambda: np.load(npy_file.name), len(npy_bytes)),
         measure("embedding_index_load_memory", lambda: np.load(io.BytesIO(npy_bytes)), len(npy_bytes)),
+        # The only index row where both sides read the same format; the others price
+        # Lodestar's JSON against numpy's .npy. bench/README section 7 has why.
+        measure("embedding_index_ingest_npy", lambda: np.load(io.BytesIO(npy_bytes)), len(npy_bytes)),
         # A floor, not a comparand: frombuffer views the bytes without parsing the
         # header or validating anything, so it does strictly less than the rows above.
         measure("embedding_index_view_floor", lambda: np.frombuffer(npy_bytes, dtype=np.uint8), len(npy_bytes)),
@@ -172,6 +183,7 @@ def main() -> None:
     ]
 
     os.unlink(npy_file.name)
+    os.unlink(save_file.name)
 
     payload = {
         "metadata": {

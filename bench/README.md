@@ -913,6 +913,42 @@ Lodestar is faster.
 | `embedding_index_save` | 12.419 ms | 15.084 ms | 1.21× | 13.349 ms | 15.083 ms | **1.13×** |
 | `embedding_index_load` | 12.129 ms | 2.492 ms | 0.21× | 13.897 ms | 2.492 ms | **0.18×** |
 
+**Read that `0.21×` as a format, not as a speed.** It puts our JSON artifact — a document to
+scan and validate — against numpy's raw block, so it prices decision 0011 exactly as this
+section says it does, and says nothing about how fast the two languages ingest the same bytes.
+`embedding_index_ingest_npy` is the row that does: **both sides read a `.npy` and return
+something searchable**, `np.load` against `NpyFile.Read` plus
+[`EmbeddingIndex.FromOwnedBlock`](../docs/reference/embeddings/search/embeddingindex-fromownedblock.md).
+It called `FromBlock` until #466: `np.load` returns the array it has just filled and copies it no
+further, so copying the block into the index charged this side a copy numpy never pays, and priced
+a route the caller need not take. Adopting is the like-for-like chain, and what
+[`NpyBlock.OwnedArray`](../docs/reference/embeddings/persistence/npyblock.md) exists to allow.
+For a flat cosine index the matrix *is* the index, so `np.load` alone is the honest counterpart,
+and neither side normalizes — which is what a block written by an embedding pipeline already is.
+It was added with the bulk ingest (#474); before that there was nothing on the C# side to pair it
+with, because `Add` was the only way in.
+
+**Its first runner reading is 0.21–0.23× wall, 0.19× cpu across three rounds** — numpy four to
+five times faster, on the same 15 360 128 bytes. Taking the format advantage away made the gap
+*wider* than `embedding_index_load`'s 0.24–0.27×, because that row was letting numpy be compared
+against 5 MB less work. The figures, and the rows on the same run where this project is 1.2× to
+6× ahead, are in
+[the performance guide](../docs/guides/performance.md#against-numpy-on-the-same-format-issue-474).
+
+**#466 took the copies between the stream and the index out and the row inverted**, from 0.19× of
+numpy's cpu to **1.00–1.13×** and from 0.21–0.23× of its wall to 1.21–1.25×. cpu is the column this
+harness trusts, so the honest reading is *parity to slightly ahead*, not the wall figure. How many
+copies there were, and which of them paid, is decision 0057's subject rather than this section's.
+The reading above stays as measured; the new one, its runner, and the anchors that make the two
+windows comparable are in
+[the performance guide](../docs/guides/performance.md#the-same-row-once-the-block-is-adopted-issue-466).
+Two dispatches separated the causes: reading the payload straight into the `float[]` moved nothing,
+and adopting the array rather than copying it into the index moved all of it — by more than the
+copy it removed, because the copy came with a second 15.36 MB allocation.
+[Decision 0057](../docs/decisions/0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md)
+has the shape the reader took; [#480](https://github.com/CyrilB1531/lodestar/issues/480) carries
+the half that is still unexplained.
+
 > **#323 changed the save path after this window.** The row above stays as measured;
 > what it cannot show is that its `1.13×` inverts to `0.27×` on a newer machine,
 > because `numpy.save` is bandwidth-bound where this artifact's base64 encoding is
@@ -1004,3 +1040,339 @@ C# side inherited from Python's. The C# side started the moment Python's file wa
 written, with no gap for this session's own overhead to open. The `main` row was
 taken 16 minutes later at a comparable load, which is what makes the before/after
 in this section and in section 4 a comparison rather than two tables.
+
+### The save rows are no longer all in memory
+
+`embedding_index_save_file` is the write counterpart of `embedding_index_load_file`,
+which #336 added because the file path is the one a caller takes — every other save
+row here writes to a `MemoryStream`. It uses a path of its own, so neither direction
+measures a file the other just touched, and neither side flushes to the device. It
+priced pre-sizing the file, which
+[ADR 0052](../docs/decisions/0052-pre-sizing-the-artifact-file-buys-nothing-on-a-delayed-allocation-filesystem.md)
+refused, and it outlives that question.
+
+### Every load row here is measured on a warmed heap
+
+`compare-persistence` runs `embedding_index_save` before `embedding_index_load`,
+in one process, and the save allocates tens of megabytes. That leaves the
+large-object heap grown and its **pages already committed** for the load that
+follows — so the load does not pay the page commits #324 identified as the
+irreducible part of its allocation phase. It is not an artefact of the ordering
+being wrong; it is what any harness measuring both directions of the same format
+will do unless it is built not to.
+
+Step 1 made it visible rather than created it. Removing the save's 20 MB buffer
+withdrew the subsidy, and `embedding_index_load` slowed by 1.22× on the container
+and by 1.10–1.17× on the nightly runner once the runners' own difference is netted
+out — with **the allocation identical to three digits on both sides**, which is
+what says the load is doing the same work and paying for more of it.
+
+So read every `embedding_index_load*` row on this page as **flattered by 8.1% — the
+printed figure times 1.088 is what a load costs unsubsidised** — and do not use one
+as the control for a change to the save path. Section 8's
+`block_copy_floor` is what a control looks like here: a `memcpy` that allocates
+nothing and therefore cannot be subsidised by anything.
+
+**That 8.1% is measured, and it replaces an inference of "on the order of 20%" that
+stood here until [#433](https://github.com/CyrilB1531/lodestar/issues/433) ran. The
+two do not agree: the inference overstated the subsidy by about 2.5×.** It was read
+off a band of before-and-after figures spanning two changes and two machines, which
+is a wide enough thing to read a number off that it should not have been quoted to a
+digit. Section 9 has the measurement and the conditions.
+
+**The harness is not split into two processes, and that is #433's answer.** Loading in
+a process that has never saved is the obvious fix and it was refused on the number.
+8.1% moves the published `embedding_index_load` row from 0.25× to 0.23× — from 4.0×
+behind `numpy.load` to 4.3×. Nobody reads those two differently. Against that, a split
+costs a process launch per row and, worse, the back-to-back pairing that the
+measurement-conditions section above argues is the only reason the C# and Python rows
+are comparable: two processes started minutes apart are two machines' worth of drift
+inside what is supposed to be one window. **Stating the subsidy is worth more than
+removing it**, so it is stated here, in section 9, and in the performance guide, and
+`heap-warmth` stays committed so the next person to doubt it can re-run it rather than
+re-argue it.
+
+## 8. Where a save's time goes (issue #429, step 0)
+
+Not a comparison: a **profile of one operation against itself**. Five phases over
+the same 10 000 × 384 index as section 7, each a strict subset of the one above
+it, so the shares are readable without a second harness to reconcile.
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- save-phases
+```
+
+| phase | what it does |
+| --- | --- |
+| `save_total` | `EmbeddingIndex.Save` end to end |
+| `write_base64_property` | the vector block alone, through `Utf8JsonWriter.WriteBase64String` |
+| `write_base64_chunked` | the same block in 240 KB slices into one rented buffer |
+| `base64_encode` | `Base64.EncodeToUtf8` on the block and nothing else |
+| `block_copy_floor` | a `memcpy` of the same 15.36 MB, encoding nothing |
+
+The last row is what makes the table decide anything. An encode that costs no more
+than moving the same bytes is bandwidth-bound, and nothing parallelises past a
+bandwidth it is already at — which is how a proposal to thread the base64 was
+refused rather than tried. [ADR 0051](../docs/decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md)
+is that decision, and the numbers are in
+[`docs/guides/performance.md`](../docs/guides/performance.md#what-a-save-actually-spends-its-time-on--step-0).
+
+**The phases run round-robin, one round each, not one phase to completion.** This
+is the whole design and it is not tidiness. A first cut ran each phase's nine runs
+back to back, so a collection storm landed inside one phase's window and the
+harness reported `write_base64_property` at **136.7% of `save_total`** — impossible
+for a strict subset of the same work, and obvious only because the subset relation
+gives the table something to contradict. Interleaving spreads that cost across
+every phase instead of concentrating it in whichever one was unlucky.
+
+Medians of nine runs after three warm-ups, with the full spread printed under the
+table: on a shared machine the floor is the honest half of a row, and a phase that
+allocates 20 MB per call announces itself by varying, not by being slow on average.
+
+## 9. Is a load measured on a warmed heap (issue #433)
+
+Not a comparison and not a profile: **one operation, two processes.**
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- heap-warmth prepare
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- heap-warmth cold
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- heap-warmth warm
+
+python bench/python/bench_heap_warmth.py prepare
+python bench/python/bench_heap_warmth.py cold
+python bench/python/bench_heap_warmth.py warm
+```
+
+**Both languages, or neither.** The finding is a ratio per language and the two ratios
+are then compared, so taking them on two machines compares the machines as much as the
+languages. `Benchmark (on demand)` (section 10) runs all four states inside one round for
+that reason, and the Python side mirrors the C# structure rather than its code — three
+subcommands, the warming saves before the loop, the stream built outside the timer.
+
+`compare-persistence` measures every save, then every load, in one process — so by
+the time a load is timed the large-object heap has already been grown and its pages
+committed by the saves. The question is what that is worth, and **it cannot be two
+rows of one run**: a save warms the heap for everything after it, and nothing inside
+a process honestly undoes that. Hence three subcommands.
+
+`prepare` writes the artifact once. **`cold` then reads those bytes having built and
+saved nothing** — that is what makes it cold, and it is why the artifact comes off
+disk rather than from a save. `warm` does its saves **first** and then loads, which
+is the order the harness uses; a save between two loads would add garbage competing
+with the load instead of leaving a heap behind it.
+
+Both states report **allocation per load**, and they must agree. If they do not, the
+two are running different workloads and no timing comparison between them is valid —
+the claim under test is that the load does identical work and pays for more of it.
+
+**The result.** Nine alternating rounds on one hosted runner, all four states inside
+each round, `Benchmark (on demand)` run 3:
+
+| | cold | warm | warm/cold |
+| --- | ---: | ---: | ---: |
+| `EmbeddingIndex.Load` | 18.101 ms | 16.559 ms | **0.919** |
+| `np.load` | 1.382 ms | 1.316 ms | **1.001** |
+
+Medians of the nine round medians; the `warm/cold` column is the median of the nine
+**paired** ratios, which is the statistic the alternation is for — pairing an unpaired
+cold median against an unpaired warm one puts numpy at 1.05× and is an artefact.
+
+**We have the subsidy: warm is faster in 9 rounds of 9** (sign test p = 0.004),
+by 8.1%. **numpy does not have it: 4 of 9**, median ratio 1.001 — a coin toss.
+
+**The timing is the weaker half of the evidence.** Every round, on both sides of the
+C# comparison: allocation 37 069 648 bytes cold against 37 069 848 warm — 200 bytes
+apart in 37 MB — and collections **4/4/4 cold against 3/3/3 warm**. Same work, same
+allocation, one fewer garbage collection. That is the mechanism, and it is discrete
+and reproducible where a millisecond is neither.
+
+**On a shared machine none of this reproduces.** The same instrument on the container
+put warm faster, level, then slower over three rounds with one state's median swinging
+4× between them. That is why section 10 exists.
+
+## 10. Running a diagnostic on a second machine (issue #461)
+
+`roc-parallel` (section 6), `save-phases` (section 8), `heap-warmth` (section 9),
+`pool-cost` (section 11), `ingest-phases` (section 12), `sidecar` (section 13) and
+`tensor-primitives` (section 14) are
+C#-only subcommands rather than `[Benchmark]` classes, so no benchmark or harness in
+`bench-map.json` selects them and the nightly never runs one. That is deliberate — they
+answer a question a lot asks once, not a regression worth watching every night.
+
+`bench-map.json` does name them, in its own `diagnostics` list, and `tools/check_bench_map.py`
+checks that list against what `Program.cs` dispatches. Exempt from the nightly is not exempt
+from existing: a subcommand nothing names cannot be told apart from a harness somebody forgot
+to map, which is the finding that file exists to raise.
+
+The cost of that was that they ran only on a contributor's own machine, and for
+some of them the machine is the finding: `save-phases` measures shares inside one
+window and those transfer, but a subcommand comparing two processes has absolutes
+that do not. [ADR 0051](../docs/decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md)
+withdrew a 1.61× taken on a shared container for exactly that reason.
+
+**`Benchmark (on demand)`** closes it: dispatch
+`.github/workflows/bench-ondemand.yml` against any branch, name the subcommand,
+and read the job summary. The subcommand is free text rather than a list, because
+the list would be a promise about a ref the workflow has not checked out yet — a
+branch adding one runs it the day it exists, without editing the workflow.
+
+It **prints and does not publish** — nothing there writes a page, opens a pull
+request or touches the wiki. A number becomes a published figure when a person
+reads it and decides, which is what `performance.md`'s name-the-machine rule is
+for. The workflow records `uptime`, the core count and the CPU model beside every
+run so that decision has what it needs.
+
+## 11. What renting the payload costs against allocating it (issue #470)
+
+One primitive, two rows, interleaved in one process:
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- pool-cost
+```
+
+Allocating a 20 589 007-byte buffer against renting and returning one, both touching every page.
+**Against an uninitialized allocation**, because `Buffers.AllocateUninitialized` is what the read
+path uses — comparing a zeroed `new byte[]` would charge the pool's rival for a memset the code
+does not do and inflate the saving by the whole zeroing.
+
+On a hosted runner: allocate **1.783 ms** median against rent's **0.042**, so 42× and 1.74 ms a
+load. The allocation's own minimum is 0.071 ms, as cheap as the rent — **what costs is the
+large-object collection it provokes**, not the allocation. [ADR 0054](../docs/decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)
+is what that decided, amending 0053, which had refused pooling without ever timing it.
+
+## 12. Where the .npy ingest's time goes (issue #480)
+
+Ten phases, interleaved, each with the collections it provoked beside its milliseconds:
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- ingest-phases
+```
+
+Issue #466 removed a whole copy of the 15.36 MB block from `NpyFile.Read(Stream)` and the
+published row did not move; removing the copy into the index moved it by more than a copy is worth. Both
+readings came from subtracting whole rows, which cannot say where the time went. This takes the
+ingest apart instead: the staged read, the zero-copy overload beside it, the `float[]` allocation
+cold and reused, the payload read into an array that already exists, the header alone, `FromBlock`
+against `FromOwnedBlock`, and a bare `memcpy` of the block as the floor every share is read
+against.
+
+**`parse_header_only` is the header through the memory overload**, not through the stream reader
+whose parse the ingest actually pays, so what it prices is the parse plus that overload's own
+floor. It lands on top of `read_memory_view` — 0.005–0.006 ms against 0.005–0.008 — and that is
+the result rather than an accident of the phase: on a block this size the header is below the
+table's resolution either way.
+
+**`from_owned_adopt` never touches the array it allocates**, so by this file's own page-touching
+argument it is charged for reserving the pages and not for committing them — which is exactly why
+the row reads in hundredths of a millisecond. The reading is asymmetric on purpose:
+`from_block_copy` − `from_owned_adopt` is a copy *plus* the destination's first touch, not the
+copy alone. The surcharge is small on this table — `from_block_copy` 0.964–1.089 ms against
+`block_copy_floor`'s 0.936–0.976 into a warm target — and touching the array would change what
+the row measures rather than clean the subtraction up.
+
+**Two independent subtractions have to agree, and that is the point of the mode.**
+`read_stream_owned - stream_copy_floor` is what the read's allocation costs inside the read;
+`allocate_cold - allocate_reused` prices the same allocation on its own. If they disagree, the
+allocation is not what the difference between those rows is made of.
+
+The gen columns are collections **summed over the nine runs**, not per run: a block this size
+provokes at most one gen2 per run, and a column of zeroes and ones says less than a total.
+[ADR 0054](../docs/decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)
+is why they are there at all — on the artifact buffer the time and the collection count told
+different stories, and only the second one explained the first.
+
+Nothing here is published. It prints a table and writes no page: what it measures becomes a figure
+when a person reads it on a named machine and decides, which is [section 10](#10-running-a-diagnostic-on-a-second-machine-issue-461)'s
+rule and not this mode's exception. The first run's table, read that way, is in
+[the performance guide](../docs/guides/performance.md#where-the-ingests-time-actually-goes-issue-480),
+and what it refuted is [decision 0058](../docs/decisions/0058-the-npy-ingest-is-memcpy-bound-and-the-allocation-is-not-the-cost.md).
+
+## 13. What a binary sidecar would buy (issue #436)
+
+Six rows, interleaved one round each:
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- sidecar
+```
+
+The artifact against a `.npy` block plus the head a sidecar would still have to write, and six
+timings: the artifact load, the block read, a **floor** — the read plus one copy into a backing
+store, which is what a bulk ingest would do — the rebuild through `Add` that was the only route
+before issue #474, and the two rows that lot added:
+
+- `ingest copy` is the sidecar route as it will exist: the block read, then
+  `EmbeddingIndex.FromBlock`. It is the row #474's gate is read off — landing with `sidecar floor`
+  is the finding, and landing near `rebuild index` instead is the refusal.
+- `ingest only` is the ingest alone, on a block already in hand, so a later regression in the read
+  or in the ingest can be attributed to one of them rather than to their sum.
+
+The floor is a bound in the sense section 8's `block_copy_floor` is one: a route measured so the
+method that would take it can be judged against it.
+
+**The floor and the ingest do not allocate the same way, and the asymmetry runs in the ingest's
+favour.** `sidecar floor` takes its backing store from `new float[...]`, which the CLR zero-fills,
+while `EmbeddingIndex.FromBlock` allocates through the library's own uninitialized allocation and
+skips the zeroing. Both are one copy, and not the same kind of one: the ingest is ahead by one
+memset of the block, about 15 MB at this corpus. It is stated rather than equalised, because the
+uninitialized allocation is internal to the library and this project consumes the published
+packages, and because re-cutting `sidecar floor` would invalidate the 5.847 ms
+[ADR 0055](../docs/decisions/0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md)
+published, which is the bar this lot is judged against. The bias runs in the ingest's favour, so a
+slow `ingest copy` is not an artefact of it: landing near `rebuild index` remains the refusal it
+looks like. What it does mean is that `ingest copy` coming in *below* the floor must not be read as
+beating it by the whole margin — part of that gap is the memset the floor pays and the ingest does
+not.
+
+There is no row for `FromOwnedBlock`. With `AlreadyNormalized` it assigns four fields and is
+constant time whatever the block's size, so its ceiling is the `read npy block` row and a row of
+its own would publish noise.
+
+On a hosted runner: the sidecar is **1.331× smaller** and its floor is **2.02× faster** than the
+artifact load, while the rebuild route is **0.66×** — slower than what it would replace.
+[ADR 0055](../docs/decisions/0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md)
+takes the sidecar and makes the bulk ingest its precondition.
+
+With that ingest built (#474), the same runner puts `load / ingest` at **1.45–1.62×** across three
+rounds where `load / rebuild` is 0.62–0.65× — the route stops being slower than the artifact. It
+does not reach the floor: `ingest / floor` is 1.13–1.26×, and the floor is the flattered side of
+that comparison per the paragraph above. Every figure, with its rounds and its spreads, is in
+[the performance guide](../docs/guides/performance.md#the-bulk-ingest-that-unblocks-it-issue-474);
+this section says only how to take them.
+
+**Not on a container.** There the same rows put the floor at 0.73×, the opposite conclusion, with
+the floor row spread over 12–43 ms against the runner's 4.0–8.5.
+
+## 14. Our kNN kernel against `TensorPrimitives` (issue #437, V6)
+
+Seven rows, interleaved, agreement checked before any of them is timed:
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- tensor-primitives
+```
+
+Issue #427's open-risks table carries *"`TensorPrimitives` makes the kNN redundant"*, and V6 of
+[#437](https://github.com/CyrilB1531/lodestar/issues/437) is the only verification there that wants
+a measurement rather than a reading. This is it.
+
+**The access pattern is the whole question.** `EmbeddingIndex` normalizes on insertion, so `Search`
+is a dot product over a contiguous block rather than a cosine — comparing our dot against
+`TensorPrimitives.CosineSimilarity` would charge the BCL for two norms we never compute. Both
+shapes are measured for that reason, and a third pair sweeps the block in **one** call rather than
+10 000 calls of 384 floats, because that is what `TensorPrimitives` is designed for and the kNN
+rows do not show it.
+
+Every row calls the shipped [`VectorMath.Dot`](../docs/reference/embeddings/search/vectormath-dot.md)
+rather than a copy: a kernel reproduced for a benchmark is a kernel nobody ships, and the throwaway
+probe that preceded this mode had rewritten the horizontal sum.
+
+**Agreement runs first and prints before the table.** A speed comparison between two routes that
+disagree is meaningless, so it is a precondition here rather than a footnote beside the result.
+
+The package is referenced by `bench/` and by nothing under `src/`. V6 is a question about an
+incumbent, and referencing it to ask would be answering it.
+
+The first run's answer is [decision 0060](../docs/decisions/0060-tensorprimitives-beats-our-kernel-and-the-knn-is-still-not-redundant.md):
+`TensorPrimitives` is 1.09–1.23× faster on the shape `Search` runs, and the kNN is still not
+redundant, because the dot is only about half a query. **The container inverted every one of those
+ratios** — it reported ours 3.7× faster on the dot — which is section 10's rule holding rather than
+an aside about this mode.

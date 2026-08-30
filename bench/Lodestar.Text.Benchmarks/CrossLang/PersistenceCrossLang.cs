@@ -18,6 +18,9 @@ namespace Lodestar.Text.Benchmarks.CrossLang;
 /// </summary>
 public static class PersistenceCrossLang
 {
+    /// <summary>A .npy of the benchmark corpus needs no artifact limit; it is our own bytes.</summary>
+    private static ArtifactLoadOptions NpyLimits => new() { MaxTotalBytes = 1L << 31 };
+
     public static void Run()
     {
         string root = BenchCorpus.RepoRoot();
@@ -59,10 +62,24 @@ public static class PersistenceCrossLang
             indexGzip = stream.ToArray();
         }
 
+        // The same block as a .npy, which is the format numpy's side reads. Built once,
+        // outside every timed window, exactly as the artifact above is.
+        float[] block = PersistenceBenchmarks.BuildBlock();
+        byte[] indexNpy;
+        using (var stream = new MemoryStream())
+        {
+            NpyFile.Write(stream, block, index.Count, index.Dimension);
+            indexNpy = stream.ToArray();
+        }
+
         // No row measured the file path before #336, and it is the one a caller
         // takes: every published index figure came from a MemoryStream.
         string indexFile = Path.Combine(Path.GetTempPath(), $"lodestar-index-{Environment.ProcessId}.json");
         File.WriteAllBytes(indexFile, indexArtifact);
+
+        // Its own path, not the one above: the save row writes where nothing reads,
+        // so neither direction is measuring a file the other just touched.
+        string saveFile = Path.Combine(Path.GetTempPath(), $"lodestar-index-out-{Environment.ProcessId}.json");
 
         var results = new List<Harness.OperationResult>
         {
@@ -87,6 +104,16 @@ public static class PersistenceCrossLang
                 index.Save(stream);
                 return stream.Length;
             }, indexArtifact.Length),
+            // The only save row touching a filesystem, and the call a caller actually makes.
+            // It priced pre-sizing the file -- #432, refused -- and is what would reprice it.
+            Harness.Measure("embedding_index_save_file", () =>
+            {
+                index.Save(saveFile);
+
+                // The path back, not its length: Save writes a file, so nothing here can
+                // be elided, and a FileInfo would put a stat call inside the timed window.
+                return saveFile;
+            }, indexArtifact.Length),
             Harness.Measure("embedding_index_load", () =>
             {
                 using var stream = new MemoryStream(indexArtifact);
@@ -94,6 +121,16 @@ public static class PersistenceCrossLang
             }, indexArtifact.Length),
             Harness.Measure("embedding_index_load_file", () => EmbeddingIndex.Load(indexFile), indexArtifact.Length),
             Harness.Measure("embedding_index_load_memory", () => EmbeddingIndex.Load(indexArtifact.AsMemory()), indexArtifact.Length),
+            // The only index row where both sides read the same format; the others price
+            // our JSON against numpy's .npy. bench/README section 7 has why (#474).
+            Harness.Measure("embedding_index_ingest_npy", () =>
+            {
+                // Adopted, not copied: np.load returns the array it just filled and copies it
+                // no further, so FromBlock charged this side a copy numpy never pays (#466).
+                NpyBlock read = NpyFile.Read(new MemoryStream(indexNpy), NpyLimits);
+                return EmbeddingIndex.FromOwnedBlock(
+                    read.OwnedArray!, index.Dimension, BlockNormalization.AlreadyNormalized);
+            }, indexNpy.Length),
             // The floor both sides share, and neither is a load: viewing bytes as floats
             // parses no header and validates nothing. It bounds the rows above, not ranks them.
             Harness.Measure("embedding_index_view_floor", () => MemoryMarshal.Cast<byte, float>(indexArtifact.AsSpan()).Length, indexArtifact.Length),
@@ -118,6 +155,7 @@ public static class PersistenceCrossLang
         };
 
         File.Delete(indexFile);
+        File.Delete(saveFile);
 
         var payload = new Harness.Output
         {

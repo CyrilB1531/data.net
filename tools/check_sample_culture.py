@@ -59,9 +59,13 @@ def tracked_sample_sources() -> list[str]:
     while a green run proved nothing about the files that ship.
     """
     listed = subprocess.run(
-        ["git", "-C", str(ROOT), "ls-files", f"{SAMPLE}/*.cs"],
+        ["git", "-C", str(ROOT), "ls-files",
+         "--cached", "--others", "--exclude-standard", f"{SAMPLE}/*.cs"],
         capture_output=True, text=True, check=True)
-    return listed.stdout.split()
+
+    # `--others` reaches a sample not yet committed; `--exclude-standard` keeps
+    # the build output this docstring rules out from coming back in through it.
+    return [p for p in listed.stdout.split() if (ROOT / p).is_file()]
 
 
 def _opening_brace(line: str, close: int) -> int:

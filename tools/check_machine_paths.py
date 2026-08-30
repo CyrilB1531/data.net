@@ -146,8 +146,13 @@ def tracked_files() -> list[str]:
     repository and still exit 0.
     """
     listing = subprocess.run(
-        ["git", "ls-files"], capture_output=True, text=True, check=True, cwd=ROOT)
-    return listing.stdout.split("\n")[:-1] if listing.stdout else []
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard"],
+        capture_output=True, text=True, check=True, cwd=ROOT)
+    paths = listing.stdout.split("\n")[:-1] if listing.stdout else []
+
+    # Untracked too: a machine path is worth catching before it is committed.
+    # The is_file() guard is for a tracked path deleted from the working tree.
+    return [p for p in paths if (ROOT / p).is_file()]
 
 
 def _parse_arguments(arguments: list[str]) -> int | None:

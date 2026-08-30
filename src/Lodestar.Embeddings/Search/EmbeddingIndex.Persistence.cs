@@ -29,7 +29,8 @@ public sealed partial class EmbeddingIndex
     /// <param name="destination">The stream to write to. Flushed but never disposed — the caller owns it.</param>
     /// <exception cref="InvalidDataException">A vector holds a non-finite component.</exception>
     public void Save(Stream destination) =>
-        ArtifactIo.Save(destination, ArtifactName, ArtifactVersion, WriteArtifactBody);
+        ArtifactIo.SaveWithBlock(
+            destination, ArtifactName, ArtifactVersion, WriteHead, VectorsProperty, _data.AsSpan(0, _length));
 
     /// <summary>Writes the index to <paramref name="path"/>, replacing any existing file.</summary>
     /// <param name="path">The file to write. UTF-8 without a byte-order mark.</param>
@@ -50,9 +51,19 @@ public sealed partial class EmbeddingIndex
     /// <exception cref="InvalidDataException">A vector holds a non-finite component.</exception>
     /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
     public Task SaveAsync(Stream destination, CancellationToken cancellationToken = default) =>
-        ArtifactIo.SaveAsync(destination, ArtifactName, ArtifactVersion, WriteArtifactBody, cancellationToken);
+        ArtifactIo.SaveWithBlockAsync(
+            destination, ArtifactName, ArtifactVersion, WriteHead, VectorsProperty,
+            _data.AsMemory(0, _length), cancellationToken);
 
-    private void WriteArtifactBody(Utf8JsonWriter writer)
+    /// <summary>Writes every property that precedes the vector block.</summary>
+    /// <remarks>
+    /// The block itself is written by <see cref="ArtifactIo.SaveWithBlock"/> rather than
+    /// here, a slice at a time, so the writer's buffer never grows to hold its whole
+    /// encoding. That is why this stops short of the block instead of writing the body
+    /// end to end: see the performance guide's save profile for what the difference is
+    /// worth.
+    /// </remarks>
+    private void WriteHead(Utf8JsonWriter writer)
     {
         EnsureFinite();
         writer.WriteNumber(DimensionProperty, _dim);
@@ -79,8 +90,6 @@ public sealed partial class EmbeddingIndex
             }
             writer.WriteEndArray();
         }
-
-        Base64Numbers.WriteSingles(writer, VectorsProperty, _data.AsSpan(0, _length));
     }
 
     /// <summary>
@@ -116,9 +125,15 @@ public sealed partial class EmbeddingIndex
 
         // Past one array the artifact is read in segments instead. Only this loader needs
         // it: an index is the one artifact here that reaches the ceiling (#377).
-        return source.CanSeek && source.Length - source.Position > limits.MaxSingleBuffer
-            ? FromSegments(JsonArtifact.ReadAllSegments(source, limits), limits)
-            : FromPayload(JsonArtifact.ReadAllBytes(source, limits), limits);
+        if (source.CanSeek && source.Length - source.Position > limits.MaxSingleBuffer)
+        {
+            return FromSegments(JsonArtifact.ReadAllSegments(source, limits), limits);
+        }
+
+        // Owned here, not in FromPayload: the public Load(ReadOnlyMemory) overload reaches
+        // that too, so pooling below this point would return a caller's own buffer (#435).
+        using Buffers.RentedPayload payload = JsonArtifact.ReadAllBytesPooled(source, limits);
+        return FromPayload(payload.Memory, limits);
     }
 
     /// <summary>Reads an index from bytes already in memory, without copying them.</summary>
@@ -384,12 +399,14 @@ public sealed partial class EmbeddingIndex
         }
         EnsureFinite(vectors, dim);
 
-        var index = new EmbeddingIndex(dim, normalizeFlag);
-        index._data = vectors;
-        index._length = vectors.Length;
-        index._count = itemCount;
-        index._ids = ids;
-        return index;
+        // AlreadyNormalized, never Normalize: a stored vector is restored exactly as it was
+        // written, and normalizing a second time would move its bits.
+        return Seed(
+            vectors,
+            dim,
+            itemCount,
+            normalizeFlag ? BlockNormalization.AlreadyNormalized : BlockNormalization.Off,
+            ids);
     }
 
     /// <summary>Throws unless every stored component is a finite number.</summary>

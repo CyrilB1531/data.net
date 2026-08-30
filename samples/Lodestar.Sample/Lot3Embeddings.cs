@@ -308,6 +308,15 @@ internal static class Lot3Embeddings
             Console.WriteLine($"    #{hit.Index} {index.GetId(hit.Index)} score={Inv.F4(hit.Score)}");
         }
 
+        // The bulk ingest, which is what a caller holding a whole corpus reaches for. Both
+        // factories appear because the packaging gate is a reference from outside the assembly.
+        float[] corpus = [1f, 0f, 0f, 0f, 1f, 0f];
+        EmbeddingIndex bulk = EmbeddingIndex.FromBlock(corpus, 3, BlockNormalization.Normalize);
+        EmbeddingIndex owned = EmbeddingIndex.FromOwnedBlock(
+            [0f, 0f, 1f], 3, BlockNormalization.AlreadyNormalized);
+
+        Console.WriteLine($"  Bulk ingest      : {bulk.Count} + {owned.Count} vectors");
+
         // Embed once, query for as long as the artifact lasts.
         using var artifact = new MemoryStream();
         index.Save(artifact);
@@ -322,6 +331,39 @@ internal static class Lot3Embeddings
         EmbeddingIndex fromMemory = EmbeddingIndex.Load(artifact.ToArray().AsMemory());
         Console.WriteLine($"  From memory      : {fromMemory.Count} vectors, "
             + $"same best '{fromMemory.GetId(fromMemory.Search([1f, 0f, 0f], k: 1)[0].Index)}'");
+
+        // Interop, not a second artifact format: a .npy carries the floats and their
+        // shape, and none of the ids or flags an index needs (#450).
+        float[] matrix = [1f, 0f, 0f, 0f, 1f, 0f];
+        using var npy = new MemoryStream();
+        NpyFile.Write(npy, matrix, 2, 3);
+        npy.Position = 0;
+        NpyBlock block = NpyFile.Read(npy);
+        Console.WriteLine($"  .npy round trip  : {string.Join("x", block.Shape)} "
+            + $"= {block.Values.Length} floats, first {Inv.F4(block.Values.Span[0])}");
+
+        // Already holding the file -- a blob, a cache entry, an embedded resource -- this
+        // overload aliases those bytes instead of copying them, so it owns no array (#466).
+        NpyBlock borrowed = NpyFile.Read(npy.ToArray().AsMemory());
+        Console.WriteLine($"  .npy from memory : {string.Join("x", borrowed.Shape)}, "
+            + $"owns an array: {borrowed.OwnedArray is not null}");
+
+        string npyPath = Path.Combine(Path.GetTempPath(), $"lodestar-sample-{Environment.ProcessId}.npy");
+        try
+        {
+            NpyFile.Write(npyPath, matrix, 3, 2);
+            NpyBlock fromFile = NpyFile.Read(npyPath);
+            Console.WriteLine($"  .npy from a file : {string.Join("x", fromFile.Shape)}");
+        }
+        finally
+        {
+            File.Delete(npyPath);
+        }
+
+        // Constructed rather than read: the same shape a caller hands to Write.
+        var literal = new NpyBlock(matrix.AsMemory(), [2, 3]);
+        Console.WriteLine($"  .npy block       : {string.Join("x", literal.Shape)} "
+            + $"over {literal.Values.Length} floats");
         Console.WriteLine();
     }
 

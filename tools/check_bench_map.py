@@ -33,9 +33,19 @@ MAP = ROOT / "bench" / "bench-map.json"
 BENCH_DIR = ROOT / "bench" / "Lodestar.Text.Benchmarks"
 PROGRAM = BENCH_DIR / "Program.cs"
 PYTHON_DIR = ROOT / "bench" / "python"
+WORKFLOWS = ROOT / ".github" / "workflows"
 
 CLASS = re.compile(r"^\s*public\s+class\s+(\w+)", re.MULTILINE)
-SUBCOMMAND = re.compile(r'args\[0\] == "(compare[a-z-]*)"')
+# Program.cs dispatches with `case "name":`. It used a chain of `args[0] == "name"` until
+# the ninth subcommand took that past the analyser's cognitive-complexity bar.
+SUBCOMMAND = re.compile(r'case "(compare[a-z-]*)"')
+ANY_SUBCOMMAND = re.compile(r'case "([a-z][a-z-]*)"')
+# `dotnet run --project ... -- <first>`: the space before the bare `--` is what tells it
+# apart from `--project`, whose dashes are not followed by one.
+INVOCATION = re.compile(r"dotnet run\b.*?\s--\s+(\S+)")
+CONTINUATION = re.compile(r"\\\n\s*")
+# Whether Program.cs's default arm lets an option through to BenchmarkSwitcher (#478).
+FORWARDS_OPTIONS = re.compile(r"StartsWith\('-'\)")
 
 
 def declared_classes() -> dict[str, pathlib.Path]:
@@ -59,10 +69,39 @@ def declared_harnesses() -> set[str]:
     return found
 
 
-def harness_findings(harnesses: dict) -> list[str]:
+def diagnostic_findings(diagnostics: list) -> list[str]:
+    """A diagnostic is exempt from the nightly, not from existing.
+
+    roc-parallel, save-phases and heap-warmth answer a question a lot asks once, so no
+    harness names them and the nightly never runs one. That is deliberate. What is not
+    deliberate is a renamed subcommand or a deleted script leaving an entry pointing at
+    nothing, which is the same rot the harness rules catch.
+    """
+    program = PROGRAM.read_text(encoding="utf-8") if PROGRAM.exists() else ""
+    dispatched = set(ANY_SUBCOMMAND.findall(program))
+
+    findings = [
+        f"bench/bench-map.json: diagnostic '{entry['subcommand']}' is not dispatched by "
+        f"bench/Lodestar.Text.Benchmarks/Program.cs"
+        for entry in diagnostics if entry.get("subcommand") not in dispatched
+    ]
+    findings += [
+        f"bench/bench-map.json: diagnostic '{entry['subcommand']}' names {entry['python']}, "
+        f"which does not exist"
+        for entry in diagnostics
+        if "python" in entry and not (ROOT / entry["python"]).exists()
+    ]
+    return findings
+
+
+def harness_findings(harnesses: dict, diagnostics: list) -> list[str]:
     """A comparison the map does not carry is one the nightly never runs."""
     mapped_subcommands = {entry.get("subcommand") for entry in harnesses.values()}
     mapped_python = {pathlib.Path(entry.get("python", "")).name for entry in harnesses.values()}
+    # A diagnostic's Python half is named here rather than by a harness, on purpose.
+    mapped_python |= {
+        pathlib.Path(entry["python"]).name for entry in diagnostics if "python" in entry
+    }
     declared = declared_harnesses()
 
     findings = [
@@ -121,6 +160,74 @@ def glob_findings(data: dict) -> list[str]:
     return findings
 
 
+def dispatch_only_findings(data: dict) -> list[str]:
+    """A 'dispatch_only' key whose file or whose construct has moved.
+
+    select_benchmarks.py exempts the named construct from the "always" rule, and every
+    failure mode there falls to "not exempt" -- safely, but silently, so a key left
+    pointing at a renamed file or at a switch that has become something else costs the
+    nightly its whole benchmark selection without a word. That is the rot the harness
+    and glob rules exist to break, and this key was outside them.
+
+    One occurrence, anchored the way strip_construct anchors it: none means the file has
+    stopped having the construct, more than one means the exemption is ambiguous, and
+    neither is a mapping worth keeping.
+    """
+    findings = []
+    for path, keyword in sorted(data.get("dispatch_only", {}).items()):
+        source = ROOT / path
+        if not source.exists():
+            findings.append(
+                f"bench/bench-map.json: 'dispatch_only' names {path}, which does not exist")
+            continue
+        anchor = re.compile(rf"(?m)^[ \t]*{re.escape(keyword)}\s*\(")
+        found = len(anchor.findall(source.read_text(encoding="utf-8")))
+        if found != 1:
+            findings.append(
+                f"bench/bench-map.json: 'dispatch_only' names '{keyword}' in {path}, which "
+                f"holds {found} of them; tools/select_benchmarks.py exempts nothing but one")
+    return findings
+
+
+def invocation_findings() -> list[str]:
+    """A workflow's own arguments, against what Program.cs accepts.
+
+    #478: the refusal added for a mistyped subcommand also caught `--filter`, which is
+    BenchmarkDotNet's and not a subcommand at all, so every scheduled nightly exited 2
+    before its first measurement. Nothing saw it because the nightly is the only caller
+    that leads with an option, and it is the one workflow no pull request runs -- so the
+    check for it belongs where a pull request does run, which is here.
+
+    Only the first argument, which is the one Program.cs judges. A mistyped option later
+    in the line is a hazard this does not cover and #470's refusal never reached either:
+    BenchmarkDotNet answers an unknown option with its help screen and exit 0, so such a
+    nightly is green having measured nothing. Verified, not assumed -- `--nonsense-option`
+    exits 0 here.
+    """
+    program = PROGRAM.read_text(encoding="utf-8") if PROGRAM.exists() else ""
+    dispatched = set(ANY_SUBCOMMAND.findall(program))
+    forwards_options = bool(FORWARDS_OPTIONS.search(program))
+
+    findings = []
+    for path in sorted(WORKFLOWS.glob("*.yml")):
+        text = CONTINUATION.sub(" ", path.read_text(encoding="utf-8"))
+        for first in INVOCATION.findall(text):
+            token = first.strip('"\'')
+            if "$" in token:
+                continue  # A subcommand read from bench-map.json; the map rules check it.
+            if token.startswith("-"):
+                if not forwards_options:
+                    findings.append(
+                        f".github/workflows/{path.name}: passes '{token}' first, which "
+                        f"bench/Lodestar.Text.Benchmarks/Program.cs refuses as an unknown "
+                        f"subcommand rather than forwarding to BenchmarkDotNet")
+            elif token not in dispatched:
+                findings.append(
+                    f".github/workflows/{path.name}: passes '{token}' first, which "
+                    f"bench/Lodestar.Text.Benchmarks/Program.cs does not dispatch")
+    return findings
+
+
 def main() -> int:
     if len(sys.argv) > 1:
         print(__doc__)
@@ -131,9 +238,13 @@ def main() -> int:
         return 1
 
     data = json.loads(MAP.read_text(encoding="utf-8"))
+    diagnostics = data.get("diagnostics", [])
     findings = coverage_findings(data.get("benchmarks", {}), declared_classes())
-    findings += harness_findings(data.get("harnesses", {}))
+    findings += harness_findings(data.get("harnesses", {}), diagnostics)
+    findings += diagnostic_findings(diagnostics)
+    findings += invocation_findings()
     findings += glob_findings(data)
+    findings += dispatch_only_findings(data)
 
     for finding in findings:
         print(finding)

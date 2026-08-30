@@ -57,12 +57,24 @@ Each tokenizer here implements one fixed pipeline, and a `tokenizer.json` descri
 A refusal is the correct outcome: the alternative is embeddings that do not match the model and
 carry nothing to say so.
 
+## Exchanging a float block with numpy
+
+[`NpyFile`](persistence/npyfile.md) is the odd one out here: it reads and writes numpy's `.npy`,
+which carries a float matrix and nothing else — no ids, no settings, no schema. It is **not** a
+second artifact format, and [`EmbeddingIndex.Save`](search/embeddingindex-save.md) is unchanged.
+It exists so vectors can come from numpy and go back to it.
+
+It is bounded like everything else on this page, and it refuses the same class of thing the
+loaders do — most pointedly `descr: '|O'`, numpy's object dtype, whose payload is a pickle.
+
 ## Types
 
 | Type | What it is |
 | --- | --- |
 | [`ArtifactLoadOptions`](persistence/artifactloadoptions.md) | The five bounds every load here is held to. |
 | [`BpeFilesLoader`](persistence/bpefilesloader.md) | The `vocab.json` + `merges.txt` pair GPT-2 ships. |
+| [`NpyBlock`](persistence/npyblock.md) | A float block read from a `.npy`, with its shape. |
+| [`NpyFile`](persistence/npyfile.md) | numpy's `.npy`, for exchanging a float matrix. |
 | [`SentencePieceModelLoader`](persistence/sentencepiecemodelloader.md) | The trained `spiece.model`. |
 | [`TokenizerJsonLoader`](persistence/tokenizerjsonloader.md) | A HuggingFace `tokenizer.json`, whichever model it declares. |
 | [`VocabTxtLoader`](persistence/vocabtxtloader.md) | A BERT-style `vocab.txt`. |

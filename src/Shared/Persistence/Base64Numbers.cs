@@ -18,6 +18,9 @@ namespace Lodestar.Internal.Persistence;
 /// </remarks>
 internal static class Base64Numbers
 {
+    /// <summary>The quotation mark that opens and closes a JSON string value.</summary>
+    private const byte Quote = (byte)'"';
+
     /// <summary>Writes <paramref name="values"/> as a base64 property.</summary>
     public static void WriteDoubles(Utf8JsonWriter writer, string propertyName, IReadOnlyList<double> values)
     {
@@ -74,6 +77,128 @@ internal static class Base64Numbers
         MemoryMarshal.AsBytes(values).CopyTo(raw);
         SwapIfBigEndian32(raw);
         writer.WriteBase64String(propertyName, raw);
+    }
+
+    /// <summary>
+    /// How much of the block one slice of the chunked write covers: 245 760 bytes.
+    /// </summary>
+    /// <remarks>
+    /// A multiple of 12 — 3 floats, 4 base64 groups — so every slice but the last is a
+    /// whole number of groups, and a concatenation of slice encodings is exactly the
+    /// encoding of the concatenation. Only the final slice can pad. That is the whole
+    /// reason the sliced write is byte-identical to the one-shot one.
+    /// </remarks>
+    private const int SliceBytes = 240 * 1024;
+
+    /// <summary>
+    /// Writes the same base64 string <see cref="WriteSingles"/> writes, as a quoted
+    /// value straight to <paramref name="destination"/>, encoding it a slice at a time.
+    /// </summary>
+    /// <remarks>
+    /// Why slices rather than one <c>WriteBase64String</c> call, and what it was worth, is
+    /// <see href="../../../docs/decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md">ADR 0051</see>.
+    /// The invariant that keeps the output byte-identical lives on <see cref="SliceBytes"/>.
+    /// The caller must have flushed the writer and must write the rest of the document
+    /// itself: nothing may go through the <c>Utf8JsonWriter</c> after this.
+    /// </remarks>
+    public static void WriteSinglesChunked(Stream destination, ReadOnlySpan<float> values)
+    {
+        ReadOnlySpan<byte> raw = MemoryMarshal.AsBytes(values);
+        byte[] scratch = ArrayPool<byte>.Shared.Rent(Base64.GetMaxEncodedToUtf8Length(SliceBytes));
+        byte[]? swapped = BitConverter.IsLittleEndian ? null : ArrayPool<byte>.Shared.Rent(SliceBytes);
+        try
+        {
+            destination.WriteByte(Quote);
+            for (int offset = 0; offset < raw.Length; offset += SliceBytes)
+            {
+                int take = Math.Min(SliceBytes, raw.Length - offset);
+                int written = EncodeSlice(raw.Slice(offset, take), scratch, swapped);
+                destination.Write(scratch, 0, written);
+            }
+            destination.WriteByte(Quote);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(scratch);
+            if (swapped is not null)
+            {
+                ArrayPool<byte>.Shared.Return(swapped);
+            }
+        }
+    }
+
+    /// <summary>The asynchronous counterpart of <see cref="WriteSinglesChunked"/>.</summary>
+    /// <remarks>
+    /// Takes <see cref="ReadOnlyMemory{T}"/> rather than a span because a span cannot cross
+    /// an <see langword="await"/>. The encode of each slice is synchronous — it is CPU work
+    /// on a rented buffer, and there is nothing to await — and only the write of the encoded
+    /// slice is awaited, which is the 20.48 MB that actually reaches the device.
+    /// </remarks>
+    public static async Task WriteSinglesChunkedAsync(
+        Stream destination,
+        ReadOnlyMemory<float> values,
+        CancellationToken cancellationToken)
+    {
+        byte[] scratch = ArrayPool<byte>.Shared.Rent(Base64.GetMaxEncodedToUtf8Length(SliceBytes));
+        byte[]? swapped = BitConverter.IsLittleEndian ? null : ArrayPool<byte>.Shared.Rent(SliceBytes);
+        byte[] quote = [Quote];
+        try
+        {
+            await WriteAsync(destination, quote, 1, cancellationToken).ConfigureAwait(false);
+
+            int totalBytes = values.Length * sizeof(float);
+            for (int offset = 0; offset < totalBytes; offset += SliceBytes)
+            {
+                int take = Math.Min(SliceBytes, totalBytes - offset);
+                int written = EncodeSlice(
+                    MemoryMarshal.AsBytes(values.Span).Slice(offset, take), scratch, swapped);
+                await WriteAsync(destination, scratch, written, cancellationToken).ConfigureAwait(false);
+            }
+
+            await WriteAsync(destination, quote, 1, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(scratch);
+            if (swapped is not null)
+            {
+                ArrayPool<byte>.Shared.Return(swapped);
+            }
+        }
+    }
+
+    /// <summary>
+    /// One asynchronous write of <paramref name="count"/> bytes from the front of
+    /// <paramref name="buffer"/>, spelled the way each target framework wants it.
+    /// </summary>
+    private static Task WriteAsync(Stream destination, byte[] buffer, int count, CancellationToken cancellationToken) =>
+#if NETSTANDARD2_0
+        destination.WriteAsync(buffer, 0, count, cancellationToken);
+#else
+        destination.WriteAsync(buffer.AsMemory(0, count), cancellationToken).AsTask();
+#endif
+
+    /// <summary>Encodes one slice into <paramref name="scratch"/> and returns how many bytes it wrote.</summary>
+    /// <param name="slice">The slice of the raw block, already a whole number of base64 groups unless it is the last.</param>
+    /// <param name="scratch">The rented destination, large enough for any slice's encoding.</param>
+    /// <param name="swapped">A rented buffer to swap into on a big-endian machine, or <see langword="null"/> on a little-endian one.</param>
+    private static int EncodeSlice(ReadOnlySpan<byte> slice, byte[] scratch, byte[]? swapped)
+    {
+        if (swapped is not null)
+        {
+            slice.CopyTo(swapped);
+            Span<byte> target = swapped.AsSpan(0, slice.Length);
+            SwapIfBigEndian32(target);
+            slice = target;
+        }
+
+        OperationStatus status = Base64.EncodeToUtf8(slice, scratch, out int consumed, out int written);
+        if (status != OperationStatus.Done || consumed != slice.Length)
+        {
+            throw new InvalidOperationException(
+                $"Encoding a {slice.Length}-byte slice reported {status} after {consumed} bytes.");
+        }
+        return written;
     }
 
     /// <summary>Reads a base64 property written by <see cref="WriteSingles"/>.</summary>

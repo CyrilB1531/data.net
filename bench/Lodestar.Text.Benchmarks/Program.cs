@@ -1,36 +1,64 @@
 using BenchmarkDotNet.Running;
 using Lodestar.Text.Benchmarks.CrossLang;
 
-// Six entry points, the default being BenchmarkDotNet; usage for each of the
-// five "compare*"/"roc-parallel" subcommands is in bench/README.md.
-if (args.Length > 0 && args[0] == "compare")
+// long-comment: the entry points, and why the chain of ifs became a switch.
+// Ten subcommands below, and BenchmarkDotNet by default when the first argument is absent
+// or option-shaped. bench/README.md carries an invocation for each of the ten: the four
+// "compare*", then "roc-parallel", "save-phases", "pool-cost", "sidecar", "heap-warmth"
+// and "ingest-phases".
+// A switch rather than a chain of ifs: the ninth took the chain past the cognitive-complexity
+// bar, and tools/check_bench_map.py reads these cases by name.
+switch (args.Length > 0 ? args[0] : string.Empty)
 {
-    LevenshteinCrossLang.Run(args);
-    return;
-}
+    case "compare":
+        LevenshteinCrossLang.Run(args);
+        return;
+    case "compare-indel":
+        IndelCrossLang.Run(args);
+        return;
+    case "compare-persistence":
+        PersistenceCrossLang.Run();
+        return;
+    case "compare-metrics":
+        MetricsCrossLang.Run(args);
+        return;
+    case "roc-parallel":
+        RocParallelBench.Run();
+        return;
+    case "save-phases":
+        SavePhasesBench.Run();
+        return;
+    case "pool-cost":
+        PoolCostBench.Run();
+        return;
+    case "sidecar":
+        SidecarBench.Run();
+        return;
+    case "ingest-phases":
+        IngestPhasesBench.Run();
+        return;
+    case "tensor-primitives":
+        TensorPrimitivesBench.Run();
+        return;
+    case "heap-warmth":
+        HeapWarmthBench.Run(args);
+        return;
+    case "":
+        break;
+    default:
+        // BenchmarkDotNet owns everything option-shaped -- --filter, --job, --exporters --
+        // so those reach BenchmarkSwitcher below instead of being refused here (#478).
+        if (args[0].StartsWith('-'))
+        {
+            break;
+        }
 
-if (args.Length > 0 && args[0] == "compare-indel")
-{
-    IndelCrossLang.Run(args);
-    return;
-}
-
-if (args.Length > 0 && args[0] == "compare-persistence")
-{
-    PersistenceCrossLang.Run();
-    return;
-}
-
-if (args.Length > 0 && args[0] == "compare-metrics")
-{
-    MetricsCrossLang.Run(args);
-    return;
-}
-
-if (args.Length > 0 && args[0] == "roc-parallel")
-{
-    RocParallelBench.Run();
-    return;
+        // An unknown subcommand used to reach BenchmarkSwitcher's menu, which exits 0.
+        // console-print: the refusal, on stderr, that a silently green run would hide.
+        await Console.Error.WriteLineAsync(
+            $"unknown subcommand '{args[0]}'. See bench/README.md for the list.").ConfigureAwait(false);
+        Environment.ExitCode = 2;
+        return;
 }
 
 BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);

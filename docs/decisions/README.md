@@ -60,13 +60,23 @@ a later decision uses instead.
 | [`0048`](0048-the-gate-depends-on-the-kernel-and-the-alphabet.md) | The bit-parallel gate depends on the kernel *and* the alphabet | accepted | 2026-08-21 | amends [`0047`](0047-one-gate-per-kernel-not-one-per-alphabet.md) |
 | [`0049`](0049-two-gates-per-kernel-tested-where-the-width-is-known.md) | Two gates per kernel, the second tested where the width is already known | accepted | 2026-08-21 | amends [`0048`](0048-the-gate-depends-on-the-kernel-and-the-alphabet.md) |
 | [`0050`](0050-the-sentencepiece-bpe-lineage-stays-a-bpe-model.md) | The SentencePiece-BPE lineage stays a BPE model, and metaspace becomes one transform | accepted | 2026-08-21 | amends [`0017`](0017-bpe-parity-scope.md) §3, whose `byte_fallback` refusal and "no path here" for Llama-2 and Mistral v0.1 both fall |
+| [`0051`](0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md) | The save path's cost is the buffer, not the encoding | accepted | 2026-08-27 | amends [`0044`](0044-compression-belongs-to-the-caller.md): its `× save` column moves, because the save now allocates half of what it did, and is deliberately left un-restated for want of a measurement under 0044's own conditions — its decision stands strengthened. Extends [`0011`](0011-persistence-format.md)'s `> **#324 update:**` conclusion to the write direction |
+| [`0052`](0052-pre-sizing-the-artifact-file-buys-nothing-on-a-delayed-allocation-filesystem.md) | Pre-sizing the artifact file buys nothing on a delayed-allocation filesystem | accepted | 2026-08-28 | Closes [#432](https://github.com/CyrilB1531/lodestar/issues/432) as refused. Measured on ext4 only — a filesystem that charges per extension, NTFS being the candidate, is what would reopen it |
+| [`0053`](0053-the-payload-buffer-is-not-pooled-because-residency-outlives-the-load.md) | The payload buffer is not pooled, because residency outlives the load | accepted | 2026-08-29 | Closes [#435](https://github.com/CyrilB1531/lodestar/issues/435) as refused. 2.25× less allocated per load against 33.5 MB held for the life of the process; a caller who loads once loses. A caller that loads repeatedly is what would reopen it |
+| [`0054`](0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md) | The payload buffer is pooled after all, because the collection is the cost | accepted | 2026-08-29 | Amends [`0053`](0053-the-payload-buffer-is-not-pooled-because-residency-outlives-the-load.md), which refused on two memory columns without measuring the third. 42× on the rent, 1.74 ms a load; a caller measured on peak resident memory rather than load time is what would reopen it |
+| [`0055`](0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md) | The artifact gets a binary sidecar, once a block can be ingested whole | accepted | 2026-08-29 | Amends [`0011`](0011-persistence-format.md), narrowing its "argue on size not speed" to base64 alone: the JSON scan around the block is worth 2.02×. Conditional on a bulk ingest into `EmbeddingIndex`, without which the sidecar route is 0.66× — slower than what it replaces |
+| [`0056`](0056-a-block-may-be-adopted-and-the-invariant-is-the-callers-to-keep.md) | A block may be adopted, and the invariant is the caller's to keep | accepted | 2026-08-29 | Refines [`0053`](0053-the-payload-buffer-is-not-pooled-because-residency-outlives-the-load.md)'s exposure invariant, which [`EmbeddingIndex.FromOwnedBlock`](../reference/embeddings/search/embeddingindex-fromownedblock.md) mirrors: the index reads the caller's array for as long as it lives. Refused the adopting factory as an internal seam, for reach; a caller found returning an adopted array to a pool is what would reverse it |
+| [`0057`](0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md) | The `.npy` read serves a stream and a buffer differently | accepted | 2026-08-30 | Amended by [`0058`](0058-the-npy-ingest-is-memcpy-bound-and-the-allocation-is-not-the-cost.md), which measured the allocation its Consequences blamed and found it worth 0.02 ms. Refines [`0056`](0056-a-block-may-be-adopted-and-the-invariant-is-the-callers-to-keep.md): `NpyBlock.OwnedArray` is what the stream reader fills and [`EmbeddingIndex.FromOwnedBlock`](../reference/embeddings/search/embeddingindex-fromownedblock.md) may adopt. Refused a view on every path, which caps the chain at two copies by foreclosing adoption; a caller found holding a block past the lifetime of the bytes it borrowed is what would reverse it |
+| [`0058`](0058-the-npy-ingest-is-memcpy-bound-and-the-allocation-is-not-the-cost.md) | The `.npy` ingest is `memcpy`-bound, and the allocation is not the cost | accepted | 2026-08-30 | Amends [`0057`](0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md), which explained its measured win by an allocation nobody had timed. Two independent subtractions price that allocation at 0.02 ms and every route at one `memcpy` or none, so adopting is worth one copy and no more; the gap `ingest_total` still carries is what would reopen it |
+| [`0059`](0059-phase-0-verifications-two-confirmed-voids-do-not-survive-nuget.md) | Phase 0's verifications: two confirmed voids do not survive a NuGet search | accepted | 2026-08-30 | Answers V3, V4, V5 and V7 of [#437](https://github.com/CyrilB1531/lodestar/issues/437); V6 wants a measurement and is left open. Refuses to read a low download count as a void, and refuses to read V4's wrong reason as a missing gap |
+| [`0060`](0060-tensorprimitives-beats-our-kernel-and-the-knn-is-still-not-redundant.md) | `TensorPrimitives` beats our kernel, and the kNN is still not redundant | accepted | 2026-08-30 | Completes [`0059`](0059-phase-0-verifications-two-confirmed-voids-do-not-survive-nuget.md) with V6, the one verification wanting a measurement. Refuses the container reading it had already published, and refuses to delegate on a margin whose netstandard2.0 half is unmeasured |
 
 ## What `accepted` means here
 
-All fifty carry `accepted`. None has been rejected or withdrawn — a status this table
+All sixty carry `accepted`. None has been rejected or withdrawn — a status this table
 would otherwise need a second word for. `0004` read a progress sentence
 (`single-word and blocked shipped`) where a status belongs; that sentence is now the opening line
-of its own `## Done` section, and its status reads `accepted` like the other thirty-two.
+of its own `## Done` section, and its status reads `accepted` like the other fifty-nine.
 
 ## Relationships not stated on a `**Status:**` line
 
@@ -81,6 +91,14 @@ Two pairs supersede or amend each other in the body only, not in the status line
   gave for keeping `samples/` off the analyser, in two `> **Amended by 0019 (2026-08-10).**`
   blocks inside 0015 itself, and 0019's own text says so directly — "this ADR amends 0015
   accordingly."
+
+A third kind is a back-reference the amended decision cannot carry itself.
+[`0057`](0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md) is amended by
+[`0058`](0058-the-npy-ingest-is-memcpy-bound-and-the-allocation-is-not-the-cost.md): 0058's
+`**Status:**` line says so, and 0057's row above says so in the other direction. 0057 is accepted
+and therefore immutable, and its own body names no successor, so this index is the only place a
+reader arriving at 0057 first can learn that its Consequences were corrected. That is why the
+`Amended by` sits here rather than in the ADR.
 
 `0013`'s partial supersession by `0014` is the one relationship already on a status line; its
 body adds the detail that only §1 (the oracle's normalizer scope) is superseded — §2 (the
