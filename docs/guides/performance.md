@@ -1885,8 +1885,9 @@ moving a raw float block, this project is behind CPython and the reason is not t
 `np.load` parses a short header and reads once into the output array;
 [#466](https://github.com/CyrilB1531/lodestar/issues/466) records that our path copies the
 15.36 MB block **four times where numpy copies once**, two of them removable — the `.ToArray()` in
-`NpyFile.Read`, and the `byte[]` to `float[]` copy that the accepted `'<f4'` dtype and numpy's own
-64-byte payload alignment make a `MemoryMarshal.Cast` rather than a copy.
+[`NpyFile.Read`](../reference/embeddings/persistence/npyfile-read.md), and the `byte[]` to
+`float[]` copy that the accepted `'<f4'` dtype and numpy's own 64-byte payload alignment make a
+`MemoryMarshal.Cast` rather than a copy.
 
 **Where the thesis does hold, on the same run**, and it is the half this project was built for:
 `spiece_model` **5.90–5.98×**, `tokenizer_json_unigram` **2.51–2.56×**, `vocab_txt`
