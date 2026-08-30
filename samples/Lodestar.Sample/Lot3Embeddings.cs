@@ -342,6 +342,12 @@ internal static class Lot3Embeddings
         Console.WriteLine($"  .npy round trip  : {string.Join("x", block.Shape)} "
             + $"= {block.Values.Length} floats, first {Inv.F4(block.Values.Span[0])}");
 
+        // Already holding the file -- a blob, a cache entry, an embedded resource -- this
+        // overload aliases those bytes instead of copying them, so it owns no array (#466).
+        NpyBlock borrowed = NpyFile.Read(npy.ToArray().AsMemory());
+        Console.WriteLine($"  .npy from memory : {string.Join("x", borrowed.Shape)}, "
+            + $"owns an array: {borrowed.OwnedArray is not null}");
+
         string npyPath = Path.Combine(Path.GetTempPath(), $"lodestar-sample-{Environment.ProcessId}.npy");
         try
         {

@@ -931,6 +931,17 @@ against 5 MB less work. The figures, and the rows on the same run where this pro
 6× ahead, are in
 [the performance guide](../docs/guides/performance.md#against-numpy-on-the-same-format-issue-474).
 
+**#466 changed what the C# side of that row does, and no figure for it is published here yet.**
+The block was copied three times between the stream and the index where numpy copies it once;
+the read now copies it once on `net10.0` — twice on `netstandard2.0`, which has no
+`Stream.Read(Span<byte>)` to read into the array the block keeps — and a second entry point
+copies nothing at all for a caller who already holds the bytes. The reading above is the one
+before that change, and it stays as measured: the row is re-run on a hosted runner as a step of
+its own, and until it is, the arithmetic that motivates the change is not a number this section
+may print.
+[Decision 0057](../docs/decisions/0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md)
+has the shape it took and the alternative it refused.
+
 > **#323 changed the save path after this window.** The row above stays as measured;
 > what it cannot show is that its `1.13×` inverts to `0.27×` on a newer machine,
 > because `numpy.save` is bandwidth-bound where this artifact's base64 encoding is

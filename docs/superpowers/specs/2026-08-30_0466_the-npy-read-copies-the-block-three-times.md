@@ -184,3 +184,29 @@ analysis has not looked, and the lot should say so rather than ship on the arith
   untouched; its 0.24–0.27× is a statement about the format, as `bench/README.md` §7 now says.
 - **Not that `NpyBlock` was wrong as shipped.** #450 built it for a reader that copied; the member
   this lot adds is what a reader that does not copy needs, and the change is additive.
+
+## Amendment — 2026-08-30: the stream read copies once on `net10.0` and twice on `netstandard2.0`
+
+*The body above is left as written.* Its shape says "one copy: the stream is read straight into
+the array the block will own", with no target framework beside it. That is true on `net10.0` and
+not on `netstandard2.0`, and the difference is a framework's API surface rather than a choice made
+here.
+
+Reading a payload into an array the caller already holds needs `Stream.Read(Span<byte>)`, and
+`Stream.ReadExactly` with it; both are .NET 7 and later. The shared `StreamFill.Exactly` therefore
+reads into the destination directly under `#if NET7_0_OR_GREATER` and stages through an 80 KB
+chunk otherwise, so `Read(Stream)` costs **one copy on `net10.0` and two on `netstandard2.0`** —
+one public API and one behaviour at two speeds, the split `VectorMath.Dot` already makes and which
+`StreamFill`'s own remarks name as its precedent.
+
+Two consequences for what the body claims. *What the two overloads cost the chain* counts
+`net10.0`'s copies: on `netstandard2.0` every route through `Read(Stream)` carries one more, and
+the two routes that reach numpy's single copy do so on `net10.0` alone. *The gate* is measured on
+`net10.0`, as every row in `bench/README.md` is, so the figure it produces says nothing about the
+other target.
+
+`Read(ReadOnlyMemory<byte>)` is unaffected and copies nothing on either target: nothing on that
+path depends on a `Stream` API.
+[Decision 0057](../../decisions/0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md)
+records the split as a consequence of the two-entry-point shape rather than as a discovery under
+it.

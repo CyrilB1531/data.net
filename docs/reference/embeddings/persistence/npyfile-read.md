@@ -6,14 +6,18 @@ Reads a `.npy` file into a block and the shape it was stored under.
 
 ```csharp
 public static NpyBlock Read(Stream source, ArtifactLoadOptions options = null)
+public static NpyBlock Read(ReadOnlyMemory<byte> npy, ArtifactLoadOptions options = null)
 public static NpyBlock Read(string path, ArtifactLoadOptions options = null)
 ```
 
-**Parameters** — `source` is the file's bytes, never disposed here; `path` is the file, whose
-stream this method owns. `options` bounds what will be accepted and defaults to
+**Parameters** — `source` is the file's bytes, never disposed here; `npy` is the whole file
+already in memory, which must outlive the block and must not change while it is read; `path` is
+the file, whose stream this method owns. `options` bounds what will be accepted and defaults to
 [`ArtifactLoadOptions`](artifactloadoptions.md)'s own defaults.
 
-**Returns** — [`NpyBlock`](npyblock.md): the elements in C order, and the shape.
+**Returns** — [`NpyBlock`](npyblock.md): the elements in C order, and the shape. Read from a
+stream or a path, the block also carries the array it filled; read from memory it carries none,
+because it borrowed instead of allocating.
 
 **Exceptions** — `ArgumentNullException` for a null source or path. `InvalidDataException` when
 the file does not open with numpy's magic, declares a version this does not read, holds a dtype or
@@ -31,7 +35,38 @@ NpyBlock block = NpyFile.Read("vectors.npy");
 var index = new EmbeddingIndex(block.Shape[1], normalize: true);
 ```
 
-**Remarks** — **the header is never evaluated.** numpy's header is a Python dict literal, and this
+**Example** — the same file already in memory, read without copying it.
+
+```csharp
+using Lodestar.Embeddings.Persistence;
+
+using var written = new MemoryStream();
+NpyFile.Write(written, [1f, 0f, 0f, 1f], 2, 2);
+
+NpyBlock borrowedBlock = NpyFile.Read(written.ToArray().AsMemory());
+
+int rank = borrowedBlock.Shape.Count;  // => 2
+bool borrowed = borrowedBlock.OwnedArray is null;  // => True
+```
+
+**Remarks** — **the three overloads differ in what they cost and in what they ask of you.**
+`Read(Stream)` and `Read(string)` read the payload straight into the array the block carries —
+one copy on net10.0, and two on netstandard2.0, where `Stream.Read(Span<byte>)` does not exist and
+the payload stages through a chunk on its way in. Nothing is asked of the caller in return, and
+`OwnedArray` names that array so
+[`EmbeddingIndex.FromOwnedBlock`](../search/embeddingindex-fromownedblock.md) can adopt it rather
+than copy it a second time.
+
+`Read(ReadOnlyMemory<byte>)` copies nothing on either target, and **that is the overload with a
+contract**: the block's values alias the bytes you passed, so those bytes must outlive the block
+and must not change while it is read — what
+[`EmbeddingIndex.Load`](../search/embeddingindex-load.md) already asks of a caller who hands it an
+artifact it holds. `OwnedArray` is null on a block read this way, because a borrowed block has no
+array to hand over, which is what keeps adoption out of reach from here.
+[Decision 0057](../../../decisions/0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md)
+has why there are two contracts rather than one.
+
+**The header is never evaluated.** numpy's header is a Python dict literal, and this
 accepts a fixed grammar out of it rather than parsing Python: three known keys, each with one of a
 closed set of values.
 
