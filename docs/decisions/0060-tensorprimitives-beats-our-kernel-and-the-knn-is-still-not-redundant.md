@@ -44,7 +44,8 @@ dot and 3.725e-8 on the cosine, identical in all three rounds — the corpus is 
 **`TensorPrimitives` is faster than our kernel on our own access pattern, and the kNN is still not
 redundant.** Both halves are the finding, and the second does not soften the first.
 
-**Our kernel is behind.** 1.09–1.23× on the dot, which is the shape `EmbeddingIndex.Search`
+**Our kernel is behind.** 1.09–1.23× on the dot, which is the shape
+[`EmbeddingIndex.Search`](../reference/embeddings/search/embeddingindex-search.md)
 actually runs, and 1.11–1.16× on a single long sweep, which is what `TensorPrimitives` is designed
 for. There is no access pattern here on which we win.
 
@@ -58,7 +59,8 @@ reason it does not hold is not that our kernel is good.** It is that the kernel 
 spends its time. That is a different finding from the one the risk anticipated, and it points
 somewhere else: **top-k selection, not the dot, is what a kNN lot should measure next.**
 
-**The cosine row prices a route we do not take.** `EmbeddingIndex` normalizes on insertion, so
+**The cosine row prices a route we do not take.**
+[`EmbeddingIndex`](../reference/embeddings/search/embeddingindex.md) normalizes on insertion, so
 `Search` is a dot product and never calls a cosine. The 1.45–1.83× there is what per-call cosine
 would cost us if we ever computed one, and is an argument for delegating that shape if it is ever
 needed — not a statement about the index as it stands.
@@ -77,8 +79,9 @@ a dependency in `Lodestar.Embeddings` — and on `netstandard2.0` `TensorPrimiti
 intrinsics to reach for, which this run did not measure. Taking it is a lot with its own gate, not
 a consequence of this one.
 
-**Rewriting `VectorMath.Dot` to close the gap.** Nothing here says where the 9–23% goes, and a
-kernel rewritten against an unexplained margin is how a session produces a change it cannot defend.
+**Rewriting [`VectorMath.Dot`](../reference/embeddings/search/vectormath-dot.md) to close the
+gap.** Nothing here says where the 9–23% goes, and a kernel rewritten against an unexplained
+margin is how a session produces a change it cannot defend.
 
 ## Consequences
 
