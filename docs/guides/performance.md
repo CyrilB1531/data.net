@@ -1809,6 +1809,53 @@ takes the sidecar and makes the bulk ingest its precondition, in that order.
 0.73× — the opposite conclusion — with the floor row spread over 12–43 ms against the runner's
 4.0–8.5.
 
+### The bulk ingest that unblocks it (issue #474)
+
+The precondition above, built and measured. `sidecar` on a hosted `ubuntu-latest` runner
+(`ubuntu-24.04`, 4 vCPU), .NET 10, three rounds of nine on the same 10 000 × 384 corpus, load
+average 3.95–4.12 at the start of each round. Round medians, then the median of the three:
+
+| | round 1 | round 2 | round 3 | median |
+| --- | ---: | ---: | ---: | ---: |
+| load artifact | 11.659 | 11.540 | 11.894 | **11.659 ms** |
+| read `.npy` block | 5.677 | 5.638 | 6.384 | **5.677 ms** |
+| rebuild through `Add` | 18.767 | 18.205 | 18.228 | **18.228 ms** |
+| sidecar floor | 5.876 | 7.021 | 5.809 | **5.876 ms** |
+| **ingest copy** — the read then [`FromBlock`](../reference/embeddings/search/embeddingindex-fromblock.md) | 7.325 | 7.933 | 7.323 | **7.325 ms** |
+| ingest only — `FromBlock` on a block in hand | 2.128 | 2.169 | 2.139 | **2.139 ms** |
+
+| ratio | round 1 | round 2 | round 3 |
+| --- | ---: | ---: | ---: |
+| `load / rebuild` | 0.62× | 0.63× | 0.65× |
+| **`load / ingest`** | **1.59×** | **1.45×** | **1.62×** |
+| `ingest / floor` | 1.25× | 1.13× | 1.26× |
+| `load / floor` | 1.98× | 1.64× | 2.05× |
+
+**`load / ingest` is 1.45–1.62× where `load / rebuild` is 0.62–0.65×.** That is the finding: the
+sidecar route stops being slower than the artifact it would replace and becomes about half again
+faster. The precondition [ADR 0055](../decisions/0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md)
+set is cleared.
+
+Three things the ratio does not say, each worth more than the headline.
+
+**The ingest does not reach the floor.** `ingest / floor` is 1.13–1.26×, so `FromBlock` costs
+13–26% more than the bare read-plus-copy the floor models. And the floor is the *flattered* side
+of that comparison: it allocates its backing store with `new float[]`, which the CLR zero-fills,
+while `FromBlock` allocates uninitialized. The floor pays a 15.36 MB memset the ingest does not,
+and is still faster — so the real gap is wider than 1.26×, not narrower. `ingest only` puts the
+ingest's own cost at 2.139 ms against the floor's 0.199 ms of copy over its read, which is where
+that difference sits.
+
+**A sidecar will buy less than the floor promised.** `load / floor` is 1.98–2.05×, `load / ingest`
+is 1.45–1.62×. The floor was always a bound rather than a forecast, and the third of it that the
+ingest spends is the part a real method costs over a `memcpy`.
+
+**The spreads are wide and overlap.** `ingest copy` ranges 3.557–13.240 ms across its nine
+samples and `sidecar floor` 4.457–10.688; on a shared runner the two rows' distributions are not
+separated even though their medians are. The ratios hold in all three rounds and in the same
+direction, which is what makes them worth publishing; a difference this size read off one round
+would not be.
+
 ### Pre-sizing the file, and why it is not done (issue #432)
 
 Step 1's fourth item, and the decision is

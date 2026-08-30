@@ -1243,5 +1243,12 @@ artifact load, while the rebuild route is **0.66×** — slower than what it wou
 [ADR 0055](../docs/decisions/0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md)
 takes the sidecar and makes the bulk ingest its precondition.
 
+With that ingest built (#474), the same runner puts `load / ingest` at **1.45–1.62×** across three
+rounds where `load / rebuild` is 0.62–0.65× — the route stops being slower than the artifact. It
+does not reach the floor: `ingest / floor` is 1.13–1.26×, and the floor is the flattered side of
+that comparison per the paragraph above. Every figure, with its rounds and its spreads, is in
+[the performance guide](../docs/guides/performance.md#the-bulk-ingest-that-unblocks-it-issue-474);
+this section says only how to take them.
+
 **Not on a container.** There the same rows put the floor at 0.73×, the opposite conclusion, with
 the floor row spread over 12–43 ms against the runner's 4.0–8.5.
