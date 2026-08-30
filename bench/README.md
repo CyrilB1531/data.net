@@ -1263,7 +1263,9 @@ different stories, and only the second one explained the first.
 
 Nothing here is published. It prints a table and writes no page: what it measures becomes a figure
 when a person reads it on a named machine and decides, which is [section 10](#10-running-a-diagnostic-on-a-second-machine-issue-461)'s
-rule and not this mode's exception.
+rule and not this mode's exception. The first run's table, read that way, is in
+[the performance guide](../docs/guides/performance.md#where-the-ingests-time-actually-goes-issue-480),
+and what it refuted is [decision 0058](../docs/decisions/0058-the-npy-ingest-is-memcpy-bound-and-the-allocation-is-not-the-cost.md).
 
 ## 12. What a binary sidecar would buy (issue #436)
 

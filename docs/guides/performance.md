@@ -1949,24 +1949,51 @@ whose window is the one the #474 section measured. Reading the payload straight 
 — one copy fewer between the stream and the block — moved the row by nothing. Adopting the array
 instead of copying it into the index moved all of it.
 
-**The gain is larger than the copy it removed, and that is the interesting part.** One `memcpy` of
-this block costs about 1.2 ms at numpy's own rate. Had the row held the ratio it kept through both
-earlier dispatches — 0.88 to 0.99 of a `load_memory` — it would have read 3.9–4.4 ms against this
-window's `load_memory` of 4.21–4.49 ms; it read 1.20–1.38. The fall is 0.6–0.7 of a `load_memory`,
-or **2.6–3.1 ms**, derived inside this run because subtracting one runner's milliseconds from
-another's is the arithmetic the anchor table exists to refuse.
-[`FromBlock`](../reference/embeddings/search/embeddingindex-fromblock.md) was not only copying the
-block, it was allocating a second 15.36 MB store on the large object heap to copy it into;
-[`FromOwnedBlock`](../reference/embeddings/search/embeddingindex-fromownedblock.md) takes the array
-the reader already filled and allocates nothing. That is the mechanism
-[ADR 0054](../decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)
-priced on the artifact buffer — the allocation is as cheap as a rent and the collection it provokes
-is not — showing up on a second path.
+> **The two paragraphs that stood here were wrong, and #480 measured them wrong.** They read the
+> fall as **2.6–3.1 ms** and attributed it to a second large-object allocation `FromBlock` made,
+> citing [ADR 0054](../decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)'s
+> allocate-against-rent mechanism. The phase table below prices that allocation at **0.02 ms** and
+> `FromBlock` at exactly one `memcpy`. The derivation's flaw was treating 0.88–0.99 of a
+> `load_memory` as a property the row carries, when it was measured on a chain with a different
+> number of copies and does not transfer.
+> [ADR 0058](../decisions/0058-the-npy-ingest-is-memcpy-bound-and-the-allocation-is-not-the-cost.md)
+> amends [0057](../decisions/0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md) for the
+> same reason. **The measured table above is unaffected** — it is the reading of it that was.
 
-**One thing stays unexplained and is not smoothed over.** Removing a whole copy from the read
-should have been worth about 1.2 ms and was worth nothing measurable.
-[#480](https://github.com/CyrilB1531/lodestar/issues/480) carries it, and asks for the ingest to be
-decomposed into phases rather than for the answer to be inferred from a ratio.
+#### Where the ingest's time actually goes (issue #480)
+
+`ingest-phases` on `e3be432`, a hosted runner, .NET 10.0.11, 4 cores, workstation GC, three
+rounds, one-minute load average 4.08 / 3.61 / 3.21. Medians of nine runs each, interleaved.
+
+| phase | round 1 | round 2 | round 3 |
+| --- | ---: | ---: | ---: |
+| `ingest_total` | 2.166 ms | 2.192 ms | 2.259 ms |
+| `read_stream_owned` | 0.987 ms | 0.961 ms | 0.985 ms |
+| `stream_copy_floor` | 0.965 ms | 0.889 ms | 0.967 ms |
+| `allocate_cold` | 0.065 ms | 0.063 ms | 0.066 ms |
+| `allocate_reused` | 0.049 ms | 0.047 ms | 0.048 ms |
+| `parse_header_only` | 0.006 ms | 0.005 ms | 0.005 ms |
+| `from_block_copy` | 1.089 ms | 0.964 ms | 1.055 ms |
+| `from_owned_adopt` | 0.016 ms | 0.011 ms | 0.010 ms |
+| `read_memory_view` | 0.006 ms | 0.005 ms | 0.008 ms |
+| `block_copy_floor` | 0.972 ms | 0.936 ms | 0.976 ms |
+
+**The two independent subtractions agree.** `read_stream_owned - stream_copy_floor` is
+0.022 / 0.072 / 0.018 ms; `allocate_cold - allocate_reused` is 0.016 / 0.016 / 0.018 ms. The
+`float[]` the reader allocates costs **about 0.02 ms**, some 2% of the ingest — not the
+milliseconds the paragraphs above assigned to it.
+
+**Everything that costs is a `memcpy` of the block.** A bare `CopyTo` of the 15.36 MB is
+0.94–0.98 ms; the staged read is 0.96–0.99, one copy; `FromBlock` is 0.96–1.09, one copy.
+`FromOwnedBlock` is 0.010–0.016 and the memory overload 0.005–0.008 — both free, because neither
+moves the block. **So adopting is worth one `memcpy`**, about 0.96 ms, and no more.
+
+**What the table does not account for, stated rather than hidden.** `ingest_total` measures
+2.17–2.26 where its own parts sum to 0.97–1.00, and where the canonical harness measures the same
+chain at **1.109–1.134 ms wall**. Its own minimum, 0.92–1.00, is the sum of the parts, so the row
+is bimodal: most single calls pay about 1.2 ms that a best-of-five never sees, and it is the only
+phase that hands the block to an index and drops it. That is 0054's mechanism on **retention**
+rather than on allocation, and it is what a further lot would take.
 
 ### Pre-sizing the file, and why it is not done (issue #432)
 
