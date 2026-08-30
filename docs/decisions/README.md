@@ -66,14 +66,15 @@ a later decision uses instead.
 | [`0054`](0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md) | The payload buffer is pooled after all, because the collection is the cost | accepted | 2026-08-29 | Amends [`0053`](0053-the-payload-buffer-is-not-pooled-because-residency-outlives-the-load.md), which refused on two memory columns without measuring the third. 42× on the rent, 1.74 ms a load; a caller measured on peak resident memory rather than load time is what would reopen it |
 | [`0055`](0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md) | The artifact gets a binary sidecar, once a block can be ingested whole | accepted | 2026-08-29 | Amends [`0011`](0011-persistence-format.md), narrowing its "argue on size not speed" to base64 alone: the JSON scan around the block is worth 2.02×. Conditional on a bulk ingest into `EmbeddingIndex`, without which the sidecar route is 0.66× — slower than what it replaces |
 | [`0056`](0056-a-block-may-be-adopted-and-the-invariant-is-the-callers-to-keep.md) | A block may be adopted, and the invariant is the caller's to keep | accepted | 2026-08-29 | Refines [`0053`](0053-the-payload-buffer-is-not-pooled-because-residency-outlives-the-load.md)'s exposure invariant, which [`EmbeddingIndex.FromOwnedBlock`](../reference/embeddings/search/embeddingindex-fromownedblock.md) mirrors: the index reads the caller's array for as long as it lives. Refused the adopting factory as an internal seam, for reach; a caller found returning an adopted array to a pool is what would reverse it |
-| [`0057`](0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md) | The `.npy` read serves a stream and a buffer differently | accepted | 2026-08-30 | Refines [`0056`](0056-a-block-may-be-adopted-and-the-invariant-is-the-callers-to-keep.md): `NpyBlock.OwnedArray` is what the stream reader fills and [`EmbeddingIndex.FromOwnedBlock`](../reference/embeddings/search/embeddingindex-fromownedblock.md) may adopt. Refused a view on every path, which caps the chain at two copies by foreclosing adoption; a caller found holding a block past the lifetime of the bytes it borrowed is what would reverse it |
+| [`0057`](0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md) | The `.npy` read serves a stream and a buffer differently | accepted | 2026-08-30 | Amended by [`0058`](0058-the-npy-ingest-is-memcpy-bound-and-the-allocation-is-not-the-cost.md), which measured the allocation its Consequences blamed and found it worth 0.02 ms. Refines [`0056`](0056-a-block-may-be-adopted-and-the-invariant-is-the-callers-to-keep.md): `NpyBlock.OwnedArray` is what the stream reader fills and [`EmbeddingIndex.FromOwnedBlock`](../reference/embeddings/search/embeddingindex-fromownedblock.md) may adopt. Refused a view on every path, which caps the chain at two copies by foreclosing adoption; a caller found holding a block past the lifetime of the bytes it borrowed is what would reverse it |
+| [`0058`](0058-the-npy-ingest-is-memcpy-bound-and-the-allocation-is-not-the-cost.md) | The `.npy` ingest is `memcpy`-bound, and the allocation is not the cost | accepted | 2026-08-30 | Amends [`0057`](0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md), which explained its measured win by an allocation nobody had timed. Two independent subtractions price that allocation at 0.02 ms and every route at one `memcpy` or none, so adopting is worth one copy and no more; the gap `ingest_total` still carries is what would reopen it |
 
 ## What `accepted` means here
 
-All fifty-seven carry `accepted`. None has been rejected or withdrawn — a status this table
+All fifty-eight carry `accepted`. None has been rejected or withdrawn — a status this table
 would otherwise need a second word for. `0004` read a progress sentence
 (`single-word and blocked shipped`) where a status belongs; that sentence is now the opening line
-of its own `## Done` section, and its status reads `accepted` like the other fifty-six.
+of its own `## Done` section, and its status reads `accepted` like the other fifty-seven.
 
 ## Relationships not stated on a `**Status:**` line
 
@@ -88,6 +89,14 @@ Two pairs supersede or amend each other in the body only, not in the status line
   gave for keeping `samples/` off the analyser, in two `> **Amended by 0019 (2026-08-10).**`
   blocks inside 0015 itself, and 0019's own text says so directly — "this ADR amends 0015
   accordingly."
+
+A third kind is a back-reference the amended decision cannot carry itself.
+[`0057`](0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md) is amended by
+[`0058`](0058-the-npy-ingest-is-memcpy-bound-and-the-allocation-is-not-the-cost.md): 0058's
+`**Status:**` line says so, and 0057's row above says so in the other direction. 0057 is accepted
+and therefore immutable, and its own body names no successor, so this index is the only place a
+reader arriving at 0057 first can learn that its Consequences were corrected. That is why the
+`Amended by` sits here rather than in the ADR.
 
 `0013`'s partial supersession by `0014` is the one relationship already on a status line; its
 body adds the detail that only §1 (the oracle's normalizer scope) is superseded — §2 (the

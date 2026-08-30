@@ -1193,10 +1193,15 @@ put warm faster, level, then slower over three rounds with one state's median sw
 ## 10. Running a diagnostic on a second machine (issue #461)
 
 `roc-parallel` (section 6), `save-phases` (section 8), `heap-warmth` (section 9),
-`pool-cost` (section 11) and `sidecar` (section 12) are C#-only subcommands rather than
-`[Benchmark]` classes, so `bench-map.json` does not name them and the
-nightly never runs one. That is deliberate — they answer a question a lot asks
-once, not a regression worth watching every night.
+`pool-cost` (section 11), `ingest-phases` (section 12) and `sidecar` (section 13) are
+C#-only subcommands rather than `[Benchmark]` classes, so no benchmark or harness in
+`bench-map.json` selects them and the nightly never runs one. That is deliberate — they
+answer a question a lot asks once, not a regression worth watching every night.
+
+`bench-map.json` does name them, in its own `diagnostics` list, and `tools/check_bench_map.py`
+checks that list against what `Program.cs` dispatches. Exempt from the nightly is not exempt
+from existing: a subcommand nothing names cannot be told apart from a harness somebody forgot
+to map, which is the finding that file exists to raise.
 
 The cost of that was that they ran only on a contributor's own machine, and for
 some of them the machine is the finding: `save-phases` measures shares inside one
@@ -1234,7 +1239,54 @@ load. The allocation's own minimum is 0.071 ms, as cheap as the rent — **what 
 large-object collection it provokes**, not the allocation. [ADR 0054](../docs/decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)
 is what that decided, amending 0053, which had refused pooling without ever timing it.
 
-## 12. What a binary sidecar would buy (issue #436)
+## 12. Where the .npy ingest's time goes (issue #480)
+
+Ten phases, interleaved, each with the collections it provoked beside its milliseconds:
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- ingest-phases
+```
+
+Issue #466 removed a whole copy of the 15.36 MB block from `NpyFile.Read(Stream)` and the
+published row did not move; removing the copy into the index moved it by more than a copy is worth. Both
+readings came from subtracting whole rows, which cannot say where the time went. This takes the
+ingest apart instead: the staged read, the zero-copy overload beside it, the `float[]` allocation
+cold and reused, the payload read into an array that already exists, the header alone, `FromBlock`
+against `FromOwnedBlock`, and a bare `memcpy` of the block as the floor every share is read
+against.
+
+**`parse_header_only` is the header through the memory overload**, not through the stream reader
+whose parse the ingest actually pays, so what it prices is the parse plus that overload's own
+floor. It lands on top of `read_memory_view` — 0.005–0.006 ms against 0.005–0.008 — and that is
+the result rather than an accident of the phase: on a block this size the header is below the
+table's resolution either way.
+
+**`from_owned_adopt` never touches the array it allocates**, so by this file's own page-touching
+argument it is charged for reserving the pages and not for committing them — which is exactly why
+the row reads in hundredths of a millisecond. The reading is asymmetric on purpose:
+`from_block_copy` − `from_owned_adopt` is a copy *plus* the destination's first touch, not the
+copy alone. The surcharge is small on this table — `from_block_copy` 0.964–1.089 ms against
+`block_copy_floor`'s 0.936–0.976 into a warm target — and touching the array would change what
+the row measures rather than clean the subtraction up.
+
+**Two independent subtractions have to agree, and that is the point of the mode.**
+`read_stream_owned - stream_copy_floor` is what the read's allocation costs inside the read;
+`allocate_cold - allocate_reused` prices the same allocation on its own. If they disagree, the
+allocation is not what the difference between those rows is made of.
+
+The gen columns are collections **summed over the nine runs**, not per run: a block this size
+provokes at most one gen2 per run, and a column of zeroes and ones says less than a total.
+[ADR 0054](../docs/decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)
+is why they are there at all — on the artifact buffer the time and the collection count told
+different stories, and only the second one explained the first.
+
+Nothing here is published. It prints a table and writes no page: what it measures becomes a figure
+when a person reads it on a named machine and decides, which is [section 10](#10-running-a-diagnostic-on-a-second-machine-issue-461)'s
+rule and not this mode's exception. The first run's table, read that way, is in
+[the performance guide](../docs/guides/performance.md#where-the-ingests-time-actually-goes-issue-480),
+and what it refuted is [decision 0058](../docs/decisions/0058-the-npy-ingest-is-memcpy-bound-and-the-allocation-is-not-the-cost.md).
+
+## 13. What a binary sidecar would buy (issue #436)
 
 Six rows, interleaved one round each:
 
