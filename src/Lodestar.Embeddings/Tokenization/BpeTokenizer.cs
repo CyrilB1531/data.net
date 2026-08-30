@@ -53,6 +53,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private readonly AddedTokenScanner _rawScanner;
     private readonly AddedTokenScanner _normalizedScanner;
     private readonly NormalizationForm[] _forms;
+    private readonly MetaspaceEscape? _metaspace;
     private readonly HashSet<int> _addedIds;
     private readonly string? _endOfWord;
     private readonly string? _continuingPrefix;
@@ -87,6 +88,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         _fuseUnk = vocabulary.FuseUnk;
 
         _forms = [.. vocabulary.NormalizationForms];
+        _metaspace = vocabulary.Metaspace;
         (_vocab, _modelVocab, _tokens) = BuildVocabulary(vocabulary);
 
         _rawScanner = new AddedTokenScanner([.. vocabulary.AddedTokens.Where(t => !t.Normalized)]);
@@ -286,19 +288,23 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         var pieces = new List<string>();
 
         int pos = 0;
+        bool first = true;
         while (pos < text.Length)
         {
             if (!_rawScanner.TryNext(text, pos, out int start, out int end, out var added))
             {
-                EncodeGap(text, pos, text.Length, tokens, ids, pieces);
+                EncodeGap(text, pos, text.Length, tokens, ids, pieces, first);
                 break;
             }
             if (start > pos)
             {
-                EncodeGap(text, pos, start, tokens, ids, pieces);
+                EncodeGap(text, pos, start, tokens, ids, pieces, first);
             }
             tokens.Add(text.Substring(start, end - start));
             ids.Add(added.Id);
+            // An added token is a piece of its own, so it spends the prepend "first"
+            // owes the opening one -- and every gap after this one follows a token.
+            first = false;
             pos = end;
         }
         return new TokenizationResult(tokens, ids);
@@ -325,15 +331,16 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// below are D2 of
     /// docs/superpowers/specs/2026-08-13_0121_give-readbpe-the-normalizer-treatment.md.
     /// </remarks>
-    private void EncodeGap(string text, int from, int to, List<string> tokens, List<int> ids, List<string> pieces)
+    private void EncodeGap(
+        string text, int from, int to, List<string> tokens, List<int> ids, List<string> pieces, bool isFirstSplit)
     {
-        if (_forms.Length == 0 && _normalizedScanner.IsEmpty)
+        if (_forms.Length == 0 && _metaspace is null && _normalizedScanner.IsEmpty)
         {
             EncodeSegment(text, from, to, tokens, ids, pieces);
             return;
         }
 
-        string gap = Normalize(text.Substring(from, to - from));
+        string gap = Preprocess(text.Substring(from, to - from), isFirstSplit);
         int pos = 0;
         while (pos < gap.Length)
         {
@@ -350,6 +357,19 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             ids.Add(added.Id);
             pos = end;
         }
+    }
+
+    /// <summary>Normalizes, then escapes whitespace when the model declared an escape.</summary>
+    /// <remarks>
+    /// The order <see cref="SentencePieceTokenizer"/> already runs: the escape reads the
+    /// normalized text, since both spellings decision 0050 §2 accepts sit at or after the
+    /// normalizer. Added-token content goes through <see cref="Normalize"/> alone —
+    /// escaping it would spell the entry with a symbol the file did not put there.
+    /// </remarks>
+    private string Preprocess(string text, bool isFirstSplit)
+    {
+        string normalized = Normalize(text);
+        return _metaspace is null ? normalized : _metaspace.Apply(normalized, isFirstSplit);
     }
 
     /// <summary>Applies the declared forms in their declared order.</summary>
@@ -761,9 +781,9 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// Matches <c>tokenizers.Tokenizer.decode(ids, skip_special_tokens=…)</c>. Byte-exact only
     /// for a complete sequence <see cref="Encode"/> produced whole — decoded one id at a time,
     /// a byte sequence that is not well-formed UTF-8 becomes U+FFFD rather than throwing,
-    /// matching the reference (decision 0023, which also covers what that costs a caller).
-    /// <c>skipSpecialTokens</c> defaults to <see langword="false"/>, the opposite of Python's,
-    /// so <c>Decode(Encode(x)) == x</c> holds without passing it.
+    /// matching the reference (decision 0023). <c>skipSpecialTokens</c> defaults to
+    /// <see langword="false"/>, so <c>Decode(Encode(x)) == x</c> holds without passing it —
+    /// except under the metaspace escape, which nothing here undoes (decision 0062).
     /// </remarks>
     /// <param name="ids">Token ids, e.g. from <see cref="Encode"/>.</param>
     /// <param name="skipSpecialTokens">Drop tokens whose <c>added_tokens</c> entry is <c>special</c> (<see cref="AddedToken.Special"/>), matching Python's <c>skip_special_tokens</c>.</param>

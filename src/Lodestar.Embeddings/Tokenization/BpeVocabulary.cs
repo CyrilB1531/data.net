@@ -142,6 +142,17 @@ public sealed record BpeVocabulary(
     /// </remarks>
     public IReadOnlyList<NormalizationForm> NormalizationForms { get; init; } = [];
 
+    /// <summary>The whitespace escape the file declared, or <see langword="null"/> when it declared none.</summary>
+    /// <remarks>
+    /// A file writes it two ways — a <c>Metaspace</c> pre-tokenizer, or a <c>Prepend</c>
+    /// plus <c>Replace</c> normalizer sequence — and
+    /// <see cref="Persistence.TokenizerJsonLoader"/> reduces both to one value (decision
+    /// 0050 §2). Internal because nothing outside this assembly reads it: public, it would
+    /// owe a <c>docs/reference/</c> entry and a <c>samples/Lodestar.Sample</c> member
+    /// reference for a value only <see cref="BpeTokenizer"/> consumes.
+    /// </remarks>
+    internal MetaspaceEscape? Metaspace { get; init; }
+
     /// <summary>Number of entries in the vocabulary.</summary>
     public int Count => Vocab.Count;
 
@@ -171,6 +182,7 @@ public sealed record BpeVocabulary(
             || !string.Equals(UnkToken, other.UnkToken, StringComparison.Ordinal)
             || !string.Equals(PreTokenizerPattern, other.PreTokenizerPattern, StringComparison.Ordinal)
             || PreSplit != other.PreSplit
+            || !SameMetaspace(Metaspace, other.Metaspace)
             || Vocab.Count != other.Vocab.Count
             || Merges.Count != other.Merges.Count
             || AddedTokens.Count != other.AddedTokens.Count
@@ -220,9 +232,25 @@ public sealed record BpeVocabulary(
             hash = (hash * 31) + (ContinuingSubwordPrefix is null ? 0 : StringComparer.Ordinal.GetHashCode(ContinuingSubwordPrefix));
             hash = (hash * 31) + (UnkToken is null ? 0 : StringComparer.Ordinal.GetHashCode(UnkToken));
             hash = (hash * 31) + (PreTokenizerPattern is null ? 0 : StringComparer.Ordinal.GetHashCode(PreTokenizerPattern));
-            return (hash * 31) + (PreSplit is null ? 0 : PreSplit.GetHashCode());
+            hash = (hash * 31) + (PreSplit is null ? 0 : PreSplit.GetHashCode());
+            return (hash * 31) + (Metaspace is null ? 0 : EscapeHash(Metaspace));
         }
     }
+
+    /// <summary>Folds every field <see cref="SameMetaspace"/> compares, so equal values hash equal and no two differ only invisibly.</summary>
+    private static int EscapeHash(MetaspaceEscape escape) =>
+        (((escape.Replacement * 31) + (int)escape.PrependScheme) * 31)
+        + (escape.RemoveExtraWhitespaces ? 2 : 0) + (escape.SkipPrependWhenAlreadyPrefixed ? 1 : 0);
+
+    /// <summary>Compares two escapes by value, which <see cref="MetaspaceEscape"/> itself does not.</summary>
+    private static bool SameMetaspace(MetaspaceEscape? left, MetaspaceEscape? right) =>
+        left is null
+            ? right is null
+            : right is not null
+                && left.Replacement == right.Replacement
+                && left.PrependScheme == right.PrependScheme
+                && left.RemoveExtraWhitespaces == right.RemoveExtraWhitespaces
+                && left.SkipPrependWhenAlreadyPrefixed == right.SkipPrependWhenAlreadyPrefixed;
 
     private static bool SameEntries(IReadOnlyDictionary<string, int> left, IReadOnlyDictionary<string, int> right)
     {
