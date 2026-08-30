@@ -1193,7 +1193,8 @@ put warm faster, level, then slower over three rounds with one state's median sw
 ## 10. Running a diagnostic on a second machine (issue #461)
 
 `roc-parallel` (section 6), `save-phases` (section 8), `heap-warmth` (section 9),
-`pool-cost` (section 11), `ingest-phases` (section 12) and `sidecar` (section 13) are
+`pool-cost` (section 11), `ingest-phases` (section 12), `sidecar` (section 13) and
+`tensor-primitives` (section 14) are
 C#-only subcommands rather than `[Benchmark]` classes, so no benchmark or harness in
 `bench-map.json` selects them and the nightly never runs one. That is deliberate — they
 answer a question a lot asks once, not a regression worth watching every night.
@@ -1340,3 +1341,32 @@ this section says only how to take them.
 
 **Not on a container.** There the same rows put the floor at 0.73×, the opposite conclusion, with
 the floor row spread over 12–43 ms against the runner's 4.0–8.5.
+
+## 14. Our kNN kernel against `TensorPrimitives` (issue #437, V6)
+
+Seven rows, interleaved, agreement checked before any of them is timed:
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- tensor-primitives
+```
+
+Issue #427's open-risks table carries *"`TensorPrimitives` makes the kNN redundant"*, and V6 of
+[#437](https://github.com/CyrilB1531/lodestar/issues/437) is the only verification there that wants
+a measurement rather than a reading. This is it.
+
+**The access pattern is the whole question.** `EmbeddingIndex` normalizes on insertion, so `Search`
+is a dot product over a contiguous block rather than a cosine — comparing our dot against
+`TensorPrimitives.CosineSimilarity` would charge the BCL for two norms we never compute. Both
+shapes are measured for that reason, and a third pair sweeps the block in **one** call rather than
+10 000 calls of 384 floats, because that is what `TensorPrimitives` is designed for and the kNN
+rows do not show it.
+
+Every row calls the shipped [`VectorMath.Dot`](../docs/reference/embeddings/search/vectormath-dot.md)
+rather than a copy: a kernel reproduced for a benchmark is a kernel nobody ships, and the throwaway
+probe that preceded this mode had rewritten the horizontal sum.
+
+**Agreement runs first and prints before the table.** A speed comparison between two routes that
+disagree is meaningless, so it is a precondition here rather than a footnote beside the result.
+
+The package is referenced by `bench/` and by nothing under `src/`. V6 is a question about an
+incumbent, and referencing it to ask would be answering it.
