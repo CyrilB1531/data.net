@@ -139,4 +139,27 @@ public class PersistenceBenchmarks
         }
         return index;
     }
+
+    /// <summary>The same corpus <see cref="BuildIndex"/> draws, as one flat block.</summary>
+    /// <remarks>
+    /// Shared so the .npy rows and the index rows measure the same floats. The index
+    /// normalizes on insertion, so these are not its stored values -- and for what the
+    /// block rows measure, how many floats there are rather than which, that is moot.
+    /// </remarks>
+    internal static float[] BuildBlock()
+    {
+        const int count = 10_000;
+        const int dimension = 384;
+        var all = new float[count * dimension];
+        uint state = 12_345;
+        for (int i = 0; i < all.Length; i++)
+        {
+            // xorshift32, the same three shifts BuildIndex uses and Python reproduces.
+            state ^= state << 13;
+            state ^= state >> 17;
+            state ^= state << 5;
+            all[i] = (state & 0xFFFFFF) / (float)0xFFFFFF - 0.5f;
+        }
+        return all;
+    }
 }

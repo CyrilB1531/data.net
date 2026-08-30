@@ -34,7 +34,7 @@ internal static class SidecarBench
             artifact = stream.ToArray();
         }
 
-        float[] block = Block(count, dimension);
+        float[] block = PersistenceBenchmarks.BuildBlock();
         byte[] npy;
         using (var stream = new MemoryStream())
         {
@@ -86,26 +86,6 @@ internal static class SidecarBench
 
     /// <summary>A .npy of the benchmark corpus needs no artifact limit; it is our own bytes.</summary>
     private static ArtifactLoadOptions Unbounded => new() { MaxTotalBytes = 1L << 31 };
-
-    /// <summary>The same corpus BuildIndex draws, as one flat block.</summary>
-    /// <remarks>
-    /// Generated rather than read back out of the index, which exposes no vector accessor. The
-    /// index normalizes on insertion so these are not its stored values, and for what this
-    /// measures — a byte count and the cost of moving it — that does not matter.
-    /// </remarks>
-    private static float[] Block(int count, int dimension)
-    {
-        var all = new float[count * dimension];
-        uint state = 12_345;
-        for (int i = 0; i < all.Length; i++)
-        {
-            state ^= state << 13;
-            state ^= state >> 17;
-            state ^= state << 5;
-            all[i] = (state & 0xFFFFFF) / (float)0xFFFFFF - 0.5f;
-        }
-        return all;
-    }
 
     private static void Rebuild(float[] block, int count, int dimension)
     {

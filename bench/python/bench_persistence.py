@@ -170,6 +170,12 @@ def main() -> None:
         measure("embedding_index_load", lambda: np.load(io.BytesIO(npy_bytes)), len(npy_bytes)),
         measure("embedding_index_load_file", lambda: np.load(npy_file.name), len(npy_bytes)),
         measure("embedding_index_load_memory", lambda: np.load(io.BytesIO(npy_bytes)), len(npy_bytes)),
+        # long-comment: the only index row where both sides read the same format and
+        # return the same thing. Every other pair here reads Lodestar's JSON artifact
+        # against numpy's .npy, which compares two formats and reports it as a speed.
+        # np.load alone is the counterpart of NpyFile.Read plus EmbeddingIndex.FromBlock:
+        # for a flat cosine index the matrix is the index, and neither side normalizes.
+        measure("embedding_index_ingest_npy", lambda: np.load(io.BytesIO(npy_bytes)), len(npy_bytes)),
         # A floor, not a comparand: frombuffer views the bytes without parsing the
         # header or validating anything, so it does strictly less than the rows above.
         measure("embedding_index_view_floor", lambda: np.frombuffer(npy_bytes, dtype=np.uint8), len(npy_bytes)),

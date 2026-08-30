@@ -913,6 +913,17 @@ Lodestar is faster.
 | `embedding_index_save` | 12.419 ms | 15.084 ms | 1.21× | 13.349 ms | 15.083 ms | **1.13×** |
 | `embedding_index_load` | 12.129 ms | 2.492 ms | 0.21× | 13.897 ms | 2.492 ms | **0.18×** |
 
+**Read that `0.21×` as a format, not as a speed.** It puts our JSON artifact — a document to
+scan and validate — against numpy's raw block, so it prices decision 0011 exactly as this
+section says it does, and says nothing about how fast the two languages ingest the same bytes.
+`embedding_index_ingest_npy` is the row that does: **both sides read a `.npy` and return
+something searchable**, `np.load` against `NpyFile.Read` plus
+[`EmbeddingIndex.FromBlock`](../docs/reference/embeddings/search/embeddingindex-fromblock.md).
+For a flat cosine index the matrix *is* the index, so `np.load` alone is the honest counterpart,
+and neither side normalizes — which is what a block written by an embedding pipeline already is.
+It was added with the bulk ingest (#474); before that there was nothing on the C# side to pair it
+with, because `Add` was the only way in.
+
 > **#323 changed the save path after this window.** The row above stays as measured;
 > what it cannot show is that its `1.13×` inverts to `0.27×` on a newer machine,
 > because `numpy.save` is bandwidth-bound where this artifact's base64 encoding is
