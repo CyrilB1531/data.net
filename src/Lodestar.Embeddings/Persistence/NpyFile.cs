@@ -143,36 +143,50 @@ public static class NpyFile
             throw Malformed("does not open with numpy's magic.");
         }
 
-        byte major = payload[VersionOffset];
-        byte minor = payload[VersionOffset + 1];
-
-        // 1.0 sizes its header with two bytes, 2.0 with four. 3.0 is UTF-8 and would
-        // likely read the same, but is refused rather than assumed: none has been seen.
-        int lengthSize = (major, minor) switch
-        {
-            (1, 0) => 2,
-            (2, 0) => 4,
-            _ => throw Malformed($"is version {major}.{minor}, which this does not read."),
-        };
-
-        int lengthOffset = VersionOffset + 2;
-        if (payload.Length < lengthOffset + lengthSize)
-        {
-            throw Malformed("ends inside its header length.");
-        }
-
-        int headerLength = lengthSize == 2
-            ? BinaryPrimitives.ReadUInt16LittleEndian(payload[lengthOffset..])
-            : checked((int)BinaryPrimitives.ReadUInt32LittleEndian(payload[lengthOffset..]));
-
-        int headerStart = lengthOffset + lengthSize;
-        if (headerLength < 0 || payload.Length < headerStart + headerLength)
+        int total = HeaderTotal(payload, out int headerStart);
+        if (total < headerStart || payload.Length < total)
         {
             throw Malformed("ends inside its header.");
         }
 
-        header = ParseHeader(Encoding.UTF8.GetString(payload.Slice(headerStart, headerLength).ToArray()));
-        return headerStart + headerLength;
+        header = ParseHeader(Encoding.UTF8.GetString(payload.Slice(headerStart, total - headerStart).ToArray()));
+        return total;
+    }
+
+    /// <summary>The width of a version's header-length field: 2 for 1.0, 4 for 2.0.</summary>
+    /// <remarks>
+    /// Shared with the staged stream read, which needs the width before it knows how many
+    /// bytes the header occupies. 3.0 is UTF-8 and would likely read the same, but is
+    /// refused rather than assumed: none has been seen.
+    /// </remarks>
+    private static int LengthSize(byte major, byte minor) => (major, minor) switch
+    {
+        (1, 0) => 2,
+        (2, 0) => 4,
+        _ => throw Malformed($"is version {major}.{minor}, which this does not read."),
+    };
+
+    /// <summary>How many bytes the header occupies, prefix included, and where its text starts.</summary>
+    /// <remarks>
+    /// Shared with the staged stream read, which needs the total before it knows how many
+    /// bytes to ask for. Twelve is the largest fixed prefix — six of magic, two of version,
+    /// four of length — so one read of that size always carries the declared length.
+    /// </remarks>
+    private static int HeaderTotal(ReadOnlySpan<byte> prefix, out int headerStart)
+    {
+        int size = LengthSize(prefix[VersionOffset], prefix[VersionOffset + 1]);
+        int lengthOffset = VersionOffset + 2;
+        if (prefix.Length < lengthOffset + size)
+        {
+            throw Malformed("ends inside its header length.");
+        }
+
+        int declared = size == 2
+            ? BinaryPrimitives.ReadUInt16LittleEndian(prefix[lengthOffset..])
+            : checked((int)BinaryPrimitives.ReadUInt32LittleEndian(prefix[lengthOffset..]));
+
+        headerStart = lengthOffset + size;
+        return checked(headerStart + declared);
     }
 
     /// <summary>
