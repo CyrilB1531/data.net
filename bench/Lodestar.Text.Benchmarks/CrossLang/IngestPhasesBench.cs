@@ -72,12 +72,7 @@ internal static class IngestPhasesBench
 
         var phases = new List<(string Name, Func<long> Action)>
         {
-            ("ingest_total", () =>
-            {
-                NpyBlock read = NpyFile.Read(new MemoryStream(npy), NpyLimits);
-                return EmbeddingIndex.FromOwnedBlock(
-                    read.OwnedArray!, dimension, BlockNormalization.AlreadyNormalized).Count;
-            }),
+            ("ingest_total", () => Ingest(npy, dimension)),
             ("read_stream_owned", () =>
                 NpyFile.Read(new MemoryStream(npy), NpyLimits).Values.Length),
             ("read_memory_view", () =>
@@ -103,6 +98,9 @@ internal static class IngestPhasesBench
                 block.AsSpan().CopyTo(copyTarget);
                 return copyTarget.Length;
             }),
+            // The same ingest as the first row, last instead of first. #480's gap survived the
+            // phase table, and position within the round is the one candidate it named.
+            ("ingest_total_last", () => Ingest(npy, dimension)),
         };
 
         Report(RunInterleaved(phases), blockBytes);
@@ -137,6 +135,19 @@ internal static class IngestPhasesBench
         // console-print: the control; a window with no noise floor states nothing.
         Console.WriteLine(
             $"  embedding_index_load_memory = {control.MsPerOp:F3} ms wall, {control.CpuMsPerOp:F3} ms cpu   [control]");
+    }
+
+    /// <summary>The whole ingest, called from both positions so the pair cannot drift apart.</summary>
+    /// <remarks>
+    /// Two rows run this: <c>ingest_total</c> first in the round and <c>ingest_total_last</c> last.
+    /// They measure one thing, so a difference between them is position and nothing else, which
+    /// is the single variable #480's remaining gap needed isolating.
+    /// </remarks>
+    private static long Ingest(byte[] npy, int dimension)
+    {
+        NpyBlock read = NpyFile.Read(new MemoryStream(npy), NpyLimits);
+        return EmbeddingIndex.FromOwnedBlock(
+            read.OwnedArray!, dimension, BlockNormalization.AlreadyNormalized).Count;
     }
 
     /// <summary>Writes one float per page, so the array is committed rather than merely reserved.</summary>
