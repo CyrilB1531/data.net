@@ -61,7 +61,13 @@ UNK_TOKEN = "[UNK]"
 # WordPiece's spelling; the sentencepiece-based families (Unigram, XLM-R) spell
 # the same concept in angle brackets below.
 UNK_TOKEN_LOWER = "<unk>"
-CAT_SENTENCE = "the cat sat on the mat"
+# The sequence marker the sentencepiece families declare, named once for the same
+# reason THE_CAT below is.
+BOS_TOKEN = "<s>"
+# Two spellings of one fixture phrase. THE_CAT is separate because four corpora
+# reach for it and Sonar's S1192 counts them together (issue #487's quality gate).
+THE_CAT = "the cat"
+CAT_SENTENCE = THE_CAT + " sat on the mat"
 HELLO_WORLD = "hello world"
 END_OF_TEXT = "<|endoftext|>"
 TINY_SP_MODEL = "tiny_sp.model"
@@ -1161,7 +1167,7 @@ FUZZ_PAIRS = [
     ("café", "cafe"), ("naïve", "naive"),
     ("abcdefgh", "abcdefgh"), ("abcdefgh", "hgfedcba"),
     ("python programming", "programming in python"),
-    ("the cat", "cat"), ("supercalifragilistic", "super"),
+    (THE_CAT, "cat"), ("supercalifragilistic", "super"),
     ("john smith", "smith, john"), ("jonathan", "john"),
     ("123 main st", "123 main street"), ("dr smith", "doctor smith"),
 ]
@@ -1335,7 +1341,7 @@ def generate_tokenizer_json() -> dict:
     unigram_pieces = [(p.piece, p.score) for p in proto.pieces]
     unigram = Tokenizer(Unigram(unigram_pieces, unk_id=proto.trainer_spec.unk_id, byte_fallback=False))
     unigram.pre_tokenizer = Metaspace()
-    unigram.add_special_tokens([UNK_TOKEN_LOWER, "<s>", "</s>"])
+    unigram.add_special_tokens([UNK_TOKEN_LOWER, BOS_TOKEN, "</s>"])
     unigram_cases = []
     for i, text in enumerate(LOADER_TEXTS):
         enc = unigram.encode(text)
@@ -1434,7 +1440,7 @@ XLMR_TEXTS = [
 ]
 
 # The five strings a vocabulary in this layout must never segment onto.
-XLMR_MARKERS = ["<s>", "<pad>", "</s>", UNK_TOKEN_LOWER, MASK_TOKEN]
+XLMR_MARKERS = [BOS_TOKEN, "<pad>", "</s>", UNK_TOKEN_LOWER, MASK_TOKEN]
 
 
 def generate_xlmr_fairseq() -> dict:
@@ -1695,7 +1701,7 @@ def generate_batch_encoding() -> dict:
         _batch_case(3, "single_text", [CAT_SENTENCE], vocab, None, table),
         # Every row the same length, so the batch is already rectangular and no
         # padding is written at all — the control the padded cases are read against.
-        _batch_case(4, "no_padding_needed", ["the cat", "the dog", "the fox"], vocab, None, table),
+        _batch_case(4, "no_padding_needed", [THE_CAT, "the dog", "the fox"], vocab, None, table),
         _batch_case(5, "truncated", BATCH_MIXED_TEXTS, vocab, BATCH_MAX_LENGTH, table),
     ]
     _assert_batch_edges(cases[1])
@@ -3974,27 +3980,23 @@ def generate_bpe_normalizer() -> dict:
 # spellings of the whitespace escape substitute for a literal space.
 META_SYMBOL = "▁"
 
-# The special token both target models declare: it splits the input into pieces,
-# which is what `first` counts.
-BPE_METASPACE_ADDED_TOKEN = "<s>"
-
 # One text per place the three prepend schemes and the two spellings can part;
 # each line below says which place it is.
 BPE_METASPACE_TEXTS = [
-    "the cat",                    # the control: a space at neither end
-    " the cat",                   # leading space -- where the two spellings part
-    "the cat ",                   # trailing space: a lone symbol ends the stream
-    "the  cat",                   # an interior run, which nothing collapses here
-    META_SYMBOL + "the cat",      # already begins with the symbol, not with a space
-    "\tthe cat",                  # a tab, which neither spelling rewrites
-    "café",                  # non-ASCII, and no space to escape at all
-    "the café ",             # non-ASCII beside a trailing space
-    "",                           # nothing to escape and nothing to prepend
-    # An added token is a piece of its own, and `first` prepends to the opening
-    # piece rather than to every gap -- so where the token stands decides.
-    BPE_METASPACE_ADDED_TOKEN + "the cat",              # the token takes the opening piece
-    "the cat" + BPE_METASPACE_ADDED_TOKEN + "the cat",  # a gap on either side of it
-    BPE_METASPACE_ADDED_TOKEN + " the cat",             # the token, then a guarded gap
+    THE_CAT,                        # the control: a space at neither end
+    " " + THE_CAT,                  # leading space -- where the two spellings part
+    THE_CAT + " ",                  # trailing space: a lone symbol ends the stream
+    "the  cat",                     # an interior run, which nothing collapses here
+    META_SYMBOL + THE_CAT,          # already begins with the symbol, not with a space
+    "\t" + THE_CAT,                 # a tab, which neither spelling rewrites
+    "café",                    # non-ASCII, and no space to escape at all
+    "the café ",               # non-ASCII beside a trailing space
+    "",                             # nothing to escape and nothing to prepend
+    # BOS_TOKEN is an added token, so it is a piece of its own -- and `first`
+    # prepends to the opening piece, so where the token stands decides.
+    BOS_TOKEN + THE_CAT,                # the token takes the opening piece
+    THE_CAT + BOS_TOKEN + THE_CAT,      # a gap on either side of it
+    BOS_TOKEN + " " + THE_CAT,          # the token, then a guarded gap
 ]
 
 # Merges in rank order. Each right-hand side is a single character, so the
@@ -4042,7 +4044,7 @@ def _small_metaspace_bpe_tokenizer():
     tokenizer.pre_tokenizer = None
     tokenizer.normalizer = None
     tokenizer.decoder = None
-    tokenizer.add_special_tokens([BPE_METASPACE_ADDED_TOKEN])
+    tokenizer.add_special_tokens([BOS_TOKEN])
     return tokenizer
 
 
