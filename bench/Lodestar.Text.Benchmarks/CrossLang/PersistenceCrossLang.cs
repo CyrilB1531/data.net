@@ -121,13 +121,8 @@ public static class PersistenceCrossLang
             }, indexArtifact.Length),
             Harness.Measure("embedding_index_load_file", () => EmbeddingIndex.Load(indexFile), indexArtifact.Length),
             Harness.Measure("embedding_index_load_memory", () => EmbeddingIndex.Load(indexArtifact.AsMemory()), indexArtifact.Length),
-            // long-comment: the only index row where both sides read the same format and
-            // return the same thing -- a .npy in, something searchable out. Every other
-            // pair here reads our JSON artifact against numpy's .npy, which is a format
-            // comparison wearing a speed comparison's clothes and is why it lands at
-            // 0.21x. numpy's counterpart is np.load alone: for a flat cosine index the
-            // matrix is the index. AlreadyNormalized because neither side normalizes,
-            // which is what a block written by an embedding pipeline already is (#474).
+            // The only index row where both sides read the same format; the others price
+            // our JSON against numpy's .npy. bench/README section 7 has why (#474).
             Harness.Measure("embedding_index_ingest_npy", () =>
             {
                 NpyBlock read = NpyFile.Read(new MemoryStream(indexNpy), NpyLimits);

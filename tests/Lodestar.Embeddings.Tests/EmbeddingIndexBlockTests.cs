@@ -120,10 +120,8 @@ public sealed class EmbeddingIndexBlockTests
 
         Assert.Equal(1f, index.Search([1f, 0f], 1)[0].Score, Places);
 
-        // long-comment: the invariant FromOwnedBlock documents, asserted rather than only
-        // written down. Ownership transferred, so writing to the array afterwards changes
-        // what the index scores — and the next reader who breaks that learns it from a
-        // failure instead of from a wrong search result in production.
+        // Ownership transferred, so writing to the array afterwards moves the score.
+        // Asserted rather than only documented: breaking it raises nothing at run time.
         block[0] = 0f;
         block[1] = 1f;
 
