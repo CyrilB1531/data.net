@@ -1,6 +1,8 @@
 using System.Text;
 using System.Buffers.Binary;
+using System.Runtime.InteropServices;
 using Lodestar.Embeddings.Persistence;
+using Lodestar.Embeddings.Search;
 using Xunit;
 
 namespace Lodestar.Embeddings.Tests.Persistence;
@@ -105,7 +107,7 @@ public sealed class NpyFileTests
 
         InvalidDataException refused = Assert.Throws<InvalidDataException>(() => NpyFile.Read(stream));
 
-        Assert.Contains("bytes of data where its shape needs", refused.Message, StringComparison.Ordinal);
+        Assert.Contains("ends before the 48 bytes its shape needs.", refused.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -199,6 +201,23 @@ public sealed class NpyFileTests
     }
 
     [Fact]
+    public void A_header_declaring_more_elements_than_a_block_can_hold_is_refused()
+    {
+        // 2^32 elements, which a 16 GiB MaxTotalBytes admits and a float[] cannot hold:
+        // the cast wrapped to zero and handed back a block of zeros under the file's shape.
+        byte[] hostile = Declaring("65536, 65536");
+        var options = new ArtifactLoadOptions { MaxTotalBytes = 1L << 34 };
+
+        InvalidDataException fromStream = Assert.Throws<InvalidDataException>(
+            () => NpyFile.Read(new MemoryStream(hostile), options));
+        InvalidDataException fromMemory = Assert.Throws<InvalidDataException>(
+            () => NpyFile.Read(hostile.AsMemory(), options));
+
+        Assert.Contains("declares 4294967296 elements", fromStream.Message, StringComparison.Ordinal);
+        Assert.Equal(fromStream.Message, fromMemory.Message);
+    }
+
+    [Fact]
     public void A_payload_past_MaxTotalBytes_is_refused_while_being_read()
     {
         const int Rows = 2_605, Columns = 384;
@@ -206,11 +225,198 @@ public sealed class NpyFileTests
         NpyFile.Write(written, new float[Rows * Columns], Rows, Columns);
         written.Position = 0;
 
-        // Refused by the read, before the header is parsed at all -- which is why the test
-        // above has to build its own header to reach the shape bound.
+        // Enforced by Elements once the header is parsed, unlike the test above: a real
+        // file's honest shape crosses a caller's own (tighter) MaxTotalBytes just as well.
         var options = new ArtifactLoadOptions { MaxTotalBytes = (Rows * Columns * sizeof(float)) - 1 };
 
         Assert.Throws<InvalidDataException>(() => NpyFile.Read(written, options));
+    }
+
+    /// <summary>A stream that reports no length and no seeking, like a network body.</summary>
+    private sealed class ForwardOnlyStream(byte[] bytes) : Stream
+    {
+        private readonly MemoryStream _inner = new(bytes);
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) =>
+            _inner.Read(buffer, offset, Math.Min(count, 7));
+
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
+    [Fact]
+    public void A_forward_only_stream_reads_the_same_block()
+    {
+        byte[] npy = WrittenBlock([1f, 2f, 3f, 4f], 2, 2);
+
+        using var stream = new ForwardOnlyStream(npy);
+        NpyBlock block = NpyFile.Read(stream);
+
+        Assert.Equal([1f, 2f, 3f, 4f], block.Values.ToArray());
+        Assert.Equal([2, 2], block.Shape);
+    }
+
+    [Fact]
+    public void A_stream_truncated_inside_its_payload_is_refused()
+    {
+        byte[] npy = WrittenBlock([1f, 2f, 3f, 4f], 2, 2);
+
+        // Four bytes short: the header is whole and the block is not, which is the case
+        // the staged read detects at the stream rather than on a complete buffer.
+        var truncated = new MemoryStream(npy[..(npy.Length - 4)]);
+
+        InvalidDataException e = Assert.Throws<InvalidDataException>(() => NpyFile.Read(truncated));
+        Assert.Contains("ends before the 16 bytes its shape needs.", e.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_stream_read_block_owns_its_array()
+    {
+        NpyBlock block = NpyFile.Read(new MemoryStream(WrittenBlock([1f, 0f, 0f, 1f], 2, 2)));
+
+        Assert.NotNull(block.OwnedArray);
+        Assert.Same(block.OwnedArray, MemoryMarshal.TryGetArray<float>(block.Values, out var seg)
+            ? seg.Array
+            : null);
+    }
+
+    [Fact]
+    public void A_hand_built_block_owns_nothing()
+    {
+        // The record's constructor is public, so a caller can build a block around an array
+        // it still holds; OwnedArray stays null, so FromOwnedBlock cannot be reached with it.
+        float[] mine = [1f, 2f];
+        var block = new NpyBlock(mine, [2]);
+
+        Assert.Null(block.OwnedArray);
+    }
+
+    [Fact]
+    public void An_owned_block_is_adoptable_by_the_index()
+    {
+        NpyBlock block = NpyFile.Read(new MemoryStream(WrittenBlock([1f, 0f], 2)));
+
+        EmbeddingIndex index = EmbeddingIndex.FromOwnedBlock(
+            block.OwnedArray!, 2, BlockNormalization.AlreadyNormalized);
+
+        Assert.Equal(1f, index.Search([1f, 0f], 1)[0].Score, 4);
+    }
+
+    [Fact]
+    public void A_header_declaring_an_absurd_length_is_refused_before_it_is_measured()
+    {
+        // Version 2.0's length field is 4 bytes wide; a declared value this large would
+        // overflow the offset arithmetic instead of being disbelieved by name (#466).
+        byte[] bytes =
+        [
+            0x93, (byte)'N', (byte)'U', (byte)'M', (byte)'P', (byte)'Y',
+            2, 0, // version 2.0
+            0, 0, 0, 0, // declared header length, overwritten below
+        ];
+        BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(8), uint.MaxValue - 1);
+
+        InvalidDataException refused =
+            Assert.Throws<InvalidDataException>(() => NpyFile.Read(new MemoryStream(bytes)));
+
+        Assert.Contains("more than this reader accepts (65536).", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_version_2_header_cut_short_inside_its_length_field_is_refused_by_name()
+    {
+        // Eleven bytes: magic, version 2.0, three of the four length bytes -- HeaderTotal
+        // must see only what the stream gave it, not a stackalloc byte it never read (#466).
+        byte[] bytes =
+        [
+            0x93, (byte)'N', (byte)'U', (byte)'M', (byte)'P', (byte)'Y',
+            2, 0, // version 2.0
+            1, 2, 3, // three of the four length bytes
+        ];
+
+        InvalidDataException refused =
+            Assert.Throws<InvalidDataException>(() => NpyFile.Read(new MemoryStream(bytes)));
+
+        Assert.Contains("ends inside its header length.", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_ten_byte_non_numpy_stream_is_refused_by_its_magic()
+    {
+        // At least MinPrefix bytes, so the staged path reads the magic rather than
+        // refusing it for being too short to hold one (#466 regression).
+        byte[] bytes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+        InvalidDataException refused =
+            Assert.Throws<InvalidDataException>(() => NpyFile.Read(new MemoryStream(bytes)));
+
+        Assert.Contains("does not open with numpy's magic.", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_memory_overload_reads_the_same_block()
+    {
+        byte[] npy = WrittenBlock([1f, 2f, 3f, 4f], 2, 2);
+
+        NpyBlock block = NpyFile.Read(npy.AsMemory());
+
+        Assert.Equal([1f, 2f, 3f, 4f], block.Values.ToArray());
+        Assert.Equal([2, 2], block.Shape);
+    }
+
+    [Fact]
+    public void The_memory_overload_borrows_rather_than_copies()
+    {
+        byte[] npy = WrittenBlock([1f, 2f], 2);
+        NpyBlock block = NpyFile.Read(npy.AsMemory());
+
+        // The contract this asserts: Values aliases the caller's bytes, so changing them
+        // changes what the block reports. Written down and raised by nothing, so tested.
+        BitConverter.GetBytes(9f).CopyTo(npy, npy.Length - (2 * sizeof(float)));
+
+        Assert.Equal(9f, block.Values.Span[0]);
+    }
+
+    [Fact]
+    public void A_borrowed_block_owns_nothing()
+    {
+        NpyBlock block = NpyFile.Read(WrittenBlock([1f, 2f], 2).AsMemory());
+
+        Assert.Null(block.OwnedArray);
+    }
+
+    [Fact]
+    public void A_borrowed_block_pins_like_one_read_from_a_stream()
+    {
+        // Pin threw, so a block read from memory failed in every API that pins a
+        // Memory<float> where a stream-read block succeeded (#466 review).
+        byte[] npy = WrittenBlock([1f, 2f, 3f, 4f], 2, 2);
+
+        NpyFile.Read(npy.AsMemory()).Values.Pin().Dispose();
+
+        // Sixteen payload bytes are four floats, so a fifth is out of range -- which a
+        // manager taking the index for a byte offset would accept instead.
+        using var manager = new NpyPayloadManager(npy.AsMemory(npy.Length - 16));
+        Assert.Throws<ArgumentOutOfRangeException>(() => manager.Pin(5));
+    }
+
+    /// <summary>A .npy of the given block, as NpyFile writes one.</summary>
+    private static byte[] WrittenBlock(float[] values, params int[] shape)
+    {
+        using var stream = new MemoryStream();
+        NpyFile.Write(stream, values, shape);
+        return stream.ToArray();
     }
 
     /// <summary>A well-formed v1.0 header for <paramref name="shape"/>, and no data at all.</summary>

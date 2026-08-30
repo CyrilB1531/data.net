@@ -125,9 +125,11 @@ public static class PersistenceCrossLang
             // our JSON against numpy's .npy. bench/README section 7 has why (#474).
             Harness.Measure("embedding_index_ingest_npy", () =>
             {
+                // Adopted, not copied: np.load returns the array it just filled and copies it
+                // no further, so FromBlock charged this side a copy numpy never pays (#466).
                 NpyBlock read = NpyFile.Read(new MemoryStream(indexNpy), NpyLimits);
-                return EmbeddingIndex.FromBlock(
-                    read.Values.Span, index.Dimension, BlockNormalization.AlreadyNormalized);
+                return EmbeddingIndex.FromOwnedBlock(
+                    read.OwnedArray!, index.Dimension, BlockNormalization.AlreadyNormalized);
             }, indexNpy.Length),
             // The floor both sides share, and neither is a load: viewing bytes as floats
             // parses no header and validates nothing. It bounds the rows above, not ranks them.

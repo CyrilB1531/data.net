@@ -9,7 +9,21 @@ namespace Lodestar.Embeddings.Persistence;
 /// <summary>A float block read from a <c>.npy</c> file, with the shape it was stored under.</summary>
 /// <param name="Values">The elements, in C order.</param>
 /// <param name="Shape">The dimensions; one entry for a vector, two for a matrix.</param>
-public readonly record struct NpyBlock(ReadOnlyMemory<float> Values, IReadOnlyList<int> Shape);
+public readonly record struct NpyBlock(ReadOnlyMemory<float> Values, IReadOnlyList<int> Shape)
+{
+    /// <summary>The array this block owns, or <see langword="null"/> when it borrows.</summary>
+    /// <remarks>
+    /// The stream reader fills it, and the path overload through it, because only that
+    /// route allocates an array nobody else holds. A block over a caller's bytes leaves
+    /// it null, and so does one built by hand — which is what stops decision 0056's
+    /// ownership transfer being reached without the method that documents it.
+    /// </remarks>
+    // CA1819: handing the array out is the contract -- FromOwnedBlock adopts it and the
+    // block stops using it, so the defensive copy the rule wants would defeat the feature.
+#pragma warning disable CA1819
+    public float[]? OwnedArray { get; init; }
+#pragma warning restore CA1819
+}
 
 /// <summary>Reads and writes a <see cref="float"/> block in numpy's <c>.npy</c> format.</summary>
 /// <remarks>
@@ -50,8 +64,69 @@ public static class NpyFile
     {
         Guard.NotNull(source);
         ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
-        byte[] payload = JsonArtifact.ReadAllBytes(source, limits).ToArray();
-        return Read(payload, limits);
+
+        // Twelve first, then the header it declares, then the payload straight into the
+        // array the block keeps. No buffer holds the block on its way past (#466).
+        Span<byte> prefix = stackalloc byte[MaxPrefix];
+        int got = StreamFill.UpTo(source, prefix);
+        ReadOnlySpan<byte> read = prefix[..got];
+
+        // ReadHeader's own first guard, on the prefix: under ten bytes there is no header
+        // length to read, so a file that short cannot be a .npy whatever it opens with.
+        if (got < MinPrefix || !HasMagic(read))
+        {
+            throw Malformed("does not open with numpy's magic.");
+        }
+
+        int total = HeaderTotal(read, out _);
+        byte[] head = new byte[total];
+
+        // Math.Min: a version 1.0 header declaring 0 or 1 bytes is shorter than the prefix
+        // already read. Harmless -- no header that short holds 'descr', so ReadHeader refuses.
+        prefix[..Math.Min(got, total)].CopyTo(head);
+        if (total > got)
+        {
+            StreamFill.Exactly(source, head.AsSpan(got), MalformedMessage(CutInsideHeader));
+        }
+
+        ReadHeader(head, out NpyHeader header);
+        long elements = Elements(header, limits);
+        float[] values = Buffers.AllocateUninitialized<float>((int)elements);
+        StreamFill.Exactly(
+            source,
+            MemoryMarshal.AsBytes(values.AsSpan()),
+            ShortPayload(elements * sizeof(float)));
+
+        return new NpyBlock(values, header.Shape) { OwnedArray = values };
+    }
+
+    /// <summary>Reads a <c>.npy</c> from bytes already in memory, copying nothing.</summary>
+    /// <remarks>
+    /// For a caller holding the file already — a blob, a cache entry, an embedded resource.
+    /// <b>The returned block aliases those bytes, so they must not change while it is read</b>,
+    /// the contract <c>EmbeddingIndex.Load(ReadOnlyMemory)</c> states for the same reason.
+    /// <see cref="NpyBlock.OwnedArray"/> is therefore null: a borrowed block has no array to
+    /// hand over. Decision 0057 has the trade.
+    /// </remarks>
+    /// <param name="npy">The file's bytes, which outlive the block.</param>
+    /// <param name="options">Bounds applied while reading, or <see langword="null"/> for the defaults.</param>
+    /// <exception cref="InvalidDataException">As <see cref="Read(Stream, ArtifactLoadOptions?)"/>.</exception>
+    public static NpyBlock Read(ReadOnlyMemory<byte> npy, ArtifactLoadOptions? options = null)
+    {
+        ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
+        int dataStart = ReadHeader(npy.Span, out NpyHeader header);
+        long elements = Elements(header, limits);
+
+        long expected = elements * sizeof(float);
+        long available = npy.Length - dataStart;
+        if (available < expected)
+        {
+            throw Malformed(
+                $"holds {available} bytes of data where its shape needs {expected}.");
+        }
+
+        var manager = new NpyPayloadManager(npy.Slice(dataStart, (int)expected));
+        return new NpyBlock(manager.Memory, header.Shape);
     }
 
     /// <summary>Reads the file at <paramref name="path"/>.</summary>
@@ -64,6 +139,43 @@ public static class NpyFile
         using FileStream file = JsonArtifact.OpenRead(path);
         return Read(file, options);
     }
+
+    /// <summary>Magic, version and the widest header length: the prefix one read always covers.</summary>
+    private const int MaxPrefix = 12;
+
+    /// <summary>Magic, version and the narrowest header length.</summary>
+    private const int MinPrefix = 10;
+
+    /// <summary>The element count a header declares, refused before anything is allocated.</summary>
+    /// <remarks>
+    /// The header is what announces the size on a staged read, so it is what has to be
+    /// disbelieved. Divided rather than multiplied: two large dimensions overflow (#468).
+    /// Bounded by what a block can hold as well as by the option, because the count sizes
+    /// a <c>float[]</c>: <c>MaxTotalBytes</c> is a caller's <c>long</c> and nothing
+    /// validates it, so a large enough one used to let the cast below wrap (#466).
+    /// </remarks>
+    private static long Elements(in NpyHeader header, in ArtifactLimits limits)
+    {
+        long elements = 1;
+        foreach (int dimension in header.Shape)
+        {
+            elements *= dimension;
+        }
+
+        long cap = Math.Min(limits.MaxTotalBytes, int.MaxValue) / sizeof(float);
+        if (elements > cap)
+        {
+            throw Malformed(
+                $"declares {elements} elements, more than the {cap} that "
+                + $"ArtifactLoadOptions.MaxTotalBytes ({limits.MaxTotalBytes}) and the "
+                + $"{int.MaxValue} bytes one block can hold allow.");
+        }
+        return elements;
+    }
+
+    /// <summary>The message a payload shorter than its shape gets, on the staged stream read.</summary>
+    private static string ShortPayload(long expected) =>
+        MalformedMessage($"ends before the {expected} bytes its shape needs.");
 
     /// <summary>Writes <paramref name="values"/> as a <c>.npy</c>, the counterpart of <c>numpy.save</c>.</summary>
     /// <param name="destination">The stream to write to. Flushed but never disposed — the caller owns it.</param>
@@ -98,78 +210,79 @@ public static class NpyFile
         Write(file, values, shape);
     }
 
-    /// <summary>The read, on a payload already in memory and on resolved limits.</summary>
-    private static NpyBlock Read(ReadOnlySpan<byte> payload, in ArtifactLimits limits)
-    {
-        int dataStart = ReadHeader(payload, out NpyHeader header);
-
-        long elements = 1;
-        foreach (int dimension in header.Shape)
-        {
-            elements *= dimension;
-        }
-
-        // Bounded by bytes, not MaxArrayLength: that option exempts a vector block, and a
-        // .npy is one (#468). Divided, because two large dimensions overflow the product.
-        if (elements > limits.MaxTotalBytes / sizeof(float))
-        {
-            throw Malformed(
-                $"declares {elements} elements, more than ArtifactLoadOptions.MaxTotalBytes "
-                + $"({limits.MaxTotalBytes}) allows.");
-        }
-
-        long expected = elements * sizeof(float);
-        long available = payload.Length - dataStart;
-        if (available < expected)
-        {
-            throw Malformed(
-                $"holds {available} bytes of data where its shape needs {expected}.");
-        }
-
-        // Uninitialized: every element is written by the copy below.
-        float[] values = Buffers.AllocateUninitialized<float>((int)elements);
-        payload.Slice(dataStart, (int)expected).CopyTo(MemoryMarshal.AsBytes(values.AsSpan()));
-        return new NpyBlock(values, header.Shape);
-    }
+    /// <summary>Whether <paramref name="data"/> opens with numpy's magic bytes.</summary>
+    private static bool HasMagic(ReadOnlySpan<byte> data) =>
+        data.Length >= Magic.Length && data[..Magic.Length].SequenceEqual(Magic);
 
     /// <summary>Validates the magic and version, parses the header, and returns where the data starts.</summary>
     private static int ReadHeader(ReadOnlySpan<byte> payload, out NpyHeader header)
     {
-        if (payload.Length < 10 || !payload[..Magic.Length].SequenceEqual(Magic))
+        if (payload.Length < MinPrefix || !HasMagic(payload))
         {
             throw Malformed("does not open with numpy's magic.");
         }
 
-        byte major = payload[VersionOffset];
-        byte minor = payload[VersionOffset + 1];
-
-        // 1.0 sizes its header with two bytes, 2.0 with four. 3.0 is UTF-8 and would
-        // likely read the same, but is refused rather than assumed: none has been seen.
-        int lengthSize = (major, minor) switch
+        int total = HeaderTotal(payload, out int headerStart);
+        if (total < headerStart || payload.Length < total)
         {
-            (1, 0) => 2,
-            (2, 0) => 4,
-            _ => throw Malformed($"is version {major}.{minor}, which this does not read."),
-        };
+            throw Malformed(CutInsideHeader);
+        }
 
+        header = ParseHeader(Encoding.UTF8.GetString(payload.Slice(headerStart, total - headerStart).ToArray()));
+        return total;
+    }
+
+    /// <summary>The width of a version's header-length field: 2 for 1.0, 4 for 2.0.</summary>
+    /// <remarks>
+    /// Shared with the staged stream read, which needs the width before it knows how many
+    /// bytes the header occupies. 3.0 is UTF-8 and would likely read the same, but is
+    /// refused rather than assumed: none has been seen.
+    /// </remarks>
+    private static int LengthSize(byte major, byte minor) => (major, minor) switch
+    {
+        (1, 0) => 2,
+        (2, 0) => 4,
+        _ => throw Malformed($"is version {major}.{minor}, which this does not read."),
+    };
+
+    /// <summary>Header text refused beyond this.</summary>
+    /// <remarks>
+    /// Not because numpy stays under it -- a 2.0 header exists precisely for when it
+    /// doesn't -- but because of what this reader accepts: one dtype and at most two
+    /// dimensions parse to well under a kilobyte of text.
+    /// </remarks>
+    private const int MaxHeaderLength = 65_536;
+
+    /// <summary>How many bytes the header occupies, prefix included, and where its text starts.</summary>
+    /// <remarks>
+    /// Shared with the staged stream read, which needs the total before it knows how many
+    /// bytes to ask for. Twelve is the largest fixed prefix — six of magic, two of version,
+    /// four of length — so one read of that size always carries the declared length.
+    /// </remarks>
+    private static int HeaderTotal(ReadOnlySpan<byte> prefix, out int headerStart)
+    {
+        int size = LengthSize(prefix[VersionOffset], prefix[VersionOffset + 1]);
         int lengthOffset = VersionOffset + 2;
-        if (payload.Length < lengthOffset + lengthSize)
+        if (prefix.Length < lengthOffset + size)
         {
             throw Malformed("ends inside its header length.");
         }
 
-        int headerLength = lengthSize == 2
-            ? BinaryPrimitives.ReadUInt16LittleEndian(payload[lengthOffset..])
-            : checked((int)BinaryPrimitives.ReadUInt32LittleEndian(payload[lengthOffset..]));
+        long declared = size == 2
+            ? BinaryPrimitives.ReadUInt16LittleEndian(prefix[lengthOffset..])
+            : BinaryPrimitives.ReadUInt32LittleEndian(prefix[lengthOffset..]);
 
-        int headerStart = lengthOffset + lengthSize;
-        if (headerLength < 0 || payload.Length < headerStart + headerLength)
+        // Disbelieved by name before it sizes anything: unbounded, a length near
+        // uint.MaxValue would overflow the offset below rather than being refused (#466).
+        if (declared > MaxHeaderLength)
         {
-            throw Malformed("ends inside its header.");
+            throw Malformed(
+                $"declares a header of {declared} bytes, more than this reader "
+                + $"accepts ({MaxHeaderLength}).");
         }
 
-        header = ParseHeader(Encoding.UTF8.GetString(payload.Slice(headerStart, headerLength).ToArray()));
-        return headerStart + headerLength;
+        headerStart = lengthOffset + size;
+        return headerStart + (int)declared;
     }
 
     /// <summary>
@@ -383,8 +496,13 @@ public static class NpyFile
         }
     }
 
-    private static InvalidDataException Malformed(string what) =>
-        new($"A '{SourceName}' file {what}");
+    /// <summary>What a file that stops inside its declared header is refused with.</summary>
+    private const string CutInsideHeader = "ends inside its header.";
+
+    private static InvalidDataException Malformed(string what) => new(MalformedMessage(what));
+
+    /// <summary>The wording every refusal carries, for the paths that need the text alone.</summary>
+    private static string MalformedMessage(string what) => $"A '{SourceName}' file {what}";
 
     /// <summary>What the restricted parser takes out of the header.</summary>
     private readonly record struct NpyHeader(int[] Shape);

@@ -918,7 +918,11 @@ scan and validate — against numpy's raw block, so it prices decision 0011 exac
 section says it does, and says nothing about how fast the two languages ingest the same bytes.
 `embedding_index_ingest_npy` is the row that does: **both sides read a `.npy` and return
 something searchable**, `np.load` against `NpyFile.Read` plus
-[`EmbeddingIndex.FromBlock`](../docs/reference/embeddings/search/embeddingindex-fromblock.md).
+[`EmbeddingIndex.FromOwnedBlock`](../docs/reference/embeddings/search/embeddingindex-fromownedblock.md).
+It called `FromBlock` until #466: `np.load` returns the array it has just filled and copies it no
+further, so copying the block into the index charged this side a copy numpy never pays, and priced
+a route the caller need not take. Adopting is the like-for-like chain, and what
+[`NpyBlock.OwnedArray`](../docs/reference/embeddings/persistence/npyblock.md) exists to allow.
 For a flat cosine index the matrix *is* the index, so `np.load` alone is the honest counterpart,
 and neither side normalizes — which is what a block written by an embedding pipeline already is.
 It was added with the bulk ingest (#474); before that there was nothing on the C# side to pair it
@@ -930,6 +934,20 @@ five times faster, on the same 15 360 128 bytes. Taking the format advantage awa
 against 5 MB less work. The figures, and the rows on the same run where this project is 1.2× to
 6× ahead, are in
 [the performance guide](../docs/guides/performance.md#against-numpy-on-the-same-format-issue-474).
+
+**#466 took the copies between the stream and the index out and the row inverted**, from 0.19× of
+numpy's cpu to **1.00–1.13×** and from 0.21–0.23× of its wall to 1.21–1.25×. cpu is the column this
+harness trusts, so the honest reading is *parity to slightly ahead*, not the wall figure. How many
+copies there were, and which of them paid, is decision 0057's subject rather than this section's.
+The reading above stays as measured; the new one, its runner, and the anchors that make the two
+windows comparable are in
+[the performance guide](../docs/guides/performance.md#the-same-row-once-the-block-is-adopted-issue-466).
+Two dispatches separated the causes: reading the payload straight into the `float[]` moved nothing,
+and adopting the array rather than copying it into the index moved all of it — by more than the
+copy it removed, because the copy came with a second 15.36 MB allocation.
+[Decision 0057](../docs/decisions/0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md)
+has the shape the reader took; [#480](https://github.com/CyrilB1531/lodestar/issues/480) carries
+the half that is still unexplained.
 
 > **#323 changed the save path after this window.** The row above stays as measured;
 > what it cannot show is that its `1.13×` inverts to `0.27×` on a newer machine,

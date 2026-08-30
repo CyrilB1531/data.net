@@ -66,13 +66,14 @@ a later decision uses instead.
 | [`0054`](0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md) | The payload buffer is pooled after all, because the collection is the cost | accepted | 2026-08-29 | Amends [`0053`](0053-the-payload-buffer-is-not-pooled-because-residency-outlives-the-load.md), which refused on two memory columns without measuring the third. 42× on the rent, 1.74 ms a load; a caller measured on peak resident memory rather than load time is what would reopen it |
 | [`0055`](0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md) | The artifact gets a binary sidecar, once a block can be ingested whole | accepted | 2026-08-29 | Amends [`0011`](0011-persistence-format.md), narrowing its "argue on size not speed" to base64 alone: the JSON scan around the block is worth 2.02×. Conditional on a bulk ingest into `EmbeddingIndex`, without which the sidecar route is 0.66× — slower than what it replaces |
 | [`0056`](0056-a-block-may-be-adopted-and-the-invariant-is-the-callers-to-keep.md) | A block may be adopted, and the invariant is the caller's to keep | accepted | 2026-08-29 | Refines [`0053`](0053-the-payload-buffer-is-not-pooled-because-residency-outlives-the-load.md)'s exposure invariant, which [`EmbeddingIndex.FromOwnedBlock`](../reference/embeddings/search/embeddingindex-fromownedblock.md) mirrors: the index reads the caller's array for as long as it lives. Refused the adopting factory as an internal seam, for reach; a caller found returning an adopted array to a pool is what would reverse it |
+| [`0057`](0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md) | The `.npy` read serves a stream and a buffer differently | accepted | 2026-08-30 | Refines [`0056`](0056-a-block-may-be-adopted-and-the-invariant-is-the-callers-to-keep.md): `NpyBlock.OwnedArray` is what the stream reader fills and [`EmbeddingIndex.FromOwnedBlock`](../reference/embeddings/search/embeddingindex-fromownedblock.md) may adopt. Refused a view on every path, which caps the chain at two copies by foreclosing adoption; a caller found holding a block past the lifetime of the bytes it borrowed is what would reverse it |
 
 ## What `accepted` means here
 
-All fifty-six carry `accepted`. None has been rejected or withdrawn — a status this table
+All fifty-seven carry `accepted`. None has been rejected or withdrawn — a status this table
 would otherwise need a second word for. `0004` read a progress sentence
 (`single-word and blocked shipped`) where a status belongs; that sentence is now the opening line
-of its own `## Done` section, and its status reads `accepted` like the other fifty-five.
+of its own `## Done` section, and its status reads `accepted` like the other fifty-six.
 
 ## Relationships not stated on a `**Status:**` line
 
