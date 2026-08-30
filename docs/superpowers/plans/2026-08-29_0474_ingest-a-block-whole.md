@@ -21,7 +21,7 @@
 - **Clear Sonar findings before committing, not after.**
 - **No `ProjectReference` between `src/` projects.** This lot touches one package (`Lodestar.Embeddings`) and one bench project, so `LodestarUseProjectRefs` is not needed and must not be set.
 - **Everything in English** — code, comments, commit messages, PR body. Commit messages carry no `feat:`/`fix:` prefix.
-- **Comment rules:** say why not what; two lines inline, or a `long-comment:` marker on the **first** line of the block. `Console.WriteLine` needs a `console-print:` marker **directly** above the call. `python3 tools/check_comment_length.py` and `python3 tools/check_no_console_writeline.py` enforce both.
+- **Comment rules:** say why not what; two lines inline. A `long-comment:` marker on the **first** line of the block buys more, and is **exceptional** — one source file on `main` carries one, so cut the comment to length before reaching for it. `Console.WriteLine` needs a `console-print:` marker **directly** above the call. `python3 tools/check_comment_length.py` and `python3 tools/check_no_console_writeline.py` enforce both.
 - **A public member named in prose in a documentation page must be linked** to its reference page, or `ReferenceDocumentationTests` fails.
 - **Timings come from `Benchmark (on demand)` only**, dispatched by the maintainer. The session container has inverted this exact comparison once already.
 - **Definition of done item 7:** any change to shipped behaviour carries its `CHANGELOG.md` entry.
@@ -96,9 +96,8 @@ public sealed class EmbeddingIndexBlockTests
 
         EmbeddingIndex bulk = EmbeddingIndex.FromBlock(block, 2, BlockNormalization.Normalize);
 
-        // The index exposes no vector accessor, so equal scores for a query is what
-        // "the same bits" is observable as. Both paths call NormalizeStored, so this is
-        // exact equality rather than a tolerance.
+        // The index exposes no vector accessor, so equal scores for a query is what "the
+        // same bits" is observable as; both paths call NormalizeStored, making this exact.
         Assert.Equal(added.Search([1f, 1f], 3), bulk.Search([1f, 1f], 3));
     }
 
@@ -457,10 +456,8 @@ Append to `tests/Lodestar.Embeddings.Tests/EmbeddingIndexBlockTests.cs`, inside 
 
         Assert.Equal(1f, index.Search([1f, 0f], 1)[0].Score, Places);
 
-        // long-comment: the invariant FromOwnedBlock documents, asserted rather than only
-        // written down. Ownership transferred, so writing to the array afterwards changes
-        // what the index scores — and the next reader who breaks that learns it from a
-        // failure instead of from a wrong search result in production.
+        // Ownership transferred, so writing to the array afterwards moves the score.
+        // Asserted rather than only documented: breaking it raises nothing at run time.
         block[0] = 0f;
         block[1] = 1f;
 
@@ -575,7 +572,7 @@ Expected: PASS, and the netstandard2.0 assembly reports the same 15 new tests �
 python3 tools/check_comment_length.py
 ```
 
-Expected: clean. The one block over two lines carries `long-comment:` on its **first** line.
+Expected: clean. No block here needs a `long-comment:` marker; if one does, shorten it instead.
 
 - [ ] **Step 7: Commit**
 
