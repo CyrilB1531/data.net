@@ -51,10 +51,32 @@ public static class NpyFile
         Guard.NotNull(source);
         ArtifactLimits limits = ArtifactLoadOptions.LimitsOf(options);
 
-        // The span, not .ToArray(): ReadAllBytes returns a ReadOnlyMemory bounded to the
-        // bytes actually read, so copying it out buys nothing and costs the block (#466).
-        ReadOnlyMemory<byte> payload = JsonArtifact.ReadAllBytes(source, limits);
-        return Read(payload.Span, limits);
+        // Twelve first, then the header it declares, then the payload straight into the
+        // array the block keeps. No buffer holds the block on its way past (#466).
+        Span<byte> prefix = stackalloc byte[MaxPrefix];
+        int got = StreamFill.UpTo(source, prefix);
+        if (got < MinPrefix)
+        {
+            return Read(prefix[..got], limits);
+        }
+
+        int total = HeaderTotal(prefix, out _);
+        byte[] head = new byte[total];
+        prefix[..Math.Min(got, total)].CopyTo(head);
+        if (total > got)
+        {
+            StreamFill.Exactly(source, head.AsSpan(got), Malformed("ends inside its header.").Message);
+        }
+
+        ReadHeader(head, out NpyHeader header);
+        long elements = Elements(header, limits);
+        float[] values = Buffers.AllocateUninitialized<float>((int)elements);
+        StreamFill.Exactly(
+            source,
+            MemoryMarshal.AsBytes(values.AsSpan()),
+            ShortPayload(elements * sizeof(float)));
+
+        return new NpyBlock(values, header.Shape);
     }
 
     /// <summary>Reads the file at <paramref name="path"/>.</summary>
@@ -67,6 +89,38 @@ public static class NpyFile
         using FileStream file = JsonArtifact.OpenRead(path);
         return Read(file, options);
     }
+
+    /// <summary>Magic, version and the widest header length: the prefix one read always covers.</summary>
+    private const int MaxPrefix = 12;
+
+    /// <summary>Magic, version and the narrowest header length.</summary>
+    private const int MinPrefix = 10;
+
+    /// <summary>The element count a header declares, refused before anything is allocated.</summary>
+    /// <remarks>
+    /// The header is what announces the size on a staged read, so it is what has to be
+    /// disbelieved. Divided rather than multiplied: two large dimensions overflow (#468).
+    /// </remarks>
+    private static long Elements(in NpyHeader header, in ArtifactLimits limits)
+    {
+        long elements = 1;
+        foreach (int dimension in header.Shape)
+        {
+            elements *= dimension;
+        }
+
+        if (elements > limits.MaxTotalBytes / sizeof(float))
+        {
+            throw Malformed(
+                $"declares {elements} elements, more than ArtifactLoadOptions.MaxTotalBytes "
+                + $"({limits.MaxTotalBytes}) allows.");
+        }
+        return elements;
+    }
+
+    /// <summary>The message a payload shorter than its shape gets, on either read path.</summary>
+    private static string ShortPayload(long expected) =>
+        $"holds fewer than {expected} bytes of data where its shape needs {expected}.";
 
     /// <summary>Writes <paramref name="values"/> as a <c>.npy</c>, the counterpart of <c>numpy.save</c>.</summary>
     /// <param name="destination">The stream to write to. Flushed but never disposed — the caller owns it.</param>
@@ -166,6 +220,9 @@ public static class NpyFile
         _ => throw Malformed($"is version {major}.{minor}, which this does not read."),
     };
 
+    /// <summary>Header text refused beyond this; no numpy-written header comes near it.</summary>
+    private const int MaxHeaderLength = 65_536;
+
     /// <summary>How many bytes the header occupies, prefix included, and where its text starts.</summary>
     /// <remarks>
     /// Shared with the staged stream read, which needs the total before it knows how many
@@ -181,12 +238,20 @@ public static class NpyFile
             throw Malformed("ends inside its header length.");
         }
 
-        int declared = size == 2
+        long declared = size == 2
             ? BinaryPrimitives.ReadUInt16LittleEndian(prefix[lengthOffset..])
-            : checked((int)BinaryPrimitives.ReadUInt32LittleEndian(prefix[lengthOffset..]));
+            : BinaryPrimitives.ReadUInt32LittleEndian(prefix[lengthOffset..]);
+
+        // Disbelieved by name before it sizes anything: unbounded, a length near
+        // uint.MaxValue would overflow the offset below rather than being refused (#466).
+        if (declared > MaxHeaderLength)
+        {
+            throw Malformed(
+                $"declares a header of {declared} bytes, more than {MaxHeaderLength} bytes allows.");
+        }
 
         headerStart = lengthOffset + size;
-        return checked(headerStart + declared);
+        return headerStart + (int)declared;
     }
 
     /// <summary>

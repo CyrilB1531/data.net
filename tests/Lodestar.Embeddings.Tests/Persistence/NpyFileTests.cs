@@ -213,6 +213,82 @@ public sealed class NpyFileTests
         Assert.Throws<InvalidDataException>(() => NpyFile.Read(written, options));
     }
 
+    /// <summary>A stream that reports no length and no seeking, like a network body.</summary>
+    private sealed class ForwardOnlyStream(byte[] bytes) : Stream
+    {
+        private readonly MemoryStream _inner = new(bytes);
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) =>
+            _inner.Read(buffer, offset, Math.Min(count, 7));
+
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
+    [Fact]
+    public void A_forward_only_stream_reads_the_same_block()
+    {
+        byte[] npy = WrittenBlock([1f, 2f, 3f, 4f], 2, 2);
+
+        using var stream = new ForwardOnlyStream(npy);
+        NpyBlock block = NpyFile.Read(stream);
+
+        Assert.Equal([1f, 2f, 3f, 4f], block.Values.ToArray());
+        Assert.Equal([2, 2], block.Shape);
+    }
+
+    [Fact]
+    public void A_stream_truncated_inside_its_payload_is_refused()
+    {
+        byte[] npy = WrittenBlock([1f, 2f, 3f, 4f], 2, 2);
+
+        // Four bytes short: the header is whole and the block is not, which is the case
+        // the staged read detects at the stream rather than on a complete buffer.
+        var truncated = new MemoryStream(npy[..(npy.Length - 4)]);
+
+        InvalidDataException e = Assert.Throws<InvalidDataException>(() => NpyFile.Read(truncated));
+        Assert.Contains("bytes of data where its shape needs", e.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_header_declaring_an_absurd_length_is_refused_before_it_is_measured()
+    {
+        // Version 2.0's length field is 4 bytes wide; a declared value this large would
+        // overflow the offset arithmetic instead of being disbelieved by name (#466).
+        byte[] bytes =
+        [
+            0x93, (byte)'N', (byte)'U', (byte)'M', (byte)'P', (byte)'Y',
+            2, 0, // version 2.0
+            0, 0, 0, 0, // declared header length, overwritten below
+        ];
+        BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(8), uint.MaxValue - 1);
+
+        InvalidDataException refused =
+            Assert.Throws<InvalidDataException>(() => NpyFile.Read(new MemoryStream(bytes)));
+
+        Assert.Contains("more than 65536 bytes allows", refused.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>A .npy of the given block, as NpyFile writes one.</summary>
+    private static byte[] WrittenBlock(float[] values, params int[] shape)
+    {
+        using var stream = new MemoryStream();
+        NpyFile.Write(stream, values, shape);
+        return stream.ToArray();
+    }
+
     /// <summary>A well-formed v1.0 header for <paramref name="shape"/>, and no data at all.</summary>
     private static byte[] Declaring(string shape)
     {
