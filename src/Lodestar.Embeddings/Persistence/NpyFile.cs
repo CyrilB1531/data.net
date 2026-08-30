@@ -9,7 +9,21 @@ namespace Lodestar.Embeddings.Persistence;
 /// <summary>A float block read from a <c>.npy</c> file, with the shape it was stored under.</summary>
 /// <param name="Values">The elements, in C order.</param>
 /// <param name="Shape">The dimensions; one entry for a vector, two for a matrix.</param>
-public readonly record struct NpyBlock(ReadOnlyMemory<float> Values, IReadOnlyList<int> Shape);
+public readonly record struct NpyBlock(ReadOnlyMemory<float> Values, IReadOnlyList<int> Shape)
+{
+    /// <summary>The array this block owns, or <see langword="null"/> when it borrows.</summary>
+    /// <remarks>
+    /// Only <see cref="NpyFile.Read(Stream, ArtifactLoadOptions?)"/> fills it, because only
+    /// that path allocates an array nobody else holds. A block over a caller's bytes leaves
+    /// it null, and so does one built by hand — which is what stops decision 0056's
+    /// ownership transfer being reached without the method that documents it.
+    /// </remarks>
+    // CA1819: handing the array out is the contract -- FromOwnedBlock adopts it and the
+    // block stops using it, so the defensive copy the rule wants would defeat the feature.
+#pragma warning disable CA1819
+    public float[]? OwnedArray { get; init; }
+#pragma warning restore CA1819
+}
 
 /// <summary>Reads and writes a <see cref="float"/> block in numpy's <c>.npy</c> format.</summary>
 /// <remarks>
@@ -82,7 +96,7 @@ public static class NpyFile
             MemoryMarshal.AsBytes(values.AsSpan()),
             ShortPayload(elements * sizeof(float)));
 
-        return new NpyBlock(values, header.Shape);
+        return new NpyBlock(values, header.Shape) { OwnedArray = values };
     }
 
     /// <summary>Reads the file at <paramref name="path"/>.</summary>

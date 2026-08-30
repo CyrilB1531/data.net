@@ -1,6 +1,8 @@
 using System.Text;
 using System.Buffers.Binary;
+using System.Runtime.InteropServices;
 using Lodestar.Embeddings.Persistence;
+using Lodestar.Embeddings.Search;
 using Xunit;
 
 namespace Lodestar.Embeddings.Tests.Persistence;
@@ -260,6 +262,40 @@ public sealed class NpyFileTests
 
         InvalidDataException e = Assert.Throws<InvalidDataException>(() => NpyFile.Read(truncated));
         Assert.Contains("bytes of data where its shape needs", e.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_stream_read_block_owns_its_array()
+    {
+        NpyBlock block = NpyFile.Read(new MemoryStream(WrittenBlock([1f, 0f, 0f, 1f], 2, 2)));
+
+        Assert.NotNull(block.OwnedArray);
+        Assert.Same(block.OwnedArray, MemoryMarshal.TryGetArray<float>(block.Values, out var seg)
+            ? seg.Array
+            : null);
+    }
+
+    [Fact]
+    public void A_hand_built_block_owns_nothing()
+    {
+        // The record's constructor is public, so a caller can build one around an array it
+        // still holds. OwnedArray stays null there, which is what keeps ADR 0056's
+        // invariant from being reached without the method that documents it.
+        float[] mine = [1f, 2f];
+        var block = new NpyBlock(mine, [2]);
+
+        Assert.Null(block.OwnedArray);
+    }
+
+    [Fact]
+    public void An_owned_block_is_adoptable_by_the_index()
+    {
+        NpyBlock block = NpyFile.Read(new MemoryStream(WrittenBlock([1f, 0f], 2)));
+
+        EmbeddingIndex index = EmbeddingIndex.FromOwnedBlock(
+            block.OwnedArray!, 2, BlockNormalization.AlreadyNormalized);
+
+        Assert.Equal(1f, index.Search([1f, 0f], 1)[0].Score, 4);
     }
 
     [Fact]
