@@ -48,7 +48,8 @@ breaks `prepend_replace_normalizer`, and on the unigram path it breaks the Sente
 0050's Consequences name as the extraction's witness. A field is what the reference itself carries.
 
 **2. The divergence is closed rather than documented.**
-#316 exists to load Llama-2 *and* Mistral v0.1. A loader that reads Mistral's `Metaspace` block
+Issue [#316](https://github.com/CyrilB1531/lodestar/issues/316) exists to load Llama-2 *and*
+Mistral v0.1. A loader that reads Mistral's `Metaspace` block
 and answers with Llama-2's token stream loads the file and produces different embeddings, which is
 the failure [0017 §3](0017-bpe-parity-scope.md) refuses by name everywhere else. Shipping it
 measured, with the corpus recording it and a follow-up issue, was the option on the table; it
@@ -69,4 +70,4 @@ as `never`, where `tokenizers` refuses the file. No oracle case can carry that s
 `BpeMetaspaceLoaderTests` pins it instead.
 
 This changes nothing for #317 and #318: both files are still refused on `byte_fallback` until
-#317, exactly as 0050's Consequences say.
+that lot lands, exactly as 0050's Consequences say.
