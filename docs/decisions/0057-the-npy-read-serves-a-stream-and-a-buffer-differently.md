@@ -20,9 +20,15 @@ became the `float[]` a block carries — and the block was copied once more into
 
 Removing the second of those alone, in this lot's first commit, moved the row to **0.34–0.36×
 wall and 0.29–0.30× cpu** on the same runner: **6.106 / 5.645 / 6.035 ms before it, 4.039 /
-4.317 ms after**, which is about 1.8 ms and the shape of one `memcpy` of this block. That is the
-measurement this decision argues from — one copy of 15.36 MB costs what those two readings differ
-by — and it says the remaining two are worth taking as well.
+4.317 ms after**, about 1.8 ms.
+[The performance guide](../guides/performance.md#the-same-row-once-the-block-is-adopted-issue-466)
+carries that dispatch's rounds in full.
+
+**What the delta is not is a price for one copy.** This decision was argued as though 15.36 MB of
+`memcpy` cost what those two readings differ by. It does not: the guide prices the same copy at
+about 1.2 ms at numpy's own rate, and the dispatch that took a whole copy of this block out moved
+the row by nothing measurable. What the readings support is that the copies left were worth
+attacking — not what one of them costs. Which one paid is in Consequences.
 
 Two callers reach the reader, and they do not want the same thing. One holds a `Stream` and has
 no bytes of its own. The other already holds the whole file — a blob, a cache entry, an embedded
@@ -83,8 +89,10 @@ The fourth is refused rather than made to look available: a view has no array to
   [`VectorMath.Dot`](../reference/embeddings/search/vectormath-dot.md) already makes and which
   `StreamFill`'s own remarks name as its precedent. The memory overload copies nothing on either
   target, nothing about it depending on a `Stream` API.
-- **What it measured, which is not what this decision argued.** The row went from 0.21–0.23× of
-  numpy's wall to **1.21–1.25×**, cpu 1.00–1.13× — ahead rather than four times behind. But the
+- **What it measured, which is not what this decision argued.** The row went from 0.19× of
+  numpy's cpu to **1.00–1.13×** — parity in the first round and slightly ahead in the other two —
+  and from 0.21–0.23× of its wall to 1.21–1.25×. cpu is the column this project trusts, so the
+  honest reading is *parity to slightly ahead*, where it was four to five times behind. But the
   read this decision is about contributed none of it: measured alone, against an untouched
   neighbour, staging the payload into the array moved the row by nothing. All of it came from
   adopting, because `FromBlock` was allocating a second 15.36 MB store on the large object heap to

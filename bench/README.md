@@ -935,9 +935,12 @@ against 5 MB less work. The figures, and the rows on the same run where this pro
 6× ahead, are in
 [the performance guide](../docs/guides/performance.md#against-numpy-on-the-same-format-issue-474).
 
-**#466 took two of those copies out and the row inverted**, from 0.21–0.23× of numpy's wall to
-**1.21–1.25×**, with cpu at parity to 1.13×. The reading above stays as measured; the new one, its
-runner, and the anchors that make the two windows comparable are in
+**#466 took the copies between the stream and the index out and the row inverted**, from 0.19× of
+numpy's cpu to **1.00–1.13×** and from 0.21–0.23× of its wall to 1.21–1.25×. cpu is the column this
+harness trusts, so the honest reading is *parity to slightly ahead*, not the wall figure. How many
+copies there were, and which of them paid, is decision 0057's subject rather than this section's.
+The reading above stays as measured; the new one, its runner, and the anchors that make the two
+windows comparable are in
 [the performance guide](../docs/guides/performance.md#the-same-row-once-the-block-is-adopted-issue-466).
 Two dispatches separated the causes: reading the payload straight into the `float[]` moved nothing,
 and adopting the array rather than copying it into the index moved all of it — by more than the

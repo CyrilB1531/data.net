@@ -13,8 +13,8 @@ public readonly record struct NpyBlock(ReadOnlyMemory<float> Values, IReadOnlyLi
 {
     /// <summary>The array this block owns, or <see langword="null"/> when it borrows.</summary>
     /// <remarks>
-    /// Only <see cref="NpyFile.Read(Stream, ArtifactLoadOptions?)"/> fills it, because only
-    /// that path allocates an array nobody else holds. A block over a caller's bytes leaves
+    /// The stream reader fills it, and the path overload through it, because only that
+    /// route allocates an array nobody else holds. A block over a caller's bytes leaves
     /// it null, and so does one built by hand — which is what stops decision 0056's
     /// ownership transfer being reached without the method that documents it.
     /// </remarks>
@@ -80,10 +80,13 @@ public static class NpyFile
 
         int total = HeaderTotal(read, out _);
         byte[] head = new byte[total];
+
+        // Math.Min: a version 1.0 header declaring 0 or 1 bytes is shorter than the prefix
+        // already read. Harmless -- no header that short holds 'descr', so ReadHeader refuses.
         prefix[..Math.Min(got, total)].CopyTo(head);
         if (total > got)
         {
-            StreamFill.Exactly(source, head.AsSpan(got), Malformed("ends inside its header.").Message);
+            StreamFill.Exactly(source, head.AsSpan(got), MalformedMessage(CutInsideHeader));
         }
 
         ReadHeader(head, out NpyHeader header);
@@ -147,6 +150,9 @@ public static class NpyFile
     /// <remarks>
     /// The header is what announces the size on a staged read, so it is what has to be
     /// disbelieved. Divided rather than multiplied: two large dimensions overflow (#468).
+    /// Bounded by what a block can hold as well as by the option, because the count sizes
+    /// a <c>float[]</c>: <c>MaxTotalBytes</c> is a caller's <c>long</c> and nothing
+    /// validates it, so a large enough one used to let the cast below wrap (#466).
     /// </remarks>
     private static long Elements(in NpyHeader header, in ArtifactLimits limits)
     {
@@ -156,18 +162,20 @@ public static class NpyFile
             elements *= dimension;
         }
 
-        if (elements > limits.MaxTotalBytes / sizeof(float))
+        long cap = Math.Min(limits.MaxTotalBytes, int.MaxValue) / sizeof(float);
+        if (elements > cap)
         {
             throw Malformed(
-                $"declares {elements} elements, more than ArtifactLoadOptions.MaxTotalBytes "
-                + $"({limits.MaxTotalBytes}) allows.");
+                $"declares {elements} elements, more than the {cap} that "
+                + $"ArtifactLoadOptions.MaxTotalBytes ({limits.MaxTotalBytes}) and the "
+                + $"{int.MaxValue} bytes one block can hold allow.");
         }
         return elements;
     }
 
     /// <summary>The message a payload shorter than its shape gets, on the staged stream read.</summary>
     private static string ShortPayload(long expected) =>
-        $"holds fewer than {expected} bytes of data where its shape needs {expected}.";
+        MalformedMessage($"ends before the {expected} bytes its shape needs.");
 
     /// <summary>Writes <paramref name="values"/> as a <c>.npy</c>, the counterpart of <c>numpy.save</c>.</summary>
     /// <param name="destination">The stream to write to. Flushed but never disposed — the caller owns it.</param>
@@ -217,7 +225,7 @@ public static class NpyFile
         int total = HeaderTotal(payload, out int headerStart);
         if (total < headerStart || payload.Length < total)
         {
-            throw Malformed("ends inside its header.");
+            throw Malformed(CutInsideHeader);
         }
 
         header = ParseHeader(Encoding.UTF8.GetString(payload.Slice(headerStart, total - headerStart).ToArray()));
@@ -269,8 +277,8 @@ public static class NpyFile
         if (declared > MaxHeaderLength)
         {
             throw Malformed(
-                $"declares a header of {declared} bytes, more than NpyFile.MaxHeaderLength "
-                + $"({MaxHeaderLength}) allows.");
+                $"declares a header of {declared} bytes, more than this reader "
+                + $"accepts ({MaxHeaderLength}).");
         }
 
         headerStart = lengthOffset + size;
@@ -488,8 +496,13 @@ public static class NpyFile
         }
     }
 
-    private static InvalidDataException Malformed(string what) =>
-        new($"A '{SourceName}' file {what}");
+    /// <summary>What a file that stops inside its declared header is refused with.</summary>
+    private const string CutInsideHeader = "ends inside its header.";
+
+    private static InvalidDataException Malformed(string what) => new(MalformedMessage(what));
+
+    /// <summary>The wording every refusal carries, for the paths that need the text alone.</summary>
+    private static string MalformedMessage(string what) => $"A '{SourceName}' file {what}";
 
     /// <summary>What the restricted parser takes out of the header.</summary>
     private readonly record struct NpyHeader(int[] Shape);

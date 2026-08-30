@@ -20,8 +20,10 @@ stream or a path, the block also carries the array it filled; read from memory i
 because it borrowed instead of allocating.
 
 **Exceptions** — `ArgumentNullException` for a null source or path. `InvalidDataException` when
-the file does not open with numpy's magic, declares a version this does not read, holds a dtype or
-layout this does not read, is truncated against its own shape, or exceeds a bound in `options`.
+the file does not open with numpy's magic, declares a version this does not read, declares a
+header longer than this reader accepts (65 536 bytes), holds a dtype or layout this does not read,
+is truncated against its own shape, declares more elements than one block can hold, or exceeds a
+bound in `options`.
 
 **Example** — reading what numpy wrote.
 

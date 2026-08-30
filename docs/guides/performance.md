@@ -1924,18 +1924,37 @@ page's own #323 note is about exactly that hazard, so the rows neither lot touch
 | `embedding_index_load_memory` | 4.28–4.51 ms | 4.21–4.49 ms |
 | `embedding_index_save` | 4.16–4.33 ms | 4.27–4.38 ms |
 
-The two machines agree to a few percent on every anchor, so the ingest row's move is the change
-and not the hardware. A third dispatch, on a runner whose anchors sat 20–25% slower on large
-blocks and 33–36% faster on the text rows, is not compared here for that reason.
+The `#474's window` column is that dispatch's own untouched rows; its section above published
+only the ingest row and `embedding_index_load`'s ratio, so the three anchors appear here for the
+first time. The two machines agree to a few percent on every one of them, so the ingest row's move
+is the change and not the hardware. A third dispatch, on a runner whose anchors sat 20–25% slower
+on large blocks and 33–36% faster on the text rows, has milliseconds that cannot be put beside
+these — which is why the comparison below is made in a different unit rather than in this one.
 
-**Two dispatches separated the two causes, and only one of them paid.** Reading the payload
-straight into the `float[]` — one copy fewer between the stream and the block — moved the row by
-nothing: against `embedding_index_load_memory` it read 0.88 / 0.94 / 0.96 before and
-0.90 / 0.97 / 0.99 after. Adopting the array instead of copying it into the index moved the same
-ratio to **0.31 / 0.28 / 0.28**.
+**Two dispatches separated the two causes, and only one of them paid.** Three dispatches are in
+play below and each landed on a different runner instance, so each is read against an untouched
+neighbour *inside its own run* — the ingest row against `embedding_index_load_memory`, never one run's milliseconds
+against another's. That normalisation is exactly what lets the excluded runner carry evidence: its
+anchors cannot be set beside this window's, and its own two rows can be set beside each other.
+
+| dispatch | ingest, three rounds | `load_memory`, three rounds | ingest ÷ `load_memory` |
+| --- | ---: | ---: | ---: |
+| `f9bfef7`, the `.ToArray()` gone | 3.775 / 4.039 / 4.317 ms | 4.294 / 4.279 / 4.514 ms | 0.88 / 0.94 / 0.96 |
+| `9873e23`, the payload read into the `float[]` | 4.380 / 4.762 / 4.751 ms | 4.845 / 4.931 / 4.809 ms | 0.90 / 0.97 / 0.99 |
+| `1c43fc0`, the array adopted | 1.376 / 1.197 / 1.236 ms | 4.486 / 4.210 / 4.360 ms | **0.31 / 0.28 / 0.28** |
+
+`9873e23` is the runner excluded from the anchor table above, and its milliseconds are published
+here so its ratios can be recomputed rather than taken on trust; the same holds for `f9bfef7`,
+whose window is the one the #474 section measured. Reading the payload straight into the `float[]`
+— one copy fewer between the stream and the block — moved the row by nothing. Adopting the array
+instead of copying it into the index moved all of it.
 
 **The gain is larger than the copy it removed, and that is the interesting part.** One `memcpy` of
-this block costs about 1.2 ms at numpy's own rate, and the row fell by about 3.1 ms.
+this block costs about 1.2 ms at numpy's own rate. Had the row held the ratio it kept through both
+earlier dispatches — 0.88 to 0.99 of a `load_memory` — it would have read 3.9–4.4 ms against this
+window's `load_memory` of 4.21–4.49 ms; it read 1.20–1.38. The fall is 0.6–0.7 of a `load_memory`,
+or **2.6–3.1 ms**, derived inside this run because subtracting one runner's milliseconds from
+another's is the arithmetic the anchor table exists to refuse.
 [`FromBlock`](../reference/embeddings/search/embeddingindex-fromblock.md) was not only copying the
 block, it was allocating a second 15.36 MB store on the large object heap to copy it into;
 [`FromOwnedBlock`](../reference/embeddings/search/embeddingindex-fromownedblock.md) takes the array
@@ -1947,7 +1966,7 @@ is not — showing up on a second path.
 **One thing stays unexplained and is not smoothed over.** Removing a whole copy from the read
 should have been worth about 1.2 ms and was worth nothing measurable.
 [#480](https://github.com/CyrilB1531/lodestar/issues/480) carries it, and asks for the ingest to be
-decomposed into phases rather than for the answer to be inferred from this subtraction.
+decomposed into phases rather than for the answer to be inferred from a ratio.
 
 ### Pre-sizing the file, and why it is not done (issue #432)
 

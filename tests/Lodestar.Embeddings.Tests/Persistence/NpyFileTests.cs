@@ -107,7 +107,7 @@ public sealed class NpyFileTests
 
         InvalidDataException refused = Assert.Throws<InvalidDataException>(() => NpyFile.Read(stream));
 
-        Assert.Contains("bytes of data where its shape needs", refused.Message, StringComparison.Ordinal);
+        Assert.Contains("ends before the 48 bytes its shape needs.", refused.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -201,6 +201,23 @@ public sealed class NpyFileTests
     }
 
     [Fact]
+    public void A_header_declaring_more_elements_than_a_block_can_hold_is_refused()
+    {
+        // 2^32 elements, which a 16 GiB MaxTotalBytes admits and a float[] cannot hold:
+        // the cast wrapped to zero and handed back a block of zeros under the file's shape.
+        byte[] hostile = Declaring("65536, 65536");
+        var options = new ArtifactLoadOptions { MaxTotalBytes = 1L << 34 };
+
+        InvalidDataException fromStream = Assert.Throws<InvalidDataException>(
+            () => NpyFile.Read(new MemoryStream(hostile), options));
+        InvalidDataException fromMemory = Assert.Throws<InvalidDataException>(
+            () => NpyFile.Read(hostile.AsMemory(), options));
+
+        Assert.Contains("declares 4294967296 elements", fromStream.Message, StringComparison.Ordinal);
+        Assert.Equal(fromStream.Message, fromMemory.Message);
+    }
+
+    [Fact]
     public void A_payload_past_MaxTotalBytes_is_refused_while_being_read()
     {
         const int Rows = 2_605, Columns = 384;
@@ -261,7 +278,7 @@ public sealed class NpyFileTests
         var truncated = new MemoryStream(npy[..(npy.Length - 4)]);
 
         InvalidDataException e = Assert.Throws<InvalidDataException>(() => NpyFile.Read(truncated));
-        Assert.Contains("bytes of data where its shape needs", e.Message, StringComparison.Ordinal);
+        Assert.Contains("ends before the 16 bytes its shape needs.", e.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -313,7 +330,7 @@ public sealed class NpyFileTests
         InvalidDataException refused =
             Assert.Throws<InvalidDataException>(() => NpyFile.Read(new MemoryStream(bytes)));
 
-        Assert.Contains("more than NpyFile.MaxHeaderLength (65536) allows", refused.Message, StringComparison.Ordinal);
+        Assert.Contains("more than this reader accepts (65536).", refused.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -337,8 +354,8 @@ public sealed class NpyFileTests
     [Fact]
     public void A_ten_byte_non_numpy_stream_is_refused_by_its_magic()
     {
-        // At least MinPrefix bytes, so the staged path parses it directly rather than
-        // falling back to the short-prefix buffered path (#466 regression).
+        // At least MinPrefix bytes, so the staged path reads the magic rather than
+        // refusing it for being too short to hold one (#466 regression).
         byte[] bytes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
         InvalidDataException refused =
@@ -377,6 +394,21 @@ public sealed class NpyFileTests
         NpyBlock block = NpyFile.Read(WrittenBlock([1f, 2f], 2).AsMemory());
 
         Assert.Null(block.OwnedArray);
+    }
+
+    [Fact]
+    public void A_borrowed_block_pins_like_one_read_from_a_stream()
+    {
+        // Pin threw, so a block read from memory failed in every API that pins a
+        // Memory<float> where a stream-read block succeeded (#466 review).
+        byte[] npy = WrittenBlock([1f, 2f, 3f, 4f], 2, 2);
+
+        NpyFile.Read(npy.AsMemory()).Values.Pin().Dispose();
+
+        // Sixteen payload bytes are four floats, so a fifth is out of range -- which a
+        // manager taking the index for a byte offset would accept instead.
+        using var manager = new NpyPayloadManager(npy.AsMemory(npy.Length - 16));
+        Assert.Throws<ArgumentOutOfRangeException>(() => manager.Pin(5));
     }
 
     /// <summary>A .npy of the given block, as NpyFile writes one.</summary>

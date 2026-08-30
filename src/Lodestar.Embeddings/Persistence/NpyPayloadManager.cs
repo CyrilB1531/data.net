@@ -12,13 +12,30 @@ namespace Lodestar.Embeddings.Persistence;
 /// </remarks>
 internal sealed class NpyPayloadManager(ReadOnlyMemory<byte> payload) : MemoryManager<float>
 {
+    /// <summary>The payload's bytes as floats, reinterpreted rather than copied.</summary>
+    /// <remarks>
+    /// Aligned because the payload is: numpy pads the header so the block starts on a
+    /// 64-byte boundary, and <c>NpyFile.Write</c> writes the same padding. A hand-written
+    /// file need not, and neither need the caller's origin -- <c>blob.AsMemory(3)</c> is
+    /// legal. x64 loads unaligned floats anyway; the netstandard2.0 assembly also ships to
+    /// Mono, Unity and .NET Framework, where such a load can cost more than an aligned one.
+    /// </remarks>
     public override Span<float> GetSpan() =>
         MemoryMarshal.Cast<byte, float>(MemoryMarshal.AsMemory(payload).Span);
 
-    /// <summary>Not supported: this manager borrows and has nothing to pin.</summary>
-    public override MemoryHandle Pin(int elementIndex = 0) => throw new NotSupportedException();
+    /// <summary>Pins the payload from <paramref name="elementIndex"/> on.</summary>
+    /// <remarks>
+    /// Delegated rather than refused, so a block read from memory reaches an interop or
+    /// async API that pins its values just as one read from a stream does. The index
+    /// counts floats and the payload holds bytes, which is what the scaling is for.
+    /// </remarks>
+    public override MemoryHandle Pin(int elementIndex = 0) =>
+        payload.Slice(elementIndex * sizeof(float)).Pin();
 
-    public override void Unpin() => throw new NotSupportedException();
+    public override void Unpin()
+    {
+        // Nothing to release: the handle Pin returned holds the pin and frees it on dispose.
+    }
 
     // Nothing to release: the manager borrows the caller's bytes and never owns a resource.
     protected override void Dispose(bool disposing) { }
