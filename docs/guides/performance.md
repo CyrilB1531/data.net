@@ -2017,6 +2017,17 @@ denominator, not the milliseconds the paragraphs above assigned to it.
 0.010–0.016 and the memory overload 0.005–0.008 — both free, because neither moves the block.
 **So adopting is worth one `memcpy`**, about 0.96 ms, and no more.
 
+> **This is now explained, and the answer refuses the candidate below.** A second run put the same
+> ingest at both ends of every round. The cost follows the **collections**, not the position:
+> in one round the two rows read 0.949 and 0.943 ms with the collections on the *first*, and in the
+> other two the last is slower by 0.35–0.37 ms and carries them. `ingest_total` itself fell to
+> **0.910–0.949 ms** merely because a second ingest split the round's collection debt — at which
+> figure it agrees with both the sum of its parts and the canonical harness.
+> [Decision 0061](../decisions/0061-the-ingest-gap-was-a-collection-landing-wherever-the-collector-ran.md)
+> has the three rounds. **The paragraph below stays as it was written**, including the candidate it
+> named, because a candidate that was tested and refused is worth more on the page than one quietly
+> replaced.
+
 **What this does not explain, and is not explained away.** `ingest_total` measures 2.17–2.26 ms
 where its own parts sum to 0.97–1.00, and where the canonical harness measures the same chain at
 **1.109–1.134 ms wall**. The gap has no explanation here. What is known about it:

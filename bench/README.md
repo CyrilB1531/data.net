@@ -1270,6 +1270,13 @@ copy alone. The surcharge is small on this table — `from_block_copy` 0.964–1
 `block_copy_floor`'s 0.936–0.976 into a warm target — and touching the array would change what
 the row measures rather than clean the subtraction up.
 
+**`ingest_total` and `ingest_total_last` are one measurement at two positions.** They call the
+same method, first in the round and last, so any difference between them is position and nothing
+else. That is the single variable [decision 0058](../docs/decisions/0058-the-npy-ingest-is-memcpy-bound-and-the-allocation-is-not-the-cost.md)
+left open: its gap survived the first table, and it named a phase-reordering run as what would
+settle it. The `gen` columns are the half to read first — a collection provoked by one ingest is
+paid by whichever phase runs next, not by the one that allocated.
+
 **Two independent subtractions have to agree, and that is the point of the mode.**
 `read_stream_owned - stream_copy_floor` is what the read's allocation costs inside the read;
 `allocate_cold - allocate_reused` prices the same allocation on its own. If they disagree, the
