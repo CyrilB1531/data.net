@@ -53,6 +53,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private readonly AddedTokenScanner _rawScanner;
     private readonly AddedTokenScanner _normalizedScanner;
     private readonly NormalizationForm[] _forms;
+    private readonly MetaspaceEscape? _metaspace;
     private readonly HashSet<int> _addedIds;
     private readonly string? _endOfWord;
     private readonly string? _continuingPrefix;
@@ -87,6 +88,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         _fuseUnk = vocabulary.FuseUnk;
 
         _forms = [.. vocabulary.NormalizationForms];
+        _metaspace = vocabulary.Metaspace;
         (_vocab, _modelVocab, _tokens) = BuildVocabulary(vocabulary);
 
         _rawScanner = new AddedTokenScanner([.. vocabulary.AddedTokens.Where(t => !t.Normalized)]);
@@ -327,13 +329,13 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// </remarks>
     private void EncodeGap(string text, int from, int to, List<string> tokens, List<int> ids, List<string> pieces)
     {
-        if (_forms.Length == 0 && _normalizedScanner.IsEmpty)
+        if (_forms.Length == 0 && _metaspace is null && _normalizedScanner.IsEmpty)
         {
             EncodeSegment(text, from, to, tokens, ids, pieces);
             return;
         }
 
-        string gap = Normalize(text.Substring(from, to - from));
+        string gap = Preprocess(text.Substring(from, to - from));
         int pos = 0;
         while (pos < gap.Length)
         {
@@ -350,6 +352,19 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             ids.Add(added.Id);
             pos = end;
         }
+    }
+
+    /// <summary>Normalizes, then escapes whitespace when the model declared an escape.</summary>
+    /// <remarks>
+    /// The order <see cref="SentencePieceTokenizer"/> already runs: the escape reads the
+    /// normalized text, since both spellings decision 0050 §2 accepts sit at or after the
+    /// normalizer. Added-token content goes through <see cref="Normalize"/> alone —
+    /// escaping it would spell the entry with a symbol the file did not put there.
+    /// </remarks>
+    private string Preprocess(string text)
+    {
+        string normalized = Normalize(text);
+        return _metaspace is null ? normalized : _metaspace.Apply(normalized);
     }
 
     /// <summary>Applies the declared forms in their declared order.</summary>

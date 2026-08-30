@@ -26,13 +26,17 @@ public static class TokenizerJsonLoader
     private const string AddedTokensProperty = "added_tokens";
 
     /// <summary>
-    /// The property name read in four places: the three positions a <c>ByteLevel</c>
+    /// The property name read in five places: the three positions a <c>ByteLevel</c>
     /// block can appear in, and <c>Metaspace</c>'s pre-0.14 spelling of
-    /// <c>prepend_scheme</c>. One spelling, so a typo cannot make one reader
-    /// silently stop finding what the others find.
+    /// <c>prepend_scheme</c>, which the Unigram and the BPE path read differently.
+    /// One spelling, so a typo cannot make one reader silently stop finding what
+    /// the others find.
     /// </summary>
     private const string AddPrefixSpaceProperty = "add_prefix_space";
     private const string UntypedName = "(untyped)";
+
+    /// <summary>The <c>type</c> a normalizer or a pre-tokenizer wrapping several steps declares.</summary>
+    private const string SequenceName = "Sequence";
     private const string MetaSymbol = "\u2581";
 
     /// <summary>Reads the WordPiece model declared by <paramref name="source"/>.</summary>
@@ -496,12 +500,13 @@ public static class TokenizerJsonLoader
         EnsureModelType(model, "BPE");
         EnsureByteFallbackIsOff(model);
         EnsureBpeModelSettingsAreReproduced(model);
-        IReadOnlyList<NormalizationForm> normalizationForms = ReadBpeNormalizer(root);
+        IReadOnlyList<NormalizationForm> normalizationForms =
+            ReadBpeNormalizer(root, out MetaspaceEscape? normalizerEscape);
         RejectNonNull(root, "truncation", "Lodestar tokenizers do not truncate");
         RejectNonNull(root, "padding", "Lodestar tokenizers do not pad");
         RejectNonNull(root, "post_processor", "Lodestar tokenizers do not insert special tokens such as [CLS] and [SEP]");
         (bool byteLevel, bool addPrefixSpace, BpeSplitStep? preSplit, string? pattern, bool noPreTokenizer) =
-            ReadBpePreTokenizer(root);
+            ReadBpePreTokenizer(root, out MetaspaceEscape? preTokenizerEscape);
         EnsureDecoderMatchesModel(root, byteLevel);
         EnsureContinuingPrefixIsNotByteLevel(model, byteLevel);
 
@@ -525,7 +530,26 @@ public static class TokenizerJsonLoader
             PreTokenizerPattern = pattern,
             NoPreTokenizer = noPreTokenizer,
             NormalizationForms = normalizationForms,
+            Metaspace = OneEscape(normalizerEscape, preTokenizerEscape),
         };
+    }
+
+    /// <summary>Joins the two spellings of one escape, refusing a file that writes both.</summary>
+    /// <remarks>
+    /// Llama-2 writes the normalizer Sequence and Mistral v0.1 the pre-tokenizer block;
+    /// neither of the files read for decision 0050 writes both, so nothing measured says
+    /// which one a file meaning both would apply, and a precedence invented here would be
+    /// a guess no reader could check.
+    /// </remarks>
+    private static MetaspaceEscape? OneEscape(MetaspaceEscape? fromNormalizer, MetaspaceEscape? fromPreTokenizer)
+    {
+        if (fromNormalizer is not null && fromPreTokenizer is not null)
+        {
+            throw Unsupported(
+                "it declares a Metaspace pre_tokenizer and a Prepend plus Replace normalizer Sequence at once",
+                "those are two writings of one whitespace escape, and which of the two such a file means has not been measured");
+        }
+        return fromNormalizer ?? fromPreTokenizer;
     }
 
     /// <summary>
@@ -568,10 +592,18 @@ public static class TokenizerJsonLoader
     /// accepted because it provably changes nothing, like <c>dropout: 0.0</c>. See
     /// docs/superpowers/specs/2026-08-13_0121_give-readbpe-the-normalizer-treatment.md.
     /// </remarks>
-    private static List<NormalizationForm> ReadBpeNormalizer(JsonElement root)
+    private static List<NormalizationForm> ReadBpeNormalizer(JsonElement root, out MetaspaceEscape? escape)
     {
+        escape = null;
         if (!root.TryGetProperty("normalizer", out JsonElement normalizer) || normalizer.ValueKind == JsonValueKind.Null)
         {
+            return [];
+        }
+
+        escape = ReadNormalizerEscape(normalizer);
+        if (escape is not null)
+        {
+            // The pair is the whole normalizer: it declares no Unicode form to collect.
             return [];
         }
 
@@ -579,6 +611,85 @@ public static class TokenizerJsonLoader
         CollectNormalizationForms(normalizer, forms);
         return forms;
     }
+
+    /// <summary>Reads a <c>Prepend</c> plus <c>Replace</c> Sequence as one escape.</summary>
+    /// <remarks>
+    /// Decision 0050 §4 refuses a Sequence naming either step in any other arrangement
+    /// rather than reducing three steps to the two reproduced here — the third would
+    /// silently not run. A Sequence naming neither reads back as <see langword="null"/>
+    /// and reaches <see cref="CollectNormalizationForms"/> unchanged, so a bare
+    /// <c>Replace</c> keeps the refusal it has always had.
+    /// </remarks>
+    private static MetaspaceEscape? ReadNormalizerEscape(JsonElement normalizer)
+    {
+        if (!string.Equals(OptionalString(normalizer, "type"), SequenceName, StringComparison.Ordinal)
+            || !normalizer.TryGetProperty("normalizers", out JsonElement steps)
+            || steps.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        bool namesEitherStep = false;
+        foreach (JsonElement step in steps.EnumerateArray())
+        {
+            string stepType = OptionalString(step, "type") ?? UntypedName;
+            namesEitherStep = namesEitherStep
+                || string.Equals(stepType, "Prepend", StringComparison.Ordinal)
+                || string.Equals(stepType, "Replace", StringComparison.Ordinal);
+        }
+        if (!namesEitherStep)
+        {
+            return null;
+        }
+
+        if (steps.GetArrayLength() != 2
+            || !string.Equals(OptionalString(steps[0], "type"), "Prepend", StringComparison.Ordinal)
+            || !string.Equals(OptionalString(steps[1], "type"), "Replace", StringComparison.Ordinal))
+        {
+            throw Unsupported(
+                "its normalizer is a Sequence naming Prepend or Replace that is not exactly [Prepend, Replace]",
+                "that pair is the whitespace escape Llama-2 spells out, and a Sequence around it carries steps this loader does not reproduce");
+        }
+        return ReadPrependReplaceEscape(steps[0], steps[1]);
+    }
+
+    /// <summary>Reads the <c>Prepend</c> and the <c>Replace</c> as one escape, or refuses the pair.</summary>
+    /// <remarks>
+    /// The two have to agree: <c>Prepend</c>'s string is the replacement, and
+    /// <c>Replace</c> must map the literal space onto that same string, which is what
+    /// Llama-2 declares. Anything else — a <c>Regex</c> pattern above all — keeps
+    /// <see cref="CollectNormalizationForms"/>'s reason rather than being guessed at.
+    /// </remarks>
+    private static MetaspaceEscape ReadPrependReplaceEscape(JsonElement prepend, JsonElement replace)
+    {
+        string? prepended = OptionalString(prepend, "prepend");
+        string? content = OptionalString(replace, "content");
+        string? pattern = replace.TryGetProperty("pattern", out JsonElement patternElement)
+            ? OptionalString(patternElement, "String")
+            : null;
+        if (prepended is null
+            || !string.Equals(prepended, content, StringComparison.Ordinal)
+            || !string.Equals(pattern, " ", StringComparison.Ordinal))
+        {
+            throw Unsupported(
+                "its normalizer Sequence is a Prepend and a Replace that do not spell the whitespace escape",
+                "only a Prepend whose string the Replace maps the literal ' ' onto is reproduced");
+        }
+        // A normalizer runs once over the whole text, so it prepends once -- which is what
+        // a Metaspace pre-tokenizer's "first" means once nothing splits.
+        return new MetaspaceEscape(
+            SingleReplacementChar(prepended, "normalizer Sequence's Prepend"),
+            MetaspacePrependScheme.First,
+            removeExtraWhitespaces: false);
+    }
+
+    /// <summary>The one character a replacement must be, or a refusal naming what was found.</summary>
+    private static char SingleReplacementChar(string replacement, string where) =>
+        replacement.Length == 1
+            ? replacement[0]
+            : throw Unsupported(
+                $"its {where} replacement is '{replacement}'",
+                "the escape substitutes one character for each space, so a replacement of another length is not reproduced");
 
     private static void CollectNormalizationForms(JsonElement normalizer, List<NormalizationForm> forms)
     {
@@ -601,7 +712,7 @@ public static class TokenizerJsonLoader
                 forms.Add(NormalizationForm.FormKD);
                 return;
 
-            case "Sequence":
+            case SequenceName:
                 if (!normalizer.TryGetProperty("normalizers", out JsonElement inner) || inner.ValueKind != JsonValueKind.Array)
                 {
                     throw Unsupported("its normalizer is a Sequence with no 'normalizers' array", "the file is not usable");
@@ -732,8 +843,9 @@ public static class TokenizerJsonLoader
     /// split on again, and whether it is split at all.
     /// </summary>
     private static (bool ByteLevel, bool AddPrefixSpace, BpeSplitStep? PreSplit, string? Pattern, bool NoPreTokenizer)
-        ReadBpePreTokenizer(JsonElement root)
+        ReadBpePreTokenizer(JsonElement root, out MetaspaceEscape? escape)
     {
+        escape = null;
         if (!root.TryGetProperty("pre_tokenizer", out JsonElement pre) || pre.ValueKind == JsonValueKind.Null)
         {
             // Nothing is split: measured, "aZ Za" is ['a', '[UNK]', 'a'] here against the
@@ -746,10 +858,63 @@ public static class TokenizerJsonLoader
         {
             "Whitespace" => (false, false, null, BpePatterns.Whitespace, false),
             "ByteLevel" => ReadByteLevelPreTokenizer(pre),
-            "Sequence" => ReadBpeSequencePreTokenizer(pre),
+            SequenceName => ReadBpeSequencePreTokenizer(pre),
+            "Metaspace" => ReadBpeMetaspacePreTokenizer(pre, out escape),
             _ => throw Unsupported(
                 $"its pre_tokenizer is '{type}'",
-                "BpeTokenizer reproduces ByteLevel, a Sequence of Split then ByteLevel, and Whitespace only"),
+                "BpeTokenizer reproduces ByteLevel, a Sequence of Split then ByteLevel, Whitespace and a non-splitting Metaspace only"),
+        };
+    }
+
+    /// <summary>
+    /// A <c>Metaspace</c> pre-tokenizer with <c>split</c> off — what Mistral v0.1
+    /// declares: it replaces and prepends, and cuts nothing.
+    /// </summary>
+    /// <remarks>
+    /// Splitting is refused rather than reproduced, since <see cref="BpeTokenizer"/> has
+    /// no pattern for Metaspace's own segmentation and decision 0017 §3's rule is that
+    /// what is not reproduced fails at load naming itself. What is left is a text
+    /// transform, so nothing splits at all — which is what the last field carries.
+    /// </remarks>
+    private static (bool ByteLevel, bool AddPrefixSpace, BpeSplitStep? PreSplit, string? Pattern, bool NoPreTokenizer)
+        ReadBpeMetaspacePreTokenizer(JsonElement pre, out MetaspaceEscape? escape)
+    {
+        if (OptionalBoolean(pre, "split") ?? true)
+        {
+            throw Unsupported(
+                "its Metaspace pre_tokenizer has split on",
+                "BpeTokenizer reproduces the replace-and-prepend transform only, not Metaspace's own segmentation");
+        }
+        escape = new MetaspaceEscape(
+            SingleReplacementChar(OptionalString(pre, "replacement") ?? MetaSymbol, "Metaspace"),
+            ReadBpePrependScheme(pre),
+            removeExtraWhitespaces: false);
+        return (false, false, null, null, true);
+    }
+
+    /// <summary>Reads <c>prepend_scheme</c>, or the older <c>add_prefix_space</c> standing in for it.</summary>
+    /// <remarks>
+    /// <see cref="AddPrefixSpaceProperty"/> is the pre-0.14 spelling, and what it prepends
+    /// to is the whole text: true reads as "always", false as "never", and both fields
+    /// absent leaves "always". Absorbing that here is what keeps one escape for the
+    /// spellings a file may use, as decision 0050 §2 asks.
+    /// </remarks>
+    private static MetaspacePrependScheme ReadBpePrependScheme(JsonElement pre)
+    {
+        if (OptionalString(pre, "prepend_scheme") is not string scheme)
+        {
+            return OptionalBoolean(pre, AddPrefixSpaceProperty) ?? true
+                ? MetaspacePrependScheme.Always
+                : MetaspacePrependScheme.Never;
+        }
+        return scheme switch
+        {
+            "always" => MetaspacePrependScheme.Always,
+            "first" => MetaspacePrependScheme.First,
+            "never" => MetaspacePrependScheme.Never,
+            _ => throw Unsupported(
+                $"its Metaspace prepend_scheme is '{scheme}'",
+                "only 'always', 'first' and 'never' are defined there"),
         };
     }
 
@@ -1105,7 +1270,7 @@ public static class TokenizerJsonLoader
             case "Lowercase":
                 return true;
 
-            case "Sequence":
+            case SequenceName:
                 return ReadLowercaseFromSequence(normalizer);
 
             case "BertNormalizer":

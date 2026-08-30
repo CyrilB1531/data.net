@@ -48,10 +48,84 @@ public sealed class BpeMetaspaceLoaderTests
         Assert.Contains("Sequence", thrown.Message, StringComparison.Ordinal);
     }
 
-    private static BpeVocabulary Load(string block)
+    [Fact]
+    public void A_file_writing_both_spellings_is_refused()
     {
-        string json = "{ \"version\": \"1.0\", " + block
-            + " \"model\": { \"type\": \"BPE\", \"vocab\": { \"a\": 0, \"b\": 1, \"ab\": 2 }, \"merges\": [\"a b\"] } }";
+        // Neither model decision 0050 was read from writes both, so there is no
+        // measurement saying which of the two such a file would apply.
+        InvalidDataException thrown = Assert.Throws<InvalidDataException>(() => Load(
+            MetaspaceBlock + " " + PrependReplaceBlock));
+
+        Assert.Contains("Metaspace pre_tokenizer", thrown.Message, StringComparison.Ordinal);
+        Assert.Contains("Prepend plus Replace normalizer Sequence", thrown.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Before <c>tokenizers</c> 0.14 a <c>Metaspace</c> carried a boolean where it now
+    /// carries <c>prepend_scheme</c>, and the loader absorbs that spelling too.
+    /// </summary>
+    [Fact]
+    public void The_pre_0_14_add_prefix_space_spelling_is_a_prepend_scheme()
+    {
+        // One Fact rather than a Theory: MetaspacePrependScheme is internal, and an
+        // InlineData parameter of it would make this method less accessible than xunit needs.
+        Assert.Equal(MetaspacePrependScheme.Always, WithAddPrefixSpace("true").Metaspace!.PrependScheme);
+        Assert.Equal(MetaspacePrependScheme.Never, WithAddPrefixSpace("false").Metaspace!.PrependScheme);
+    }
+
+    [Fact]
+    public void The_two_spellings_produce_one_value()
+    {
+        MetaspaceEscape fromPreTokenizer = Load(MetaspaceBlock).Metaspace!;
+        MetaspaceEscape fromNormalizer = Load(PrependReplaceBlock).Metaspace!;
+
+        Assert.Equal(fromPreTokenizer.Replacement, fromNormalizer.Replacement);
+        Assert.Equal(fromPreTokenizer.PrependScheme, fromNormalizer.PrependScheme);
+        Assert.Equal(fromPreTokenizer.RemoveExtraWhitespaces, fromNormalizer.RemoveExtraWhitespaces);
+    }
+
+    [Fact]
+    public void A_Metaspace_that_still_splits_is_refused()
+    {
+        InvalidDataException thrown = Assert.Throws<InvalidDataException>(() => Load(
+            "\"pre_tokenizer\": { \"type\": \"Metaspace\", \"replacement\": \"\u2581\", \"prepend_scheme\": \"first\" },"));
+
+        Assert.Contains("split", thrown.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The escape reaching the merge loop, which is what a loaded value nothing applies
+    /// would not do: every token here is spelled with the symbol the text never held.
+    /// </summary>
+    [Fact]
+    public void The_escape_reaches_the_token_stream()
+    {
+        BpeVocabulary vocabulary = Load(
+            MetaspaceBlock,
+            "\"model\": { \"type\": \"BPE\", \"vocab\": { \"a\": 0, \"b\": 1, \"\u2581\": 2, \"\u2581a\": 3 }, \"merges\": [\"\u2581 a\"] }");
+
+        TokenizationResult encoded = new BpeTokenizer(vocabulary).Encode("a b");
+
+        Assert.Equal(["\u2581a", "\u2581", "b"], encoded.Tokens);
+        Assert.Equal([3, 2, 1], encoded.Ids);
+    }
+
+    private const string MetaspaceBlock =
+        "\"pre_tokenizer\": { \"type\": \"Metaspace\", \"replacement\": \"\u2581\", \"prepend_scheme\": \"first\", \"split\": false },";
+
+    private const string PrependReplaceBlock =
+        "\"normalizer\": { \"type\": \"Sequence\", \"normalizers\": [ { \"type\": \"Prepend\", \"prepend\": \"\u2581\" }, { \"type\": \"Replace\", \"pattern\": { \"String\": \" \" }, \"content\": \"\u2581\" } ] },";
+
+    private static BpeVocabulary WithAddPrefixSpace(string declared) =>
+        Load("\"pre_tokenizer\": { \"type\": \"Metaspace\", \"replacement\": \"\u2581\", \"add_prefix_space\": "
+            + declared + ", \"split\": false },");
+
+    private static BpeVocabulary Load(string block) =>
+        Load(block, "\"model\": { \"type\": \"BPE\", \"vocab\": { \"a\": 0, \"b\": 1, \"ab\": 2 }, \"merges\": [\"a b\"] }");
+
+    private static BpeVocabulary Load(string block, string model)
+    {
+        string json = "{ \"version\": \"1.0\", " + block + " " + model + " }";
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
         return TokenizerJsonLoader.LoadBpe(stream, OracleReplay.BpeBounds());
     }

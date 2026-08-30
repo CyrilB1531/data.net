@@ -18,11 +18,15 @@ public readonly record struct SentencePiece(string Piece, double Score, int Id);
 /// </remarks>
 public sealed class SentencePieceTokenizer : ISubwordTokenizer
 {
-    private const char Meta = '▁'; // ▁
-
-    // escape_whitespaces maps only U+0020 to the meta symbol; anything else a
-    // reader would call whitespace is rewritten by the normalizer or left alone.
-    private static readonly char[] Spaces = [' '];
+    /// <summary>add_dummy_prefix and escape_whitespaces, the pair this path always applies.</summary>
+    /// <remarks>
+    /// Shared with the BPE path rather than spelled out twice (decision 0050 §2), which is
+    /// what makes the two answer alike. <c>remove_extra_whitespaces</c> is the flag that
+    /// separates them: set here, and off for the SentencePiece-BPE lineage, which declares
+    /// no normalizer to collapse runs with.
+    /// </remarks>
+    private static readonly MetaspaceEscape Escape =
+        new('▁', MetaspacePrependScheme.Always, removeExtraWhitespaces: true);
 
     private readonly Dictionary<string, SentencePiece> _pieces;
     private readonly PrecompiledNormalizer? _normalizer;
@@ -227,14 +231,6 @@ public sealed class SentencePieceTokenizer : ISubwordTokenizer
         // or an ideographic space into an ordinary space, among what else it rewrites.
         string normalized = _normalizer is null ? text : _normalizer.Normalize(text);
 
-        // remove_extra_whitespaces collapses runs of U+0020 only, then trims --
-        // docs/equivalence.md's Unigram row; a tab no normalizer rewrote stays as-is.
-        string[] parts = normalized.Split(Spaces, StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length == 0)
-        {
-            return string.Empty;
-        }
-        // add_dummy_prefix + escape whitespace to the meta symbol.
-        return Meta + string.Join(Meta.ToString(), parts);
+        return Escape.Apply(normalized);
     }
 }
