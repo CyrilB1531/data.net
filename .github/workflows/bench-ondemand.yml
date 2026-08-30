@@ -50,20 +50,28 @@ jobs:
       - name: Build
         run: dotnet build bench/Lodestar.Text.Benchmarks -c Release
 
-      # Only heap-warmth has a Python half, and it is the reason this job exists: the
+      # Two subcommands have a Python half, and it is the reason this job exists: the
       # finding is a ratio per language, and two ratios taken on two machines compare the
       # machines as much as the languages. Every other subcommand skips the install.
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        if: inputs.subcommand == 'heap-warmth'
+        if: inputs.subcommand == 'heap-warmth' || inputs.subcommand == 'compare-persistence'
         with:
           python-version: '3.12'
 
       - name: Install tool dependencies
-        if: inputs.subcommand == 'heap-warmth'
+        if: inputs.subcommand == 'heap-warmth' || inputs.subcommand == 'compare-persistence'
         # A block scalar, not a plain one: ':all: ' carries a colon and a space, which ends
         # a plain scalar. bench-nightly.yml and ci.yml write it the same way.
         run: |
           pip install --only-binary :all: --require-hashes -r tools/requirements.lock.txt
+
+      # compare-persistence reads the vocabulary corpus from disk on both sides, and it is
+      # git-ignored -- three megabytes of generated data, where comparability comes from
+      # both languages opening the same file rather than from committed bytes. Without this
+      # the C# side threw before the first round and the job exited 134 (#474).
+      - name: Generate the benchmark corpus
+        if: inputs.subcommand == 'compare-persistence'
+        run: python bench/corpus/generate_vocabs.py
 
       # uptime goes beside every table this project publishes, and a run whose load average
       # is not recorded cannot be compared with one whose is.
@@ -105,6 +113,16 @@ jobs:
                 run heap-warmth warm
                 python bench/python/bench_heap_warmth.py cold
                 python bench/python/bench_heap_warmth.py warm
+              done
+            elif [ "$SUBCOMMAND" = "compare-persistence" ]; then
+              # Both languages inside one round, C# first, then the paired table. Same
+              # reason heap-warmth alternates: a drift in the machine has to land on both
+              # sides rather than on whichever ran second.
+              for i in $(seq 1 "$ROUNDS"); do
+                echo "--- round $i   $(uptime | sed 's/.*load average/load average/')"
+                run compare-persistence
+                python bench/python/bench_persistence.py
+                python bench/compare.py persistence
               done
             else
               for i in $(seq 1 "$ROUNDS"); do
