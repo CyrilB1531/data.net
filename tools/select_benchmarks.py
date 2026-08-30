@@ -84,16 +84,23 @@ def matches(path: str, glob: str) -> bool:
 
 
 def strip_construct(source: str, keyword: str) -> str | None:
-    """The file with its first `keyword (...) { ... }` block removed, or None if absent.
+    """The file with its `keyword (...) { ... }` block removed, or None when it is not there once.
 
     Brace counting rather than a parser: the construct this serves is one switch in a
-    top-level file, and a regex cannot match balanced braces at all. A file that has
-    stopped containing the construct returns None, which the caller reads as "no longer
-    exempt" rather than as "unchanged" -- the safe direction, as everything here is.
+    top-level file, and a regex cannot match balanced braces at all. The anchor is the
+    statement -- the keyword starting a line and followed by "(" -- rather than the bare
+    word, which in the file this serves first occurs inside the header comment, so the
+    exempt region became whatever block followed that comment (#480).
+
+    None is returned both when the construct is absent and when there is more than one of
+    it: the caller reads None as "no longer exempt" rather than as "unchanged", and an
+    ambiguous file is not one this can exempt safely. Both fall the safe way, as
+    everything here does.
     """
-    start = source.find(keyword)
-    if start < 0:
+    anchors = list(re.finditer(rf"(?m)^[ \t]*{re.escape(keyword)}\s*\(", source))
+    if len(anchors) != 1:
         return None
+    start = anchors[0].start()
     opened = source.find("{", start)
     if opened < 0:
         return None

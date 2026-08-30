@@ -5,7 +5,7 @@ using Lodestar.Embeddings.Search;
 
 namespace Lodestar.Text.Benchmarks.CrossLang;
 
-/// <summary>The <c>.npy</c> ingest apart phase by phase, as <see cref="SavePhasesBench"/> took the save.</summary>
+/// <summary>Takes the <c>.npy</c> ingest apart phase by phase, as <see cref="SavePhasesBench"/> took the save.</summary>
 /// <remarks>
 /// Issue #480: #466 removed a whole copy of the 15.36 MB block from the read and the row did not
 /// move, while removing the copy into the index moved it by more than a copy is worth. Both
@@ -20,6 +20,9 @@ internal static class IngestPhasesBench
 
     /// <summary>Untimed runs before the first timed one, to settle the JIT and the allocator.</summary>
     private const int WarmupRuns = 3;
+
+    /// <summary>The row every share divides by, held by name: reordering the phases must not repoint it.</summary>
+    private const string ShareRow = "ingest_total";
 
     /// <summary>One float per 4 KB page, so an uninitialized array is actually committed.</summary>
     /// <remarks>
@@ -89,6 +92,8 @@ internal static class IngestPhasesBench
             ("parse_header_only", () => NpyFile.Read(tinyNpy.AsMemory(), NpyLimits).Values.Length),
             ("from_block_copy", () => EmbeddingIndex.FromBlock(
                 block.AsSpan(), dimension, BlockNormalization.AlreadyNormalized).Count),
+            // Never touched, so this array is reserved rather than committed: the gap to
+            // from_block_copy is a copy plus a first touch of the destination, not the copy alone.
             ("from_owned_adopt", () => EmbeddingIndex.FromOwnedBlock(
                 GC.AllocateUninitializedArray<float>(elements),
                 dimension,
@@ -182,6 +187,8 @@ internal static class IngestPhasesBench
                 collections[p][0] += GC.CollectionCount(0) - gen0;
                 collections[p][1] += GC.CollectionCount(1) - gen1;
                 collections[p][2] += GC.CollectionCount(2) - gen2;
+                // Not an error path -- no phase here can return a negative. It is what stops the
+                // JIT eliminating a phase whose result nothing else reads.
                 if (result < 0)
                 {
                     throw new InvalidOperationException($"Phase '{phases[p].Name}' did not complete.");
@@ -201,7 +208,7 @@ internal static class IngestPhasesBench
 
     private static void Report(IReadOnlyList<Phase> phases, int blockBytes)
     {
-        double total = phases[0].Median;
+        double total = phases.Single(phase => phase.Name == ShareRow).Median;
 
         // console-print: this table is the mode's entire output; it writes no artifact.
         Console.WriteLine(
@@ -226,7 +233,7 @@ internal static class IngestPhasesBench
         Console.WriteLine(); // console-print: separates the table from the note under it.
         // console-print: the units, which the guide's protocol asks a table to carry.
         Console.WriteLine(
-            $"median ms over {Repeats} runs; share is of ingest_total; GB/s counts the 15.36 MB block; "
+            $"median ms over {Repeats} runs; share is of {ShareRow}; GB/s counts the 15.36 MB block; "
             + $"gen columns are collections summed over the {Repeats} runs, not per run.");
         Console.WriteLine(); // console-print: separates the units from the reading they enable.
         // console-print: the subtraction the mode exists to make, named so a reader can check it.

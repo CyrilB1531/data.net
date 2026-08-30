@@ -160,6 +160,35 @@ def glob_findings(data: dict) -> list[str]:
     return findings
 
 
+def dispatch_only_findings(data: dict) -> list[str]:
+    """A 'dispatch_only' key whose file or whose construct has moved.
+
+    select_benchmarks.py exempts the named construct from the "always" rule, and every
+    failure mode there falls to "not exempt" -- safely, but silently, so a key left
+    pointing at a renamed file or at a switch that has become something else costs the
+    nightly its whole benchmark selection without a word. That is the rot the harness
+    and glob rules exist to break, and this key was outside them.
+
+    One occurrence, anchored the way strip_construct anchors it: none means the file has
+    stopped having the construct, more than one means the exemption is ambiguous, and
+    neither is a mapping worth keeping.
+    """
+    findings = []
+    for path, keyword in sorted(data.get("dispatch_only", {}).items()):
+        source = ROOT / path
+        if not source.exists():
+            findings.append(
+                f"bench/bench-map.json: 'dispatch_only' names {path}, which does not exist")
+            continue
+        anchor = re.compile(rf"(?m)^[ \t]*{re.escape(keyword)}\s*\(")
+        found = len(anchor.findall(source.read_text(encoding="utf-8")))
+        if found != 1:
+            findings.append(
+                f"bench/bench-map.json: 'dispatch_only' names '{keyword}' in {path}, which "
+                f"holds {found} of them; tools/select_benchmarks.py exempts nothing but one")
+    return findings
+
+
 def invocation_findings() -> list[str]:
     """A workflow's own arguments, against what Program.cs accepts.
 
@@ -215,6 +244,7 @@ def main() -> int:
     findings += diagnostic_findings(diagnostics)
     findings += invocation_findings()
     findings += glob_findings(data)
+    findings += dispatch_only_findings(data)
 
     for finding in findings:
         print(finding)
