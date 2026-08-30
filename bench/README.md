@@ -918,7 +918,11 @@ scan and validate — against numpy's raw block, so it prices decision 0011 exac
 section says it does, and says nothing about how fast the two languages ingest the same bytes.
 `embedding_index_ingest_npy` is the row that does: **both sides read a `.npy` and return
 something searchable**, `np.load` against `NpyFile.Read` plus
-[`EmbeddingIndex.FromBlock`](../docs/reference/embeddings/search/embeddingindex-fromblock.md).
+[`EmbeddingIndex.FromOwnedBlock`](../docs/reference/embeddings/search/embeddingindex-fromownedblock.md).
+It called `FromBlock` until #466: `np.load` returns the array it has just filled and copies it no
+further, so copying the block into the index charged this side a copy numpy never pays, and priced
+a route the caller need not take. Adopting is the like-for-like chain, and what
+[`NpyBlock.OwnedArray`](../docs/reference/embeddings/persistence/npyblock.md) exists to allow.
 For a flat cosine index the matrix *is* the index, so `np.load` alone is the honest counterpart,
 and neither side normalizes — which is what a block written by an embedding pipeline already is.
 It was added with the bulk ingest (#474); before that there was nothing on the C# side to pair it
