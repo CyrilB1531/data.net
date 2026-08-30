@@ -9,13 +9,13 @@ namespace Lodestar.Embeddings.Tests.Tokenization;
 
 /// <summary>
 /// Replays <c>bpe_metaspace.json</c>: the whitespace escape a SentencePiece-BPE
-/// file writes, in both of the spellings decision 0050 §2 makes one value.
+/// file writes, in both of the spellings decisions 0050 §2 and 0062 govern.
 /// </summary>
 /// <remarks>
 /// Six pipelines over one model whose merges are spelled with the meta symbol, so a
 /// stream that reached a whole-word token proves the escape ran. The corpus carries
 /// each pipeline's whole <c>tokenizer.json</c>, so what is loaded here is the bytes
-/// <c>tokenizers</c> 0.23.1 was handed.
+/// <c>tokenizers</c> 0.23.1 was handed — and every pipeline is reproduced exactly.
 /// </remarks>
 public sealed class BpeMetaspaceOracleTests
 {
@@ -23,20 +23,17 @@ public sealed class BpeMetaspaceOracleTests
 
     private const char MetaSymbol = '\u2581';
 
-    /// <summary>The Llama-2 spelling, which is the one the loader reproduces everywhere.</summary>
+    /// <summary>The Llama-2 spelling, whose prepend is unconditional.</summary>
     private const string NormalizerCase = "prepend_replace_normalizer";
 
     /// <summary>
     /// The pipelines that prepend, and so meet the guard <c>Metaspace</c> applies and
-    /// the normalizer sequence does not — see <see cref="Divergent"/>.
+    /// the normalizer sequence does not.
     /// </summary>
     private static readonly string[] PrependingMetaspaceCases =
         ["metaspace_first", "metaspace_always", "legacy_add_prefix_space"];
 
-    /// <summary>
-    /// Every pipeline and every text, exactly — bar the pairs <see cref="Divergent"/>
-    /// names, which the test below measures instead.
-    /// </summary>
+    /// <summary>Every pipeline and every text, exactly.</summary>
     [Fact]
     public void Encode_reproduces_every_metaspace_pipeline()
     {
@@ -52,10 +49,6 @@ public sealed class BpeMetaspaceOracleTests
             foreach (JsonElement t in c.GetProperty("texts").EnumerateArray())
             {
                 string text = t.GetProperty("text").GetString()!;
-                if (Divergent(name, text))
-                {
-                    continue;
-                }
                 replayed++;
                 Compare(failures, name, text, Expected(t), tokenizer.Encode(text));
             }
@@ -66,19 +59,16 @@ public sealed class BpeMetaspaceOracleTests
     }
 
     /// <summary>
-    /// The recorded divergence, measured rather than skipped: on a text that already
-    /// begins with the symbol, a <c>Metaspace</c> block prepends nothing and the
-    /// <c>Prepend</c>+<c>Replace</c> sequence prepends anyway, and one
-    /// <c>MetaspaceEscape</c> carries no guard to tell them apart. So the loader
-    /// answers every prepending pipeline with the normalizer spelling's stream.
-    /// docs/equivalence.md's <c>pre_tokenizers.Metaspace</c> row records it; this
-    /// asserts it is still exactly that, so closing it fails here rather than silently.
+    /// The guard is load-bearing: on a text that already begins with the symbol, the two
+    /// spellings are two values, and the loader answers each with its own. Test one
+    /// already proves each matches its reference; this proves they are not the same
+    /// stream, so a guard quietly dropped fails here as well as there.
     /// </summary>
     [Fact]
-    public void The_prepend_guard_is_the_only_divergence_and_it_answers_as_the_normalizer_spelling()
+    public void The_two_spellings_are_reproduced_apart_on_a_text_that_already_begins_with_the_symbol()
     {
         using JsonDocument doc = OracleLoader.Load(Corpus);
-        Dictionary<string, (string[] Tokens, int[] Ids)> normalizer = Streams(doc, NormalizerCase);
+        BpeTokenizer normalizer = Tokenizer(doc, NormalizerCase);
 
         var failures = new List<string>();
         int measured = 0;
@@ -94,21 +84,19 @@ public sealed class BpeMetaspaceOracleTests
             foreach (JsonElement t in c.GetProperty("texts").EnumerateArray())
             {
                 string text = t.GetProperty("text").GetString()!;
-                if (!Divergent(name, text))
+                if (!BeginsWithTheSymbol(text))
                 {
                     continue;
                 }
                 measured++;
-                TokenizationResult actual = tokenizer.Encode(text);
-                Compare(failures, name, text, normalizer[text], actual);
-                if (Same(Expected(t), actual))
+                if (Same(Pair(tokenizer.Encode(text)), Pair(normalizer.Encode(text))))
                 {
-                    failures.Add($"[{name}] {Escape(text)}: the reference is reproduced now, so this pair is no longer a divergence — drop it from Divergent and from docs/equivalence.md.");
+                    failures.Add($"[{name}] {Escape(text)}: the two spellings produced one stream, so the prepend guard did not run.");
                 }
             }
         }
 
-        Assert.True(measured > 0, "No divergent pair was measured, so this test proves nothing.");
+        Assert.True(measured > 0, "No guarded pair was measured, so this test proves nothing.");
         Assert.True(failures.Count == 0, string.Join("\n", failures));
     }
 
@@ -140,14 +128,9 @@ public sealed class BpeMetaspaceOracleTests
     }
 
     /// <summary>
-    /// Whether the loader is known not to reproduce this pair. A prepending
-    /// <c>Metaspace</c> block skips its prepend when the escaped text already begins
-    /// with the symbol; a text beginning with a space begins with it after the replace.
+    /// Whether a prepending <c>Metaspace</c> block's guard fires on this text: it reads
+    /// the text after the replace, so a leading space counts as much as a leading symbol.
     /// </summary>
-    private static bool Divergent(string name, string text) =>
-        BeginsWithTheSymbol(text)
-        && Array.Exists(PrependingMetaspaceCases, n => string.Equals(n, name, StringComparison.Ordinal));
-
     private static bool BeginsWithTheSymbol(string text) =>
         text.Length > 0 && (text[0] == ' ' || text[0] == MetaSymbol);
 
@@ -168,6 +151,23 @@ public sealed class BpeMetaspaceOracleTests
 
     private static bool Same((string[] Tokens, int[] Ids) left, (string[] Tokens, int[] Ids) right) =>
         left.Tokens.SequenceEqual(right.Tokens, StringComparer.Ordinal) && left.Ids.SequenceEqual(right.Ids);
+
+    /// <summary>One encoded result as the pair the comparisons take.</summary>
+    private static (string[] Tokens, int[] Ids) Pair(TokenizationResult result) =>
+        ([.. result.Tokens], [.. result.Ids]);
+
+    /// <summary>The tokenizer one named case's <c>tokenizer.json</c> loads to.</summary>
+    private static BpeTokenizer Tokenizer(JsonDocument doc, string name)
+    {
+        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
+        {
+            if (string.Equals(c.GetProperty("name").GetString(), name, StringComparison.Ordinal))
+            {
+                return new BpeTokenizer(Vocabulary(c));
+            }
+        }
+        throw new InvalidOperationException($"{Corpus} carries no case named '{name}'.");
+    }
 
     /// <summary>The text-to-stream map one named case carries, so two cases can be compared text by text.</summary>
     private static Dictionary<string, (string[] Tokens, int[] Ids)> Streams(JsonDocument doc, string name)

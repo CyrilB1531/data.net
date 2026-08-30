@@ -18,11 +18,16 @@ internal sealed class MetaspaceEscape
 {
     private static readonly char[] Spaces = [' '];
 
-    public MetaspaceEscape(char replacement, MetaspacePrependScheme prependScheme, bool removeExtraWhitespaces)
+    public MetaspaceEscape(
+        char replacement,
+        MetaspacePrependScheme prependScheme,
+        bool removeExtraWhitespaces,
+        bool skipPrependWhenAlreadyPrefixed)
     {
         Replacement = replacement;
         PrependScheme = prependScheme;
         RemoveExtraWhitespaces = removeExtraWhitespaces;
+        SkipPrependWhenAlreadyPrefixed = skipPrependWhenAlreadyPrefixed;
     }
 
     public char Replacement { get; }
@@ -31,6 +36,16 @@ internal sealed class MetaspaceEscape
 
     public bool RemoveExtraWhitespaces { get; }
 
+    /// <summary>Whether the prepend is skipped when the escaped text already begins with the replacement.</summary>
+    /// <remarks>
+    /// The one field the two declarations disagree on: a <c>Metaspace</c> block guards its
+    /// prepend on <c>starts_with</c>, and the <c>Prepend</c> + <c>Replace</c> normalizer
+    /// sequence prepends unconditionally, since <c>Prepend</c> runs before <c>Replace</c>
+    /// and knows nothing of the symbol. Decision 0062 measures the boundary and amends
+    /// 0050 §2's "two writings of one value" to hold everywhere but here.
+    /// </remarks>
+    public bool SkipPrependWhenAlreadyPrefixed { get; }
+
     /// <summary>Applies the escape to <paramref name="text"/>.</summary>
     public string Apply(string text)
     {
@@ -38,7 +53,14 @@ internal sealed class MetaspaceEscape
 
         // Nothing survived the collapse, so there is nothing to prefix — the unigram path
         // has always returned empty here rather than a lone symbol.
-        return escaped.Length == 0 || PrependScheme == MetaspacePrependScheme.Never
+        if (escaped.Length == 0 || PrependScheme == MetaspacePrependScheme.Never)
+        {
+            return escaped;
+        }
+
+        // The guard reads the escaped text, where tokenizers applies it too: a leading
+        // space begins with the symbol only once the replace has run.
+        return SkipPrependWhenAlreadyPrefixed && escaped[0] == Replacement
             ? escaped
             : Replacement + escaped;
     }

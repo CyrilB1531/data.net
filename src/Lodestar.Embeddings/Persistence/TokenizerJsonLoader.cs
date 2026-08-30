@@ -675,12 +675,13 @@ public static class TokenizerJsonLoader
                 "its normalizer Sequence is a Prepend and a Replace that do not spell the whitespace escape",
                 "only a Prepend whose string the Replace maps the literal ' ' onto is reproduced");
         }
-        // A normalizer runs once over the whole text, so it prepends once -- which is what
-        // a Metaspace pre-tokenizer's "first" means once nothing splits.
+        // A normalizer prepends once over the whole text, which is a Metaspace "first"
+        // with nothing to split -- and unconditionally, Prepend running first (0062).
         return new MetaspaceEscape(
             SingleReplacementChar(prepended, "normalizer Sequence's Prepend"),
             MetaspacePrependScheme.First,
-            removeExtraWhitespaces: false);
+            removeExtraWhitespaces: false,
+            skipPrependWhenAlreadyPrefixed: false);
     }
 
     /// <summary>The one character a replacement must be, or a refusal naming what was found.</summary>
@@ -888,7 +889,8 @@ public static class TokenizerJsonLoader
         escape = new MetaspaceEscape(
             SingleReplacementChar(OptionalString(pre, "replacement") ?? MetaSymbol, "Metaspace"),
             ReadBpePrependScheme(pre),
-            removeExtraWhitespaces: false);
+            removeExtraWhitespaces: false,
+            skipPrependWhenAlreadyPrefixed: true);
         return (false, false, null, null, true);
     }
 

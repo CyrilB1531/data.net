@@ -26,7 +26,7 @@ public sealed class SentencePieceTokenizer : ISubwordTokenizer
     /// no normalizer to collapse runs with.
     /// </remarks>
     private static readonly MetaspaceEscape Escape =
-        new('▁', MetaspacePrependScheme.Always, removeExtraWhitespaces: true);
+        new('▁', MetaspacePrependScheme.Always, removeExtraWhitespaces: true, skipPrependWhenAlreadyPrefixed: false);
 
     private readonly Dictionary<string, SentencePiece> _pieces;
     private readonly PrecompiledNormalizer? _normalizer;

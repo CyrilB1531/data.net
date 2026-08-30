@@ -244,7 +244,8 @@ public sealed record BpeVocabulary(
             : right is not null
                 && left.Replacement == right.Replacement
                 && left.PrependScheme == right.PrependScheme
-                && left.RemoveExtraWhitespaces == right.RemoveExtraWhitespaces;
+                && left.RemoveExtraWhitespaces == right.RemoveExtraWhitespaces
+                && left.SkipPrependWhenAlreadyPrefixed == right.SkipPrependWhenAlreadyPrefixed;
 
     private static bool SameEntries(IReadOnlyDictionary<string, int> left, IReadOnlyDictionary<string, int> right)
     {
