@@ -278,9 +278,8 @@ public sealed class NpyFileTests
     [Fact]
     public void A_hand_built_block_owns_nothing()
     {
-        // The record's constructor is public, so a caller can build one around an array it
-        // still holds. OwnedArray stays null there, which is what keeps ADR 0056's
-        // invariant from being reached without the method that documents it.
+        // The record's constructor is public, so a caller can build a block around an array
+        // it still holds; OwnedArray stays null, so FromOwnedBlock cannot be reached with it.
         float[] mine = [1f, 2f];
         var block = new NpyBlock(mine, [2]);
 
