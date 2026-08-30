@@ -83,6 +83,17 @@ The fourth is refused rather than made to look available: a view has no array to
   [`VectorMath.Dot`](../reference/embeddings/search/vectormath-dot.md) already makes and which
   `StreamFill`'s own remarks name as its precedent. The memory overload copies nothing on either
   target, nothing about it depending on a `Stream` API.
+- **What it measured, which is not what this decision argued.** The row went from 0.21–0.23× of
+  numpy's wall to **1.21–1.25×**, cpu 1.00–1.13× — ahead rather than four times behind. But the
+  read this decision is about contributed none of it: measured alone, against an untouched
+  neighbour, staging the payload into the array moved the row by nothing. All of it came from
+  adopting, because `FromBlock` was allocating a second 15.36 MB store on the large object heap to
+  copy into and `FromOwnedBlock` allocates none — the mechanism
+  [0054](0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md) priced
+  on the artifact buffer. So the shape decided here is what made the win *reachable*, through
+  `OwnedArray`, and not what delivered it. The figures and the anchors are in
+  [the performance guide](../guides/performance.md#the-same-row-once-the-block-is-adopted-issue-466);
+  the copy that paid for nothing is [#480](https://github.com/CyrilB1531/lodestar/issues/480).
 - **What would change this decision** is a caller found holding a `NpyBlock` past the lifetime of
   the bytes it borrowed — a block cached beyond a pooled buffer's return, or read from memory that
   is then rewritten. That would make the memory overload's contract the wrong default and argue

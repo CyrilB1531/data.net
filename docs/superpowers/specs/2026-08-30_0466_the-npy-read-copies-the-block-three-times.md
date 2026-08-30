@@ -210,3 +210,36 @@ path depends on a `Stream` API.
 [Decision 0057](../../decisions/0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md)
 records the split as a consequence of the two-entry-point shape rather than as a discovery under
 it.
+
+## Amendment — 2026-08-30: the gate passed, and not for the reason this spec argued
+
+*The body above is left as written, including the arithmetic this measurement refutes.*
+
+**The gate.** *The gate* expected about **0.6×** of numpy's wall, from removing copy 3 alone. The
+row measured **1.21–1.25× wall and 1.00–1.13× cpu** — ahead rather than behind. The figures, the
+runner and the anchors are in
+[the performance guide](../../guides/performance.md#the-same-row-once-the-block-is-adopted-issue-466).
+
+**The reasoning was wrong in both directions, which is why this is recorded rather than
+celebrated.** Two dispatches separated the causes:
+
+- **Copy 3, which this spec is named after, was worth nothing.** Against the untouched
+  `embedding_index_load_memory`, the row read 0.88 / 0.94 / 0.96 before and 0.90 / 0.97 / 0.99
+  after. *The gate* said in advance that such a result is the finding rather than a reason to
+  re-run, and it is taken that way: [#480](https://github.com/CyrilB1531/lodestar/issues/480)
+  carries it.
+- **Copy 4, which this spec put out of scope**, was worth all of it — the same ratio moved to
+  0.31 / 0.28 / 0.28. *What the two overloads cost the chain* counted it as one copy among four.
+  It is not one copy among four: `FromBlock` allocates a second 15.36 MB store on the large object
+  heap to copy into, and adopting removes the allocation with the copy. The row fell by about
+  3.1 ms where one `memcpy` of this block costs about 1.2.
+
+**And the benchmark was measuring the wrong chain.** The row called `FromBlock`, so it charged
+this side a copy `np.load` never pays — numpy returns the array it has just filled. That was found
+while judging the gate rather than while looking for a better number, and it is a defect in the row
+independent of what the result had been. Fixed in `ac6881f`.
+
+**What the body still gets right.** Two entry points, one contract each; `OwnedArray` filled only
+by the stream reader, and the anti-inference argument for it. Without `OwnedArray` there is no
+adopting route to measure, so the member this spec argued for is what the result rests on — by a
+mechanism it did not name.

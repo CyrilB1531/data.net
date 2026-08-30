@@ -935,12 +935,16 @@ against 5 MB less work. The figures, and the rows on the same run where this pro
 6× ahead, are in
 [the performance guide](../docs/guides/performance.md#against-numpy-on-the-same-format-issue-474).
 
-**#466 changed the copy count on the C# side of this row.** The block was copied three times
-between the stream and the block, and once more into the index; it is copied fewer times now. The
-reading above is the one taken before that change and stays as measured — the row is re-run on a
-hosted runner as a step of its own, and until it is there is no number here to replace it.
+**#466 took two of those copies out and the row inverted**, from 0.21–0.23× of numpy's wall to
+**1.21–1.25×**, with cpu at parity to 1.13×. The reading above stays as measured; the new one, its
+runner, and the anchors that make the two windows comparable are in
+[the performance guide](../docs/guides/performance.md#the-same-row-once-the-block-is-adopted-issue-466).
+Two dispatches separated the causes: reading the payload straight into the `float[]` moved nothing,
+and adopting the array rather than copying it into the index moved all of it — by more than the
+copy it removed, because the copy came with a second 15.36 MB allocation.
 [Decision 0057](../docs/decisions/0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md)
-has what changed and why.
+has the shape the reader took; [#480](https://github.com/CyrilB1531/lodestar/issues/480) carries
+the half that is still unexplained.
 
 > **#323 changed the save path after this window.** The row above stays as measured;
 > what it cannot show is that its `1.13×` inverts to `0.27×` on a newer machine,

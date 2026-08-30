@@ -1895,6 +1895,60 @@ moving a raw float block, this project is behind CPython and the reason is not t
 vocabularies and tokenizers — the gap .NET actually had — is where the margin is. Moving a block
 of floats is not, and now there is a row that says so instead of a table that could not.
 
+> **#466 changed this row's C# side after this window, and it inverted.** The table above stays
+> as measured; the one below is the same row on the same workflow after the copies came out. It
+> also called `FromBlock`, which the section below explains was the wrong counterpart.
+
+#### The same row, once the block is adopted (issue #466)
+
+`compare-persistence` on `1c43fc0`, a hosted runner, .NET 10.0.11 against numpy 2.5.1 on
+Python 3.12.14, three rounds, one-minute load average 4.65 / 1.12 / 1.01 at each round's start.
+Both sides read the same **15 360 128 bytes**.
+
+| round | Lodestar wall | numpy wall | wall | Lodestar cpu | numpy cpu | **cpu** |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 1.376 ms | 1.661 ms | 1.21× | 1.660 ms | 1.660 ms | **1.00×** |
+| 2 | 1.197 ms | 1.469 ms | 1.23× | 1.337 ms | 1.469 ms | **1.10×** |
+| 3 | 1.236 ms | 1.543 ms | 1.25× | 1.361 ms | 1.543 ms | **1.13×** |
+
+**Ahead of numpy on wall in all three rounds; on cpu, parity in the first and 1.10–1.13× in the
+other two.** The cpu column is the one this page trusts, so the honest headline is *parity to
+slightly ahead*, not the wall figure.
+
+**Why the two windows can be compared at all.** They are different runner instances, and this
+page's own #323 note is about exactly that hazard, so the rows neither lot touched are the check:
+
+| row (untouched by #466) | #474's window | this window |
+| --- | ---: | ---: |
+| `embedding_index_load` | 5.24–5.50 ms | 5.42–5.53 ms |
+| `embedding_index_load_memory` | 4.28–4.51 ms | 4.21–4.49 ms |
+| `embedding_index_save` | 4.16–4.33 ms | 4.27–4.38 ms |
+
+The two machines agree to a few percent on every anchor, so the ingest row's move is the change
+and not the hardware. A third dispatch, on a runner whose anchors sat 20–25% slower on large
+blocks and 33–36% faster on the text rows, is not compared here for that reason.
+
+**Two dispatches separated the two causes, and only one of them paid.** Reading the payload
+straight into the `float[]` — one copy fewer between the stream and the block — moved the row by
+nothing: against `embedding_index_load_memory` it read 0.88 / 0.94 / 0.96 before and
+0.90 / 0.97 / 0.99 after. Adopting the array instead of copying it into the index moved the same
+ratio to **0.31 / 0.28 / 0.28**.
+
+**The gain is larger than the copy it removed, and that is the interesting part.** One `memcpy` of
+this block costs about 1.2 ms at numpy's own rate, and the row fell by about 3.1 ms.
+[`FromBlock`](../reference/embeddings/search/embeddingindex-fromblock.md) was not only copying the
+block, it was allocating a second 15.36 MB store on the large object heap to copy it into;
+[`FromOwnedBlock`](../reference/embeddings/search/embeddingindex-fromownedblock.md) takes the array
+the reader already filled and allocates nothing. That is the mechanism
+[ADR 0054](../decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md)
+priced on the artifact buffer — the allocation is as cheap as a rent and the collection it provokes
+is not — showing up on a second path.
+
+**One thing stays unexplained and is not smoothed over.** Removing a whole copy from the read
+should have been worth about 1.2 ms and was worth nothing measurable.
+[#480](https://github.com/CyrilB1531/lodestar/issues/480) carries it, and asks for the ingest to be
+decomposed into phases rather than for the answer to be inferred from this subtraction.
+
 ### Pre-sizing the file, and why it is not done (issue #432)
 
 Step 1's fourth item, and the decision is
