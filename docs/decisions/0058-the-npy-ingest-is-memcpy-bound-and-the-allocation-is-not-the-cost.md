@@ -29,7 +29,9 @@ allocation from inside the read; the second prices the same allocation on its ow
 reused buffer. Either way it is roughly 2% of the ingest.
 
 What costs is the block moving. A bare `CopyTo` of the 15.36 MB reads 0.94–0.98 ms; the staged
-read reads 0.96–0.99, one copy; `FromBlock` reads 0.96–1.09, one copy. `FromOwnedBlock` reads
+read reads 0.96–0.99, one copy;
+[`FromBlock`](../reference/embeddings/search/embeddingindex-fromblock.md) reads 0.96–1.09, one
+copy. [`FromOwnedBlock`](../reference/embeddings/search/embeddingindex-fromownedblock.md) reads
 0.010–0.016 ms and the memory overload 0.005–0.008 — free, because neither moves the block.
 
 ## Decision
@@ -63,9 +65,11 @@ larger number would have replaced one unmeasured attribution with another.
 
 ## Consequences
 
-- 0057's shape is unaffected: two entry points, one contract each, `OwnedArray` filled only by the
+- 0057's shape is unaffected: two entry points, one contract each,
+  [`OwnedArray`](../reference/embeddings/persistence/npyblock.md) filled only by the
   stream reader. **What made the win reachable is unchanged; only why it is that size is.**
-- `NpyFile.Read(ReadOnlyMemory<byte>)` is worth more than 0057 argued, not less: at 0.005–0.008 ms
+- [`NpyFile.Read(ReadOnlyMemory<byte>)`](../reference/embeddings/persistence/npyfile-read.md) is
+  worth more than 0057 argued, not less: at 0.005–0.008 ms
   against the stream read's 0.96–0.99, a caller who already holds the bytes skips the whole cost
   of the ingest rather than a copy of it.
 - **What would change this decision** is the gap `ingest_total` still carries. Its minimum equals
