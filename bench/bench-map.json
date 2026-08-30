@@ -19,7 +19,8 @@
     { "subcommand": "heap-warmth", "python": "bench/python/bench_heap_warmth.py" },
     { "subcommand": "pool-cost" },
     { "subcommand": "sidecar" },
-    { "subcommand": "ingest-phases" }
+    { "subcommand": "ingest-phases" },
+    { "subcommand": "tensor-primitives" }
   ],
   "benchmarks": {
     "BatchEmbeddingBenchmarks": [
