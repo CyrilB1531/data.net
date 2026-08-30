@@ -1809,6 +1809,92 @@ takes the sidecar and makes the bulk ingest its precondition, in that order.
 0.73× — the opposite conclusion — with the floor row spread over 12–43 ms against the runner's
 4.0–8.5.
 
+### The bulk ingest that unblocks it (issue #474)
+
+The precondition above, built and measured. `sidecar` on a hosted `ubuntu-latest` runner
+(`ubuntu-24.04`, 4 vCPU), .NET 10, three rounds of nine on the same 10 000 × 384 corpus, load
+average 3.95–4.12 at the start of each round. Round medians, then the median of the three:
+
+| | round 1 | round 2 | round 3 | median |
+| --- | ---: | ---: | ---: | ---: |
+| load artifact | 11.659 | 11.540 | 11.894 | **11.659 ms** |
+| read `.npy` block | 5.677 | 5.638 | 6.384 | **5.677 ms** |
+| rebuild through `Add` | 18.767 | 18.205 | 18.228 | **18.228 ms** |
+| sidecar floor | 5.876 | 7.021 | 5.809 | **5.876 ms** |
+| **ingest copy** — the read then [`FromBlock`](../reference/embeddings/search/embeddingindex-fromblock.md) | 7.325 | 7.933 | 7.323 | **7.325 ms** |
+| ingest only — `FromBlock` on a block in hand | 2.128 | 2.169 | 2.139 | **2.139 ms** |
+
+| ratio | round 1 | round 2 | round 3 |
+| --- | ---: | ---: | ---: |
+| `load / rebuild` | 0.62× | 0.63× | 0.65× |
+| **`load / ingest`** | **1.59×** | **1.45×** | **1.62×** |
+| `ingest / floor` | 1.25× | 1.13× | 1.26× |
+| `load / floor` | 1.98× | 1.64× | 2.05× |
+
+**`load / ingest` is 1.45–1.62× where `load / rebuild` is 0.62–0.65×.** That is the finding: the
+sidecar route stops being slower than the artifact it would replace and becomes about half again
+faster. The precondition [ADR 0055](../decisions/0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md)
+set is cleared.
+
+Three things the ratio does not say, each worth more than the headline.
+
+**The ingest does not reach the floor.** `ingest / floor` is 1.13–1.26×, so `FromBlock` costs
+13–26% more than the bare read-plus-copy the floor models. And the floor is the *flattered* side
+of that comparison: it allocates its backing store with `new float[]`, which the CLR zero-fills,
+while `FromBlock` allocates uninitialized. The floor pays a 15.36 MB memset the ingest does not,
+and is still faster — so the real gap is wider than 1.26×, not narrower. `ingest only` puts the
+ingest's own cost at 2.139 ms against the floor's 0.199 ms of copy over its read, which is where
+that difference sits.
+
+**A sidecar will buy less than the floor promised.** `load / floor` is 1.98–2.05×, `load / ingest`
+is 1.45–1.62×. The floor was always a bound rather than a forecast, and the third of it that the
+ingest spends is the part a real method costs over a `memcpy`.
+
+**The spreads are wide and overlap.** `ingest copy` ranges 3.557–13.240 ms across its nine
+samples and `sidecar floor` 4.457–10.688; on a shared runner the two rows' distributions are not
+separated even though their medians are. The ratios hold in all three rounds and in the same
+direction, which is what makes them worth publishing; a difference this size read off one round
+would not be.
+
+#### Against numpy, on the same format (issue #474)
+
+The bulk ingest made a like-for-like row possible, and `embedding_index_ingest_npy` is it: both
+sides read the same `.npy` and return something searchable — `np.load` against
+[`NpyFile.Read`](../reference/embeddings/persistence/npyfile-read.md) plus
+[`FromBlock`](../reference/embeddings/search/embeddingindex-fromblock.md). For a flat cosine index
+the matrix *is* the index, so `np.load` alone is the counterpart, and neither side normalizes.
+
+`compare-persistence`, same hosted runner, .NET 10.0.11 against numpy 2.5.1 on Python 3.12.14,
+three rounds, one-minute load average 2.81 / 1.06 / 1.01 at each round's start. Both sides read
+**15 360 128 bytes** — the same file, which is the point of the row.
+
+| round | Lodestar wall | numpy wall | wall | Lodestar cpu | numpy cpu | **cpu** |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 6.106 ms | 1.410 ms | 0.23× | 6.913 ms | 1.410 ms | **0.20×** |
+| 2 | 5.645 ms | 1.233 ms | 0.22× | 6.347 ms | 1.233 ms | **0.19×** |
+| 3 | 6.035 ms | 1.280 ms | 0.21× | 6.889 ms | 1.280 ms | **0.19×** |
+
+**numpy is between four and five times faster, and taking the format advantage away made the gap
+wider rather than narrower.** `embedding_index_load` reads our 20 589 007-byte JSON artifact
+against numpy's 15 360 128-byte block and lands at 0.24–0.27×; on the same bytes we land at
+0.21–0.23×. The format was flattering us, not hurting us: it was letting numpy's row be compared
+against a different quantity of work.
+
+That is a finding about this repository's own claim, so it is stated rather than footnoted. **On
+moving a raw float block, this project is behind CPython and the reason is not the language.**
+`np.load` parses a short header and reads once into the output array;
+[#466](https://github.com/CyrilB1531/lodestar/issues/466) records that our path copies the
+15.36 MB block **four times where numpy copies once**, two of them removable — the `.ToArray()` in
+[`NpyFile.Read`](../reference/embeddings/persistence/npyfile-read.md), and the `byte[]` to
+`float[]` copy that the accepted `'<f4'` dtype and numpy's own 64-byte payload alignment make a
+`MemoryMarshal.Cast` rather than a copy.
+
+**Where the thesis does hold, on the same run**, and it is the half this project was built for:
+`spiece_model` **5.90–5.98×**, `tokenizer_json_unigram` **2.51–2.56×**, `vocab_txt`
+**1.90–2.09×**, `tokenizer_json_wordpiece` **1.23–1.30×**, `tfidf_save` **1.47–1.54×**. Loading
+vocabularies and tokenizers — the gap .NET actually had — is where the margin is. Moving a block
+of floats is not, and now there is a row that says so instead of a table that could not.
+
 ### Pre-sizing the file, and why it is not done (issue #432)
 
 Step 1's fourth item, and the decision is

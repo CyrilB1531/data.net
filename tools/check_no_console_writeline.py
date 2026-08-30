@@ -52,10 +52,16 @@ SCANNED = ("src/", "bench/")
 def tracked_sources() -> list[str]:
     """Every tracked `.cs` file under the scanned roots, repository-relative."""
     listing = subprocess.run(
-        ["git", "ls-files", "--", "src", "bench"],
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "--", "src", "bench"],
         capture_output=True, text=True, check=True, cwd=ROOT)
     paths = listing.stdout.split("\n")[:-1] if listing.stdout else []
-    return [p for p in paths if p.endswith(".cs") and p.startswith(SCANNED)]
+
+    # Untracked sources included: a new file is where an unmarked call arrives,
+    # and the index cannot see one until it has already been committed.
+    return [
+        p for p in paths
+        if p.endswith(".cs") and p.startswith(SCANNED) and (ROOT / p).is_file()
+    ]
 
 
 def _marked(lines: list[str], index: int) -> bool:

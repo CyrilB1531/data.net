@@ -18,6 +18,9 @@ namespace Lodestar.Text.Benchmarks.CrossLang;
 /// </summary>
 public static class PersistenceCrossLang
 {
+    /// <summary>A .npy of the benchmark corpus needs no artifact limit; it is our own bytes.</summary>
+    private static ArtifactLoadOptions NpyLimits => new() { MaxTotalBytes = 1L << 31 };
+
     public static void Run()
     {
         string root = BenchCorpus.RepoRoot();
@@ -57,6 +60,16 @@ public static class PersistenceCrossLang
             }
 
             indexGzip = stream.ToArray();
+        }
+
+        // The same block as a .npy, which is the format numpy's side reads. Built once,
+        // outside every timed window, exactly as the artifact above is.
+        float[] block = PersistenceBenchmarks.BuildBlock();
+        byte[] indexNpy;
+        using (var stream = new MemoryStream())
+        {
+            NpyFile.Write(stream, block, index.Count, index.Dimension);
+            indexNpy = stream.ToArray();
         }
 
         // No row measured the file path before #336, and it is the one a caller
@@ -108,6 +121,14 @@ public static class PersistenceCrossLang
             }, indexArtifact.Length),
             Harness.Measure("embedding_index_load_file", () => EmbeddingIndex.Load(indexFile), indexArtifact.Length),
             Harness.Measure("embedding_index_load_memory", () => EmbeddingIndex.Load(indexArtifact.AsMemory()), indexArtifact.Length),
+            // The only index row where both sides read the same format; the others price
+            // our JSON against numpy's .npy. bench/README section 7 has why (#474).
+            Harness.Measure("embedding_index_ingest_npy", () =>
+            {
+                NpyBlock read = NpyFile.Read(new MemoryStream(indexNpy), NpyLimits);
+                return EmbeddingIndex.FromBlock(
+                    read.Values.Span, index.Dimension, BlockNormalization.AlreadyNormalized);
+            }, indexNpy.Length),
             // The floor both sides share, and neither is a load: viewing bytes as floats
             // parses no header and validates nothing. It bounds the rows above, not ranks them.
             Harness.Measure("embedding_index_view_floor", () => MemoryMarshal.Cast<byte, float>(indexArtifact.AsSpan()).Length, indexArtifact.Length),

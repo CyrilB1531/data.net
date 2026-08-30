@@ -66,6 +66,7 @@ re-normalized. Two things about that file are worth knowing before relying on it
 
 | Type | What it is |
 | --- | --- |
+| [`BlockNormalization`](search/blocknormalization.md) | What a bulk ingest does about normalization. |
 | [`EmbeddingIndex`](search/embeddingindex.md) | The exhaustive cosine index: add, search, save, load. |
 | [`SearchResult`](search/searchresult.md) | One hit — a position and a score. |
 | [`VectorMath`](search/vectormath.md) | The two SIMD primitives the index is built on. |

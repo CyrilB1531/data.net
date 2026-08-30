@@ -54,6 +54,8 @@ be the wrong trade.
 | Member | What it does |
 | --- | --- |
 | [`EmbeddingIndex.Add`](embeddingindex-add.md) | Adds one vector, optionally with an id. |
+| [`EmbeddingIndex.FromBlock`](embeddingindex-fromblock.md) | Builds an index from a contiguous block of vectors, in one copy. |
+| [`EmbeddingIndex.FromOwnedBlock`](embeddingindex-fromownedblock.md) | Builds an index that takes the block, without copying it. |
 | [`EmbeddingIndex.GetId`](embeddingindex-getid.md) | The id stored at a position, or `null`. |
 | [`EmbeddingIndex.Load`](embeddingindex-load.md) | Reads a saved index back. |
 | [`EmbeddingIndex.LoadAsync`](embeddingindex-loadasync.md) | Reads a saved index back, asynchronously. |

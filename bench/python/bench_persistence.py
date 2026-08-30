@@ -170,6 +170,9 @@ def main() -> None:
         measure("embedding_index_load", lambda: np.load(io.BytesIO(npy_bytes)), len(npy_bytes)),
         measure("embedding_index_load_file", lambda: np.load(npy_file.name), len(npy_bytes)),
         measure("embedding_index_load_memory", lambda: np.load(io.BytesIO(npy_bytes)), len(npy_bytes)),
+        # The only index row where both sides read the same format; the others price
+        # Lodestar's JSON against numpy's .npy. bench/README section 7 has why.
+        measure("embedding_index_ingest_npy", lambda: np.load(io.BytesIO(npy_bytes)), len(npy_bytes)),
         # A floor, not a comparand: frombuffer views the bytes without parsing the
         # header or validating anything, so it does strictly less than the rows above.
         measure("embedding_index_view_floor", lambda: np.frombuffer(npy_bytes, dtype=np.uint8), len(npy_bytes)),

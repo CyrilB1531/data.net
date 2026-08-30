@@ -308,6 +308,15 @@ internal static class Lot3Embeddings
             Console.WriteLine($"    #{hit.Index} {index.GetId(hit.Index)} score={Inv.F4(hit.Score)}");
         }
 
+        // The bulk ingest, which is what a caller holding a whole corpus reaches for. Both
+        // factories appear because the packaging gate is a reference from outside the assembly.
+        float[] corpus = [1f, 0f, 0f, 0f, 1f, 0f];
+        EmbeddingIndex bulk = EmbeddingIndex.FromBlock(corpus, 3, BlockNormalization.Normalize);
+        EmbeddingIndex owned = EmbeddingIndex.FromOwnedBlock(
+            [0f, 0f, 1f], 3, BlockNormalization.AlreadyNormalized);
+
+        Console.WriteLine($"  Bulk ingest      : {bulk.Count} + {owned.Count} vectors");
+
         // Embed once, query for as long as the artifact lasts.
         using var artifact = new MemoryStream();
         index.Save(artifact);

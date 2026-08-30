@@ -913,6 +913,24 @@ Lodestar is faster.
 | `embedding_index_save` | 12.419 ms | 15.084 ms | 1.21× | 13.349 ms | 15.083 ms | **1.13×** |
 | `embedding_index_load` | 12.129 ms | 2.492 ms | 0.21× | 13.897 ms | 2.492 ms | **0.18×** |
 
+**Read that `0.21×` as a format, not as a speed.** It puts our JSON artifact — a document to
+scan and validate — against numpy's raw block, so it prices decision 0011 exactly as this
+section says it does, and says nothing about how fast the two languages ingest the same bytes.
+`embedding_index_ingest_npy` is the row that does: **both sides read a `.npy` and return
+something searchable**, `np.load` against `NpyFile.Read` plus
+[`EmbeddingIndex.FromBlock`](../docs/reference/embeddings/search/embeddingindex-fromblock.md).
+For a flat cosine index the matrix *is* the index, so `np.load` alone is the honest counterpart,
+and neither side normalizes — which is what a block written by an embedding pipeline already is.
+It was added with the bulk ingest (#474); before that there was nothing on the C# side to pair it
+with, because `Add` was the only way in.
+
+**Its first runner reading is 0.21–0.23× wall, 0.19× cpu across three rounds** — numpy four to
+five times faster, on the same 15 360 128 bytes. Taking the format advantage away made the gap
+*wider* than `embedding_index_load`'s 0.24–0.27×, because that row was letting numpy be compared
+against 5 MB less work. The figures, and the rows on the same run where this project is 1.2× to
+6× ahead, are in
+[the performance guide](../docs/guides/performance.md#against-numpy-on-the-same-format-issue-474).
+
 > **#323 changed the save path after this window.** The row above stays as measured;
 > what it cannot show is that its `1.13×` inverts to `0.27×` on a newer machine,
 > because `numpy.save` is bandwidth-bound where this artifact's base64 encoding is
@@ -1200,22 +1218,55 @@ is what that decided, amending 0053, which had refused pooling without ever timi
 
 ## 12. What a binary sidecar would buy (issue #436)
 
-Four rows, interleaved one round each:
+Six rows, interleaved one round each:
 
 ```bash
 dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- sidecar
 ```
 
-The artifact against a `.npy` block plus the head a sidecar would still have to write, and four
+The artifact against a `.npy` block plus the head a sidecar would still have to write, and six
 timings: the artifact load, the block read, a **floor** — the read plus one copy into a backing
-store, which is what a bulk ingest would do — and the rebuild through `Add` that is what exists
-today. The floor is a bound in the sense section 8's `block_copy_floor` is one: a route
-`EmbeddingIndex` has no method for, measured so the method can be judged against it.
+store, which is what a bulk ingest would do — the rebuild through `Add` that was the only route
+before issue #474, and the two rows that lot added:
+
+- `ingest copy` is the sidecar route as it will exist: the block read, then
+  `EmbeddingIndex.FromBlock`. It is the row #474's gate is read off — landing with `sidecar floor`
+  is the finding, and landing near `rebuild index` instead is the refusal.
+- `ingest only` is the ingest alone, on a block already in hand, so a later regression in the read
+  or in the ingest can be attributed to one of them rather than to their sum.
+
+The floor is a bound in the sense section 8's `block_copy_floor` is one: a route measured so the
+method that would take it can be judged against it.
+
+**The floor and the ingest do not allocate the same way, and the asymmetry runs in the ingest's
+favour.** `sidecar floor` takes its backing store from `new float[...]`, which the CLR zero-fills,
+while `EmbeddingIndex.FromBlock` allocates through the library's own uninitialized allocation and
+skips the zeroing. Both are one copy, and not the same kind of one: the ingest is ahead by one
+memset of the block, about 15 MB at this corpus. It is stated rather than equalised, because the
+uninitialized allocation is internal to the library and this project consumes the published
+packages, and because re-cutting `sidecar floor` would invalidate the 5.847 ms
+[ADR 0055](../docs/decisions/0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md)
+published, which is the bar this lot is judged against. The bias runs in the ingest's favour, so a
+slow `ingest copy` is not an artefact of it: landing near `rebuild index` remains the refusal it
+looks like. What it does mean is that `ingest copy` coming in *below* the floor must not be read as
+beating it by the whole margin — part of that gap is the memset the floor pays and the ingest does
+not.
+
+There is no row for `FromOwnedBlock`. With `AlreadyNormalized` it assigns four fields and is
+constant time whatever the block's size, so its ceiling is the `read npy block` row and a row of
+its own would publish noise.
 
 On a hosted runner: the sidecar is **1.331× smaller** and its floor is **2.02× faster** than the
 artifact load, while the rebuild route is **0.66×** — slower than what it would replace.
 [ADR 0055](../docs/decisions/0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md)
 takes the sidecar and makes the bulk ingest its precondition.
+
+With that ingest built (#474), the same runner puts `load / ingest` at **1.45–1.62×** across three
+rounds where `load / rebuild` is 0.62–0.65× — the route stops being slower than the artifact. It
+does not reach the floor: `ingest / floor` is 1.13–1.26×, and the floor is the flattered side of
+that comparison per the paragraph above. Every figure, with its rounds and its spreads, is in
+[the performance guide](../docs/guides/performance.md#the-bulk-ingest-that-unblocks-it-issue-474);
+this section says only how to take them.
 
 **Not on a container.** There the same rows put the floor at 0.73×, the opposite conclusion, with
 the floor row spread over 12–43 ms against the runner's 4.0–8.5.
