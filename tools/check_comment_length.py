@@ -217,16 +217,26 @@ def findings_in(lines: list[str], suffix: str) -> list[Finding]:
 
 
 def tracked_files() -> list[str]:
-    """Every path `git ls-files` reports, in repository-relative form.
+    """Every path git reports, tracked or merely untracked, repository-relative.
 
     Run with cwd pinned to ROOT, as `check_machine_paths.py` does: git
     resolves relative to the process's current directory otherwise, so a
     guard invoked from a subdirectory would silently scan a fraction of the
     repository and still exit 0 -- the bug issue #133 shipped and fixed.
+
+    `--others --exclude-standard` is what makes the guard useful before a
+    commit rather than after one. A bare `ls-files` sees only the index, so a
+    file a contributor has just written is invisible and the guard reports
+    clean without having read the work it was run to check -- which is exactly
+    the moment a contributor runs it.
     """
     listing = subprocess.run(
-        ["git", "ls-files"], capture_output=True, text=True, check=True, cwd=ROOT)
-    return listing.stdout.split("\n")[:-1] if listing.stdout else []
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard"],
+        capture_output=True, text=True, check=True, cwd=ROOT)
+    paths = listing.stdout.split("\n")[:-1] if listing.stdout else []
+
+    # A tracked path deleted from the working tree is still in the index.
+    return [p for p in paths if (ROOT / p).is_file()]
 
 
 def _parse_arguments(arguments: list[str]) -> int | None:
