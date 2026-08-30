@@ -23,6 +23,9 @@ public sealed class BpeMetaspaceOracleTests
 
     private const char MetaSymbol = '\u2581';
 
+    /// <summary>The special token both target models declare, and the corpus's own piece boundary.</summary>
+    private const string AddedToken = "<s>";
+
     /// <summary>The Llama-2 spelling, whose prepend is unconditional.</summary>
     private const string NormalizerCase = "prepend_replace_normalizer";
 
@@ -84,7 +87,7 @@ public sealed class BpeMetaspaceOracleTests
             foreach (JsonElement t in c.GetProperty("texts").EnumerateArray())
             {
                 string text = t.GetProperty("text").GetString()!;
-                if (!BeginsWithTheSymbol(text))
+                if (!BeginsWithTheSymbol(text) || CarriesTheAddedToken(text))
                 {
                     continue;
                 }
@@ -117,6 +120,12 @@ public sealed class BpeMetaspaceOracleTests
         var failures = new List<string>();
         foreach (KeyValuePair<string, (string[] Tokens, int[] Ids)> pair in metaspace)
         {
+            if (CarriesTheAddedToken(pair.Key))
+            {
+                // With a token in the text the prepend scheme parts too, which the test
+                // below measures — this one is about the guard alone.
+                continue;
+            }
             bool agree = Same(pair.Value, normalizer[pair.Key]);
             if (agree == BeginsWithTheSymbol(pair.Key))
             {
@@ -128,11 +137,50 @@ public sealed class BpeMetaspaceOracleTests
     }
 
     /// <summary>
+    /// <c>first</c> prepends to the opening piece and <c>always</c> to every one, and an
+    /// added token is a piece — so a token standing before a gap is what tells the two
+    /// schemes apart on a model that splits at nothing else. The corpus answers it with
+    /// no Lodestar type involved; test one is what proves the loader agrees.
+    /// </summary>
+    [Fact]
+    public void An_added_token_before_a_gap_is_what_tells_first_from_always()
+    {
+        using JsonDocument doc = OracleLoader.Load(Corpus);
+        Dictionary<string, (string[] Tokens, int[] Ids)> first = Streams(doc, "metaspace_first");
+        Dictionary<string, (string[] Tokens, int[] Ids)> always = Streams(doc, "metaspace_always");
+
+        var failures = new List<string>();
+        int measured = 0;
+        foreach (KeyValuePair<string, (string[] Tokens, int[] Ids)> pair in first)
+        {
+            if (!CarriesTheAddedToken(pair.Key))
+            {
+                continue;
+            }
+            measured++;
+
+            // The one text where they still agree opens on the token and then on a space:
+            // "always" would prepend, and the guard takes it back.
+            bool expected = string.Equals(pair.Key, AddedToken + " the cat", StringComparison.Ordinal);
+            if (Same(pair.Value, always[pair.Key]) != expected)
+            {
+                failures.Add($"{Escape(pair.Key)}: first and always {(expected ? "should agree here and do not" : "agree, so the scheme is not read per piece")}.");
+            }
+        }
+
+        Assert.True(measured > 0, "No text carrying the added token was measured, so this test proves nothing.");
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    /// <summary>
     /// Whether a prepending <c>Metaspace</c> block's guard fires on this text: it reads
     /// the text after the replace, so a leading space counts as much as a leading symbol.
     /// </summary>
     private static bool BeginsWithTheSymbol(string text) =>
         text.Length > 0 && (text[0] == ' ' || text[0] == MetaSymbol);
+
+    private static bool CarriesTheAddedToken(string text) =>
+        text.Contains(AddedToken, StringComparison.Ordinal);
 
     private static void Compare(
         List<string> failures, string name, string text, (string[] Tokens, int[] Ids) expected, TokenizationResult actual)

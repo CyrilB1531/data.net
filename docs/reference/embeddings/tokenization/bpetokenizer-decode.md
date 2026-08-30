@@ -47,6 +47,14 @@ that is not well-formed UTF-8 becomes U+FFFD, which is what
 worth having: the vocabulary covers all 256 byte values through printable stand-ins, so emoji,
 mixed scripts and even malformed UTF-8 come back as they went in.
 
+**The SentencePiece-BPE lineage is the one exception.** Where the model declares the whitespace
+escape — a `Metaspace` pre-tokenizer or a `Prepend` + `Replace` normalizer, which
+[`TokenizerJsonLoader.LoadBpe`](../persistence/tokenizerjsonloader-loadbpe.md) reads — that escape
+is an encode-side transform in this package, and a `Metaspace` `decoder` block is accepted without
+being applied. So the text comes back with its replacement symbols in place of the spaces, and
+`Decode(Encode(x))` is not `x`. [Decision 0062](../../../decisions/0062-the-two-metaspace-spellings-part-on-the-prepend-twice.md)
+records it; undoing the escape belongs with the lot that reproduces the rest of that decoder.
+
 `skipSpecialTokens` is what you want when showing a generated sequence to a person, and not what
 you want when comparing against a reference that includes them.
 

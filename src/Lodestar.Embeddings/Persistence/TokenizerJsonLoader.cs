@@ -664,7 +664,10 @@ public static class TokenizerJsonLoader
     {
         string? prepended = OptionalString(prepend, "prepend");
         string? content = OptionalString(replace, "content");
+        // ValueKind first: TryGetProperty throws InvalidOperationException on anything but
+        // an object, and a hand-written "pattern": " " is a file, not a bug to surface.
         string? pattern = replace.TryGetProperty("pattern", out JsonElement patternElement)
+            && patternElement.ValueKind == JsonValueKind.Object
             ? OptionalString(patternElement, "String")
             : null;
         if (prepended is null
@@ -675,11 +678,11 @@ public static class TokenizerJsonLoader
                 "its normalizer Sequence is a Prepend and a Replace that do not spell the whitespace escape",
                 "only a Prepend whose string the Replace maps the literal ' ' onto is reproduced");
         }
-        // A normalizer prepends once over the whole text, which is a Metaspace "first"
-        // with nothing to split -- and unconditionally, Prepend running first (0062).
+        // A normalizer prepends to every gap the added tokens leave -- "always", not
+        // "first" -- and unguarded, Prepend running before Replace (decision 0062).
         return new MetaspaceEscape(
             SingleReplacementChar(prepended, "normalizer Sequence's Prepend"),
-            MetaspacePrependScheme.First,
+            MetaspacePrependScheme.Always,
             removeExtraWhitespaces: false,
             skipPrependWhenAlreadyPrefixed: false);
     }

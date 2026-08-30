@@ -25,6 +25,8 @@ public sealed class BpeMetaspaceLoaderTests
         Assert.NotNull(vocabulary.Metaspace);
         Assert.Equal('▁', vocabulary.Metaspace!.Replacement);
         Assert.False(vocabulary.Metaspace.RemoveExtraWhitespaces);
+        Assert.Equal(MetaspacePrependScheme.First, vocabulary.Metaspace.PrependScheme);
+        Assert.True(vocabulary.Metaspace.SkipPrependWhenAlreadyPrefixed);
     }
 
     [Fact]
@@ -35,6 +37,9 @@ public sealed class BpeMetaspaceLoaderTests
 
         Assert.NotNull(vocabulary.Metaspace);
         Assert.Equal('▁', vocabulary.Metaspace!.Replacement);
+        Assert.False(vocabulary.Metaspace.RemoveExtraWhitespaces);
+        Assert.Equal(MetaspacePrependScheme.Always, vocabulary.Metaspace.PrependScheme);
+        Assert.False(vocabulary.Metaspace.SkipPrependWhenAlreadyPrefixed);
     }
 
     [Fact]
@@ -46,6 +51,20 @@ public sealed class BpeMetaspaceLoaderTests
             "\"normalizer\": { \"type\": \"Sequence\", \"normalizers\": [ { \"type\": \"Prepend\", \"prepend\": \"▁\" }, { \"type\": \"Replace\", \"pattern\": { \"String\": \" \" }, \"content\": \"▁\" }, { \"type\": \"NFC\" } ] },"));
 
         Assert.Contains("Sequence", thrown.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <c>pattern</c> is an object in every file <c>tokenizers</c> writes, and a hand-made
+    /// one holding a bare string used to reach <c>TryGetProperty</c> on a non-object —
+    /// an <c>InvalidOperationException</c> where the loader promises <c>InvalidDataException</c>.
+    /// </summary>
+    [Fact]
+    public void A_Replace_whose_pattern_is_a_bare_string_is_refused_by_name()
+    {
+        InvalidDataException thrown = Assert.Throws<InvalidDataException>(() => Load(
+            "\"normalizer\": { \"type\": \"Sequence\", \"normalizers\": [ { \"type\": \"Prepend\", \"prepend\": \"\u2581\" }, { \"type\": \"Replace\", \"pattern\": \" \", \"content\": \"\u2581\" } ] },"));
+
+        Assert.Contains("Prepend and a Replace", thrown.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -73,15 +92,31 @@ public sealed class BpeMetaspaceLoaderTests
         Assert.Equal(MetaspacePrependScheme.Never, WithAddPrefixSpace("false").Metaspace!.PrependScheme);
     }
 
+    /// <summary>
+    /// The two spellings are one value but for the prepend, which decision 0062 measures
+    /// and this pins field by field — the escape the loader builds is where it lives.
+    /// </summary>
     [Fact]
-    public void The_two_spellings_produce_one_value()
+    public void The_two_spellings_produce_one_value_but_for_the_prepend()
     {
-        MetaspaceEscape fromPreTokenizer = Load(MetaspaceBlock).Metaspace!;
+        MetaspaceEscape fromPreTokenizer = Load(AlwaysMetaspaceBlock).Metaspace!;
         MetaspaceEscape fromNormalizer = Load(PrependReplaceBlock).Metaspace!;
 
         Assert.Equal(fromPreTokenizer.Replacement, fromNormalizer.Replacement);
-        Assert.Equal(fromPreTokenizer.PrependScheme, fromNormalizer.PrependScheme);
         Assert.Equal(fromPreTokenizer.RemoveExtraWhitespaces, fromNormalizer.RemoveExtraWhitespaces);
+        Assert.Equal(fromPreTokenizer.PrependScheme, fromNormalizer.PrependScheme);
+        Assert.NotEqual(fromPreTokenizer.SkipPrependWhenAlreadyPrefixed, fromNormalizer.SkipPrependWhenAlreadyPrefixed);
+    }
+
+    /// <summary>
+    /// The normalizer spelling reads as <c>always</c>, not <c>first</c>: it runs on every
+    /// gap the added tokens leave, so it prepends to each of them. Measured —
+    /// <c>bpe_metaspace.json</c>'s two cases part on exactly that text.
+    /// </summary>
+    [Fact]
+    public void The_normalizer_spelling_prepends_to_every_piece()
+    {
+        Assert.Equal(MetaspacePrependScheme.Always, Load(PrependReplaceBlock).Metaspace!.PrependScheme);
     }
 
     [Fact]
@@ -112,6 +147,9 @@ public sealed class BpeMetaspaceLoaderTests
 
     private const string MetaspaceBlock =
         "\"pre_tokenizer\": { \"type\": \"Metaspace\", \"replacement\": \"\u2581\", \"prepend_scheme\": \"first\", \"split\": false },";
+
+    private const string AlwaysMetaspaceBlock =
+        "\"pre_tokenizer\": { \"type\": \"Metaspace\", \"replacement\": \"\u2581\", \"prepend_scheme\": \"always\", \"split\": false },";
 
     private const string PrependReplaceBlock =
         "\"normalizer\": { \"type\": \"Sequence\", \"normalizers\": [ { \"type\": \"Prepend\", \"prepend\": \"\u2581\" }, { \"type\": \"Replace\", \"pattern\": { \"String\": \" \" }, \"content\": \"\u2581\" } ] },";

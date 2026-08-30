@@ -3974,6 +3974,10 @@ def generate_bpe_normalizer() -> dict:
 # spellings of the whitespace escape substitute for a literal space.
 META_SYMBOL = "▁"
 
+# The special token both target models declare: it splits the input into pieces,
+# which is what `first` counts.
+BPE_METASPACE_ADDED_TOKEN = "<s>"
+
 # One text per place the three prepend schemes and the two spellings can part;
 # each line below says which place it is.
 BPE_METASPACE_TEXTS = [
@@ -3986,6 +3990,11 @@ BPE_METASPACE_TEXTS = [
     "café",                  # non-ASCII, and no space to escape at all
     "the café ",             # non-ASCII beside a trailing space
     "",                           # nothing to escape and nothing to prepend
+    # An added token is a piece of its own, and `first` prepends to the opening
+    # piece rather than to every gap -- so where the token stands decides.
+    BPE_METASPACE_ADDED_TOKEN + "the cat",              # the token takes the opening piece
+    "the cat" + BPE_METASPACE_ADDED_TOKEN + "the cat",  # a gap on either side of it
+    BPE_METASPACE_ADDED_TOKEN + " the cat",             # the token, then a guarded gap
 ]
 
 # Merges in rank order. Each right-hand side is a single character, so the
@@ -4017,6 +4026,10 @@ def _small_metaspace_bpe_tokenizer():
     Carries no pre_tokenizer, no normalizer and no decoder -- each case sets the
     first two itself, and the third is left out because neither `tokenizers` nor
     `BpeTokenizer` would undo the escape the same way; see the corpus docstring.
+
+    It does carry one special token, which both target models declare: an added
+    token is a piece of its own, so it is what tells `first` apart from `always`
+    on a model that splits at nothing else.
     """
     from tokenizers import Tokenizer, models  # noqa: PLC0415
 
@@ -4029,6 +4042,7 @@ def _small_metaspace_bpe_tokenizer():
     tokenizer.pre_tokenizer = None
     tokenizer.normalizer = None
     tokenizer.decoder = None
+    tokenizer.add_special_tokens([BPE_METASPACE_ADDED_TOKEN])
     return tokenizer
 
 

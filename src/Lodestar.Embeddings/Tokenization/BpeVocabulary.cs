@@ -233,9 +233,14 @@ public sealed record BpeVocabulary(
             hash = (hash * 31) + (UnkToken is null ? 0 : StringComparer.Ordinal.GetHashCode(UnkToken));
             hash = (hash * 31) + (PreTokenizerPattern is null ? 0 : StringComparer.Ordinal.GetHashCode(PreTokenizerPattern));
             hash = (hash * 31) + (PreSplit is null ? 0 : PreSplit.GetHashCode());
-            return (hash * 31) + (Metaspace is null ? 0 : Metaspace.Replacement);
+            return (hash * 31) + (Metaspace is null ? 0 : EscapeHash(Metaspace));
         }
     }
+
+    /// <summary>Folds every field <see cref="SameMetaspace"/> compares, so equal values hash equal and no two differ only invisibly.</summary>
+    private static int EscapeHash(MetaspaceEscape escape) =>
+        (((escape.Replacement * 31) + (int)escape.PrependScheme) * 31)
+        + (escape.RemoveExtraWhitespaces ? 2 : 0) + (escape.SkipPrependWhenAlreadyPrefixed ? 1 : 0);
 
     /// <summary>Compares two escapes by value, which <see cref="MetaspaceEscape"/> itself does not.</summary>
     private static bool SameMetaspace(MetaspaceEscape? left, MetaspaceEscape? right) =>

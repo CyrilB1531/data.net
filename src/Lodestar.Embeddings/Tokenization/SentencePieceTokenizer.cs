@@ -231,6 +231,8 @@ public sealed class SentencePieceTokenizer : ISubwordTokenizer
         // or an ideographic space into an ordinary space, among what else it rewrites.
         string normalized = _normalizer is null ? text : _normalizer.Normalize(text);
 
-        return Escape.Apply(normalized);
+        // One text, one piece here: the unigram path splits at nothing, and its scheme
+        // is Always, which prepends to every piece anyway.
+        return Escape.Apply(normalized, isFirstSplit: true);
     }
 }

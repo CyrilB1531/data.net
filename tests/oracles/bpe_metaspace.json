@@ -9,7 +9,7 @@
   {
    "id": 0,
    "name": "metaspace_first",
-   "tokenizer_json": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [], \"normalizer\": null, \"pre_tokenizer\": {\"type\": \"Metaspace\", \"replacement\": \"▁\", \"split\": false, \"prepend_scheme\": \"first\"}, \"post_processor\": null, \"decoder\": null, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": null, \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"c\": 1, \"e\": 2, \"f\": 3, \"h\": 4, \"t\": 5, \"é\": 6, \"\\t\": 7, \"▁\": 8, \"▁t\": 9, \"▁th\": 10, \"▁the\": 11, \"▁c\": 12, \"▁ca\": 13, \"▁cat\": 14, \"▁caf\": 15, \"▁café\": 16, \"▁a\": 17, \"th\": 18, \"the\": 19, \"ca\": 20, \"cat\": 21, \"caf\": 22, \"café\": 23}, \"merges\": [[\"▁\", \"t\"], [\"▁t\", \"h\"], [\"▁th\", \"e\"], [\"▁\", \"c\"], [\"▁c\", \"a\"], [\"▁ca\", \"t\"], [\"▁ca\", \"f\"], [\"▁caf\", \"é\"], [\"▁\", \"a\"], [\"t\", \"h\"], [\"th\", \"e\"], [\"c\", \"a\"], [\"ca\", \"t\"], [\"ca\", \"f\"], [\"caf\", \"é\"]]}}",
+   "tokenizer_json": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [{\"id\": 24, \"content\": \"<s>\", \"single_word\": false, \"lstrip\": false, \"rstrip\": false, \"normalized\": false, \"special\": true}], \"normalizer\": null, \"pre_tokenizer\": {\"type\": \"Metaspace\", \"replacement\": \"▁\", \"split\": false, \"prepend_scheme\": \"first\"}, \"post_processor\": null, \"decoder\": null, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": null, \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"c\": 1, \"e\": 2, \"f\": 3, \"h\": 4, \"t\": 5, \"é\": 6, \"\\t\": 7, \"▁\": 8, \"▁t\": 9, \"▁th\": 10, \"▁the\": 11, \"▁c\": 12, \"▁ca\": 13, \"▁cat\": 14, \"▁caf\": 15, \"▁café\": 16, \"▁a\": 17, \"th\": 18, \"the\": 19, \"ca\": 20, \"cat\": 21, \"caf\": 22, \"café\": 23}, \"merges\": [[\"▁\", \"t\"], [\"▁t\", \"h\"], [\"▁th\", \"e\"], [\"▁\", \"c\"], [\"▁c\", \"a\"], [\"▁ca\", \"t\"], [\"▁ca\", \"f\"], [\"▁caf\", \"é\"], [\"▁\", \"a\"], [\"t\", \"h\"], [\"th\", \"e\"], [\"c\", \"a\"], [\"ca\", \"t\"], [\"ca\", \"f\"], [\"caf\", \"é\"]]}}",
    "texts": [
     {
      "text": "the cat",
@@ -111,13 +111,56 @@
      "text": "",
      "tokens": [],
      "ids": []
+    },
+    {
+     "text": "<s>the cat",
+     "tokens": [
+      "<s>",
+      "the",
+      "▁cat"
+     ],
+     "ids": [
+      24,
+      19,
+      14
+     ]
+    },
+    {
+     "text": "the cat<s>the cat",
+     "tokens": [
+      "▁the",
+      "▁cat",
+      "<s>",
+      "the",
+      "▁cat"
+     ],
+     "ids": [
+      11,
+      14,
+      24,
+      19,
+      14
+     ]
+    },
+    {
+     "text": "<s> the cat",
+     "tokens": [
+      "<s>",
+      "▁the",
+      "▁cat"
+     ],
+     "ids": [
+      24,
+      11,
+      14
+     ]
     }
    ]
   },
   {
    "id": 1,
    "name": "prepend_replace_normalizer",
-   "tokenizer_json": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [], \"normalizer\": {\"type\": \"Sequence\", \"normalizers\": [{\"type\": \"Prepend\", \"prepend\": \"▁\"}, {\"type\": \"Replace\", \"pattern\": {\"String\": \" \"}, \"content\": \"▁\"}]}, \"pre_tokenizer\": null, \"post_processor\": null, \"decoder\": null, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": null, \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"c\": 1, \"e\": 2, \"f\": 3, \"h\": 4, \"t\": 5, \"é\": 6, \"\\t\": 7, \"▁\": 8, \"▁t\": 9, \"▁th\": 10, \"▁the\": 11, \"▁c\": 12, \"▁ca\": 13, \"▁cat\": 14, \"▁caf\": 15, \"▁café\": 16, \"▁a\": 17, \"th\": 18, \"the\": 19, \"ca\": 20, \"cat\": 21, \"caf\": 22, \"café\": 23}, \"merges\": [[\"▁\", \"t\"], [\"▁t\", \"h\"], [\"▁th\", \"e\"], [\"▁\", \"c\"], [\"▁c\", \"a\"], [\"▁ca\", \"t\"], [\"▁ca\", \"f\"], [\"▁caf\", \"é\"], [\"▁\", \"a\"], [\"t\", \"h\"], [\"th\", \"e\"], [\"c\", \"a\"], [\"ca\", \"t\"], [\"ca\", \"f\"], [\"caf\", \"é\"]]}}",
+   "tokenizer_json": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [{\"id\": 24, \"content\": \"<s>\", \"single_word\": false, \"lstrip\": false, \"rstrip\": false, \"normalized\": false, \"special\": true}], \"normalizer\": {\"type\": \"Sequence\", \"normalizers\": [{\"type\": \"Prepend\", \"prepend\": \"▁\"}, {\"type\": \"Replace\", \"pattern\": {\"String\": \" \"}, \"content\": \"▁\"}]}, \"pre_tokenizer\": null, \"post_processor\": null, \"decoder\": null, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": null, \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"c\": 1, \"e\": 2, \"f\": 3, \"h\": 4, \"t\": 5, \"é\": 6, \"\\t\": 7, \"▁\": 8, \"▁t\": 9, \"▁th\": 10, \"▁the\": 11, \"▁c\": 12, \"▁ca\": 13, \"▁cat\": 14, \"▁caf\": 15, \"▁café\": 16, \"▁a\": 17, \"th\": 18, \"the\": 19, \"ca\": 20, \"cat\": 21, \"caf\": 22, \"café\": 23}, \"merges\": [[\"▁\", \"t\"], [\"▁t\", \"h\"], [\"▁th\", \"e\"], [\"▁\", \"c\"], [\"▁c\", \"a\"], [\"▁ca\", \"t\"], [\"▁ca\", \"f\"], [\"▁caf\", \"é\"], [\"▁\", \"a\"], [\"t\", \"h\"], [\"th\", \"e\"], [\"c\", \"a\"], [\"ca\", \"t\"], [\"ca\", \"f\"], [\"caf\", \"é\"]]}}",
    "texts": [
     {
      "text": "the cat",
@@ -223,13 +266,58 @@
      "text": "",
      "tokens": [],
      "ids": []
+    },
+    {
+     "text": "<s>the cat",
+     "tokens": [
+      "<s>",
+      "▁the",
+      "▁cat"
+     ],
+     "ids": [
+      24,
+      11,
+      14
+     ]
+    },
+    {
+     "text": "the cat<s>the cat",
+     "tokens": [
+      "▁the",
+      "▁cat",
+      "<s>",
+      "▁the",
+      "▁cat"
+     ],
+     "ids": [
+      11,
+      14,
+      24,
+      11,
+      14
+     ]
+    },
+    {
+     "text": "<s> the cat",
+     "tokens": [
+      "<s>",
+      "▁",
+      "▁the",
+      "▁cat"
+     ],
+     "ids": [
+      24,
+      8,
+      11,
+      14
+     ]
     }
    ]
   },
   {
    "id": 2,
    "name": "metaspace_never",
-   "tokenizer_json": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [], \"normalizer\": null, \"pre_tokenizer\": {\"type\": \"Metaspace\", \"replacement\": \"▁\", \"split\": false, \"prepend_scheme\": \"never\"}, \"post_processor\": null, \"decoder\": null, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": null, \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"c\": 1, \"e\": 2, \"f\": 3, \"h\": 4, \"t\": 5, \"é\": 6, \"\\t\": 7, \"▁\": 8, \"▁t\": 9, \"▁th\": 10, \"▁the\": 11, \"▁c\": 12, \"▁ca\": 13, \"▁cat\": 14, \"▁caf\": 15, \"▁café\": 16, \"▁a\": 17, \"th\": 18, \"the\": 19, \"ca\": 20, \"cat\": 21, \"caf\": 22, \"café\": 23}, \"merges\": [[\"▁\", \"t\"], [\"▁t\", \"h\"], [\"▁th\", \"e\"], [\"▁\", \"c\"], [\"▁c\", \"a\"], [\"▁ca\", \"t\"], [\"▁ca\", \"f\"], [\"▁caf\", \"é\"], [\"▁\", \"a\"], [\"t\", \"h\"], [\"th\", \"e\"], [\"c\", \"a\"], [\"ca\", \"t\"], [\"ca\", \"f\"], [\"caf\", \"é\"]]}}",
+   "tokenizer_json": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [{\"id\": 24, \"content\": \"<s>\", \"single_word\": false, \"lstrip\": false, \"rstrip\": false, \"normalized\": false, \"special\": true}], \"normalizer\": null, \"pre_tokenizer\": {\"type\": \"Metaspace\", \"replacement\": \"▁\", \"split\": false, \"prepend_scheme\": \"never\"}, \"post_processor\": null, \"decoder\": null, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": null, \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"c\": 1, \"e\": 2, \"f\": 3, \"h\": 4, \"t\": 5, \"é\": 6, \"\\t\": 7, \"▁\": 8, \"▁t\": 9, \"▁th\": 10, \"▁the\": 11, \"▁c\": 12, \"▁ca\": 13, \"▁cat\": 14, \"▁caf\": 15, \"▁café\": 16, \"▁a\": 17, \"th\": 18, \"the\": 19, \"ca\": 20, \"cat\": 21, \"caf\": 22, \"café\": 23}, \"merges\": [[\"▁\", \"t\"], [\"▁t\", \"h\"], [\"▁th\", \"e\"], [\"▁\", \"c\"], [\"▁c\", \"a\"], [\"▁ca\", \"t\"], [\"▁ca\", \"f\"], [\"▁caf\", \"é\"], [\"▁\", \"a\"], [\"t\", \"h\"], [\"th\", \"e\"], [\"c\", \"a\"], [\"ca\", \"t\"], [\"ca\", \"f\"], [\"caf\", \"é\"]]}}",
    "texts": [
     {
      "text": "the cat",
@@ -329,13 +417,56 @@
      "text": "",
      "tokens": [],
      "ids": []
+    },
+    {
+     "text": "<s>the cat",
+     "tokens": [
+      "<s>",
+      "the",
+      "▁cat"
+     ],
+     "ids": [
+      24,
+      19,
+      14
+     ]
+    },
+    {
+     "text": "the cat<s>the cat",
+     "tokens": [
+      "the",
+      "▁cat",
+      "<s>",
+      "the",
+      "▁cat"
+     ],
+     "ids": [
+      19,
+      14,
+      24,
+      19,
+      14
+     ]
+    },
+    {
+     "text": "<s> the cat",
+     "tokens": [
+      "<s>",
+      "▁the",
+      "▁cat"
+     ],
+     "ids": [
+      24,
+      11,
+      14
+     ]
     }
    ]
   },
   {
    "id": 3,
    "name": "metaspace_always",
-   "tokenizer_json": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [], \"normalizer\": null, \"pre_tokenizer\": {\"type\": \"Metaspace\", \"replacement\": \"▁\", \"split\": false, \"prepend_scheme\": \"always\"}, \"post_processor\": null, \"decoder\": null, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": null, \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"c\": 1, \"e\": 2, \"f\": 3, \"h\": 4, \"t\": 5, \"é\": 6, \"\\t\": 7, \"▁\": 8, \"▁t\": 9, \"▁th\": 10, \"▁the\": 11, \"▁c\": 12, \"▁ca\": 13, \"▁cat\": 14, \"▁caf\": 15, \"▁café\": 16, \"▁a\": 17, \"th\": 18, \"the\": 19, \"ca\": 20, \"cat\": 21, \"caf\": 22, \"café\": 23}, \"merges\": [[\"▁\", \"t\"], [\"▁t\", \"h\"], [\"▁th\", \"e\"], [\"▁\", \"c\"], [\"▁c\", \"a\"], [\"▁ca\", \"t\"], [\"▁ca\", \"f\"], [\"▁caf\", \"é\"], [\"▁\", \"a\"], [\"t\", \"h\"], [\"th\", \"e\"], [\"c\", \"a\"], [\"ca\", \"t\"], [\"ca\", \"f\"], [\"caf\", \"é\"]]}}",
+   "tokenizer_json": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [{\"id\": 24, \"content\": \"<s>\", \"single_word\": false, \"lstrip\": false, \"rstrip\": false, \"normalized\": false, \"special\": true}], \"normalizer\": null, \"pre_tokenizer\": {\"type\": \"Metaspace\", \"replacement\": \"▁\", \"split\": false, \"prepend_scheme\": \"always\"}, \"post_processor\": null, \"decoder\": null, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": null, \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"c\": 1, \"e\": 2, \"f\": 3, \"h\": 4, \"t\": 5, \"é\": 6, \"\\t\": 7, \"▁\": 8, \"▁t\": 9, \"▁th\": 10, \"▁the\": 11, \"▁c\": 12, \"▁ca\": 13, \"▁cat\": 14, \"▁caf\": 15, \"▁café\": 16, \"▁a\": 17, \"th\": 18, \"the\": 19, \"ca\": 20, \"cat\": 21, \"caf\": 22, \"café\": 23}, \"merges\": [[\"▁\", \"t\"], [\"▁t\", \"h\"], [\"▁th\", \"e\"], [\"▁\", \"c\"], [\"▁c\", \"a\"], [\"▁ca\", \"t\"], [\"▁ca\", \"f\"], [\"▁caf\", \"é\"], [\"▁\", \"a\"], [\"t\", \"h\"], [\"th\", \"e\"], [\"c\", \"a\"], [\"ca\", \"t\"], [\"ca\", \"f\"], [\"caf\", \"é\"]]}}",
    "texts": [
     {
      "text": "the cat",
@@ -437,13 +568,56 @@
      "text": "",
      "tokens": [],
      "ids": []
+    },
+    {
+     "text": "<s>the cat",
+     "tokens": [
+      "<s>",
+      "▁the",
+      "▁cat"
+     ],
+     "ids": [
+      24,
+      11,
+      14
+     ]
+    },
+    {
+     "text": "the cat<s>the cat",
+     "tokens": [
+      "▁the",
+      "▁cat",
+      "<s>",
+      "▁the",
+      "▁cat"
+     ],
+     "ids": [
+      11,
+      14,
+      24,
+      11,
+      14
+     ]
+    },
+    {
+     "text": "<s> the cat",
+     "tokens": [
+      "<s>",
+      "▁the",
+      "▁cat"
+     ],
+     "ids": [
+      24,
+      11,
+      14
+     ]
     }
    ]
   },
   {
    "id": 4,
    "name": "legacy_add_prefix_space",
-   "tokenizer_json": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [], \"normalizer\": null, \"pre_tokenizer\": {\"type\": \"Metaspace\", \"replacement\": \"▁\", \"split\": false, \"add_prefix_space\": true}, \"post_processor\": null, \"decoder\": null, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": null, \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"c\": 1, \"e\": 2, \"f\": 3, \"h\": 4, \"t\": 5, \"é\": 6, \"\\t\": 7, \"▁\": 8, \"▁t\": 9, \"▁th\": 10, \"▁the\": 11, \"▁c\": 12, \"▁ca\": 13, \"▁cat\": 14, \"▁caf\": 15, \"▁café\": 16, \"▁a\": 17, \"th\": 18, \"the\": 19, \"ca\": 20, \"cat\": 21, \"caf\": 22, \"café\": 23}, \"merges\": [[\"▁\", \"t\"], [\"▁t\", \"h\"], [\"▁th\", \"e\"], [\"▁\", \"c\"], [\"▁c\", \"a\"], [\"▁ca\", \"t\"], [\"▁ca\", \"f\"], [\"▁caf\", \"é\"], [\"▁\", \"a\"], [\"t\", \"h\"], [\"th\", \"e\"], [\"c\", \"a\"], [\"ca\", \"t\"], [\"ca\", \"f\"], [\"caf\", \"é\"]]}}",
+   "tokenizer_json": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [{\"id\": 24, \"content\": \"<s>\", \"single_word\": false, \"lstrip\": false, \"rstrip\": false, \"normalized\": false, \"special\": true}], \"normalizer\": null, \"pre_tokenizer\": {\"type\": \"Metaspace\", \"replacement\": \"▁\", \"split\": false, \"add_prefix_space\": true}, \"post_processor\": null, \"decoder\": null, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": null, \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"c\": 1, \"e\": 2, \"f\": 3, \"h\": 4, \"t\": 5, \"é\": 6, \"\\t\": 7, \"▁\": 8, \"▁t\": 9, \"▁th\": 10, \"▁the\": 11, \"▁c\": 12, \"▁ca\": 13, \"▁cat\": 14, \"▁caf\": 15, \"▁café\": 16, \"▁a\": 17, \"th\": 18, \"the\": 19, \"ca\": 20, \"cat\": 21, \"caf\": 22, \"café\": 23}, \"merges\": [[\"▁\", \"t\"], [\"▁t\", \"h\"], [\"▁th\", \"e\"], [\"▁\", \"c\"], [\"▁c\", \"a\"], [\"▁ca\", \"t\"], [\"▁ca\", \"f\"], [\"▁caf\", \"é\"], [\"▁\", \"a\"], [\"t\", \"h\"], [\"th\", \"e\"], [\"c\", \"a\"], [\"ca\", \"t\"], [\"ca\", \"f\"], [\"caf\", \"é\"]]}}",
    "texts": [
     {
      "text": "the cat",
@@ -545,13 +719,56 @@
      "text": "",
      "tokens": [],
      "ids": []
+    },
+    {
+     "text": "<s>the cat",
+     "tokens": [
+      "<s>",
+      "▁the",
+      "▁cat"
+     ],
+     "ids": [
+      24,
+      11,
+      14
+     ]
+    },
+    {
+     "text": "the cat<s>the cat",
+     "tokens": [
+      "▁the",
+      "▁cat",
+      "<s>",
+      "▁the",
+      "▁cat"
+     ],
+     "ids": [
+      11,
+      14,
+      24,
+      11,
+      14
+     ]
+    },
+    {
+     "text": "<s> the cat",
+     "tokens": [
+      "<s>",
+      "▁the",
+      "▁cat"
+     ],
+     "ids": [
+      24,
+      11,
+      14
+     ]
     }
    ]
   },
   {
    "id": 5,
    "name": "legacy_add_prefix_space_beside_prepend_scheme",
-   "tokenizer_json": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [], \"normalizer\": null, \"pre_tokenizer\": {\"type\": \"Metaspace\", \"replacement\": \"▁\", \"split\": false, \"add_prefix_space\": true, \"prepend_scheme\": \"never\"}, \"post_processor\": null, \"decoder\": null, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": null, \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"c\": 1, \"e\": 2, \"f\": 3, \"h\": 4, \"t\": 5, \"é\": 6, \"\\t\": 7, \"▁\": 8, \"▁t\": 9, \"▁th\": 10, \"▁the\": 11, \"▁c\": 12, \"▁ca\": 13, \"▁cat\": 14, \"▁caf\": 15, \"▁café\": 16, \"▁a\": 17, \"th\": 18, \"the\": 19, \"ca\": 20, \"cat\": 21, \"caf\": 22, \"café\": 23}, \"merges\": [[\"▁\", \"t\"], [\"▁t\", \"h\"], [\"▁th\", \"e\"], [\"▁\", \"c\"], [\"▁c\", \"a\"], [\"▁ca\", \"t\"], [\"▁ca\", \"f\"], [\"▁caf\", \"é\"], [\"▁\", \"a\"], [\"t\", \"h\"], [\"th\", \"e\"], [\"c\", \"a\"], [\"ca\", \"t\"], [\"ca\", \"f\"], [\"caf\", \"é\"]]}}",
+   "tokenizer_json": "{\"version\": \"1.0\", \"truncation\": null, \"padding\": null, \"added_tokens\": [{\"id\": 24, \"content\": \"<s>\", \"single_word\": false, \"lstrip\": false, \"rstrip\": false, \"normalized\": false, \"special\": true}], \"normalizer\": null, \"pre_tokenizer\": {\"type\": \"Metaspace\", \"replacement\": \"▁\", \"split\": false, \"add_prefix_space\": true, \"prepend_scheme\": \"never\"}, \"post_processor\": null, \"decoder\": null, \"model\": {\"type\": \"BPE\", \"dropout\": null, \"unk_token\": null, \"continuing_subword_prefix\": null, \"end_of_word_suffix\": null, \"fuse_unk\": false, \"byte_fallback\": false, \"ignore_merges\": false, \"vocab\": {\"a\": 0, \"c\": 1, \"e\": 2, \"f\": 3, \"h\": 4, \"t\": 5, \"é\": 6, \"\\t\": 7, \"▁\": 8, \"▁t\": 9, \"▁th\": 10, \"▁the\": 11, \"▁c\": 12, \"▁ca\": 13, \"▁cat\": 14, \"▁caf\": 15, \"▁café\": 16, \"▁a\": 17, \"th\": 18, \"the\": 19, \"ca\": 20, \"cat\": 21, \"caf\": 22, \"café\": 23}, \"merges\": [[\"▁\", \"t\"], [\"▁t\", \"h\"], [\"▁th\", \"e\"], [\"▁\", \"c\"], [\"▁c\", \"a\"], [\"▁ca\", \"t\"], [\"▁ca\", \"f\"], [\"▁caf\", \"é\"], [\"▁\", \"a\"], [\"t\", \"h\"], [\"th\", \"e\"], [\"c\", \"a\"], [\"ca\", \"t\"], [\"ca\", \"f\"], [\"caf\", \"é\"]]}}",
    "texts": [
     {
      "text": "the cat",
@@ -651,6 +868,49 @@
      "text": "",
      "tokens": [],
      "ids": []
+    },
+    {
+     "text": "<s>the cat",
+     "tokens": [
+      "<s>",
+      "the",
+      "▁cat"
+     ],
+     "ids": [
+      24,
+      19,
+      14
+     ]
+    },
+    {
+     "text": "the cat<s>the cat",
+     "tokens": [
+      "the",
+      "▁cat",
+      "<s>",
+      "the",
+      "▁cat"
+     ],
+     "ids": [
+      19,
+      14,
+      24,
+      19,
+      14
+     ]
+    },
+    {
+     "text": "<s> the cat",
+     "tokens": [
+      "<s>",
+      "▁the",
+      "▁cat"
+     ],
+     "ids": [
+      24,
+      11,
+      14
+     ]
     }
    ]
   }

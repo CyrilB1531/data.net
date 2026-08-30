@@ -19,7 +19,7 @@ public sealed class MetaspaceEscapeTests
     {
         var escape = new MetaspaceEscape('▁', MetaspacePrependScheme.Always, removeExtraWhitespaces: false, skipPrependWhenAlreadyPrefixed: false);
 
-        Assert.Equal("▁hello▁world", escape.Apply("hello world"));
+        Assert.Equal("▁hello▁world", escape.Apply("hello world", isFirstSplit: true));
     }
 
     [Fact]
@@ -27,18 +27,19 @@ public sealed class MetaspaceEscapeTests
     {
         var escape = new MetaspaceEscape('▁', MetaspacePrependScheme.Never, removeExtraWhitespaces: false, skipPrependWhenAlreadyPrefixed: false);
 
-        Assert.Equal("hello▁world", escape.Apply("hello world"));
+        Assert.Equal("hello▁world", escape.Apply("hello world", isFirstSplit: true));
     }
 
     [Fact]
-    public void First_and_Always_agree_while_nothing_splits()
+    public void First_and_Always_agree_on_the_first_piece_and_part_after_it()
     {
-        // Both target models declare split: false, so there is one piece and the two
-        // schemes cannot be told apart — pinned so a splitting model finds it deliberate.
+        // An added token is a piece, so a text opening on one spends what "first" owed.
         var first = new MetaspaceEscape('▁', MetaspacePrependScheme.First, removeExtraWhitespaces: false, skipPrependWhenAlreadyPrefixed: false);
         var always = new MetaspaceEscape('▁', MetaspacePrependScheme.Always, removeExtraWhitespaces: false, skipPrependWhenAlreadyPrefixed: false);
 
-        Assert.Equal(always.Apply("hello world"), first.Apply("hello world"));
+        Assert.Equal(always.Apply("hello world", isFirstSplit: true), first.Apply("hello world", isFirstSplit: true));
+        Assert.Equal("▁hello▁world", always.Apply("hello world", isFirstSplit: false));
+        Assert.Equal("hello▁world", first.Apply("hello world", isFirstSplit: false));
     }
 
     [Fact]
@@ -48,7 +49,7 @@ public sealed class MetaspaceEscapeTests
         // and the trailing space stay — the unigram path is the one that collapses them.
         var escape = new MetaspaceEscape('▁', MetaspacePrependScheme.Always, removeExtraWhitespaces: false, skipPrependWhenAlreadyPrefixed: false);
 
-        Assert.Equal("▁a▁▁▁b▁", escape.Apply("a   b "));
+        Assert.Equal("▁a▁▁▁b▁", escape.Apply("a   b ", isFirstSplit: true));
     }
 
     [Fact]
@@ -57,7 +58,7 @@ public sealed class MetaspaceEscapeTests
         // What SentencePieceTokenizer has always done, and what its oracles pin.
         var escape = new MetaspaceEscape('▁', MetaspacePrependScheme.Always, removeExtraWhitespaces: true, skipPrependWhenAlreadyPrefixed: false);
 
-        Assert.Equal("▁a▁b", escape.Apply("  a   b  "));
+        Assert.Equal("▁a▁b", escape.Apply("  a   b  ", isFirstSplit: true));
     }
 
     [Fact]
@@ -67,7 +68,7 @@ public sealed class MetaspaceEscapeTests
         // rewrote stays as it is, which docs/equivalence.md's Unigram row records.
         var escape = new MetaspaceEscape('▁', MetaspacePrependScheme.Always, removeExtraWhitespaces: true, skipPrependWhenAlreadyPrefixed: false);
 
-        Assert.Equal("▁a\tb", escape.Apply("a\tb"));
+        Assert.Equal("▁a\tb", escape.Apply("a\tb", isFirstSplit: true));
     }
 
     [Fact]
@@ -77,8 +78,8 @@ public sealed class MetaspaceEscapeTests
         // collapse, and the extraction must not quietly start returning a lone symbol.
         var escape = new MetaspaceEscape('▁', MetaspacePrependScheme.Always, removeExtraWhitespaces: true, skipPrependWhenAlreadyPrefixed: false);
 
-        Assert.Equal(string.Empty, escape.Apply("   "));
-        Assert.Equal(string.Empty, escape.Apply(string.Empty));
+        Assert.Equal(string.Empty, escape.Apply("   ", isFirstSplit: true));
+        Assert.Equal(string.Empty, escape.Apply(string.Empty, isFirstSplit: true));
     }
 
     [Fact]
@@ -88,9 +89,9 @@ public sealed class MetaspaceEscapeTests
         // replace: a leading space becomes the symbol and so meets the guard.
         var escape = new MetaspaceEscape('▁', MetaspacePrependScheme.Always, removeExtraWhitespaces: false, skipPrependWhenAlreadyPrefixed: true);
 
-        Assert.Equal("▁the▁cat", escape.Apply(" the cat"));
-        Assert.Equal("▁the▁cat", escape.Apply("▁the cat"));
-        Assert.Equal("▁the▁cat", escape.Apply("the cat"));
+        Assert.Equal("▁the▁cat", escape.Apply(" the cat", isFirstSplit: true));
+        Assert.Equal("▁the▁cat", escape.Apply("▁the cat", isFirstSplit: true));
+        Assert.Equal("▁the▁cat", escape.Apply("the cat", isFirstSplit: true));
     }
 
     [Fact]
@@ -100,9 +101,9 @@ public sealed class MetaspaceEscapeTests
         // symbol the leading space is about to become, and prepends a second one.
         var escape = new MetaspaceEscape('▁', MetaspacePrependScheme.First, removeExtraWhitespaces: false, skipPrependWhenAlreadyPrefixed: false);
 
-        Assert.Equal("▁▁the▁cat", escape.Apply(" the cat"));
-        Assert.Equal("▁▁the▁cat", escape.Apply("▁the cat"));
-        Assert.Equal("▁the▁cat", escape.Apply("the cat"));
+        Assert.Equal("▁▁the▁cat", escape.Apply(" the cat", isFirstSplit: true));
+        Assert.Equal("▁▁the▁cat", escape.Apply("▁the cat", isFirstSplit: true));
+        Assert.Equal("▁the▁cat", escape.Apply("the cat", isFirstSplit: true));
     }
 
     [Fact]
@@ -113,7 +114,7 @@ public sealed class MetaspaceEscapeTests
         var guarded = new MetaspaceEscape('▁', MetaspacePrependScheme.Never, removeExtraWhitespaces: false, skipPrependWhenAlreadyPrefixed: true);
         var bare = new MetaspaceEscape('▁', MetaspacePrependScheme.Never, removeExtraWhitespaces: false, skipPrependWhenAlreadyPrefixed: false);
 
-        Assert.Equal(bare.Apply(" the cat"), guarded.Apply(" the cat"));
-        Assert.Equal("▁the▁cat", guarded.Apply(" the cat"));
+        Assert.Equal(bare.Apply(" the cat", isFirstSplit: true), guarded.Apply(" the cat", isFirstSplit: true));
+        Assert.Equal("▁the▁cat", guarded.Apply(" the cat", isFirstSplit: true));
     }
 }

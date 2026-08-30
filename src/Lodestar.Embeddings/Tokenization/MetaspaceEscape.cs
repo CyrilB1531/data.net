@@ -47,13 +47,20 @@ internal sealed class MetaspaceEscape
     public bool SkipPrependWhenAlreadyPrefixed { get; }
 
     /// <summary>Applies the escape to <paramref name="text"/>.</summary>
-    public string Apply(string text)
+    /// <param name="text">The piece to escape.</param>
+    /// <param name="isFirstSplit">
+    /// Whether this piece is the first the input produced, which is what
+    /// <see cref="MetaspacePrependScheme.First"/> prepends to. An added token counts as a
+    /// piece and so consumes it — measured against <c>tokenizers</c> 0.23.1, where
+    /// <c>"&lt;s&gt;the cat"</c> under <c>first</c> is <c>['&lt;s&gt;', 'the', '▁cat']</c>.
+    /// </param>
+    public string Apply(string text, bool isFirstSplit)
     {
         string escaped = RemoveExtraWhitespaces ? Collapse(text) : text.Replace(' ', Replacement);
 
         // Nothing survived the collapse, so there is nothing to prefix — the unigram path
         // has always returned empty here rather than a lone symbol.
-        if (escaped.Length == 0 || PrependScheme == MetaspacePrependScheme.Never)
+        if (escaped.Length == 0 || !Prepends(isFirstSplit))
         {
             return escaped;
         }
@@ -64,6 +71,11 @@ internal sealed class MetaspaceEscape
             ? escaped
             : Replacement + escaped;
     }
+
+    /// <summary>Whether this piece is one the scheme prepends to at all.</summary>
+    private bool Prepends(bool isFirstSplit) =>
+        PrependScheme == MetaspacePrependScheme.Always
+        || (PrependScheme == MetaspacePrependScheme.First && isFirstSplit);
 
     /// <summary>Runs of U+0020 become one replacement, and the ends lose theirs.</summary>
     /// <remarks>
