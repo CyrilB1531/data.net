@@ -1370,3 +1370,9 @@ disagree is meaningless, so it is a precondition here rather than a footnote bes
 
 The package is referenced by `bench/` and by nothing under `src/`. V6 is a question about an
 incumbent, and referencing it to ask would be answering it.
+
+The first run's answer is [decision 0060](../docs/decisions/0060-tensorprimitives-beats-our-kernel-and-the-knn-is-still-not-redundant.md):
+`TensorPrimitives` is 1.09–1.23× faster on the shape `Search` runs, and the kNN is still not
+redundant, because the dot is only about half a query. **The container inverted every one of those
+ratios** — it reported ours 3.7× faster on the dot — which is section 10's rule holding rather than
+an aside about this mode.

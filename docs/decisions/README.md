@@ -69,13 +69,14 @@ a later decision uses instead.
 | [`0057`](0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md) | The `.npy` read serves a stream and a buffer differently | accepted | 2026-08-30 | Amended by [`0058`](0058-the-npy-ingest-is-memcpy-bound-and-the-allocation-is-not-the-cost.md), which measured the allocation its Consequences blamed and found it worth 0.02 ms. Refines [`0056`](0056-a-block-may-be-adopted-and-the-invariant-is-the-callers-to-keep.md): `NpyBlock.OwnedArray` is what the stream reader fills and [`EmbeddingIndex.FromOwnedBlock`](../reference/embeddings/search/embeddingindex-fromownedblock.md) may adopt. Refused a view on every path, which caps the chain at two copies by foreclosing adoption; a caller found holding a block past the lifetime of the bytes it borrowed is what would reverse it |
 | [`0058`](0058-the-npy-ingest-is-memcpy-bound-and-the-allocation-is-not-the-cost.md) | The `.npy` ingest is `memcpy`-bound, and the allocation is not the cost | accepted | 2026-08-30 | Amends [`0057`](0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md), which explained its measured win by an allocation nobody had timed. Two independent subtractions price that allocation at 0.02 ms and every route at one `memcpy` or none, so adopting is worth one copy and no more; the gap `ingest_total` still carries is what would reopen it |
 | [`0059`](0059-phase-0-verifications-two-confirmed-voids-do-not-survive-nuget.md) | Phase 0's verifications: two confirmed voids do not survive a NuGet search | accepted | 2026-08-30 | Answers V3, V4, V5 and V7 of [#437](https://github.com/CyrilB1531/lodestar/issues/437); V6 wants a measurement and is left open. Refuses to read a low download count as a void, and refuses to read V4's wrong reason as a missing gap |
+| [`0060`](0060-tensorprimitives-beats-our-kernel-and-the-knn-is-still-not-redundant.md) | `TensorPrimitives` beats our kernel, and the kNN is still not redundant | accepted | 2026-08-30 | Completes [`0059`](0059-phase-0-verifications-two-confirmed-voids-do-not-survive-nuget.md) with V6, the one verification wanting a measurement. Refuses the container reading it had already published, and refuses to delegate on a margin whose netstandard2.0 half is unmeasured |
 
 ## What `accepted` means here
 
-All fifty-nine carry `accepted`. None has been rejected or withdrawn — a status this table
+All sixty carry `accepted`. None has been rejected or withdrawn — a status this table
 would otherwise need a second word for. `0004` read a progress sentence
 (`single-word and blocked shipped`) where a status belongs; that sentence is now the opening line
-of its own `## Done` section, and its status reads `accepted` like the other fifty-eight.
+of its own `## Done` section, and its status reads `accepted` like the other fifty-nine.
 
 ## Relationships not stated on a `**Status:**` line
 
