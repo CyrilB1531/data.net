@@ -77,13 +77,14 @@ a later decision uses instead.
 | [`0065`](0065-the-oracle-generators-floor-is-the-ci-interpreter.md) | The oracle generators' Python floor is the CI interpreter, not the oldest one that parses | accepted | 2026-08-31 | Refused lowering the floor to 3.10 by rewriting `seeded_random.py`'s one PEP 695 signature, and refused letting `check_version_floor.py` hold the number — its subject is the three `Lodestar.Text` versions [`0012`](0012-per-package-versioning.md) split apart |
 | [`0066`](0066-the-nightlys-publish-holds-the-elevated-token-and-runs-no-branch-code.md) | The nightly's publish holds the elevated token, and runs no branch code | accepted | 2026-08-31 | **Amended by [`0067`](0067-workflows-is-not-a-permission-scope-so-the-nightly-stands-down-instead.md)**, which found `workflows` is not a permission scope at all — the split it argues for survives, the permission it asks for never existed. Refused excluding `.github/**` from the results branch, which would revert that branch's workflow changes on merge; refused a PAT |
 | [`0067`](0067-workflows-is-not-a-permission-scope-so-the-nightly-stands-down-instead.md) | `workflows` is not a permission scope, so the nightly stands down instead | accepted | 2026-08-31 | Amends [`0066`](0066-the-nightlys-publish-holds-the-elevated-token-and-runs-no-branch-code.md): an unknown `permissions:` key is a parse error, so it disabled the whole workflow rather than one job. Refused a PAT again, refused deleting 0066, and refused skipping the measurement |
+| [`0068`](0068-the-tokenizer-gap-is-the-loader-not-the-encode-kernel.md) | The tokenizer gap is the loader, not the encode kernel | accepted | 2026-08-31 | Narrows `CLAUDE.md`'s "tokenizers" clause to what #438's measurement supports. Refused delegating to `Microsoft.ML.Tokenizers`, which cannot read a `tokenizer.json` at all; refused the middle option of parsing ourselves and constructing theirs, for now; refused treating the loader's value as an excuse for the encode path (#498) |
 
 ## What `accepted` means here
 
-All sixty-seven carry `accepted`. None has been rejected or withdrawn — a status this table
+All sixty-eight carry `accepted`. None has been rejected or withdrawn — a status this table
 would otherwise need a second word for. `0004` read a progress sentence
 (`single-word and blocked shipped`) where a status belongs; that sentence is now the opening line
-of its own `## Done` section, and its status reads `accepted` like the other sixty-six.
+of its own `## Done` section, and its status reads `accepted` like the other sixty-seven.
 
 ## Relationships not stated on a `**Status:**` line
 
