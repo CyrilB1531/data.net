@@ -46,6 +46,11 @@
       "src/Lodestar.Text/Distances/**",
       "src/Lodestar.Text/Text/**"
     ],
+    "FuzzIncumbentBenchmarks": [
+      "src/Lodestar.Fuzzy/**",
+      "src/Lodestar.Text/Distances/**",
+      "src/Lodestar.Text/Text/**"
+    ],
     "IndelBenchmarks": [
       "src/Lodestar.Text/Distances/**",
       "src/Lodestar.Text/Text/**"
@@ -55,6 +60,10 @@
       "src/Lodestar.Text/Text/**"
     ],
     "LevenshteinBenchmarks": [
+      "src/Lodestar.Text/Distances/**",
+      "src/Lodestar.Text/Text/**"
+    ],
+    "LevenshteinIncumbentBenchmarks": [
       "src/Lodestar.Text/Distances/**",
       "src/Lodestar.Text/Text/**"
     ],

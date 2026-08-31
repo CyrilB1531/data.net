@@ -1387,3 +1387,47 @@ The first run's answer is [decision 0060](../docs/decisions/0060-tensorprimitive
 redundant, because the dot is only about half a query. **The container inverted every one of those
 ratios** — it reported ours 3.7× faster on the dot — which is section 10's rule holding rather than
 an aside about this mode.
+
+## 15. Against the .NET incumbents (issue #438)
+
+Every section above answers *"should you leave Python"*. `LevenshteinIncumbentBenchmarks` and
+`FuzzIncumbentBenchmarks` answer the question a .NET reader asks first — *"why this over the .NET
+library that already exists"* — which
+[#438](https://github.com/CyrilB1531/lodestar/issues/438) requires of every package and which
+nothing here measured until they landed.
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- \
+  --filter '*IncumbentBenchmarks*' --job short
+```
+
+Four incumbents, referenced by `bench/` and by nothing under `src/`, pinned exactly in
+`Lodestar.Text.Benchmarks.csproj`: **Fastenshtein 1.0.12**, **Quickenshtein 1.5.1**,
+**F23.StringSimilarity 7.0.1** and **Raffinert.FuzzySharp 6.0.0**.
+
+**The values agree before the clocks run.** A speed table over two functions that return different
+answers means nothing. Checked over `kitten`/`sitting`, `flaw`/`lawn`, the sentence pair the fuzzy
+class uses, an empty operand and an identical pair: all four Levenshtein implementations return the
+same distance on all five, and Lodestar and FuzzySharp return the same ratio on all four operations
+to the last digit of the double. Section 14's rule, applied here as a precondition rather than a
+footnote.
+
+Two shapes, for two reasons:
+
+- **Levenshtein** takes `Length` at 8, 64 and 512, because the bit-parallel path is what the long
+  row is for and a single length would hide it. `Levenshtein.Distance`'s default overload is the
+  baseline: all four libraries compare UTF-16 code units, so `TextElement.CodePoint` would be
+  measuring something none of the incumbents offers.
+- **The fuzzy ratios** take the *operation* as the parameter — `Ratio`, `PartialRatio`,
+  `TokenSetRatio`, `WRatio` — rather than writing eight methods. With one baseline for the whole
+  class BenchmarkDotNet compares `PartialRatio` against `Ratio` instead of against its counterpart,
+  which is not the question; as a parameter, each pair gets its own baseline row.
+
+**Where the numbers may be published.** Not from a container. Section 10's rule holds here with no
+exception — [ADR 0051](../docs/decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md)
+withdrew a 1.61× taken on a shared container, and section 14 records the container *inverting* every
+`TensorPrimitives` ratio. A container run of these two classes is a smoke test that the harness
+works, and nothing else. `docs/guides/performance.md` takes them from a named machine; the nightly
+publishes their ratios to `docs/guides/nightly_run.md` on its own, since both classes are in
+`bench-map.json` and are selected by any change under `src/Lodestar.Fuzzy/` or
+`src/Lodestar.Text/Distances/`.

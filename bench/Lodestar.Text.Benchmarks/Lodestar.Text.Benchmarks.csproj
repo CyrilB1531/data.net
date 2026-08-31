@@ -15,6 +15,20 @@
     <PackageReference Include="System.Numerics.Tensors" Version="10.0.11" />
   </ItemGroup>
 
+  <!--
+    The .NET incumbents #438 names for Lodestar.Fuzzy. They are referenced by the
+    benchmarks and by nothing else: no src/ project may take a dependency, and
+    tools/check_nuspec_dependencies.py asserts that the shipped packages carry none.
+    Pinned exactly, like every other version here, so a table in
+    docs/guides/performance.md names a version that can be reproduced.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Fastenshtein" Version="1.0.12" />
+    <PackageReference Include="Quickenshtein" Version="1.5.1" />
+    <PackageReference Include="F23.StringSimilarity" Version="7.0.1" />
+    <PackageReference Include="Raffinert.FuzzySharp" Version="6.0.0" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../src/Lodestar.Text/Lodestar.Text.csproj" />
     <ProjectReference Include="../../src/Lodestar.Fuzzy/Lodestar.Fuzzy.csproj" />
