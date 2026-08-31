@@ -40,7 +40,7 @@ int size = model.Count;  // => 11
 int rules = model.Merges.Count;  // => 3
 ```
 
-**Remarks** — fifteen properties because a `tokenizer.json` has that many knobs and getting any of
+**Remarks** — sixteen properties because a `tokenizer.json` has that many knobs and getting any of
 them wrong changes the ids. The ones that surprise:
 
 - **`PreSplit = null` is not the same as `NoPreTokenizer = true`.** The first says "no Split step
@@ -50,6 +50,8 @@ them wrong changes the ids. The ones that surprise:
   sets it, and without it the same file tokenizes differently.
 - **`AddPrefixSpace`** changes every first token of every text. It is a property of the model,
   not a preference.
+- **`ByteFallback`** needs the vocabulary to already carry all 256 `<0xXX>` pieces; `LoadBpe`
+  refuses a file that sets the flag without them rather than let it degrade silently.
 
 **Applies to** — net10.0, netstandard2.0.
 
