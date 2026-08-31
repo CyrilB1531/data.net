@@ -21,16 +21,28 @@ public sealed class BpeByteFallbackOracleTests
 {
     private const string Corpus = "bpe_byte_fallback.json";
 
-    /// <summary>Every pipeline and every text, exactly.</summary>
+    /// <summary>The corpus's own case count, pinned so a silently shrunken corpus fails here rather than passing on whatever survived.</summary>
+    private const int ExpectedCases = 10;
+
+    /// <summary>Every case carries the same seven-text fixture; see <c>BYTE_FALLBACK_TEXTS</c> in the generator.</summary>
+    private const int TextsPerCase = 7;
+
+    /// <summary><c>decoder_byte_fallback</c> and <c>decoder_sequence</c>, the only two cases carrying a <c>decoded</c> column.</summary>
+    private const int DecodedRows = 2 * TextsPerCase;
+
+    /// <summary>Every pipeline and every text, exactly — and the corpus's own shape, so a shrunken corpus fails rather than passing on fewer rows.</summary>
     [Fact]
     public void Encode_reproduces_every_byte_fallback_pipeline()
     {
         using JsonDocument doc = OracleLoader.Load(Corpus);
+        Assert.Equal(ExpectedCases, doc.RootElement.GetProperty("metadata").GetProperty("count").GetInt32());
 
         var failures = new List<string>();
+        int cases = 0;
         int replayed = 0;
         foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
         {
+            cases++;
             string name = c.GetProperty("name").GetString()!;
             var tokenizer = new BpeTokenizer(Vocabulary(c));
 
@@ -48,7 +60,8 @@ public sealed class BpeByteFallbackOracleTests
             }
         }
 
-        Assert.True(replayed > 0, $"{Corpus} carries no text to replay.");
+        Assert.Equal(ExpectedCases, cases);
+        Assert.Equal(ExpectedCases * TextsPerCase, replayed);
         Assert.True(failures.Count == 0, string.Join("\n", failures));
     }
 
@@ -84,7 +97,7 @@ public sealed class BpeByteFallbackOracleTests
             }
         }
 
-        Assert.True(decoded > 0, $"{Corpus} carries no decoded column, so this test proves nothing.");
+        Assert.Equal(DecodedRows, decoded);
         Assert.True(failures.Count == 0, string.Join("\n", failures));
     }
 

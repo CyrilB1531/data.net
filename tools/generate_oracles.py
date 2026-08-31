@@ -4151,11 +4151,11 @@ def _byte_fallback_vocab(extra=()):
 
 
 def _byte_fallback_file(vocab, merges, *, fuse_unk=False, prefix=None, suffix=None,
-                         unk_token=UNK_TOKEN_LOWER, decoder=None):
+                         unk_token=UNK_TOKEN_LOWER, decoder=None, pre_tokenizer=None):
     """One whole tokenizer.json, written by hand so tokenizers parses the exact bytes C# will."""
     return json.dumps({
         "version": "1.0", "truncation": None, "padding": None, "added_tokens": [],
-        "normalizer": None, "pre_tokenizer": None, "post_processor": None, "decoder": decoder,
+        "normalizer": None, "pre_tokenizer": pre_tokenizer, "post_processor": None, "decoder": decoder,
         "model": {
             "type": "BPE", "dropout": None, "unk_token": unk_token,
             "continuing_subword_prefix": prefix, "end_of_word_suffix": suffix,
@@ -4165,17 +4165,23 @@ def _byte_fallback_file(vocab, merges, *, fuse_unk=False, prefix=None, suffix=No
     }, ensure_ascii=False)
 
 
-# The chain Llama-2 declares, and the bare step, which are the two decode shapes
-# decision 0063 reproduces.
-BYTE_FALLBACK_DECODERS = {
-    "decoder_byte_fallback": {"type": "ByteFallback"},
-    "decoder_sequence": {"type": "Sequence", "decoders": [
-        {"type": "Replace", "pattern": {"String": META_SYMBOL}, "content": " "},
-        {"type": "ByteFallback"},
-        {"type": "Fuse"},
-        {"type": "Strip", "content": " ", "start": 1, "stop": 0},
-    ]},
+# The bare step, and Llama-2's chain -- decision 0063's two decode shapes. Replace
+# runs before ByteFallback, so a covered META_SYMBOL below is what keeps it live.
+BYTE_FALLBACK_SEQUENCE_DECODER = {"type": "Sequence", "decoders": [
+    {"type": "Replace", "pattern": {"String": META_SYMBOL}, "content": " "},
+    {"type": "ByteFallback"},
+    {"type": "Fuse"},
+    {"type": "Strip", "content": " ", "start": 1, "stop": 0},
+]}
+
+# Mistral v0.1's own pre_tokenizer shape. Only `decoder_sequence` carries it, since
+# it is what gives that case's Replace and Strip steps a real escape to undo.
+BYTE_FALLBACK_METASPACE_PRE_TOKENIZER = {
+    "type": "Metaspace", "replacement": META_SYMBOL, "prepend_scheme": "first", "split": False,
 }
+
+# The two cases that carry a `decoded` column -- the only ones a decoder is declared for.
+BYTE_FALLBACK_DECODED_CASES = ("decoder_byte_fallback", "decoder_sequence")
 
 
 def generate_bpe_byte_fallback() -> dict:
@@ -4185,12 +4191,15 @@ def generate_bpe_byte_fallback() -> dict:
     `BYTE_FALLBACK_TEXTS` is the widths -- one text per UTF-8 byte count, plus a
     control character and a covered symbol. The two merge cases prove the
     expansion precedes the merges: a post-pass over unmergeable symbols could
-    not produce `<0xC3><0xA9>` from a declared merge. The `fuse_unk` pair
-    carries the same texts under both settings, so "a byte-resolved symbol is
-    never fused" is measured rather than asserted. `unk_token_absent` is the
-    same alphabet again with no unknown token declared at all: the reference
-    still expands every uncovered symbol, so the expansion is not gated on an
-    unk_token being present, on either side of this pairing.
+    not produce `<0xC3><0xA9>` from a declared merge. `fuse_unk_on` is the half
+    of the pair that discriminates -- `aXXb`-shaped fusing never reaches a
+    byte-resolved symbol; `fuse_unk_off` is the control, and is byte-identical
+    to `complete_alphabet` (same `tokenizer_json`, same seven streams), since
+    with the flag off there is nothing left for the setting to change.
+    `unk_token_absent` is the same alphabet again with no unknown token
+    declared at all: the reference still expands every uncovered symbol, so
+    the expansion is not gated on an unk_token being present, on either side
+    of this pairing.
 
     `continuing_prefix` and `end_of_word_suffix` are the pair that show what is
     expanded: the marker itself is encoded as its own bytes, because the
@@ -4200,7 +4209,19 @@ def generate_bpe_byte_fallback() -> dict:
 
     The last two carry a `decoded` column, which the metaspace corpus
     deliberately does not: there the decoder was accepted and not applied, and
-    here it is declared and reproduced.
+    here it is declared and reproduced. `decoder_sequence` alone declares the
+    `Metaspace` pre_tokenizer and covers `META_SYMBOL` in its vocabulary, so its
+    token stream carries a real escape for the Sequence to undo -- Replace and
+    Strip are both load-bearing there (dropping either changes the decoded
+    string), where `decoder_byte_fallback`'s bare `ByteFallback` step needs
+    neither. Both cases still decode every text back to itself exactly: a
+    `Metaspace` escape correctly undone is `Decode(Encode(x)) == x` the same as
+    no escape at all, so the two cases' *decoded strings* necessarily agree
+    even though their token streams, and what their decoders had to do to
+    reach that string, do not -- `decoder_sequence`'s carries one extra leading
+    piece the escape produced. This is stated rather than left to be
+    rediscovered: a corpus expecting the two decoded columns to disagree would
+    be demanding one of the two mechanisms be wrong.
 
     No case declares a partial alphabet. `tokenizers` accepts one and degrades
     to the unknown token; Lodestar refuses it, so there is no reference stream
@@ -4222,15 +4243,18 @@ def generate_bpe_byte_fallback() -> dict:
         ("end_of_word_suffix", _byte_fallback_file(
             _byte_fallback_vocab(["b" + BYTE_FALLBACK_EOW_SUFFIX]), [],
             suffix=BYTE_FALLBACK_EOW_SUFFIX)),
+        ("decoder_byte_fallback", _byte_fallback_file(
+            _byte_fallback_vocab(), ["a b"], decoder={"type": "ByteFallback"})),
+        ("decoder_sequence", _byte_fallback_file(
+            _byte_fallback_vocab([META_SYMBOL]), ["a b"],
+            decoder=BYTE_FALLBACK_SEQUENCE_DECODER,
+            pre_tokenizer=BYTE_FALLBACK_METASPACE_PRE_TOKENIZER)),
     ]
-    for name, decoder in BYTE_FALLBACK_DECODERS.items():
-        pipelines.append((name, _byte_fallback_file(
-            _byte_fallback_vocab(), ["a b"], decoder=decoder)))
 
     cases = []
     for name, tokenizer_json in pipelines:
         tokenizer = Tokenizer.from_str(tokenizer_json)
-        decodes = name in BYTE_FALLBACK_DECODERS
+        decodes = name in BYTE_FALLBACK_DECODED_CASES
         texts = []
         for text in BYTE_FALLBACK_TEXTS:
             enc = tokenizer.encode(text)
