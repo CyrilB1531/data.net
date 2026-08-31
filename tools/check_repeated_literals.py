@@ -8,11 +8,18 @@ quality gate does. tools/generate_oracles.py has tripped it twice -- the second
 time failing an otherwise green pull request, where three added corpus texts
 took "the cat" from four occurrences to eight.
 
-The file already holds some 120 literals repeated three times or more, mostly
+The file already holds some 140 literals repeated three times or more, mostly
 JSON keys like "metadata" and "count". Reporting those would drown the signal,
 and the gate itself tolerates them because only new code counts. So this script
-compares against a base revision and reports what a change *adds*: a literal
-that crosses the threshold, or one already over it whose count grows.
+compares against a base revision and reports only a literal the change pushes
+*across* the threshold -- from under three occurrences to three or more.
+
+A literal already over it and merely growing is not reported. That is the rule
+this repository applies by hand anyway: META_SYMBOL, THE_CAT and BOS_TOKEN in
+generate_oracles.py are literals that reached three uses and were given a name.
+S1192 is why the question started being asked; the answer here is the naming
+convention, which is why the threshold is stated once above rather than chased
+against whatever the server's quality profile is set to this week.
 
 Names it does not count: a literal shorter than MIN_LENGTH, which S1192 ignores
 too; a docstring, which is documentation rather than a repeated constant; a
@@ -121,8 +128,8 @@ def at_base(base: str, path: str) -> str:
     return out.stdout if out.returncode == 0 else ""
 
 
-def grown(base: str) -> list[tuple[str, str, int, int]]:
-    """(path, literal, before, after) for every literal this change pushed up."""
+def crossed(base: str) -> list[tuple[str, str, int, int]]:
+    """(path, literal, before, after) for every literal this change pushed over the threshold."""
     findings = []
     for path in scanned_files():
         after = over_threshold((ROOT / path).read_text(encoding="utf-8"))
@@ -130,7 +137,7 @@ def grown(base: str) -> list[tuple[str, str, int, int]]:
             continue
         before = counts(at_base(base, path))
         for literal, count in sorted(after.items()):
-            if count > before.get(literal, 0):
+            if before.get(literal, 0) < THRESHOLD:
                 findings.append((path, literal, before.get(literal, 0), count))
     return findings
 
@@ -169,18 +176,18 @@ def main(argv: list[str]) -> int:
         print(__doc__, file=sys.stderr)
         return 2
 
-    findings = grown(arguments.base)
+    findings = crossed(arguments.base)
     for path, literal, before, after in findings:
         was = "new" if before == 0 else f"was {before}"
         print(f"{path}: {literal!r} now appears {after} times ({was})")
 
     if findings:
         print(
-            f"\n{len(findings)} literal(s) reached or grew past S1192's threshold of "
-            f"{THRESHOLD}. SonarCloud reports these only after the push, and a finding "
-            "on new code fails the quality gate. Give each a name beside the other "
-            "constants at the top of its file and point every occurrence at it -- "
-            "`--report` lists the standing backlog, which is not yours to clear.",
+            f"\n{len(findings)} literal(s) reached {THRESHOLD} occurrences in a file this "
+            "change touches. Give each a name beside the other constants at the top of "
+            "its file and point every occurrence at it, the way META_SYMBOL and THE_CAT "
+            "already are -- SonarCloud's S1192 reports the same thing, but only after "
+            "the push. `--report` lists the standing backlog, which is not yours to clear.",
             file=sys.stderr)
         return 1
     return 0

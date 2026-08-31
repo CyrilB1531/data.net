@@ -57,20 +57,15 @@ def test_a_literal_reaching_the_threshold_is_reported(rooted, capsys):
     assert "'the cat' now appears 3 times (was 2)" in capsys.readouterr().out
 
 
-def test_a_literal_already_over_the_threshold_is_reported_only_when_it_grows(rooted, capsys):
+def test_a_literal_already_over_the_threshold_is_never_reported(rooted):
+    """The backlog is not the contributor's to clear, growing or not."""
     over = 'A = "metadata"\nB = "metadata"\nC = "metadata"\n'
     write(rooted, "gen.py", over)
     base = commit(rooted, "already over")
-    write(rooted, "gen.py", over + 'D = "unrelated value"\n')
-    commit(rooted, "untouched backlog")
+    write(rooted, "gen.py", over + 'D = "metadata"\nE = "metadata"\n')
+    commit(rooted, "grown further")
 
     assert main(["prog", "--base", base]) == 0
-
-    write(rooted, "gen.py", over + 'E = "metadata"\n')
-    commit(rooted, "grown")
-
-    assert main(["prog", "--base", base]) == 1
-    assert "'metadata' now appears 4 times (was 3)" in capsys.readouterr().out
 
 
 def test_two_occurrences_are_not_a_finding(rooted):
