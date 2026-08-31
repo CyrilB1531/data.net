@@ -72,13 +72,14 @@ a later decision uses instead.
 | [`0060`](0060-tensorprimitives-beats-our-kernel-and-the-knn-is-still-not-redundant.md) | `TensorPrimitives` beats our kernel, and the kNN is still not redundant | accepted | 2026-08-30 | Completes [`0059`](0059-phase-0-verifications-two-confirmed-voids-do-not-survive-nuget.md) with V6, the one verification wanting a measurement. Refuses the container reading it had already published, and refuses to delegate on a margin whose netstandard2.0 half is unmeasured |
 | [`0061`](0061-the-ingest-gap-was-a-collection-landing-wherever-the-collector-ran.md) | The ingest gap was a collection, landing wherever the collector ran | accepted | 2026-08-30 | Amends [`0058`](0058-the-npy-ingest-is-memcpy-bound-and-the-allocation-is-not-the-cost.md), whose unexplained gap it closes by refusing 0058's own candidate: the cost follows the collections, not the position, and the round where they part is what decides. Refused shuffling the phases, and refused reading either round that would have confirmed the hypothesis |
 | [`0062`](0062-the-two-metaspace-spellings-part-on-the-prepend-twice.md) | The two metaspace spellings part on the prepend, twice | accepted | 2026-08-30 | Amends [`0050`](0050-the-sentencepiece-bpe-lineage-stays-a-bpe-model.md) §2, whose equality it bounds rather than drops: the escape carries which declaration it was read from, `Metaspace` guarding its prepend on `starts_with` where the `Prepend` + `Replace` sequence cannot, and reading `first` per piece where the sequence prepends to every gap. Refused shipping either divergence measured and documented, 0050 §4's rule having no weaker form for a file we accept |
+| [`0064`](0064-check-repeated-literals-runs-in-ci-only-not-the-pre-commit-hook.md) | `check_repeated_literals.py` runs in CI only, not the pre-commit hook | accepted | 2026-08-31 | Extends [`0046`](0046-check-adr-immutable-runs-in-ci-only.md)'s reasoning to a third guard, and is recorded separately for the reason 0046 exists: neither 0037 nor 0046 is edited. Refused running it against `origin/main` in the hook, which on a stale clone is neither the branch point nor the merge target, and refused printing the standing backlog on every commit |
 
 ## What `accepted` means here
 
-All sixty-two carry `accepted`. None has been rejected or withdrawn — a status this table
+All sixty-three carry `accepted`. None has been rejected or withdrawn — a status this table
 would otherwise need a second word for. `0004` read a progress sentence
 (`single-word and blocked shipped`) where a status belongs; that sentence is now the opening line
-of its own `## Done` section, and its status reads `accepted` like the other sixty-one.
+of its own `## Done` section, and its status reads `accepted` like the other sixty-two.
 
 ## Relationships not stated on a `**Status:**` line
 

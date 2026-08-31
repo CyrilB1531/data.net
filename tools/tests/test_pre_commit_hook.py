@@ -17,7 +17,10 @@ here, which is the point.
 first -- named in decision 0037. `check_adr_immutable.py` needs `--base`, the
 pull request's own base commit, which a commit made before a pull request
 exists has none to name -- decision 0046, its own ADR rather than an edit to
-0037, per the rule 0046 exists to enforce.
+0037, per the rule 0046 exists to enforce. `check_repeated_literals.py` takes
+`--base` for that reason and one of its own: without a change to compare it
+would print tools/ 's standing 140 findings on every commit, and a hook that
+noisy is turned off -- decision 0064.
 
 The floor guard needs no exclusion. CI passes it `--check-feed` and the hook does
 not, but that is a flag rather than a guard, and its two offline rules run in
@@ -35,7 +38,8 @@ REPO = Path(__file__).resolve().parents[2]
 HOOK = REPO / ".githooks" / "pre-commit"
 WORKFLOWS = REPO / ".github" / "workflows"
 
-OFFLINE_EXCLUSIONS = {"check_nuspec_dependencies", "check_adr_immutable"}
+OFFLINE_EXCLUSIONS = {
+    "check_nuspec_dependencies", "check_adr_immutable", "check_repeated_literals"}
 
 GUARD = re.compile(r"tools/(check_\w+)\.py")
 
