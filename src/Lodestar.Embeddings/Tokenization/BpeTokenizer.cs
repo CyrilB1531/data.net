@@ -60,6 +60,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private readonly int _unkId;
     private readonly bool _hasUnk;
     private readonly bool _byteLevel;
+    private readonly bool _byteFallback;
     private readonly bool _ignoreMerges;
     private readonly bool _fuseUnk;
 
@@ -84,6 +85,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         _endOfWord = vocabulary.EndOfWordSuffix;
         _continuingPrefix = vocabulary.ContinuingSubwordPrefix;
         _byteLevel = vocabulary.ByteLevel;
+        _byteFallback = vocabulary.ByteFallback;
         _ignoreMerges = vocabulary.IgnoreMerges;
         _fuseUnk = vocabulary.FuseUnk;
 
@@ -428,9 +430,11 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             }
         }
 
-        // Byte-level sizes by UTF-8 byte count, not char count: one character can
-        // become up to four bytes, each becoming its own symbol.
-        int capacity = _byteLevel ? JsonArtifact.Utf8NoBom.GetByteCount(piece) : piece.Length;
+        // Byte-level sizes by UTF-8 byte count: one character can become four bytes.
+        // byte_fallback has the same shape, plus whatever Decorate adds per symbol.
+        int capacity = _byteLevel || _byteFallback
+            ? JsonArtifact.Utf8NoBom.GetByteCount(piece) + DecorationBytes(piece)
+            : piece.Length;
         bool small = capacity <= StackThreshold;
         int[]? rented = small ? null : ArrayPool<int>.Shared.Rent(capacity);
         Span<int> symbols = small ? stackalloc int[capacity] : rented!.AsSpan(0, capacity);
@@ -451,6 +455,23 @@ public sealed class BpeTokenizer : ISubwordTokenizer
                 ArrayPool<int>.Shared.Return(rented);
             }
         }
+    }
+
+    /// <summary>An upper bound on the bytes <see cref="Decorate"/> can add to one piece's symbols.</summary>
+    /// <remarks>
+    /// Only a byte_fallback expansion pays for these: the prefix goes on every symbol but the
+    /// first and the suffix on the last, and an expanded symbol carries them as bytes of its
+    /// own. Counting one prefix per character is loose and never short.
+    /// </remarks>
+    private int DecorationBytes(string piece)
+    {
+        if (!_byteFallback)
+        {
+            return 0;
+        }
+        int prefix = _continuingPrefix is null ? 0 : JsonArtifact.Utf8NoBom.GetByteCount(_continuingPrefix);
+        int suffix = _endOfWord is null ? 0 : JsonArtifact.Utf8NoBom.GetByteCount(_endOfWord);
+        return (prefix * piece.Length) + suffix;
     }
 
     /// <summary>
@@ -484,6 +505,13 @@ public sealed class BpeTokenizer : ISubwordTokenizer
                 symbols[count++] = id;
                 previousWasSubstituted = false;
             }
+            else if (_byteFallback)
+            {
+                // byte_fallback: the decorated symbol is what is expanded, and it expands
+                // before Merge, so byte pieces merge like any other symbol.
+                count += ExpandToBytes(symbol, symbols.Slice(count));
+                previousWasSubstituted = false;
+            }
             else if (_hasUnk)
             {
                 // fuse_unk: a run of uncovered points fuses to one unknown token,
@@ -497,6 +525,22 @@ public sealed class BpeTokenizer : ISubwordTokenizer
             i += width;
         }
         return count;
+    }
+
+    /// <summary>Writes one id per UTF-8 byte of <paramref name="symbol"/>, and returns how many.</summary>
+    /// <remarks>
+    /// Total by construction: <c>LoadBpe</c> refuses a byte_fallback vocabulary missing any of
+    /// the 256 pieces, so every byte has one. A directly built vocabulary that does not is a
+    /// caller's error, and the indexer says so rather than a stream saying nothing.
+    /// </remarks>
+    private int ExpandToBytes(string symbol, Span<int> symbols)
+    {
+        byte[] bytes = JsonArtifact.Utf8NoBom.GetBytes(symbol);
+        for (int i = 0; i < bytes.Length; i++)
+        {
+            symbols[i] = _modelVocab[BytePieces.Name(bytes[i])];
+        }
+        return bytes.Length;
     }
 
     /// <summary>The vocabulary key for one code point of a piece: the characters themselves, plus whatever decoration its position calls for.</summary>
