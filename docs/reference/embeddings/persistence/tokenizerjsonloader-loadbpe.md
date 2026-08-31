@@ -70,7 +70,7 @@ package refuses rather than reproduce either. For such a file the `decoder` bloc
 strictly: a bare `{"type": "ByteFallback"}` or a `Sequence` of exactly `[Replace, ByteFallback,
 Fuse, Strip]` in that order — Llama-2's own chain — undoes the byte pieces and, for the four-step
 form, the whitespace escape with them; any other shape is refused by name.
-[Decision 0063](../../decisions/0063-byte-fallback-requires-the-whole-alphabet-and-its-decoder-is-read-strictly-too.md)
+[Decision 0063](../../../decisions/0063-byte-fallback-requires-the-whole-alphabet-and-its-decoder-is-read-strictly-too.md)
 has the measurements and the refusal.
 
 `docs/decisions/0017-bpe-parity-scope.md` has the parity scope — end to end for GPT-2 and the
