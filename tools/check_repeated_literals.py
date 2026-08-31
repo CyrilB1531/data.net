@@ -49,7 +49,6 @@ Exit:   0 clean, 1 findings printed, 2 bad usage
 
 from __future__ import annotations
 
-import argparse
 import ast
 import collections
 import pathlib
@@ -74,6 +73,10 @@ SCANNED = "tools/"
 # sonarcloud.yml excludes tools/tests/**, so a finding here is one the gate will
 # never raise -- and a check reporting what the gate ignores gets ignored itself.
 EXCLUDED = "tools/tests/"
+
+# --base reaches git, so it is validated before it gets there rather than quoted
+# after -- check_adr_immutable.py's guard: a leading '-' would read as an option.
+REVISION = re.compile(r"^[0-9A-Za-z][0-9A-Za-z._/~^-]{0,254}$")
 
 
 # The +side line numbers of a unified diff hunk header, which is where the added
@@ -202,25 +205,23 @@ def report() -> int:
 
 
 def main(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--base")
-    parser.add_argument("--report", action="store_true")
-    parser.add_argument("--help", "-h", action="store_true", dest="help_wanted")
-    try:
-        arguments = parser.parse_args(argv[1:])
-    except SystemExit:
-        print(__doc__, file=sys.stderr)
-        return 2
-    if arguments.help_wanted:
+    """Hand-parsed rather than argparse: its error path raises SystemExit, and catching
+    that to print usage swallows the exit the interpreter is entitled to make."""
+    arguments = argv[1:]
+    if "--help" in arguments or "-h" in arguments:
         print(__doc__)
         return 0
-    if arguments.report:
+    if arguments == ["--report"]:
         return report()
-    if not arguments.base:
+    if len(arguments) != 2 or arguments[0] != "--base":
         print(__doc__, file=sys.stderr)
         return 2
+    base = arguments[1]
+    if not REVISION.match(base):
+        print(f"--base {base!r} is not a usable revision", file=sys.stderr)
+        return 2
 
-    findings = crossed(arguments.base)
+    findings = crossed(base)
     for path, literal, before, after in findings:
         was = "new" if before == 0 else f"was {before}"
         print(f"{path}: {literal!r} now appears {after} times ({was})")

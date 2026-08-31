@@ -148,6 +148,20 @@ def test_help_exits_zero_and_prints_to_stdout(capsys):
     assert "S1192" in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("base", ["--upload-pack=touch /tmp/x", "-oProxyCommand=x", "a b", "a;b", ""])
+def test_a_revision_git_would_read_as_an_option_is_refused(base, capsys):
+    """--base reaches git, so it is validated before it gets there rather than quoted after."""
+    assert main(["prog", "--base", base]) == 2
+    assert "not a usable revision" in capsys.readouterr().err
+
+
+def test_a_plain_revision_is_accepted(rooted):
+    write(rooted, "gen.py", "A = None\n")
+    base = commit(rooted, "only commit")
+
+    assert main(["prog", "--base", base]) == 0
+
+
 def test_no_base_is_bad_usage(capsys):
     assert main(["prog"]) == 2
     assert "S1192" in capsys.readouterr().err
