@@ -31,9 +31,9 @@ BpeVocabulary vocab = TokenizerJsonLoader.LoadBpe("gpt2/tokenizer.json");
 ```
 
 **Remarks** — **Prefer this over [`BpeFilesLoader.Load`](bpefilesloader-load.md)** whenever the checkpoint
-ships a `tokenizer.json`. It reads `ignore_merges`, the split pattern together with its `behavior`
-and `invert` flag, and the byte-level flag straight from the file — every one of which is a
-parameter the older two-file route asks a caller to get right.
+ships a `tokenizer.json`. It reads `ignore_merges`, `byte_fallback`, the split pattern together
+with its `behavior` and `invert` flag, and the byte-level flag straight from the file — every one
+of which is a parameter the older two-file route asks a caller to get right.
 
 **The SentencePiece-BPE whitespace escape is read, in both of the spellings a file uses for it.**
 A `Metaspace` pre-tokenizer whose `split` is off — Mistral v0.1's spelling — and a normalizer
@@ -53,14 +53,25 @@ nothing measured says which one it means; and a normalizer `Sequence` that names
 `Replace` and is not exactly those two in that order.
 
 The escape is an encode-side transform in this package. A `Metaspace` `decoder` block loads and is
-**not applied**, so [`Decode`](../tokenization/bpetokenizer-decode.md) returns the escaped text,
-replacement symbols and all, for a file declaring one.
+**not applied** for a file that does not declare `byte_fallback`, so
+[`Decode`](../tokenization/bpetokenizer-decode.md) returns the escaped text, replacement symbols
+and all, for such a file.
 
-**Llama-2 and Mistral v0.1 are still refused here by name**, now on `byte_fallback` alone. Both are
-trained as SentencePiece BPE, and a real file of theirs declares `model.type == "BPE"`, so this is
-the call that reaches it. The exception says what would go wrong: Python resolves an uncovered
-character into `<0x..>` byte pieces where this tokenizer emits the unknown piece, so loading it
-anyway would produce embeddings that do not match the model.
+**Llama-2 and Mistral v0.1 both load.** Both are trained as SentencePiece BPE with
+`byte_fallback: true`, and a real file of theirs declares `model.type == "BPE"`, so this is the
+call that reaches them. `byte_fallback` is read: an uncovered symbol resolves into one `<0xXX>`
+piece per UTF-8 byte, uppercase hexadecimal, rather than the unknown token — the expansion runs
+before the merges, on the decorated symbol, so a byte piece merges like any other and a
+`continuing_subword_prefix` or `end_of_word_suffix` on it is itself encoded as bytes. What is
+still **refused**, by name, is a vocabulary that declares `byte_fallback` without carrying all 256
+`<0xXX>` pieces — `tokenizers` degrades such a file silently, to the unknown token or, with none
+declared, by dropping the symbol and letting its neighbours merge across the hole, and this
+package refuses rather than reproduce either. For such a file the `decoder` block is also read
+strictly: a bare `{"type": "ByteFallback"}` or a `Sequence` of exactly `[Replace, ByteFallback,
+Fuse, Strip]` in that order — Llama-2's own chain — undoes the byte pieces and, for the four-step
+form, the whitespace escape with them; any other shape is refused by name.
+[Decision 0063](../../decisions/0063-byte-fallback-requires-the-whole-alphabet-and-its-decoder-is-read-strictly-too.md)
+has the measurements and the refusal.
 
 `docs/decisions/0017-bpe-parity-scope.md` has the parity scope — end to end for GPT-2 and the
 classic lineage, split-pattern only for Llama-3 and Qwen2 — and a known split divergence above the
