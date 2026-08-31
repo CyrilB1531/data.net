@@ -19,7 +19,7 @@ pull request's own base commit, which a commit made before a pull request
 exists has none to name -- decision 0046, its own ADR rather than an edit to
 0037, per the rule 0046 exists to enforce. `check_repeated_literals.py` takes
 `--base` for that reason and one of its own: without a change to compare it
-would print tools/ 's standing 140 findings on every commit, and a hook that
+would print tools/ 's standing 108 findings on every commit, and a hook that
 noisy is turned off -- decision 0064.
 
 The floor guard needs no exclusion. CI passes it `--check-feed` and the hook does

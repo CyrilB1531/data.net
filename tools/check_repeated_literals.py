@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 """Refuse a pull request that pushes a Python string literal past S1192's threshold.
 
-SonarCloud's S1192 fires on a literal repeated three times or more in one file,
+SonarCloud's S1192 fires on a literal repeated more than three times in one file,
 and it is reported only after the push: `AnalysisMode=All` covers this
 repository's C# in the build, but nothing looks at its Python before the
 quality gate does. tools/generate_oracles.py has tripped it twice -- the second
 time failing an otherwise green pull request, where three added corpus texts
 took "the cat" from four occurrences to eight.
 
-The file already holds some 140 literals repeated three times or more, mostly
+The file already holds some 108 literals past that threshold, mostly
 JSON keys like "metadata" and "count". Reporting those would drown the signal,
 and the gate itself tolerates them because only new code counts. So this script
-compares against a base revision and reports only a literal the change pushes
-*across* the threshold -- from under three occurrences to three or more.
+compares against a base revision and reports a literal only when the change
+pushes it *across* the threshold **and** its first occurrence is on a line the
+change added. Both halves were measured on pull request #488, where the gate
+raised one issue: a literal new to the file at four occurrences. Two others
+crossed the threshold in the same diff and were not raised, because the line
+S1192 anchors the issue to -- the first occurrence -- was already there, and
+only new code counts.
 
 A literal already over it and merely growing is not reported. That is the rule
 this repository applies by hand anyway: META_SYMBOL, THE_CAT and BOS_TOKEN in
@@ -48,13 +53,15 @@ import argparse
 import ast
 import collections
 import pathlib
+import re
 import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
-# S1192's own threshold: three occurrences is a finding, two is a coincidence.
-THRESHOLD = 3
+# Measured on #488, not assumed: a literal at four was the gate's only issue
+# while three others sat at exactly three, unreported.
+THRESHOLD = 4
 
 # Shorter literals are noise -- a repeated "ok" or "id" is not the duplication
 # the rule is about, and Sonar does not report them either.
@@ -69,6 +76,25 @@ SCANNED = "tools/"
 EXCLUDED = "tools/tests/"
 
 
+# The +side line numbers of a unified diff hunk header, which is where the added
+# lines of that hunk start and how many there are.
+HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
+
+
+def added_lines(base: str, path: str) -> set[int]:
+    """The line numbers this change added to `path`, as they read in the working tree."""
+    out = subprocess.run(
+        ["git", "diff", "-U0", base, "--", path],
+        cwd=ROOT, capture_output=True, text=True, check=True)
+    lines: set[int] = set()
+    for line in out.stdout.splitlines():
+        found = HUNK.match(line)
+        if found:
+            start = int(found.group(1))
+            lines.update(range(start, start + int(found.group(2) or 1)))
+    return lines
+
+
 def _docstring_ids(tree: ast.AST) -> set[int]:
     """Every string constant that is a docstring, which is prose and not a constant."""
     ids = set()
@@ -81,6 +107,21 @@ def _docstring_ids(tree: ast.AST) -> set[int]:
                 and isinstance(body[0].value.value, str)):
             ids.add(id(body[0].value))
     return ids
+
+
+def first_lines(source: str) -> dict[str, int]:
+    """The line each countable literal first appears on, which is where S1192 anchors."""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return {}
+    docstrings = _docstring_ids(tree)
+    first: dict[str, int] = {}
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Constant) and isinstance(node.value, str)
+                and id(node) not in docstrings and len(node.value) >= MIN_LENGTH):
+            first[node.value] = min(first.get(node.value, node.lineno), node.lineno)
+    return first
 
 
 def counts(source: str) -> dict[str, int]:
@@ -132,12 +173,15 @@ def crossed(base: str) -> list[tuple[str, str, int, int]]:
     """(path, literal, before, after) for every literal this change pushed over the threshold."""
     findings = []
     for path in scanned_files():
-        after = over_threshold((ROOT / path).read_text(encoding="utf-8"))
+        source = (ROOT / path).read_text(encoding="utf-8")
+        after = over_threshold(source)
         if not after:
             continue
         before = counts(at_base(base, path))
+        added = added_lines(base, path)
+        first = first_lines(source)
         for literal, count in sorted(after.items()):
-            if before.get(literal, 0) < THRESHOLD:
+            if before.get(literal, 0) < THRESHOLD and first.get(literal) in added:
                 findings.append((path, literal, before.get(literal, 0), count))
     return findings
 
@@ -150,7 +194,7 @@ def report() -> int:
         if not over:
             continue
         total += len(over)
-        print(f"{path}: {len(over)} literal(s) at or over {THRESHOLD} occurrences")
+        print(f"{path}: {len(over)} literal(s) at {THRESHOLD} occurrences or more")
         for literal, count in sorted(over.items(), key=lambda item: -item[1]):
             print(f"    {count:4}x  {literal!r}")
     print(f"\n{total} literal(s) repeated {THRESHOLD} times or more under {SCANNED}")

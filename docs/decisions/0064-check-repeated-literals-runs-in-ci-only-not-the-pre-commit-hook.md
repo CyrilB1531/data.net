@@ -28,11 +28,18 @@ commit; passing it `origin/main` instead would compare against whatever that ref
 at locally, which on a stale clone is neither the branch point nor the merge target.
 
 The reason of its own is what the check reports. `tools/generate_oracles.py` already holds some
-140 literals at or over S1192's threshold, mostly JSON keys like `"metadata"` and `"count"`. The
-quality gate tolerates them because only new code counts, and this guard is only useful for the
-same reason: it reports what a change *adds*. Without a base there is no change to compare, and a
-hook that printed 140 standing findings on every commit would be turned off within a day — which
-is the outcome 0037 exists to prevent.
+108 literals over S1192's threshold, mostly JSON keys like `"metadata"` and `"count"`. The quality
+gate tolerates them because only new code counts, and this guard is only useful for the same
+reason: it reports what a change *adds*, which it can only know from a base. A hook printing 108
+standing findings on every commit would be turned off within a day — the outcome 0037 exists to
+prevent.
+
+The threshold itself is measured rather than assumed. On
+[#488](https://github.com/CyrilB1531/lodestar/pull/488) the gate raised exactly one issue: a
+literal new to the file at four occurrences. Three others sat at three and two more crossed from
+three to four or five, and none of those was raised — so S1192 fires *past* three, and it anchors
+its issue on the literal's first occurrence, which has to be new code for the issue to be new. The
+guard applies both halves, and reproduces that pull request's answer on both sides of its fix.
 
 Recorded here rather than as an edit to 0037 or 0046, both accepted and immutable, per the rule
 0046 itself was written to enforce.

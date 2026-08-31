@@ -47,41 +47,59 @@ def rooted(tmp_path, monkeypatch):
     return repo
 
 
-def test_a_literal_reaching_the_threshold_is_reported(rooted, capsys):
-    write(rooted, "gen.py", 'A = "the cat"\nB = "the cat"\n')
-    base = commit(rooted, "two occurrences")
-    write(rooted, "gen.py", 'A = "the cat"\nB = "the cat"\nC = "the cat"\n')
-    commit(rooted, "three")
+def test_a_literal_the_change_introduces_is_reported(rooted, capsys):
+    """The shape pull request #488 was failed for: new to the file, four occurrences."""
+    write(rooted, "gen.py", "A = None\n")
+    base = commit(rooted, "nothing to repeat")
+    write(rooted, "gen.py",
+          'A = "the cat"\nB = "the cat"\nC = "the cat"\nD = "the cat"\n')
+    commit(rooted, "four, all new")
 
     assert main(["prog", "--base", base]) == 1
-    assert "'the cat' now appears 3 times (was 2)" in capsys.readouterr().out
+    assert "'the cat' now appears 4 times (new)" in capsys.readouterr().out
+
+
+def test_a_literal_whose_first_occurrence_is_old_is_not_reported(rooted):
+    """S1192 anchors its issue on the first occurrence, and only new code counts.
+
+    Measured on #488: two literals crossed the threshold in the same diff and
+    neither was raised, because each already appeared above the lines it added.
+    """
+    write(rooted, "gen.py", 'A = "the cat"\nB = "the cat"\nC = "the cat"\n')
+    base = commit(rooted, "three, none of them new")
+    write(rooted, "gen.py",
+          'A = "the cat"\nB = "the cat"\nC = "the cat"\nD = "the cat"\n')
+    commit(rooted, "a fourth, appended")
+
+    assert main(["prog", "--base", base]) == 0
 
 
 def test_a_literal_already_over_the_threshold_is_never_reported(rooted):
     """The backlog is not the contributor's to clear, growing or not."""
-    over = 'A = "metadata"\nB = "metadata"\nC = "metadata"\n'
+    over = 'A = "metadata"\nB = "metadata"\nC = "metadata"\nD = "metadata"\n'
     write(rooted, "gen.py", over)
     base = commit(rooted, "already over")
-    write(rooted, "gen.py", over + 'D = "metadata"\nE = "metadata"\n')
+    write(rooted, "gen.py", over + 'E = "metadata"\nF = "metadata"\n')
     commit(rooted, "grown further")
 
     assert main(["prog", "--base", base]) == 0
 
 
-def test_two_occurrences_are_not_a_finding(rooted):
+def test_three_occurrences_are_not_a_finding(rooted):
+    """Measured on pull request #488: S1192 fires past three, not at three."""
     write(rooted, "gen.py", "A = None\n")
     base = commit(rooted, "empty")
-    write(rooted, "gen.py", 'A = "the cat"\nB = "the cat"\n')
-    commit(rooted, "two")
+    write(rooted, "gen.py", 'A = "the cat"\nB = "the cat"\nC = "the cat"\n')
+    commit(rooted, "three")
 
     assert main(["prog", "--base", base]) == 0
 
 
 def test_naming_the_literal_clears_the_finding(rooted):
-    write(rooted, "gen.py", 'A = "the cat"\nB = "the cat"\n')
-    base = commit(rooted, "two occurrences")
-    write(rooted, "gen.py", 'CAT = "the cat"\nA = CAT\nB = CAT\nC = CAT\n')
-    commit(rooted, "named once, used three times")
+    write(rooted, "gen.py", 'A = "the cat"\nB = "the cat"\nC = "the cat"\n')
+    base = commit(rooted, "three occurrences")
+    write(rooted, "gen.py", 'CAT = "the cat"\nA = CAT\nB = CAT\nC = CAT\nD = CAT\n')
+    commit(rooted, "named once, used four times")
 
     assert main(["prog", "--base", base]) == 0
 
@@ -89,7 +107,8 @@ def test_naming_the_literal_clears_the_finding(rooted):
 def test_a_file_the_change_adds_is_judged_on_its_own(rooted, capsys):
     write(rooted, "gen.py", "A = None\n")
     base = commit(rooted, "one file")
-    write(rooted, "extra.py", 'A = "brand new"\nB = "brand new"\nC = "brand new"\n')
+    write(rooted, "extra.py",
+          'A = "brand new"\nB = "brand new"\nC = "brand new"\nD = "brand new"\n')
     commit(rooted, "a new file already over")
 
     assert main(["prog", "--base", base]) == 1
@@ -97,14 +116,15 @@ def test_a_file_the_change_adds_is_judged_on_its_own(rooted, capsys):
 
 
 def test_a_short_literal_is_not_counted():
-    assert over_threshold('A = "ok"\nB = "ok"\nC = "ok"\n') == {}
+    assert over_threshold('A = "ok"\nB = "ok"\nC = "ok"\nD = "ok"\n') == {}
 
 
 def test_a_docstring_is_not_a_repeated_constant():
     source = (
         'def a():\n    "shared documentation"\n\n'
         'def b():\n    "shared documentation"\n\n'
-        'def c():\n    "shared documentation"\n')
+        'def c():\n    "shared documentation"\n\n'
+        'def d():\n    "shared documentation"\n')
     assert over_threshold(source) == {}
 
 
@@ -113,13 +133,14 @@ def test_an_unparsable_file_is_not_judged():
 
 
 def test_report_lists_the_backlog_and_exits_zero(rooted, capsys):
-    write(rooted, "gen.py", 'A = "metadata"\nB = "metadata"\nC = "metadata"\n')
+    write(rooted, "gen.py",
+          'A = "metadata"\nB = "metadata"\nC = "metadata"\nD = "metadata"\n')
     commit(rooted, "backlog")
 
     assert main(["prog", "--report"]) == 0
     out = capsys.readouterr().out
-    assert "3x  'metadata'" in out
-    assert "1 literal(s) repeated 3 times or more" in out
+    assert "4x  'metadata'" in out
+    assert "1 literal(s) repeated 4 times or more" in out
 
 
 def test_help_exits_zero_and_prints_to_stdout(capsys):
