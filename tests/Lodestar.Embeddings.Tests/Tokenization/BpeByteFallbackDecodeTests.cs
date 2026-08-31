@@ -54,14 +54,42 @@ public sealed class BpeByteFallbackDecodeTests
         Assert.Contains("decoder", thrown.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void A_decoder_Sequence_out_of_order_is_refused()
+    {
+        // Strip first is the same four steps LlamaDecoder declares, reordered -- the reference
+        // runs them in the declared order, so this is not an equivalent Sequence.
+        const string reordered =
+            "{ \"type\": \"Sequence\", \"decoders\": [ { \"type\": \"Strip\", \"content\": \" \", \"start\": 1, \"stop\": 0 },"
+            + " { \"type\": \"Replace\", \"pattern\": { \"String\": \"▁\" }, \"content\": \" \" },"
+            + " { \"type\": \"ByteFallback\" }, { \"type\": \"Fuse\" } ] }";
+
+        InvalidDataException thrown = Assert.Throws<InvalidDataException>(() => Load(reordered));
+
+        Assert.Contains("decoder", thrown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_metaspace_file_without_byte_fallback_still_loads_its_Metaspace_decoder()
+    {
+        const string metaspaceDecoder =
+            "{ \"type\": \"Metaspace\", \"replacement\": \"▁\", \"prepend_scheme\": \"first\", \"split\": false }";
+        BpeTokenizer tokenizer = Load(metaspaceDecoder, byteFallback: false);
+        Assert.True(tokenizer.TryGetId("▁a", out int id));
+
+        // Decision 0062: outside the byte_fallback boundary, the decoder is accepted and not
+        // applied -- the escape stays a symbol rather than becoming a space.
+        Assert.Equal("▁a", tokenizer.Decode([id]));
+    }
+
     private const string LlamaDecoder =
         "{ \"type\": \"Sequence\", \"decoders\": [ { \"type\": \"Replace\", \"pattern\": { \"String\": \"▁\" }, \"content\": \" \" },"
         + " { \"type\": \"ByteFallback\" }, { \"type\": \"Fuse\" },"
         + " { \"type\": \"Strip\", \"content\": \" \", \"start\": 1, \"stop\": 0 } ] }";
 
-    private static BpeTokenizer Load(string decoder) => new(Vocabulary(decoder));
+    private static BpeTokenizer Load(string decoder, bool byteFallback = true) => new(Vocabulary(decoder, byteFallback));
 
-    private static BpeVocabulary Vocabulary(string decoder)
+    private static BpeVocabulary Vocabulary(string decoder, bool byteFallback = true)
     {
         // A metaspace + byte_fallback file, which is the shape both target models declare.
         var entries = new List<string> { "\"<unk>\": 0", "\"a\": 1", "\"b\": 2", "\"▁\": 3", "\"▁a\": 4" };
@@ -73,7 +101,7 @@ public sealed class BpeByteFallbackDecodeTests
         string json = "{ \"version\": \"1.0\", \"added_tokens\": [], \"normalizer\": null,"
             + " \"pre_tokenizer\": { \"type\": \"Metaspace\", \"replacement\": \"▁\", \"prepend_scheme\": \"first\", \"split\": false },"
             + $" \"post_processor\": null, \"decoder\": {decoder}, \"model\": {{ \"type\": \"BPE\", \"unk_token\": \"<unk>\","
-            + $" \"byte_fallback\": true, \"vocab\": {{ {string.Join(", ", entries)} }}, \"merges\": [\"▁ a\"] }} }}";
+            + $" \"byte_fallback\": {(byteFallback ? "true" : "false")}, \"vocab\": {{ {string.Join(", ", entries)} }}, \"merges\": [\"▁ a\"] }} }}";
         return TokenizerJsonLoader.LoadBpe(new MemoryStream(Encoding.UTF8.GetBytes(json)), OracleReplay.BpeBounds());
     }
 }

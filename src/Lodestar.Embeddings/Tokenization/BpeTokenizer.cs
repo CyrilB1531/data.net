@@ -829,7 +829,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// a byte sequence that is not well-formed UTF-8 becomes U+FFFD rather than throwing,
     /// matching the reference (decision 0023). <c>skipSpecialTokens</c> defaults to
     /// <see langword="false"/>, so <c>Decode(Encode(x)) == x</c> holds without passing it —
-    /// except under the metaspace escape, which nothing here undoes (decision 0062).
+    /// except that the metaspace escape and the byte pieces stay as symbols unless the file's decoder declares the chain undoing them (decision 0063).
     /// </remarks>
     /// <param name="ids">Token ids, e.g. from <see cref="Encode"/>.</param>
     /// <param name="skipSpecialTokens">Drop tokens whose <c>added_tokens</c> entry is <c>special</c> (<see cref="AddedToken.Special"/>), matching Python's <c>skip_special_tokens</c>.</param>

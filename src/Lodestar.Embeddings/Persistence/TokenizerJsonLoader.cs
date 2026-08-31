@@ -569,7 +569,7 @@ public static class TokenizerJsonLoader
             NoPreTokenizer = noPreTokenizer,
             NormalizationForms = normalizationForms,
             Metaspace = escape,
-            Decoder = ReadBpeDecoder(root, byteFallback, escape),
+            Decoder = ReadBpeDecoder(root, byteFallback),
         };
     }
 
@@ -1168,13 +1168,16 @@ public static class TokenizerJsonLoader
 
     /// <summary>Reads the <c>decoder</c> block of a SentencePiece-BPE file, or refuses a shape this package does not undo.</summary>
     /// <remarks>
-    /// Only this lineage is read strictly: a byte-level file's decoder keeps
-    /// <see cref="EnsureDecoderMatchesModel"/>'s looser check, which is the behaviour every
-    /// checkpoint loading today was accepted under. Decision 0063 states the boundary.
+    /// Scoped to <c>byte_fallback</c> alone: a Metaspace file that declares the escape without
+    /// it keeps <see cref="EnsureDecoderMatchesModel"/>'s looser check and today's
+    /// accepted-but-unapplied decoder (decision 0062) -- its <c>Metaspace</c> decoder's
+    /// <c>prepend_scheme</c> and <c>split</c> have not been measured against the reference, so
+    /// reading it strictly here would risk refusing a file this package can load. Decision 0063
+    /// states the boundary.
     /// </remarks>
-    private static BpeDecoderSteps? ReadBpeDecoder(JsonElement root, bool byteFallback, MetaspaceEscape? escape)
+    private static BpeDecoderSteps? ReadBpeDecoder(JsonElement root, bool byteFallback)
     {
-        if (!byteFallback && escape is null)
+        if (!byteFallback)
         {
             return null;
         }
@@ -1196,36 +1199,29 @@ public static class TokenizerJsonLoader
             "a SentencePiece-BPE file's decoder is reproduced, and only ByteFallback and the Sequence Llama-2 declares are");
     }
 
-    /// <summary>The one Sequence this lineage declares: Replace, ByteFallback, Fuse, Strip.</summary>
+    /// <summary>The one Sequence this lineage declares: exactly Replace, ByteFallback, Fuse, Strip, in that order.</summary>
+    /// <remarks>
+    /// Refused rather than reduced when the steps are reordered, repeated, missing or extra --
+    /// decision 0050 §4's rule, which <see cref="ReadNormalizerEscape"/> already applies to the
+    /// normalizer Sequence. The reference runs these in the declared order, so a reordered
+    /// Sequence decodes differently and canonicalizing it here would be silently wrong.
+    /// </remarks>
     private static BpeDecoderSteps ReadBpeDecoderSequence(JsonElement decoder)
     {
         JsonElement steps = RequireArray(decoder, "decoders");
-        bool byteFallback = false;
-        char? replacement = null;
-        bool strip = false;
-        foreach (JsonElement step in steps.EnumerateArray())
+        if (steps.GetArrayLength() != 4
+            || !string.Equals(OptionalString(steps[0], "type"), ReplaceName, StringComparison.Ordinal)
+            || !string.Equals(OptionalString(steps[1], "type"), "ByteFallback", StringComparison.Ordinal)
+            || !string.Equals(OptionalString(steps[2], "type"), "Fuse", StringComparison.Ordinal)
+            || !string.Equals(OptionalString(steps[3], "type"), "Strip", StringComparison.Ordinal))
         {
-            switch (OptionalString(step, "type") ?? UntypedName)
-            {
-                case "ByteFallback":
-                    byteFallback = true;
-                    break;
-                case "Fuse":
-                    // Every step here concatenates already; Fuse is what says so in the file.
-                    break;
-                case ReplaceName:
-                    replacement = ReadDecoderReplacement(step);
-                    break;
-                case "Strip":
-                    strip = ReadDecoderStrip(step);
-                    break;
-                default:
-                    throw Unsupported(
-                        $"its decoder Sequence names '{OptionalString(step, "type") ?? UntypedName}'",
-                        "only Replace, ByteFallback, Fuse and Strip are reproduced");
-            }
+            throw Unsupported(
+                "its decoder Sequence is not exactly [Replace, ByteFallback, Fuse, Strip] in that order",
+                "that is the one chain Llama-2 declares, and reordering, repeating, adding or omitting a step changes what decoding produces");
         }
-        return new BpeDecoderSteps(byteFallback, replacement, strip);
+        char replacement = ReadDecoderReplacement(steps[0]);
+        bool strip = ReadDecoderStrip(steps[3]);
+        return new BpeDecoderSteps(byteFallback: true, replacement, strip);
     }
 
     /// <summary>The one character a decoder <c>Replace</c> maps back onto U+0020.</summary>
