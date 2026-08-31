@@ -73,7 +73,7 @@ public sealed class WordPieceTokenizer : ISubwordTokenizer
     private static readonly Regex PreTokenPattern =
         new(@"\w+|[^\w\s]+", RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexDefaults.MatchTimeout);
 
-    private readonly IReadOnlyDictionary<string, int> _vocab;
+    private readonly CharSpanMap<int> _vocab;
     private readonly AddedToken[] _addedTokens;
     private readonly AddedTokenScanner _rawScanner;
     private readonly AddedTokenScanner _normalizedScanner;
@@ -135,7 +135,14 @@ public sealed class WordPieceTokenizer : ISubwordTokenizer
             throw new ArgumentException($"The unknown token '{unkToken}' is not in the vocabulary.", nameof(unkToken));
         }
 
-        _vocab = vocab;
+        // Span-keyed: the greedy match shortens and prefixes a candidate, and asking a
+        // Dictionary built both strings for every candidate that missed (#498).
+        var entries = new List<KeyValuePair<string, int>>(vocab.Count);
+        foreach (KeyValuePair<string, int> entry in vocab)
+        {
+            entries.Add(entry);
+        }
+        _vocab = new CharSpanMap<int>(entries);
         _unkToken = unkToken;
         _unkId = unkId;
         _continuationPrefix = continuationPrefix;
@@ -208,7 +215,7 @@ public sealed class WordPieceTokenizer : ISubwordTokenizer
     public bool TryGetId(string token, out int id)
     {
         Guard.NotNull(token);
-        if (_vocab.TryGetValue(token, out id))
+        if (_vocab.TryGetValue(token.AsSpan(), out id))
         {
             return true;
         }
@@ -304,52 +311,55 @@ public sealed class WordPieceTokenizer : ISubwordTokenizer
             return;
         }
 
-        var pieces = new List<string>();
-        var pieceIds = new List<int>();
+        // Appended and rolled back rather than staged in two lists per word: WordPiece is
+        // all-or-nothing per word, so the rollback is the staging and costs a Count (#498).
+        int tokenMark = tokens.Count;
+        int idMark = ids.Count;
         int start = 0;
         bool bad = false;
 
         while (start < word.Length)
         {
-            int end = word.Length;
-            string? found = null;
-            int foundId = 0;
-            while (start < end)
-            {
-                string sub = word[start..end];
-                if (start > 0)
-                {
-                    sub = _continuationPrefix + sub;
-                }
-                if (_vocab.TryGetValue(sub, out int id))
-                {
-                    found = sub;
-                    foundId = id;
-                    break;
-                }
-                end--;
-            }
-
+            string? found = LongestPieceAt(word, start, out int foundId, out int end);
             if (found is null)
             {
                 bad = true;
                 break;
             }
 
-            pieces.Add(found);
-            pieceIds.Add(foundId);
+            tokens.Add(found);
+            ids.Add(foundId);
             start = end;
         }
 
         if (bad)
         {
+            tokens.RemoveRange(tokenMark, tokens.Count - tokenMark);
+            ids.RemoveRange(idMark, ids.Count - idMark);
             tokens.Add(_unkToken);
             ids.Add(_unkId);
         }
-        else
+    }
+
+    /// <summary>The longest vocabulary piece starting at <paramref name="start"/>, or null.</summary>
+    /// <remarks>
+    /// The candidate is probed as a span, prefix and all, so a miss costs no string: the
+    /// piece is built only once the match is known. Shortening one character at a time is
+    /// what <c>tokenizers</c>' WordPiece does, and what made every miss an allocation here
+    /// before issue #498.
+    /// </remarks>
+    private string? LongestPieceAt(string word, int start, out int id, out int end)
+    {
+        ReadOnlySpan<char> prefix = start > 0 ? _continuationPrefix.AsSpan() : default;
+        for (end = word.Length; end > start; end--)
         {
-            tokens.AddRange(pieces);
-            ids.AddRange(pieceIds);
+            if (_vocab.TryGetValue(prefix, word.AsSpan(start, end - start), out id))
+            {
+                return start > 0 ? _continuationPrefix + word[start..end] : word[start..end];
+            }
         }
+
+        id = 0;
+        return null;
     }
 }
