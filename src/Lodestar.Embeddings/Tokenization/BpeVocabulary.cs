@@ -60,6 +60,18 @@ public sealed record BpeVocabulary(
     /// </remarks>
     public bool FuseUnk { get; init; }
 
+    /// <summary>
+    /// Whether an uncovered symbol resolves into <c>&lt;0xXX&gt;</c> byte pieces rather than into
+    /// the unknown token — HuggingFace's <c>byte_fallback</c>, which Llama-2 and Mistral v0.1
+    /// declare.
+    /// </summary>
+    /// <remarks>
+    /// The vocabulary has to carry all 256 pieces for this to be set; <c>LoadBpe</c> refuses a file
+    /// that declares the flag without them, because the reference degrades silently to the unknown
+    /// token there (decision 0063).
+    /// </remarks>
+    public bool ByteFallback { get; init; }
+
     private readonly string? _endOfWordSuffix;
 
     /// <summary>The marker closing a word, e.g. <c>&lt;/w&gt;</c>; <see langword="null"/> for byte-level models.</summary>
@@ -176,6 +188,7 @@ public sealed record BpeVocabulary(
             || AddPrefixSpace != other.AddPrefixSpace
             || IgnoreMerges != other.IgnoreMerges
             || FuseUnk != other.FuseUnk
+            || ByteFallback != other.ByteFallback
             || NoPreTokenizer != other.NoPreTokenizer
             || !string.Equals(EndOfWordSuffix, other.EndOfWordSuffix, StringComparison.Ordinal)
             || !string.Equals(ContinuingSubwordPrefix, other.ContinuingSubwordPrefix, StringComparison.Ordinal)
@@ -227,6 +240,7 @@ public sealed record BpeVocabulary(
             hash = (hash * 31) + (AddPrefixSpace ? 1 : 0);
             hash = (hash * 31) + (IgnoreMerges ? 1 : 0);
             hash = (hash * 31) + (FuseUnk ? 1 : 0);
+            hash = (hash * 31) + (ByteFallback ? 1 : 0);
             hash = (hash * 31) + (NoPreTokenizer ? 1 : 0);
             hash = (hash * 31) + (EndOfWordSuffix is null ? 0 : StringComparer.Ordinal.GetHashCode(EndOfWordSuffix));
             hash = (hash * 31) + (ContinuingSubwordPrefix is null ? 0 : StringComparer.Ordinal.GetHashCode(ContinuingSubwordPrefix));
