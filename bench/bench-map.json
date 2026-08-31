@@ -51,6 +51,9 @@
       "src/Lodestar.Text/Distances/**",
       "src/Lodestar.Text/Text/**"
     ],
+    "MetricsIncumbentBenchmarks": [
+      "src/Lodestar.Metrics/**"
+    ],
     "TokenizerIncumbentBenchmarks": [
       "src/Lodestar.Embeddings/Tokenization/**",
       "src/Lodestar.Embeddings/Persistence/**"
