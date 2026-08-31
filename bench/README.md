@@ -1401,18 +1401,25 @@ dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- \
   --filter '*IncumbentBenchmarks*' --job short
 ```
 
-Four incumbents, referenced by `bench/` and by nothing under `src/`, pinned exactly in
-`Lodestar.Text.Benchmarks.csproj`: **Fastenshtein 1.0.12**, **Quickenshtein 1.5.1**,
-**F23.StringSimilarity 7.0.1** and **Raffinert.FuzzySharp 6.0.0**.
+Incumbents are referenced by `bench/` and by nothing under `src/`, pinned exactly in
+`Lodestar.Text.Benchmarks.csproj`:
+
+| class | baseline | incumbent |
+| --- | --- | --- |
+| `LevenshteinIncumbentBenchmarks` | `Levenshtein.Distance` | Fastenshtein 1.0.12, Quickenshtein 1.5.1, F23.StringSimilarity 7.0.1 |
+| `FuzzIncumbentBenchmarks` | `Fuzz.*` | Raffinert.FuzzySharp 6.0.0 |
+| `TokenizerIncumbentBenchmarks` | `WordPieceTokenizer`, `SentencePieceTokenizer` | Microsoft.ML.Tokenizers 2.0.0 |
 
 **The values agree before the clocks run.** A speed table over two functions that return different
 answers means nothing. Checked over `kitten`/`sitting`, `flaw`/`lawn`, the sentence pair the fuzzy
 class uses, an empty operand and an identical pair: all four Levenshtein implementations return the
 same distance on all five, and Lodestar and FuzzySharp return the same ratio on all four operations
-to the last digit of the double. Section 14's rule, applied here as a precondition rather than a
-footnote.
+to the last digit of the double. The tokenizers were checked the same way, over 200 documents of
+the corpus: identical ids, both models, once `Microsoft.ML.Tokenizers` is told not to prepend a
+beginning-of-sentence piece — which is the sort of thing an unchecked table would have silently
+measured. Section 14's rule, applied here as a precondition rather than a footnote.
 
-Two shapes, for two reasons:
+Three shapes, for three reasons:
 
 - **Levenshtein** takes `Length` at 8, 64 and 512, because the bit-parallel path is what the long
   row is for and a single length would hide it. `Levenshtein.Distance`'s default overload is the
@@ -1422,12 +1429,16 @@ Two shapes, for two reasons:
   `TokenSetRatio`, `WRatio` — rather than writing eight methods. With one baseline for the whole
   class BenchmarkDotNet compares `PartialRatio` against `Ratio` instead of against its counterpart,
   which is not the question; as a parameter, each pair gets its own baseline row.
+- **The tokenizers** take the model as the parameter for that same reason, and encode all 5 000
+  documents of `bench/corpus/vocabs/documents.json` per operation, so the number is encoding cost
+  rather than model loading — both tokenizers are built once in `[GlobalSetup]`, as
+  `BpeBenchmarks` does.
 
 **Where the numbers may be published.** Not from a container. Section 10's rule holds here with no
 exception — [ADR 0051](../docs/decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md)
 withdrew a 1.61× taken on a shared container, and section 14 records the container *inverting* every
 `TensorPrimitives` ratio. A container run of these two classes is a smoke test that the harness
 works, and nothing else. `docs/guides/performance.md` takes them from a named machine; the nightly
-publishes their ratios to `docs/guides/nightly_run.md` on its own, since both classes are in
-`bench-map.json` and are selected by any change under `src/Lodestar.Fuzzy/` or
-`src/Lodestar.Text/Distances/`.
+publishes their ratios to `docs/guides/nightly_run.md` on its own, since all three classes are in
+`bench-map.json` and are selected by any change under `src/Lodestar.Fuzzy/`,
+`src/Lodestar.Text/Distances/` or `src/Lodestar.Embeddings/Tokenization/`.
