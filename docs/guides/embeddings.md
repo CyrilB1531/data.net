@@ -92,20 +92,24 @@ models are refused outright.
 | T5, ALBERT, camemBERT, XLM-R | `SentencePieceTokenizer` | `SentencePieceModelLoader` or [`TokenizerJsonLoader.LoadUnigram`](../reference/embeddings/persistence/tokenizerjsonloader-loadunigram.md) |
 | GPT-2 and its byte-level descendants | `BpeTokenizer` | `BpeFilesLoader` or [`TokenizerJsonLoader.LoadBpe`](../reference/embeddings/persistence/tokenizerjsonloader-loadbpe.md) |
 | Llama-3, Qwen2 | `BpeTokenizer` with `BpePatterns.Llama3` / `BpePatterns.Qwen2` | [`TokenizerJsonLoader.LoadBpe`](../reference/embeddings/persistence/tokenizerjsonloader-loadbpe.md) |
-| **Llama-2, Mistral v0.1** | **none** | — |
+| Llama-2, Mistral v0.1 | `BpeTokenizer` (the SentencePiece-BPE lineage) | [`TokenizerJsonLoader.LoadBpe`](../reference/embeddings/persistence/tokenizerjsonloader-loadbpe.md) |
 
 Llama-2 and Mistral v0.1 are trained as **SentencePiece BPE with a `Metaspace`
-pre-tokenizer and `byte_fallback`** — a third pipeline, distinct from both the
-classic and byte-level lineages `BpeTokenizer` implements and from the
-`Unigram` + `Metaspace` pipeline `SentencePieceTokenizer` implements.
-Whichever loader a caller reaches for first, the file **fails to load** rather
-than producing a plausible-looking wrong answer. A real Llama-2 or Mistral v0.1
-`tokenizer.json` declares `model.type == "BPE"` with `byte_fallback`, and both
-`LoadBpe` and `LoadUnigram` **refuse it by name**: `LoadUnigram` no longer stops
-at "this is a `BPE` model, not `Unigram`" when `byte_fallback` is the setting
-that actually blocks the file (#343). A `BPE` file that does *not* declare
-`byte_fallback` still gets the plain model-kind mismatch from `LoadUnigram`,
-pointing at `LoadBpe` instead.
+whitespace escape and `byte_fallback`** — not a third pipeline: `model.type` still
+says `BPE`, and `BpeTokenizer` reproduces the whole lineage, the whitespace escape
+([decision 0050](../decisions/0050-the-sentencepiece-bpe-lineage-stays-a-bpe-model.md),
+[decision 0062](../decisions/0062-the-two-metaspace-spellings-part-on-the-prepend-twice.md))
+and `byte_fallback`
+([decision 0063](../decisions/0063-byte-fallback-requires-the-whole-alphabet-and-its-decoder-is-read-strictly-too.md))
+both included. A real Llama-2 or Mistral v0.1 `tokenizer.json` declares
+`model.type == "BPE"` with `byte_fallback`, and
+[`TokenizerJsonLoader.LoadBpe`](../reference/embeddings/persistence/tokenizerjsonloader-loadbpe.md)
+loads it. `LoadUnigram` still **refuses it by name**, unconditionally — the
+Unigram pipeline does not reproduce `byte_fallback` at all, on any file, and the
+message names `byte_fallback` directly rather than stopping at "this is a `BPE`
+model, not `Unigram`" (#343) — and `LoadBpe` itself refuses only a vocabulary
+that declares the flag without carrying every `<0xXX>` piece it promises, naming
+the first one missing.
 See [decision 0017](../decisions/0017-bpe-parity-scope.md) for the parity scope
 this table states — end-to-end for GPT-2 and the classic lineage, split-pattern
 only for Llama-3 and Qwen2 — and for a known split divergence from HuggingFace
@@ -114,14 +118,14 @@ above the Basic Multilingual Plane.
 ```csharp
 try
 {
-    BpeVocabulary llama2 = TokenizerJsonLoader.LoadBpe("llama-2-7b/tokenizer.json");
+    SentencePieceVocabulary llama2 = TokenizerJsonLoader.LoadUnigram("llama-2-7b/tokenizer.json");
 }
 catch (InvalidDataException e)
 {
-    // "This tokenizer.json cannot be loaded because its model declares
-    // byte_fallback: Python resolves an uncovered character into <0x..>
-    // byte pieces where this tokenizer emits the unknown piece. Loading
-    // it anyway would produce embeddings that do not match the model."
+    // "This tokenizer.json cannot be loaded because it declares a 'BPE' model
+    // with byte_fallback: LoadBpe is the call for a BPE model, and it is the
+    // one that reproduces byte_fallback. Loading it anyway would produce
+    // embeddings that do not match the model."
     Console.WriteLine(e.Message);
 }
 ```
@@ -172,8 +176,13 @@ different one is **rejected**, with a message naming what was found:
 - a model trained with an algorithm other than **unigram** — a `spiece.model`
   whose `trainer_spec.model_type` is `BPE`, `WORD` or `CHAR` carries a piece
   table that unigram Viterbi decoding would consume and segment the wrong way;
-- **`byte_fallback`**, in either format: Python resolves an uncovered character
-  into `<0x..>` byte pieces where these tokenizers emit the unknown piece;
+- **`byte_fallback`, on the Unigram path** — `spiece.model`, or a `tokenizer.json`
+  declaring `model.type: "Unigram"` — refused unconditionally, since Python
+  resolves an uncovered character into `<0x..>` byte pieces where that pipeline
+  would emit the unknown piece instead; on the BPE path it is reproduced, and
+  only a vocabulary that declares the flag without carrying all 256 `<0xXX>`
+  pieces it promises is refused, naming the first one missing
+  ([decision 0063](../decisions/0063-byte-fallback-requires-the-whole-alphabet-and-its-decoder-is-read-strictly-too.md));
 - a normalizer named in a `spiece.model` with no `precompiled_charsmap` to
   apply, or a character map that will not parse — the rules come from the
   compiled map, never from `normalizer_spec.name`;

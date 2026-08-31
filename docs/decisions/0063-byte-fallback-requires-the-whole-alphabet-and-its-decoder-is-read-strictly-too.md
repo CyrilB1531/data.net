@@ -128,9 +128,9 @@ them.
 
 `docs/reference/embeddings/persistence/tokenizerjsonloader-loadbpe.md`,
 `docs/reference/embeddings/tokenization/bpetokenizer-decode.md` and
-`docs/reference/embeddings/tokenization/bpevocabulary.md` are corrected in the same commit as this
-decision: the first no longer says Llama-2 and Mistral v0.1 are refused, the second narrows its
-round-trip qualification to the file shape that still lacks a decoder, and the third carries the
+`docs/reference/embeddings/tokenization/bpevocabulary.md` are corrected in this lot: the first
+no longer says Llama-2 and Mistral v0.1 are refused, the second narrows its round-trip
+qualification to the file shape that still lacks a decoder, and the third carries the
 `ByteFallback` property.
 
 **0050 is amended, not corrected.** Its §3 decided *that* `byte_fallback` is reproduced and said
