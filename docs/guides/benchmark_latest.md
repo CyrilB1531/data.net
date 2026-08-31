@@ -13,14 +13,14 @@ known reading", never "faster than the section above it".
 
 ### Lodestar.Text.Benchmarks.BatchEmbeddingBenchmarks-report-github
 
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
-Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores
+AMD EPYC 7763, 1 CPU, 4 logical and 2 physical cores
 .NET SDK 10.0.400
-  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
 
 Job=ShortRun  IterationCount=3  LaunchCount=1  
 WarmupCount=3
@@ -28,36 +28,36 @@ WarmupCount=3
 
 <!-- markdownlint-disable MD060 -->
 
-| Method             | CorpusSize | Mean         | Error       | StdDev     | Ratio | RatioSD | Gen0    | Gen1   | Allocated  | Alloc Ratio |
-|------------------- |----------- |-------------:|------------:|-----------:|------:|--------:|--------:|-------:|-----------:|------------:|
-| **UnitLoop**           | **1**          |     **6.785 μs** |   **0.2345 μs** |  **0.0129 μs** |  **1.00** |    **0.00** |  **0.1068** |      **-** |    **2.76 KB** |        **1.00** |
-| EmbedBatch         | 1          |     6.485 μs |   0.1870 μs |  0.0103 μs |  0.96 |    0.00 |  0.1221 |      - |    3.16 KB |        1.14 |
-| EmbedBatchBucketed | 1          |     6.745 μs |   0.1141 μs |  0.0063 μs |  0.99 |    0.00 |  0.1221 |      - |    3.16 KB |        1.14 |
-|                    |            |              |             |            |       |         |         |        |            |             |
-| **UnitLoop**           | **8**          |   **118.275 μs** |   **4.5115 μs** |  **0.2473 μs** |  **1.00** |    **0.00** |  **5.3711** | **0.1221** |  **134.29 KB** |        **1.00** |
-| EmbedBatch         | 8          |    76.678 μs |  53.5995 μs |  2.9380 μs |  0.65 |    0.02 |  5.1270 | 0.2441 |  127.31 KB |        0.95 |
-| EmbedBatchBucketed | 8          |    76.655 μs |   5.3339 μs |  0.2924 μs |  0.65 |    0.00 |  5.1270 | 0.2441 |  127.31 KB |        0.95 |
-|                    |            |              |             |            |       |         |         |        |            |             |
-| **UnitLoop**           | **32**         |   **427.317 μs** |  **45.6494 μs** |  **2.5022 μs** |  **1.00** |    **0.01** | **19.0430** | **0.4883** |  **468.71 KB** |        **1.00** |
-| EmbedBatch         | 32         |   257.695 μs |   9.7403 μs |  0.5339 μs |  0.60 |    0.00 | 17.5781 | 0.9766 |  441.32 KB |        0.94 |
-| EmbedBatchBucketed | 32         |   248.229 μs |   7.1151 μs |  0.3900 μs |  0.58 |    0.00 | 17.0898 | 0.9766 |   427.8 KB |        0.91 |
-|                    |            |              |             |            |       |         |         |        |            |             |
-| **UnitLoop**           | **128**        | **1,720.020 μs** |  **77.0050 μs** |  **4.2209 μs** |  **1.00** |    **0.00** | **76.1719** | **3.9063** | **1874.78 KB** |        **1.00** |
-| EmbedBatch         | 128        | 1,041.946 μs |  32.2891 μs |  1.7699 μs |  0.61 |    0.00 | 70.3125 | 9.7656 | 1764.42 KB |        0.94 |
-| EmbedBatchBucketed | 128        |   987.384 μs | 459.1923 μs | 25.1699 μs |  0.57 |    0.01 | 68.3594 | 9.7656 |  1696.9 KB |        0.91 |
+| Method             | CorpusSize | Mean         | Error       | StdDev     | Ratio | Gen0     | Gen1    | Allocated  | Alloc Ratio |
+|------------------- |----------- |-------------:|------------:|-----------:|------:|---------:|--------:|-----------:|------------:|
+| **UnitLoop**           | **1**          |     **6.073 μs** |   **0.1638 μs** |  **0.0090 μs** |  **1.00** |   **0.1678** |       **-** |    **2.76 KB** |        **1.00** |
+| EmbedBatch         | 1          |     6.066 μs |   0.6321 μs |  0.0346 μs |  1.00 |   0.1907 |       - |    3.16 KB |        1.14 |
+| EmbedBatchBucketed | 1          |     5.982 μs |   1.2462 μs |  0.0683 μs |  0.99 |   0.1907 |       - |    3.16 KB |        1.14 |
+|                    |            |              |             |            |       |          |         |            |             |
+| **UnitLoop**           | **8**          |   **105.869 μs** |   **4.1229 μs** |  **0.2260 μs** |  **1.00** |   **8.1787** |  **0.2441** |  **134.29 KB** |        **1.00** |
+| EmbedBatch         | 8          |    68.888 μs |   7.6642 μs |  0.4201 μs |  0.65 |   7.6904 |  0.3662 |  127.31 KB |        0.95 |
+| EmbedBatchBucketed | 8          |    70.382 μs |   1.3135 μs |  0.0720 μs |  0.66 |   7.6904 |  0.3662 |  127.31 KB |        0.95 |
+|                    |            |              |             |            |       |          |         |            |             |
+| **UnitLoop**           | **32**         |   **394.404 μs** |  **50.8867 μs** |  **2.7893 μs** |  **1.00** |  **28.3203** |  **0.9766** |  **468.71 KB** |        **1.00** |
+| EmbedBatch         | 32         |   242.950 μs |  72.8996 μs |  3.9959 μs |  0.62 |  26.8555 |  1.7090 |  441.32 KB |        0.94 |
+| EmbedBatchBucketed | 32         |   245.062 μs |  16.2220 μs |  0.8892 μs |  0.62 |  25.8789 |  1.4648 |   427.8 KB |        0.91 |
+|                    |            |              |             |            |       |          |         |            |             |
+| **UnitLoop**           | **128**        | **1,545.505 μs** | **179.1741 μs** |  **9.8211 μs** |  **1.00** | **113.2813** |  **5.8594** | **1874.78 KB** |        **1.00** |
+| EmbedBatch         | 128        |   933.119 μs | 128.3203 μs |  7.0337 μs |  0.60 | 107.4219 | 15.6250 | 1764.42 KB |        0.94 |
+| EmbedBatchBucketed | 128        |   954.511 μs | 259.8836 μs | 14.2451 μs |  0.62 | 103.5156 | 15.6250 |  1696.9 KB |        0.91 |
 
 <!-- markdownlint-enable MD060 -->
 
 ### Lodestar.Text.Benchmarks.BlockedTableBenchmarks-report-github
 
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
-Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores
+AMD EPYC 7763, 1 CPU, 4 logical and 2 physical cores
 .NET SDK 10.0.400
-  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
 
 Job=ShortRun  IterationCount=3  LaunchCount=1  
 WarmupCount=3
@@ -67,11 +67,11 @@ WarmupCount=3
 
 | Method | length | Mean          | Error         | StdDev     | Allocated |
 |------- |------- |--------------:|--------------:|-----------:|----------:|
-| **Latin**  | **1000**   |      **55.01 μs** |      **0.538 μs** |   **0.029 μs** |         **-** |
-| Cjk    | 1000   |      61.65 μs |      0.593 μs |   0.032 μs |         - |
-| **Latin**  | **10000**  |   **5,556.50 μs** |    **149.100 μs** |   **8.173 μs** |         **-** |
-| Cjk    | 10000  |   8,270.07 μs |  1,441.151 μs |  78.994 μs |         - |
-| **Latin**  | **65536**  | **197,960.19 μs** | **10,062.359 μs** | **551.552 μs** |         **-** |
+| **Latin**  | **1000**   |      **49.88 μs** |      **1.510 μs** |   **0.083 μs** |         **-** |
+| Cjk    | 1000   |      61.47 μs |      3.069 μs |   0.168 μs |         - |
+| **Latin**  | **10000**  |   **5,486.90 μs** |    **659.114 μs** |  **36.128 μs** |         **-** |
+| Cjk    | 10000  |   6,644.11 μs |    616.160 μs |  33.774 μs |         - |
+| **Latin**  | **65536**  | **202,692.29 μs** | **13,945.696 μs** | **764.411 μs** |         **-** |
 
 <!-- markdownlint-enable MD060 -->
 
@@ -104,14 +104,14 @@ WarmupCount=3
 
 ### Lodestar.Text.Benchmarks.BpeBenchmarks-report-github
 
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
-Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores
+AMD EPYC 7763, 1 CPU, 4 logical and 2 physical cores
 .NET SDK 10.0.400
-  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
 
 Job=ShortRun  IterationCount=3  LaunchCount=1  
 WarmupCount=3
@@ -121,21 +121,21 @@ WarmupCount=3
 
 | Method  | Mean     | Error    | StdDev  | Ratio | Gen0       | Allocated | Alloc Ratio |
 |-------- |---------:|---------:|--------:|------:|-----------:|----------:|------------:|
-| Unigram | 601.4 ms | 40.09 ms | 2.20 ms |  1.00 | 21000.0000 | 519.51 MB |        1.00 |
-| Bpe     | 535.1 ms | 18.72 ms | 1.03 ms |  0.89 |  4000.0000 | 112.18 MB |        0.22 |
+| Unigram | 559.8 ms | 58.77 ms | 3.22 ms |  1.00 | 32000.0000 | 519.51 MB |        1.00 |
+| Bpe     | 540.9 ms | 29.06 ms | 1.59 ms |  0.97 |  7000.0000 | 112.18 MB |        0.22 |
 
 <!-- markdownlint-enable MD060 -->
 
 ### Lodestar.Text.Benchmarks.BpeScalingBenchmarks-report-github
 
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
-Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores
+AMD EPYC 7763, 1 CPU, 4 logical and 2 physical cores
 .NET SDK 10.0.400
-  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
 
 Job=ShortRun  IterationCount=3  LaunchCount=1  
 WarmupCount=3
@@ -143,25 +143,25 @@ WarmupCount=3
 
 <!-- markdownlint-disable MD060 -->
 
-| Method                    | Length | Mean       | Error    | StdDev  | Gen0   | Allocated |
-|-------------------------- |------- |-----------:|---------:|--------:|-------:|----------:|
-| **BpeOnOnePathologicalToken** | **512**    |   **114.1 μs** | **15.26 μs** | **0.84 μs** | **0.7324** |  **20.38 KB** |
-| **BpeOnOnePathologicalToken** | **1024**   |   **242.5 μs** | **13.32 μs** | **0.73 μs** | **1.4648** |  **39.93 KB** |
-| **BpeOnOnePathologicalToken** | **2048**   |   **524.4 μs** | **14.09 μs** | **0.77 μs** | **2.9297** |  **78.98 KB** |
-| **BpeOnOnePathologicalToken** | **4096**   | **1,115.9 μs** | **83.80 μs** | **4.59 μs** | **5.8594** | **157.03 KB** |
+| Method                    | Length | Mean     | Error    | StdDev  | Gen0   | Allocated |
+|-------------------------- |------- |---------:|---------:|--------:|-------:|----------:|
+| **BpeOnOnePathologicalToken** | **512**    | **104.4 μs** | **14.51 μs** | **0.80 μs** | **1.2207** |  **20.38 KB** |
+| **BpeOnOnePathologicalToken** | **1024**   | **219.7 μs** | **47.85 μs** | **2.62 μs** | **2.4414** |  **39.93 KB** |
+| **BpeOnOnePathologicalToken** | **2048**   | **476.6 μs** | **45.43 μs** | **2.49 μs** | **4.3945** |  **78.98 KB** |
+| **BpeOnOnePathologicalToken** | **4096**   | **988.3 μs** | **67.01 μs** | **3.67 μs** | **7.8125** | **157.03 KB** |
 
 <!-- markdownlint-enable MD060 -->
 
 ### Lodestar.Text.Benchmarks.BucketRouteDiagnostics-report-github
 
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
-Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores
+AMD EPYC 7763, 1 CPU, 4 logical and 2 physical cores
 .NET SDK 10.0.400
-  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
 
 Job=ShortRun  IterationCount=3  LaunchCount=1  
 WarmupCount=3
@@ -169,25 +169,25 @@ WarmupCount=3
 
 <!-- markdownlint-disable MD060 -->
 
-| Method     | Alphabet | Mean       | Error      | StdDev    | Allocated |
-|----------- |--------- |-----------:|-----------:|----------:|----------:|
-| **DpGroup**    | **cjk**      |  **17.170 μs** |  **0.0677 μs** | **0.0037 μs** |         **-** |
-| MyersGroup | cjk      | 240.261 μs | 15.1871 μs | 0.8325 μs |         - |
-| **DpGroup**    | **latin**    |   **9.462 μs** |  **0.5874 μs** | **0.0322 μs** |         **-** |
-| MyersGroup | latin    | 133.365 μs |  4.8179 μs | 0.2641 μs |         - |
+| Method     | Alphabet | Mean      | Error     | StdDev   | Allocated |
+|----------- |--------- |----------:|----------:|---------:|----------:|
+| **DpGroup**    | **cjk**      |  **19.86 μs** |  **1.220 μs** | **0.067 μs** |         **-** |
+| MyersGroup | cjk      | 242.39 μs | 29.731 μs | 1.630 μs |         - |
+| **DpGroup**    | **latin**    |  **10.01 μs** |  **2.930 μs** | **0.161 μs** |         **-** |
+| MyersGroup | latin    | 130.84 μs |  7.952 μs | 0.436 μs |         - |
 
 <!-- markdownlint-enable MD060 -->
 
 ### Lodestar.Text.Benchmarks.FuzzBenchmarks-report-github
 
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
-Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores
+AMD EPYC 7763, 1 CPU, 4 logical and 2 physical cores
 .NET SDK 10.0.400
-  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
 
 Job=ShortRun  IterationCount=3  LaunchCount=1  
 WarmupCount=3
@@ -195,26 +195,26 @@ WarmupCount=3
 
 <!-- markdownlint-disable MD060 -->
 
-| Method         | Mean         | Error        | StdDev     | Ratio  | RatioSD | Gen0   | Allocated | Alloc Ratio |
-|--------------- |-------------:|-------------:|-----------:|-------:|--------:|-------:|----------:|------------:|
-| Ratio          |     91.02 ns |     8.869 ns |   0.486 ns |   1.00 |    0.01 |      - |         - |          NA |
-| PartialRatio   | 12,556.91 ns | 6,881.303 ns | 377.187 ns | 137.97 |    3.65 |      - |         - |          NA |
-| TokenSortRatio |  1,068.79 ns |   180.002 ns |   9.867 ns |  11.74 |    0.11 | 0.0515 |    1312 B |          NA |
-| TokenSetRatio  |  3,432.67 ns |   282.242 ns |  15.471 ns |  37.72 |    0.23 | 0.2289 |    5760 B |          NA |
-| WRatio         |  4,704.60 ns |   170.477 ns |   9.344 ns |  51.69 |    0.25 | 0.2823 |    7200 B |          NA |
+| Method         | Mean         | Error        | StdDev    | Ratio  | RatioSD | Gen0   | Allocated | Alloc Ratio |
+|--------------- |-------------:|-------------:|----------:|-------:|--------:|-------:|----------:|------------:|
+| Ratio          |     98.63 ns |     0.614 ns |  0.034 ns |   1.00 |    0.00 |      - |         - |          NA |
+| PartialRatio   | 12,596.02 ns | 1,182.564 ns | 64.820 ns | 127.71 |    0.57 |      - |         - |          NA |
+| TokenSortRatio |  1,030.34 ns |    55.320 ns |  3.032 ns |  10.45 |    0.03 | 0.0782 |    1312 B |          NA |
+| TokenSetRatio  |  3,316.62 ns |   269.808 ns | 14.789 ns |  33.63 |    0.13 | 0.3433 |    5760 B |          NA |
+| WRatio         |  4,692.34 ns |   183.814 ns | 10.075 ns |  47.58 |    0.09 | 0.4272 |    7200 B |          NA |
 
 <!-- markdownlint-enable MD060 -->
 
 ### Lodestar.Text.Benchmarks.IndelBenchmarks-report-github
 
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
-Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores
+AMD EPYC 7763, 1 CPU, 4 logical and 2 physical cores
 .NET SDK 10.0.400
-  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
 
 Job=ShortRun  IterationCount=3  LaunchCount=1  
 WarmupCount=3
@@ -224,58 +224,276 @@ WarmupCount=3
 
 | Method                     | Length | Mean          | Error         | StdDev       | Ratio | RatioSD | Allocated | Alloc Ratio |
 |--------------------------- |------- |--------------:|--------------:|-------------:|------:|--------:|----------:|------------:|
-| **Distance_Utf16**             | **8**      |      **27.90 ns** |      **0.173 ns** |     **0.009 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_CodePoint         | 8      |     137.14 ns |     11.119 ns |     0.609 ns |  4.91 |    0.02 |         - |          NA |
-| NormalizedSimilarity_Utf16 | 8      |      27.66 ns |      2.020 ns |     0.111 ns |  0.99 |    0.00 |         - |          NA |
-| SubsequenceLength_Utf16    | 8      |      26.10 ns |      0.112 ns |     0.006 ns |  0.94 |    0.00 |         - |          NA |
+| **Distance_Utf16**             | **8**      |      **27.08 ns** |      **6.878 ns** |     **0.377 ns** |  **1.00** |    **0.02** |         **-** |          **NA** |
+| Distance_CodePoint         | 8      |     133.81 ns |      4.174 ns |     0.229 ns |  4.94 |    0.06 |         - |          NA |
+| NormalizedSimilarity_Utf16 | 8      |      32.47 ns |      1.660 ns |     0.091 ns |  1.20 |    0.01 |         - |          NA |
+| SubsequenceLength_Utf16    | 8      |      26.94 ns |      0.911 ns |     0.050 ns |  0.99 |    0.01 |         - |          NA |
 |                            |        |               |               |              |       |         |           |             |
-| **Distance_Utf16**             | **12**     |      **27.89 ns** |      **0.958 ns** |     **0.052 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_CodePoint         | 12     |     146.99 ns |      3.742 ns |     0.205 ns |  5.27 |    0.01 |         - |          NA |
-| NormalizedSimilarity_Utf16 | 12     |      29.20 ns |      4.830 ns |     0.265 ns |  1.05 |    0.01 |         - |          NA |
-| SubsequenceLength_Utf16    | 12     |      28.44 ns |      0.916 ns |     0.050 ns |  1.02 |    0.00 |         - |          NA |
+| **Distance_Utf16**             | **12**     |      **29.47 ns** |      **0.332 ns** |     **0.018 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Distance_CodePoint         | 12     |     145.72 ns |      1.873 ns |     0.103 ns |  4.95 |    0.00 |         - |          NA |
+| NormalizedSimilarity_Utf16 | 12     |      28.72 ns |      1.386 ns |     0.076 ns |  0.97 |    0.00 |         - |          NA |
+| SubsequenceLength_Utf16    | 12     |      31.94 ns |      0.389 ns |     0.021 ns |  1.08 |    0.00 |         - |          NA |
 |                            |        |               |               |              |       |         |           |             |
-| **Distance_Utf16**             | **16**     |      **30.13 ns** |      **0.800 ns** |     **0.044 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_CodePoint         | 16     |     155.50 ns |      7.559 ns |     0.414 ns |  5.16 |    0.01 |         - |          NA |
-| NormalizedSimilarity_Utf16 | 16     |      31.75 ns |      3.332 ns |     0.183 ns |  1.05 |    0.01 |         - |          NA |
-| SubsequenceLength_Utf16    | 16     |      28.90 ns |      1.827 ns |     0.100 ns |  0.96 |    0.00 |         - |          NA |
+| **Distance_Utf16**             | **16**     |      **30.83 ns** |      **0.811 ns** |     **0.044 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Distance_CodePoint         | 16     |     160.18 ns |      1.498 ns |     0.082 ns |  5.20 |    0.01 |         - |          NA |
+| NormalizedSimilarity_Utf16 | 16     |      31.57 ns |      2.621 ns |     0.144 ns |  1.02 |    0.00 |         - |          NA |
+| SubsequenceLength_Utf16    | 16     |      30.92 ns |      5.696 ns |     0.312 ns |  1.00 |    0.01 |         - |          NA |
 |                            |        |               |               |              |       |         |           |             |
-| **Distance_Utf16**             | **20**     |      **32.97 ns** |      **0.683 ns** |     **0.037 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_CodePoint         | 20     |     216.15 ns |     12.905 ns |     0.707 ns |  6.56 |    0.02 |         - |          NA |
-| NormalizedSimilarity_Utf16 | 20     |      35.93 ns |      1.824 ns |     0.100 ns |  1.09 |    0.00 |         - |          NA |
-| SubsequenceLength_Utf16    | 20     |      31.52 ns |      0.842 ns |     0.046 ns |  0.96 |    0.00 |         - |          NA |
+| **Distance_Utf16**             | **20**     |      **35.04 ns** |      **0.864 ns** |     **0.047 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Distance_CodePoint         | 20     |     185.86 ns |      3.551 ns |     0.195 ns |  5.30 |    0.01 |         - |          NA |
+| NormalizedSimilarity_Utf16 | 20     |      35.46 ns |      1.602 ns |     0.088 ns |  1.01 |    0.00 |         - |          NA |
+| SubsequenceLength_Utf16    | 20     |      32.70 ns |      0.520 ns |     0.028 ns |  0.93 |    0.00 |         - |          NA |
 |                            |        |               |               |              |       |         |           |             |
-| **Distance_Utf16**             | **24**     |      **50.31 ns** |      **2.776 ns** |     **0.152 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_CodePoint         | 24     |     638.42 ns |     68.208 ns |     3.739 ns | 12.69 |    0.07 |         - |          NA |
-| NormalizedSimilarity_Utf16 | 24     |      59.70 ns |      2.532 ns |     0.139 ns |  1.19 |    0.00 |         - |          NA |
-| SubsequenceLength_Utf16    | 24     |      55.17 ns |      2.104 ns |     0.115 ns |  1.10 |    0.00 |         - |          NA |
+| **Distance_Utf16**             | **24**     |      **54.34 ns** |      **5.575 ns** |     **0.306 ns** |  **1.00** |    **0.01** |         **-** |          **NA** |
+| Distance_CodePoint         | 24     |     640.59 ns |    823.523 ns |    45.140 ns | 11.79 |    0.72 |         - |          NA |
+| NormalizedSimilarity_Utf16 | 24     |      56.72 ns |      1.464 ns |     0.080 ns |  1.04 |    0.01 |         - |          NA |
+| SubsequenceLength_Utf16    | 24     |      62.86 ns |      5.926 ns |     0.325 ns |  1.16 |    0.01 |         - |          NA |
 |                            |        |               |               |              |       |         |           |             |
-| **Distance_Utf16**             | **32**     |      **61.57 ns** |      **2.036 ns** |     **0.112 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_CodePoint         | 32     |     786.53 ns |    726.713 ns |    39.834 ns | 12.77 |    0.56 |         - |          NA |
-| NormalizedSimilarity_Utf16 | 32     |      65.39 ns |      3.344 ns |     0.183 ns |  1.06 |    0.00 |         - |          NA |
-| SubsequenceLength_Utf16    | 32     |      57.66 ns |      1.510 ns |     0.083 ns |  0.94 |    0.00 |         - |          NA |
+| **Distance_Utf16**             | **32**     |      **61.31 ns** |      **8.337 ns** |     **0.457 ns** |  **1.00** |    **0.01** |         **-** |          **NA** |
+| Distance_CodePoint         | 32     |   1,021.38 ns |     13.507 ns |     0.740 ns | 16.66 |    0.11 |         - |          NA |
+| NormalizedSimilarity_Utf16 | 32     |      65.00 ns |      0.080 ns |     0.004 ns |  1.06 |    0.01 |         - |          NA |
+| SubsequenceLength_Utf16    | 32     |      59.30 ns |      0.358 ns |     0.020 ns |  0.97 |    0.01 |         - |          NA |
 |                            |        |               |               |              |       |         |           |             |
-| **Distance_Utf16**             | **128**    |     **812.74 ns** |     **13.243 ns** |     **0.726 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_CodePoint         | 128    |  18,691.12 ns |    813.769 ns |    44.605 ns | 23.00 |    0.05 |         - |          NA |
-| NormalizedSimilarity_Utf16 | 128    |     888.45 ns |      3.381 ns |     0.185 ns |  1.09 |    0.00 |         - |          NA |
-| SubsequenceLength_Utf16    | 128    |     881.52 ns |      9.358 ns |     0.513 ns |  1.08 |    0.00 |         - |          NA |
+| **Distance_Utf16**             | **128**    |     **929.71 ns** |     **24.684 ns** |     **1.353 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Distance_CodePoint         | 128    |  19,735.29 ns |  3,260.514 ns |   178.720 ns | 21.23 |    0.17 |         - |          NA |
+| NormalizedSimilarity_Utf16 | 128    |     935.83 ns |      5.647 ns |     0.310 ns |  1.01 |    0.00 |         - |          NA |
+| SubsequenceLength_Utf16    | 128    |     922.92 ns |     36.848 ns |     2.020 ns |  0.99 |    0.00 |         - |          NA |
 |                            |        |               |               |              |       |         |           |             |
-| **Distance_Utf16**             | **512**    |   **7,505.99 ns** |    **110.673 ns** |     **6.066 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_CodePoint         | 512    | 323,596.48 ns | 40,418.776 ns | 2,215.489 ns | 43.11 |    0.26 |         - |          NA |
-| NormalizedSimilarity_Utf16 | 512    |   7,477.75 ns |    289.251 ns |    15.855 ns |  1.00 |    0.00 |         - |          NA |
-| SubsequenceLength_Utf16    | 512    |   7,492.70 ns |     75.206 ns |     4.122 ns |  1.00 |    0.00 |         - |          NA |
+| **Distance_Utf16**             | **512**    |   **7,692.32 ns** |    **184.672 ns** |    **10.122 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Distance_CodePoint         | 512    | 340,680.77 ns | 37,536.455 ns | 2,057.500 ns | 44.29 |    0.24 |         - |          NA |
+| NormalizedSimilarity_Utf16 | 512    |   7,810.76 ns |     46.213 ns |     2.533 ns |  1.02 |    0.00 |         - |          NA |
+| SubsequenceLength_Utf16    | 512    |   7,524.96 ns |    306.536 ns |    16.802 ns |  0.98 |    0.00 |         - |          NA |
 
 <!-- markdownlint-enable MD060 -->
 
 ### Lodestar.Text.Benchmarks.LcsGateBenchmarks-report-github
 
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
-Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores
+AMD EPYC 7763, 1 CPU, 4 logical and 2 physical cores
 .NET SDK 10.0.400
-  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+
+Job=ShortRun  IterationCount=3  LaunchCount=1  
+WarmupCount=3
+```
+
+<!-- markdownlint-disable MD060 -->
+
+| Method     | Band | Mean         | Error         | StdDev       | Ratio | RatioSD | Allocated | Alloc Ratio |
+|----------- |----- |-------------:|--------------:|-------------:|------:|--------:|----------:|------------:|
+| **Dp**         | **8**    |    **131.40 ns** |      **2.661 ns** |     **0.146 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Kernel     | 8    |     55.74 ns |      0.700 ns |     0.038 ns |  0.42 |    0.00 |         - |          NA |
+| Dp_Cjk     | 8    |    132.90 ns |     26.941 ns |     1.477 ns |  1.01 |    0.01 |         - |          NA |
+| Kernel_Cjk | 8    |     97.37 ns |     16.731 ns |     0.917 ns |  0.74 |    0.01 |         - |          NA |
+|            |      |              |               |              |       |         |           |             |
+| **Dp**         | **12**   |    **216.28 ns** |     **13.870 ns** |     **0.760 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Kernel     | 12   |     61.83 ns |      4.994 ns |     0.274 ns |  0.29 |    0.00 |         - |          NA |
+| Dp_Cjk     | 12   |    226.69 ns |    215.078 ns |    11.789 ns |  1.05 |    0.05 |         - |          NA |
+| Kernel_Cjk | 12   |    109.71 ns |      1.082 ns |     0.059 ns |  0.51 |    0.00 |         - |          NA |
+|            |      |              |               |              |       |         |           |             |
+| **Dp**         | **14**   |    **286.50 ns** |    **319.825 ns** |    **17.531 ns** |  **1.00** |    **0.08** |         **-** |          **NA** |
+| Kernel     | 14   |     67.95 ns |      1.052 ns |     0.058 ns |  0.24 |    0.01 |         - |          NA |
+| Dp_Cjk     | 14   |    278.05 ns |    175.269 ns |     9.607 ns |  0.97 |    0.06 |         - |          NA |
+| Kernel_Cjk | 14   |    114.26 ns |     13.695 ns |     0.751 ns |  0.40 |    0.02 |         - |          NA |
+|            |      |              |               |              |       |         |           |             |
+| **Dp**         | **16**   |    **355.51 ns** |    **138.248 ns** |     **7.578 ns** |  **1.00** |    **0.03** |         **-** |          **NA** |
+| Kernel     | 16   |     74.95 ns |      3.890 ns |     0.213 ns |  0.21 |    0.00 |         - |          NA |
+| Dp_Cjk     | 16   |    373.36 ns |    134.067 ns |     7.349 ns |  1.05 |    0.03 |         - |          NA |
+| Kernel_Cjk | 16   |    118.45 ns |      1.732 ns |     0.095 ns |  0.33 |    0.01 |         - |          NA |
+|            |      |              |               |              |       |         |           |             |
+| **Dp**         | **18**   |    **434.53 ns** |     **14.541 ns** |     **0.797 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Kernel     | 18   |     73.94 ns |      2.507 ns |     0.137 ns |  0.17 |    0.00 |         - |          NA |
+| Dp_Cjk     | 18   |    487.12 ns |    124.510 ns |     6.825 ns |  1.12 |    0.01 |         - |          NA |
+| Kernel_Cjk | 18   |    124.39 ns |      0.742 ns |     0.041 ns |  0.29 |    0.00 |         - |          NA |
+|            |      |              |               |              |       |         |           |             |
+| **Dp**         | **20**   |    **753.60 ns** |    **238.204 ns** |    **13.057 ns** |  **1.00** |    **0.02** |         **-** |          **NA** |
+| Kernel     | 20   |     79.67 ns |      0.908 ns |     0.050 ns |  0.11 |    0.00 |         - |          NA |
+| Dp_Cjk     | 20   |    772.15 ns |     15.748 ns |     0.863 ns |  1.02 |    0.02 |         - |          NA |
+| Kernel_Cjk | 20   |    128.96 ns |      0.575 ns |     0.032 ns |  0.17 |    0.00 |         - |          NA |
+|            |      |              |               |              |       |         |           |             |
+| **Dp**         | **24**   |    **983.02 ns** |    **410.288 ns** |    **22.489 ns** |  **1.00** |    **0.03** |         **-** |          **NA** |
+| Kernel     | 24   |     88.30 ns |      1.447 ns |     0.079 ns |  0.09 |    0.00 |         - |          NA |
+| Dp_Cjk     | 24   |  1,001.04 ns |     31.255 ns |     1.713 ns |  1.02 |    0.02 |         - |          NA |
+| Kernel_Cjk | 24   |    141.09 ns |      2.029 ns |     0.111 ns |  0.14 |    0.00 |         - |          NA |
+|            |      |              |               |              |       |         |           |             |
+| **Dp**         | **32**   |  **1,521.89 ns** |     **57.679 ns** |     **3.162 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Kernel     | 32   |    105.06 ns |      2.848 ns |     0.156 ns |  0.07 |    0.00 |         - |          NA |
+| Dp_Cjk     | 32   |  1,568.05 ns |    340.749 ns |    18.678 ns |  1.03 |    0.01 |         - |          NA |
+| Kernel_Cjk | 32   |    165.62 ns |      2.949 ns |     0.162 ns |  0.11 |    0.00 |         - |          NA |
+|            |      |              |               |              |       |         |           |             |
+| **Dp**         | **48**   |  **3,215.82 ns** |    **142.544 ns** |     **7.813 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Kernel     | 48   |    130.81 ns |     22.515 ns |     1.234 ns |  0.04 |    0.00 |         - |          NA |
+| Dp_Cjk     | 48   |  3,184.97 ns |    844.431 ns |    46.286 ns |  0.99 |    0.01 |         - |          NA |
+| Kernel_Cjk | 48   |    240.96 ns |      5.382 ns |     0.295 ns |  0.07 |    0.00 |         - |          NA |
+|            |      |              |               |              |       |         |           |             |
+| **Dp**         | **64**   |  **5,651.92 ns** |  **8,049.844 ns** |   **441.239 ns** |  **1.00** |    **0.10** |         **-** |          **NA** |
+| Kernel     | 64   |    160.68 ns |      6.224 ns |     0.341 ns |  0.03 |    0.00 |         - |          NA |
+| Dp_Cjk     | 64   |  5,079.71 ns |     19.615 ns |     1.075 ns |  0.90 |    0.06 |         - |          NA |
+| Kernel_Cjk | 64   |    292.85 ns |     19.977 ns |     1.095 ns |  0.05 |    0.00 |         - |          NA |
+|            |      |              |               |              |       |         |           |             |
+| **Dp**         | **96**   | **11,468.38 ns** |  **1,820.294 ns** |    **99.776 ns** |  **1.00** |    **0.01** |         **-** |          **NA** |
+| Kernel     | 96   |    765.61 ns |     41.290 ns |     2.263 ns |  0.07 |    0.00 |         - |          NA |
+| Dp_Cjk     | 96   | 12,407.28 ns | 29,301.347 ns | 1,606.106 ns |  1.08 |    0.12 |         - |          NA |
+| Kernel_Cjk | 96   |  1,039.72 ns |     66.910 ns |     3.668 ns |  0.09 |    0.00 |         - |          NA |
+
+<!-- markdownlint-enable MD060 -->
+
+### Lodestar.Text.Benchmarks.LevenshteinBenchmarks-report-github
+
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
+
+```text
+BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
+AMD EPYC 7763, 1 CPU, 4 logical and 2 physical cores
+.NET SDK 10.0.400
+  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+
+Job=ShortRun  IterationCount=3  LaunchCount=1  
+WarmupCount=3
+```
+
+<!-- markdownlint-disable MD060 -->
+
+| Method                     | Length | Mean         | Error      | StdDev    | Ratio | RatioSD | Allocated | Alloc Ratio |
+|--------------------------- |------- |-------------:|-----------:|----------:|------:|--------:|----------:|------------:|
+| **Distance_Utf16**             | **8**      |     **24.93 ns** |   **0.137 ns** |  **0.008 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Distance_CodePoint         | 8      |    118.18 ns |   3.041 ns |  0.167 ns |  4.74 |    0.01 |         - |          NA |
+| NormalizedSimilarity_Utf16 | 8      |     24.94 ns |   0.996 ns |  0.055 ns |  1.00 |    0.00 |         - |          NA |
+|                            |        |              |            |           |       |         |           |             |
+| **Distance_Utf16**             | **64**     |    **269.33 ns** |   **5.049 ns** |  **0.277 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Distance_CodePoint         | 64     |    688.92 ns | 493.986 ns | 27.077 ns |  2.56 |    0.09 |         - |          NA |
+| NormalizedSimilarity_Utf16 | 64     |    271.62 ns |   0.984 ns |  0.054 ns |  1.01 |    0.00 |         - |          NA |
+|                            |        |              |            |           |       |         |           |             |
+| **Distance_Utf16**             | **512**    | **14,531.78 ns** | **946.264 ns** | **51.868 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Distance_CodePoint         | 512    | 16,977.75 ns | 157.671 ns |  8.642 ns |  1.17 |    0.00 |         - |          NA |
+| NormalizedSimilarity_Utf16 | 512    | 14,440.99 ns | 920.715 ns | 50.467 ns |  0.99 |    0.00 |         - |          NA |
+
+<!-- markdownlint-enable MD060 -->
+
+### Lodestar.Text.Benchmarks.LevenshteinCodePointBenchmarks-report-github
+
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
+
+```text
+BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
+AMD EPYC 7763, 1 CPU, 4 logical and 2 physical cores
+.NET SDK 10.0.400
+  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+
+Job=ShortRun  IterationCount=3  LaunchCount=1  
+WarmupCount=3
+```
+
+<!-- markdownlint-disable MD060 -->
+
+| Method             | Length | Distinct | Mean         | Error       | StdDev    | Ratio | RatioSD | Allocated | Alloc Ratio |
+|------------------- |------- |--------- |-------------:|------------:|----------:|------:|--------:|----------:|------------:|
+| **Distance_CodePoint** | **16**     | **32**       |     **332.9 ns** |    **97.80 ns** |   **5.36 ns** |  **1.00** |    **0.02** |         **-** |          **NA** |
+| Distance_Utf16     | 16     | 32       |     238.3 ns |    13.59 ns |   0.74 ns |  0.72 |    0.01 |         - |          NA |
+|                    |        |          |              |             |           |       |         |           |             |
+| **Distance_CodePoint** | **16**     | **512**      |     **336.4 ns** |    **94.19 ns** |   **5.16 ns** |  **1.00** |    **0.02** |         **-** |          **NA** |
+| Distance_Utf16     | 16     | 512      |     243.7 ns |    36.56 ns |   2.00 ns |  0.72 |    0.01 |         - |          NA |
+|                    |        |          |              |             |           |       |         |           |             |
+| **Distance_CodePoint** | **24**     | **32**       |     **422.7 ns** |     **5.30 ns** |   **0.29 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Distance_Utf16     | 24     | 32       |     321.1 ns |    12.66 ns |   0.69 ns |  0.76 |    0.00 |         - |          NA |
+|                    |        |          |              |             |           |       |         |           |             |
+| **Distance_CodePoint** | **24**     | **512**      |     **433.2 ns** |    **10.09 ns** |   **0.55 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Distance_Utf16     | 24     | 512      |     325.4 ns |     4.67 ns |   0.26 ns |  0.75 |    0.00 |         - |          NA |
+|                    |        |          |              |             |           |       |         |           |             |
+| **Distance_CodePoint** | **32**     | **32**       |     **504.8 ns** |    **38.04 ns** |   **2.09 ns** |  **1.00** |    **0.01** |         **-** |          **NA** |
+| Distance_Utf16     | 32     | 32       |     408.1 ns |     3.31 ns |   0.18 ns |  0.81 |    0.00 |         - |          NA |
+|                    |        |          |              |             |           |       |         |           |             |
+| **Distance_CodePoint** | **32**     | **512**      |     **525.4 ns** |   **148.21 ns** |   **8.12 ns** |  **1.00** |    **0.02** |         **-** |          **NA** |
+| Distance_Utf16     | 32     | 512      |     418.7 ns |    19.06 ns |   1.04 ns |  0.80 |    0.01 |         - |          NA |
+|                    |        |          |              |             |           |       |         |           |             |
+| **Distance_CodePoint** | **40**     | **32**       |     **590.4 ns** |    **70.30 ns** |   **3.85 ns** |  **1.00** |    **0.01** |         **-** |          **NA** |
+| Distance_Utf16     | 40     | 32       |   1,299.3 ns |    56.68 ns |   3.11 ns |  2.20 |    0.01 |         - |          NA |
+|                    |        |          |              |             |           |       |         |           |             |
+| **Distance_CodePoint** | **40**     | **512**      |     **608.0 ns** |    **15.37 ns** |   **0.84 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Distance_Utf16     | 40     | 512      |   1,309.8 ns |    21.42 ns |   1.17 ns |  2.15 |    0.00 |         - |          NA |
+|                    |        |          |              |             |           |       |         |           |             |
+| **Distance_CodePoint** | **128**    | **32**       |   **2,527.7 ns** |   **236.64 ns** |  **12.97 ns** |  **1.00** |    **0.01** |         **-** |          **NA** |
+| Distance_Utf16     | 128    | 32       |   5,501.3 ns |    61.49 ns |   3.37 ns |  2.18 |    0.01 |         - |          NA |
+|                    |        |          |              |             |           |       |         |           |             |
+| **Distance_CodePoint** | **128**    | **512**      |   **2,616.2 ns** |    **56.39 ns** |   **3.09 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Distance_Utf16     | 128    | 512      |   5,466.7 ns |   227.50 ns |  12.47 ns |  2.09 |    0.00 |         - |          NA |
+|                    |        |          |              |             |           |       |         |           |             |
+| **Distance_CodePoint** | **512**    | **32**       |  **18,584.9 ns** | **1,606.69 ns** |  **88.07 ns** |  **1.00** |    **0.01** |         **-** |          **NA** |
+| Distance_Utf16     | 512    | 32       |  65,739.9 ns |   477.93 ns |  26.20 ns |  3.54 |    0.01 |         - |          NA |
+|                    |        |          |              |             |           |       |         |           |             |
+| **Distance_CodePoint** | **512**    | **512**      | **441,502.1 ns** | **7,369.56 ns** | **403.95 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Distance_Utf16     | 512    | 512      |  64,802.7 ns |   615.91 ns |  33.76 ns |  0.15 |    0.00 |         - |          NA |
+
+<!-- markdownlint-enable MD060 -->
+
+### Lodestar.Text.Benchmarks.MetricsBenchmarks-report-github
+
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
+
+```text
+BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
+AMD EPYC 7763, 1 CPU, 4 logical and 2 physical cores
+.NET SDK 10.0.400
+  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+
+Job=ShortRun  IterationCount=3  LaunchCount=1  
+WarmupCount=3
+```
+
+<!-- markdownlint-disable MD060 -->
+
+| Method         | Samples | Classes | Mean            | Error           | StdDev       | Gen0   | Allocated |
+|--------------- |-------- |-------- |----------------:|----------------:|-------------:|-------:|----------:|
+| **Matrix**         | **1000**    | **2**       |      **7,774.0 ns** |       **504.02 ns** |     **27.63 ns** | **0.0153** |     **312 B** |
+| MatrixWeighted | 1000    | 2       |      7,225.8 ns |       561.51 ns |     30.78 ns | 0.0153 |     312 B |
+| AccuracyScore  | 1000    | 2       |        917.3 ns |        23.56 ns |      1.29 ns |      - |         - |
+| F1Macro        | 1000    | 2       |      7,636.7 ns |       773.41 ns |     42.39 ns | 0.0153 |     472 B |
+| Report         | 1000    | 2       |     10,619.7 ns |       567.67 ns |     31.12 ns | 0.3815 |    6520 B |
+| **Matrix**         | **1000**    | **10**      |      **7,854.1 ns** |       **310.91 ns** |     **17.04 ns** | **0.0610** |    **1248 B** |
+| MatrixWeighted | 1000    | 10      |      7,717.4 ns |       286.41 ns |     15.70 ns | 0.0610 |    1248 B |
+| AccuracyScore  | 1000    | 10      |        920.2 ns |        26.33 ns |      1.44 ns |      - |         - |
+| F1Macro        | 1000    | 10      |      8,219.6 ns |       450.15 ns |     24.67 ns | 0.0916 |    1664 B |
+| Report         | 1000    | 10      |     15,596.6 ns |     1,401.07 ns |     76.80 ns | 0.9155 |   15496 B |
+| **Matrix**         | **100000**  | **2**       |    **867,234.2 ns** |    **67,120.82 ns** |  **3,679.12 ns** |      **-** |     **313 B** |
+| MatrixWeighted | 100000  | 2       |    811,179.4 ns |    43,693.10 ns |  2,394.97 ns |      - |     313 B |
+| AccuracyScore  | 100000  | 2       |    163,486.8 ns |     3,646.53 ns |    199.88 ns |      - |         - |
+| F1Macro        | 100000  | 2       |    825,132.7 ns |    29,711.15 ns |  1,628.57 ns |      - |     473 B |
+| Report         | 100000  | 2       |    865,724.2 ns |    96,967.06 ns |  5,315.09 ns |      - |    6545 B |
+| **Matrix**         | **100000**  | **10**      |    **975,566.4 ns** |    **34,781.98 ns** |  **1,906.52 ns** |      **-** |    **1249 B** |
+| MatrixWeighted | 100000  | 10      |    950,285.7 ns |    20,565.50 ns |  1,127.26 ns |      - |    1249 B |
+| AccuracyScore  | 100000  | 10      |    263,880.0 ns |    17,880.62 ns |    980.10 ns |      - |         - |
+| F1Macro        | 100000  | 10      |    939,536.6 ns |    55,303.50 ns |  3,031.37 ns |      - |    1665 B |
+| Report         | 100000  | 10      |    994,431.2 ns |    56,460.41 ns |  3,094.79 ns |      - |   15841 B |
+| **Matrix**         | **1000000** | **2**       |  **8,634,001.0 ns** |   **357,250.43 ns** | **19,582.10 ns** |      **-** |     **324 B** |
+| MatrixWeighted | 1000000 | 2       |  8,334,313.7 ns |   764,099.46 ns | 41,882.87 ns |      - |     324 B |
+| AccuracyScore  | 1000000 | 2       |  1,747,005.9 ns |    45,049.98 ns |  2,469.34 ns |      - |         - |
+| F1Macro        | 1000000 | 2       |  8,852,937.2 ns |   601,609.40 ns | 32,976.24 ns |      - |     484 B |
+| Report         | 1000000 | 2       |  8,738,144.9 ns |   176,826.05 ns |  9,692.43 ns |      - |    6572 B |
+| **Matrix**         | **1000000** | **10**      |  **9,970,917.8 ns** |   **215,122.38 ns** | **11,791.58 ns** |      **-** |    **1260 B** |
+| MatrixWeighted | 1000000 | 10      |  9,281,910.0 ns |   499,733.99 ns | 27,392.11 ns |      - |    1260 B |
+| AccuracyScore  | 1000000 | 10      |  2,686,993.0 ns |    14,994.69 ns |    821.91 ns |      - |         - |
+| F1Macro        | 1000000 | 10      | 10,055,870.5 ns | 1,777,224.36 ns | 97,415.66 ns |      - |    1676 B |
+| Report         | 1000000 | 10      |  9,467,565.6 ns |   398,588.47 ns | 21,847.98 ns |      - |   15892 B |
+
+<!-- markdownlint-enable MD060 -->
+
+### Lodestar.Text.Benchmarks.MyersGateBenchmarks-report-github
+
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
+
+```text
+BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
+AMD EPYC 7763, 1 CPU, 4 logical and 2 physical cores
+.NET SDK 10.0.400
+  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
 
 Job=ShortRun  IterationCount=3  LaunchCount=1  
 WarmupCount=3
@@ -285,291 +503,73 @@ WarmupCount=3
 
 | Method     | Band | Mean         | Error        | StdDev     | Ratio | RatioSD | Allocated | Alloc Ratio |
 |----------- |----- |-------------:|-------------:|-----------:|------:|--------:|----------:|------------:|
-| **Dp**         | **8**    |    **122.44 ns** |     **1.046 ns** |   **0.057 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Kernel     | 8    |     55.85 ns |     0.511 ns |   0.028 ns |  0.46 |    0.00 |         - |          NA |
-| Dp_Cjk     | 8    |    126.88 ns |    34.047 ns |   1.866 ns |  1.04 |    0.01 |         - |          NA |
-| Kernel_Cjk | 8    |     93.30 ns |     2.313 ns |   0.127 ns |  0.76 |    0.00 |         - |          NA |
+| **Dp**         | **4**    |     **74.39 ns** |     **1.582 ns** |   **0.087 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Kernel     | 4    |     74.11 ns |     1.653 ns |   0.091 ns |  1.00 |    0.00 |         - |          NA |
+| Dp_Cjk     | 4    |     73.48 ns |     0.206 ns |   0.011 ns |  0.99 |    0.00 |         - |          NA |
+| Kernel_Cjk | 4    |     74.29 ns |    18.528 ns |   1.016 ns |  1.00 |    0.01 |         - |          NA |
 |            |      |              |              |            |       |         |           |             |
-| **Dp**         | **12**   |    **210.14 ns** |     **8.159 ns** |   **0.447 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Kernel     | 12   |     63.33 ns |     1.346 ns |   0.074 ns |  0.30 |    0.00 |         - |          NA |
-| Dp_Cjk     | 12   |    210.89 ns |    18.113 ns |   0.993 ns |  1.00 |    0.00 |         - |          NA |
-| Kernel_Cjk | 12   |    110.69 ns |    28.597 ns |   1.567 ns |  0.53 |    0.01 |         - |          NA |
+| **Dp**         | **6**    |    **104.00 ns** |     **2.163 ns** |   **0.119 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Kernel     | 6    |     77.37 ns |     5.282 ns |   0.290 ns |  0.74 |    0.00 |         - |          NA |
+| Dp_Cjk     | 6    |    108.62 ns |     3.954 ns |   0.217 ns |  1.04 |    0.00 |         - |          NA |
+| Kernel_Cjk | 6    |    132.84 ns |     2.087 ns |   0.114 ns |  1.28 |    0.00 |         - |          NA |
 |            |      |              |              |            |       |         |           |             |
-| **Dp**         | **14**   |    **298.07 ns** |     **1.962 ns** |   **0.108 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Kernel     | 14   |     67.30 ns |     0.756 ns |   0.041 ns |  0.23 |    0.00 |         - |          NA |
-| Dp_Cjk     | 14   |    267.06 ns |     5.632 ns |   0.309 ns |  0.90 |    0.00 |         - |          NA |
-| Kernel_Cjk | 14   |    111.09 ns |     1.353 ns |   0.074 ns |  0.37 |    0.00 |         - |          NA |
+| **Dp**         | **8**    |    **157.20 ns** |     **5.006 ns** |   **0.274 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Kernel     | 8    |     91.81 ns |    52.090 ns |   2.855 ns |  0.58 |    0.02 |         - |          NA |
+| Dp_Cjk     | 8    |    156.47 ns |     2.670 ns |   0.146 ns |  1.00 |    0.00 |         - |          NA |
+| Kernel_Cjk | 8    |    182.18 ns |    57.010 ns |   3.125 ns |  1.16 |    0.02 |         - |          NA |
 |            |      |              |              |            |       |         |           |             |
-| **Dp**         | **16**   |    **379.20 ns** |     **2.701 ns** |   **0.148 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Kernel     | 16   |     71.16 ns |     1.994 ns |   0.109 ns |  0.19 |    0.00 |         - |          NA |
-| Dp_Cjk     | 16   |    380.45 ns |    47.112 ns |   2.582 ns |  1.00 |    0.01 |         - |          NA |
-| Kernel_Cjk | 16   |    119.34 ns |    22.366 ns |   1.226 ns |  0.31 |    0.00 |         - |          NA |
+| **Dp**         | **10**   |    **196.56 ns** |     **4.332 ns** |   **0.237 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Kernel     | 10   |     94.76 ns |     3.158 ns |   0.173 ns |  0.48 |    0.00 |         - |          NA |
+| Dp_Cjk     | 10   |    197.90 ns |     0.843 ns |   0.046 ns |  1.01 |    0.00 |         - |          NA |
+| Kernel_Cjk | 10   |    150.55 ns |     0.760 ns |   0.042 ns |  0.77 |    0.00 |         - |          NA |
 |            |      |              |              |            |       |         |           |             |
-| **Dp**         | **18**   |    **462.84 ns** |    **22.217 ns** |   **1.218 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Kernel     | 18   |     75.17 ns |     1.532 ns |   0.084 ns |  0.16 |    0.00 |         - |          NA |
-| Dp_Cjk     | 18   |    461.27 ns |     3.995 ns |   0.219 ns |  1.00 |    0.00 |         - |          NA |
-| Kernel_Cjk | 18   |    122.75 ns |     6.551 ns |   0.359 ns |  0.27 |    0.00 |         - |          NA |
+| **Dp**         | **12**   |    **245.26 ns** |    **21.799 ns** |   **1.195 ns** |  **1.00** |    **0.01** |         **-** |          **NA** |
+| Kernel     | 12   |    103.50 ns |    16.861 ns |   0.924 ns |  0.42 |    0.00 |         - |          NA |
+| Dp_Cjk     | 12   |    260.43 ns |   240.519 ns |  13.184 ns |  1.06 |    0.05 |         - |          NA |
+| Kernel_Cjk | 12   |    166.90 ns |     6.082 ns |   0.333 ns |  0.68 |    0.00 |         - |          NA |
 |            |      |              |              |            |       |         |           |             |
-| **Dp**         | **20**   |    **558.71 ns** |     **3.894 ns** |   **0.213 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Kernel     | 20   |     78.55 ns |     2.524 ns |   0.138 ns |  0.14 |    0.00 |         - |          NA |
-| Dp_Cjk     | 20   |    558.36 ns |    11.941 ns |   0.655 ns |  1.00 |    0.00 |         - |          NA |
-| Kernel_Cjk | 20   |    128.72 ns |     2.487 ns |   0.136 ns |  0.23 |    0.00 |         - |          NA |
+| **Dp**         | **16**   |    **418.49 ns** |   **316.703 ns** |  **17.360 ns** |  **1.00** |    **0.05** |         **-** |          **NA** |
+| Kernel     | 16   |    121.57 ns |     1.364 ns |   0.075 ns |  0.29 |    0.01 |         - |          NA |
+| Dp_Cjk     | 16   |    408.76 ns |     4.076 ns |   0.223 ns |  0.98 |    0.03 |         - |          NA |
+| Kernel_Cjk | 16   |    181.41 ns |     2.367 ns |   0.130 ns |  0.43 |    0.02 |         - |          NA |
 |            |      |              |              |            |       |         |           |             |
-| **Dp**         | **24**   |    **740.12 ns** |   **161.509 ns** |   **8.853 ns** |  **1.00** |    **0.01** |         **-** |          **NA** |
-| Kernel     | 24   |     86.94 ns |     0.654 ns |   0.036 ns |  0.12 |    0.00 |         - |          NA |
-| Dp_Cjk     | 24   |    799.58 ns |   699.153 ns |  38.323 ns |  1.08 |    0.05 |         - |          NA |
-| Kernel_Cjk | 24   |    143.10 ns |     6.612 ns |   0.362 ns |  0.19 |    0.00 |         - |          NA |
+| **Dp**         | **24**   |    **846.27 ns** |   **120.948 ns** |   **6.630 ns** |  **1.00** |    **0.01** |         **-** |          **NA** |
+| Kernel     | 24   |    158.30 ns |     0.694 ns |   0.038 ns |  0.19 |    0.00 |         - |          NA |
+| Dp_Cjk     | 24   |    848.53 ns |   211.705 ns |  11.604 ns |  1.00 |    0.01 |         - |          NA |
+| Kernel_Cjk | 24   |    230.46 ns |    45.447 ns |   2.491 ns |  0.27 |    0.00 |         - |          NA |
 |            |      |              |              |            |       |         |           |             |
-| **Dp**         | **32**   |  **1,193.21 ns** |    **46.273 ns** |   **2.536 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Kernel     | 32   |    103.55 ns |     0.137 ns |   0.008 ns |  0.09 |    0.00 |         - |          NA |
-| Dp_Cjk     | 32   |  1,213.40 ns |   524.337 ns |  28.741 ns |  1.02 |    0.02 |         - |          NA |
-| Kernel_Cjk | 32   |    167.81 ns |    21.522 ns |   1.180 ns |  0.14 |    0.00 |         - |          NA |
+| **Dp**         | **32**   |  **1,466.12 ns** |   **460.879 ns** |  **25.262 ns** |  **1.00** |    **0.02** |         **-** |          **NA** |
+| Kernel     | 32   |    192.93 ns |     0.349 ns |   0.019 ns |  0.13 |    0.00 |         - |          NA |
+| Dp_Cjk     | 32   |  1,450.41 ns |    29.888 ns |   1.638 ns |  0.99 |    0.01 |         - |          NA |
+| Kernel_Cjk | 32   |    276.07 ns |     3.937 ns |   0.216 ns |  0.19 |    0.00 |         - |          NA |
 |            |      |              |              |            |       |         |           |             |
-| **Dp**         | **48**   |  **2,794.28 ns** |     **9.694 ns** |   **0.531 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Kernel     | 48   |    125.46 ns |     3.115 ns |   0.171 ns |  0.04 |    0.00 |         - |          NA |
-| Dp_Cjk     | 48   |  2,794.16 ns |   102.148 ns |   5.599 ns |  1.00 |    0.00 |         - |          NA |
-| Kernel_Cjk | 48   |    236.90 ns |     2.389 ns |   0.131 ns |  0.08 |    0.00 |         - |          NA |
+| **Dp**         | **48**   |  **3,349.66 ns** | **1,585.173 ns** |  **86.889 ns** |  **1.00** |    **0.03** |         **-** |          **NA** |
+| Kernel     | 48   |    264.35 ns |     1.145 ns |   0.063 ns |  0.08 |    0.00 |         - |          NA |
+| Dp_Cjk     | 48   |  3,310.77 ns |   407.151 ns |  22.317 ns |  0.99 |    0.02 |         - |          NA |
+| Kernel_Cjk | 48   |    356.84 ns |     6.018 ns |   0.330 ns |  0.11 |    0.00 |         - |          NA |
 |            |      |              |              |            |       |         |           |             |
-| **Dp**         | **64**   |  **4,880.58 ns** | **7,458.806 ns** | **408.842 ns** |  **1.00** |    **0.11** |         **-** |          **NA** |
-| Kernel     | 64   |    153.00 ns |     2.188 ns |   0.120 ns |  0.03 |    0.00 |         - |          NA |
-| Dp_Cjk     | 64   |  5,010.41 ns | 2,493.261 ns | 136.664 ns |  1.03 |    0.08 |         - |          NA |
-| Kernel_Cjk | 64   |    286.52 ns |    18.506 ns |   1.014 ns |  0.06 |    0.00 |         - |          NA |
+| **Dp**         | **64**   |  **6,191.05 ns** |   **344.323 ns** |  **18.873 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
+| Kernel     | 64   |    341.62 ns |    15.102 ns |   0.828 ns |  0.06 |    0.00 |         - |          NA |
+| Dp_Cjk     | 64   |  6,232.82 ns | 1,186.270 ns |  65.023 ns |  1.01 |    0.01 |         - |          NA |
+| Kernel_Cjk | 64   |    438.34 ns |     6.529 ns |   0.358 ns |  0.07 |    0.00 |         - |          NA |
 |            |      |              |              |            |       |         |           |             |
-| **Dp**         | **96**   | **11,067.26 ns** | **4,159.950 ns** | **228.021 ns** |  **1.00** |    **0.03** |         **-** |          **NA** |
-| Kernel     | 96   |    682.98 ns |    34.199 ns |   1.875 ns |  0.06 |    0.00 |         - |          NA |
-| Dp_Cjk     | 96   | 10,080.22 ns | 1,810.605 ns |  99.245 ns |  0.91 |    0.02 |         - |          NA |
-| Kernel_Cjk | 96   |    985.35 ns |     2.356 ns |   0.129 ns |  0.09 |    0.00 |         - |          NA |
-
-<!-- markdownlint-enable MD060 -->
-
-### Lodestar.Text.Benchmarks.LevenshteinBenchmarks-report-github
-
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
-
-```text
-BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
-Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores
-.NET SDK 10.0.400
-  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-
-Job=ShortRun  IterationCount=3  LaunchCount=1  
-WarmupCount=3
-```
-
-<!-- markdownlint-disable MD060 -->
-
-| Method                     | Length | Mean         | Error        | StdDev     | Ratio | RatioSD | Allocated | Alloc Ratio |
-|--------------------------- |------- |-------------:|-------------:|-----------:|------:|--------:|----------:|------------:|
-| **Distance_Utf16**             | **8**      |     **26.93 ns** |     **0.732 ns** |   **0.040 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_CodePoint         | 8      |    137.34 ns |    10.263 ns |   0.563 ns |  5.10 |    0.02 |         - |          NA |
-| NormalizedSimilarity_Utf16 | 8      |     25.74 ns |     1.289 ns |   0.071 ns |  0.96 |    0.00 |         - |          NA |
-|                            |        |              |              |            |       |         |           |             |
-| **Distance_Utf16**             | **64**     |    **263.86 ns** |    **11.486 ns** |   **0.630 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_CodePoint         | 64     |    717.67 ns |    12.554 ns |   0.688 ns |  2.72 |    0.01 |         - |          NA |
-| NormalizedSimilarity_Utf16 | 64     |    269.50 ns |    31.653 ns |   1.735 ns |  1.02 |    0.01 |         - |          NA |
-|                            |        |              |              |            |       |         |           |             |
-| **Distance_Utf16**             | **512**    | **15,527.28 ns** | **1,929.034 ns** | **105.737 ns** |  **1.00** |    **0.01** |         **-** |          **NA** |
-| Distance_CodePoint         | 512    | 18,165.53 ns |   369.510 ns |  20.254 ns |  1.17 |    0.01 |         - |          NA |
-| NormalizedSimilarity_Utf16 | 512    | 15,139.77 ns |   464.794 ns |  25.477 ns |  0.98 |    0.01 |         - |          NA |
-
-<!-- markdownlint-enable MD060 -->
-
-### Lodestar.Text.Benchmarks.LevenshteinCodePointBenchmarks-report-github
-
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
-
-```text
-BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
-Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores
-.NET SDK 10.0.400
-  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-
-Job=ShortRun  IterationCount=3  LaunchCount=1  
-WarmupCount=3
-```
-
-<!-- markdownlint-disable MD060 -->
-
-| Method             | Length | Distinct | Mean         | Error        | StdDev    | Ratio | RatioSD | Allocated | Alloc Ratio |
-|------------------- |------- |--------- |-------------:|-------------:|----------:|------:|--------:|----------:|------------:|
-| **Distance_CodePoint** | **16**     | **32**       |     **363.7 ns** |      **9.02 ns** |   **0.49 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_Utf16     | 16     | 32       |     221.7 ns |      4.37 ns |   0.24 ns |  0.61 |    0.00 |         - |          NA |
-|                    |        |          |              |              |           |       |         |           |             |
-| **Distance_CodePoint** | **16**     | **512**      |     **355.1 ns** |      **6.77 ns** |   **0.37 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_Utf16     | 16     | 512      |     223.9 ns |      2.10 ns |   0.11 ns |  0.63 |    0.00 |         - |          NA |
-|                    |        |          |              |              |           |       |         |           |             |
-| **Distance_CodePoint** | **24**     | **32**       |     **465.9 ns** |      **2.13 ns** |   **0.12 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_Utf16     | 24     | 32       |     306.5 ns |      2.34 ns |   0.13 ns |  0.66 |    0.00 |         - |          NA |
-|                    |        |          |              |              |           |       |         |           |             |
-| **Distance_CodePoint** | **24**     | **512**      |     **453.4 ns** |     **33.37 ns** |   **1.83 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_Utf16     | 24     | 512      |     313.5 ns |      6.73 ns |   0.37 ns |  0.69 |    0.00 |         - |          NA |
-|                    |        |          |              |              |           |       |         |           |             |
-| **Distance_CodePoint** | **32**     | **32**       |     **542.8 ns** |     **10.42 ns** |   **0.57 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_Utf16     | 32     | 32       |     411.3 ns |      2.68 ns |   0.15 ns |  0.76 |    0.00 |         - |          NA |
-|                    |        |          |              |              |           |       |         |           |             |
-| **Distance_CodePoint** | **32**     | **512**      |     **550.5 ns** |      **9.28 ns** |   **0.51 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_Utf16     | 32     | 512      |     397.3 ns |     17.25 ns |   0.95 ns |  0.72 |    0.00 |         - |          NA |
-|                    |        |          |              |              |           |       |         |           |             |
-| **Distance_CodePoint** | **40**     | **32**       |     **633.8 ns** |     **20.12 ns** |   **1.10 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_Utf16     | 40     | 32       |   1,383.6 ns |     14.61 ns |   0.80 ns |  2.18 |    0.00 |         - |          NA |
-|                    |        |          |              |              |           |       |         |           |             |
-| **Distance_CodePoint** | **40**     | **512**      |     **659.2 ns** |      **1.69 ns** |   **0.09 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_Utf16     | 40     | 512      |   1,324.3 ns |    141.98 ns |   7.78 ns |  2.01 |    0.01 |         - |          NA |
-|                    |        |          |              |              |           |       |         |           |             |
-| **Distance_CodePoint** | **128**    | **32**       |   **2,742.3 ns** |     **45.41 ns** |   **2.49 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_Utf16     | 128    | 32       |   5,561.9 ns |    150.82 ns |   8.27 ns |  2.03 |    0.00 |         - |          NA |
-|                    |        |          |              |              |           |       |         |           |             |
-| **Distance_CodePoint** | **128**    | **512**      |   **2,809.6 ns** |     **35.30 ns** |   **1.93 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_Utf16     | 128    | 512      |   5,557.6 ns |    277.61 ns |  15.22 ns |  1.98 |    0.00 |         - |          NA |
-|                    |        |          |              |              |           |       |         |           |             |
-| **Distance_CodePoint** | **512**    | **32**       |  **19,919.4 ns** |    **738.02 ns** |  **40.45 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_Utf16     | 512    | 32       |  68,020.9 ns | 14,726.80 ns | 807.23 ns |  3.41 |    0.04 |         - |          NA |
-|                    |        |          |              |              |           |       |         |           |             |
-| **Distance_CodePoint** | **512**    | **512**      | **507,750.7 ns** | **12,811.42 ns** | **702.24 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Distance_Utf16     | 512    | 512      |  62,553.0 ns |    105.90 ns |   5.80 ns |  0.12 |    0.00 |         - |          NA |
-
-<!-- markdownlint-enable MD060 -->
-
-### Lodestar.Text.Benchmarks.MetricsBenchmarks-report-github
-
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
-
-```text
-BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
-Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores
-.NET SDK 10.0.400
-  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-
-Job=ShortRun  IterationCount=3  LaunchCount=1  
-WarmupCount=3
-```
-
-<!-- markdownlint-disable MD060 -->
-
-| Method         | Samples | Classes | Mean         | Error       | StdDev     | Gen0   | Allocated |
-|--------------- |-------- |-------- |-------------:|------------:|-----------:|-------:|----------:|
-| **Matrix**         | **1000**    | **2**       |     **6.635 μs** |   **0.1985 μs** |  **0.0109 μs** | **0.0076** |     **312 B** |
-| MatrixWeighted | 1000    | 2       |     6.455 μs |   0.2572 μs |  0.0141 μs | 0.0076 |     312 B |
-| AccuracyScore  | 1000    | 2       |     1.133 μs |   0.0045 μs |  0.0002 μs |      - |         - |
-| F1Macro        | 1000    | 2       |     6.567 μs |   0.2006 μs |  0.0110 μs | 0.0153 |     472 B |
-| Report         | 1000    | 2       |     9.555 μs |   0.0922 μs |  0.0051 μs | 0.2594 |    6520 B |
-| **Matrix**         | **1000**    | **10**      |     **6.803 μs** |   **0.0796 μs** |  **0.0044 μs** | **0.0458** |    **1248 B** |
-| MatrixWeighted | 1000    | 10      |     6.620 μs |   0.3001 μs |  0.0164 μs | 0.0458 |    1248 B |
-| AccuracyScore  | 1000    | 10      |     1.133 μs |   0.0341 μs |  0.0019 μs |      - |         - |
-| F1Macro        | 1000    | 10      |     6.821 μs |   0.1305 μs |  0.0072 μs | 0.0610 |    1664 B |
-| Report         | 1000    | 10      |    14.396 μs |   0.2260 μs |  0.0124 μs | 0.6104 |   15496 B |
-| **Matrix**         | **100000**  | **2**       |   **760.847 μs** |  **36.1390 μs** |  **1.9809 μs** |      **-** |     **313 B** |
-| MatrixWeighted | 100000  | 2       |   728.818 μs |  21.4795 μs |  1.1774 μs |      - |     313 B |
-| AccuracyScore  | 100000  | 2       |   170.353 μs |  25.3851 μs |  1.3914 μs |      - |         - |
-| F1Macro        | 100000  | 2       |   739.163 μs |  37.6811 μs |  2.0654 μs |      - |     473 B |
-| Report         | 100000  | 2       |   771.007 μs |  91.1608 μs |  4.9968 μs |      - |    6545 B |
-| **Matrix**         | **100000**  | **10**      |   **889.305 μs** |  **37.0550 μs** |  **2.0311 μs** |      **-** |    **1249 B** |
-| MatrixWeighted | 100000  | 10      |   885.894 μs |  44.8458 μs |  2.4582 μs |      - |    1249 B |
-| AccuracyScore  | 100000  | 10      |   274.694 μs |  10.6281 μs |  0.5826 μs |      - |         - |
-| F1Macro        | 100000  | 10      |   881.760 μs |  30.6264 μs |  1.6787 μs |      - |    1665 B |
-| Report         | 100000  | 10      |   873.074 μs |  25.4110 μs |  1.3929 μs |      - |   15841 B |
-| **Matrix**         | **1000000** | **2**       | **7,345.797 μs** | **281.1026 μs** | **15.4082 μs** |      **-** |     **318 B** |
-| MatrixWeighted | 1000000 | 2       | 7,577.554 μs | 478.6193 μs | 26.2347 μs |      - |     318 B |
-| AccuracyScore  | 1000000 | 2       | 1,973.377 μs |  72.4291 μs |  3.9701 μs |      - |         - |
-| F1Macro        | 1000000 | 2       | 7,724.142 μs | 249.1775 μs | 13.6583 μs |      - |     478 B |
-| Report         | 1000000 | 2       | 7,524.268 μs | 153.5010 μs |  8.4139 μs |      - |    6572 B |
-| **Matrix**         | **1000000** | **10**      | **8,792.776 μs** | **293.8876 μs** | **16.1090 μs** |      **-** |    **1260 B** |
-| MatrixWeighted | 1000000 | 10      | 8,719.573 μs | 389.7039 μs | 21.3610 μs |      - |    1260 B |
-| AccuracyScore  | 1000000 | 10      | 2,996.003 μs |  60.8285 μs |  3.3342 μs |      - |         - |
-| F1Macro        | 1000000 | 10      | 9,144.508 μs | 656.9726 μs | 36.0109 μs |      - |    1676 B |
-| Report         | 1000000 | 10      | 9,313.685 μs | 198.9309 μs | 10.9041 μs |      - |   15892 B |
-
-<!-- markdownlint-enable MD060 -->
-
-### Lodestar.Text.Benchmarks.MyersGateBenchmarks-report-github
-
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
-
-```text
-BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
-Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores
-.NET SDK 10.0.400
-  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-
-Job=ShortRun  IterationCount=3  LaunchCount=1  
-WarmupCount=3
-```
-
-<!-- markdownlint-disable MD060 -->
-
-| Method     | Band | Mean         | Error      | StdDev    | Ratio | RatioSD | Allocated | Alloc Ratio |
-|----------- |----- |-------------:|-----------:|----------:|------:|--------:|----------:|------------:|
-| **Dp**         | **4**    |     **78.67 ns** |   **1.035 ns** |  **0.057 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Kernel     | 4    |     75.93 ns |   3.649 ns |  0.200 ns |  0.97 |    0.00 |         - |          NA |
-| Dp_Cjk     | 4    |     76.73 ns |   0.405 ns |  0.022 ns |  0.98 |    0.00 |         - |          NA |
-| Kernel_Cjk | 4    |     75.69 ns |   2.904 ns |  0.159 ns |  0.96 |    0.00 |         - |          NA |
-|            |      |              |            |           |       |         |           |             |
-| **Dp**         | **6**    |    **105.78 ns** |   **1.510 ns** |  **0.083 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Kernel     | 6    |     76.71 ns |   0.478 ns |  0.026 ns |  0.73 |    0.00 |         - |          NA |
-| Dp_Cjk     | 6    |    105.44 ns |   1.396 ns |  0.077 ns |  1.00 |    0.00 |         - |          NA |
-| Kernel_Cjk | 6    |    128.27 ns |   0.892 ns |  0.049 ns |  1.21 |    0.00 |         - |          NA |
-|            |      |              |            |           |       |         |           |             |
-| **Dp**         | **8**    |    **148.73 ns** |  **11.171 ns** |  **0.612 ns** |  **1.00** |    **0.01** |         **-** |          **NA** |
-| Kernel     | 8    |     85.72 ns |   1.868 ns |  0.102 ns |  0.58 |    0.00 |         - |          NA |
-| Dp_Cjk     | 8    |    149.89 ns |   0.243 ns |  0.013 ns |  1.01 |    0.00 |         - |          NA |
-| Kernel_Cjk | 8    |    179.12 ns |  17.290 ns |  0.948 ns |  1.20 |    0.01 |         - |          NA |
-|            |      |              |            |           |       |         |           |             |
-| **Dp**         | **10**   |    **196.20 ns** |   **5.054 ns** |  **0.277 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Kernel     | 10   |     93.69 ns |   1.333 ns |  0.073 ns |  0.48 |    0.00 |         - |          NA |
-| Dp_Cjk     | 10   |    198.02 ns |   3.495 ns |  0.192 ns |  1.01 |    0.00 |         - |          NA |
-| Kernel_Cjk | 10   |    138.30 ns |   2.517 ns |  0.138 ns |  0.70 |    0.00 |         - |          NA |
-|            |      |              |            |           |       |         |           |             |
-| **Dp**         | **12**   |    **269.71 ns** |  **10.151 ns** |  **0.556 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Kernel     | 12   |    104.59 ns |  28.954 ns |  1.587 ns |  0.39 |    0.01 |         - |          NA |
-| Dp_Cjk     | 12   |    268.74 ns |   1.760 ns |  0.096 ns |  1.00 |    0.00 |         - |          NA |
-| Kernel_Cjk | 12   |    150.53 ns |  11.847 ns |  0.649 ns |  0.56 |    0.00 |         - |          NA |
-|            |      |              |            |           |       |         |           |             |
-| **Dp**         | **16**   |    **412.21 ns** |   **5.332 ns** |  **0.292 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Kernel     | 16   |    119.33 ns |   0.604 ns |  0.033 ns |  0.29 |    0.00 |         - |          NA |
-| Dp_Cjk     | 16   |    412.19 ns |   2.669 ns |  0.146 ns |  1.00 |    0.00 |         - |          NA |
-| Kernel_Cjk | 16   |    168.94 ns |   9.077 ns |  0.498 ns |  0.41 |    0.00 |         - |          NA |
-|            |      |              |            |           |       |         |           |             |
-| **Dp**         | **24**   |    **810.02 ns** |  **17.839 ns** |  **0.978 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Kernel     | 24   |    155.44 ns |  20.922 ns |  1.147 ns |  0.19 |    0.00 |         - |          NA |
-| Dp_Cjk     | 24   |    820.97 ns | 302.173 ns | 16.563 ns |  1.01 |    0.02 |         - |          NA |
-| Kernel_Cjk | 24   |    216.07 ns |   5.992 ns |  0.328 ns |  0.27 |    0.00 |         - |          NA |
-|            |      |              |            |           |       |         |           |             |
-| **Dp**         | **32**   |  **1,419.52 ns** |   **8.162 ns** |  **0.447 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Kernel     | 32   |    192.19 ns |   1.759 ns |  0.096 ns |  0.14 |    0.00 |         - |          NA |
-| Dp_Cjk     | 32   |  1,425.37 ns |  35.521 ns |  1.947 ns |  1.00 |    0.00 |         - |          NA |
-| Kernel_Cjk | 32   |    257.55 ns |   6.287 ns |  0.345 ns |  0.18 |    0.00 |         - |          NA |
-|            |      |              |            |           |       |         |           |             |
-| **Dp**         | **48**   |  **3,118.79 ns** | **172.915 ns** |  **9.478 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Kernel     | 48   |    261.39 ns |   3.823 ns |  0.210 ns |  0.08 |    0.00 |         - |          NA |
-| Dp_Cjk     | 48   |  3,109.40 ns |  46.539 ns |  2.551 ns |  1.00 |    0.00 |         - |          NA |
-| Kernel_Cjk | 48   |    339.61 ns |   1.996 ns |  0.109 ns |  0.11 |    0.00 |         - |          NA |
-|            |      |              |            |           |       |         |           |             |
-| **Dp**         | **64**   |  **5,470.97 ns** | **145.119 ns** |  **7.954 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Kernel     | 64   |    332.09 ns |  10.999 ns |  0.603 ns |  0.06 |    0.00 |         - |          NA |
-| Dp_Cjk     | 64   |  5,460.83 ns |  46.868 ns |  2.569 ns |  1.00 |    0.00 |         - |          NA |
-| Kernel_Cjk | 64   |    435.38 ns |   3.491 ns |  0.191 ns |  0.08 |    0.00 |         - |          NA |
-|            |      |              |            |           |       |         |           |             |
-| **Dp**         | **96**   | **12,212.16 ns** | **276.297 ns** | **15.145 ns** |  **1.00** |    **0.00** |         **-** |          **NA** |
-| Kernel     | 96   |  1,310.41 ns |  16.653 ns |  0.913 ns |  0.11 |    0.00 |         - |          NA |
-| Dp_Cjk     | 96   | 12,237.11 ns | 427.949 ns | 23.457 ns |  1.00 |    0.00 |         - |          NA |
-| Kernel_Cjk | 96   |  1,699.20 ns |  43.354 ns |  2.376 ns |  0.14 |    0.00 |         - |          NA |
+| **Dp**         | **96**   | **14,295.72 ns** | **5,617.976 ns** | **307.940 ns** |  **1.00** |    **0.03** |         **-** |          **NA** |
+| Kernel     | 96   |  1,265.09 ns |   573.209 ns |  31.420 ns |  0.09 |    0.00 |         - |          NA |
+| Dp_Cjk     | 96   | 13,923.77 ns | 2,168.822 ns | 118.880 ns |  0.97 |    0.02 |         - |          NA |
+| Kernel_Cjk | 96   |  1,514.62 ns |    73.823 ns |   4.046 ns |  0.11 |    0.00 |         - |          NA |
 
 <!-- markdownlint-enable MD060 -->
 
 ### Lodestar.Text.Benchmarks.PersistenceBenchmarks-report-github
 
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
-Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores
+AMD EPYC 7763, 1 CPU, 4 logical and 2 physical cores
 .NET SDK 10.0.400
-  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
 
 Job=ShortRun  IterationCount=3  LaunchCount=1  
 WarmupCount=3
@@ -579,27 +579,27 @@ WarmupCount=3
 
 | Method                 | Mean      | Error     | StdDev    | Gen0     | Gen1     | Gen2     | Allocated |
 |----------------------- |----------:|----------:|----------:|---------:|---------:|---------:|----------:|
-| VocabTxt               |  3.842 ms | 0.0966 ms | 0.0053 ms |  85.9375 |  78.1250 |  31.2500 |   3.62 MB |
-| TokenizerJsonWordPiece | 11.472 ms | 2.9466 ms | 0.1615 ms | 125.0000 | 109.3750 |  31.2500 |   5.72 MB |
-| TokenizerJsonUnigram   | 11.884 ms | 0.3498 ms | 0.0192 ms |  78.1250 |  62.5000 |  31.2500 |   4.64 MB |
-| SpieceModel            |  4.073 ms | 0.9082 ms | 0.0498 ms |  78.1250 |  70.3125 |  23.4375 |   3.36 MB |
-| TfidfSave              |  1.944 ms | 0.4206 ms | 0.0231 ms |  33.2031 |  29.2969 |  29.2969 |   2.09 MB |
-| TfidfLoad              |  4.300 ms | 0.3515 ms | 0.0193 ms |  62.5000 |  54.6875 |  23.4375 |   2.86 MB |
-| EmbeddingIndexSave     |  5.517 ms | 0.6180 ms | 0.0339 ms | 273.4375 | 273.4375 | 273.4375 |  19.87 MB |
-| EmbeddingIndexLoad     | 10.096 ms | 5.1618 ms | 0.2829 ms | 484.3750 | 453.1250 | 453.1250 |  35.35 MB |
+| VocabTxt               |  4.339 ms | 3.8238 ms | 0.2096 ms | 117.1875 | 109.3750 |  39.0625 |   3.62 MB |
+| TokenizerJsonWordPiece | 11.501 ms | 3.4523 ms | 0.1892 ms | 187.5000 | 171.8750 |  46.8750 |   5.72 MB |
+| TokenizerJsonUnigram   | 12.653 ms | 0.3594 ms | 0.0197 ms |  93.7500 |  78.1250 |  31.2500 |   4.64 MB |
+| SpieceModel            |  3.843 ms | 5.9329 ms | 0.3252 ms | 109.3750 | 101.5625 |  31.2500 |   3.36 MB |
+| TfidfSave              |  1.768 ms | 0.3530 ms | 0.0193 ms |  23.4375 |  19.5313 |  19.5313 |   2.09 MB |
+| TfidfLoad              |  4.393 ms | 0.8975 ms | 0.0492 ms |  85.9375 |  78.1250 |  23.4375 |   2.86 MB |
+| EmbeddingIndexSave     |  4.361 ms | 0.5129 ms | 0.0281 ms | 273.4375 | 273.4375 | 273.4375 |  19.87 MB |
+| EmbeddingIndexLoad     |  5.724 ms | 0.8131 ms | 0.0446 ms | 203.1250 | 171.8750 | 140.6250 |  15.72 MB |
 
 <!-- markdownlint-enable MD060 -->
 
 ### Lodestar.Text.Benchmarks.StopWordBenchmarks-report-github
 
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
-Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores
+AMD EPYC 7763, 1 CPU, 4 logical and 2 physical cores
 .NET SDK 10.0.400
-  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
 
 Job=ShortRun  IterationCount=3  LaunchCount=1  
 WarmupCount=3
@@ -609,28 +609,28 @@ WarmupCount=3
 
 | Method               | Documents | Mean      | Error     | StdDev    | Ratio | Gen0      | Gen1     | Gen2     | Allocated | Alloc Ratio |
 |--------------------- |---------- |----------:|----------:|----------:|------:|----------:|---------:|---------:|----------:|------------:|
-| **Count**                | **200**       |  **7.700 ms** | **0.4437 ms** | **0.0243 ms** |  **1.00** |  **343.7500** | **156.2500** |  **62.5000** |   **7.92 MB** |        **1.00** |
-| CountWithStopWords   | 200       |  6.297 ms | 0.5794 ms | 0.0318 ms |  0.82 |  257.8125 | 125.0000 |        - |   6.34 MB |        0.80 |
-| Hashing              | 200       |  7.852 ms | 1.3158 ms | 0.0721 ms |  1.02 |  359.3750 | 140.6250 |  62.5000 |   8.08 MB |        1.02 |
-| HashingWithStopWords | 200       |  6.528 ms | 0.0510 ms | 0.0028 ms |  0.85 |  265.6250 |  93.7500 |        - |   6.52 MB |        0.82 |
+| **Count**                | **200**       |  **7.561 ms** | **1.3053 ms** | **0.0715 ms** |  **1.00** |  **500.0000** | **234.3750** |  **62.5000** |   **7.92 MB** |        **1.00** |
+| CountWithStopWords   | 200       |  6.308 ms | 0.2339 ms | 0.0128 ms |  0.83 |  390.6250 | 187.5000 |        - |   6.34 MB |        0.80 |
+| Hashing              | 200       |  7.438 ms | 1.1347 ms | 0.0622 ms |  0.98 |  507.8125 | 171.8750 |  70.3125 |   8.08 MB |        1.02 |
+| HashingWithStopWords | 200       |  6.496 ms | 0.2035 ms | 0.0112 ms |  0.86 |  406.2500 | 156.2500 |        - |   6.52 MB |        0.82 |
 |                      |           |           |           |           |       |           |          |          |           |             |
-| **Count**                | **1000**      | **31.984 ms** | **0.9332 ms** | **0.0512 ms** |  **1.00** | **1687.5000** | **812.5000** | **562.5000** |  **38.64 MB** |        **1.00** |
-| CountWithStopWords   | 1000      | 25.089 ms | 0.7729 ms | 0.0424 ms |  0.78 | 1406.2500 | 562.5000 | 250.0000 |  30.99 MB |        0.80 |
-| Hashing              | 1000      | 30.456 ms | 2.7674 ms | 0.1517 ms |  0.95 | 1968.7500 | 593.7500 | 593.7500 |  39.55 MB |        1.02 |
-| HashingWithStopWords | 1000      | 25.722 ms | 0.6029 ms | 0.0330 ms |  0.80 | 1343.7500 | 343.7500 | 250.0000 |  31.83 MB |        0.82 |
+| **Count**                | **1000**      | **31.093 ms** | **6.1031 ms** | **0.3345 ms** |  **1.00** | **2625.0000** | **875.0000** | **500.0000** |  **38.64 MB** |        **1.00** |
+| CountWithStopWords   | 1000      | 24.165 ms | 0.8266 ms | 0.0453 ms |  0.78 | 1968.7500 | 781.2500 | 250.0000 |  30.99 MB |        0.80 |
+| Hashing              | 1000      | 29.196 ms | 2.9507 ms | 0.1617 ms |  0.94 | 2562.5000 | 750.0000 | 593.7500 |  39.55 MB |        1.02 |
+| HashingWithStopWords | 1000      | 25.070 ms | 4.6621 ms | 0.2555 ms |  0.81 | 2031.2500 | 625.0000 | 250.0000 |  31.83 MB |        0.82 |
 
 <!-- markdownlint-enable MD060 -->
 
 ### Lodestar.Text.Benchmarks.VectorMathBenchmarks-report-github
 
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
-Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores
+AMD EPYC 7763, 1 CPU, 4 logical and 2 physical cores
 .NET SDK 10.0.400
-  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
 
 Job=ShortRun  IterationCount=3  LaunchCount=1  
 WarmupCount=3
@@ -640,27 +640,27 @@ WarmupCount=3
 
 | Method | Dim  | Mean      | Error    | StdDev   | Ratio | Allocated | Alloc Ratio |
 |------- |----- |----------:|---------:|---------:|------:|----------:|------------:|
-| **Dot**    | **384**  |  **54.97 ns** | **0.270 ns** | **0.015 ns** |  **1.00** |         **-** |          **NA** |
-| L2Norm | 384  |  52.03 ns | 0.859 ns | 0.047 ns |  0.95 |         - |          NA |
+| **Dot**    | **384**  |  **48.08 ns** | **1.199 ns** | **0.066 ns** |  **1.00** |         **-** |          **NA** |
+| L2Norm | 384  |  48.61 ns | 1.578 ns | 0.087 ns |  1.01 |         - |          NA |
 |        |      |           |          |          |       |           |             |
-| **Dot**    | **768**  | **103.43 ns** | **1.053 ns** | **0.058 ns** |  **1.00** |         **-** |          **NA** |
-| L2Norm | 768  | 107.37 ns | 1.088 ns | 0.060 ns |  1.04 |         - |          NA |
+| **Dot**    | **768**  |  **94.92 ns** | **6.516 ns** | **0.357 ns** |  **1.00** |         **-** |          **NA** |
+| L2Norm | 768  |  92.71 ns | 2.822 ns | 0.155 ns |  0.98 |         - |          NA |
 |        |      |           |          |          |       |           |             |
-| **Dot**    | **1024** | **139.75 ns** | **2.932 ns** | **0.161 ns** |  **1.00** |         **-** |          **NA** |
-| L2Norm | 1024 | 136.69 ns | 8.288 ns | 0.454 ns |  0.98 |         - |          NA |
+| **Dot**    | **1024** | **124.01 ns** | **1.414 ns** | **0.077 ns** |  **1.00** |         **-** |          **NA** |
+| L2Norm | 1024 | 122.96 ns | 2.250 ns | 0.123 ns |  0.99 |         - |          NA |
 
 <!-- markdownlint-enable MD060 -->
 
 ### Lodestar.Text.Benchmarks.VectorizerBenchmarks-report-github
 
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
 
 ```text
 BenchmarkDotNet v0.14.0, Ubuntu 24.04.4 LTS (Noble Numbat)
-Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores
+AMD EPYC 7763, 1 CPU, 4 logical and 2 physical cores
 .NET SDK 10.0.400
-  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
-  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX-512F+CD+BW+DQ+VL+VBMI
+  [Host]   : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
+  ShortRun : .NET 10.0.11 (10.0.1126.37416), X64 RyuJIT AVX2
 
 Job=ShortRun  IterationCount=3  LaunchCount=1  
 WarmupCount=3
@@ -670,21 +670,21 @@ WarmupCount=3
 
 | Method       | Documents | Mean      | Error     | StdDev    | Ratio | RatioSD | Gen0     | Gen1     | Gen2     | Allocated | Alloc Ratio |
 |------------- |---------- |----------:|----------:|----------:|------:|--------:|---------:|---------:|---------:|----------:|------------:|
-| **Count**        | **200**       |  **3.022 ms** | **4.5751 ms** | **0.2508 ms** |  **1.00** |    **0.10** |  **62.5000** |  **23.4375** |        **-** |    **1.6 MB** |        **1.00** |
-| Tfidf        | 200       |  3.246 ms | 5.3065 ms | 0.2909 ms |  1.08 |    0.11 |  62.5000 |  23.4375 |        - |   1.63 MB |        1.02 |
-| CountBigrams | 200       |  3.786 ms | 0.1958 ms | 0.0107 ms |  1.26 |    0.09 | 109.3750 |  62.5000 |        - |   2.78 MB |        1.74 |
-| Hashing      | 200       |  2.974 ms | 2.0463 ms | 0.1122 ms |  0.99 |    0.08 |  62.5000 |  23.4375 |        - |    1.6 MB |        1.00 |
+| **Count**        | **200**       |  **2.959 ms** | **1.9173 ms** | **0.1051 ms** |  **1.00** |    **0.04** |  **93.7500** |  **39.0625** |        **-** |    **1.6 MB** |        **1.00** |
+| Tfidf        | 200       |  2.981 ms | 1.5876 ms | 0.0870 ms |  1.01 |    0.04 | 101.5625 |  39.0625 |        - |   1.63 MB |        1.02 |
+| CountBigrams | 200       |  3.799 ms | 0.3974 ms | 0.0218 ms |  1.29 |    0.04 | 171.8750 | 109.3750 |        - |   2.78 MB |        1.74 |
+| Hashing      | 200       |  2.991 ms | 2.1996 ms | 0.1206 ms |  1.01 |    0.05 |  93.7500 |  23.4375 |        - |    1.6 MB |        1.00 |
 |              |           |           |           |           |       |         |          |          |          |           |             |
-| **Count**        | **1000**      |  **7.167 ms** | **0.7291 ms** | **0.0400 ms** |  **1.00** |    **0.01** | **351.5625** | **210.9375** |  **70.3125** |   **7.83 MB** |        **1.00** |
-| Tfidf        | 1000      |  7.453 ms | 1.3872 ms | 0.0760 ms |  1.04 |    0.01 | 343.7500 | 218.7500 |  93.7500 |   7.97 MB |        1.02 |
-| CountBigrams | 1000      | 12.086 ms | 1.1205 ms | 0.0614 ms |  1.69 |    0.01 | 640.6250 | 265.6250 | 265.6250 |  13.42 MB |        1.71 |
-| Hashing      | 1000      |  7.209 ms | 0.1759 ms | 0.0096 ms |  1.01 |    0.00 | 351.5625 | 140.6250 |  70.3125 |   7.85 MB |        1.00 |
+| **Count**        | **1000**      |  **7.215 ms** | **0.3218 ms** | **0.0176 ms** |  **1.00** |    **0.00** | **484.3750** | **343.7500** |  **62.5000** |   **7.83 MB** |        **1.00** |
+| Tfidf        | 1000      |  7.453 ms | 0.6354 ms | 0.0348 ms |  1.03 |    0.00 | 484.3750 | 312.5000 |  93.7500 |   7.97 MB |        1.02 |
+| CountBigrams | 1000      | 11.921 ms | 0.4909 ms | 0.0269 ms |  1.65 |    0.00 | 906.2500 | 375.0000 | 265.6250 |  13.42 MB |        1.71 |
+| Hashing      | 1000      |  7.041 ms | 0.6258 ms | 0.0343 ms |  0.98 |    0.00 | 492.1875 | 156.2500 |  70.3125 |   7.85 MB |        1.00 |
 
 <!-- markdownlint-enable MD060 -->
 
 ### compare-indel
 
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
 
 ```text
 Python: rapidfuzz 3.14.5 (py 3.12.14)
@@ -695,14 +695,14 @@ C#:     Lodestar.Text on .NET 10.0.11 (mode Utf16Unit)
 
 | alphabet | length | Python ns/pair | C# ns/pair | speedup (py/C#) |
 |---|---:|---:|---:|:---|
-| latin | 8 | 102.4 | 21.8 | 4.69x C# faster |
-| latin | 32 | 147.9 | 86.7 | 1.71x C# faster |
-| latin | 128 | 467.2 | 801.7 | 1.72x Py faster |
-| latin | 512 | 4731.8 | 7440.6 | 1.57x Py faster |
-| cjk | 8 | 113.3 | 21.8 | 5.18x C# faster |
-| cjk | 32 | 263.1 | 214.2 | 1.23x C# faster |
-| cjk | 128 | 1792.0 | 1585.3 | 1.13x C# faster |
-| cjk | 512 | 16300.6 | 10808.4 | 1.51x C# faster |
+| latin | 8 | 116.7 | 26.7 | 4.37x C# faster |
+| latin | 32 | 177.6 | 88.7 | 2.00x C# faster |
+| latin | 128 | 471.6 | 907.8 | 1.92x Py faster |
+| latin | 512 | 4464.3 | 7777.4 | 1.74x Py faster |
+| cjk | 8 | 139.9 | 27.6 | 5.08x C# faster |
+| cjk | 32 | 326.3 | 229.2 | 1.42x C# faster |
+| cjk | 128 | 1902.2 | 1651.7 | 1.15x C# faster |
+| cjk | 512 | 14785.2 | 10865.2 | 1.36x C# faster |
 
 Note: Indel is len(a)+len(b)-2*LCS on both sides, so this compares the subsequence kernels. Lodestar's is Hyyro's bit-parallel LLCS above a pattern of 8 and a rolling-row dynamic program below it (#273).
 
@@ -710,7 +710,7 @@ Note: Indel is len(a)+len(b)-2*LCS on both sides, so this compares the subsequen
 
 ### compare-levenshtein
 
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
 
 ```text
 Python: rapidfuzz 3.14.5 (py 3.12.14)
@@ -721,14 +721,14 @@ C#:     Lodestar.Text on .NET 10.0.11 (mode Utf16Unit)
 
 | alphabet | length | Python ns/pair | C# ns/pair | speedup (py/C#) |
 |---|---:|---:|---:|:---|
-| latin | 8 | 131.6 | 19.2 | 6.86x C# faster |
-| latin | 32 | 229.6 | 154.9 | 1.48x C# faster |
-| latin | 128 | 1809.0 | 1543.2 | 1.17x C# faster |
-| latin | 512 | 15214.5 | 16134.8 | 1.06x Py faster |
-| cjk | 8 | 130.9 | 19.2 | 6.83x C# faster |
-| cjk | 32 | 339.1 | 290.0 | 1.17x C# faster |
-| cjk | 128 | 2978.7 | 2531.9 | 1.18x C# faster |
-| cjk | 512 | 25920.2 | 19808.3 | 1.31x C# faster |
+| latin | 8 | 156.3 | 18.1 | 8.62x C# faster |
+| latin | 32 | 287.7 | 157.7 | 1.82x C# faster |
+| latin | 128 | 1699.8 | 1545.6 | 1.10x C# faster |
+| latin | 512 | 14030.8 | 16310.7 | 1.16x Py faster |
+| cjk | 8 | 146.8 | 18.1 | 8.12x C# faster |
+| cjk | 32 | 367.3 | 281.3 | 1.31x C# faster |
+| cjk | 128 | 2856.9 | 2429.4 | 1.18x C# faster |
+| cjk | 512 | 23784.4 | 19860.0 | 1.20x C# faster |
 
 Note: Python times the realistic per-call loop; rapidfuzz's C core uses the bit-parallel Myers algorithm, so it scales better on long strings.
 
@@ -736,7 +736,7 @@ Note: Python times the realistic per-call loop; rapidfuzz's C core uses the bit-
 
 ### compare-metrics
 
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
 
 ```text
 Python: {'scikit-learn': '1.9.0', 'numpy': '2.5.1'} (py 3.12.14)
@@ -747,86 +747,92 @@ C#:     Lodestar on .NET 10.0.11
 
 | operation | C# ms | Py ms | wall | C# cpu | Py cpu | cpu |
 |:---|---:|---:|---:|---:|---:|---:|
-| confusion_matrix_n1000_k2 | 0.007 | 0.811 | 111.52x | 0.007 | 0.811 | 111.51x |
-| accuracy_n1000_k2 | 0.001 | 0.425 | 372.56x | 0.001 | 0.425 | 372.52x |
-| precision_recall_f1_macro_n1000_k2 | 0.007 | 1.472 | 220.87x | 0.007 | 1.472 | 220.88x |
-| classification_report_n1000_k2 | 0.010 | 5.619 | 582.96x | 0.010 | 5.619 | 582.93x |
-| roc_auc_binary_n1000_k2 | 0.015 | 1.627 | 107.49x | 0.015 | 1.626 | 107.48x |
-| balanced_accuracy_n1000_k2 | 0.007 | 0.871 | 133.02x | 0.007 | 0.871 | 133.02x |
-| matthews_n1000_k2 | 0.007 | 1.646 | 250.37x | 0.007 | 1.646 | 250.36x |
-| cohen_kappa_n1000_k2 | 0.007 | 0.905 | 137.57x | 0.007 | 0.905 | 137.59x |
-| mse_n1000_k2 | 0.007 | 0.232 | 32.96x | 0.007 | 0.232 | 32.95x |
-| mae_n1000_k2 | 0.007 | 0.231 | 32.76x | 0.007 | 0.231 | 32.76x |
-| median_ae_n1000_k2 | 0.007 | 0.246 | 36.13x | 0.007 | 0.246 | 36.13x |
-| r2_n1000_k2 | 0.003 | 0.281 | 82.21x | 0.003 | 0.281 | 82.20x |
-| confusion_matrix_n1000_k10 | 0.007 | 0.804 | 109.46x | 0.007 | 0.804 | 109.47x |
-| accuracy_n1000_k10 | 0.001 | 0.428 | 375.17x | 0.001 | 0.428 | 375.13x |
-| precision_recall_f1_macro_n1000_k10 | 0.007 | 1.491 | 207.73x | 0.007 | 1.491 | 207.72x |
-| classification_report_n1000_k10 | 0.015 | 5.804 | 396.09x | 0.015 | 5.804 | 396.09x |
-| roc_auc_ovr_macro_n1000_k10 | 0.521 | 8.316 | 15.96x | 0.521 | 8.316 | 15.96x |
-| balanced_accuracy_n1000_k10 | 0.007 | 0.870 | 124.71x | 0.007 | 0.870 | 124.71x |
-| matthews_n1000_k10 | 0.007 | 1.674 | 240.07x | 0.007 | 1.674 | 240.05x |
-| cohen_kappa_n1000_k10 | 0.007 | 0.914 | 123.99x | 0.007 | 0.914 | 123.99x |
-| mse_n1000_k10 | 0.007 | 0.231 | 32.84x | 0.007 | 0.231 | 32.84x |
-| mae_n1000_k10 | 0.007 | 0.231 | 32.71x | 0.007 | 0.230 | 32.71x |
-| median_ae_n1000_k10 | 0.007 | 0.243 | 35.99x | 0.007 | 0.243 | 35.99x |
-| r2_n1000_k10 | 0.003 | 0.280 | 82.09x | 0.003 | 0.280 | 82.10x |
-| confusion_matrix_n100000_k2 | 0.829 | 10.913 | 13.16x | 0.829 | 10.912 | 13.16x |
-| accuracy_n100000_k2 | 0.180 | 3.764 | 20.88x | 0.180 | 3.763 | 20.88x |
-| precision_recall_f1_macro_n100000_k2 | 0.744 | 12.380 | 16.65x | 0.744 | 12.380 | 16.65x |
-| classification_report_n100000_k2 | 0.753 | 26.734 | 35.49x | 0.753 | 26.734 | 35.49x |
-| roc_auc_binary_n100000_k2 | 4.079 | 25.349 | 6.22x | 4.079 | 25.349 | 6.21x |
-| balanced_accuracy_n100000_k2 | 0.746 | 10.964 | 14.69x | 0.746 | 10.964 | 14.69x |
-| matthews_n100000_k2 | 0.753 | 21.924 | 29.13x | 0.753 | 21.923 | 29.13x |
-| cohen_kappa_n100000_k2 | 0.745 | 10.989 | 14.74x | 0.745 | 10.989 | 14.74x |
-| mse_n100000_k2 | 0.281 | 0.514 | 1.83x | 0.281 | 0.514 | 1.83x |
-| mae_n100000_k2 | 0.268 | 0.505 | 1.88x | 0.268 | 0.505 | 1.88x |
-| median_ae_n100000_k2 | 0.761 | 1.669 | 2.19x | 0.777 | 1.669 | 2.15x |
-| r2_n100000_k2 | 0.336 | 0.854 | 2.54x | 0.336 | 0.854 | 2.54x |
-| confusion_matrix_n100000_k10 | 0.903 | 10.863 | 12.03x | 0.903 | 10.863 | 12.03x |
-| accuracy_n100000_k10 | 0.276 | 3.764 | 13.62x | 0.276 | 3.764 | 13.62x |
-| precision_recall_f1_macro_n100000_k10 | 0.862 | 13.020 | 15.11x | 0.862 | 13.019 | 15.11x |
-| classification_report_n100000_k10 | 0.867 | 29.265 | 33.75x | 0.867 | 29.263 | 33.76x |
-| roc_auc_ovr_macro_n100000_k10 | 45.793 | 205.712 | 4.49x | 45.787 | 205.694 | 4.49x |
-| balanced_accuracy_n100000_k10 | 0.855 | 10.969 | 12.82x | 0.855 | 10.969 | 12.82x |
-| matthews_n100000_k10 | 0.853 | 22.536 | 26.41x | 0.853 | 22.536 | 26.41x |
-| cohen_kappa_n100000_k10 | 0.984 | 11.003 | 11.18x | 0.984 | 11.003 | 11.19x |
-| mse_n100000_k10 | 0.281 | 0.514 | 1.83x | 0.281 | 0.514 | 1.83x |
-| mae_n100000_k10 | 0.268 | 0.506 | 1.89x | 0.268 | 0.506 | 1.89x |
-| median_ae_n100000_k10 | 0.821 | 1.669 | 2.03x | 0.887 | 1.669 | 1.88x |
-| r2_n100000_k10 | 0.336 | 0.852 | 2.53x | 0.336 | 0.851 | 2.53x |
-| confusion_matrix_n1000000_k2 | 7.833 | 104.503 | 13.34x | 7.833 | 104.488 | 13.34x |
-| accuracy_n1000000_k2 | 1.930 | 34.402 | 17.82x | 1.930 | 34.402 | 17.82x |
-| precision_recall_f1_macro_n1000000_k2 | 7.536 | 112.327 | 14.91x | 7.536 | 112.315 | 14.90x |
-| classification_report_n1000000_k2 | 7.453 | 223.095 | 29.93x | 7.452 | 223.065 | 29.93x |
-| roc_auc_binary_n1000000_k2 | 63.750 | 288.226 | 4.52x | 63.749 | 288.178 | 4.52x |
-| balanced_accuracy_n1000000_k2 | 7.446 | 104.649 | 14.05x | 7.446 | 104.640 | 14.05x |
-| matthews_n1000000_k2 | 7.444 | 210.737 | 28.31x | 7.444 | 210.727 | 28.31x |
-| cohen_kappa_n1000000_k2 | 7.458 | 104.812 | 14.05x | 7.458 | 104.810 | 14.05x |
-| mse_n1000000_k2 | 2.626 | 3.401 | 1.30x | 2.625 | 3.401 | 1.30x |
-| mae_n1000000_k2 | 2.667 | 3.095 | 1.16x | 2.667 | 3.095 | 1.16x |
-| median_ae_n1000000_k2 | 7.506 | 14.364 | 1.91x | 7.543 | 14.362 | 1.90x |
-| r2_n1000000_k2 | 3.294 | 6.400 | 1.94x | 3.293 | 6.399 | 1.94x |
-| confusion_matrix_n1000000_k10 | 9.067 | 104.381 | 11.51x | 9.066 | 104.343 | 11.51x |
-| accuracy_n1000000_k10 | 2.990 | 34.358 | 11.49x | 2.990 | 34.353 | 11.49x |
-| precision_recall_f1_macro_n1000000_k10 | 8.682 | 118.604 | 13.66x | 8.682 | 118.596 | 13.66x |
-| classification_report_n1000000_k10 | 8.600 | 250.319 | 29.11x | 8.599 | 250.317 | 29.11x |
-| balanced_accuracy_n1000000_k10 | 8.567 | 104.559 | 12.20x | 8.567 | 104.556 | 12.20x |
-| matthews_n1000000_k10 | 8.554 | 216.820 | 25.35x | 8.554 | 216.792 | 25.34x |
-| cohen_kappa_n1000000_k10 | 8.554 | 104.742 | 12.25x | 8.554 | 104.737 | 12.24x |
-| mse_n1000000_k10 | 2.832 | 3.515 | 1.24x | 2.832 | 3.515 | 1.24x |
-| mae_n1000000_k10 | 2.813 | 3.047 | 1.08x | 2.813 | 3.047 | 1.08x |
-| median_ae_n1000000_k10 | 7.828 | 14.728 | 1.88x | 7.945 | 14.727 | 1.85x |
-| r2_n1000000_k10 | 3.859 | 6.416 | 1.66x | 3.858 | 6.416 | 1.66x |
+| confusion_matrix_n1000_k2 | 0.009 | 0.951 | 101.88x | 0.009 | 0.951 | 101.87x |
+| accuracy_n1000_k2 | 0.001 | 0.503 | 545.04x | 0.001 | 0.503 | 545.00x |
+| precision_recall_f1_macro_n1000_k2 | 0.008 | 1.723 | 225.41x | 0.008 | 1.720 | 225.16x |
+| classification_report_n1000_k2 | 0.010 | 6.532 | 631.60x | 0.010 | 6.532 | 631.62x |
+| roc_auc_binary_n1000_k2 | 0.015 | 1.879 | 121.83x | 0.015 | 1.879 | 121.81x |
+| balanced_accuracy_n1000_k2 | 0.008 | 1.016 | 132.72x | 0.008 | 1.016 | 132.71x |
+| matthews_n1000_k2 | 0.008 | 1.905 | 250.15x | 0.008 | 1.905 | 250.12x |
+| cohen_kappa_n1000_k2 | 0.008 | 1.061 | 137.95x | 0.008 | 1.061 | 137.94x |
+| mse_n1000_k2 | 0.002 | 0.295 | 125.63x | 0.002 | 0.295 | 125.63x |
+| mae_n1000_k2 | 0.002 | 0.296 | 121.46x | 0.002 | 0.295 | 121.45x |
+| median_ae_n1000_k2 | 0.006 | 0.307 | 47.64x | 0.006 | 0.307 | 47.64x |
+| r2_n1000_k2 | 0.003 | 0.358 | 140.16x | 0.003 | 0.358 | 140.14x |
+| confusion_matrix_n1000_k10 | 0.009 | 0.950 | 100.97x | 0.009 | 0.950 | 100.96x |
+| accuracy_n1000_k10 | 0.001 | 0.511 | 548.79x | 0.001 | 0.511 | 548.79x |
+| precision_recall_f1_macro_n1000_k10 | 0.008 | 1.753 | 210.78x | 0.008 | 1.752 | 210.76x |
+| classification_report_n1000_k10 | 0.015 | 6.765 | 457.74x | 0.015 | 6.765 | 457.72x |
+| roc_auc_ovr_macro_n1000_k10 | 0.546 | 9.693 | 17.75x | 0.546 | 9.692 | 17.75x |
+| balanced_accuracy_n1000_k10 | 0.008 | 1.021 | 125.61x | 0.008 | 1.021 | 125.61x |
+| matthews_n1000_k10 | 0.008 | 1.942 | 239.60x | 0.008 | 1.942 | 239.58x |
+| cohen_kappa_n1000_k10 | 0.008 | 1.066 | 128.23x | 0.008 | 1.066 | 128.22x |
+| mse_n1000_k10 | 0.002 | 0.296 | 124.17x | 0.002 | 0.296 | 124.16x |
+| mae_n1000_k10 | 0.002 | 0.294 | 121.71x | 0.002 | 0.294 | 121.71x |
+| median_ae_n1000_k10 | 0.006 | 0.298 | 47.14x | 0.006 | 0.298 | 47.14x |
+| r2_n1000_k10 | 0.003 | 0.351 | 137.65x | 0.003 | 0.351 | 137.65x |
+| confusion_matrix_n100000_k2 | 1.003 | 10.586 | 10.55x | 1.003 | 10.585 | 10.55x |
+| accuracy_n100000_k2 | 0.170 | 3.734 | 22.00x | 0.170 | 3.734 | 22.00x |
+| precision_recall_f1_macro_n100000_k2 | 0.882 | 12.173 | 13.79x | 0.883 | 12.172 | 13.79x |
+| classification_report_n100000_k2 | 0.873 | 26.734 | 30.64x | 0.873 | 26.731 | 30.63x |
+| roc_auc_binary_n100000_k2 | 3.502 | 26.868 | 7.67x | 3.502 | 26.864 | 7.67x |
+| balanced_accuracy_n100000_k2 | 0.863 | 10.830 | 12.55x | 0.863 | 10.829 | 12.55x |
+| matthews_n100000_k2 | 0.862 | 21.504 | 24.96x | 0.862 | 21.502 | 24.95x |
+| cohen_kappa_n100000_k2 | 0.872 | 10.869 | 12.46x | 0.872 | 10.868 | 12.46x |
+| mse_n100000_k2 | 0.239 | 0.438 | 1.83x | 0.239 | 0.438 | 1.83x |
+| mae_n100000_k2 | 0.239 | 0.434 | 1.81x | 0.239 | 0.434 | 1.81x |
+| median_ae_n100000_k2 | 0.741 | 1.786 | 2.41x | 0.781 | 1.786 | 2.29x |
+| r2_n100000_k2 | 0.234 | 0.660 | 2.82x | 0.234 | 0.660 | 2.82x |
+| confusion_matrix_n100000_k10 | 0.963 | 10.751 | 11.16x | 0.963 | 10.747 | 11.16x |
+| accuracy_n100000_k10 | 0.270 | 3.755 | 13.91x | 0.270 | 3.754 | 13.90x |
+| precision_recall_f1_macro_n100000_k10 | 0.995 | 12.937 | 13.00x | 0.995 | 12.936 | 13.00x |
+| classification_report_n100000_k10 | 0.981 | 29.352 | 29.93x | 0.981 | 29.350 | 29.93x |
+| roc_auc_ovr_macro_n100000_k10 | 36.691 | 218.668 | 5.96x | 36.688 | 218.650 | 5.96x |
+| balanced_accuracy_n100000_k10 | 0.972 | 10.755 | 11.07x | 0.972 | 10.755 | 11.07x |
+| matthews_n100000_k10 | 0.974 | 22.386 | 23.00x | 0.973 | 22.384 | 22.99x |
+| cohen_kappa_n100000_k10 | 0.987 | 10.882 | 11.03x | 0.987 | 10.880 | 11.03x |
+| mse_n100000_k10 | 0.241 | 0.434 | 1.80x | 0.241 | 0.434 | 1.80x |
+| mae_n100000_k10 | 0.240 | 0.426 | 1.77x | 0.240 | 0.426 | 1.77x |
+| median_ae_n100000_k10 | 0.783 | 1.790 | 2.28x | 0.828 | 1.790 | 2.16x |
+| r2_n100000_k10 | 0.234 | 0.683 | 2.92x | 0.233 | 0.683 | 2.92x |
+| confusion_matrix_n1000000_k2 | 8.628 | 100.347 | 11.63x | 8.628 | 100.312 | 11.63x |
+| accuracy_n1000000_k2 | 1.806 | 33.236 | 18.41x | 1.806 | 33.234 | 18.40x |
+| precision_recall_f1_macro_n1000000_k2 | 8.874 | 108.022 | 12.17x | 8.873 | 108.013 | 12.17x |
+| classification_report_n1000000_k2 | 8.795 | 211.058 | 24.00x | 8.795 | 211.027 | 23.99x |
+| roc_auc_binary_n1000000_k2 | 43.347 | 286.264 | 6.60x | 43.345 | 286.261 | 6.60x |
+| balanced_accuracy_n1000000_k2 | 8.745 | 100.515 | 11.49x | 8.745 | 100.505 | 11.49x |
+| matthews_n1000000_k2 | 8.739 | 201.101 | 23.01x | 8.739 | 201.092 | 23.01x |
+| cohen_kappa_n1000000_k2 | 8.736 | 100.361 | 11.49x | 8.735 | 100.358 | 11.49x |
+| mse_n1000000_k2 | 2.400 | 1.990 | 0.83x | 2.400 | 1.990 | 0.83x |
+| mae_n1000000_k2 | 2.388 | 2.049 | 0.86x | 2.388 | 2.049 | 0.86x |
+| median_ae_n1000000_k2 | 7.013 | 13.948 | 1.99x | 7.075 | 13.946 | 1.97x |
+| r2_n1000000_k2 | 2.332 | 3.271 | 1.40x | 2.332 | 3.271 | 1.40x |
+| confusion_matrix_n1000000_k10 | 9.261 | 98.234 | 10.61x | 9.261 | 98.206 | 10.60x |
+| accuracy_n1000000_k10 | 2.710 | 32.659 | 12.05x | 2.710 | 32.652 | 12.05x |
+| precision_recall_f1_macro_n1000000_k10 | 9.868 | 112.881 | 11.44x | 9.867 | 112.877 | 11.44x |
+| classification_report_n1000000_k10 | 9.701 | 231.952 | 23.91x | 9.701 | 231.927 | 23.91x |
+| balanced_accuracy_n1000000_k10 | 9.725 | 98.283 | 10.11x | 9.724 | 98.277 | 10.11x |
+| matthews_n1000000_k10 | 9.639 | 203.288 | 21.09x | 9.638 | 203.272 | 21.09x |
+| cohen_kappa_n1000000_k10 | 9.557 | 96.544 | 10.10x | 9.556 | 96.536 | 10.10x |
+| mse_n1000000_k10 | 2.335 | 1.955 | 0.84x | 2.335 | 1.954 | 0.84x |
+| mae_n1000000_k10 | 2.323 | 1.928 | 0.83x | 2.323 | 1.928 | 0.83x |
+| median_ae_n1000000_k10 | 7.261 | 13.885 | 1.91x | 7.388 | 13.884 | 1.88x |
+| r2_n1000000_k10 | 2.594 | 3.363 | 1.30x | 2.594 | 3.362 | 1.30x |
 
 ratio > 1 means Lodestar is faster. cpu is the merge gate for this branch
 (docs/guides/performance.md): every operation, every size, must be >= 1x.
+
+BELOW GATE on processor time:
+  mse_n1000000_k2                  0.83x
+  mae_n1000000_k2                  0.86x
+  mse_n1000000_k10                 0.84x
+  mae_n1000000_k10                 0.83x
 
 <!-- markdownlint-enable MD060 -->
 
 ### compare-persistence
 
-_As of 2026-08-29, measured at commit `5d7a580b6fa8b8891f7c3ddfba22bf3fe791d7a2`._
+_As of 2026-08-31, measured at commit `8935765306fce8e251a4916c0ee301a911724174`._
 
 ```text
 Python: {'tokenizers': '0.23.1', 'sentencepiece': '0.2.2', 'scikit-learn': '1.9.0', 'numpy': '2.5.1'} (py 3.12.14)
@@ -837,20 +843,21 @@ C#:     Lodestar on .NET 10.0.11
 
 | operation | C# ms | Py ms | wall | C# cpu | Py cpu | cpu | C# bytes | Py bytes |
 |:---|---:|---:|---:|---:|---:|---:|---:|---:|
-| vocab_txt | 3.976 | 9.892 | 2.49x | 4.283 | 9.891 | 2.31x | 228,891 | 228,891 |
-| tokenizer_json_wordpiece | 11.403 | 15.477 | 1.36x | 11.741 | 15.477 | 1.32x | 706,526 | 706,526 |
-| tokenizer_json_unigram | 11.678 | 41.488 | 3.55x | 12.060 | 41.483 | 3.44x | 1,990,038 | 1,990,038 |
-| spiece_model | 4.646 | 28.771 | 6.19x | 4.945 | 28.770 | 5.82x | 533,084 | 533,084 |
-| tfidf_save | 1.860 | 2.496 | 1.34x | 1.882 | 2.496 | 1.33x | 581,787 | 591,922 |
-| tfidf_load | 4.359 | 3.890 | 0.89x | 4.607 | 3.890 | 0.84x | 581,787 | 591,922 |
-| embedding_index_save | 5.254 | 2.527 | 0.48x | 5.452 | 2.527 | 0.46x | 20,589,007 | 15,360,128 |
-| embedding_index_save_file | 50.362 | 36.496 | 0.72x | 10.704 | 5.280 | 0.49x | 20,589,007 | 15,360,128 |
-| embedding_index_load | 9.543 | 1.631 | 0.17x | 10.291 | 1.631 | 0.16x | 20,589,007 | 15,360,128 |
-| embedding_index_load_file | 10.366 | 1.148 | 0.11x | 11.168 | 1.142 | 0.10x | 20,589,007 | 15,360,128 |
-| embedding_index_load_memory | 5.599 | 1.662 | 0.30x | 5.991 | 1.662 | 0.28x | 20,589,007 | 15,360,128 |
-| embedding_index_view_floor | 0.000 | 0.001 | 115.06x | 0.000 | 0.001 | 115.07x | 20,589,007 | 15,360,128 |
-| embedding_index_save_gzip | 424.529 | 562.664 | 1.33x | 425.739 | 562.652 | 1.32x | 15,250,490 | 14,022,374 |
-| embedding_index_load_gzip | 83.508 | 71.661 | 0.86x | 84.952 | 71.661 | 0.84x | 15,250,490 | 14,022,374 |
+| vocab_txt | 4.794 | 9.630 | 2.01x | 5.002 | 9.629 | 1.92x | 228,891 | 228,891 |
+| tokenizer_json_wordpiece | 12.109 | 15.024 | 1.24x | 12.545 | 15.023 | 1.20x | 706,526 | 706,526 |
+| tokenizer_json_unigram | 13.543 | 33.549 | 2.48x | 13.703 | 33.545 | 2.45x | 1,990,038 | 1,990,038 |
+| spiece_model | 4.667 | 27.537 | 5.90x | 4.843 | 27.534 | 5.69x | 533,084 | 533,084 |
+| tfidf_save | 1.549 | 2.372 | 1.53x | 1.554 | 2.372 | 1.53x | 581,787 | 591,922 |
+| tfidf_load | 4.448 | 3.934 | 0.88x | 4.652 | 3.934 | 0.85x | 581,787 | 591,922 |
+| embedding_index_save | 3.918 | 1.383 | 0.35x | 4.099 | 1.383 | 0.34x | 20,589,007 | 15,360,128 |
+| embedding_index_save_file | 49.359 | 37.160 | 0.75x | 10.604 | 4.508 | 0.43x | 20,589,007 | 15,360,128 |
+| embedding_index_load | 5.013 | 1.289 | 0.26x | 5.322 | 1.289 | 0.24x | 20,589,007 | 15,360,128 |
+| embedding_index_load_file | 5.758 | 0.728 | 0.13x | 6.073 | 0.727 | 0.12x | 20,589,007 | 15,360,128 |
+| embedding_index_load_memory | 4.163 | 1.296 | 0.31x | 4.544 | 1.296 | 0.29x | 20,589,007 | 15,360,128 |
+| embedding_index_ingest_npy | 1.136 | 1.289 | 1.14x | 1.270 | 1.289 | 1.02x | 15,360,128 | 15,360,128 |
+| embedding_index_view_floor | 0.000 | 0.001 | 90.25x | 0.000 | 0.001 | 90.25x | 20,589,007 | 15,360,128 |
+| embedding_index_save_gzip | 414.491 | 530.146 | 1.28x | 416.770 | 530.100 | 1.27x | 15,250,490 | 14,022,374 |
+| embedding_index_load_gzip | 77.570 | 65.301 | 0.84x | 79.109 | 65.298 | 0.83x | 15,250,490 | 14,022,374 |
 
 ratio > 1 means Lodestar is faster. cpu is the honest one: elapsed time
 hides work .NET does on background GC threads; CPython is single-threaded.
