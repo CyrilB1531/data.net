@@ -51,8 +51,12 @@ is that the defaults differ because what they bound differs.
 Each tokenizer here implements one fixed pipeline, and a `tokenizer.json` describing another is
 **refused by name** rather than loaded into an approximation of itself. Stock BERT is refused by
 [`LoadWordPiece`](persistence/tokenizerjsonloader-loadwordpiece.md) — its route is
-`VocabTxtLoader` — and Llama-2 and Mistral v0.1 are refused by
-[`LoadBpe`](persistence/tokenizerjsonloader-loadbpe.md) for declaring `byte_fallback`.
+`VocabTxtLoader` — and a `byte_fallback` model is refused by
+[`LoadUnigram`](persistence/tokenizerjsonloader-loadunigram.md), whose Unigram pipeline does not
+reproduce it. `LoadBpe` reproduces `byte_fallback` instead — Llama-2 and Mistral v0.1 both
+load — and refuses only a vocabulary that declares the flag without carrying the byte alphabet it
+promises; [decision 0063](../../decisions/0063-byte-fallback-requires-the-whole-alphabet-and-its-decoder-is-read-strictly-too.md)
+has why.
 
 A refusal is the correct outcome: the alternative is embeddings that do not match the model and
 carry nothing to say so.

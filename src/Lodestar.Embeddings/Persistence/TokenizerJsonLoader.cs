@@ -39,6 +39,15 @@ public static class TokenizerJsonLoader
     private const string SequenceName = "Sequence";
     private const string MetaSymbol = "\u2581";
 
+    /// <summary>The <c>content</c> property an added token, the normalizer <c>Replace</c> and a decoder <c>Replace</c>/<c>Strip</c> step all carry.</summary>
+    private const string ContentProperty = "content";
+
+    /// <summary>The <c>type</c> a normalizer or decoder step declares when it replaces one string with another.</summary>
+    private const string ReplaceName = "Replace";
+
+    /// <summary>The key naming a literal (rather than regex) pattern in a <c>Split</c>, <c>Replace</c> or <c>Regex</c> block.</summary>
+    private const string StringPatternProperty = "String";
+
     /// <summary>Reads the WordPiece model declared by <paramref name="source"/>.</summary>
     /// <param name="source">The <c>tokenizer.json</c> bytes; never disposed by this method.</param>
     /// <param name="options">Bounds applied while reading, or <c>null</c> for the defaults.</param>
@@ -341,7 +350,7 @@ public static class TokenizerJsonLoader
         foreach (JsonElement token in added.EnumerateArray())
         {
             if (token.ValueKind != JsonValueKind.Object
-                || !token.TryGetProperty("content", out JsonElement contentElement)
+                || !token.TryGetProperty(ContentProperty, out JsonElement contentElement)
                 || contentElement.ValueKind != JsonValueKind.String
                 || !token.TryGetProperty("id", out JsonElement idElement)
                 || idElement.ValueKind != JsonValueKind.Number
@@ -407,11 +416,31 @@ public static class TokenizerJsonLoader
         }
     }
 
+    /// <summary>Every one of the 256 byte pieces, or a refusal naming the first one missing.</summary>
+    /// <remarks>
+    /// The reference does not check: it degrades a missing piece to the unknown token, and drops
+    /// the symbol when the file declares none — so a partial alphabet encodes differently from
+    /// the model it came from, silently. Decision 0063 refuses instead.
+    /// </remarks>
+    private static void EnsureByteAlphabetIsComplete(Dictionary<string, int> vocab)
+    {
+        for (int b = 0; b < BytePieces.Count; b++)
+        {
+            string piece = BytePieces.Name(b);
+            if (!vocab.ContainsKey(piece))
+            {
+                throw Unsupported(
+                    $"its model declares byte_fallback and its vocabulary has no '{piece}' entry",
+                    "an uncovered symbol resolves into byte pieces, so a vocabulary missing one encodes differently from the model it came from");
+            }
+        }
+    }
+
     /// <summary>
     /// Names byte_fallback ahead of the model-kind mismatch <see cref="EnsureModelType"/> would
     /// otherwise report first (#343): a Llama-2 or Mistral v0.1 file declares a BPE model with
-    /// byte_fallback, and LoadBpe refuses that by name too, so "wrong loader" would send the
-    /// reader on a round trip to a call that fails for the same reason anyway.
+    /// byte_fallback, and LoadUnigram would otherwise report "wrong model type" -- true, but not
+    /// what sends the reader to the call that actually reproduces the checkpoint.
     /// </summary>
     private static void EnsureNotByteFallbackBpe(JsonElement model)
     {
@@ -420,7 +449,7 @@ public static class TokenizerJsonLoader
         {
             throw Unsupported(
                 "it declares a 'BPE' model with byte_fallback",
-                "LoadBpe is the call for a BPE model, and it refuses byte_fallback by name too -- neither loader reproduces this checkpoint");
+                "LoadBpe is the call for a BPE model, and it is the one that reproduces byte_fallback");
         }
     }
 
@@ -498,7 +527,6 @@ public static class TokenizerJsonLoader
     {
         JsonElement model = RequireObject(root, "model");
         EnsureModelType(model, "BPE");
-        EnsureByteFallbackIsOff(model);
         EnsureBpeModelSettingsAreReproduced(model);
         IReadOnlyList<NormalizationForm> normalizationForms =
             ReadBpeNormalizer(root, out MetaspaceEscape? normalizerEscape);
@@ -514,11 +542,21 @@ public static class TokenizerJsonLoader
         List<MergePair> merges = ReadBpeMerges(model, limits);
         List<AddedToken> addedTokens = ReadAddedTokenTable(root, vocab, limits);
 
+        bool byteFallback = OptionalBoolean(model, "byte_fallback") ?? false;
+        if (byteFallback)
+        {
+            EnsureByteAlphabetIsComplete(vocab);
+        }
+
+        // Computed once: OneEscape throws on a file writing both spellings, and calling it
+        // twice would report that once per call site instead of once per file.
+        MetaspaceEscape? escape = OneEscape(normalizerEscape, preTokenizerEscape);
         return new BpeVocabulary(vocab, merges)
         {
             AddedTokens = addedTokens,
             ByteLevel = byteLevel,
             AddPrefixSpace = addPrefixSpace,
+            ByteFallback = byteFallback,
             IgnoreMerges = OptionalBoolean(model, "ignore_merges") ?? false,
             FuseUnk = OptionalBoolean(model, "fuse_unk") ?? false,
             EndOfWordSuffix = OptionalString(model, "end_of_word_suffix"),
@@ -530,7 +568,8 @@ public static class TokenizerJsonLoader
             PreTokenizerPattern = pattern,
             NoPreTokenizer = noPreTokenizer,
             NormalizationForms = normalizationForms,
-            Metaspace = OneEscape(normalizerEscape, preTokenizerEscape),
+            Metaspace = escape,
+            Decoder = ReadBpeDecoder(root, byteFallback),
         };
     }
 
@@ -635,7 +674,7 @@ public static class TokenizerJsonLoader
             string stepType = OptionalString(step, "type") ?? UntypedName;
             namesEitherStep = namesEitherStep
                 || string.Equals(stepType, "Prepend", StringComparison.Ordinal)
-                || string.Equals(stepType, "Replace", StringComparison.Ordinal);
+                || string.Equals(stepType, ReplaceName, StringComparison.Ordinal);
         }
         if (!namesEitherStep)
         {
@@ -644,7 +683,7 @@ public static class TokenizerJsonLoader
 
         if (steps.GetArrayLength() != 2
             || !string.Equals(OptionalString(steps[0], "type"), "Prepend", StringComparison.Ordinal)
-            || !string.Equals(OptionalString(steps[1], "type"), "Replace", StringComparison.Ordinal))
+            || !string.Equals(OptionalString(steps[1], "type"), ReplaceName, StringComparison.Ordinal))
         {
             throw Unsupported(
                 "its normalizer is a Sequence naming Prepend or Replace that is not exactly [Prepend, Replace]",
@@ -663,12 +702,12 @@ public static class TokenizerJsonLoader
     private static MetaspaceEscape ReadPrependReplaceEscape(JsonElement prepend, JsonElement replace)
     {
         string? prepended = OptionalString(prepend, "prepend");
-        string? content = OptionalString(replace, "content");
+        string? content = OptionalString(replace, ContentProperty);
         // ValueKind first: TryGetProperty throws InvalidOperationException on anything but
         // an object, and a hand-written "pattern": " " is a file, not a bug to surface.
         string? pattern = replace.TryGetProperty("pattern", out JsonElement patternElement)
             && patternElement.ValueKind == JsonValueKind.Object
-            ? OptionalString(patternElement, "String")
+            ? OptionalString(patternElement, StringPatternProperty)
             : null;
         if (prepended is null
             || !string.Equals(prepended, content, StringComparison.Ordinal)
@@ -727,7 +766,7 @@ public static class TokenizerJsonLoader
                 }
                 return;
 
-            case "Replace":
+            case ReplaceName:
                 throw Unsupported(
                     "its normalizer is 'Replace'",
                     "a Replace pattern may be a Rust regex, whose flavour .NET does not share, so reproducing it needs a measurement nobody has made");
@@ -1054,14 +1093,14 @@ public static class TokenizerJsonLoader
         {
             // Both keys, not both readable: {"Regex": null, "String": "|"} names the two
             // spellings just as much, and Serde refuses that node rather than reading one.
-            if (pattern.TryGetProperty("Regex", out _) && pattern.TryGetProperty("String", out _))
+            if (pattern.TryGetProperty("Regex", out _) && pattern.TryGetProperty(StringPatternProperty, out _))
             {
                 throw Unsupported(
                     "its Sequence's Split step declares both pattern.Regex and pattern.String",
                     "tokenizers writes exactly one of the two, so a file carrying both is not something the reference produces and choosing a winner would invent behaviour rather than reproduce it");
             }
             regex = OptionalString(pattern, "Regex");
-            literal = OptionalString(pattern, "String");
+            literal = OptionalString(pattern, StringPatternProperty);
         }
 
         if (regex is not null)
@@ -1125,6 +1164,98 @@ public static class TokenizerJsonLoader
             throw new InvalidDataException(
                 $"The {SourceName} decoder is 'ByteLevel' but declares no add_prefix_space, which tokenizers has no default for and refuses too.");
         }
+    }
+
+    /// <summary>Reads the <c>decoder</c> block of a SentencePiece-BPE file, or refuses a shape this package does not undo.</summary>
+    /// <remarks>
+    /// Scoped to <c>byte_fallback</c> alone: a Metaspace file that declares the escape without
+    /// it keeps <see cref="EnsureDecoderMatchesModel"/>'s looser check and today's
+    /// accepted-but-unapplied decoder (decision 0062) -- its <c>Metaspace</c> decoder's
+    /// <c>prepend_scheme</c> and <c>split</c> have not been measured against the reference, so
+    /// reading it strictly here would risk refusing a file this package can load. Decision 0063
+    /// states the boundary.
+    /// </remarks>
+    private static BpeDecoderSteps? ReadBpeDecoder(JsonElement root, bool byteFallback)
+    {
+        if (!byteFallback)
+        {
+            return null;
+        }
+        if (!root.TryGetProperty("decoder", out JsonElement decoder) || decoder.ValueKind == JsonValueKind.Null)
+        {
+            return null;
+        }
+        string type = OptionalString(decoder, "type") ?? UntypedName;
+        if (string.Equals(type, "ByteFallback", StringComparison.Ordinal))
+        {
+            return new BpeDecoderSteps(byteFallback: true, metaspaceReplacement: null, stripLeadingSpace: false);
+        }
+        if (string.Equals(type, SequenceName, StringComparison.Ordinal))
+        {
+            return ReadBpeDecoderSequence(decoder);
+        }
+        throw Unsupported(
+            $"its decoder is '{type}'",
+            "a SentencePiece-BPE file's decoder is reproduced, and only ByteFallback and the Sequence Llama-2 declares are");
+    }
+
+    /// <summary>The one Sequence this lineage declares: exactly Replace, ByteFallback, Fuse, Strip, in that order.</summary>
+    /// <remarks>
+    /// Refused rather than reduced when the steps are reordered, repeated, missing or extra --
+    /// decision 0050 §4's rule, which <see cref="ReadNormalizerEscape"/> already applies to the
+    /// normalizer Sequence. The reference runs these in the declared order, so a reordered
+    /// Sequence decodes differently and canonicalizing it here would be silently wrong.
+    /// </remarks>
+    private static BpeDecoderSteps ReadBpeDecoderSequence(JsonElement decoder)
+    {
+        JsonElement steps = RequireArray(decoder, "decoders");
+        if (steps.GetArrayLength() != 4
+            || !string.Equals(OptionalString(steps[0], "type"), ReplaceName, StringComparison.Ordinal)
+            || !string.Equals(OptionalString(steps[1], "type"), "ByteFallback", StringComparison.Ordinal)
+            || !string.Equals(OptionalString(steps[2], "type"), "Fuse", StringComparison.Ordinal)
+            || !string.Equals(OptionalString(steps[3], "type"), "Strip", StringComparison.Ordinal))
+        {
+            throw Unsupported(
+                "its decoder Sequence is not exactly [Replace, ByteFallback, Fuse, Strip] in that order",
+                "that is the one chain Llama-2 declares, and reordering, repeating, adding or omitting a step changes what decoding produces");
+        }
+        char replacement = ReadDecoderReplacement(steps[0]);
+        bool strip = ReadDecoderStrip(steps[3]);
+        return new BpeDecoderSteps(byteFallback: true, replacement, strip);
+    }
+
+    /// <summary>The one character a decoder <c>Replace</c> maps back onto U+0020.</summary>
+    /// <remarks>
+    /// Guarding <c>pattern</c>'s kind first: it is an object in every file tokenizers writes,
+    /// and TryGetProperty throws InvalidOperationException on anything else.
+    /// </remarks>
+    private static char ReadDecoderReplacement(JsonElement step)
+    {
+        string? pattern = step.TryGetProperty("pattern", out JsonElement value)
+            && value.ValueKind == JsonValueKind.Object
+            ? OptionalString(value, StringPatternProperty)
+            : null;
+        if (pattern is not { Length: 1 } || !string.Equals(OptionalString(step, ContentProperty), " ", StringComparison.Ordinal))
+        {
+            throw Unsupported(
+                "its decoder Sequence has a Replace that does not map one character back onto ' '",
+                "the only Replace reproduced here is the one undoing the whitespace escape");
+        }
+        return pattern[0];
+    }
+
+    /// <summary>Whether the <c>Strip</c> is the one leading space the prepended symbol became.</summary>
+    private static bool ReadDecoderStrip(JsonElement step)
+    {
+        if (!string.Equals(OptionalString(step, ContentProperty), " ", StringComparison.Ordinal)
+            || (OptionalInt32(step, "start") ?? 0) != 1
+            || (OptionalInt32(step, "stop") ?? 0) != 0)
+        {
+            throw Unsupported(
+                "its decoder Sequence has a Strip that is not one leading space",
+                "the only Strip reproduced here is the one taking back what the prepend added");
+        }
+        return true;
     }
 
     private enum PipelineKind
@@ -1361,6 +1492,15 @@ public static class TokenizerJsonLoader
         return value;
     }
 
+    private static JsonElement RequireArray(JsonElement parent, string propertyName)
+    {
+        if (!parent.TryGetProperty(propertyName, out JsonElement value) || value.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidDataException($"The {SourceName} has no '{propertyName}' array.");
+        }
+        return value;
+    }
+
     private static string RequireString(JsonElement parent, string propertyName) =>
         OptionalString(parent, propertyName)
         ?? throw new InvalidDataException($"The {SourceName} has no '{propertyName}' string.");
@@ -1383,6 +1523,13 @@ public static class TokenizerJsonLoader
             _ => null,
         };
     }
+
+    private static int? OptionalInt32(JsonElement parent, string propertyName) =>
+        parent.TryGetProperty(propertyName, out JsonElement value)
+            && value.ValueKind == JsonValueKind.Number
+            && value.TryGetInt32(out int number)
+            ? number
+            : null;
 
     private static InvalidDataException Unsupported(string found, string why) =>
         new($"This {SourceName} cannot be loaded because {found}: {why}. " +

@@ -402,8 +402,8 @@ public sealed class TokenizerJsonLoaderTests
     [Fact]
     public void LoadUnigram_on_a_byte_fallback_BPE_file_names_byte_fallback()
     {
-        // A Llama-2 or Mistral v0.1 tokenizer.json (#343): LoadBpe would refuse the
-        // same file for byte_fallback, so that is the message worth reading first.
+        // A Llama-2 or Mistral v0.1 tokenizer.json (#343): LoadBpe is the call that
+        // reproduces byte_fallback, so that is the message worth reading first.
         InvalidDataException error = Assert.Throws<InvalidDataException>(
             () => LoadUnigramFrom(BpeJson("\"byte_fallback\":true")));
 
@@ -883,22 +883,6 @@ public sealed class TokenizerJsonLoaderTests
         // And the model's own table is untouched: <mask> is matched as text, so
         // folding it in would make it a whole word the model could produce.
         Assert.Equal(2, vocabulary.Count);
-    }
-
-    /// <summary>
-    /// byte_fallback is the Llama-2 / Mistral v0.1 pipeline (ADR 0017). Loading it
-    /// anyway would produce a tokenization that looks right and embeddings that
-    /// are not, so it is refused by name.
-    /// </summary>
-    [Fact]
-    public void LoadBpe_refuses_byte_fallback()
-    {
-        const string Json = """
-        {"model":{"type":"BPE","vocab":{"a":0},"merges":[],"byte_fallback":true}}
-        """;
-        InvalidDataException error = Assert.Throws<InvalidDataException>(
-            () => TokenizerJsonLoader.LoadBpe(Bytes(Json), OracleReplay.BpeBounds()));
-        Assert.Contains("byte_fallback", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]

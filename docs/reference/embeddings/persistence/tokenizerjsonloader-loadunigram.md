@@ -34,12 +34,15 @@ SentencePieceVocabulary vocab = TokenizerJsonLoader.LoadUnigram("tokenizer.json"
 for a checkpoint that ships `tokenizer.json` rather than `spiece.model`. Both produce the same
 type, so the tokenizer built afterwards does not care which was used.
 
-**It refuses a file that declares a `BPE` model.** A plain BPE checkpoint is refused for
-declaring the wrong model kind, pointing at [`LoadBpe`](tokenizerjsonloader-loadbpe.md) instead.
-A Llama-2 or Mistral v0.1 `tokenizer.json` is a `BPE` model that also declares `byte_fallback` —
-for that shape the message names `byte_fallback` directly, since `LoadBpe` would refuse the same
-file for the same reason: neither call loads it, and the model-kind mismatch alone would have sent
-the reader on a round trip to find that out.
+**It refuses a file that declares a `BPE` model**, including one that also declares
+`byte_fallback` — this call is for the Unigram pipeline, and `byte_fallback` is a `BPE`-model
+setting this pipeline does not reproduce, so a plain BPE checkpoint and one with `byte_fallback`
+are both refused for declaring the wrong model kind. A Llama-2 or Mistral v0.1 `tokenizer.json` is
+the second shape: the message names `byte_fallback` directly rather than only "wrong model type",
+and points at [`LoadBpe`](tokenizerjsonloader-loadbpe.md) — which is the call that loads such a
+file today, `byte_fallback` and all
+([decision 0063](../../../decisions/0063-byte-fallback-requires-the-whole-alphabet-and-its-decoder-is-read-strictly-too.md)).
+The routing survives; only the reason changed.
 
 **Applies to** — net10.0, netstandard2.0.
 

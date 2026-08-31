@@ -272,6 +272,18 @@ public sealed class ValueEqualityTests
         Assert.NotEqual(fused.GetHashCode(), plain.GetHashCode());
     }
 
+    [Fact]
+    public void Two_vocabularies_differing_only_in_ByteFallback_are_not_equal()
+    {
+        var vocab = new Dictionary<string, int>(StringComparer.Ordinal) { ["a"] = 0 };
+        var merges = new List<MergePair>();
+        var on = new BpeVocabulary(vocab, merges) { ByteFallback = true };
+        var off = new BpeVocabulary(vocab, merges) { ByteFallback = false };
+
+        Assert.NotEqual(on, off);
+        Assert.NotEqual(on.GetHashCode(), off.GetHashCode());
+    }
+
     /// <summary>
     /// The mode is a flag like the others: two vocabularies that split differently
     /// are different models, and a hand-built one is compared without ever reaching

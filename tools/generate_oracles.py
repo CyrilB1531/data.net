@@ -4131,6 +4131,189 @@ def generate_bpe_metaspace() -> dict:
     }
 
 
+# The pieces a byte_fallback vocabulary carries, and the texts that reach them:
+# one per UTF-8 width, a control character, and a covered symbol as the control.
+BYTE_FALLBACK_TEXTS = ["ab", "aéb", "日", "🙂", "a\tb", "é", ""]
+
+# The conventional end_of_word_suffix spelling. Named once: the marker's own bytes
+# are what an uncovered decorated symbol exposes, the way "##" does below it.
+BYTE_FALLBACK_EOW_SUFFIX = "</w>"
+
+
+def _byte_fallback_vocab(extra=()):
+    """The four-piece model plus all 256 byte pieces, and whatever a case adds."""
+    vocab = {UNK_TOKEN_LOWER: 0, "a": 1, "b": 2, "ab": 3}
+    for value in range(256):
+        vocab.setdefault(f"<0x{value:02X}>", len(vocab))
+    for piece in extra:
+        vocab.setdefault(piece, len(vocab))
+    return vocab
+
+
+def _byte_fallback_file(vocab, merges, *, fuse_unk=False, prefix=None, suffix=None,
+                         unk_token=UNK_TOKEN_LOWER, decoder=None, pre_tokenizer=None):
+    """One whole tokenizer.json, written by hand so tokenizers parses the exact bytes C# will."""
+    return json.dumps({
+        "version": "1.0", "truncation": None, "padding": None, "added_tokens": [],
+        "normalizer": None, "pre_tokenizer": pre_tokenizer, "post_processor": None, "decoder": decoder,
+        "model": {
+            "type": "BPE", "dropout": None, "unk_token": unk_token,
+            "continuing_subword_prefix": prefix, "end_of_word_suffix": suffix,
+            "fuse_unk": fuse_unk, "byte_fallback": True, "ignore_merges": False,
+            "vocab": vocab, "merges": merges,
+        },
+    }, ensure_ascii=False)
+
+
+# The bare step, and Llama-2's chain -- decision 0063's two decode shapes. Replace
+# runs before ByteFallback, so a covered META_SYMBOL below is what keeps it live.
+BYTE_FALLBACK_SEQUENCE_DECODER = {"type": "Sequence", "decoders": [
+    {"type": "Replace", "pattern": {"String": META_SYMBOL}, "content": " "},
+    {"type": "ByteFallback"},
+    {"type": "Fuse"},
+    {"type": "Strip", "content": " ", "start": 1, "stop": 0},
+]}
+
+# Mistral v0.1's own pre_tokenizer shape. Both decoder cases carry it and cover
+# META_SYMBOL, so they encode to the same ids and only their decoders differ.
+BYTE_FALLBACK_METASPACE_PRE_TOKENIZER = {
+    "type": "Metaspace", "replacement": META_SYMBOL, "prepend_scheme": "first", "split": False,
+}
+
+# The two cases that carry a `decoded` column -- the only ones a decoder is declared for.
+BYTE_FALLBACK_DECODED_CASES = ("decoder_byte_fallback", "decoder_sequence")
+
+# The two bytes of "e-acute", named because four of the runs below reach for the
+# lead byte and Sonar's S1192 counts them together -- issue #487's quality gate.
+E_ACUTE_LEAD = "<0xC3>"
+E_ACUTE_TAIL = "<0xA9>"
+
+# Raw id runs: the `decoded` column above comes from `encode`, which cannot produce a byte
+# run cut mid-character. generate_bpe_byte_fallback's docstring has what each row measures.
+BYTE_FALLBACK_DECODE_RUNS = [
+    [E_ACUTE_LEAD],                            # a two-byte lead byte, alone
+    ["<0xF0>", "<0x9F>"],                      # an emoji cut after two of its four bytes
+    [E_ACUTE_LEAD, "<0x28>"],                  # a lead byte, then an ASCII byte that cannot continue it
+    ["a", "<0xF0>", "<0x9F>", "b"],            # the same cut, between two covered symbols
+    [E_ACUTE_LEAD, E_ACUTE_TAIL],              # well-formed: the two bytes of "e-acute"
+    ["a", E_ACUTE_LEAD, E_ACUTE_TAIL, "b"],    # well-formed, between two covered symbols
+]
+
+
+def generate_bpe_byte_fallback() -> dict:
+    """An uncovered symbol resolving into byte pieces, in every shape the rule has.
+
+    Ten pipelines over one four-piece model that carries all 256 byte pieces.
+    `BYTE_FALLBACK_TEXTS` is the widths -- one text per UTF-8 byte count, plus a
+    control character and a covered symbol. The two merge cases prove the
+    expansion precedes the merges: a post-pass over unmergeable symbols could
+    not produce `<0xC3><0xA9>` from a declared merge. `fuse_unk_on` is the half
+    of the pair that discriminates -- `aXXb`-shaped fusing never reaches a
+    byte-resolved symbol; `fuse_unk_off` is the control, and is byte-identical
+    to `complete_alphabet` (same `tokenizer_json`, same seven streams), since
+    with the flag off there is nothing left for the setting to change.
+    `unk_token_absent` is the same alphabet again with no unknown token
+    declared at all: the reference still expands every uncovered symbol, so
+    the expansion is not gated on an unk_token being present, on either side
+    of this pairing.
+
+    `continuing_prefix` and `end_of_word_suffix` are the pair that show what is
+    expanded: the marker itself is encoded as its own bytes, because the
+    *decorated* symbol is the string with no entry -- `##` becomes two `#`
+    bytes ahead of an uncovered character, `</w>` becomes four bytes after one,
+    and a one-character text takes both roles at once.
+
+    The last two carry a `decoded` column, which the metaspace corpus
+    deliberately does not: there the decoder was accepted and not applied, and
+    here it is declared and reproduced. Both decoder cases declare the same
+    `Metaspace` pre_tokenizer and cover `META_SYMBOL` in the same vocabulary, so
+    they encode every text to identical ids -- only the decoder differs, which
+    is what makes the pair a contrast rather than two texts that each merely
+    round-trip themselves. `decoder_sequence`'s Replace and Strip undo the
+    escape (`Decode(Encode(x)) == x`); `decoder_byte_fallback`'s bare
+    `ByteFallback` step has no Replace to run, so the leading `META_SYMBOL`
+    passes straight through un-undone -- on the same ids, `"aéb"` decodes to
+    `"aéb"` under one and `"▁aéb"` under the other.
+
+    Those two cases also carry `decode_runs`: the raw id sequences of
+    `BYTE_FALLBACK_DECODE_RUNS`, handed straight to `decode`. The `decoded`
+    column above comes from `encode`, which cannot produce a byte run cut
+    mid-character -- and that run is exactly what a generation truncated
+    mid-character hands `decode` on this lineage. It is also where two
+    substitution rules part company: `tokenizers` pushes one U+FFFD per byte of
+    a run it cannot decode, where a decoder substituting once per maximal
+    invalid subpart (.NET's lossy UTF-8 decoder, Rust's `from_utf8_lossy`)
+    answers one character where these rows want two. The last two rows are the
+    well-formed controls, where every rule agrees.
+
+    No case declares a partial alphabet. `tokenizers` accepts one and degrades
+    to the unknown token; Lodestar refuses it, so there is no reference stream
+    to record -- BpeByteFallbackLoaderTests pins the refusal instead.
+    """
+    from tokenizers import Tokenizer  # noqa: PLC0415
+
+    pipelines = [
+        ("complete_alphabet", _byte_fallback_file(_byte_fallback_vocab(), ["a b"])),
+        ("merged_byte_pair", _byte_fallback_file(
+            _byte_fallback_vocab(["<0xC3><0xA9>"]), ["a b", "<0xC3> <0xA9>"])),
+        ("merged_across", _byte_fallback_file(
+            _byte_fallback_vocab(["a<0xC3>"]), ["a b", "a <0xC3>"])),
+        ("fuse_unk_on", _byte_fallback_file(_byte_fallback_vocab(), ["a b"], fuse_unk=True)),
+        ("fuse_unk_off", _byte_fallback_file(_byte_fallback_vocab(), ["a b"], fuse_unk=False)),
+        ("unk_token_absent", _byte_fallback_file(_byte_fallback_vocab(), ["a b"], unk_token=None)),
+        ("continuing_prefix", _byte_fallback_file(
+            _byte_fallback_vocab(["##b"]), [], prefix="##")),
+        ("end_of_word_suffix", _byte_fallback_file(
+            _byte_fallback_vocab(["b" + BYTE_FALLBACK_EOW_SUFFIX]), [],
+            suffix=BYTE_FALLBACK_EOW_SUFFIX)),
+        ("decoder_byte_fallback", _byte_fallback_file(
+            _byte_fallback_vocab([META_SYMBOL]), ["a b"], decoder={"type": "ByteFallback"},
+            pre_tokenizer=BYTE_FALLBACK_METASPACE_PRE_TOKENIZER)),
+        ("decoder_sequence", _byte_fallback_file(
+            _byte_fallback_vocab([META_SYMBOL]), ["a b"],
+            decoder=BYTE_FALLBACK_SEQUENCE_DECODER,
+            pre_tokenizer=BYTE_FALLBACK_METASPACE_PRE_TOKENIZER)),
+    ]
+
+    cases = []
+    for name, tokenizer_json in pipelines:
+        tokenizer = Tokenizer.from_str(tokenizer_json)
+        decodes = name in BYTE_FALLBACK_DECODED_CASES
+        texts = []
+        for text in BYTE_FALLBACK_TEXTS:
+            enc = tokenizer.encode(text)
+            row = {"text": text, "tokens": enc.tokens, "ids": enc.ids}
+            if decodes:
+                row["decoded"] = tokenizer.decode(enc.ids)
+            texts.append(row)
+        case = {
+            "id": len(cases),
+            "name": name,
+            "tokenizer_json": tokenizer_json,
+            "texts": texts,
+        }
+        if decodes:
+            case["decode_runs"] = [
+                {
+                    "pieces": pieces,
+                    "ids": [tokenizer.token_to_id(piece) for piece in pieces],
+                    "decoded": tokenizer.decode([tokenizer.token_to_id(piece) for piece in pieces]),
+                }
+                for pieces in BYTE_FALLBACK_DECODE_RUNS
+            ]
+        cases.append(case)
+
+    return {
+        "metadata": {
+            "algorithm": "BPE byte_fallback",
+            "library": "tokenizers",
+            "library_version": version("tokenizers"),
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 # Two CJK texts, an emoji sequence and two controls: a byte-level token is a
 # fragment of a multi-byte character far more often than not.
 BYTELEVEL_STREAM_TEXTS = [
@@ -6234,6 +6417,7 @@ def main() -> None:
         "bpe_tokenizer_json.json": generate_bpe_tokenizer_json,
         "bpe_normalizer.json": generate_bpe_normalizer,
         "bpe_metaspace.json": generate_bpe_metaspace,
+        "bpe_byte_fallback.json": generate_bpe_byte_fallback,
         "bytelevel_decode_stream.json": generate_bytelevel_decode_stream,
         "unicode_forms.json": generate_unicode_forms,
         "bpe_added_tokens.json": generate_bpe_added_tokens,

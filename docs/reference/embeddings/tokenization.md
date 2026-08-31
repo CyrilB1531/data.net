@@ -22,14 +22,13 @@ flowchart TD
     B --> W["WordPieceTokenizer<br/>VocabTxtLoader"]
     C --> C1{"Trained with<br/>byte_fallback?"}
     C1 -->|no| S["SentencePieceTokenizer<br/>SentencePieceModelLoader"]
-    C1 -->|yes| X["Refused at load, by design"]
+    C1 -->|yes| X["Refused at load, by design<br/>(the Unigram pipeline does not reproduce it)"]
 
     D --> D1{"What does<br/>model.type say?"}
     D1 -->|WordPiece| W2["WordPieceTokenizer<br/>TokenizerJsonLoader.LoadWordPiece"]
-    D1 -->|Unigram| S2["SentencePieceTokenizer<br/>TokenizerJsonLoader.LoadUnigram"]
-    D1 -->|BPE| D2{"Does the model declare<br/>byte_fallback?"}
-    D2 -->|no| P["BpeTokenizer<br/>TokenizerJsonLoader.LoadBpe"]
-    D2 -->|yes| X
+    D1 -->|Unigram, byte_fallback set| X
+    D1 -->|Unigram, no byte_fallback| S2["SentencePieceTokenizer<br/>TokenizerJsonLoader.LoadUnigram"]
+    D1 -->|BPE| P["BpeTokenizer<br/>TokenizerJsonLoader.LoadBpe"]
 
     E --> P2["BpeTokenizer<br/>BpeFilesLoader"]
 ```
@@ -38,12 +37,18 @@ flowchart TD
 `Load…` methods each assert it and refuse a file declaring another, so reaching for the wrong one
 fails with a message naming the mismatch rather than producing ids that look plausible.
 
-**`byte_fallback` is refused rather than ignored**, on both paths that can carry it, because
-Python resolves an uncovered character into `<0x..>` byte pieces where these tokenizers emit the
-unknown piece — silently accepting it would return confidently wrong vectors. That is the
-SentencePiece-BPE lineage Llama-2 and Mistral v0.1 need, tracked at
+**`byte_fallback` means something different on each path it can appear on.** Python resolves an
+uncovered character into `<0x..>` byte pieces where these tokenizers would otherwise emit the
+unknown piece — silently ignoring the flag would return confidently wrong vectors, so the
+Unigram lineage (`spiece.model`, or a `tokenizer.json` declaring `model.type: "Unigram"`) refuses
+a checkpoint that declares it, unconditionally: that pipeline does not reproduce it. The BPE
+lineage does: [`TokenizerJsonLoader.LoadBpe`](persistence/tokenizerjsonloader-loadbpe.md) resolves
+an uncovered symbol into the `<0xXX>` byte pieces the flag promises, which is what lets Llama-2 and
+Mistral v0.1 — the SentencePiece-BPE lineage tracked at
 [#175](https://github.com/CyrilB1531/lodestar/issues/175) and scoped by
-[decision 0017 §3](../../decisions/0017-bpe-parity-scope.md).
+[decision 0017 §3](../../decisions/0017-bpe-parity-scope.md) — load at all, and refuses only a
+vocabulary that declares the flag without carrying all 256 pieces
+([decision 0063](../../decisions/0063-byte-fallback-requires-the-whole-alphabet-and-its-decoder-is-read-strictly-too.md)).
 
 The same routing, as a table:
 
