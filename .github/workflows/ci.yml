@@ -89,6 +89,15 @@ jobs:
         run: |
           git fetch --depth=1 origin "${{ github.event.pull_request.base.sha }}"
           python tools/check_adr_immutable.py --base "${{ github.event.pull_request.base.sha }}"
+      # S1192 is reported by SonarCloud rather than by the build, because the file it
+      # keeps tripping is Python and AnalysisMode=All covers only the C#. Twice now a
+      # green pull request has failed the quality gate on it (#487), so the same
+      # question is asked here, where it costs a minute instead of a round trip.
+      - name: No pull request pushes a literal past S1192's threshold
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --depth=1 origin "${{ github.event.pull_request.base.sha }}"
+          python tools/check_repeated_literals.py --base "${{ github.event.pull_request.base.sha }}"
       # The .globalconfig mirrors a profile that lives on a server, so it can go stale
       # without anything in this repository changing. One call to sonarcloud.io per run
       # buys learning about that on the pull request that first meets it. A profile that
