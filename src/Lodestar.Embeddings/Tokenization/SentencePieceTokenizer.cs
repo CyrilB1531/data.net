@@ -1,3 +1,5 @@
+using System.Buffers;
+
 namespace Lodestar.Embeddings.Tokenization;
 
 // SonarLint S3776: cognitive complexity: a faithful implementation of a published rule-engine; decomposing it would break the 1:1 mapping with the reference that makes divergences auditable.
@@ -28,7 +30,7 @@ public sealed class SentencePieceTokenizer : ISubwordTokenizer
     private static readonly MetaspaceEscape Escape =
         new('▁', MetaspacePrependScheme.Always, removeExtraWhitespaces: true, skipPrependWhenAlreadyPrefixed: false);
 
-    private readonly Dictionary<string, SentencePiece> _pieces;
+    private readonly CharSpanMap<SentencePiece> _pieces;
     private readonly PrecompiledNormalizer? _normalizer;
 
     // Control/unknown pieces stay out of _pieces so they never match text; a
@@ -66,7 +68,7 @@ public sealed class SentencePieceTokenizer : ISubwordTokenizer
                 nameof(vocabulary));
         }
 
-        _pieces = new Dictionary<string, SentencePiece>(vocabulary.Count, StringComparer.Ordinal);
+        var matchable = new List<KeyValuePair<string, SentencePiece>>(vocabulary.Count);
         _nonMatchableIds = new Dictionary<string, int>(StringComparer.Ordinal);
         double minScore = 0;
         for (int id = 0; id < vocabulary.Count; id++)
@@ -77,10 +79,11 @@ public sealed class SentencePieceTokenizer : ISubwordTokenizer
                 continue;
             }
             SentencePiece p = vocabulary.Pieces[id];
-            _pieces[p.Piece] = p;
+            matchable.Add(new KeyValuePair<string, SentencePiece>(p.Piece, p));
             _maxPieceLength = Math.Max(_maxPieceLength, p.Piece.Length);
             minScore = Math.Min(minScore, p.Score);
         }
+        _pieces = new CharSpanMap<SentencePiece>(matchable);
         _normalizer = vocabulary.Normalizer;
         _unkId = vocabulary.UnkId;
         _unkScore = minScore - 10.0; // heavy penalty; only used for uncovered characters
@@ -99,7 +102,7 @@ public sealed class SentencePieceTokenizer : ISubwordTokenizer
     public SentencePieceTokenizer(IReadOnlyList<SentencePiece> vocab, int unkId = 0)
     {
         Guard.NotNull(vocab);
-        _pieces = new Dictionary<string, SentencePiece>(vocab.Count, StringComparer.Ordinal);
+        var matchable = new List<KeyValuePair<string, SentencePiece>>(vocab.Count);
         _nonMatchableIds = new Dictionary<string, int>(StringComparer.Ordinal);
         double minScore = 0;
         foreach (SentencePiece p in vocab)
@@ -110,10 +113,11 @@ public sealed class SentencePieceTokenizer : ISubwordTokenizer
                 _nonMatchableIds[p.Piece] = p.Id;
                 continue;
             }
-            _pieces[p.Piece] = p;
+            matchable.Add(new KeyValuePair<string, SentencePiece>(p.Piece, p));
             _maxPieceLength = Math.Max(_maxPieceLength, p.Piece.Length);
             minScore = Math.Min(minScore, p.Score);
         }
+        _pieces = new CharSpanMap<SentencePiece>(matchable);
         _unkId = unkId;
         _unkScore = minScore - 10.0; // heavy penalty; only used for uncovered characters
     }
@@ -129,81 +133,92 @@ public sealed class SentencePieceTokenizer : ISubwordTokenizer
         }
 
         int n = s.Length;
-        var best = new double[n + 1];
-        var startAt = new int[n + 1];
-        var idAt = new int[n + 1];
-        for (int f = 0; f < best.Length; f++)
-        {
-            best[f] = double.NegativeInfinity;
-        }
-        best[0] = 0;
 
-        for (int i = 0; i < n; i++)
+        // Rented: three per-call arrays were the rest of #498's bytes. A rental may be
+        // longer than asked, so every loop below is bounded by n rather than by Length.
+        double[] best = ArrayPool<double>.Shared.Rent(n + 1);
+        int[] startAt = ArrayPool<int>.Shared.Rent(n + 1);
+        int[] idAt = ArrayPool<int>.Shared.Rent(n + 1);
+        try
         {
-            if (double.IsNegativeInfinity(best[i]))
+            for (int f = 0; f <= n; f++)
             {
-                continue;
+                best[f] = double.NegativeInfinity;
             }
+            best[0] = 0;
 
-            bool matchedSingle = false;
-            int maxL = Math.Min(_maxPieceLength, n - i);
-            for (int l = 1; l <= maxL; l++)
+            for (int i = 0; i < n; i++)
             {
-                string sub = s.Substring(i, l);
-                if (_pieces.TryGetValue(sub, out SentencePiece p))
+                if (double.IsNegativeInfinity(best[i]))
                 {
-                    if (l == 1)
+                    continue;
+                }
+
+                bool matchedSingle = false;
+                int maxL = Math.Min(_maxPieceLength, n - i);
+                for (int l = 1; l <= maxL; l++)
+                {
+                    if (_pieces.TryGetValue(s.AsSpan(i, l), out SentencePiece p))
                     {
-                        matchedSingle = true;
+                        if (l == 1)
+                        {
+                            matchedSingle = true;
+                        }
+                        double cand = best[i] + p.Score;
+                        if (cand > best[i + l])
+                        {
+                            best[i + l] = cand;
+                            startAt[i + l] = i;
+                            idAt[i + l] = p.Id;
+                        }
                     }
-                    double cand = best[i] + p.Score;
-                    if (cand > best[i + l])
+                }
+
+                // Uncovered single character -> unknown piece.
+                if (!matchedSingle)
+                {
+                    double cand = best[i] + _unkScore;
+                    if (cand > best[i + 1])
                     {
-                        best[i + l] = cand;
-                        startAt[i + l] = i;
-                        idAt[i + l] = p.Id;
+                        best[i + 1] = cand;
+                        startAt[i + 1] = i;
+                        idAt[i + 1] = _unkId;
                     }
                 }
             }
 
-            // Uncovered single character -> unknown piece.
-            if (!matchedSingle)
+            // Backtrack right to left: the run of unknown characters below fuses easily
+            // because the piece already emitted sits to the right of the one now emitted.
+            var ids = new List<int>();
+            var tokens = new List<string>();
+            int runEnd = -1;
+            for (int j = n; j > 0;)
             {
-                double cand = best[i] + _unkScore;
-                if (cand > best[i + 1])
+                int i = startAt[j];
+                if (idAt[j] == _unkId && runEnd >= 0)
                 {
-                    best[i + 1] = cand;
-                    startAt[i + 1] = i;
-                    idAt[i + 1] = _unkId;
+                    // One unknown piece per run of uncovered characters -- docs/equivalence.md's
+                    // Unigram row. Rewriting from the run's start keeps this to one substring per step.
+                    tokens[tokens.Count - 1] = s.Substring(i, runEnd - i);
                 }
+                else
+                {
+                    ids.Add(idAt[j]);
+                    tokens.Add(s.Substring(i, j - i));
+                    runEnd = idAt[j] == _unkId ? j : -1;
+                }
+                j = i;
             }
+            ids.Reverse();
+            tokens.Reverse();
+            return new TokenizationResult(tokens, ids);
         }
-
-        // Backtrack right to left: the run of unknown characters below fuses easily
-        // because the piece already emitted sits to the right of the one now emitted.
-        var ids = new List<int>();
-        var tokens = new List<string>();
-        int runEnd = -1;
-        for (int j = n; j > 0;)
+        finally
         {
-            int i = startAt[j];
-            if (idAt[j] == _unkId && runEnd >= 0)
-            {
-                // One unknown piece per run of uncovered characters -- docs/equivalence.md's
-                // Unigram row. Rewriting from the run's start keeps this to one substring per step.
-                tokens[tokens.Count - 1] = s.Substring(i, runEnd - i);
-            }
-            else
-            {
-                ids.Add(idAt[j]);
-                tokens.Add(s.Substring(i, j - i));
-                runEnd = idAt[j] == _unkId ? j : -1;
-            }
-            j = i;
+            ArrayPool<double>.Shared.Return(best);
+            ArrayPool<int>.Shared.Return(startAt);
+            ArrayPool<int>.Shared.Return(idAt);
         }
-        ids.Reverse();
-        tokens.Reverse();
-        return new TokenizationResult(tokens, ids);
     }
 
     /// <summary>Looks up a literal vocabulary piece, control markers included.</summary>
