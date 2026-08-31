@@ -32,6 +32,13 @@ protobuf==7.35.1
 # proves that generator stable, never that it is right.
 pytest==8.4.2
 
+# pyyaml -- tools/tests/test_bench_nightly_permissions.py parses a workflow file to
+# assert that `workflows: write` stays in the job that runs no repository code (#464).
+# It arrived here transitively through huggingface-hub, and a test that skips itself
+# when its parser is gone is a check that goes green on silence. Pinned to the version
+# the lock already resolved, so this declares what was already installed.
+pyyaml==6.0.3
+
 # colorama — click's Windows-only conditional dependency (click is nltk's;
 # click declares it as `colorama; platform_system == "Windows"`). Resolved on
 # Linux, that marker is false, so pip-compile never pins it and --require-hashes
