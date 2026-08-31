@@ -1409,6 +1409,7 @@ Incumbents are referenced by `bench/` and by nothing under `src/`, pinned exactl
 | `LevenshteinIncumbentBenchmarks` | `Levenshtein.Distance` | Fastenshtein 1.0.12, Quickenshtein 1.5.1, F23.StringSimilarity 7.0.1 |
 | `FuzzIncumbentBenchmarks` | `Fuzz.*` | Raffinert.FuzzySharp 6.0.0 |
 | `TokenizerIncumbentBenchmarks` | `WordPieceTokenizer`, `SentencePieceTokenizer` | Microsoft.ML.Tokenizers 2.0.0 |
+| `VectorizerIncumbentBenchmarks` | `TfidfVectorizer` | ML.NET 5.0.0 `FeaturizeText` |
 | `MetricsIncumbentBenchmarks` | `Lodestar.Metrics` | ML.NET 5.0.0 binary evaluator |
 
 **The values agree before the clocks run.** A speed table over two functions that return different
@@ -1420,7 +1421,7 @@ the corpus: identical ids, both models, once `Microsoft.ML.Tokenizers` is told n
 beginning-of-sentence piece — which is the sort of thing an unchecked table would have silently
 measured. Section 14's rule, applied here as a precondition rather than a footnote.
 
-Four shapes, for four reasons:
+Five shapes, for five reasons:
 
 - **Levenshtein** takes `Length` at 8, 64 and 512, because the bit-parallel path is what the long
   row is for and a single length would hide it. `Levenshtein.Distance`'s default overload is the
@@ -1434,11 +1435,45 @@ Four shapes, for four reasons:
   documents of `bench/corpus/vocabs/documents.json` per operation, so the number is encoding cost
   rather than model loading — both tokenizers are built once in `[GlobalSetup]`, as
   `BpeBenchmarks` does.
+- **The vectorizers** are the one pair that is *not* like-for-like, and the next section is what
+  that costs the reading.
 - **The metrics** take the *request* as a parameter, because that is where the two libraries
   differ: `Bundle` asks both sides for the six numbers ML.NET's binary evaluator returns, and
   `AccuracyAlone` asks for one. ML.NET runs the same `EvaluateNonCalibrated` call in both rows,
   deliberately — it has no call that returns one metric, so accuracy alone costs a caller the
   bundle. That is the measurement, not an unfair setup.
+
+### `FeaturizeText` is not our vectorizer, and the ratio alone would lie
+
+The other two classes compare functions that return the same answer. This one does not, and #438
+says so itself: `FeaturizeText` is `IDataView`-coupled and does a different job, so *"a row
+treating them as equals would contradict our own argument."*
+
+Measured on the same corpus rather than asserted:
+
+| documents | Lodestar `TfidfVectorizer` | ML.NET `FeaturizeText` |
+| ---: | --- | --- |
+| 200 | 200 × 7 018 sparse, 7 996 stored values | 200 × 31 112 dense, 70 307 non-zero, 6 222 400 floats materialized |
+| 1 000 | 1 000 × 21 867 sparse, 39 974 stored values | 1 000 × 81 384 dense, 351 217 non-zero, 81 384 000 floats materialized |
+
+`FeaturizeText` adds character n-grams to the word n-grams and L2-normalizes, so its feature space
+is roughly four times wider and it produces about **8.8× more non-zero features**. It is doing more
+work, and a wall-clock ratio that ignores that is not a claim anyone should believe.
+
+Divide it out and the honest number appears. At 1 000 documents the container run measures 45.6 ms
+against 445.0 ms — 9.75× — for 39 974 and 351 217 non-zero features respectively: **1.14 µs and
+1.27 µs per feature produced, within about 11 % of each other.**
+
+So the advantage is not that the arithmetic is faster. It is that a sparse matrix stores 39 974
+values where the dense pipeline materializes 81 million floats for the same thousand documents, and
+that ours needs no `IDataView`, no schema and no pipeline object to hand back a `CsrMatrix`. That
+is the argument the README makes, and it is the one this measurement supports — no more.
+
+**Lucene.NET is deliberately not here.** #438 names it "where it overlaps", and on the vectorizer
+it does not: its TF-IDF exists inside an index, reached through an `IndexSearcher`, so comparing a
+library call to an indexing engine would repeat exactly the category error this section exists to
+avoid. Its analysis chain does overlap our tokenizers, which is a different measurement and a
+different lot.
 
 ### `Score` is a margin, not a probability — and an unchecked harness measures nothing
 
@@ -1481,7 +1516,7 @@ exception — [ADR 0051](../docs/decisions/0051-the-save-paths-cost-is-the-buffe
 withdrew a 1.61× taken on a shared container, and section 14 records the container *inverting* every
 `TensorPrimitives` ratio. A container run of these two classes is a smoke test that the harness
 works, and nothing else. `docs/guides/performance.md` takes them from a named machine; the nightly
-publishes their ratios to `docs/guides/nightly_run.md` on its own, since all three classes are in
+publishes their ratios to `docs/guides/nightly_run.md` on its own, since all five classes are in
 `bench-map.json` and are selected by any change under `src/Lodestar.Fuzzy/`,
-`src/Lodestar.Text/Distances/`, `src/Lodestar.Embeddings/Tokenization/` or
-`src/Lodestar.Metrics/`.
+`src/Lodestar.Text/Distances/`, `src/Lodestar.Text/Vectorization/`,
+`src/Lodestar.Embeddings/Tokenization/` or `src/Lodestar.Metrics/`.

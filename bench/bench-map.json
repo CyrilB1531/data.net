@@ -58,6 +58,9 @@
       "src/Lodestar.Embeddings/Tokenization/**",
       "src/Lodestar.Embeddings/Persistence/**"
     ],
+    "VectorizerIncumbentBenchmarks": [
+      "src/Lodestar.Text/Vectorization/**"
+    ],
     "IndelBenchmarks": [
       "src/Lodestar.Text/Distances/**",
       "src/Lodestar.Text/Text/**"
