@@ -165,6 +165,9 @@ public sealed record BpeVocabulary(
     /// </remarks>
     internal MetaspaceEscape? Metaspace { get; init; }
 
+    /// <summary>What the file's <c>decoder</c> block asks <c>Decode</c> to undo, or <see langword="null"/> when none is declared.</summary>
+    internal BpeDecoderSteps? Decoder { get; init; }
+
     /// <summary>Number of entries in the vocabulary.</summary>
     public int Count => Vocab.Count;
 
@@ -196,6 +199,7 @@ public sealed record BpeVocabulary(
             || !string.Equals(PreTokenizerPattern, other.PreTokenizerPattern, StringComparison.Ordinal)
             || PreSplit != other.PreSplit
             || !SameMetaspace(Metaspace, other.Metaspace)
+            || !SameDecoder(Decoder, other.Decoder)
             || Vocab.Count != other.Vocab.Count
             || Merges.Count != other.Merges.Count
             || AddedTokens.Count != other.AddedTokens.Count
@@ -247,7 +251,8 @@ public sealed record BpeVocabulary(
             hash = (hash * 31) + (UnkToken is null ? 0 : StringComparer.Ordinal.GetHashCode(UnkToken));
             hash = (hash * 31) + (PreTokenizerPattern is null ? 0 : StringComparer.Ordinal.GetHashCode(PreTokenizerPattern));
             hash = (hash * 31) + (PreSplit is null ? 0 : PreSplit.GetHashCode());
-            return (hash * 31) + (Metaspace is null ? 0 : EscapeHash(Metaspace));
+            hash = (hash * 31) + (Metaspace is null ? 0 : EscapeHash(Metaspace));
+            return (hash * 31) + (Decoder is null ? 0 : DecoderHash(Decoder));
         }
     }
 
@@ -265,6 +270,20 @@ public sealed record BpeVocabulary(
                 && left.PrependScheme == right.PrependScheme
                 && left.RemoveExtraWhitespaces == right.RemoveExtraWhitespaces
                 && left.SkipPrependWhenAlreadyPrefixed == right.SkipPrependWhenAlreadyPrefixed;
+
+    /// <summary>Folds every field <see cref="SameDecoder"/> compares, so equal values hash equal and no two differ only invisibly.</summary>
+    private static int DecoderHash(BpeDecoderSteps decoder) =>
+        (((decoder.ByteFallback ? 1 : 0) * 31) + (decoder.MetaspaceReplacement ?? '\0')) * 31
+        + (decoder.StripLeadingSpace ? 1 : 0);
+
+    /// <summary>Compares two decoder step sets by value, which <see cref="BpeDecoderSteps"/> itself does not.</summary>
+    private static bool SameDecoder(BpeDecoderSteps? left, BpeDecoderSteps? right) =>
+        left is null
+            ? right is null
+            : right is not null
+                && left.ByteFallback == right.ByteFallback
+                && left.MetaspaceReplacement == right.MetaspaceReplacement
+                && left.StripLeadingSpace == right.StripLeadingSpace;
 
     private static bool SameEntries(IReadOnlyDictionary<string, int> left, IReadOnlyDictionary<string, int> right)
     {

@@ -54,6 +54,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     private readonly AddedTokenScanner _normalizedScanner;
     private readonly NormalizationForm[] _forms;
     private readonly MetaspaceEscape? _metaspace;
+    private readonly BpeDecoderSteps? _decoder;
     private readonly HashSet<int> _addedIds;
     private readonly string? _endOfWord;
     private readonly string? _continuingPrefix;
@@ -91,6 +92,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
         _forms = [.. vocabulary.NormalizationForms];
         _metaspace = vocabulary.Metaspace;
+        _decoder = vocabulary.Decoder;
         (_vocab, _modelVocab, _tokens) = BuildVocabulary(vocabulary);
 
         _rawScanner = new AddedTokenScanner([.. vocabulary.AddedTokens.Where(t => !t.Normalized)]);
@@ -836,10 +838,12 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     {
         Guard.NotNull(ids);
         var buffer = new StringBuilder();
+        var pending = new List<byte>();
         for (int i = 0; i < ids.Count; i++)
         {
-            Append(buffer, ids[i], skipSpecialTokens);
+            Append(buffer, pending, ids[i], skipSpecialTokens);
         }
+        FlushBytes(buffer, pending);
         return Finish(buffer);
     }
 
@@ -853,14 +857,22 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     public string Decode(ReadOnlySpan<int> ids, bool skipSpecialTokens = false)
     {
         var buffer = new StringBuilder();
+        var pending = new List<byte>();
         for (int i = 0; i < ids.Length; i++)
         {
-            Append(buffer, ids[i], skipSpecialTokens);
+            Append(buffer, pending, ids[i], skipSpecialTokens);
         }
+        FlushBytes(buffer, pending);
         return Finish(buffer);
     }
 
-    private void Append(StringBuilder buffer, int id, bool skipSpecialTokens)
+    /// <summary>Appends one token, or the byte it names when the file's decoder undoes byte pieces.</summary>
+    /// <remarks>
+    /// The pieces have to be recognised as tokens: <c>&lt;0xC3&gt;</c> is six characters once
+    /// concatenated, and nothing downstream could tell them from text. Any other token flushes
+    /// the pending bytes first, so a run decodes as one UTF-8 sequence.
+    /// </remarks>
+    private void Append(StringBuilder buffer, List<byte> pending, int id, bool skipSpecialTokens)
     {
         if (id < 0 || id >= _tokens.Length || _tokens[id] is not { } token)
         {
@@ -871,12 +883,34 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         {
             return;
         }
-        buffer.Append(token);
+        if (_decoder is { ByteFallback: true } && BytePieces.TryValue(token, out byte value))
+        {
+            pending.Add(value);
+            return;
+        }
+        FlushBytes(buffer, pending);
+        buffer.Append(_decoder?.MetaspaceReplacement is char meta ? token.Replace(meta, ' ') : token);
+    }
+
+    /// <summary>Turns the pending byte run into text, substituting U+FFFD for what is not well-formed UTF-8.</summary>
+    private static void FlushBytes(StringBuilder buffer, List<byte> pending)
+    {
+        if (pending.Count == 0)
+        {
+            return;
+        }
+        buffer.Append(Utf8Lossy.GetString([.. pending]));
+        pending.Clear();
     }
 
     /// <summary>Turns the concatenated tokens back into text.</summary>
     private string Finish(StringBuilder buffer)
     {
+        if (_decoder is { StripLeadingSpace: true } && buffer.Length > 0 && buffer[0] == ' ')
+        {
+            buffer.Remove(0, 1);
+        }
+
         if (!_byteLevel)
         {
             // The classic lineage marks a word's end rather than its leading space,
