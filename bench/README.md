@@ -275,7 +275,7 @@ are actually comparable.
 
 ```bash
 # Python side (rapidfuzz)
-. .venv-oracles/bin/activate      # needs: pip install -r tools/requirements.txt
+. .venv-oracles/bin/activate      # built on Python 3.12+, see ../CONTRIBUTING.md
 python bench/python/bench_levenshtein.py
 
 # C# side (Lodestar.Text) — matched Stopwatch harness, not BenchmarkDotNet
@@ -372,6 +372,10 @@ The corpus is generated rather than committed — about 3 MB of vocabulary files
 ```bash
 python bench/corpus/generate_vocabs.py     # writes bench/corpus/vocabs/, git-ignored
 ```
+
+All three `bench/corpus/generate_*.py` scripts read `tools/seeded_random.py`, so they need the same
+interpreter `.venv-oracles` is built on — **3.12 or later**. Below that they stop with a sentence
+naming both versions ([decision 0065](../docs/decisions/0065-the-oracle-generators-floor-is-the-ci-interpreter.md)).
 
 Both language sides read those same files, which is what makes the comparison
 mean anything; the bytes are not reproducible across machines and do not need to

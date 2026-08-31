@@ -68,12 +68,12 @@ only on the committed JSON.
 
 ## Regenerate
 
-```bash
-python -m venv .venv-oracles
-. .venv-oracles/bin/activate          # Windows: .venv-oracles\Scripts\activate
-pip install -r tools/requirements.txt
-python tools/generate_oracles.py
-```
+[`../CONTRIBUTING.md`](../CONTRIBUTING.md#oracle-validation) has the command, because the
+virtualenv, the interpreter floor and the neutral working directory it needs are all part of one
+procedure. Two of the three fail silently when guessed: an interpreter below **3.12** stops the
+generator with a sentence (`tools/python_floor.py`, and
+[decision 0065](../docs/decisions/0065-the-oracle-generators-floor-is-the-ci-interpreter.md)),
+and a working directory above the virtualenv makes `nltk` refuse its own imports.
 
 The script is **deterministic** (fixed seed, no timestamps): regenerating on
 another machine produces an identical file — diffs stay readable and reviewable.

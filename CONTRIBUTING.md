@@ -383,7 +383,29 @@ canonical Python library — not by trusting that the C# passes tests someone wr
 alongside the implementation.
 
 1. Add a generator section to [`tools/generate_oracles.py`](tools/generate_oracles.py).
-2. Regenerate, and commit the resulting `tests/oracles/*.json`:
+2. Build `.venv-oracles` once, on **Python 3.12 or later** — the interpreter every workflow pins,
+   and the floor `tools/python_floor.py` holds and the generators refuse below
+   ([decision 0065](docs/decisions/0065-the-oracle-generators-floor-is-the-ci-interpreter.md) has
+   why it is the CI interpreter rather than the oldest one that parses). `python3` is 3.10 on
+   Ubuntu 22.04 and 3.11 on this project's hosted session image, so name the version rather than
+   taking the default:
+
+   ```bash
+   # POSIX (bash/zsh)
+   python3.12 -m venv .venv-oracles
+   .venv-oracles/bin/pip install --only-binary :all: --require-hashes -r tools/requirements.lock.txt
+   ```
+
+   ```powershell
+   # PowerShell
+   py -3.12 -m venv .venv-oracles
+   .venv-oracles\Scripts\pip.exe install --only-binary :all: --require-hashes -r tools\requirements.lock.txt
+   ```
+
+   Install from the generated lock, not the human-edited `tools/requirements.txt`, and with the
+   same two flags CI passes: `--require-hashes` pins the transitive graph as well as the direct
+   dependencies, and `--only-binary :all:` means no source distribution runs a `setup.py`.
+3. Regenerate, and commit the resulting `tests/oracles/*.json`:
 
    ```bash
    # POSIX (bash/zsh)
@@ -417,7 +439,7 @@ alongside the implementation.
    Check the generator's own exit code, not a pipeline's. `python … | tail` reports
    `tail`'s status, so a failed generation looks successful — and the drift check
    that follows then proves nothing, because nothing was regenerated.
-3. Add a test that replays the corpus, with a `1e-9` tolerance for floating-point
+4. Add a test that replays the corpus, with a `1e-9` tolerance for floating-point
    results and exact comparison for strings.
 
 Generation must be deterministic: a fixed seed, no wall-clock timestamps, no
