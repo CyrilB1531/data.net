@@ -112,28 +112,16 @@ def _docstring_ids(tree: ast.AST) -> set[int]:
     return ids
 
 
-def first_lines(source: str) -> dict[str, int]:
-    """The line each countable literal first appears on, which is where S1192 anchors."""
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
-        return {}
-    docstrings = _docstring_ids(tree)
-    first: dict[str, int] = {}
-    for node in ast.walk(tree):
-        if (isinstance(node, ast.Constant) and isinstance(node.value, str)
-                and id(node) not in docstrings and len(node.value) >= MIN_LENGTH):
-            first[node.value] = min(first.get(node.value, node.lineno), node.lineno)
-    return first
+def literals(source: str) -> dict[str, tuple[int, int]]:
+    """Each countable literal in one file's source, as (count, first line).
 
+    One walk for both, because the two answers come from the same nodes and a
+    second walk would need a second `except SyntaxError` saying nothing.
 
-def counts(source: str) -> dict[str, int]:
-    """How often each countable string literal appears in one file's source.
-
-    Every count, not only those over the threshold: the base revision's two
-    occurrences are what make a third "was 2" rather than "new", and a message
-    that called a grown literal new would send the reader looking for the wrong
-    line.
+    Every count, not only those over the threshold: the base revision's three
+    occurrences are what make a fourth "was 3" rather than "new". And the first
+    line, because that is where S1192 anchors its issue and therefore what
+    decides whether the issue is on new code.
     """
     try:
         tree = ast.parse(source)
@@ -142,12 +130,18 @@ def counts(source: str) -> dict[str, int]:
         # the honest answer; the build is what reports a syntax error.
         return {}
     docstrings = _docstring_ids(tree)
-    tally: collections.Counter[str] = collections.Counter()
+    found: dict[str, tuple[int, int]] = {}
     for node in ast.walk(tree):
         if (isinstance(node, ast.Constant) and isinstance(node.value, str)
                 and id(node) not in docstrings and len(node.value) >= MIN_LENGTH):
-            tally[node.value] += 1
-    return dict(tally)
+            count, first = found.get(node.value, (0, node.lineno))
+            found[node.value] = (count + 1, min(first, node.lineno))
+    return found
+
+
+def counts(source: str) -> dict[str, int]:
+    """How often each countable literal appears, first lines dropped."""
+    return {literal: found[0] for literal, found in literals(source).items()}
 
 
 def over_threshold(source: str) -> dict[str, int]:
@@ -182,7 +176,7 @@ def crossed(base: str) -> list[tuple[str, str, int, int]]:
             continue
         before = counts(at_base(base, path))
         added = added_lines(base, path)
-        first = first_lines(source)
+        first = {literal: found[1] for literal, found in literals(source).items()}
         for literal, count in sorted(after.items()):
             if before.get(literal, 0) < THRESHOLD and first.get(literal) in added:
                 findings.append((path, literal, before.get(literal, 0), count))
