@@ -271,16 +271,16 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// <summary>Tokenizes <paramref name="text"/> into sub-word tokens and their ids.</summary>
     /// <remarks>Matches <c>tokenizers.Tokenizer.encode(text)</c>, without the post-processor.</remarks>
     /// <exception cref="System.Text.EncoderFallbackException">
-    /// A byte-level model re-encodes <paramref name="text"/> to UTF-8; an unpaired
-    /// UTF-16 surrogate throws rather than substitutes, since byte-level BPE is
-    /// lossless only over well-formed UTF-16. The classic path never encodes to
-    /// UTF-8, so it cannot throw this.
+    /// A byte-level model re-encodes <paramref name="text"/> to UTF-8, and byte_fallback
+    /// re-encodes each uncovered symbol; either way an unpaired UTF-16 surrogate throws
+    /// rather than substitutes, since both are lossless only over well-formed UTF-16.
+    /// Neither declared, the classic path never encodes to UTF-8, so it cannot throw this.
     /// </exception>
     /// <exception cref="ArgumentException">
     /// Either a byte-level vocabulary missing one of the 256 alphabet characters
     /// (see <see cref="ByteLevelSymbols"/>), or, once a normalizer is declared, an
     /// unpaired surrogate in a gap -- <see cref="string.Normalize(NormalizationForm)"/>
-    /// throws on that before the byte-level re-encoding above gets a chance to.
+    /// throws on that before the re-encoding above gets a chance to.
     /// </exception>
     public TokenizationResult Encode(string text)
     {
