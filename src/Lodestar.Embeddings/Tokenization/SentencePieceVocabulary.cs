@@ -139,11 +139,10 @@ public sealed record SentencePieceVocabulary(
     /// </remarks>
     /// <param name="id">A piece id, in <c>[0, Types.Count)</c>.</param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="id"/> is outside <see cref="Types"/>. The record is a data
-    /// carrier and does not itself require <see cref="Pieces"/> and
-    /// <see cref="Types"/> to agree in length — <see cref="SentencePieceTokenizer"/>
-    /// is what refuses a vocabulary where they do not. Reporting that here as a
-    /// raw index failure would name neither the argument nor the reason.
+    /// <paramref name="id"/> is outside <see cref="Types"/>. The record is a data carrier and
+    /// does not itself require <see cref="Pieces"/> and <see cref="Types"/> to agree in length —
+    /// <see cref="SentencePieceTokenizer"/> is what refuses a vocabulary where they do not.
+    /// Reporting that here as a raw index failure would name neither the argument nor the reason.
     /// </exception>
     public bool IsMatchable(int id)
     {

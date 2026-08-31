@@ -26,14 +26,12 @@ public static class R2
     /// <param name="sampleWeight">A weight per sample — per <em>row</em>, not per value. Omit to weight every sample by 1.</param>
     /// <param name="outputWeights">A weight per output (<c>multioutput=[…]</c>). Omit for <c>multioutput="uniform_average"</c>.</param>
     /// <param name="forceFinite">
-    /// scikit-learn's <c>force_finite</c>, which answers a truth of zero variance
-    /// over two or more samples and nothing else. Pass <see langword="false"/>
-    /// for the unclamped <c>nan</c> and <c>-inf</c>.
+    /// scikit-learn's <c>force_finite</c>, which answers a truth of zero variance over two
+    /// or more samples and nothing else. Pass <see langword="false"/> for the unclamped <c>nan</c> and <c>-inf</c>.
     /// </param>
     /// <param name="zeroDivision">
-    /// What to answer when there are fewer than two samples, which is the only
-    /// case scikit-learn leaves undefined regardless of
-    /// <paramref name="forceFinite"/>. The default reproduces its <c>nan</c>.
+    /// What to answer when there are fewer than two samples, which is the only case
+    /// scikit-learn leaves undefined regardless of <paramref name="forceFinite"/>. The default reproduces its <c>nan</c>.
     /// </param>
     /// <exception cref="ArgumentException">A length disagrees with the shape, the input is empty, or it holds a non-finite value.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="outputCount"/> is below one.</exception>
@@ -101,9 +99,8 @@ public static class R2
     /// <see cref="ZeroDivision.Throw"/>.
     /// </exception>
     /// <remarks>
-    /// A method rather than a member of an averaging enum: the weights are this
-    /// computation's own per-output variances, produced by the same pass as the
-    /// scores and not recoverable from them. See docs/decisions/0021.
+    /// A method rather than a member of an averaging enum: the weights are this computation's
+    /// own per-output variances, produced by the same pass as the scores and not recoverable from them. See docs/decisions/0021.
     /// </remarks>
     public static double VarianceWeighted(
         ReadOnlySpan<double> yTrue,
@@ -305,12 +302,10 @@ public static class R2
     /// The two undefined cases, which do not overlap and must not be merged.
     /// </summary>
     /// <remarks>
-    /// Fewer than two samples is <c>nan</c> in scikit-learn under either setting
-    /// of <c>force_finite</c>, so it is <see cref="ZeroDivision"/>'s case alone.
-    /// A denominator of zero over two or more samples is
-    /// <paramref name="forceFinite"/>'s alone: 1 when the numerator vanished
-    /// too, 0 otherwise, or <c>nan</c> and <c>-inf</c> when the caller asked for
-    /// the unclamped values.
+    /// Fewer than two samples is <c>nan</c> in scikit-learn under either setting of
+    /// <c>force_finite</c>, so it is <see cref="ZeroDivision"/>'s case alone. A denominator of
+    /// zero over two or more samples is <paramref name="forceFinite"/>'s alone: 1 when the
+    /// numerator vanished too, 0 otherwise, or <c>nan</c> and <c>-inf</c> for the unclamped values.
     /// </remarks>
     private static double Resolve(
         double numerator, double denominator, int samples, bool forceFinite, ZeroDivision zeroDivision)

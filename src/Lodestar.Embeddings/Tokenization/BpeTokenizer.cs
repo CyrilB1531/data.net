@@ -269,10 +269,9 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// <summary>Tokenizes <paramref name="text"/> into sub-word tokens and their ids.</summary>
     /// <remarks>Matches <c>tokenizers.Tokenizer.encode(text)</c>, without the post-processor.</remarks>
     /// <exception cref="System.Text.EncoderFallbackException">
-    /// A byte-level model re-encodes <paramref name="text"/> to UTF-8; an unpaired
-    /// UTF-16 surrogate throws rather than substitutes, since byte-level BPE is
-    /// lossless only over well-formed UTF-16. The classic path never encodes to
-    /// UTF-8, so it cannot throw this.
+    /// A byte-level model re-encodes <paramref name="text"/> to UTF-8; an unpaired UTF-16
+    /// surrogate throws rather than substitutes, since byte-level BPE is lossless only over
+    /// well-formed UTF-16 -- the classic path never encodes to UTF-8, so it cannot throw this.
     /// </exception>
     /// <exception cref="ArgumentException">
     /// Either a byte-level vocabulary missing one of the 256 alphabet characters
@@ -531,10 +530,9 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
     /// <summary>Fills <paramref name="symbols"/> with one id per UTF-8 byte of <paramref name="piece"/>.</summary>
     /// <remarks>
-    /// Unlike <see cref="InitialSymbols"/>, <c>_endOfWord</c> is never appended here. A
-    /// byte-level model may still declare <see cref="BpeVocabulary.EndOfWordSuffix"/>; it is
-    /// silently ignored rather than refused — equivalence.md's <c>continuing_subword_prefix</c>
-    /// row records this beside the prefix's own, opposite choice.
+    /// Unlike <see cref="InitialSymbols"/>, <c>_endOfWord</c> is never appended here. A byte-level
+    /// model may still declare <see cref="BpeVocabulary.EndOfWordSuffix"/>; it is silently ignored
+    /// rather than refused — equivalence.md's <c>continuing_subword_prefix</c> row records this.
     /// </remarks>
     /// <exception cref="ArgumentException">
     /// A byte-level vocabulary is missing one of the 256 base alphabet tokens —

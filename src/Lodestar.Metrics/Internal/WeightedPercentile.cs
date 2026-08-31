@@ -44,11 +44,10 @@ internal static class WeightedPercentile
     /// <see cref="Median"/> is the half of.
     /// </summary>
     /// <remarks>
-    /// Only <c>d2_pinball_score</c>'s denominator needs one away from the middle,
-    /// and it cannot observe which of the two order statistics is taken: the two
-    /// differ exactly where the quantile is ambiguous, and the pinball loss is flat
-    /// across that interval. Measured over four fixtures at five alphas each, the
-    /// averaged and single-statistic readings give the same score every time.
+    /// Only <c>d2_pinball_score</c>'s denominator needs one away from the middle, and it cannot
+    /// observe which of the two order statistics is taken: the two differ exactly where the
+    /// quantile is ambiguous, and the pinball loss is flat across that interval. Measured over
+    /// four fixtures at five alphas each, the averaged and single-statistic readings agree.
     /// </remarks>
     /// <param name="values">The values. Sorted in place.</param>
     /// <param name="weights">One weight per value, or empty for weight 1 each.</param>

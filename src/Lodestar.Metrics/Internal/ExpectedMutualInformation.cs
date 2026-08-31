@@ -62,12 +62,11 @@ internal static class ExpectedMutualInformation
     /// <c>log(k!)</c> for every <c>k</c> up to <paramref name="samples"/>.
     /// </summary>
     /// <remarks>
-    /// Every argument the sum above needs is <c>gammaln(k + 1)</c> for an integer
-    /// <c>k</c>, so a cumulative table of logarithms answers all of them with no series
-    /// approximation. It is not free of error: the prefix sums accumulate, reaching
-    /// <c>8.4e-10</c> relative at twenty thousand samples and <c>2.0e-8</c> at two
-    /// hundred thousand, where a real <c>gammaln</c> holds ~<c>1e-16</c>. Cheaper here,
-    /// worse there.
+    /// Every argument the sum above needs is <c>gammaln(k + 1)</c> for an integer <c>k</c>, so a
+    /// cumulative table of logarithms answers all of them with no series approximation. It is
+    /// not free of error: the prefix sums accumulate, reaching <c>8.4e-10</c> relative at twenty
+    /// thousand samples and <c>2.0e-8</c> at two hundred thousand, where a real <c>gammaln</c>
+    /// holds ~<c>1e-16</c>. Cheaper here, worse there.
     /// </remarks>
     private static double[] LogFactorials(int samples)
     {
