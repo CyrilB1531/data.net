@@ -407,11 +407,31 @@ public static class TokenizerJsonLoader
         }
     }
 
+    /// <summary>Every one of the 256 byte pieces, or a refusal naming the first one missing.</summary>
+    /// <remarks>
+    /// The reference does not check: it degrades a missing piece to the unknown token, and drops
+    /// the symbol when the file declares none — so a partial alphabet encodes differently from
+    /// the model it came from, silently. Decision 0063 refuses instead.
+    /// </remarks>
+    private static void EnsureByteAlphabetIsComplete(Dictionary<string, int> vocab)
+    {
+        for (int b = 0; b < BytePieces.Count; b++)
+        {
+            string piece = BytePieces.Name(b);
+            if (!vocab.ContainsKey(piece))
+            {
+                throw Unsupported(
+                    $"its model declares byte_fallback and its vocabulary has no '{piece}' entry",
+                    "an uncovered symbol resolves into byte pieces, so a vocabulary missing one encodes differently from the model it came from");
+            }
+        }
+    }
+
     /// <summary>
     /// Names byte_fallback ahead of the model-kind mismatch <see cref="EnsureModelType"/> would
     /// otherwise report first (#343): a Llama-2 or Mistral v0.1 file declares a BPE model with
-    /// byte_fallback, and LoadBpe refuses that by name too, so "wrong loader" would send the
-    /// reader on a round trip to a call that fails for the same reason anyway.
+    /// byte_fallback, and LoadUnigram would otherwise report "wrong model type" -- true, but not
+    /// what sends the reader to the call that actually reproduces the checkpoint.
     /// </summary>
     private static void EnsureNotByteFallbackBpe(JsonElement model)
     {
@@ -420,7 +440,7 @@ public static class TokenizerJsonLoader
         {
             throw Unsupported(
                 "it declares a 'BPE' model with byte_fallback",
-                "LoadBpe is the call for a BPE model, and it refuses byte_fallback by name too -- neither loader reproduces this checkpoint");
+                "LoadBpe is the call for a BPE model, and it is the one that reproduces byte_fallback");
         }
     }
 
@@ -498,7 +518,6 @@ public static class TokenizerJsonLoader
     {
         JsonElement model = RequireObject(root, "model");
         EnsureModelType(model, "BPE");
-        EnsureByteFallbackIsOff(model);
         EnsureBpeModelSettingsAreReproduced(model);
         IReadOnlyList<NormalizationForm> normalizationForms =
             ReadBpeNormalizer(root, out MetaspaceEscape? normalizerEscape);
@@ -514,11 +533,18 @@ public static class TokenizerJsonLoader
         List<MergePair> merges = ReadBpeMerges(model, limits);
         List<AddedToken> addedTokens = ReadAddedTokenTable(root, vocab, limits);
 
+        bool byteFallback = OptionalBoolean(model, "byte_fallback") ?? false;
+        if (byteFallback)
+        {
+            EnsureByteAlphabetIsComplete(vocab);
+        }
+
         return new BpeVocabulary(vocab, merges)
         {
             AddedTokens = addedTokens,
             ByteLevel = byteLevel,
             AddPrefixSpace = addPrefixSpace,
+            ByteFallback = byteFallback,
             IgnoreMerges = OptionalBoolean(model, "ignore_merges") ?? false,
             FuseUnk = OptionalBoolean(model, "fuse_unk") ?? false,
             EndOfWordSuffix = OptionalString(model, "end_of_word_suffix"),
