@@ -95,6 +95,14 @@ makes `/tmp` the wrong answer in a hosted or sandboxed session: those put the wo
 `/tmp` itself, and the import guard fires anyway. Check where the repository actually is before
 picking — `/var/tmp` serves when `/tmp` cannot.
 
+**`.venv-oracles` is built on 3.12 or later, never on the platform `python3`** — 3.10 on Ubuntu
+22.04, 3.11 on this project's hosted session image. Below the floor the generators now stop with
+a sentence naming both versions; before #486 they died with a `SyntaxError` in `seeded_random.py`,
+which a `| tail` then reported as success. CONTRIBUTING.md's
+[*Oracle validation*](CONTRIBUTING.md#oracle-validation) step 2 has the creation command, and
+[ADR 0065](docs/decisions/0065-the-oracle-generators-floor-is-the-ci-interpreter.md) why the floor
+is the CI interpreter.
+
 Guide snippets, benchmarks, packaging (see the `python`/`python3` split above):
 
 ```bash

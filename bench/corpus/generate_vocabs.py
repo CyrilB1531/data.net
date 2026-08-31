@@ -20,6 +20,12 @@ from pathlib import Path
 # import below resolves the way every static analyser expects it to.
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
+from tools.python_floor import require_supported_python  # noqa: E402
+
+# Before the seeded_random import, never after: that module is PEP 695, so an
+# interpreter below the floor fails parsing it first (issue #486).
+require_supported_python("bench/corpus/generate_vocabs.py")
+
 from tools.seeded_random import SeededRandom  # noqa: E402
 
 import sentencepiece as spm

@@ -16,10 +16,8 @@ Design rules:
   * Broad coverage. Empty / identical / ASCII typos / accents / BMP mix / CJK /
     supplementary-plane emoji / long strings.
 
-Usage:
-    python -m venv .venv-oracles && . .venv-oracles/bin/activate
-    pip install rapidfuzz jellyfish
-    python tools/generate_oracles.py
+Usage: CONTRIBUTING.md's *Oracle validation* has the virtualenv's creation step,
+the interpreter it needs, and the neutral working directory this must run from.
 """
 
 from __future__ import annotations
@@ -38,6 +36,12 @@ from pathlib import Path
 # PYTHONSAFEPATH=1 (CONTRIBUTING.md) keeps this script's own directory off
 # sys.path, so seeded_random is appended -- never prepended, so nothing here shadows an installed package.
 sys.path.append(str(Path(__file__).resolve().parent))
+
+from python_floor import require_supported_python  # noqa: E402
+
+# Before the seeded_random import, never after: that module is PEP 695, so an
+# interpreter below the floor fails parsing it first (issue #486).
+require_supported_python("tools/generate_oracles.py")
 
 from seeded_random import SeededRandom  # noqa: E402
 
