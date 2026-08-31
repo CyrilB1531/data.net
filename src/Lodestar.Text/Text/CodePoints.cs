@@ -10,10 +10,9 @@ internal static class CodePoints
     /// <paramref name="destination"/> and returns the number of code points.
     /// </summary>
     /// <remarks>
-    /// A well-formed surrogate pair becomes a single scalar value; a lone
-    /// surrogate is passed through as its own code-unit value, matching how a
-    /// Python <c>str</c> preserves unpaired surrogates rather than throwing.
-    /// <paramref name="destination"/> must be at least
+    /// A well-formed surrogate pair becomes a single scalar value; a lone surrogate is passed
+    /// through as its own code-unit value, matching how a Python <c>str</c> preserves unpaired
+    /// surrogates rather than throwing. <paramref name="destination"/> must be at least
     /// <c>source.Length</c> elements long (one code point can never expand).
     /// </remarks>
     public static int Decode(ReadOnlySpan<char> source, Span<int> destination)

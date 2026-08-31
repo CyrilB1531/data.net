@@ -12,13 +12,12 @@ public static class BalancedAccuracy
     /// <param name="cm">The matrix to read.</param>
     /// <param name="adjusted">When true, rescale so that chance scores 0 and a perfect score stays 1; see docs/decisions/0029 for what a single kept class returns instead.</param>
     /// <remarks>
-    /// The average runs over the classes <paramref name="cm"/> kept — those with
-    /// at least one true sample — not every class it might have been asked for;
-    /// see docs/decisions/0029. Each recall divides by its own row sum in the
-    /// <see cref="ConfusionMatrix.Labels"/>-sized view, unlike <see cref="Recall"/>,
-    /// whose denominator is scikit-learn's <c>true_sum</c> over every observed
-    /// label, including labels that view does not expose; the two agree when
-    /// nothing was dropped.
+    /// The average runs over the classes <paramref name="cm"/> kept — those with at least one
+    /// true sample — not every class it might have been asked for; see docs/decisions/0029.
+    /// Each recall divides by its own row sum in the <see cref="ConfusionMatrix.Labels"/>-sized
+    /// view, unlike <see cref="Recall"/>, whose denominator is scikit-learn's <c>true_sum</c>
+    /// over every observed label, including labels that view does not expose; the two agree
+    /// when nothing was dropped.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="cm"/> is null.</exception>
     public static double Score(ConfusionMatrix cm, bool adjusted = false)

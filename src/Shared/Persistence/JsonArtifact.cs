@@ -58,8 +58,7 @@ internal static class JsonArtifact
     /// From <c>net8.0</c>, <see cref="Utf8JsonWriter.WriteNumberValue(double)"/> emits the shortest
     /// round-tripping form, exact since .NET Core 3.0. A <c>netstandard2.0</c> build may run on .NET
     /// Framework, where that is not guaranteed, so it keeps invariant <c>"G17"</c> instead — exact
-    /// everywhere, at the cost of longer numbers. See ADR 0011, "Doubles", for what the contract
-    /// actually promises: each build byte-reproducible against itself, not the two against each other.
+    /// everywhere, at the cost of longer numbers. See ADR 0011, "Doubles": each build is byte-reproducible against itself, not the two against each other.
     /// </remarks>
     public static void WriteExactDouble(Utf8JsonWriter writer, double value)
     {

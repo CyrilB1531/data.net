@@ -97,9 +97,8 @@ internal static class Base64Numbers
     /// <remarks>
     /// Why slices rather than one <c>WriteBase64String</c> call, and what it was worth, is
     /// <see href="../../../docs/decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md">ADR 0051</see>.
-    /// The invariant that keeps the output byte-identical lives on <see cref="SliceBytes"/>.
-    /// The caller must have flushed the writer and must write the rest of the document
-    /// itself: nothing may go through the <c>Utf8JsonWriter</c> after this.
+    /// The invariant that keeps the output byte-identical lives on <see cref="SliceBytes"/>. The
+    /// caller must have flushed the writer and write the rest itself: nothing may go through the <c>Utf8JsonWriter</c> after this.
     /// </remarks>
     public static void WriteSinglesChunked(Stream destination, ReadOnlySpan<float> values)
     {
@@ -254,10 +253,9 @@ internal static class Base64Numbers
     }
 
     /// <summary>
-    /// Decodes the reader's current string token into one array of
-    /// <typeparamref name="T"/>, sized from the token's own encoded length so the
-    /// base64 lands in its final destination rather than in an intermediate
-    /// buffer that is then copied.
+    /// Decodes the reader's current string token into one array of <typeparamref name="T"/>, sized
+    /// from the token's own encoded length so the base64 lands in its final destination rather
+    /// than in an intermediate buffer that is then copied.
     /// </summary>
     /// <remarks>
     /// The canonical token — unescaped, one segment, a length base64 could have produced — decodes

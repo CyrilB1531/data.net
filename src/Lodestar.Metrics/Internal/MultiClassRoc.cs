@@ -202,9 +202,8 @@ internal static class MultiClassRoc
     }
 
     /// <summary>
-    /// One binary ROC-AUC over column <paramref name="column"/> of
-    /// <paramref name="source"/>, where samples equal to
-    /// <paramref name="positiveLabel"/> are the positive class.
+    /// One binary ROC-AUC over column <paramref name="column"/> of <paramref name="source"/>,
+    /// where samples equal to <paramref name="positiveLabel"/> are the positive class.
     /// </summary>
     /// <remarks>
     /// <paramref name="column"/> is the class's position in the score matrix and
@@ -350,16 +349,14 @@ internal static class MultiClassRoc
     }
 
     /// <summary>
-    /// Runs indices <c>0 .. count - 1</c> over at most <paramref name="workers"/>
-    /// threads, one <see cref="BinaryRoc.Scratch"/> per worker, and rethrows the
-    /// failure of the lowest index once every index has been attempted.
+    /// Runs indices <c>0 .. count - 1</c> over at most <paramref name="workers"/> threads, one
+    /// <see cref="BinaryRoc.Scratch"/> per worker, rethrowing the lowest index's failure once all have run.
     /// </summary>
     /// <remarks>
-    /// The determinism lives here, not in each driver, so a second parallel
-    /// driver — the one-vs-one pair loop — cannot re-derive it differently.
-    /// <paramref name="body"/> returns its caught exception rather than being
-    /// wrapped in a <c>catch</c> here, so a broken internal invariant in its own
-    /// setup still escapes as the defect it is. See docs/decisions/0018.
+    /// The determinism lives here, not in each driver, so a second parallel driver — the
+    /// one-vs-one pair loop — cannot re-derive it differently. <paramref name="body"/> returns
+    /// its caught exception rather than being wrapped in a <c>catch</c> here, so a broken
+    /// internal invariant in its own setup still escapes as the defect it is. See docs/decisions/0018.
     /// </remarks>
     private static void RunPerIndex(
         int count, int workers, int scratchLength, Func<int, BinaryRoc.Scratch, ArgumentException?> body)

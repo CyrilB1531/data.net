@@ -37,6 +37,15 @@ given:
   included — an accepted decision is never edited, only amended by a new one.
   Not part of the pre-commit set above: it needs the pull request's own base
   commit, not something a commit made before one exists can name.
+- `check_repeated_literals.py` refuses a pull request that pushes a Python string
+  literal in `tools/` past SonarCloud's S1192 threshold — measured on
+  [#488](https://github.com/CyrilB1531/lodestar/pull/488) as more than three
+  occurrences, with the issue anchored on the literal's first one, so only a
+  literal the change both pushes over and introduces is reported. Like the ADR
+  guard it needs the pull request's base commit, and for the same reason it is not
+  in the pre-commit set (decision 0064): `tools/generate_oracles.py` already holds
+  some 108 literals over the threshold, so the only useful question is what a
+  change *adds*. `--report` prints that standing backlog without failing.
 - `generate_sonar_globalconfig.py` writes the `.globalconfig` that raises the
   Sonar rules `SonarAnalyzer.CSharp` ships disabled, from the SonarCloud
   quality profile that gates the pull request.

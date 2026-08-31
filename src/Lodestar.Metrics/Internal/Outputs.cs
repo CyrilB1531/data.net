@@ -226,10 +226,9 @@ internal static class Outputs
     /// <param name="kernel">The kernel instance.</param>
     /// <returns>A fresh array of <paramref name="outputCount"/> entries, in column order.</returns>
     /// <remarks>
-    /// Separate from <see cref="Score{TKernel}"/> and
-    /// <see cref="PerOutput{TKernel}"/> so that a metric with a validation rule
-    /// of its own — <see cref="MeanSquaredLogError"/> refuses a target at or
-    /// below −1 — can run it between the shared check and the walk, rather than
+    /// Separate from <see cref="Score{TKernel}"/> and <see cref="PerOutput{TKernel}"/> so that a
+    /// metric with a validation rule of its own — <see cref="MeanSquaredLogError"/> refuses a
+    /// target at or below −1 — can run it between the shared check and the walk, rather than
     /// paying for a second validation pass to get in front of it.
     /// </remarks>
     public static double[] WeightedMean<TKernel>(

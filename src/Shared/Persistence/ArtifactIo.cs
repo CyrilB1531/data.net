@@ -62,11 +62,10 @@ internal static class ArtifactIo
     /// writing that block to <paramref name="destination"/> a slice at a time.
     /// </summary>
     /// <remarks>
-    /// <paramref name="writeHead"/> writes every property before the block. <b>Nothing goes
-    /// through the <c>Utf8JsonWriter</c> after it</b> — the writer is flushed and disposed on
-    /// the property name, the value goes to the stream, and the closing brace is written by
-    /// hand, because a writer left on one refuses to close its object. Owning that sequence
-    /// here means no artifact can get it wrong; ADR 0051 is the decision.
+    /// <paramref name="writeHead"/> writes every property before the block. <b>Nothing goes through
+    /// the <c>Utf8JsonWriter</c> after it</b> — the writer is flushed and disposed on the property
+    /// name, the value goes to the stream, and the closing brace is written by hand, because a
+    /// writer left on one refuses to close its object. Owning it here means no artifact can get it wrong; ADR 0051 is the decision.
     /// </remarks>
     /// <param name="destination">The stream to write to; flushed but never disposed.</param>
     /// <param name="artifact">The artifact kind, for the header.</param>

@@ -48,7 +48,7 @@ MARKER = "long-comment:"
 # What a well-formed member carries anyway: counting it capped documenting the API
 # rather than essay-writing -- 316 of 354 over-length blocks were API documentation.
 STRUCTURAL = re.compile(
-    r"</?(summary|param|returns|exception|typeparam|value|inheritdoc|seealso|example|code)")
+    r"</?(summary|param|returns|exception|typeparam|value|inheritdoc|seealso|example|code)\b")
 
 # A worked example is a code sample, and a code sample is not prose. CONTRIBUTING.md
 # asks every public member for one, so counting its lines taxed having one.

@@ -192,15 +192,13 @@ internal sealed class BpePreTokenizer
 
     /// <summary>
     /// A per-rune classification shadow of <paramref name="text"/>, out through
-    /// <paramref name="shadow"/>, and the index each shadow position maps from --
-    /// or <see langword="null"/> when nothing needed shadowing.
+    /// <paramref name="shadow"/> plus its source-index map, or <see langword="null"/> if none needed.
     /// </summary>
     /// <remarks>
-    /// Neither half of a surrogate pair is ever <c>\p{L}</c> or <c>\p{N}</c> alone,
-    /// so an astral rune fell to the wrong alternative of the vendored pattern
-    /// (issue #341). One placeholder per rune, not two: a bounded repeat like
-    /// Llama-3's <c>\p{N}{1,3}</c> counts characters, and two per rune let it cut
-    /// one in half -- measured, this fix's first shape did that.
+    /// Neither half of a surrogate pair is ever <c>\p{L}</c> or <c>\p{N}</c> alone, so an
+    /// astral rune fell to the wrong alternative of the vendored pattern (issue #341). One
+    /// placeholder per rune, not two: a bounded repeat like Llama-3's <c>\p{N}{1,3}</c>
+    /// counts characters, and two per rune let it cut one in half -- measured.
     /// </remarks>
     private static int[]? ClassificationShadow(string text, out string shadow)
     {

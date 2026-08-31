@@ -407,8 +407,12 @@ alongside the implementation.
    ImportError: Blocked import of regex from current working directory for security reasons
    ```
 
-   Running from `/tmp` (POSIX) or `$env:TEMP` (PowerShell), with the virtualenv inside the
-   repository, satisfies this. Running from the repository root, or from `~`, does not.
+   Running from the repository root, or from `~`, does not satisfy this. Neither does `/tmp`
+   when the checkout is itself under `/tmp` — which is where a hosted or sandboxed session puts
+   it, and the reason this recommendation used to name `/tmp` unconditionally and mislead. Read
+   the rule rather than the example: pick any directory the virtualenv does not live under.
+   `/tmp` (POSIX) or `$env:TEMP` (PowerShell) serves for an ordinary checkout under `~`;
+   `/var/tmp` serves when `/tmp` does not.
 
    Check the generator's own exit code, not a pipeline's. `python … | tail` reports
    `tail`'s status, so a failed generation looks successful — and the drift check

@@ -53,6 +53,7 @@ opens the Store instead of running anything.
 python3 tools/check_version_floor.py      # offline, instant; catches the three version numbers drifting apart
 python3 tools/check_machine_paths.py      # catches a tracked file holding a path under someone's home directory
 python3 tools/check_sample_culture.py     # catches a sample number printed in the contributor's culture
+python3 tools/check_repeated_literals.py --base origin/main   # catches a literal this branch pushed past S1192
 ```
 
 ```powershell
@@ -60,6 +61,7 @@ python3 tools/check_sample_culture.py     # catches a sample number printed in t
 python tools/check_version_floor.py
 python tools/check_machine_paths.py
 python tools/check_sample_culture.py
+python tools/check_repeated_literals.py --base origin/main
 ```
 
 A single test, or one area:
@@ -88,7 +90,10 @@ Remove-Item Env:PYTHONSAFEPATH   # POSIX sets it only for this one command; Powe
 ```
 
 Both need a neutral directory because `nltk` refuses to import under the repository (see
-*Oracle validation* below) — `/tmp` on POSIX, `$env:TEMP` on PowerShell.
+*Oracle validation* below). Neutral means **not an ancestor of the checkout**, which is what
+makes `/tmp` the wrong answer in a hosted or sandboxed session: those put the worktree under
+`/tmp` itself, and the import guard fires anyway. Check where the repository actually is before
+picking — `/var/tmp` serves when `/tmp` cannot.
 
 Guide snippets, benchmarks, packaging (see the `python`/`python3` split above):
 

@@ -240,10 +240,9 @@ public sealed class BpeTokenizerTests
     }
 
     /// <summary>
-    /// A hand-built vocabulary: <paramref name="tokens"/> in id order, and
-    /// <paramref name="merges"/> in rank order, each written as "left right".
-    /// Small enough that the merge order it produces can be worked out by hand,
-    /// which is the point — the oracle corpora prove parity, not invariants.
+    /// A hand-built vocabulary: <paramref name="tokens"/> in id order, and <paramref name="merges"/>
+    /// in rank order, each written as "left right". Small enough that the merge order it produces
+    /// can be worked out by hand, which is the point — the oracle corpora prove parity, not invariants.
     /// </summary>
     /// <remarks>
     /// The classic split, which is what these cases have always merged under: every

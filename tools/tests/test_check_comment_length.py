@@ -64,6 +64,15 @@ def test_structural_elements_do_not_spend_the_documentation_budget():
     assert guard.findings_in(block.split("\n"), ".cs") == []
 
 
+def test_paramref_is_prose_but_param_is_structural():
+    # <paramref> matched STRUCTURAL as a bare substring of "param" before the
+    # \b fix, riding <param>'s exemption though it sits inside a sentence.
+    paramref = "".join(f'/// <paramref name="x"/> line {i}\n' for i in range(9)) + "int X;\n"
+    param = "".join(f'/// <param name="x{i}">line</param>\n' for i in range(9)) + "int X;\n"
+    assert len(guard.findings_in(paramref.split("\n"), ".cs")) == 1
+    assert guard.findings_in(param.split("\n"), ".cs") == []
+
+
 def test_a_worked_example_does_not_spend_the_documentation_budget():
     # CONTRIBUTING.md asks every public member for one, and a code sample is not
     # prose -- counting it made TokenizerJsonLoader carry a marker for having one.
