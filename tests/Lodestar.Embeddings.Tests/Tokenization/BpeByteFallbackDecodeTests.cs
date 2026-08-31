@@ -34,15 +34,31 @@ public sealed class BpeByteFallbackDecodeTests
         Assert.Equal("▁aéb", tokenizer.Decode(encoded.Ids));
     }
 
-    [Fact]
-    public void A_lone_byte_piece_decodes_to_the_replacement_character()
+    /// <summary>One U+FFFD per byte of a run that is not well-formed UTF-8, which is the reference's rule.</summary>
+    /// <remarks>
+    /// Not decision 0023's, which is the <c>ByteLevel</c> decoder: .NET's lossy UTF-8 decoder
+    /// substitutes once per maximal invalid subpart, so the two agree on a lone lead byte and
+    /// part on every longer run — <c>&lt;0xF0&gt; &lt;0x9F&gt;</c> is two characters here and
+    /// would be one, and <c>&lt;0xC3&gt; &lt;0x28&gt;</c> two rather than U+FFFD and <c>(</c>.
+    /// Pinned against <c>tokenizers</c> 0.23.1 by <c>BpeByteFallbackOracleTests</c>.
+    /// </remarks>
+    [Theory]
+    [InlineData("\ufffd", "<0xC3>")]
+    [InlineData("\ufffd\ufffd", "<0xF0>", "<0x9F>")]
+    [InlineData("\ufffd\ufffd", "<0xC3>", "<0x28>")]
+    [InlineData("a\ufffd\ufffdb", "a", "<0xF0>", "<0x9F>", "b")]
+    [InlineData("é", "<0xC3>", "<0xA9>")]
+    public void A_byte_run_decodes_the_way_the_reference_decodes_it(string expected, params string[] pieces)
     {
-        // Decision 0023's substitution, which the reference also applies here: <0xC3> opens a
-        // two-byte sequence, and on its own it is not well-formed UTF-8.
         BpeTokenizer tokenizer = Load("{ \"type\": \"ByteFallback\" }");
-        Assert.True(tokenizer.TryGetId("<0xC3>", out int id));
+        var ids = new List<int>();
+        foreach (string piece in pieces)
+        {
+            Assert.True(tokenizer.TryGetId(piece, out int id));
+            ids.Add(id);
+        }
 
-        Assert.Equal("�", tokenizer.Decode([id]));
+        Assert.Equal(expected, tokenizer.Decode(ids));
     }
 
     [Fact]

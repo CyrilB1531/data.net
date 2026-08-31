@@ -15,6 +15,9 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 {
     private const int StackThreshold = 256;
 
+    /// <summary>What each byte of a run that is not well-formed UTF-8 decodes to — see <see cref="FlushBytes"/>.</summary>
+    private const char Replacement = '\uFFFD';
+
     /// <summary>No such neighbour: the ends of <see cref="Merge"/>'s list, and every symbol merged away.</summary>
     /// <remarks>
     /// One sentinel serves both: a merged-away symbol never needs a successor again, so a
@@ -26,9 +29,10 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// <summary>UTF-8 for decoding only: a byte sequence that is not well-formed becomes U+FFFD.</summary>
     /// <remarks>
     /// Not <see cref="JsonArtifact.Utf8NoBom"/>, which throws and is shared with the
-    /// persistence layer and with <see cref="Encode"/>'s own byte conversion, where
-    /// refusing is right. The asymmetry is deliberate and matches the reference:
-    /// strict on the way in, forgiving on the way out. See decision 0023.
+    /// persistence layer, with <see cref="Encode"/>'s own byte conversion — where
+    /// refusing is right — and with <see cref="FlushBytes"/>, which catches instead.
+    /// The asymmetry is deliberate and matches the reference: strict on the way in,
+    /// forgiving on the way out. See decision 0023.
     /// </remarks>
     private static readonly UTF8Encoding Utf8Lossy = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: false);
 
@@ -68,14 +72,14 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// <summary>Creates a tokenizer from a loaded BPE model.</summary>
     /// <param name="vocabulary">A vocabulary from <see cref="Persistence.BpeFilesLoader"/> or <see cref="Persistence.TokenizerJsonLoader"/>.</param>
     /// <exception cref="ArgumentException">
-    /// The declared unknown token is not in the vocabulary; or a merge names a
-    /// token the vocabulary does not declare, or produces one it does not; or a
-    /// byte-level vocabulary declares a continuing subword prefix, which this
-    /// tokenizer would apply to its merges and not to its symbols — see
-    /// <see cref="EnsureByteLevelDeclaresNoContinuingPrefix"/>; or <see cref="BpeVocabulary.PreSplit"/>
-    /// declares a <see cref="SplitBehavior"/> outside its five defined values — see
-    /// <see cref="EnsureSplitBehaviorIsDefined"/>; or the vocabulary does not say how it
-    /// is split, or says it two ways at once — see <see cref="EnsurePreTokenizerIsDeclared"/>.
+    /// The declared unknown token is not in the vocabulary; or a merge names a token the vocabulary does
+    /// not declare, or produces one it does not; or a byte-level vocabulary declares a continuing subword
+    /// prefix, which this tokenizer would apply to its merges and not to its symbols — see
+    /// <see cref="EnsureByteLevelDeclaresNoContinuingPrefix"/>; or <see cref="BpeVocabulary.PreSplit"/> declares a
+    /// <see cref="SplitBehavior"/> outside its five defined values — see <see cref="EnsureSplitBehaviorIsDefined"/>;
+    /// or the vocabulary does not say how it is split, or says it two ways at once — see
+    /// <see cref="EnsurePreTokenizerIsDeclared"/>; or it declares <see cref="BpeVocabulary.ByteFallback"/> without
+    /// all 256 <c>&lt;0xXX&gt;</c> byte pieces — see <see cref="EnsureByteFallbackAlphabetIsComplete"/>.
     /// </exception>
     public BpeTokenizer(BpeVocabulary vocabulary)
     {
@@ -94,6 +98,7 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         _metaspace = vocabulary.Metaspace;
         _decoder = vocabulary.Decoder;
         (_vocab, _modelVocab, _tokens) = BuildVocabulary(vocabulary);
+        EnsureByteFallbackAlphabetIsComplete(vocabulary, _modelVocab);
 
         _rawScanner = new AddedTokenScanner([.. vocabulary.AddedTokens.Where(t => !t.Normalized)]);
         _normalizedScanner = new AddedTokenScanner(
@@ -231,6 +236,38 @@ public sealed class BpeTokenizer : ISubwordTokenizer
                 $"The vocabulary's Split step declares behavior {(int)preSplit.Behavior}, "
                 + "which is not one of the five SplitBehavior values.",
                 nameof(vocabulary));
+        }
+    }
+
+    /// <summary>Refuses a <c>byte_fallback</c> vocabulary missing any of the 256 <c>&lt;0xXX&gt;</c> pieces, naming the first one.</summary>
+    /// <remarks>
+    /// <c>LoadBpe</c> already refuses such a file (decision 0063); this one exists because
+    /// <see cref="BpeVocabulary"/> is public and constructible without a loader — the same reason as
+    /// <see cref="EnsureByteLevelDeclaresNoContinuingPrefix"/>. Left unchecked, <see cref="ExpandToBytes"/> fails
+    /// on a bare dictionary indexer, whose <see cref="KeyNotFoundException"/> names the missing key on net10.0
+    /// and not on netstandard2.0. It reads the built table, so the lookup is the ordinal one
+    /// <see cref="ExpandToBytes"/> will make rather than whatever comparer the caller's dictionary carries.
+    /// </remarks>
+    /// <param name="vocabulary">The vocabulary the constructor was handed.</param>
+    /// <param name="modelVocab">Its model-only table, built ordinal by <see cref="BuildVocabulary"/>.</param>
+    private static void EnsureByteFallbackAlphabetIsComplete(
+        BpeVocabulary vocabulary, Dictionary<string, int> modelVocab)
+    {
+        if (!vocabulary.ByteFallback)
+        {
+            return;
+        }
+
+        for (int b = 0; b < BytePieces.Count; b++)
+        {
+            string piece = BytePieces.Name(b);
+            if (!modelVocab.ContainsKey(piece))
+            {
+                throw new ArgumentException(
+                    $"The vocabulary declares ByteFallback and has no '{piece}' entry. An uncovered "
+                    + "symbol resolves into one byte piece per UTF-8 byte, so all 256 must be present.",
+                    nameof(vocabulary));
+            }
         }
     }
 
@@ -824,12 +861,12 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
     /// <summary>Reassembles the text <paramref name="ids"/> encode.</summary>
     /// <remarks>
-    /// Matches <c>tokenizers.Tokenizer.decode(ids, skip_special_tokens=…)</c>. Byte-exact only
-    /// for a complete sequence <see cref="Encode"/> produced whole — decoded one id at a time,
-    /// a byte sequence that is not well-formed UTF-8 becomes U+FFFD rather than throwing,
-    /// matching the reference (decision 0023). <c>skipSpecialTokens</c> defaults to
-    /// <see langword="false"/>, so <c>Decode(Encode(x)) == x</c> holds without passing it —
-    /// except that the metaspace escape and the byte pieces stay as symbols unless the file's decoder declares the chain undoing them (decision 0063).
+    /// Matches <c>tokenizers.Tokenizer.decode(ids, skip_special_tokens=…)</c>. Byte-exact only for a complete
+    /// sequence <see cref="Encode"/> produced whole — decoded one id at a time, a byte sequence that is not
+    /// well-formed UTF-8 becomes U+FFFD rather than throwing, matching the reference (decision 0023).
+    /// <c>skipSpecialTokens</c> defaults to <see langword="false"/>, so <c>Decode(Encode(x)) == x</c> holds
+    /// without passing it — except that the metaspace escape and the byte pieces stay as symbols unless the
+    /// file's decoder undoes them, and a bare <c>ByteFallback</c> undoes the pieces while leaving the escape in (decision 0063).
     /// </remarks>
     /// <param name="ids">Token ids, e.g. from <see cref="Encode"/>.</param>
     /// <param name="skipSpecialTokens">Drop tokens whose <c>added_tokens</c> entry is <c>special</c> (<see cref="AddedToken.Special"/>), matching Python's <c>skip_special_tokens</c>.</param>
@@ -892,15 +929,31 @@ public sealed class BpeTokenizer : ISubwordTokenizer
         buffer.Append(_decoder?.MetaspaceReplacement is char meta ? token.Replace(meta, ' ') : token);
     }
 
-    /// <summary>Turns the pending byte run into text, substituting U+FFFD for what is not well-formed UTF-8.</summary>
+    /// <summary>Turns the pending byte run into text, or into one U+FFFD per byte when the run is not well-formed UTF-8.</summary>
+    /// <remarks>
+    /// Per byte, not per maximal invalid subpart the way <see cref="Utf8Lossy"/> substitutes: HuggingFace's
+    /// <c>ByteFallback</c> decoder pushes one U+FFFD for every byte of a run it cannot decode, so
+    /// <c>&lt;0xF0&gt; &lt;0x9F&gt;</c> is two characters there and one here, and <c>&lt;0xC3&gt; &lt;0x28&gt;</c>
+    /// two rather than U+FFFD and <c>(</c>. A generation truncated mid-character is the ordinary way such a run
+    /// arises on Llama-2, so parity is worth more than the shared helper. Decision 0023 is the <c>ByteLevel</c>
+    /// decoder, where HuggingFace uses <c>from_utf8_lossy</c> and the two agree; it does not reach here.
+    /// </remarks>
     private static void FlushBytes(StringBuilder buffer, List<byte> pending)
     {
         if (pending.Count == 0)
         {
             return;
         }
-        buffer.Append(Utf8Lossy.GetString([.. pending]));
+        byte[] bytes = [.. pending];
         pending.Clear();
+        try
+        {
+            buffer.Append(JsonArtifact.Utf8NoBom.GetString(bytes));
+        }
+        catch (DecoderFallbackException)
+        {
+            buffer.Append(Replacement, bytes.Length);
+        }
     }
 
     /// <summary>Turns the concatenated tokens back into text.</summary>

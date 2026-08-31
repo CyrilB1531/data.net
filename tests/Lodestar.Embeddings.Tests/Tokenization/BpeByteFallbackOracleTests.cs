@@ -30,6 +30,9 @@ public sealed class BpeByteFallbackOracleTests
     /// <summary><c>decoder_byte_fallback</c> and <c>decoder_sequence</c>, the only two cases carrying a <c>decoded</c> column.</summary>
     private const int DecodedRows = 2 * TextsPerCase;
 
+    /// <summary>The raw id runs those same two cases carry; see <c>BYTE_FALLBACK_DECODE_RUNS</c> in the generator.</summary>
+    private const int DecodeRunRows = 2 * 6;
+
     /// <summary>Every pipeline and every text, exactly — and the corpus's own shape, so a shrunken corpus fails rather than passing on fewer rows.</summary>
     [Fact]
     public void Encode_reproduces_every_byte_fallback_pipeline()
@@ -98,6 +101,48 @@ public sealed class BpeByteFallbackOracleTests
         }
 
         Assert.Equal(DecodedRows, decoded);
+        Assert.True(failures.Count == 0, string.Join("\n", failures));
+    }
+
+    /// <summary>The raw id runs, which <c>Encode</c> cannot produce and a truncated generation does.</summary>
+    /// <remarks>
+    /// A run cut mid-character is where the reference's one-U+FFFD-per-byte rule parts from a
+    /// decoder substituting once per maximal invalid subpart, so these rows are the ones a
+    /// shared lossy helper would pass this suite while getting wrong. The corpus is the
+    /// answer here, not an expectation written beside the code it checks.
+    /// </remarks>
+    [Fact]
+    public void Decode_reproduces_the_reference_on_a_raw_byte_run()
+    {
+        using JsonDocument doc = OracleLoader.Load(Corpus);
+
+        var failures = new List<string>();
+        int runs = 0;
+        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
+        {
+            if (!c.TryGetProperty("decode_runs", out JsonElement declared))
+            {
+                continue;
+            }
+            string name = c.GetProperty("name").GetString()!;
+            var tokenizer = new BpeTokenizer(Vocabulary(c));
+
+            foreach (JsonElement run in declared.EnumerateArray())
+            {
+                runs++;
+                List<int> ids = [.. run.GetProperty("ids").EnumerateArray().Select(e => e.GetInt32())];
+                string expected = run.GetProperty("decoded").GetString()!;
+                string actual = tokenizer.Decode(ids);
+                if (!string.Equals(expected, actual, StringComparison.Ordinal))
+                {
+                    string pieces = string.Join(
+                        " ", run.GetProperty("pieces").EnumerateArray().Select(e => e.GetString()!));
+                    failures.Add($"[{name}] {pieces}: expected {Escape(expected)}, got {Escape(actual)}");
+                }
+            }
+        }
+
+        Assert.Equal(DecodeRunRows, runs);
         Assert.True(failures.Count == 0, string.Join("\n", failures));
     }
 

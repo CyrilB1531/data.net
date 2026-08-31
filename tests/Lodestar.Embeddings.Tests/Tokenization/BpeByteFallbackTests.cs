@@ -57,6 +57,27 @@ public sealed class BpeByteFallbackTests
             tokenizer.Encode("<0xC3>").Tokens);
     }
 
+    [Fact]
+    public void A_hand_built_vocabulary_missing_a_piece_is_refused()
+    {
+        // BpeVocabulary is public and constructible without a loader, so LoadBpe's refusal
+        // cannot reach here; without this one Encode fails on a bare dictionary indexer.
+        var vocab = new Dictionary<string, int>(StringComparer.Ordinal) { ["<unk>"] = 0, ["a"] = 1, ["b"] = 2 };
+        for (int i = 0; i < BytePieces.Count; i++)
+        {
+            if (i is not (0x28 or 0xA9))
+            {
+                vocab[BytePieces.Name(i)] = vocab.Count;
+            }
+        }
+
+        ArgumentException thrown = Assert.Throws<ArgumentException>(() => new BpeTokenizer(
+            new BpeVocabulary(vocab, []) { ByteFallback = true, UnkToken = "<unk>", NoPreTokenizer = true }));
+
+        Assert.Contains("<0x28>", thrown.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("<0xA9>", thrown.Message, StringComparison.Ordinal);
+    }
+
     /// <summary>A vocabulary of <c>a</c>, <c>b</c>, the unknown token and all 256 byte pieces.</summary>
     private static BpeTokenizer Build(string? covering = null, (string Left, string Right)? merge = null, bool fuseUnk = false)
     {

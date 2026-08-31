@@ -1,6 +1,6 @@
 # 0063 — `byte_fallback` requires the whole alphabet, and its decoder is read strictly too
 
-**Status:** accepted · **Date:** 2026-08-31 · **Amends:** [`0050`](0050-the-sentencepiece-bpe-lineage-stays-a-bpe-model.md) §3
+**Status:** accepted · **Date:** 2026-08-31 · **Amends:** [`0050`](0050-the-sentencepiece-bpe-lineage-stays-a-bpe-model.md) §3 and [`0062`](0062-the-two-metaspace-spellings-part-on-the-prepend-twice.md)
 
 ## Context
 
@@ -121,7 +121,12 @@ diverge from.
 `tests/oracles/bpe_byte_fallback.json` pins the six measurements above, a text per byte width
 (ASCII, `é`, `日`, an emoji, a control character), `fuse_unk` on and off over the same texts, and
 a decode column the metaspace corpus does not carry, since here the decoder is declared and
-reproduced. The refusals — a missing `<0x00>`, a missing `<0xFF>`, a lowercase `<0xc3>`, and a
+reproduced. A `decode_runs` column carries raw id sequences beside that one, because a byte run cut
+mid-character is what a truncated generation hands `Decode` and is not something `Encode` can
+produce: `tokenizers` answers one U+FFFD per byte of such a run, where a decoder substituting once
+per maximal invalid subpart — .NET's lossy UTF-8 decoder, and the `from_utf8_lossy` HuggingFace
+itself uses on the byte-level path of [`0023`](0023-byte-level-decode-substitutes.md) — answers one
+character for `<0xF0> <0x9F>` and `<0xC3> <0x28>` where these rows want two. The refusals — a missing `<0x00>`, a missing `<0xFF>`, a lowercase `<0xc3>`, and a
 decoder shape outside the two reproduced — are pinned by loader tests rather than by oracles,
 because `tokenizers` accepts every one of those files; only this package's stricter rule refuses
 them.

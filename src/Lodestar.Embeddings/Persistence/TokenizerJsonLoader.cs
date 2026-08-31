@@ -39,7 +39,7 @@ public static class TokenizerJsonLoader
     private const string SequenceName = "Sequence";
     private const string MetaSymbol = "\u2581";
 
-    /// <summary>The <c>content</c> property an added token and a decoder <c>Replace</c>/<c>Strip</c> step both carry.</summary>
+    /// <summary>The <c>content</c> property an added token, the normalizer <c>Replace</c> and a decoder <c>Replace</c>/<c>Strip</c> step all carry.</summary>
     private const string ContentProperty = "content";
 
     /// <summary>The <c>type</c> a normalizer or decoder step declares when it replaces one string with another.</summary>

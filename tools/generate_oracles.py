@@ -4183,6 +4183,17 @@ BYTE_FALLBACK_METASPACE_PRE_TOKENIZER = {
 # The two cases that carry a `decoded` column -- the only ones a decoder is declared for.
 BYTE_FALLBACK_DECODED_CASES = ("decoder_byte_fallback", "decoder_sequence")
 
+# Raw id runs: the `decoded` column above comes from `encode`, which cannot produce a byte
+# run cut mid-character. generate_bpe_byte_fallback's docstring has what each row measures.
+BYTE_FALLBACK_DECODE_RUNS = [
+    ["<0xC3>"],                       # a two-byte lead byte, alone
+    ["<0xF0>", "<0x9F>"],             # an emoji cut after two of its four bytes
+    ["<0xC3>", "<0x28>"],             # a lead byte, then an ASCII byte that cannot continue it
+    ["a", "<0xF0>", "<0x9F>", "b"],   # the same cut, between two covered symbols
+    ["<0xC3>", "<0xA9>"],             # well-formed: the two bytes of "e-acute"
+    ["a", "<0xC3>", "<0xA9>", "b"],   # well-formed, between two covered symbols
+]
+
 
 def generate_bpe_byte_fallback() -> dict:
     """An uncovered symbol resolving into byte pieces, in every shape the rule has.
@@ -4218,6 +4229,17 @@ def generate_bpe_byte_fallback() -> dict:
     `ByteFallback` step has no Replace to run, so the leading `META_SYMBOL`
     passes straight through un-undone -- on the same ids, `"aéb"` decodes to
     `"aéb"` under one and `"▁aéb"` under the other.
+
+    Those two cases also carry `decode_runs`: the raw id sequences of
+    `BYTE_FALLBACK_DECODE_RUNS`, handed straight to `decode`. The `decoded`
+    column above comes from `encode`, which cannot produce a byte run cut
+    mid-character -- and that run is exactly what a generation truncated
+    mid-character hands `decode` on this lineage. It is also where two
+    substitution rules part company: `tokenizers` pushes one U+FFFD per byte of
+    a run it cannot decode, where a decoder substituting once per maximal
+    invalid subpart (.NET's lossy UTF-8 decoder, Rust's `from_utf8_lossy`)
+    answers one character where these rows want two. The last two rows are the
+    well-formed controls, where every rule agrees.
 
     No case declares a partial alphabet. `tokenizers` accepts one and degrades
     to the unknown token; Lodestar refuses it, so there is no reference stream
@@ -4259,12 +4281,22 @@ def generate_bpe_byte_fallback() -> dict:
             if decodes:
                 row["decoded"] = tokenizer.decode(enc.ids)
             texts.append(row)
-        cases.append({
+        case = {
             "id": len(cases),
             "name": name,
             "tokenizer_json": tokenizer_json,
             "texts": texts,
-        })
+        }
+        if decodes:
+            case["decode_runs"] = [
+                {
+                    "pieces": pieces,
+                    "ids": [tokenizer.token_to_id(piece) for piece in pieces],
+                    "decoded": tokenizer.decode([tokenizer.token_to_id(piece) for piece in pieces]),
+                }
+                for pieces in BYTE_FALLBACK_DECODE_RUNS
+            ]
+        cases.append(case)
 
     return {
         "metadata": {
