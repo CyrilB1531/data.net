@@ -4174,8 +4174,8 @@ BYTE_FALLBACK_SEQUENCE_DECODER = {"type": "Sequence", "decoders": [
     {"type": "Strip", "content": " ", "start": 1, "stop": 0},
 ]}
 
-# Mistral v0.1's own pre_tokenizer shape. Only `decoder_sequence` carries it, since
-# it is what gives that case's Replace and Strip steps a real escape to undo.
+# Mistral v0.1's own pre_tokenizer shape. Both decoder cases carry it and cover
+# META_SYMBOL, so they encode to the same ids and only their decoders differ.
 BYTE_FALLBACK_METASPACE_PRE_TOKENIZER = {
     "type": "Metaspace", "replacement": META_SYMBOL, "prepend_scheme": "first", "split": False,
 }
@@ -4209,19 +4209,15 @@ def generate_bpe_byte_fallback() -> dict:
 
     The last two carry a `decoded` column, which the metaspace corpus
     deliberately does not: there the decoder was accepted and not applied, and
-    here it is declared and reproduced. `decoder_sequence` alone declares the
-    `Metaspace` pre_tokenizer and covers `META_SYMBOL` in its vocabulary, so its
-    token stream carries a real escape for the Sequence to undo -- Replace and
-    Strip are both load-bearing there (dropping either changes the decoded
-    string), where `decoder_byte_fallback`'s bare `ByteFallback` step needs
-    neither. Both cases still decode every text back to itself exactly: a
-    `Metaspace` escape correctly undone is `Decode(Encode(x)) == x` the same as
-    no escape at all, so the two cases' *decoded strings* necessarily agree
-    even though their token streams, and what their decoders had to do to
-    reach that string, do not -- `decoder_sequence`'s carries one extra leading
-    piece the escape produced. This is stated rather than left to be
-    rediscovered: a corpus expecting the two decoded columns to disagree would
-    be demanding one of the two mechanisms be wrong.
+    here it is declared and reproduced. Both decoder cases declare the same
+    `Metaspace` pre_tokenizer and cover `META_SYMBOL` in the same vocabulary, so
+    they encode every text to identical ids -- only the decoder differs, which
+    is what makes the pair a contrast rather than two texts that each merely
+    round-trip themselves. `decoder_sequence`'s Replace and Strip undo the
+    escape (`Decode(Encode(x)) == x`); `decoder_byte_fallback`'s bare
+    `ByteFallback` step has no Replace to run, so the leading `META_SYMBOL`
+    passes straight through un-undone -- on the same ids, `"aéb"` decodes to
+    `"aéb"` under one and `"▁aéb"` under the other.
 
     No case declares a partial alphabet. `tokenizers` accepts one and degrades
     to the unknown token; Lodestar refuses it, so there is no reference stream
@@ -4244,7 +4240,8 @@ def generate_bpe_byte_fallback() -> dict:
             _byte_fallback_vocab(["b" + BYTE_FALLBACK_EOW_SUFFIX]), [],
             suffix=BYTE_FALLBACK_EOW_SUFFIX)),
         ("decoder_byte_fallback", _byte_fallback_file(
-            _byte_fallback_vocab(), ["a b"], decoder={"type": "ByteFallback"})),
+            _byte_fallback_vocab([META_SYMBOL]), ["a b"], decoder={"type": "ByteFallback"},
+            pre_tokenizer=BYTE_FALLBACK_METASPACE_PRE_TOKENIZER)),
         ("decoder_sequence", _byte_fallback_file(
             _byte_fallback_vocab([META_SYMBOL]), ["a b"],
             decoder=BYTE_FALLBACK_SEQUENCE_DECODER,
