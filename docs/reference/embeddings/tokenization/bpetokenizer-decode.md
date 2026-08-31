@@ -39,9 +39,13 @@ string text = tokenizer.Decode(encoded.Ids);  // => token
 
 **Exceptions** — `ArgumentOutOfRangeException` when an id falls outside the vocabulary.
 Decoding cannot silently skip one, since the caller would get back a shorter text than it
-asked for with nothing said about it. Nothing else on this path throws: a byte sequence
-that is not well-formed UTF-8 becomes U+FFFD, which is what
-[decision 0023](../../../decisions/0023-byte-level-decode-substitutes.md) settled.
+asked for with nothing said about it. Nothing else on this path throws: a byte sequence that is
+not well-formed UTF-8 becomes U+FFFD rather than an exception, under whichever rule the file's own
+shape calls for. On the byte-level path it is one U+FFFD per maximal invalid subpart, which is what
+[decision 0023](../../../decisions/0023-byte-level-decode-substitutes.md) settled. On a
+`byte_fallback` file's run of byte pieces it is one U+FFFD **per byte of the run** — HuggingFace's
+own `ByteFallback` rule, measured and reproduced by
+[decision 0063](../../../decisions/0063-byte-fallback-requires-the-whole-alphabet-and-its-decoder-is-read-strictly-too.md).
 
 **Remarks** — byte-level BPE round-trips **exactly**, and that is the property that makes decoding
 worth having: the vocabulary covers all 256 byte values through printable stand-ins, so emoji,

@@ -568,9 +568,9 @@ public sealed class BpeTokenizer : ISubwordTokenizer
 
     /// <summary>Writes one id per UTF-8 byte of <paramref name="symbol"/>, and returns how many.</summary>
     /// <remarks>
-    /// Total by construction: <c>LoadBpe</c> refuses a byte_fallback vocabulary missing any of
-    /// the 256 pieces, so every byte has one. A directly built vocabulary that does not is a
-    /// caller's error, and the indexer says so rather than a stream saying nothing.
+    /// Total by construction: <c>LoadBpe</c> refuses a byte_fallback file missing any of the 256
+    /// pieces, and <see cref="EnsureByteFallbackAlphabetIsComplete"/> refuses a directly built
+    /// vocabulary that does, so every byte has an entry by the time this runs.
     /// </remarks>
     private int ExpandToBytes(string symbol, Span<int> symbols)
     {
@@ -933,10 +933,10 @@ public sealed class BpeTokenizer : ISubwordTokenizer
     /// <remarks>
     /// Per byte, not per maximal invalid subpart the way <see cref="Utf8Lossy"/> substitutes: HuggingFace's
     /// <c>ByteFallback</c> decoder pushes one U+FFFD for every byte of a run it cannot decode, so
-    /// <c>&lt;0xF0&gt; &lt;0x9F&gt;</c> is two characters there and one here, and <c>&lt;0xC3&gt; &lt;0x28&gt;</c>
-    /// two rather than U+FFFD and <c>(</c>. A generation truncated mid-character is the ordinary way such a run
-    /// arises on Llama-2, so parity is worth more than the shared helper. Decision 0023 is the <c>ByteLevel</c>
-    /// decoder, where HuggingFace uses <c>from_utf8_lossy</c> and the two agree; it does not reach here.
+    /// <c>&lt;0xF0&gt; &lt;0x9F&gt;</c> is two characters here and would be one through that helper, and
+    /// <c>&lt;0xC3&gt; &lt;0x28&gt;</c> two rather than U+FFFD and <c>(</c>. A generation truncated mid-character
+    /// is the ordinary way such a run arises on Llama-2, so parity is worth more than the shared helper. Decision
+    /// 0023 is the <c>ByteLevel</c> decoder, where HuggingFace uses <c>from_utf8_lossy</c> and the two agree.
     /// </remarks>
     private static void FlushBytes(StringBuilder buffer, List<byte> pending)
     {
