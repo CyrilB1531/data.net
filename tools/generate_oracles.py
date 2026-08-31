@@ -4183,15 +4183,20 @@ BYTE_FALLBACK_METASPACE_PRE_TOKENIZER = {
 # The two cases that carry a `decoded` column -- the only ones a decoder is declared for.
 BYTE_FALLBACK_DECODED_CASES = ("decoder_byte_fallback", "decoder_sequence")
 
+# The two bytes of "e-acute", named because four of the runs below reach for the
+# lead byte and Sonar's S1192 counts them together -- issue #487's quality gate.
+E_ACUTE_LEAD = "<0xC3>"
+E_ACUTE_TAIL = "<0xA9>"
+
 # Raw id runs: the `decoded` column above comes from `encode`, which cannot produce a byte
 # run cut mid-character. generate_bpe_byte_fallback's docstring has what each row measures.
 BYTE_FALLBACK_DECODE_RUNS = [
-    ["<0xC3>"],                       # a two-byte lead byte, alone
-    ["<0xF0>", "<0x9F>"],             # an emoji cut after two of its four bytes
-    ["<0xC3>", "<0x28>"],             # a lead byte, then an ASCII byte that cannot continue it
-    ["a", "<0xF0>", "<0x9F>", "b"],   # the same cut, between two covered symbols
-    ["<0xC3>", "<0xA9>"],             # well-formed: the two bytes of "e-acute"
-    ["a", "<0xC3>", "<0xA9>", "b"],   # well-formed, between two covered symbols
+    [E_ACUTE_LEAD],                            # a two-byte lead byte, alone
+    ["<0xF0>", "<0x9F>"],                      # an emoji cut after two of its four bytes
+    [E_ACUTE_LEAD, "<0x28>"],                  # a lead byte, then an ASCII byte that cannot continue it
+    ["a", "<0xF0>", "<0x9F>", "b"],            # the same cut, between two covered symbols
+    [E_ACUTE_LEAD, E_ACUTE_TAIL],              # well-formed: the two bytes of "e-acute"
+    ["a", E_ACUTE_LEAD, E_ACUTE_TAIL, "b"],    # well-formed, between two covered symbols
 ]
 
 
