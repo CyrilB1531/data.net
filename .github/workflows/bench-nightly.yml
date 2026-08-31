@@ -294,12 +294,11 @@ jobs:
             selected.txt
           retention-days: 7
 
-  # Split out of `measure` for one reason: pushing the results branch off a measured ref
-  # that touched .github/workflows/ is a workflow write, because GitHub compares a newly
-  # created ref's workflow tree against the default branch's -- and run 43 spent a whole
-  # nightly window discovering that after the measurement (#464). The permission this
-  # needs is real; what it must not have is the measured branch's code next to it. So
-  # this job runs pinned actions, git and gh, and nothing from the repository.
+  # Split out of `measure` because this is the job that pushes and opens the pull
+  # request, and it must not run the measured branch's code: every step here is a
+  # pinned action, git or gh. `workflows` is NOT among GitHub's permission scopes --
+  # decision 0067 -- so this token can never push a ref whose .github/workflows/
+  # differs from main's, and the guard below is what keeps that from costing a run.
   publish:
     name: Open the pull request
     needs: measure
@@ -307,7 +306,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      workflows: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -330,6 +328,29 @@ jobs:
             pages="docs/guides/nightly_run.md docs/guides/benchmark_latest.md"
           else
             pages="docs/guides/branch/nightly_run.md docs/guides/branch/benchmark_latest.md"
+          fi
+          # GITHUB_TOKEN cannot create a ref whose .github/workflows/ differs from the
+          # default branch's, and no `permissions:` key can grant it that (decision
+          # 0067). Asked anyway, the push is rejected -- after the measurement, which is
+          # what run 43 spent a nightly window on (#464). So the run publishes what it
+          # measured to the job summary instead, and says why. Always false on main.
+          git fetch origin main --quiet --depth=1
+          if ! git diff --quiet FETCH_HEAD HEAD -- .github/workflows/; then
+            {
+              echo "## Nightly measured, not opened as a pull request"
+              echo
+              echo "This ref changes \`.github/workflows/\`, and \`GITHUB_TOKEN\` cannot create a"
+              echo "branch carrying workflow files that differ from \`main\`'s. The pages are"
+              echo "below and in the \`nightly-pages\` artifact; decision 0067 has why."
+              # shellcheck disable=SC2086
+              for page in $pages; do
+                echo; echo "<details><summary>$page</summary>"; echo
+                cat "$page"
+                echo; echo "</details>"
+              done
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice::Workflow files differ from main; published to the job summary instead of a pull request."
+            exit 0
           fi
           # Staged first: docs/guides/branch/ is untracked on a branch's first-ever
           # nightly, and a plain `git diff` says nothing about an untracked file --
@@ -355,8 +376,7 @@ jobs:
           # the run list like a failed benchmark, which is what #464 asks to end.
           if ! git push --force-with-lease origin "$branch"; then
             echo "::error::Could not push $branch. The measurements succeeded; only the" \
-                 "publish failed. If git refused a workflow file, this job has lost its" \
-                 "workflows: write permission -- see #464."
+                 "publish failed -- read this as a push problem, not a benchmark one (#464)."
             exit 1
           fi
           gh pr create --head "$branch" --base "$TARGET_REF" \
