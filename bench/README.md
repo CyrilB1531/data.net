@@ -1409,6 +1409,7 @@ Incumbents are referenced by `bench/` and by nothing under `src/`, pinned exactl
 | `LevenshteinIncumbentBenchmarks` | `Levenshtein.Distance` | Fastenshtein 1.0.12, Quickenshtein 1.5.1, F23.StringSimilarity 7.0.1 |
 | `FuzzIncumbentBenchmarks` | `Fuzz.*` | Raffinert.FuzzySharp 6.0.0 |
 | `TokenizerIncumbentBenchmarks` | `WordPieceTokenizer`, `SentencePieceTokenizer` | Microsoft.ML.Tokenizers 2.0.0 |
+| `MetricsIncumbentBenchmarks` | `Lodestar.Metrics` | ML.NET 5.0.0 binary evaluator |
 
 **The values agree before the clocks run.** A speed table over two functions that return different
 answers means nothing. Checked over `kitten`/`sitting`, `flaw`/`lawn`, the sentence pair the fuzzy
@@ -1419,7 +1420,7 @@ the corpus: identical ids, both models, once `Microsoft.ML.Tokenizers` is told n
 beginning-of-sentence piece — which is the sort of thing an unchecked table would have silently
 measured. Section 14's rule, applied here as a precondition rather than a footnote.
 
-Three shapes, for three reasons:
+Four shapes, for four reasons:
 
 - **Levenshtein** takes `Length` at 8, 64 and 512, because the bit-parallel path is what the long
   row is for and a single length would hide it. `Levenshtein.Distance`'s default overload is the
@@ -1433,6 +1434,47 @@ Three shapes, for three reasons:
   documents of `bench/corpus/vocabs/documents.json` per operation, so the number is encoding cost
   rather than model loading — both tokenizers are built once in `[GlobalSetup]`, as
   `BpeBenchmarks` does.
+- **The metrics** take the *request* as a parameter, because that is where the two libraries
+  differ: `Bundle` asks both sides for the six numbers ML.NET's binary evaluator returns, and
+  `AccuracyAlone` asks for one. ML.NET runs the same `EvaluateNonCalibrated` call in both rows,
+  deliberately — it has no call that returns one metric, so accuracy alone costs a caller the
+  bundle. That is the measurement, not an unfair setup.
+
+### `Score` is a margin, not a probability — and an unchecked harness measures nothing
+
+The metrics pair agrees exactly once its harness is right: identical accuracy, identical confusion
+matrix, AUC within 5e-9 (ML.NET takes the score as a `float`). Getting there took a correction
+worth recording, because nothing about it fails loudly.
+
+ML.NET's binary evaluator thresholds the **`Score` column at zero** and ignores `PredictedLabel`.
+Fed probabilities in `[0, 1]` — the obvious thing to put in a column named `Score` — it classifies
+every row positive:
+
+```text
+PREDICTED || positive | negative | Recall
+ positive ||   10,007 |        0 | 1.0000
+ negative ||    9,993 |        0 | 0.0000
+```
+
+Accuracy 0.5003 against our 0.7496, and a benchmark comparing a real classifier to a degenerate one
+would have run happily. AUC agreed throughout, being rank-based, so the one metric a careless check
+looks at was the one that could not catch it. Passing the margin (`score - 0.5`) makes both sides
+agree to the digit.
+
+Same shape as the beginning-of-sentence piece in the tokenizer pair: a convention on one side only,
+silent, and fatal to the comparison.
+
+### Coverage is the other half of the metrics answer
+
+Issue #438 expects this package to win on coverage rather than speed, and says the table should state
+which of the two it measures. Counted by reflection over both assemblies rather than asserted:
+
+| | types | metric entry points |
+| --- | ---: | ---: |
+| `Lodestar.Metrics` | 54 static metric classes | 81 distinct public method names |
+| ML.NET | 6 result types (`BinaryClassificationMetrics`, `CalibratedBinaryClassificationMetrics`, `MulticlassClassificationMetrics`, `RegressionMetrics`, `ClusteringMetrics`, `RankingMetrics`) | 28 distinct properties |
+
+The `AccuracyAlone` row is that difference made measurable rather than argued.
 
 **Where the numbers may be published.** Not from a container. Section 10's rule holds here with no
 exception — [ADR 0051](../docs/decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md)
@@ -1441,4 +1483,5 @@ withdrew a 1.61× taken on a shared container, and section 14 records the contai
 works, and nothing else. `docs/guides/performance.md` takes them from a named machine; the nightly
 publishes their ratios to `docs/guides/nightly_run.md` on its own, since all three classes are in
 `bench-map.json` and are selected by any change under `src/Lodestar.Fuzzy/`,
-`src/Lodestar.Text/Distances/` or `src/Lodestar.Embeddings/Tokenization/`.
+`src/Lodestar.Text/Distances/`, `src/Lodestar.Embeddings/Tokenization/` or
+`src/Lodestar.Metrics/`.
