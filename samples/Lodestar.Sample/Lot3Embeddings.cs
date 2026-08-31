@@ -191,7 +191,8 @@ internal static class Lot3Embeddings
         // record: these are the flags that decide whether two files tokenize alike.
         Console.WriteLine($"  BPE model flags  : {bpeModel.Vocab.Count} entries, "
             + $"{bpeModel.AddedTokens.Count} added, prefix space={bpeModel.AddPrefixSpace}, "
-            + $"ignore merges={bpeModel.IgnoreMerges}, fuse unk={bpeModel.FuseUnk}");
+            + $"ignore merges={bpeModel.IgnoreMerges}, fuse unk={bpeModel.FuseUnk}, "
+            + $"byte fallback={bpeModel.ByteFallback}");
         Console.WriteLine($"  BPE model markers: end-of-word='{bpeModel.EndOfWordSuffix ?? "(none)"}', "
             + $"unknown='{bpeModel.UnkToken ?? "(none)"}'");
         Console.WriteLine($"  BPE token_to_id  : 'token'={(bpe.TryGetId("token", out int bpeId) ? bpeId : -1)}");

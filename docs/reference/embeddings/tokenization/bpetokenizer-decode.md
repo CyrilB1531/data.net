@@ -39,21 +39,32 @@ string text = tokenizer.Decode(encoded.Ids);  // => token
 
 **Exceptions** — `ArgumentOutOfRangeException` when an id falls outside the vocabulary.
 Decoding cannot silently skip one, since the caller would get back a shorter text than it
-asked for with nothing said about it. Nothing else on this path throws: a byte sequence
-that is not well-formed UTF-8 becomes U+FFFD, which is what
-[decision 0023](../../../decisions/0023-byte-level-decode-substitutes.md) settled.
+asked for with nothing said about it. Nothing else on this path throws: a byte sequence that is
+not well-formed UTF-8 becomes U+FFFD rather than an exception, under whichever rule the file's own
+shape calls for. On the byte-level path it is one U+FFFD per maximal invalid subpart, which is what
+[decision 0023](../../../decisions/0023-byte-level-decode-substitutes.md) settled. On a
+`byte_fallback` file's run of byte pieces it is one U+FFFD **per byte of the run** — HuggingFace's
+own `ByteFallback` rule, measured and reproduced by
+[decision 0063](../../../decisions/0063-byte-fallback-requires-the-whole-alphabet-and-its-decoder-is-read-strictly-too.md).
 
 **Remarks** — byte-level BPE round-trips **exactly**, and that is the property that makes decoding
 worth having: the vocabulary covers all 256 byte values through printable stand-ins, so emoji,
 mixed scripts and even malformed UTF-8 come back as they went in.
 
-**The SentencePiece-BPE lineage is the one exception.** Where the model declares the whitespace
+**The SentencePiece-BPE lineage is the one qualified case, and only for a file declaring neither a
+`decoder` this package undoes nor `byte_fallback`.** Where the model declares the whitespace
 escape — a `Metaspace` pre-tokenizer or a `Prepend` + `Replace` normalizer, which
 [`TokenizerJsonLoader.LoadBpe`](../persistence/tokenizerjsonloader-loadbpe.md) reads — that escape
-is an encode-side transform in this package, and a `Metaspace` `decoder` block is accepted without
-being applied. So the text comes back with its replacement symbols in place of the spaces, and
-`Decode(Encode(x))` is not `x`. [Decision 0062](../../../decisions/0062-the-two-metaspace-spellings-part-on-the-prepend-twice.md)
-records it; undoing the escape belongs with the lot that reproduces the rest of that decoder.
+is an encode-side transform in this package, and for such a file a `Metaspace` `decoder` block is
+accepted without being applied. So the text comes back with its replacement symbols in place of
+the spaces, and `Decode(Encode(x))` is not `x`.
+[Decision 0062](../../../decisions/0062-the-two-metaspace-spellings-part-on-the-prepend-twice.md)
+records it. **For a file declaring `byte_fallback`, the chain is reproduced instead**: a bare
+`ByteFallback` decoder undoes the byte pieces alone, and Llama-2's own `Sequence` of `[Replace,
+ByteFallback, Fuse, Strip]` undoes the byte pieces and the whitespace escape together, so
+`Decode(Encode(x))` is `x` again for such a file.
+[Decision 0063](../../../decisions/0063-byte-fallback-requires-the-whole-alphabet-and-its-decoder-is-read-strictly-too.md)
+has the measurements.
 
 `skipSpecialTokens` is what you want when showing a generated sequence to a person, and not what
 you want when comparing against a reference that includes them.

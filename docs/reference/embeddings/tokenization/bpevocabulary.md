@@ -11,7 +11,9 @@ public sealed record BpeVocabulary
 **Properties** — `Vocab` maps token to id and `Merges` is the **ranked** [`MergePair`](mergepair.md)
 list. `ByteLevel` selects byte-level spelling. `AddPrefixSpace` prepends a space to every text.
 `IgnoreMerges` short-circuits to a whole-piece vocabulary lookup. `FuseUnk` collapses adjacent
-unknown tokens into one. `EndOfWordSuffix` and `ContinuingSubwordPrefix` are the classic-BPE
+unknown tokens into one. `ByteFallback` resolves an uncovered symbol into `<0xXX>` byte pieces
+instead, and `LoadBpe` requires the vocabulary to carry all 256 of them when it is set.
+`EndOfWordSuffix` and `ContinuingSubwordPrefix` are the classic-BPE
 markers. `UnkToken` is the fallback. `PreTokenizerPattern`, `NoPreTokenizer` and `PreSplit`
 decide what the merge loop sees. `NormalizationForms` are applied first. `Count` is the
 vocabulary size.
@@ -38,7 +40,7 @@ int size = model.Count;  // => 11
 int rules = model.Merges.Count;  // => 3
 ```
 
-**Remarks** — fifteen properties because a `tokenizer.json` has that many knobs and getting any of
+**Remarks** — sixteen properties because a `tokenizer.json` has that many knobs and getting any of
 them wrong changes the ids. The ones that surprise:
 
 - **`PreSplit = null` is not the same as `NoPreTokenizer = true`.** The first says "no Split step
@@ -48,6 +50,8 @@ them wrong changes the ids. The ones that surprise:
   sets it, and without it the same file tokenizes differently.
 - **`AddPrefixSpace`** changes every first token of every text. It is a property of the model,
   not a preference.
+- **`ByteFallback`** needs the vocabulary to already carry all 256 `<0xXX>` pieces; `LoadBpe`
+  refuses a file that sets the flag without them rather than let it degrade silently.
 
 **Applies to** — net10.0, netstandard2.0.
 

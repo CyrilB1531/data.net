@@ -60,6 +60,18 @@ public sealed record BpeVocabulary(
     /// </remarks>
     public bool FuseUnk { get; init; }
 
+    /// <summary>
+    /// Whether an uncovered symbol resolves into <c>&lt;0xXX&gt;</c> byte pieces rather than into
+    /// the unknown token — HuggingFace's <c>byte_fallback</c>, which Llama-2 and Mistral v0.1
+    /// declare.
+    /// </summary>
+    /// <remarks>
+    /// The vocabulary has to carry all 256 pieces for this to be set; <c>LoadBpe</c> refuses a file
+    /// that declares the flag without them, because the reference degrades silently to the unknown
+    /// token there (decision 0063).
+    /// </remarks>
+    public bool ByteFallback { get; init; }
+
     private readonly string? _endOfWordSuffix;
 
     /// <summary>The marker closing a word, e.g. <c>&lt;/w&gt;</c>; <see langword="null"/> for byte-level models.</summary>
@@ -153,6 +165,9 @@ public sealed record BpeVocabulary(
     /// </remarks>
     internal MetaspaceEscape? Metaspace { get; init; }
 
+    /// <summary>What the file's <c>decoder</c> block asks <c>Decode</c> to undo, or <see langword="null"/> when none is declared.</summary>
+    internal BpeDecoderSteps? Decoder { get; init; }
+
     /// <summary>Number of entries in the vocabulary.</summary>
     public int Count => Vocab.Count;
 
@@ -176,6 +191,7 @@ public sealed record BpeVocabulary(
             || AddPrefixSpace != other.AddPrefixSpace
             || IgnoreMerges != other.IgnoreMerges
             || FuseUnk != other.FuseUnk
+            || ByteFallback != other.ByteFallback
             || NoPreTokenizer != other.NoPreTokenizer
             || !string.Equals(EndOfWordSuffix, other.EndOfWordSuffix, StringComparison.Ordinal)
             || !string.Equals(ContinuingSubwordPrefix, other.ContinuingSubwordPrefix, StringComparison.Ordinal)
@@ -183,6 +199,7 @@ public sealed record BpeVocabulary(
             || !string.Equals(PreTokenizerPattern, other.PreTokenizerPattern, StringComparison.Ordinal)
             || PreSplit != other.PreSplit
             || !SameMetaspace(Metaspace, other.Metaspace)
+            || !SameDecoder(Decoder, other.Decoder)
             || Vocab.Count != other.Vocab.Count
             || Merges.Count != other.Merges.Count
             || AddedTokens.Count != other.AddedTokens.Count
@@ -227,13 +244,15 @@ public sealed record BpeVocabulary(
             hash = (hash * 31) + (AddPrefixSpace ? 1 : 0);
             hash = (hash * 31) + (IgnoreMerges ? 1 : 0);
             hash = (hash * 31) + (FuseUnk ? 1 : 0);
+            hash = (hash * 31) + (ByteFallback ? 1 : 0);
             hash = (hash * 31) + (NoPreTokenizer ? 1 : 0);
             hash = (hash * 31) + (EndOfWordSuffix is null ? 0 : StringComparer.Ordinal.GetHashCode(EndOfWordSuffix));
             hash = (hash * 31) + (ContinuingSubwordPrefix is null ? 0 : StringComparer.Ordinal.GetHashCode(ContinuingSubwordPrefix));
             hash = (hash * 31) + (UnkToken is null ? 0 : StringComparer.Ordinal.GetHashCode(UnkToken));
             hash = (hash * 31) + (PreTokenizerPattern is null ? 0 : StringComparer.Ordinal.GetHashCode(PreTokenizerPattern));
             hash = (hash * 31) + (PreSplit is null ? 0 : PreSplit.GetHashCode());
-            return (hash * 31) + (Metaspace is null ? 0 : EscapeHash(Metaspace));
+            hash = (hash * 31) + (Metaspace is null ? 0 : EscapeHash(Metaspace));
+            return (hash * 31) + (Decoder is null ? 0 : DecoderHash(Decoder));
         }
     }
 
@@ -251,6 +270,20 @@ public sealed record BpeVocabulary(
                 && left.PrependScheme == right.PrependScheme
                 && left.RemoveExtraWhitespaces == right.RemoveExtraWhitespaces
                 && left.SkipPrependWhenAlreadyPrefixed == right.SkipPrependWhenAlreadyPrefixed;
+
+    /// <summary>Folds every field <see cref="SameDecoder"/> compares, so equal values hash equal and no two differ only invisibly.</summary>
+    private static int DecoderHash(BpeDecoderSteps decoder) =>
+        (((decoder.ByteFallback ? 1 : 0) * 31) + (decoder.MetaspaceReplacement ?? '\0')) * 31
+        + (decoder.StripLeadingSpace ? 1 : 0);
+
+    /// <summary>Compares two decoder step sets by value, which <see cref="BpeDecoderSteps"/> itself does not.</summary>
+    private static bool SameDecoder(BpeDecoderSteps? left, BpeDecoderSteps? right) =>
+        left is null
+            ? right is null
+            : right is not null
+                && left.ByteFallback == right.ByteFallback
+                && left.MetaspaceReplacement == right.MetaspaceReplacement
+                && left.StripLeadingSpace == right.StripLeadingSpace;
 
     private static bool SameEntries(IReadOnlyDictionary<string, int> left, IReadOnlyDictionary<string, int> right)
     {
