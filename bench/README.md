@@ -1520,3 +1520,23 @@ publishes their ratios to `docs/guides/nightly_run.md` on its own, since all fiv
 `bench-map.json` and are selected by any change under `src/Lodestar.Fuzzy/`,
 `src/Lodestar.Text/Distances/`, `src/Lodestar.Text/Vectorization/`,
 `src/Lodestar.Embeddings/Tokenization/` or `src/Lodestar.Metrics/`.
+
+### `Lodestar.Conformal` has no incumbent, and that is the measurement
+
+[#438](https://github.com/CyrilB1531/lodestar/issues/438) attaches "one benchmark against a named
+.NET incumbent" to the package rule, so a package with no benchmark owes an explanation rather than
+a blank row. `Lodestar.Conformal` has none because there is nothing to name: the survey behind
+[#441](https://github.com/CyrilB1531/lodestar/issues/441) found no C# implementation of conformal
+prediction at all — not an abandoned one, not a partial one. Against Python, MAPIE is the reference
+the oracle corpus already replays; a wall-clock row against it would price `numpy.sort` on a few
+dozen doubles.
+
+That is also what the work is. `SplitConformal.Quantile` sorts the calibration scores and indexes
+one of them; the calibration set is small by construction — a few dozen to a few thousand points,
+sorted once and reused for every prediction — so a benchmark here would report `Array.Sort` under a
+name suggesting it measured conformal prediction.
+
+Two things would change that and neither has happened: a second .NET implementation appearing, or a
+**normalised** conformity score landing here. The second is the one to watch — dividing each
+residual by a per-sample estimate of the local spread means a second model's inference inside the
+calibration loop, which is a cost that is not obvious by inspection and would earn its own class.

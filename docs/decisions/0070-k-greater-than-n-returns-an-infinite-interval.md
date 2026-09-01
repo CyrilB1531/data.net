@@ -18,7 +18,8 @@ the same 4000 — evaluating `(1 - alpha)(n + 1)/n` and multiplying by `n` again
 product across an integer that the ceiling form never leaves. MAPIE matches the ceiling
 form on every case measured, including `n = 19, alpha = 0.1`, where `(n + 1)(1 - alpha)`
 is exactly 18 and `higher` reads the 19th smallest score. So the ceiling form is what
-`SplitConformal.Quantile` computes, and the oracle corpus asserts MAPIE rather than numpy.
+[`SplitConformal.Quantile`](../reference/conformal/prediction/splitconformal-quantile.md)
+computes, and the oracle corpus asserts MAPIE rather than numpy.
 
 **The edge this record is about** is `alpha < 1 / (n + 1)`, where `k > n`: the level asks
 for a score the calibration set does not hold. Measured against MAPIE 1.5.0 with nine
@@ -32,7 +33,8 @@ calibration points at `alpha = 0.05`, where `k = ceil(10 * 0.95) = 10`:
 
 ## Decision
 
-`SplitConformal.Quantile` returns `double.PositiveInfinity`. `Interval` carries it to
+[`SplitConformal.Quantile`](../reference/conformal/prediction/splitconformal-quantile.md)
+returns `double.PositiveInfinity`. `Interval` carries it to
 `(-inf, +inf)` and `PredictionSet` to the full label set. Neither throws.
 
 ## Options refused
