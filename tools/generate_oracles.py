@@ -58,6 +58,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer as SkTfidfVectorizer
 SEED = 20260801
 ORACLE_DIR = Path(__file__).resolve().parent.parent / "tests" / "oracles"
 
+# The metadata key every numeric corpus carries, named once because S1192 counts a
+# JSON key like any other literal and the decomposition corpora made it a fourth.
+TOLERANCE_KEY = "tolerance"
+
 # Fixture strings reused across several corpora.
 QUICK_FOX = "the quick brown fox"
 METS = "new york mets"
@@ -152,6 +156,17 @@ def stable(value) -> float:
     the knn one.
     """
     return float(f"{float(value):.{STABLE_DIGITS}g}")
+
+
+# Below this a value is cancellation residue rather than a quantity: three orders under
+# the 1e-9 the suites compare at, its last bits set by the host's reduction order (see stable).
+NEGLIGIBLE = 1e-12
+
+
+def settled(value) -> float:
+    """stable(), with anything the comparison cannot distinguish from zero flushed to it."""
+    number = float(value)
+    return 0.0 if abs(number) < NEGLIGIBLE else stable(number)
 
 
 def rand_string(rng: SeededRandom, length: int, ranges) -> str:
@@ -2859,6 +2874,512 @@ def generate_sparse_matmul() -> dict:
     return {"metadata": {"library": "scipy", "version": version("scipy"),
                          "count": len(cases)},
             "cases": cases}
+
+
+# --- Dense kernels for Lodestar.Decomposition (#440) -----------------------
+
+# Reused by three corpora below. S1192 counts a repeated JSON key like any other
+# literal, and these are written once for that reason as much as for clarity.
+MATRIX_KEY = "matrix"
+ROWS_KEY = "rows"
+COLUMNS_KEY = "columns"
+FULL_RANK_KEY = "full_rank"
+
+
+def _dense_fixtures() -> list[dict]:
+    """Tall-and-skinny blocks, the shape a range finder actually produces."""
+    rng = SeededRandom(SEED + 44300)
+    shapes = [(6, 3), (12, 4), (25, 10), (40, 10), (9, 9), (5, 1)]
+    fixtures = []
+    for rows, columns in shapes:
+        values = [rng.gauss(0.0, 1.0) for _ in range(rows * columns)]
+        fixtures.append(
+            {ROWS_KEY: rows, COLUMNS_KEY: columns, MATRIX_KEY: values, FULL_RANK_KEY: True})
+    # Column 1 repeats column 0: past the vanished pivot the factors stop being
+    # basis-independent, so full_rank is False and the factor comparisons skip it.
+    rows, columns = 8, 3
+    base = [rng.gauss(0.0, 1.0) for _ in range(rows)]
+    tail = [rng.gauss(0.0, 1.0) for _ in range(rows)]
+    deficient = []
+    for i in range(rows):
+        deficient.extend([base[i], base[i], tail[i]])
+    fixtures.append(
+        {ROWS_KEY: rows, COLUMNS_KEY: columns, MATRIX_KEY: deficient, FULL_RANK_KEY: False})
+    return fixtures
+
+
+def generate_decomposition_qr() -> dict:
+    """Economic QR, against scipy (#440).
+
+    The factors are unique only up to a per-column sign, so the corpus freezes what
+    is actually invariant: that Q has orthonormal columns, that R is upper
+    triangular, and that Q @ R reproduces the input. scipy's own factors ride along
+    so a divergence can be looked at, never asserted on.
+    """
+    from scipy import linalg
+
+    cases = []
+    for fixture in _dense_fixtures():
+        rows, columns = fixture[ROWS_KEY], fixture[COLUMNS_KEY]
+        a = np.array(fixture[MATRIX_KEY]).reshape(rows, columns)
+        q, r = linalg.qr(a, mode="economic")
+        cases.append({
+            **fixture,
+            "scipy_q": [settled(v) for v in q.ravel()],
+            "scipy_r": [settled(v) for v in r.ravel()],
+        })
+    return {"metadata": {"library": "scipy", "version": version("scipy"),
+                         "reference_calls": ["scipy.linalg.qr"],
+                         "seed": SEED, "count": len(cases), TOLERANCE_KEY: 1e-9},
+            "cases": cases}
+
+
+def generate_decomposition_lu() -> dict:
+    """LU with partial pivoting, against scipy (#440).
+
+    ``permute_l=True`` is the form scikit-learn's power iteration uses: it asks for
+    ``P @ L`` and throws ``U`` away. That product is unique for a full-rank block,
+    so unlike the QR corpus this one asserts the factor itself as well as the
+    reconstruction.
+    """
+    from scipy import linalg
+
+    cases = []
+    for fixture in _dense_fixtures():
+        rows, columns = fixture[ROWS_KEY], fixture[COLUMNS_KEY]
+        a = np.array(fixture[MATRIX_KEY]).reshape(rows, columns)
+        pl, u = linalg.lu(a, permute_l=True)
+        cases.append({
+            **fixture,
+            "permuted_lower": [settled(v) for v in pl.ravel()],
+            "upper": [settled(v) for v in u.ravel()],
+        })
+    return {"metadata": {"library": "scipy", "version": version("scipy"),
+                         "reference_calls": ["scipy.linalg.lu"],
+                         "seed": SEED, "count": len(cases), TOLERANCE_KEY: 1e-9},
+            "cases": cases}
+
+
+def _dense_svd_fixtures() -> list[dict]:
+    """Both orientations, plus the wide-and-short shape B actually has."""
+    rng = SeededRandom(SEED + 44400)
+    shapes = [(6, 3), (3, 6), (10, 10), (14, 4), (4, 14), (1, 5), (5, 1)]
+    fixtures = []
+    for rows, columns in shapes:
+        values = [rng.gauss(0.0, 1.0) for _ in range(rows * columns)]
+        fixtures.append({ROWS_KEY: rows, COLUMNS_KEY: columns, MATRIX_KEY: values})
+    return fixtures
+
+
+def _dense_svd_cases() -> list[dict]:
+    """The dense factorization on its own, so a failure in the composed algorithm
+    has somewhere smaller to land."""
+    from scipy import linalg
+
+    cases = []
+    for fixture in _dense_svd_fixtures():
+        rows, columns = fixture[ROWS_KEY], fixture[COLUMNS_KEY]
+        a = np.array(fixture[MATRIX_KEY]).reshape(rows, columns)
+        u, s, vt = linalg.svd(a, full_matrices=False)
+        cases.append({
+            **fixture,
+            "singular_values": [settled(v) for v in s],
+            "scipy_u": [settled(v) for v in u.ravel()],
+            "scipy_vt": [settled(v) for v in vt.ravel()],
+        })
+    return cases
+
+
+# The randomized corpus's own keys, written once for S1192 and for the two
+# readers who have to agree on them -- this generator and the C# theory.
+OMEGA_KEY = "omega"
+COMPONENT_COUNT_KEY = "component_count"
+# Every assertion below opens with it, and S1192 counts an f-string's literal head
+# like any other -- six occurrences across these generators, so it gets a name.
+CASE = "case "
+
+
+def _sparse_fixture(rng: SeededRandom, rows: int, columns: int, density: float) -> dict:
+    """A CSR fixture, in the field names the C# side already reads elsewhere."""
+    values, column_indices, row_pointers = [], [], [0]
+    for _ in range(rows):
+        for column in range(columns):
+            if rng.random() < density:
+                values.append(rng.uniform(0.1, 4.0))
+                column_indices.append(column)
+        row_pointers.append(len(values))
+    return {
+        ROWS_KEY: rows,
+        COLUMNS_KEY: columns,
+        "values": values,
+        "column_indices": column_indices,
+        "row_pointers": row_pointers,
+    }
+
+
+def _randomized_settings() -> list[tuple[int, int, float, int, int, int, str]]:
+    """rows, columns, density, k, oversampling, power iterations, normalizer.
+
+    Every matrix is at least as tall as it is wide, because TruncatedSVD's own
+    ``transpose="auto"`` resolves to False exactly there -- and transpose is the one
+    knob this package does not offer, so a wide fixture would compare two different
+    factorizations. One case per normalizer, and two where k + p reaches the rank, so
+    the normalizer's own factorization narrows the block the way scipy's does.
+    """
+    return [
+        (40, 25, 0.30, 4, 6, 3, "QR"),
+        (40, 25, 0.30, 4, 6, 1, "none"),
+        (40, 25, 0.30, 4, 6, 5, "LU"),
+        (60, 30, 0.20, 8, 10, 5, "auto"),
+        (30, 12, 0.50, 3, 10, 4, "auto"),
+        (25, 8, 0.60, 2, 10, 7, "QR"),
+    ]
+
+
+def _randomized_cases() -> list[dict]:
+    """randomized_svd and TruncatedSVD over a frozen Omega.
+
+    Omega is drawn from ``np.random.RandomState(seed)`` and the *same* seed is handed
+    to scikit-learn, so the matrix stored here is bit-for-bit the one it draws first:
+    ``_randomized_range_finder``'s opening call is
+    ``random_state.normal(size=(n_features, k + p))``. Nothing is monkey-patched, and
+    the C# side starts from the same Omega instead of reproducing MT19937.
+
+    The signs are TruncatedSVD's, not ``randomized_svd``'s. Since 1.6 the estimator
+    asks for ``flip_sign=False`` and then flips on the *right* vectors
+    (``svd_flip(..., u_based_decision=False)``), while the bare function still flips on
+    the left ones -- so the two disagree by a sign on four of these six fixtures.
+    Re-flipping the bare function's pair on the right reproduces
+    ``components_`` and ``U`` exactly, which is what is asserted below and stored here.
+    """
+    from scipy.sparse import csr_matrix
+    from sklearn.decomposition import TruncatedSVD
+    from sklearn.utils.extmath import randomized_svd, svd_flip
+
+    rng = SeededRandom(SEED + 44500)
+    cases = []
+    for index, (rows, columns, density, k, p, iterations, normalizer) in enumerate(
+            _randomized_settings()):
+        fixture = _sparse_fixture(rng, rows, columns, density)
+        a = csr_matrix(
+            (fixture["values"], fixture["column_indices"], fixture["row_pointers"]),
+            shape=(rows, columns))
+
+        seed = SEED + 44600 + index
+        # check_random_state takes None, an int or a RandomState and rejects a Generator,
+        # and the first draw off this one has to be the Omega scikit-learn itself draws.
+        omega = np.random.RandomState(seed).normal(size=(columns, k + p))  # NOSONAR S6711
+
+        u, s, vt = randomized_svd(
+            a, n_components=k, n_oversamples=p, n_iter=iterations,
+            power_iteration_normalizer=normalizer, transpose=False, random_state=seed)
+        u, vt = svd_flip(u, vt, u_based_decision=False)
+
+        svd = TruncatedSVD(
+            n_components=k, algorithm="randomized", n_oversamples=p, n_iter=iterations,
+            power_iteration_normalizer=normalizer, random_state=seed)
+        svd.fit(a)
+        assert np.array_equal(vt, svd.components_), f"{CASE}{index}: components diverged"
+        assert np.array_equal(s, svd.singular_values_), f"{CASE}{index}: sigma diverged"
+
+        cases.append({
+            **fixture,
+            COMPONENT_COUNT_KEY: k,
+            "oversampling": p,
+            "power_iterations": iterations,
+            "normalizer": normalizer,
+            OMEGA_KEY: omega.ravel().tolist(),
+            # Rides along for diagnosis the way the dense half's scipy factors do:
+            # nothing in the C# suite asserts on it, because U is not reported.
+            "left_singular_vectors": [settled(v) for v in u.ravel()],
+            "singular_values": [settled(v) for v in s],
+            "components": [settled(v) for v in vt.ravel()],
+            "explained_variance": [settled(v) for v in svd.explained_variance_],
+            "explained_variance_ratio": [settled(v) for v in svd.explained_variance_ratio_],
+            "transform": [settled(v) for v in svd.transform(a).ravel()],
+        })
+    return cases
+
+
+def _randomized_wide_settings() -> list[tuple[int, int, float, int, int, int, str]]:
+    """rows, columns, density, k, oversampling, power iterations, normalizer.
+
+    The mirror of _randomized_settings: every matrix here has fewer rows than columns,
+    which is the shape a term-document matrix actually has and the one the corpus above
+    cannot carry. The last case draws k + p past the row count, so the range finder has
+    to narrow the block on the short side.
+    """
+    return [
+        (12, 40, 0.30, 3, 6, 2, "auto"),
+        (20, 50, 0.20, 5, 10, 4, "LU"),
+        (8, 30, 0.40, 2, 10, 1, "QR"),
+    ]
+
+
+def _randomized_wide_cases() -> list[dict]:
+    """randomized_svd on a wide matrix, without the estimator.
+
+    TruncatedSVD is deliberately not called: its ``transpose="auto"`` resolves to True
+    exactly here, so it would factorize the transpose and the comparison would be against
+    a different factorization rather than against this package. ``randomized_svd`` with
+    ``transpose=False`` is what Lodestar computes, and the right-based ``svd_flip`` the
+    estimator applies is reapplied here so the signs are the ones a caller sees.
+
+    Only the singular values and the components are frozen. The estimator's own outputs --
+    explained variance, the projection -- have no reference to compare against once the
+    estimator is out of the loop, and U is not reported by the C# side either.
+    """
+    from scipy.sparse import csr_matrix
+    from sklearn.utils.extmath import randomized_svd, svd_flip
+
+    rng = SeededRandom(SEED + 44700)
+    cases = []
+    for index, (rows, columns, density, k, p, iterations, normalizer) in enumerate(
+            _randomized_wide_settings()):
+        fixture = _sparse_fixture(rng, rows, columns, density)
+        assert rows < columns, f"{CASE}{index}: the wide corpus needs rows < columns"
+        a = csr_matrix(
+            (fixture["values"], fixture["column_indices"], fixture["row_pointers"]),
+            shape=(rows, columns))
+
+        seed = SEED + 44800 + index
+        omega = np.random.RandomState(seed).normal(size=(columns, k + p))  # NOSONAR S6711
+
+        u, s, vt = randomized_svd(
+            a, n_components=k, n_oversamples=p, n_iter=iterations,
+            power_iteration_normalizer=normalizer, transpose=False, random_state=seed)
+        _, vt = svd_flip(u, vt, u_based_decision=False)
+
+        cases.append({
+            **fixture,
+            COMPONENT_COUNT_KEY: k,
+            "oversampling": p,
+            "power_iterations": iterations,
+            "normalizer": normalizer,
+            OMEGA_KEY: omega.ravel().tolist(),
+            "singular_values": [settled(v) for v in s],
+            "components": [settled(v) for v in vt.ravel()],
+        })
+    return cases
+
+
+def generate_decomposition_svd() -> dict:
+    """The dense SVD, randomized_svd composed on top of it, and the wide shape
+    TruncatedSVD's transpose="auto" puts out of the estimator's reach (#440)."""
+    dense, randomized = _dense_svd_cases(), _randomized_cases()
+    wide = _randomized_wide_cases()
+    return {"metadata": {"library": "scipy and scikit-learn",
+                         "version": version("scipy"),
+                         "sklearn_version": version("scikit-learn"),
+                         "reference_calls": ["scipy.linalg.svd",
+                                             "sklearn.utils.extmath.randomized_svd",
+                                             "sklearn.decomposition.TruncatedSVD"],
+                         "seed": SEED,
+                         "count": len(dense) + len(randomized) + len(wide),
+                         TOLERANCE_KEY: 1e-9},
+            "dense": dense,
+            "randomized": randomized,
+            "randomized_wide": wide}
+
+
+# --- NMF for Lodestar.Decomposition (#440) ---------------------------------
+
+INITIAL_W_KEY = "initial_w"
+INITIAL_H_KEY = "initial_h"
+# scikit-learn's own spelling of the sparse variant, named once because the settings
+# table reaches for it four times and S1192 counts those together.
+NNDSVD = "nndsvd"
+NNDSVDA = "nndsvda"
+# scikit-learn's own spelling of the two losses solver="mu" supports, named for the
+# same reason: the update settings reach for them five times between them.
+FROBENIUS = "frobenius"
+KULLBACK_LEIBLER = "kullback-leibler"
+
+
+def _nmf_settings() -> list[tuple[int, int, float, int, str]]:
+    """rows, columns, density, k, init. Tall again, for transpose='auto'.
+
+    The last row is the only one that resolves ``n_iter='auto'`` to seven rather than
+    four: 3 < 0.1 * min(60, 40). That is the ordinary shape of the data this package
+    targets -- a term-document matrix is far taller and wider than the rank asked of it
+    -- and the branch is unselectable from the public surface, so a caller who met a
+    wrong constant there would have no knob to work around it. Without this row the
+    corpus pins only the branch small fixtures happen to take.
+    """
+    return [
+        (30, 12, 0.45, 3, NNDSVD),
+        (30, 12, 0.45, 3, NNDSVDA),
+        (48, 20, 0.30, 5, NNDSVD),
+        (48, 20, 0.30, 5, NNDSVDA),
+        (16, 6, 0.70, 2, NNDSVD),
+        (60, 40, 0.20, 3, NNDSVD),
+    ]
+
+
+def _nmf_initialization_cases() -> list[dict]:
+    """_initialize_nmf over a frozen Omega.
+
+    It calls randomized_svd internally, so W0 and H0 depend on the seed -- measured,
+    seeds 7 and 99 give different matrices. Freezing Omega is what decouples the
+    initialisation from the update loop, and lets each fail on its own.
+
+    Its randomized_svd call takes its own defaults and not TruncatedSVD's: ten
+    oversamples, ``n_iter='auto'``, and ``flip_sign`` left at True -- so the
+    initialisation inherits the *left*-based ``svd_flip(U, Vt)`` while the estimator
+    opts out and flips on the right vectors. Both facts are asserted below rather than
+    asserted in prose: the leading triplet is rebuilt from a randomized_svd called with
+    the resolved iteration count and the default flip, put through the same eps snap and
+    nndsvda fill, and compared to what _initialize_nmf returned. Nothing is monkey-patched.
+    """
+    from scipy.sparse import csr_matrix
+    from sklearn.decomposition._nmf import _initialize_nmf
+    from sklearn.utils.extmath import randomized_svd
+
+    rng = SeededRandom(SEED + 44700)
+    cases = []
+    for index, (rows, columns, density, k, init) in enumerate(_nmf_settings()):
+        fixture = _sparse_fixture(rng, rows, columns, density)
+        a = csr_matrix(
+            (fixture["values"], fixture["column_indices"], fixture["row_pointers"]),
+            shape=(rows, columns))
+
+        seed = SEED + 44800 + index
+        # _initialize_nmf's own randomized_svd call takes n_oversamples=10 and
+        # n_iter='auto'; the first draw off this RandomState is the same Omega.
+        omega = np.random.RandomState(seed).normal(size=(columns, k + 10))  # NOSONAR S6711
+        w, h = _initialize_nmf(a, k, init=init, random_state=seed)
+
+        iterations = 7 if k < 0.1 * min(a.shape) else 4
+        u, s, vt = randomized_svd(
+            a, n_components=k, n_oversamples=10, n_iter=iterations,
+            power_iteration_normalizer="auto", transpose=False, random_state=seed)
+        for expected, rebuilt in ((w[:, 0], np.sqrt(s[0]) * np.abs(u[:, 0])),
+                                  (h[0, :], np.sqrt(s[0]) * np.abs(vt[0, :]))):
+            rebuilt[rebuilt < 1e-6] = 0
+            if init == NNDSVDA:
+                # rebuilt is an NNDSVD factor, non-negative, so <= 0 is the == 0 mask.
+                rebuilt[rebuilt <= 0] = a.mean()
+            assert np.array_equal(expected, rebuilt), f"{CASE}{index}: leading triplet diverged"
+
+        cases.append({
+            **fixture,
+            COMPONENT_COUNT_KEY: k,
+            "initialization": init,
+            OMEGA_KEY: omega.ravel().tolist(),
+            INITIAL_W_KEY: [settled(v) for v in w.ravel()],
+            INITIAL_H_KEY: [settled(v) for v in h.ravel()],
+        })
+    return cases
+
+
+def _nmf_update_settings() -> list[tuple[int, int, float, int, str, int, float, int]]:
+    """rows, columns, density, k, beta loss, max_iter, tol, column of W0 to zero (-1: none).
+
+    tol=0.0 disables the early stop, which makes the iteration count an input rather
+    than a result -- asserted below, NMF then reports n_iter_ = max_iter and returns the
+    identical W on two runs. One case keeps scikit-learn's default tol so the
+    stopping rule itself is compared, not just the arithmetic.
+
+    The last row zeroes a column of W0 under Kullback-Leibler, which is the one place
+    the two implementations are written differently: _multiplicative_update_h replaces a
+    zero column sum of W with 1.0 before dividing, while this package floors every zero
+    denominator to EPSILON. Both reach zero because the numerator is zero there too, and
+    that is an argument rather than a measurement -- so it is measured here. The path is
+    selectable from the public surface, since Fit(matrix, W0, H0) takes the W0 it is given.
+    """
+    return [
+        (30, 12, 0.45, 3, FROBENIUS, 60, 0.0, -1),
+        (30, 12, 0.45, 3, KULLBACK_LEIBLER, 60, 0.0, -1),
+        (48, 20, 0.30, 5, FROBENIUS, 40, 0.0, -1),
+        (48, 20, 0.30, 5, KULLBACK_LEIBLER, 40, 0.0, -1),
+        (16, 6, 0.70, 2, FROBENIUS, 200, 1e-4, -1),
+        (30, 12, 0.45, 3, KULLBACK_LEIBLER, 40, 0.0, 1),
+    ]
+
+
+def _nmf_update_cases() -> list[dict]:
+    """The multiplicative updates, from a frozen W0 and H0.
+
+    The initialisation is passed in as ``init="custom"`` so this half and the
+    initialisation half fail independently: a wrong W0 breaks one corpus, not both.
+
+    Two claims the C# side depends on are asserted rather than written down: with the
+    stop disabled the iteration count is the input and not a result, and the solve is
+    deterministic -- a second fit from the same W0 and H0 returns the identical W. The
+    reconstruction error is confronted with _beta_divergence over the reported
+    components_, which is the same number the C# suite compares. Where a column of W0 is
+    zeroed, that it survives every update as an exact zero is asserted too: that is what
+    makes the 1.0 / EPSILON difference in the H denominator unobservable.
+    """
+    from scipy.sparse import csr_matrix
+    from sklearn.decomposition import NMF
+    from sklearn.decomposition._nmf import _beta_divergence, _initialize_nmf
+
+    rng = SeededRandom(SEED + 44900)
+    cases = []
+    for index, (rows, columns, density, k, loss, iterations, tol, zeroed) in enumerate(
+            _nmf_update_settings()):
+        fixture = _sparse_fixture(rng, rows, columns, density)
+        a = csr_matrix(
+            (fixture["values"], fixture["column_indices"], fixture["row_pointers"]),
+            shape=(rows, columns))
+
+        seed = SEED + 45000 + index
+        w0, h0 = _initialize_nmf(a, k, init=NNDSVDA, random_state=seed)
+        # Rounded before the fit, not on the way out: W0 and H0 are the input both
+        # sides start from, so the estimator has to see what the corpus carries.
+        w0 = np.array([[settled(v) for v in row] for row in w0])
+        h0 = np.array([[settled(v) for v in row] for row in h0])
+        if zeroed >= 0:
+            w0[:, zeroed] = 0.0
+
+        model = NMF(n_components=k, init="custom", solver="mu", beta_loss=loss,
+                    tol=tol, max_iter=iterations, random_state=seed)
+        w = model.fit_transform(a, W=w0.copy(), H=h0.copy())
+
+        assert np.array_equal(
+            w, NMF(n_components=k, init="custom", solver="mu", beta_loss=loss, tol=tol,
+                   max_iter=iterations, random_state=seed).fit_transform(
+                       a, W=w0.copy(), H=h0.copy())), f"{CASE}{index}: two runs disagreed"
+        if tol <= 0.0:
+            assert model.n_iter_ == iterations, f"{CASE}{index}: n_iter_ is not max_iter"
+        # Two independently computed floats, so the claim is the corpus's own tolerance.
+        assert math.isclose(
+            model.reconstruction_err_,
+            _beta_divergence(a, w, model.components_, loss, square_root=True),
+            rel_tol=1e-12), \
+            f"{CASE}{index}: reconstruction_err_ is not the beta divergence"
+        if zeroed >= 0:
+            assert not w[:, zeroed].any(), f"{CASE}{index}: the zeroed column came back"
+            assert not model.components_[zeroed, :].any(), \
+                f"{CASE}{index}: the zeroed column's H row came back"
+
+        cases.append({
+            **fixture,
+            COMPONENT_COUNT_KEY: k,
+            "beta_loss": loss,
+            "max_iterations": iterations,
+            "tolerance": tol,
+            INITIAL_W_KEY: [settled(v) for v in w0.ravel()],
+            INITIAL_H_KEY: [settled(v) for v in h0.ravel()],
+            "weights": [settled(v) for v in w.ravel()],
+            "components": [settled(v) for v in model.components_.ravel()],
+            "iterations": int(model.n_iter_),
+            "reconstruction_error": settled(model.reconstruction_err_),
+        })
+    return cases
+
+
+def generate_decomposition_nmf() -> dict:
+    """NNDSVD, and the multiplicative updates on top of it (#440)."""
+    initialization, updates = _nmf_initialization_cases(), _nmf_update_cases()
+    return {"metadata": {"library": "scikit-learn", "version": version("scikit-learn"),
+                         "reference_calls": ["sklearn.decomposition._nmf._initialize_nmf",
+                                             "sklearn.decomposition.NMF"],
+                         "seed": SEED, "count": len(initialization) + len(updates),
+                         TOLERANCE_KEY: 1e-9},
+            "initialization": initialization,
+            "updates": updates}
 
 
 def _internal_validity_fixtures() -> list[dict]:
@@ -6716,6 +7237,10 @@ def main() -> None:
         "regression_deviance.json": generate_regression_deviance,
         "conformal.json": generate_conformal,
         "sparse_matmul.json": generate_sparse_matmul,
+        "decomposition_qr.json": generate_decomposition_qr,
+        "decomposition_lu.json": generate_decomposition_lu,
+        "decomposition_svd.json": generate_decomposition_svd,
+        "decomposition_nmf.json": generate_decomposition_nmf,
         "bpe.json": generate_bpe,
         "orphan_bpe.json": generate_orphan_bpe,
         "bytelevel_bpe.json": generate_bytelevel_bpe,

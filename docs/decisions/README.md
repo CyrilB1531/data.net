@@ -79,17 +79,16 @@ a later decision uses instead.
 | [`0067`](0067-workflows-is-not-a-permission-scope-so-the-nightly-stands-down-instead.md) | `workflows` is not a permission scope, so the nightly stands down instead | accepted | 2026-08-31 | Amends [`0066`](0066-the-nightlys-publish-holds-the-elevated-token-and-runs-no-branch-code.md): an unknown `permissions:` key is a parse error, so it disabled the whole workflow rather than one job. Refused a PAT again, refused deleting 0066, and refused skipping the measurement |
 | [`0068`](0068-the-tokenizer-gap-is-the-loader-not-the-encode-kernel.md) | The tokenizer gap is the loader, not the encode kernel | accepted | 2026-08-31 | Narrows `CLAUDE.md`'s "tokenizers" clause to what #438's measurement supports. Refused delegating to `Microsoft.ML.Tokenizers`, which cannot read a `tokenizer.json` at all; refused the middle option of parsing ourselves and constructing theirs, for now; refused treating the loader's value as an excuse for the encode path (#498) |
 | [`0069`](0069-the-package-layout-as-built-and-what-enforces-it.md) | The package layout as built, and what enforces it | accepted | 2026-09-01 | **Amended by [`0071`](0071-csrmatrix-moves-to-an-abstractions-package.md)**, which builds the `Lodestar.Abstractions` this recorded as decided against — it is the answer to the edge question this leaves open by name. Extends [`0012`](0012-per-package-versioning.md) and [`0016`](0016-metrics-package-placement.md) without amending either — it states the layout they produced and the criteria for a fifth package. Records `Lodestar.Abstractions` as decided against rather than pending, and leaves the Phase 2 edge question open by name |
-
 | [`0070`](0070-k-greater-than-n-returns-an-infinite-interval.md) | When the calibration set is too small for the level, the answer is infinite, not the widest score | accepted | 2026-09-01 | Records the two places `Lodestar.Conformal` leaves MAPIE 1.5.0: the `k > n` edge, and the numpy quantile spelling the spec had claimed was equivalent. Refused clamping to the largest score (MAPIE's own answer under `allow_infinite_bounds`, which under-covers), refused throwing, refused `NaN` |
-
 | [`0071`](0071-csrmatrix-moves-to-an-abstractions-package.md) | `CsrMatrix` moves to a `Lodestar.Abstractions` package | accepted | 2026-09-01 | Amends [`0069`](0069-the-package-layout-as-built-and-what-enforces-it.md): the question it left to "whoever opens the first of those lots" is answered the way it had decided against, because a consumer wanting a sparse matrix would otherwise carry the whole of `Lodestar.Text` and its `System.Text.Json`. Refused a type-forward keeping the old namespace, refused a namespace inside `Lodestar.Text`, refused making `CreateUnchecked` public |
+| [`0072`](0072-omega-is-an-input-not-a-seed.md) | Ω is an input, not a seed, and two options that need one are not offered | accepted | 2026-09-01 | Records the three places `Lodestar.Decomposition` leaves scikit-learn 1.9.0, all of them numpy's generator: Ω is a parameter rather than a seed, `transpose="auto"` is not offered, and `nndsvdar` is not shipped. Refused reproducing MT19937, which would make a seed portable and close all three — a hand-written Mersenne Twister fails as a wrong factorization rather than as a wrong random number. Refused `transpose="auto"` as a parity claim with two shapes, and refused shipping `nndsvdar` over noise no oracle can pin |
 
 ## What `accepted` means here
 
-All seventy-one carry `accepted`. None has been rejected or withdrawn — a status this table
+All seventy-two carry `accepted`. None has been rejected or withdrawn — a status this table
 would otherwise need a second word for. `0004` read a progress sentence
 (`single-word and blocked shipped`) where a status belongs; that sentence is now the opening line
-of its own `## Done` section, and its status reads `accepted` like the other seventy.
+of its own `## Done` section, and its status reads `accepted` like the other seventy-one.
 
 ## Relationships not stated on a `**Status:**` line
 

@@ -41,6 +41,9 @@
     "BucketRouteDiagnostics": [
       "src/Lodestar.Text/Distances/**"
     ],
+    "DecompositionBenchmarks": [
+      "src/Lodestar.Decomposition/**"
+    ],
     "FuzzBenchmarks": [
       "src/Lodestar.Fuzzy/**",
       "src/Lodestar.Text/Distances/**",

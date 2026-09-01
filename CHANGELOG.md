@@ -5,9 +5,10 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-The six packages (`Lodestar.Text`, `Lodestar.Embeddings`, `Lodestar.Fuzzy`,
+The seven packages (`Lodestar.Text`, `Lodestar.Embeddings`, `Lodestar.Fuzzy`,
 `Lodestar.Metrics` — published as `DataNet.*` up to 2026-08-15 — plus
-`Lodestar.Conformal` and `Lodestar.Abstractions`, both newer than that rename)
+`Lodestar.Conformal`, `Lodestar.Abstractions` and `Lodestar.Decomposition`, all
+newer than that rename)
 version and release **independently**, each from its own
 `src/<Package>/Version.props`, so entries are grouped per package. Releases up to
 and including `0.2.0` predate the split and covered all three at once — see
@@ -69,6 +70,14 @@ is one sentence, the issue and the commit; see
 #### Added
 
 - **Split conformal prediction, at MAPIE 1.5.0 parity.** `SplitConformal` turns a point prediction into an interval or a class into a prediction set, with a finite-sample coverage guarantee: `AbsoluteResiduals` and `LeastAmbiguousScores` score a calibration set, `Quantile` reduces the scores to the one number that carries the guarantee, and `Interval` and `PredictionSet` apply it. Static and dependency-free, the fifth package under [decision 0069](docs/decisions/0069-the-package-layout-as-built-and-what-enforces-it.md)'s first rule. The empty LAC prediction set is reproduced rather than repaired, and `k > n` returns an infinite interval instead of MAPIE's clamp to the widest score — [decision 0070](docs/decisions/0070-k-greater-than-n-returns-an-infinite-interval.md). The guarantee assumes exchangeability, which the guide leads with. ([#441](https://github.com/CyrilB1531/lodestar/issues/441))
+
+### Lodestar.Decomposition
+
+#### Added
+
+- **`TruncatedSvd` — `sklearn.decomposition.TruncatedSVD(algorithm="randomized")` at parity, over a `CsrMatrix` and without centring it.** Fit, transform, components, singular values, explained variance and its ratio; all three power-iteration normalizers, including `Auto`'s rule. Ω is an input rather than a seed, which is what makes a randomized algorithm an ordinary parity target — [decision 0072](docs/decisions/0072-omega-is-an-input-not-a-seed.md) has the measurement and what it refuses. ([#440](https://github.com/CyrilB1531/lodestar/issues/440))
+
+- **`Nmf` — `sklearn.decomposition.NMF(solver="mu")` at parity, on both β losses, from the NNDSVD family.** The dense kernels it needs — thin Householder QR, LU with partial pivoting, one-sided Jacobi SVD — are written here, so the package's only dependency is `Lodestar.Abstractions`. ([#440](https://github.com/CyrilB1531/lodestar/issues/440))
 
 ## Released — 2026-08-21
 

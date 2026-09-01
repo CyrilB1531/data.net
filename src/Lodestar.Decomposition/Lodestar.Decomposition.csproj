@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- This package's version, owned here rather than repository-wide. -->
+  <Import Project="Version.props" />
+
+  <PropertyGroup>
+    <Version>$(LodestarDecompositionVersion)</Version>
+    <TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks>
+    <RootNamespace>Lodestar.Decomposition</RootNamespace>
+
+    <PackageId>Lodestar.Decomposition</PackageId>
+    <Description>Truncated SVD and non-negative matrix factorization for .NET at scikit-learn parity, over a sparse matrix and without centring it: latent semantic analysis on a term-document matrix, with explained variance, and NMF for a parts-based decomposition. Randomized SVD with all three power-iteration normalizers; the dense kernels are written here, so the only dependency is Lodestar.Abstractions.</Description>
+    <PackageTags>svd;truncated-svd;lsa;nmf;decomposition;dimensionality-reduction;topic-model;sparse;lodestar</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Lodestar.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lodestar.Decomposition.Tests" />
+    <!-- Same suite, replayed against the netstandard2.0 build. -->
+    <InternalsVisibleTo Include="Lodestar.Decomposition.NetStandard.Tests" />
+  </ItemGroup>
+
+</Project>

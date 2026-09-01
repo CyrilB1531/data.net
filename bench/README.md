@@ -1540,3 +1540,42 @@ Two things would change that and neither has happened: a second .NET implementat
 **normalised** conformity score landing here. The second is the one to watch — dividing each
 residual by a per-sample estimate of the local spread means a second model's inference inside the
 calibration loop, which is a cost that is not obvious by inspection and would earn its own class.
+
+## 16. `Lodestar.Decomposition` against ML.NET's PCA (issue #438, #440)
+
+**Not a like-for-like comparison, and the numbers below (once there are numbers) must not be read
+as one.** ML.NET's `ProjectToPrincipalComponents` computes **centred** PCA at a **fixed rank of
+20**, over an `IDataView`. `TruncatedSvd` computes **uncentred** truncated SVD, at a rank the
+caller names, over a `CsrMatrix`; `Nmf` factors a **non-negative** basis neither of the other two
+produces. Three different decompositions cannot be checked for agreement, so what is checked
+instead is that each side reconstructs its own input to its own stated error — the shape #438's
+harness already uses for `FeaturizeText` (section 15), applied here across three algorithms
+instead of two.
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- --filter '*Decomposition*'
+```
+
+`DecompositionBenchmarks` builds one fixed corpus in `[GlobalSetup]` — a 2 000 × 500 sparse
+term-document matrix at 2% density, seeded so two runs measure the same matrix — plus the dense
+`float[][]` twin `ProjectToPrincipalComponents` needs, since it has no `CsrMatrix` overload. Three
+rows, all at rank 20:
+
+| class | method | what it fits |
+| --- | --- | --- |
+| `TruncatedSvd` | `TruncatedSvd_Rank20` | uncentred truncated SVD, over the sparse matrix |
+| `Nmf` | `Nmf_Rank20` | non-negative factorization, capped at 50 iterations |
+| ML.NET 5.0.0 | `MlNet_ProjectToPrincipalComponents_Rank20` | centred PCA, over the dense twin |
+
+Each `[Benchmark]` method calls its package's own `Fit` — the ML.NET pipeline is built and fit
+inside the measured region too, not in `[GlobalSetup]`, so all three rows answer the same
+question: the cost of fitting, not the cost of using an already-fitted model. For PCA that is
+where the work is regardless — `Fit` computes the components, and the `Transform` the row also
+runs is a cheap dense projection over an already-fitted model.
+
+**No numbers are published from a container.** Per
+[decision 0051](../docs/decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md), a
+run on a shared cloud container is not the machine `docs/guides/performance.md` reports — the same
+row there has read 3× slower on one. `docs/guides/performance.md` carries no row for this class
+yet. A row lands once the three numbers above are taken on a named machine, the way every other
+section's did.

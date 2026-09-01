@@ -25,8 +25,9 @@ nothing on ``net10.0`` (the dependency-free core) and only
 persisting a fitted model does not mean hand-rolling a JSON writer);
 ``Lodestar.Fuzzy`` depends on ``Lodestar.Text`` because ``Fuzz.Ratio`` is built
 on ``Indel``, and since 0.5.0 ``Lodestar.Text`` depends on
-``Lodestar.Abstractions`` because that is where ``CsrMatrix`` moved -- the two
-inter-package edges that exist. The ranges are
+``Lodestar.Abstractions`` because that is where ``CsrMatrix`` moved --
+``Lodestar.Decomposition`` depends on ``Lodestar.Abstractions`` the same way,
+for the same matrix -- the three inter-package edges that exist. The ranges are
 asserted too, not only the ids: a bare ``"0.2.0"`` is NuGet's shorthand for
 ``[0.2.0, )``, and an edge with the wrong floor is a different edge.
 """
@@ -47,6 +48,7 @@ EMBEDDINGS = "Lodestar.Embeddings"
 METRICS = "Lodestar.Metrics"
 ABSTRACTIONS = "Lodestar.Abstractions"
 CONFORMAL = "Lodestar.Conformal"
+DECOMPOSITION = "Lodestar.Decomposition"
 ONNX = "Microsoft.ML.OnnxRuntime"
 STJ = "System.Text.Json"
 
@@ -97,6 +99,12 @@ EXPECTED: dict[str, dict[str, dict[str, str]]] = {
         # arithmetic over spans, with no model and nothing to serialise.
         NET: {},
         NETSTANDARD: {**POLYFILLS},
+    },
+    DECOMPOSITION: {
+        # The one edge of this package, and the reason Lodestar.Abstractions exists:
+        # CsrMatrix and its two dense-block products, with no Lodestar.Text behind them.
+        NET: {ABSTRACTIONS: ABSTRACTIONS_FLOOR},
+        NETSTANDARD: {ABSTRACTIONS: ABSTRACTIONS_FLOOR, **POLYFILLS},
     },
 }
 
