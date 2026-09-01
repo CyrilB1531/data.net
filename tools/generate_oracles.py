@@ -3066,7 +3066,9 @@ def _randomized_cases() -> list[dict]:
             shape=(rows, columns))
 
         seed = SEED + 44600 + index
-        omega = np.random.RandomState(seed).normal(size=(columns, k + p))
+        # check_random_state takes None, an int or a RandomState and rejects a Generator,
+        # and the first draw off this one has to be the Omega scikit-learn itself draws.
+        omega = np.random.RandomState(seed).normal(size=(columns, k + p))  # NOSONAR S6711
 
         u, s, vt = randomized_svd(
             a, n_components=k, n_oversamples=p, n_iter=iterations,
@@ -3141,7 +3143,7 @@ def _randomized_wide_cases() -> list[dict]:
             shape=(rows, columns))
 
         seed = SEED + 44800 + index
-        omega = np.random.RandomState(seed).normal(size=(columns, k + p))
+        omega = np.random.RandomState(seed).normal(size=(columns, k + p))  # NOSONAR S6711
 
         u, s, vt = randomized_svd(
             a, n_components=k, n_oversamples=p, n_iter=iterations,
@@ -3244,7 +3246,7 @@ def _nmf_initialization_cases() -> list[dict]:
         seed = SEED + 44800 + index
         # _initialize_nmf's own randomized_svd call takes n_oversamples=10 and
         # n_iter='auto'; the first draw off this RandomState is the same Omega.
-        omega = np.random.RandomState(seed).normal(size=(columns, k + 10))
+        omega = np.random.RandomState(seed).normal(size=(columns, k + 10))  # NOSONAR S6711
         w, h = _initialize_nmf(a, k, init=init, random_state=seed)
 
         iterations = 7 if k < 0.1 * min(a.shape) else 4
@@ -3255,7 +3257,8 @@ def _nmf_initialization_cases() -> list[dict]:
                                   (h[0, :], np.sqrt(s[0]) * np.abs(vt[0, :]))):
             rebuilt[rebuilt < 1e-6] = 0
             if init == NNDSVDA:
-                rebuilt[rebuilt == 0] = a.mean()
+                # rebuilt is an NNDSVD factor, non-negative, so <= 0 is the == 0 mask.
+                rebuilt[rebuilt <= 0] = a.mean()
             assert np.array_equal(expected, rebuilt), f"{CASE}{index}: leading triplet diverged"
 
         cases.append({
@@ -3338,10 +3341,13 @@ def _nmf_update_cases() -> list[dict]:
             w, NMF(n_components=k, init="custom", solver="mu", beta_loss=loss, tol=tol,
                    max_iter=iterations, random_state=seed).fit_transform(
                        a, W=w0.copy(), H=h0.copy())), f"{CASE}{index}: two runs disagreed"
-        if tol == 0.0:
+        if tol <= 0.0:
             assert model.n_iter_ == iterations, f"{CASE}{index}: n_iter_ is not max_iter"
-        assert model.reconstruction_err_ == _beta_divergence(
-            a, w, model.components_, loss, square_root=True), \
+        # Two independently computed floats, so the claim is the corpus's own tolerance.
+        assert math.isclose(
+            model.reconstruction_err_,
+            _beta_divergence(a, w, model.components_, loss, square_root=True),
+            rel_tol=1e-12), \
             f"{CASE}{index}: reconstruction_err_ is not the beta divergence"
         if zeroed >= 0:
             assert not w[:, zeroed].any(), f"{CASE}{index}: the zeroed column came back"
