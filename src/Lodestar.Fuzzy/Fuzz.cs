@@ -156,19 +156,21 @@ public static class Fuzz
 
     private static double TokenSet(string a, string b, bool partial)
     {
-        var setA = new SortedSet<string>(Tokenize(a), StringComparer.Ordinal);
-        var setB = new SortedSet<string>(Tokenize(b), StringComparer.Ordinal);
-        if (setA.Count == 0 && setB.Count == 0)
+        // Sorted, deduplicated arrays rather than five SortedSet<string>: the sets hold a
+        // handful of tokens each, and a red-black node apiece was most of what #494 measured.
+        string[] setA = Tokenize(a);
+        string[] setB = Tokenize(b);
+        int countA = SortDistinct(setA);
+        int countB = SortDistinct(setB);
+        if (countA == 0 && countB == 0)
         {
             return 0.0; // rapidfuzz returns 0 for token-set with no tokens
         }
 
-        var intersection = new SortedSet<string>(setA, StringComparer.Ordinal);
-        intersection.IntersectWith(setB);
-        var diffA = new SortedSet<string>(setA, StringComparer.Ordinal);
-        diffA.ExceptWith(setB);
-        var diffB = new SortedSet<string>(setB, StringComparer.Ordinal);
-        diffB.ExceptWith(setA);
+        var intersection = new List<string>();
+        var diffA = new List<string>();
+        var diffB = new List<string>();
+        Partition(setA, countA, setB, countB, intersection, diffA, diffB);
 
         string sect = string.Join(" ", intersection);
         string combinedA = Join(intersection, diffA);
@@ -181,9 +183,82 @@ public static class Fuzz
         return Math.Max(r1, Math.Max(r2, r3));
     }
 
-    private static string Join(SortedSet<string> first, SortedSet<string> second)
+    /// <summary>
+    /// Sorts ordinally and moves the distinct tokens to the front, returning how many there
+    /// are — the order a <c>SortedSet</c> enumerated, without a second array to hold it.
+    /// </summary>
+    private static int SortDistinct(string[] tokens)
     {
-        var all = new List<string>(first);
+        if (tokens.Length <= 1)
+        {
+            return tokens.Length;
+        }
+
+        Array.Sort(tokens, StringComparer.Ordinal);
+        int kept = 1;
+        for (int i = 1; i < tokens.Length; i++)
+        {
+            if (!string.Equals(tokens[i], tokens[kept - 1], StringComparison.Ordinal))
+            {
+                tokens[kept++] = tokens[i];
+            }
+        }
+        return kept;
+    }
+
+    /// <summary>Splits two sorted, distinct token lists into shared and either-side-only.</summary>
+    /// <remarks>
+    /// One merge over both, where the set version walked each tree three times. Order is the
+    /// sorted one either way, which is what the joins below depend on.
+    /// </remarks>
+    private static void Partition(
+        string[] first,
+        int firstCount,
+        string[] second,
+        int secondCount,
+        List<string> shared,
+        List<string> onlyFirst,
+        List<string> onlySecond)
+    {
+        int i = 0;
+        int j = 0;
+        while (i < firstCount && j < secondCount)
+        {
+            int order = string.CompareOrdinal(first[i], second[j]);
+            if (order == 0)
+            {
+                shared.Add(first[i++]);
+                j++;
+            }
+            else if (order < 0)
+            {
+                onlyFirst.Add(first[i++]);
+            }
+            else
+            {
+                onlySecond.Add(second[j++]);
+            }
+        }
+
+        for (; i < firstCount; i++)
+        {
+            onlyFirst.Add(first[i]);
+        }
+        for (; j < secondCount; j++)
+        {
+            onlySecond.Add(second[j]);
+        }
+    }
+
+    private static string Join(List<string> first, List<string> second)
+    {
+        if (second.Count == 0)
+        {
+            return string.Join(" ", first);
+        }
+
+        var all = new List<string>(first.Count + second.Count);
+        all.AddRange(first);
         all.AddRange(second);
         return string.Join(" ", all).Trim();
     }
