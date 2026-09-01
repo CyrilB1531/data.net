@@ -82,13 +82,14 @@ a later decision uses instead.
 | [`0070`](0070-k-greater-than-n-returns-an-infinite-interval.md) | When the calibration set is too small for the level, the answer is infinite, not the widest score | accepted | 2026-09-01 | Records the two places `Lodestar.Conformal` leaves MAPIE 1.5.0: the `k > n` edge, and the numpy quantile spelling the spec had claimed was equivalent. Refused clamping to the largest score (MAPIE's own answer under `allow_infinite_bounds`, which under-covers), refused throwing, refused `NaN` |
 | [`0071`](0071-csrmatrix-moves-to-an-abstractions-package.md) | `CsrMatrix` moves to a `Lodestar.Abstractions` package | accepted | 2026-09-01 | Amends [`0069`](0069-the-package-layout-as-built-and-what-enforces-it.md): the question it left to "whoever opens the first of those lots" is answered the way it had decided against, because a consumer wanting a sparse matrix would otherwise carry the whole of `Lodestar.Text` and its `System.Text.Json`. Refused a type-forward keeping the old namespace, refused a namespace inside `Lodestar.Text`, refused making `CreateUnchecked` public |
 | [`0072`](0072-omega-is-an-input-not-a-seed.md) | Ω is an input, not a seed, and two options that need one are not offered | accepted | 2026-09-01 | Records the three places `Lodestar.Decomposition` leaves scikit-learn 1.9.0, all of them numpy's generator: Ω is a parameter rather than a seed, `transpose="auto"` is not offered, and `nndsvdar` is not shipped. Refused reproducing MT19937, which would make a seed portable and close all three — a hand-written Mersenne Twister fails as a wrong factorization rather than as a wrong random number. Refused `transpose="auto"` as a parity claim with two shapes, and refused shipping `nndsvdar` over noise no oracle can pin |
+| [`0073`](0073-the-oracle-gate-compares-numbers-not-bytes.md) | The oracle gate compares numbers at the suites' tolerance, not bytes | accepted | 2026-09-01 | Replaces the `Oracles are reproducible` job's `git diff --quiet` with `tools/compare_oracles.py`, which compares floats at the `1e-9` the suites replay the corpora at and everything else exactly. Refused rounding coarser in `stable()` (measured: 10 significant digits fails 13 tests, `1.13e-8` of error on a 22.606 singular value), and refused rescaling the decomposition fixtures to O(1), which works but protects only the corpora someone rescales. Leaves `stable()`, `settled()` and every corpus untouched |
 
 ## What `accepted` means here
 
-All seventy-two carry `accepted`. None has been rejected or withdrawn — a status this table
+All seventy-three carry `accepted`. None has been rejected or withdrawn — a status this table
 would otherwise need a second word for. `0004` read a progress sentence
 (`single-word and blocked shipped`) where a status belongs; that sentence is now the opening line
-of its own `## Done` section, and its status reads `accepted` like the other seventy-one.
+of its own `## Done` section, and its status reads `accepted` like the other seventy-two.
 
 ## Relationships not stated on a `**Status:**` line
 
