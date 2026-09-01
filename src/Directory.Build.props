@@ -18,8 +18,11 @@
     <PackageReference Include="SonarAnalyzer.CSharp" PrivateAssets="all" />
   </ItemGroup>
 
-  <!-- Shared internal helpers compiled into every library. -->
-  <ItemGroup>
+  <!-- Shared internal helpers, compiled into every library that asks for them.
+       Lodestar.Abstractions opts out: it grants InternalsVisibleTo to
+       Lodestar.Text, and one internal type compiled into both assemblies is
+       CS0436 at every call site on the consuming side (#440). -->
+  <ItemGroup Condition="'$(LodestarIncludesSharedHelpers)' != 'false'">
     <Compile Include="$(MSBuildThisFileDirectory)Shared/GlobalUsings.cs" Link="Internal/GlobalUsings.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared/Guard.cs" Link="Internal/Guard.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Shared/RegexDefaults.cs" Link="Internal/RegexDefaults.cs" />

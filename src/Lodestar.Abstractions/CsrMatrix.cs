@@ -1,3 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
+
 namespace Lodestar.Abstractions;
 
 /// <summary>The vector norm used when normalizing rows of a <see cref="CsrMatrix"/>.</summary>
@@ -38,11 +41,11 @@ public sealed class CsrMatrix
 
     private CsrMatrix(int rowCount, int columnCount, double[] values, int[] columnIndices, int[] rowPointers, bool validate)
     {
-        Guard.NotNull(values);
-        Guard.NotNull(columnIndices);
-        Guard.NotNull(rowPointers);
-        Guard.NotLessThan(rowCount, 0);
-        Guard.NotLessThan(columnCount, 0);
+        RequireNotNull(values);
+        RequireNotNull(columnIndices);
+        RequireNotNull(rowPointers);
+        RequireNotNegative(rowCount);
+        RequireNotNegative(columnCount);
         if (rowPointers.Length != rowCount + 1)
         {
             throw new ArgumentException("rowPointers length must be rowCount + 1.", nameof(rowPointers));
@@ -311,5 +314,40 @@ public sealed class CsrMatrix
                 nameof(columnCount), columnCount, "The product would not fit in a single array.");
         }
         return (int)length;
+    }
+
+    /// <summary>Refuses a null array, the way <c>src/Shared/Guard.cs</c> does elsewhere.</summary>
+    /// <remarks>
+    /// Local rather than shared: this package grants <c>InternalsVisibleTo</c> to
+    /// <c>Lodestar.Text</c>, which compiles that file too, and one internal type in
+    /// both assemblies is CS0436 at every call site on the consuming side.
+    /// </remarks>
+    private static void RequireNotNull(
+        [NotNull] object? value,
+        [CallerArgumentExpression(nameof(value))] string? paramName = null)
+    {
+#if NET5_0_OR_GREATER
+        ArgumentNullException.ThrowIfNull(value, paramName);
+#else
+        if (value is null)
+        {
+            throw new ArgumentNullException(paramName);
+        }
+#endif
+    }
+
+    /// <summary>Refuses a negative dimension; see <see cref="RequireNotNull"/> for why it is local.</summary>
+    private static void RequireNotNegative(
+        int value,
+        [CallerArgumentExpression(nameof(value))] string? paramName = null)
+    {
+#if NET8_0_OR_GREATER
+        ArgumentOutOfRangeException.ThrowIfNegative(value, paramName);
+#else
+        if (value < 0)
+        {
+            throw new ArgumentOutOfRangeException(paramName, value, "Must be at least 0.");
+        }
+#endif
     }
 }
