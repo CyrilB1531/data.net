@@ -158,6 +158,17 @@ def stable(value) -> float:
     return float(f"{float(value):.{STABLE_DIGITS}g}")
 
 
+# Below this a value is cancellation residue rather than a quantity: three orders under
+# the 1e-9 the suites compare at, its last bits set by the host's reduction order (see stable).
+NEGLIGIBLE = 1e-12
+
+
+def settled(value) -> float:
+    """stable(), with anything the comparison cannot distinguish from zero flushed to it."""
+    number = float(value)
+    return 0.0 if abs(number) < NEGLIGIBLE else stable(number)
+
+
 def rand_string(rng: SeededRandom, length: int, ranges) -> str:
     out = []
     for _ in range(length):
@@ -2914,8 +2925,8 @@ def generate_decomposition_qr() -> dict:
         q, r = linalg.qr(a, mode="economic")
         cases.append({
             **fixture,
-            "scipy_q": [stable(v) for v in q.ravel()],
-            "scipy_r": [stable(v) for v in r.ravel()],
+            "scipy_q": [settled(v) for v in q.ravel()],
+            "scipy_r": [settled(v) for v in r.ravel()],
         })
     return {"metadata": {"library": "scipy", "version": version("scipy"),
                          "reference_calls": ["scipy.linalg.qr"],
@@ -2940,8 +2951,8 @@ def generate_decomposition_lu() -> dict:
         pl, u = linalg.lu(a, permute_l=True)
         cases.append({
             **fixture,
-            "permuted_lower": [stable(v) for v in pl.ravel()],
-            "upper": [stable(v) for v in u.ravel()],
+            "permuted_lower": [settled(v) for v in pl.ravel()],
+            "upper": [settled(v) for v in u.ravel()],
         })
     return {"metadata": {"library": "scipy", "version": version("scipy"),
                          "reference_calls": ["scipy.linalg.lu"],
@@ -2972,9 +2983,9 @@ def _dense_svd_cases() -> list[dict]:
         u, s, vt = linalg.svd(a, full_matrices=False)
         cases.append({
             **fixture,
-            "singular_values": [stable(v) for v in s],
-            "scipy_u": [stable(v) for v in u.ravel()],
-            "scipy_vt": [stable(v) for v in vt.ravel()],
+            "singular_values": [settled(v) for v in s],
+            "scipy_u": [settled(v) for v in u.ravel()],
+            "scipy_vt": [settled(v) for v in vt.ravel()],
         })
     return cases
 
@@ -3078,12 +3089,12 @@ def _randomized_cases() -> list[dict]:
             OMEGA_KEY: omega.ravel().tolist(),
             # Rides along for diagnosis the way the dense half's scipy factors do:
             # nothing in the C# suite asserts on it, because U is not reported.
-            "left_singular_vectors": [stable(v) for v in u.ravel()],
-            "singular_values": [stable(v) for v in s],
-            "components": [stable(v) for v in vt.ravel()],
-            "explained_variance": [stable(v) for v in svd.explained_variance_],
-            "explained_variance_ratio": [stable(v) for v in svd.explained_variance_ratio_],
-            "transform": [stable(v) for v in svd.transform(a).ravel()],
+            "left_singular_vectors": [settled(v) for v in u.ravel()],
+            "singular_values": [settled(v) for v in s],
+            "components": [settled(v) for v in vt.ravel()],
+            "explained_variance": [settled(v) for v in svd.explained_variance_],
+            "explained_variance_ratio": [settled(v) for v in svd.explained_variance_ratio_],
+            "transform": [settled(v) for v in svd.transform(a).ravel()],
         })
     return cases
 
@@ -3144,8 +3155,8 @@ def _randomized_wide_cases() -> list[dict]:
             "power_iterations": iterations,
             "normalizer": normalizer,
             OMEGA_KEY: omega.ravel().tolist(),
-            "singular_values": [stable(v) for v in s],
-            "components": [stable(v) for v in vt.ravel()],
+            "singular_values": [settled(v) for v in s],
+            "components": [settled(v) for v in vt.ravel()],
         })
     return cases
 
@@ -3252,8 +3263,8 @@ def _nmf_initialization_cases() -> list[dict]:
             COMPONENT_COUNT_KEY: k,
             "initialization": init,
             OMEGA_KEY: omega.ravel().tolist(),
-            INITIAL_W_KEY: [stable(v) for v in w.ravel()],
-            INITIAL_H_KEY: [stable(v) for v in h.ravel()],
+            INITIAL_W_KEY: [settled(v) for v in w.ravel()],
+            INITIAL_H_KEY: [settled(v) for v in h.ravel()],
         })
     return cases
 
@@ -3314,8 +3325,8 @@ def _nmf_update_cases() -> list[dict]:
         w0, h0 = _initialize_nmf(a, k, init=NNDSVDA, random_state=seed)
         # Rounded before the fit, not on the way out: W0 and H0 are the input both
         # sides start from, so the estimator has to see what the corpus carries.
-        w0 = np.array([[stable(v) for v in row] for row in w0])
-        h0 = np.array([[stable(v) for v in row] for row in h0])
+        w0 = np.array([[settled(v) for v in row] for row in w0])
+        h0 = np.array([[settled(v) for v in row] for row in h0])
         if zeroed >= 0:
             w0[:, zeroed] = 0.0
 
@@ -3343,12 +3354,12 @@ def _nmf_update_cases() -> list[dict]:
             "beta_loss": loss,
             "max_iterations": iterations,
             "tolerance": tol,
-            INITIAL_W_KEY: [stable(v) for v in w0.ravel()],
-            INITIAL_H_KEY: [stable(v) for v in h0.ravel()],
-            "weights": [stable(v) for v in w.ravel()],
-            "components": [stable(v) for v in model.components_.ravel()],
+            INITIAL_W_KEY: [settled(v) for v in w0.ravel()],
+            INITIAL_H_KEY: [settled(v) for v in h0.ravel()],
+            "weights": [settled(v) for v in w.ravel()],
+            "components": [settled(v) for v in model.components_.ravel()],
             "iterations": int(model.n_iter_),
-            "reconstruction_error": stable(model.reconstruction_err_),
+            "reconstruction_error": settled(model.reconstruction_err_),
         })
     return cases
 
