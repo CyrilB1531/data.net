@@ -29,9 +29,16 @@ q = the k-th smallest score, 1-based
 Probed against MAPIE before any C# was written, because a rule taken from a paper and a rule a
 library ships are not reliably the same thing:
 
-- `numpy.quantile(scores, (1 - alpha) * (n + 1) / n, method="higher")` returns exactly that k-th
-  smallest — the two conventions agree, and the ceiling form is the one implemented because it says
-  what it means.
+- `numpy.quantile(scores, (1 - alpha) * (n + 1) / n, method="higher")` does **not** return that
+  k-th smallest, which an earlier draft of this section claimed. Over 4000 random `(n, alpha)`
+  draws the two disagree 891 times: `higher` indexes `ceil(p(n - 1))`, a different order statistic.
+  `method="inverted_cdf"` is the same rule algebraically and still disagrees 7 times in the same
+  4000, because evaluating the level and multiplying by `n` again moves the product across an
+  integer the ceiling form never leaves. MAPIE matches the ceiling form on every case measured —
+  including `n = 19` at `alpha = 0.1`, where `(n + 1)(1 - alpha)` is exactly 18 and `higher` reads
+  the 19th smallest. The ceiling form is therefore what is implemented, and the corpus asserts
+  MAPIE rather than numpy. [Decision 0070](../../decisions/0070-k-greater-than-n-returns-an-infinite-interval.md)
+  records the measurement.
 - **Regression.** `SplitConformalRegressor(prefit=True)` over 30 calibration points at α = 0.1
   returns intervals whose half-width equals the hand-computed `q` to the last bit, on every test
   row. Score is `|y − ŷ|`; interval is `ŷ ± q`.
@@ -44,9 +51,16 @@ empty, and that is what LAC does when no class clears the threshold. A package t
 substituted the arg-max there would be returning something with no coverage guarantee under a name
 that promises one.
 
-**`k > n` is the other edge**: when α is small relative to the calibration size the rule asks for a
-score that does not exist, and the honest answer is the trivial one — an infinite interval, or the
-full label set. That is a real answer with real coverage, and hiding it would be the same mistake.
+**`k > n` is the other edge**, and it is the one place this package does not reproduce MAPIE. When
+`α < 1 / (n + 1)` the rule asks for a score that does not exist. Measured: MAPIE 1.5.0 raises
+`ValueError` in both halves, and under `allow_infinite_bounds=True` its regressor returns a
+*finite* interval whose half-width is the largest calibration score. That last answer is narrower
+than the level asked for — it under-covers — so `Quantile` returns `double.PositiveInfinity`
+instead, and `Interval` and `PredictionSet` carry it through to the whole line and the full label
+set. That is a real answer with real coverage, and hiding it would be the same mistake as repairing
+the empty prediction set.
+[Decision 0070](../../decisions/0070-k-greater-than-n-returns-an-infinite-interval.md) has the
+three measurements and why throwing was the runner-up.
 
 ## Scope
 
@@ -77,6 +91,13 @@ Core tier per [decision 0069](../../decisions/0069-the-package-layout-as-built-a
 `net10.0;netstandard2.0`, zero dependencies, no inter-package edge in either direction. It takes
 arrays and returns numbers and has no reason to need anything else — which is also why it does not
 raise the `Abstractions` question that decision leaves open for Phase 2.
+
+0069's first rule is what admits a fifth package at all: *split only for a distinct dependency
+profile, audience or release cadence — never for tidiness.* This is a distinct audience — someone
+reaching for a coverage guarantee is not the caller reaching for `Levenshtein` — on a distinct
+cadence, and it adds no dependency to anyone who does not install it. Folding it into
+`Lodestar.Metrics` would be the tidiness that rule refuses: metrics score a model that has already
+predicted, conformal prediction changes what the model outputs.
 
 `tools/check_nuspec_dependencies.py` gains its expected graph: nothing on `net10.0`, the two
 polyfills on `netstandard2.0`, exactly as `Lodestar.Metrics` carries.
