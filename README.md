@@ -180,22 +180,23 @@ replays them with a `1e-9` tolerance. Python is a development-only dependency. S
 
 ```text
 Lodestar.slnx
-├── src/Lodestar.Abstractions/    CsrMatrix and SparseNorm — the sparse primitive the others share (no dependencies)
-├── src/Lodestar.Text/            distances, similarity, tokenizers, vectorizers, stemmers
-├── src/Lodestar.Embeddings/      sub-word tokenizers, pooling, SIMD kNN, ONNX inference (ONNX Runtime isolated here)
-├── src/Lodestar.Fuzzy/           fuzz.*, process.extract, deduplication
-├── src/Lodestar.Metrics/         confusion matrix, precision/recall/F1, report, ROC-AUC
-├── src/Lodestar.Conformal/       split conformal intervals and prediction sets (no dependencies)
-├── src/Lodestar.Decomposition/   truncated SVD and non-negative matrix factorization over a CsrMatrix
-├── tests/                       xUnit: oracles + properties (one project per module)
-├── tests/oracles/               frozen JSON corpora (generated from Python) + a synthetic ONNX model
-├── bench/Lodestar.Text.Benchmarks/  BenchmarkDotNet
-├── tools/generate_oracles.py    reference generation
-├── Directory.Build.props        (root); src|tests/Directory.Packages.props (central package management)
-├── src/*/Version.props          one version per publishable package (decision 0012)
-├── docs/                        guides, equivalence table, decision log
-├── docs/reference/<package>/    one reference entry per exported type and public method
-└── docs/wiki-map.json           which page ships with which package, and which namespaces the reference gate enforces
+├── src/Lodestar.Abstractions/              CsrMatrix and SparseNorm — the sparse primitive the others share (no dependencies)
+├── src/Lodestar.Text/                      distances, similarity, tokenizers, vectorizers, stemmers
+├── src/Lodestar.Embeddings/                sub-word tokenizers, pooling, SIMD kNN, ONNX inference (ONNX Runtime isolated here)
+├── src/Lodestar.Fuzzy/                     fuzz.*, process.extract, deduplication
+├── src/Lodestar.Metrics/                   confusion matrix, precision/recall/F1, report, ROC-AUC
+├── src/Lodestar.Conformal/                 split conformal intervals and prediction sets (no dependencies)
+├── src/Lodestar.Decomposition/             truncated SVD and non-negative matrix factorization over a CsrMatrix
+├── tests/                                  xUnit: two projects per package — net10.0, and a mirror linking the same sources against netstandard2.0
+├── tests/oracles/                          frozen JSON corpora (generated from Python) + a synthetic ONNX model
+├── bench/Lodestar.Text.Benchmarks/         BenchmarkDotNet: every non-netstandard benchmark, whatever package it measures
+├── bench/Lodestar.NetStandard.Benchmarks/  the netstandard2.0 assemblies, measured on the same host
+├── tools/generate_oracles.py               reference generation
+├── Directory.Build.props                   (root); src|tests/Directory.Packages.props (central package management)
+├── src/*/Version.props                     one version per publishable package (decision 0012)
+├── docs/                                   guides, equivalence table, decision log
+├── docs/reference/<package>/               one reference entry per exported type and public method
+└── docs/wiki-map.json                      which page ships with which package, and which namespaces the reference gate enforces
 ```
 
 ## Where a fact belongs
