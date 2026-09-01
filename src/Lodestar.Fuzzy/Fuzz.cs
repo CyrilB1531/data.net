@@ -62,6 +62,10 @@ public static class Fuzz
             return 0.0;
         }
 
+        Span<int> wanted = stackalloc int[Buckets];
+        Span<int> inWindow = stackalloc int[Buckets];
+        var bound = new MatchCeiling(pattern, wanted, inWindow);
+
         double best = 0;
         for (int offset = -(m - 1); offset < n; offset++)
         {
@@ -71,6 +75,14 @@ public static class Fuzz
             {
                 continue;
             }
+
+            // A window that cannot beat what is already found is skipped without scoring
+            // it, which is where #505's time went: every offset paid a full Indel.
+            if (!bound.CanBeat(text, start, end, m, best))
+            {
+                continue;
+            }
+
             double r = 100.0 * Indel.NormalizedSimilarity(pattern, text.AsSpan(start, end - start));
             if (r > best)
             {
@@ -82,6 +94,69 @@ public static class Fuzz
             }
         }
         return best;
+    }
+
+    /// <summary>Latin-1 plus one shared bucket for everything above it.</summary>
+    private const int Buckets = 257;
+
+    /// <summary>
+    /// The most characters an Indel alignment could match in the current window, maintained
+    /// as the window slides.
+    /// </summary>
+    /// <remarks>
+    /// An alignment matches at most the multiset intersection of the two operands, so the
+    /// window's similarity cannot exceed <c>2·common/(m + window)</c>. Both bounds only ever
+    /// advance, so each character enters and leaves once across the whole slide: the count is
+    /// maintained rather than recomputed.
+    /// </remarks>
+    private ref struct MatchCeiling
+    {
+        private readonly Span<int> _wanted;
+        private readonly Span<int> _inWindow;
+        private int _common;
+        private int _entered;
+        private int _left;
+
+        public MatchCeiling(string pattern, Span<int> wanted, Span<int> inWindow)
+        {
+            wanted.Clear();
+            inWindow.Clear();
+            foreach (char c in pattern)
+            {
+                wanted[Bucket(c)]++;
+            }
+            _wanted = wanted;
+            _inWindow = inWindow;
+        }
+
+        /// <summary>Advances to <c>text[start..end]</c> and says whether it could beat <paramref name="best"/>.</summary>
+        public bool CanBeat(string text, int start, int end, int patternLength, double best)
+        {
+            for (; _entered < end; _entered++)
+            {
+                int bucket = Bucket(text[_entered]);
+                if (_inWindow[bucket]++ < _wanted[bucket])
+                {
+                    _common++;
+                }
+            }
+            for (; _left < start; _left++)
+            {
+                int bucket = Bucket(text[_left]);
+                if (--_inWindow[bucket] < _wanted[bucket])
+                {
+                    _common--;
+                }
+            }
+            return 200.0 * _common > best * (patternLength + end - start);
+        }
+
+        /// <summary>
+        /// Where a character is counted. Everything past Latin-1 shares the last slot, which
+        /// can only over-count and so can only raise the ceiling — a window is never skipped
+        /// that should have been scored.
+        /// </summary>
+        private static int Bucket(char c) => c < 256 ? c : 256;
     }
 
     /// <summary><see cref="Ratio"/> after splitting, sorting and rejoining the tokens of each string.</summary>
