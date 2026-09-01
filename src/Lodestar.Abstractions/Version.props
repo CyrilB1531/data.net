@@ -9,7 +9,7 @@
     be on nuget.org before that branch can go green.
   -->
   <PropertyGroup>
-    <LodestarAbstractionsVersion>0.1.0</LodestarAbstractionsVersion>
+    <LodestarAbstractionsVersion>0.1.1</LodestarAbstractionsVersion>
   </PropertyGroup>
 
 </Project>
