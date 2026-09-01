@@ -94,6 +94,7 @@
     "Lodestar.Decomposition": {
       "wiki": "Decomposition",
       "pages": [
+        "docs/guides/decomposition.md",
         "docs/reference/decomposition/*.md",
         "docs/reference/decomposition/*/*.md"
       ],

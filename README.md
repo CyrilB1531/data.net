@@ -74,6 +74,7 @@ timed; `bench/README.md`'s section 15 has the harness and the agreement checks.
 | `Lodestar.Embeddings` | `Microsoft.ML.Tokenizers`, `TensorPrimitives` | **Behind on encoding**, and the gap that justifies the package is the loader above — [decision 0068](docs/decisions/0068-the-tokenizer-gap-is-the-loader-not-the-encode-kernel.md) |
 | `Lodestar.Metrics` | ML.NET metrics | Coverage, not speed: the advantage narrows with size and the shape does not |
 | `Lodestar.Conformal` | — | **No incumbent exists**, which is the finding rather than a gap in the harness — `bench/README.md` section 15 says what would change that |
+| `Lodestar.Decomposition` | ML.NET `ProjectToPrincipalComponents` | **Not like-for-like.** Centred dense PCA against uncentred sparse truncated SVD and a non-negative factorization — three different decompositions, so each side is checked against its own reconstruction error rather than against the other's numbers |
 
 Numbers with the machine that produced them are in
 [`docs/guides/performance.md`](docs/guides/performance.md); a shared runner's
@@ -124,15 +125,25 @@ Levenshtein.NormalizedSimilarity("kitten", "sitting"); // 0.5714…
 A runnable version of the above, consuming the packages exactly as you would:
 
 ```bash
-for p in src/Lodestar.Text src/Lodestar.Embeddings src/Lodestar.Fuzzy src/Lodestar.Metrics; do
+for p in src/Lodestar.Abstractions src/Lodestar.Text src/Lodestar.Embeddings \
+         src/Lodestar.Fuzzy src/Lodestar.Metrics src/Lodestar.Conformal \
+         src/Lodestar.Decomposition; do
   dotnet pack "$p" -c Release -o ./artifacts
 done
-dotnet run --project samples/Lodestar.Sample -c Release
+NUGET_PACKAGES=$(mktemp -d) dotnet run -c Release --project samples/Lodestar.Sample
 ```
+
+The isolated `NUGET_PACKAGES` is not decoration: the global packages folder is consulted ahead of
+any source, so a machine that has ever restored a published `Lodestar.*` at one of these versions
+runs the sample against **that** rather than against what `pack` just produced — see
+[`docs/decisions/0009`](docs/decisions/0009-sample-consumes-a-local-feed.md). On PowerShell the
+same isolation is two lines, `$env:NUGET_PACKAGES = (New-Item -ItemType Directory -Path (Join-Path $env:TEMP (New-Guid))).FullName`
+before the `dotnet run`, and `Remove-Item Env:NUGET_PACKAGES` after it.
 
 Full guide: [`docs/guides/quickstart.md`](docs/guides/quickstart.md). See also the
 [vectorization](docs/guides/vectorization.md), [embeddings](docs/guides/embeddings.md),
-[fuzzy-matching](docs/guides/migrating-from-rapidfuzz.md) and
+[fuzzy-matching](docs/guides/migrating-from-rapidfuzz.md),
+[decomposition](docs/guides/decomposition.md) and
 [metrics](docs/guides/metrics.md) guides — the last one answers _which_ metric to
 reach for, which the per-member reference pages deliberately cannot.
 
@@ -169,10 +180,13 @@ replays them with a `1e-9` tolerance. Python is a development-only dependency. S
 
 ```text
 Lodestar.slnx
-├── src/Lodestar.Text/            distances, similarity, tokenizers, vectorizers, stemmers (no dependencies)
+├── src/Lodestar.Abstractions/    CsrMatrix and SparseNorm — the sparse primitive the others share (no dependencies)
+├── src/Lodestar.Text/            distances, similarity, tokenizers, vectorizers, stemmers
 ├── src/Lodestar.Embeddings/      sub-word tokenizers, pooling, SIMD kNN, ONNX inference (ONNX Runtime isolated here)
 ├── src/Lodestar.Fuzzy/           fuzz.*, process.extract, deduplication
 ├── src/Lodestar.Metrics/         confusion matrix, precision/recall/F1, report, ROC-AUC
+├── src/Lodestar.Conformal/       split conformal intervals and prediction sets (no dependencies)
+├── src/Lodestar.Decomposition/   truncated SVD and non-negative matrix factorization over a CsrMatrix
 ├── tests/                       xUnit: oracles + properties (one project per module)
 ├── tests/oracles/               frozen JSON corpora (generated from Python) + a synthetic ONNX model
 ├── bench/Lodestar.Text.Benchmarks/  BenchmarkDotNet
@@ -207,8 +221,9 @@ you whether to correct the document itself or something upstream of it.
 
 ## Publishing
 
-Four NuGet packages are produced: `Lodestar.Text`, `Lodestar.Embeddings`,
-`Lodestar.Fuzzy`, `Lodestar.Metrics`. **Each versions and releases on its own**: shared metadata
+Seven NuGet packages are produced: `Lodestar.Abstractions`, `Lodestar.Text`,
+`Lodestar.Embeddings`, `Lodestar.Fuzzy`, `Lodestar.Metrics`, `Lodestar.Conformal` and
+`Lodestar.Decomposition`. **Each versions and releases on its own**: shared metadata
 (license, README, repository) lives in `Directory.Build.props`, while the version
 is declared per project in `src/<Package>/Version.props`. `Lodestar.Fuzzy` depends
 on `Lodestar.Text` as a published package, not as a project reference — see
