@@ -2983,6 +2983,9 @@ def _dense_svd_cases() -> list[dict]:
 # readers who have to agree on them -- this generator and the C# theory.
 OMEGA_KEY = "omega"
 COMPONENT_COUNT_KEY = "component_count"
+# Every assertion below opens with it, and S1192 counts an f-string's literal head
+# like any other -- six occurrences across these generators, so it gets a name.
+CASE = "case "
 
 
 def _sparse_fixture(rng: SeededRandom, rows: int, columns: int, density: float) -> dict:
@@ -3063,8 +3066,8 @@ def _randomized_cases() -> list[dict]:
             n_components=k, algorithm="randomized", n_oversamples=p, n_iter=iterations,
             power_iteration_normalizer=normalizer, random_state=seed)
         svd.fit(a)
-        assert np.array_equal(vt, svd.components_), f"case {index}: components diverged"
-        assert np.array_equal(s, svd.singular_values_), f"case {index}: sigma diverged"
+        assert np.array_equal(vt, svd.components_), f"{CASE}{index}: components diverged"
+        assert np.array_equal(s, svd.singular_values_), f"{CASE}{index}: sigma diverged"
 
         cases.append({
             **fixture,
@@ -3108,6 +3111,10 @@ INITIAL_H_KEY = "initial_h"
 # table reaches for it four times and S1192 counts those together.
 NNDSVD = "nndsvd"
 NNDSVDA = "nndsvda"
+# scikit-learn's own spelling of the two losses solver="mu" supports, named for the
+# same reason: the update settings reach for them five times between them.
+FROBENIUS = "frobenius"
+KULLBACK_LEIBLER = "kullback-leibler"
 
 
 def _nmf_settings() -> list[tuple[int, int, float, int, str]]:
@@ -3172,7 +3179,7 @@ def _nmf_initialization_cases() -> list[dict]:
             rebuilt[rebuilt < 1e-6] = 0
             if init == NNDSVDA:
                 rebuilt[rebuilt == 0] = a.mean()
-            assert np.array_equal(expected, rebuilt), f"case {index}: leading triplet diverged"
+            assert np.array_equal(expected, rebuilt), f"{CASE}{index}: leading triplet diverged"
 
         cases.append({
             **fixture,
@@ -3185,13 +3192,107 @@ def _nmf_initialization_cases() -> list[dict]:
     return cases
 
 
+def _nmf_update_settings() -> list[tuple[int, int, float, int, str, int, float, int]]:
+    """rows, columns, density, k, beta loss, max_iter, tol, column of W0 to zero (-1: none).
+
+    tol=0.0 disables the early stop, which makes the iteration count an input rather
+    than a result -- asserted below, NMF then reports n_iter_ = max_iter and returns the
+    identical W on two runs. One case keeps scikit-learn's default tol so the
+    stopping rule itself is compared, not just the arithmetic.
+
+    The last row zeroes a column of W0 under Kullback-Leibler, which is the one place
+    the two implementations are written differently: _multiplicative_update_h replaces a
+    zero column sum of W with 1.0 before dividing, while this package floors every zero
+    denominator to EPSILON. Both reach zero because the numerator is zero there too, and
+    that is an argument rather than a measurement -- so it is measured here. The path is
+    selectable from the public surface, since Fit(matrix, W0, H0) takes the W0 it is given.
+    """
+    return [
+        (30, 12, 0.45, 3, FROBENIUS, 60, 0.0, -1),
+        (30, 12, 0.45, 3, KULLBACK_LEIBLER, 60, 0.0, -1),
+        (48, 20, 0.30, 5, FROBENIUS, 40, 0.0, -1),
+        (48, 20, 0.30, 5, KULLBACK_LEIBLER, 40, 0.0, -1),
+        (16, 6, 0.70, 2, FROBENIUS, 200, 1e-4, -1),
+        (30, 12, 0.45, 3, KULLBACK_LEIBLER, 40, 0.0, 1),
+    ]
+
+
+def _nmf_update_cases() -> list[dict]:
+    """The multiplicative updates, from a frozen W0 and H0.
+
+    The initialisation is passed in as ``init="custom"`` so this half and the
+    initialisation half fail independently: a wrong W0 breaks one corpus, not both.
+
+    Two claims the C# side depends on are asserted rather than written down: with the
+    stop disabled the iteration count is the input and not a result, and the solve is
+    deterministic -- a second fit from the same W0 and H0 returns the identical W. The
+    reconstruction error is confronted with _beta_divergence over the reported
+    components_, which is the same number the C# suite compares. Where a column of W0 is
+    zeroed, that it survives every update as an exact zero is asserted too: that is what
+    makes the 1.0 / EPSILON difference in the H denominator unobservable.
+    """
+    from scipy.sparse import csr_matrix
+    from sklearn.decomposition import NMF
+    from sklearn.decomposition._nmf import _beta_divergence, _initialize_nmf
+
+    rng = SeededRandom(SEED + 44900)
+    cases = []
+    for index, (rows, columns, density, k, loss, iterations, tol, zeroed) in enumerate(
+            _nmf_update_settings()):
+        fixture = _sparse_fixture(rng, rows, columns, density)
+        a = csr_matrix(
+            (fixture["values"], fixture["column_indices"], fixture["row_pointers"]),
+            shape=(rows, columns))
+
+        seed = SEED + 45000 + index
+        w0, h0 = _initialize_nmf(a, k, init=NNDSVDA, random_state=seed)
+        if zeroed >= 0:
+            w0[:, zeroed] = 0.0
+
+        model = NMF(n_components=k, init="custom", solver="mu", beta_loss=loss,
+                    tol=tol, max_iter=iterations, random_state=seed)
+        w = model.fit_transform(a, W=w0.copy(), H=h0.copy())
+
+        assert np.array_equal(
+            w, NMF(n_components=k, init="custom", solver="mu", beta_loss=loss, tol=tol,
+                   max_iter=iterations, random_state=seed).fit_transform(
+                       a, W=w0.copy(), H=h0.copy())), f"{CASE}{index}: two runs disagreed"
+        if tol == 0.0:
+            assert model.n_iter_ == iterations, f"{CASE}{index}: n_iter_ is not max_iter"
+        assert model.reconstruction_err_ == _beta_divergence(
+            a, w, model.components_, loss, square_root=True), \
+            f"{CASE}{index}: reconstruction_err_ is not the beta divergence"
+        if zeroed >= 0:
+            assert not w[:, zeroed].any(), f"{CASE}{index}: the zeroed column came back"
+            assert not model.components_[zeroed, :].any(), \
+                f"{CASE}{index}: the zeroed column's H row came back"
+
+        cases.append({
+            **fixture,
+            COMPONENT_COUNT_KEY: k,
+            "beta_loss": loss,
+            "max_iterations": iterations,
+            "tolerance": tol,
+            INITIAL_W_KEY: w0.ravel().tolist(),
+            INITIAL_H_KEY: h0.ravel().tolist(),
+            "weights": w.ravel().tolist(),
+            "components": model.components_.ravel().tolist(),
+            "iterations": int(model.n_iter_),
+            "reconstruction_error": float(model.reconstruction_err_),
+        })
+    return cases
+
+
 def generate_decomposition_nmf() -> dict:
-    """NNDSVD, and (from Task 7) the multiplicative updates on top of it (#440)."""
-    initialization = _nmf_initialization_cases()
+    """NNDSVD, and the multiplicative updates on top of it (#440)."""
+    initialization, updates = _nmf_initialization_cases(), _nmf_update_cases()
     return {"metadata": {"library": "scikit-learn", "version": version("scikit-learn"),
-                         "reference_calls": ["sklearn.decomposition._nmf._initialize_nmf"],
-                         "seed": SEED, "count": len(initialization), TOLERANCE_KEY: 1e-9},
-            "initialization": initialization}
+                         "reference_calls": ["sklearn.decomposition._nmf._initialize_nmf",
+                                             "sklearn.decomposition.NMF"],
+                         "seed": SEED, "count": len(initialization) + len(updates),
+                         TOLERANCE_KEY: 1e-9},
+            "initialization": initialization,
+            "updates": updates}
 
 
 def _internal_validity_fixtures() -> list[dict]:

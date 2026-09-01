@@ -15,7 +15,7 @@ internal static class NndSvd
     private const double Epsilon = 1e-6;
 
     // _initialize_nmf calls randomized_svd with its own defaults, not TruncatedSVD's.
-    private const int Oversampling = 10;
+    internal const int Oversampling = 10;
 
     /// <summary>Returns <c>W</c>, row-major <c>rows × componentCount</c>, and <c>H</c>, row-major <c>componentCount × features</c>.</summary>
     internal static (double[] W, double[] H) Initialize(

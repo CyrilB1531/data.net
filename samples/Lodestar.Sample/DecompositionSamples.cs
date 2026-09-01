@@ -14,5 +14,9 @@ internal static class DecompositionSamples
         TruncatedSvdSample.Run();
         Console.WriteLine("  what the randomized solver is allowed to vary");
         TruncatedSvdOptionsSample.Run();
+        Console.WriteLine("  non-negative matrix factorization — parts, not directions");
+        NmfSample.Run();
+        Console.WriteLine("  what the factorization is allowed to vary");
+        NmfOptionsSample.Run();
     }
 }

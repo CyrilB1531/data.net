@@ -9,16 +9,9 @@ namespace Lodestar.Sample;
 /// </summary>
 internal static class TruncatedSvdSample
 {
-    // Five documents over six terms, built by hand so the shape is readable: term 0-2 belong to
-    // one subject and term 3-5 to another, with document 2 straddling both.
-    private static readonly double[] Values =
-        [2.0, 1.0, 3.0, 1.0, 2.0, 1.0, 1.0, 1.0, 2.0, 1.0, 3.0, 2.0, 1.0, 2.0];
-    private static readonly int[] Columns = [0, 1, 0, 2, 1, 2, 3, 4, 3, 5, 0, 2, 4, 5];
-    private static readonly int[] Rows = [0, 2, 4, 8, 10, 14];
-
     public static void Run()
     {
-        CsrMatrix corpus = new(5, 6, Values, Columns, Rows);
+        CsrMatrix corpus = DecompositionCorpus.Documents();
         TruncatedSvd fitted = TruncatedSvd.Fit(corpus, componentCount: 2);
 
         Console.WriteLine($"  rank kept             = {fitted.ComponentCount} of {fitted.FeatureCount} terms");

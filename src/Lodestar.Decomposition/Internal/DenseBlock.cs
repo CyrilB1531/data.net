@@ -22,6 +22,30 @@ internal static class DenseBlock
         return result;
     }
 
+    /// <summary><c>Bᵀ B</c> for a row-major <c>rows × columns</c> block, as <c>columns × columns</c>.</summary>
+    /// <remarks>
+    /// Reached for wherever a Gram matrix of the columns is wanted — the beta divergence and the
+    /// Frobenius update of H both need <c>WᵀW</c> — because transposing first would allocate a
+    /// second copy of the largest block in the fit to compute a matrix of the rank's size.
+    /// </remarks>
+    internal static double[] TransposeGram(ReadOnlySpan<double> block, int rows, int columns)
+    {
+        double[] result = new double[checked(columns * columns)];
+        for (int a = 0; a < columns; a++)
+        {
+            for (int b = 0; b < columns; b++)
+            {
+                double sum = 0;
+                for (int i = 0; i < rows; i++)
+                {
+                    sum += block[(i * columns) + a] * block[(i * columns) + b];
+                }
+                result[(a * columns) + b] = sum;
+            }
+        }
+        return result;
+    }
+
     /// <summary>The Euclidean norm of one column.</summary>
     internal static double ColumnNorm(ReadOnlySpan<double> block, int rows, int columns, int column)
     {
