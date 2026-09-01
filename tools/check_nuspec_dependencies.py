@@ -43,6 +43,7 @@ TEXT = "Lodestar.Text"
 FUZZY = "Lodestar.Fuzzy"
 EMBEDDINGS = "Lodestar.Embeddings"
 METRICS = "Lodestar.Metrics"
+CONFORMAL = "Lodestar.Conformal"
 ONNX = "Microsoft.ML.OnnxRuntime"
 STJ = "System.Text.Json"
 
@@ -75,6 +76,12 @@ EXPECTED: dict[str, dict[str, dict[str, str]]] = {
     METRICS: {
         # Nothing on net10.0, only the polyfills on netstandard2.0: metrics
         # are pure span computation, no I/O to serialise, so no System.Text.Json.
+        NET: {},
+        NETSTANDARD: {**POLYFILLS},
+    },
+    CONFORMAL: {
+        # The same shape, for the same reason: split conformal prediction is
+        # arithmetic over spans, with no model and nothing to serialise.
         NET: {},
         NETSTANDARD: {**POLYFILLS},
     },

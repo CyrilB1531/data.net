@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using Lodestar.Conformal;
 using Lodestar.Embeddings.Tokenization;
 using Lodestar.Fuzzy;
 using Lodestar.Metrics;
@@ -25,6 +26,7 @@ Console.WriteLine($"Lodestar.Text      : {FrameworkOf(typeof(Levenshtein))}");
 Console.WriteLine($"Lodestar.Fuzzy     : {FrameworkOf(typeof(Fuzz))}");
 Console.WriteLine($"Lodestar.Embeddings: {FrameworkOf(typeof(WordPieceTokenizer))}");
 Console.WriteLine($"Lodestar.Metrics   : {FrameworkOf(typeof(ConfusionMatrix))}");
+Console.WriteLine($"Lodestar.Conformal : {FrameworkOf(typeof(SplitConformal))}");
 Console.WriteLine();
 
 TextSamples.Run();
@@ -32,6 +34,7 @@ Lot3Embeddings.Run();
 Lot4Fuzzy.Run();
 Lot5Metrics.Run();
 Lot6Regression.Run();
+SplitConformalSample.Run();
 
 if (!PackagingGate.Verify())
 {

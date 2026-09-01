@@ -18,6 +18,7 @@ native code where .NET has a real gap: **text** (similarity, vectorization).
 | **matplotlib** | plotting | [ScottPlot](https://scottplot.net/), [Plotly.NET](https://plotly.net/), OxyPlot | ✅ **Use** |
 | **NumPy** | N-dim arrays, dense algebra | [Math.NET Numerics](https://numerics.mathdotnet.com/) (+ native MKL/OpenBLAS provider); `System.Numerics.Tensors` | ✅ **Use** |
 | **scikit-learn** | classical ML, pipelines, metrics | [ML.NET](https://dotnet.microsoft.com/apps/machinelearning-ai/ml-dotnet); [SharpLearning](https://github.com/mdabros/SharpLearning) | ✅ **Use** *except* text vectorization → **Lodestar.Text** and classification metrics → **Lodestar.Metrics** |
+| **MAPIE** | conformal prediction: intervals and prediction sets with a coverage guarantee | none — no C# implementation exists | 🔴 **Write** — split conformal is **Lodestar.Conformal** |
 | **pandas** | DataFrame, groupby, IO | [`Microsoft.Data.Analysis`](https://www.nuget.org/packages/Microsoft.Data.Analysis); [Deedle](https://fslab.org/Deedle/) | 🟡 **Use** (rougher) |
 | **statsmodels** | econometric regression, time series, tests | Math.NET (basics) — *not* Accord.NET, see below | 🟠 **Decide** — rich econometrics is a gap |
 | **seaborn** | tidy statistical viz | ScottPlot / Plotly.NET (charts rebuilt) | 🟠 **Decide** — statistical presets missing |
@@ -25,6 +26,7 @@ native code where .NET has a real gap: **text** (similarity, vectorization).
 **Legend.** ✅ a solid equivalent exists, use it as is. 🟡 an equivalent exists but
 is less mature than Python; expect some glue. 🟠 the foundation exists but a whole
 area is missing: a candidate for native code *if your usage justifies it*.
+🔴 **nothing exists** and this project wrote it.
 ⛔ **unmaintained** — do not reach for it, and the row says since when.
 
 ## Unmaintained, and why that is stated with dates
@@ -82,6 +84,14 @@ and its siblings, delivered as lots (see the brief):
 4. **Applied fuzzy matching** — `rapidfuzz.fuzz` / `process` equivalents. *(done)*
 5. **Classification metrics** — sklearn-parity precision, recall, F1, confusion
    matrix, report and ROC-AUC. *(done)*
+6. **Split conformal prediction** — MAPIE-parity intervals and prediction sets, with
+   the finite-sample coverage guarantee and the exchangeability assumption it rests
+   on. *(done)* The survey behind
+   [#441](https://github.com/CyrilB1531/lodestar/issues/441) found **no C#
+   implementation at all**, which is why this one is written rather than delegated;
+   the guarantee's assumption leads
+   [its guide](https://github.com/CyrilB1531/lodestar/blob/main/docs/guides/conformal.md)
+   rather than closing it.
 
 ## Per-library guides
 

@@ -4,6 +4,9 @@ obj/
 [Dd]ebug/
 [Rr]elease/
 artifacts/
+# A local NUGET_PACKAGES for the sample and doc-snippet runs, which must not
+# resolve the published packages (decision 0009). CI puts it under runner.temp.
+.nuget-sample/
 
 # BenchmarkDotNet
 BenchmarkDotNet.Artifacts/

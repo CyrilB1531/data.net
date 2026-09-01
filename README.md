@@ -37,7 +37,14 @@ The claim this project is judged on, strongest first.
    Mistral v0.1 ship, and `Microsoft.ML.Tokenizers` has no entry point that reads
    one. Every one of its factories takes a vocabulary, a merges file or a
    `spiece.model`.
-4. **Distances, embeddings and fuzzy matching**, bundled for pipeline coherence
+4. **Split conformal prediction.** An interval instead of a point, a set instead of
+   a class, with a finite-sample coverage guarantee — MAPIE's job, and the survey
+   behind [#441](https://github.com/CyrilB1531/lodestar/issues/441) found **no C#
+   implementation at all**, maintained or otherwise. The guarantee assumes
+   exchangeable calibration and test data, which
+   [`docs/guides/conformal.md`](docs/guides/conformal.md#exchangeability) leads with
+   rather than footnotes.
+5. **Distances, embeddings and fuzzy matching**, bundled for pipeline coherence
    rather than because .NET is empty here — it is not, and the table below says by
    how much.
 
@@ -66,6 +73,7 @@ timed; `bench/README.md`'s section 15 has the harness and the agreement checks.
 | `Lodestar.Fuzzy` | Fastenshtein, Quickenshtein, F23.StringSimilarity, Raffinert.FuzzySharp | Ahead on Levenshtein at every length, and on all four `fuzz` ratios |
 | `Lodestar.Embeddings` | `Microsoft.ML.Tokenizers`, `TensorPrimitives` | **Behind on encoding**, and the gap that justifies the package is the loader above — [decision 0068](docs/decisions/0068-the-tokenizer-gap-is-the-loader-not-the-encode-kernel.md) |
 | `Lodestar.Metrics` | ML.NET metrics | Coverage, not speed: the advantage narrows with size and the shape does not |
+| `Lodestar.Conformal` | — | **No incumbent exists**, which is the finding rather than a gap in the harness — `bench/README.md` section 15 says what would change that |
 
 Numbers with the machine that produced them are in
 [`docs/guides/performance.md`](docs/guides/performance.md); a shared runner's
