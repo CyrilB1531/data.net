@@ -2975,13 +2975,125 @@ def _dense_svd_cases() -> list[dict]:
     return cases
 
 
+# The randomized corpus's own keys, written once for S1192 and for the two
+# readers who have to agree on them -- this generator and the C# theory.
+OMEGA_KEY = "omega"
+COMPONENT_COUNT_KEY = "component_count"
+
+
+def _sparse_fixture(rng: SeededRandom, rows: int, columns: int, density: float) -> dict:
+    """A CSR fixture, in the field names the C# side already reads elsewhere."""
+    values, column_indices, row_pointers = [], [], [0]
+    for _ in range(rows):
+        for column in range(columns):
+            if rng.random() < density:
+                values.append(rng.uniform(0.1, 4.0))
+                column_indices.append(column)
+        row_pointers.append(len(values))
+    return {
+        ROWS_KEY: rows,
+        COLUMNS_KEY: columns,
+        "values": values,
+        "column_indices": column_indices,
+        "row_pointers": row_pointers,
+    }
+
+
+def _randomized_settings() -> list[tuple[int, int, float, int, int, int, str]]:
+    """rows, columns, density, k, oversampling, power iterations, normalizer.
+
+    Every matrix is at least as tall as it is wide, because TruncatedSVD's own
+    ``transpose="auto"`` resolves to False exactly there -- and transpose is the one
+    knob this package does not offer, so a wide fixture would compare two different
+    factorizations. One case per normalizer, and two where k + p reaches the rank, so
+    the normalizer's own factorization narrows the block the way scipy's does.
+    """
+    return [
+        (40, 25, 0.30, 4, 6, 3, "QR"),
+        (40, 25, 0.30, 4, 6, 1, "none"),
+        (40, 25, 0.30, 4, 6, 5, "LU"),
+        (60, 30, 0.20, 8, 10, 5, "auto"),
+        (30, 12, 0.50, 3, 10, 4, "auto"),
+        (25, 8, 0.60, 2, 10, 7, "QR"),
+    ]
+
+
+def _randomized_cases() -> list[dict]:
+    """randomized_svd and TruncatedSVD over a frozen Omega.
+
+    Omega is drawn from ``np.random.RandomState(seed)`` and the *same* seed is handed
+    to scikit-learn, so the matrix stored here is bit-for-bit the one it draws first:
+    ``_randomized_range_finder``'s opening call is
+    ``random_state.normal(size=(n_features, k + p))``. Nothing is monkey-patched, and
+    the C# side starts from the same Omega instead of reproducing MT19937.
+
+    The signs are TruncatedSVD's, not ``randomized_svd``'s. Since 1.6 the estimator
+    asks for ``flip_sign=False`` and then flips on the *right* vectors
+    (``svd_flip(..., u_based_decision=False)``), while the bare function still flips on
+    the left ones -- so the two disagree by a sign on four of these six fixtures.
+    Re-flipping the bare function's pair on the right reproduces
+    ``components_`` and ``U`` exactly, which is what is asserted below and stored here.
+    """
+    from scipy.sparse import csr_matrix
+    from sklearn.decomposition import TruncatedSVD
+    from sklearn.utils.extmath import randomized_svd, svd_flip
+
+    rng = SeededRandom(SEED + 44500)
+    cases = []
+    for index, (rows, columns, density, k, p, iterations, normalizer) in enumerate(
+            _randomized_settings()):
+        fixture = _sparse_fixture(rng, rows, columns, density)
+        a = csr_matrix(
+            (fixture["values"], fixture["column_indices"], fixture["row_pointers"]),
+            shape=(rows, columns))
+
+        seed = SEED + 44600 + index
+        omega = np.random.RandomState(seed).normal(size=(columns, k + p))
+
+        u, s, vt = randomized_svd(
+            a, n_components=k, n_oversamples=p, n_iter=iterations,
+            power_iteration_normalizer=normalizer, transpose=False, random_state=seed)
+        u, vt = svd_flip(u, vt, u_based_decision=False)
+
+        svd = TruncatedSVD(
+            n_components=k, algorithm="randomized", n_oversamples=p, n_iter=iterations,
+            power_iteration_normalizer=normalizer, random_state=seed)
+        svd.fit(a)
+        assert np.array_equal(vt, svd.components_), f"case {index}: components diverged"
+        assert np.array_equal(s, svd.singular_values_), f"case {index}: sigma diverged"
+
+        cases.append({
+            **fixture,
+            COMPONENT_COUNT_KEY: k,
+            "oversampling": p,
+            "power_iterations": iterations,
+            "normalizer": normalizer,
+            OMEGA_KEY: omega.ravel().tolist(),
+            # Rides along for diagnosis the way the dense half's scipy factors do:
+            # nothing in the C# suite asserts on it, because U is not reported.
+            "left_singular_vectors": u.ravel().tolist(),
+            "singular_values": s.tolist(),
+            "components": vt.ravel().tolist(),
+            "explained_variance": svd.explained_variance_.tolist(),
+            "explained_variance_ratio": svd.explained_variance_ratio_.tolist(),
+            "transform": svd.transform(a).ravel().tolist(),
+        })
+    return cases
+
+
 def generate_decomposition_svd() -> dict:
-    """The dense SVD, and (from Task 5) randomized_svd on top of it (#440)."""
-    dense = _dense_svd_cases()
-    return {"metadata": {"library": "scipy", "version": version("scipy"),
-                         "reference_calls": ["scipy.linalg.svd"],
-                         "seed": SEED, "count": len(dense), "tolerance": 1e-9},
-            "dense": dense}
+    """The dense SVD on its own, and randomized_svd composed on top of it (#440)."""
+    dense, randomized = _dense_svd_cases(), _randomized_cases()
+    return {"metadata": {"library": "scipy and scikit-learn",
+                         "version": version("scipy"),
+                         "sklearn_version": version("scikit-learn"),
+                         "reference_calls": ["scipy.linalg.svd",
+                                             "sklearn.utils.extmath.randomized_svd",
+                                             "sklearn.decomposition.TruncatedSVD"],
+                         "seed": SEED, "count": len(dense) + len(randomized),
+                         "tolerance": 1e-9},
+            "dense": dense,
+            "randomized": randomized}
 
 
 def _internal_validity_fixtures() -> list[dict]:

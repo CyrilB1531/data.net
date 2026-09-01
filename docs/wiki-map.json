@@ -97,7 +97,9 @@
         "docs/reference/decomposition/*.md",
         "docs/reference/decomposition/*/*.md"
       ],
-      "covered": {}
+      "covered": {
+        "Lodestar.Decomposition": "docs/reference/decomposition/factorization"
+      }
     }
   }
 }
