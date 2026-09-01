@@ -2584,8 +2584,10 @@ def _frozen_estimators():
         def __init__(self, table=None):
             self.table = table
 
-        def fit(self, X, y=None):
-            self.n_features_in_ = 1
+        def fit(self, X):
+            # No y: the table is the model, so fitting only records the shape and
+            # the marker sklearn's check_is_fitted looks for.
+            self.n_features_in_ = np.asarray(X).shape[1]
             self.is_fitted_ = True
             return self
 
@@ -2597,9 +2599,10 @@ def _frozen_estimators():
             self.table = table
             self.n_classes = n_classes
 
-        def fit(self, X, y=None):
+        def fit(self, X):
+            # classes_ comes from n_classes rather than from a y: see FrozenRegressor.fit.
             self.classes_ = np.arange(self.n_classes)
-            self.n_features_in_ = 1
+            self.n_features_in_ = np.asarray(X).shape[1]
             self.is_fitted_ = True
             return self
 
@@ -2714,8 +2717,7 @@ def _conformal_classification_case(fx: dict, frozen_classifier, split_classifier
     scores = [1.0 - proba[i][labels[i]] for i in range(n)]
     k, q = _conformal_quantile(scores, fx["alpha"])
 
-    estimator = frozen_classifier(table=np.array(proba), n_classes=classes).fit(
-        np.zeros((1, 1)), np.zeros(1, dtype=int))
+    estimator = frozen_classifier(table=np.array(proba), n_classes=classes).fit(np.zeros((1, 1)))
     mapie = split_classifier(
         estimator=estimator, confidence_level=1.0 - fx["alpha"],
         conformity_score="lac", prefit=True)
@@ -2759,8 +2761,7 @@ def generate_conformal() -> dict:
 
         # No numpy cross-check here: np.quantile at level (1 - alpha)(n + 1)/n is a
         # different rule (see decision 0070). MAPIE below is the reference.
-        estimator = frozen_regressor(table=np.array(calib_pred + test_pred)).fit(
-            np.zeros((1, 1)), np.zeros(1))
+        estimator = frozen_regressor(table=np.array(calib_pred + test_pred)).fit(np.zeros((1, 1)))
         mapie = SplitConformalRegressor(
             estimator=estimator, confidence_level=1.0 - fx["alpha"], prefit=True)
         mapie.conformalize(np.arange(n).reshape(-1, 1), np.array(y_calib))
