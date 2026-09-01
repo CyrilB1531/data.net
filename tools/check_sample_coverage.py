@@ -32,7 +32,9 @@ SAMPLES = ROOT / "samples" / "Lodestar.Sample"
 # Packages whose samples have been split per class. Each new lot adds its own
 # name here, and this list emptying of its "waiting" half is what closes #280.
 CONVERTED = ["Lodestar.Text", "Lodestar.Conformal"]
-WAITING = ["Lodestar.Fuzzy", "Lodestar.Embeddings", "Lodestar.Metrics"]
+# Lodestar.Abstractions waits one release: its per-class file would be called
+# CsrMatrixSample.cs, and Lodestar.Text's copy owns that name until #440's step B.
+WAITING = ["Lodestar.Fuzzy", "Lodestar.Embeddings", "Lodestar.Metrics", "Lodestar.Abstractions"]
 
 DECLARATION = re.compile(
     r"^public\s+(?:static\s+|sealed\s+|abstract\s+|partial\s+|readonly\s+)*"

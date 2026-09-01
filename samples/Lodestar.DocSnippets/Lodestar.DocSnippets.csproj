@@ -46,6 +46,7 @@
   <Import Project="../../src/Lodestar.Fuzzy/Version.props" />
   <Import Project="../../src/Lodestar.Metrics/Version.props" />
   <Import Project="../../src/Lodestar.Conformal/Version.props" />
+  <Import Project="../../src/Lodestar.Abstractions/Version.props" />
 
   <ItemGroup>
     <PackageReference Include="Lodestar.Text" Version="$(LodestarTextVersion)" />
@@ -53,6 +54,7 @@
     <PackageReference Include="Lodestar.Embeddings" Version="$(LodestarEmbeddingsVersion)" />
     <PackageReference Include="Lodestar.Metrics" Version="$(LodestarMetricsVersion)" />
     <PackageReference Include="Lodestar.Conformal" Version="$(LodestarConformalVersion)" />
+    <PackageReference Include="Lodestar.Abstractions" Version="$(LodestarAbstractionsVersion)" />
   </ItemGroup>
 
 </Project>

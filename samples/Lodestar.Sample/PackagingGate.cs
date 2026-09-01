@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
+using Lodestar.Abstractions;
 using Lodestar.Conformal;
 using Lodestar.Embeddings.Tokenization;
 using Lodestar.Fuzzy;
@@ -127,6 +128,7 @@ internal static class PackagingGate
             typeof(Fuzz).Assembly,
             typeof(ConfusionMatrix).Assembly,
             typeof(SplitConformal).Assembly,
+            typeof(CsrMatrix).Assembly,
         ];
 
         var packagedNames = packaged.Select(a => a.GetName().Name!).ToHashSet(StringComparer.Ordinal);

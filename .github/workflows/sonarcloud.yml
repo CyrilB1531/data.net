@@ -190,7 +190,7 @@ jobs:
       # second time inside the same window, for nothing.
       - name: Pack
         run: |
-          for proj in src/Lodestar.Text src/Lodestar.Embeddings src/Lodestar.Fuzzy src/Lodestar.Metrics src/Lodestar.Conformal; do
+          for proj in src/Lodestar.Abstractions src/Lodestar.Text src/Lodestar.Embeddings src/Lodestar.Fuzzy src/Lodestar.Metrics src/Lodestar.Conformal; do
             dotnet pack "$proj" --configuration Release --no-build --output ./artifacts
           done
 
