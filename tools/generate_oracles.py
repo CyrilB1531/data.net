@@ -58,6 +58,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer as SkTfidfVectorizer
 SEED = 20260801
 ORACLE_DIR = Path(__file__).resolve().parent.parent / "tests" / "oracles"
 
+# The metadata key every numeric corpus carries, named once because S1192 counts a
+# JSON key like any other literal and the decomposition corpora made it a fourth.
+TOLERANCE_KEY = "tolerance"
+
 # Fixture strings reused across several corpora.
 QUICK_FOX = "the quick brown fox"
 METS = "new york mets"
@@ -2915,7 +2919,7 @@ def generate_decomposition_qr() -> dict:
         })
     return {"metadata": {"library": "scipy", "version": version("scipy"),
                          "reference_calls": ["scipy.linalg.qr"],
-                         "seed": SEED, "count": len(cases), "tolerance": 1e-9},
+                         "seed": SEED, "count": len(cases), TOLERANCE_KEY: 1e-9},
             "cases": cases}
 
 
@@ -2941,7 +2945,7 @@ def generate_decomposition_lu() -> dict:
         })
     return {"metadata": {"library": "scipy", "version": version("scipy"),
                          "reference_calls": ["scipy.linalg.lu"],
-                         "seed": SEED, "count": len(cases), "tolerance": 1e-9},
+                         "seed": SEED, "count": len(cases), TOLERANCE_KEY: 1e-9},
             "cases": cases}
 
 
@@ -3091,9 +3095,90 @@ def generate_decomposition_svd() -> dict:
                                              "sklearn.utils.extmath.randomized_svd",
                                              "sklearn.decomposition.TruncatedSVD"],
                          "seed": SEED, "count": len(dense) + len(randomized),
-                         "tolerance": 1e-9},
+                         TOLERANCE_KEY: 1e-9},
             "dense": dense,
             "randomized": randomized}
+
+
+# --- NMF for Lodestar.Decomposition (#440) ---------------------------------
+
+INITIAL_W_KEY = "initial_w"
+INITIAL_H_KEY = "initial_h"
+
+
+def _nmf_settings() -> list[tuple[int, int, float, int, str]]:
+    """rows, columns, density, k, init. Tall again, for transpose='auto'."""
+    return [
+        (30, 12, 0.45, 3, "nndsvd"),
+        (30, 12, 0.45, 3, "nndsvda"),
+        (48, 20, 0.30, 5, "nndsvd"),
+        (48, 20, 0.30, 5, "nndsvda"),
+        (16, 6, 0.70, 2, "nndsvd"),
+    ]
+
+
+def _nmf_initialization_cases() -> list[dict]:
+    """_initialize_nmf over a frozen Omega.
+
+    It calls randomized_svd internally, so W0 and H0 depend on the seed -- measured,
+    seeds 7 and 99 give different matrices. Freezing Omega is what decouples the
+    initialisation from the update loop, and lets each fail on its own.
+
+    Its randomized_svd call takes its own defaults and not TruncatedSVD's: ten
+    oversamples, ``n_iter='auto'``, and ``flip_sign`` left at True -- so the
+    initialisation inherits the *left*-based ``svd_flip(U, Vt)`` while the estimator
+    opts out and flips on the right vectors. Both facts are asserted below rather than
+    asserted in prose: the leading triplet is rebuilt from a randomized_svd called with
+    the resolved iteration count and the default flip, put through the same eps snap and
+    nndsvda fill, and compared to what _initialize_nmf returned. Nothing is monkey-patched.
+    """
+    from scipy.sparse import csr_matrix
+    from sklearn.decomposition._nmf import _initialize_nmf
+    from sklearn.utils.extmath import randomized_svd
+
+    rng = SeededRandom(SEED + 44700)
+    cases = []
+    for index, (rows, columns, density, k, init) in enumerate(_nmf_settings()):
+        fixture = _sparse_fixture(rng, rows, columns, density)
+        a = csr_matrix(
+            (fixture["values"], fixture["column_indices"], fixture["row_pointers"]),
+            shape=(rows, columns))
+
+        seed = SEED + 44800 + index
+        # _initialize_nmf's own randomized_svd call takes n_oversamples=10 and
+        # n_iter='auto'; the first draw off this RandomState is the same Omega.
+        omega = np.random.RandomState(seed).normal(size=(columns, k + 10))
+        w, h = _initialize_nmf(a, k, init=init, random_state=seed)
+
+        iterations = 7 if k < 0.1 * min(a.shape) else 4
+        u, s, vt = randomized_svd(
+            a, n_components=k, n_oversamples=10, n_iter=iterations,
+            power_iteration_normalizer="auto", transpose=False, random_state=seed)
+        for expected, rebuilt in ((w[:, 0], np.sqrt(s[0]) * np.abs(u[:, 0])),
+                                  (h[0, :], np.sqrt(s[0]) * np.abs(vt[0, :]))):
+            rebuilt[rebuilt < 1e-6] = 0
+            if init == "nndsvda":
+                rebuilt[rebuilt == 0] = a.mean()
+            assert np.array_equal(expected, rebuilt), f"case {index}: leading triplet diverged"
+
+        cases.append({
+            **fixture,
+            COMPONENT_COUNT_KEY: k,
+            "initialization": init,
+            OMEGA_KEY: omega.ravel().tolist(),
+            INITIAL_W_KEY: w.ravel().tolist(),
+            INITIAL_H_KEY: h.ravel().tolist(),
+        })
+    return cases
+
+
+def generate_decomposition_nmf() -> dict:
+    """NNDSVD, and (from Task 7) the multiplicative updates on top of it (#440)."""
+    initialization = _nmf_initialization_cases()
+    return {"metadata": {"library": "scikit-learn", "version": version("scikit-learn"),
+                         "reference_calls": ["sklearn.decomposition._nmf._initialize_nmf"],
+                         "seed": SEED, "count": len(initialization), TOLERANCE_KEY: 1e-9},
+            "initialization": initialization}
 
 
 def _internal_validity_fixtures() -> list[dict]:
@@ -6954,6 +7039,7 @@ def main() -> None:
         "decomposition_qr.json": generate_decomposition_qr,
         "decomposition_lu.json": generate_decomposition_lu,
         "decomposition_svd.json": generate_decomposition_svd,
+        "decomposition_nmf.json": generate_decomposition_nmf,
         "bpe.json": generate_bpe,
         "orphan_bpe.json": generate_orphan_bpe,
         "bytelevel_bpe.json": generate_bytelevel_bpe,

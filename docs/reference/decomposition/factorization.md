@@ -23,6 +23,7 @@ repeatability and draws from this package's own generator, which is not NumPy's.
 | [`TruncatedSvd`](factorization/truncatedsvd.md) | A fitted factorization: its components, its singular values, and the projection of new rows onto them. |
 | [`TruncatedSvdOptions`](factorization/truncatedsvdoptions.md) | Oversampling, power iterations, the normalizer, and Ω itself. |
 | [`PowerIterationNormalizer`](factorization/poweriterationnormalizer.md) | What happens to the probe block between the two products of a power iteration. |
+| [`NmfInitialization`](factorization/nmfinitialization.md) | Where a non-negative matrix factorization starts from — the two NNDSVD variants this package ships. |
 
 The whole procedure is two calls: [`TruncatedSvd.Fit`](factorization/truncatedsvd-fit.md) on the
 corpus, then [`TruncatedSvd.Transform`](factorization/truncatedsvd-transform.md) on whatever you

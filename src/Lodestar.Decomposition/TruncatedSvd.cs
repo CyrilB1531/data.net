@@ -108,15 +108,12 @@ public sealed class TruncatedSvd
                 $"Ω is {omega.Length} long, not {features} × {size}.", nameof(options));
         }
 
-        double[] basis = RandomizedRangeFinder.Find(
-            matrix, omega, size, settings.PowerIterations, settings.Normalizer);
-        int basisSize = basis.Length / matrix.RowCount;
-
-        // B = Qᵀ A, reached as (Aᵀ Q)ᵀ so the sparse matrix is never transposed.
-        double[] b = DenseBlock.Transpose(
-            matrix.TransposeMultiply(basis, basisSize), features, basisSize);
-        (_, double[] s, double[] vt) = JacobiSvd.Decompose(b, basisSize, features);
-        SignFlip.Apply(vt, s.Length, features);
+        // Since 1.6 the estimator asks randomized_svd for flip_sign=False and flips on the
+        // right vectors itself, which is why the kernel hands back an unflipped pair.
+        (_, double[] s, double[] vt, int rank) = RandomizedSvd.Compute(
+            matrix, componentCount, settings.Oversampling, settings.PowerIterations,
+            settings.Normalizer, omega);
+        SignFlip.Apply(vt, rank, features);
 
         double[] components = new double[checked(componentCount * features)];
         Array.Copy(vt, components, components.Length);
