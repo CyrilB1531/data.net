@@ -2669,6 +2669,7 @@ Part of #440."
 - Create: `tests/Lodestar.Decomposition.Tests/NndSvdTests.cs`
 - Create: `tests/oracles/decomposition_nmf.json` (the `initialization` half; Task 7 adds `updates`)
 - Modify: `src/Lodestar.Decomposition/TruncatedSvd.cs` (calls the extracted kernel)
+- Modify: `src/Lodestar.Decomposition/Internal/SignFlip.cs` (gains the left-based convention)
 - Modify: `tools/generate_oracles.py`
 
 **Interfaces:**
@@ -2679,8 +2680,10 @@ Part of #440."
   - `internal static class RandomizedSvd` with
     `internal static (double[] U, double[] S, double[] Vt, int Rank) Compute(CsrMatrix matrix, int componentCount, int oversampling, int powerIterations, PowerIterationNormalizer normalizer, ReadOnlySpan<double> omega)`
     — `U` is row-major `matrix.RowCount × Rank`, `S` is `double[Rank]`, `Vt` is row-major
-    `Rank × matrix.ColumnCount`, all sign-flipped, all **untruncated**: the caller keeps what it
-    needs.
+    `Rank × matrix.ColumnCount`, all **unflipped** and all **untruncated**: each caller applies
+    its own sign convention and keeps what it needs.
+  - `SignFlip.Apply(double[] u, int rows, int columns, double[] vt, int vtColumns)`, the
+    left-based convention, beside the right-based one Task 5 shipped.
   - `internal static class NndSvd` with
     `internal static (double[] W, double[] H) Initialize(CsrMatrix matrix, int componentCount, NmfInitialization initialization, int seed, double[]? randomMatrix)`
     — `W` is row-major `matrix.RowCount × componentCount`, `H` is row-major
@@ -2691,80 +2694,58 @@ Part of #440."
 along with `RandomState.normal`. An initialisation that cannot be checked against the reference is
 an initialisation nobody can trust, so the enum has two members and the reference page says why.
 
-- [ ] **Step 1: Extract the triplet out of `TruncatedSvd.Fit`**
+- [ ] **Step 1: Extract the triplet out of `TruncatedSvd.Fit`, and give the sign flip back to its callers**
 
-`Fit` currently computes `U`, `S` and `Vt` inline and keeps three of the four. NNDSVD needs all of
-them, so move the computation into `src/Lodestar.Decomposition/Internal/RandomizedSvd.cs`:
+Task 5 shipped a `Fit` that never forms `U` at all — with the estimator's right-based flip and a
+transform of `X · componentsᵀ`, nothing downstream needed it, so it destructures
+`(_, double[] s, double[] vt)` out of `JacobiSvd.Decompose` and flips `vt` alone. NNDSVD needs
+`U`, and it needs the **other** flip. Both facts come straight from scikit-learn:
 
-```csharp
-using Lodestar.Abstractions;
+- `_nmf.py:310` — `U, S, V = _randomized_svd(X, n_components, random_state=random_state)`, with
+  `flip_sign` at its default of `True`, so the initialisation inherits the **left-based**
+  `svd_flip(U, Vt)`.
+- `_truncated_svd.py:248-253` — the estimator asks for `flip_sign=False` and flips right-based
+  itself.
 
-namespace Lodestar.Decomposition.Internal;
+So the shared kernel returns the factors **unflipped** and each caller applies its own convention,
+which is exactly how scikit-learn is arranged: `flip_sign` is a parameter of the function and the
+estimator opts out of it.
 
-/// <summary>scikit-learn's <c>randomized_svd</c>, with Ω supplied rather than seeded.</summary>
-/// <remarks>
-/// The range finder reads the sparse matrix; everything after it is dense and thin. Sign
-/// conventions are pinned here, once, so <c>TruncatedSvd</c> and the NNDSVD initialisation cannot
-/// drift apart on them.
-/// </remarks>
-internal static class RandomizedSvd
-{
-    internal static (double[] U, double[] S, double[] Vt, int Rank) Compute(
-        CsrMatrix matrix,
-        int componentCount,
-        int oversampling,
-        int powerIterations,
-        PowerIterationNormalizer normalizer,
-        ReadOnlySpan<double> omega)
-    {
-        int features = matrix.ColumnCount;
-        int size = componentCount + oversampling;
-
-        double[] q = RandomizedRangeFinder.Find(matrix, omega, size, powerIterations, normalizer);
-
-        // B = Qᵀ A, reached as (Aᵀ Q)ᵀ so the sparse matrix is never transposed.
-        double[] b = DenseBlock.Transpose(matrix.TransposeMultiply(q, size), features, size);
-        (double[] uHat, double[] s, double[] vt) = JacobiSvd.Decompose(b, size, features);
-        int rank = s.Length;
-
-        double[] u = Product(q, matrix.RowCount, size, uHat, rank);
-        SignFlip.Apply(u, matrix.RowCount, rank, vt, features);
-        return (u, s, vt, rank);
-    }
-
-    /// <summary>Q · Û.</summary>
-    private static double[] Product(double[] q, int rows, int size, double[] uHat, int rank)
-    {
-        double[] result = new double[checked(rows * rank)];
-        for (int i = 0; i < rows; i++)
-        {
-            for (int k = 0; k < size; k++)
-            {
-                double value = q[(i * size) + k];
-                for (int j = 0; j < rank; j++)
-                {
-                    result[(i * rank) + j] += value * uHat[(k * rank) + j];
-                }
-            }
-        }
-        return result;
-    }
-}
-```
-
-`TruncatedSvd.Fit` then loses its `Product` helper and its middle block, and reads:
+Create `src/Lodestar.Decomposition/Internal/RandomizedSvd.cs` holding what `Fit` does between the
+options and the truncation: the range finder, `B = (Aᵀ Q)ᵀ`, the Jacobi factorization, and
+`U = Q · Û` — which `Fit` does not currently compute and which this must. Forming `U` costs one
+`m × size × rank` product, negligible beside the five sparse products the range finder already ran,
+and it is what lets both callers share one path.
 
 ```csharp
-        (double[] u, double[] s, double[] vt, int rank) = RandomizedSvd.Compute(
-            matrix, componentCount, settings.Oversampling, settings.PowerIterations,
-            settings.Normalizer, omega);
+internal static (double[] U, double[] S, double[] Vt, int Rank) Compute(
+    CsrMatrix matrix,
+    int componentCount,
+    int oversampling,
+    int powerIterations,
+    PowerIterationNormalizer normalizer,
+    ReadOnlySpan<double> omega)
 ```
 
-with everything from `double[] components = ...` onward unchanged. `TruncatedSvd.Product` and its
-`using`s go; `rank` is still what `TransformedVariance` strides by.
+`U` is row-major `matrix.RowCount × Rank`, `S` is `double[Rank]`, `Vt` is row-major
+`Rank × matrix.ColumnCount`, all **unflipped and untruncated** — the caller keeps what it needs.
+`Rank` is `S.Length`, which is not `componentCount + oversampling` whenever the economic QR
+narrowed the block.
+
+`SignFlip` grows a second entry point so each convention is named rather than implied:
+
+- the existing right-based one, which `TruncatedSvd.Fit` keeps calling, on `Vt` alone;
+- a left-based `Apply(double[] u, int rows, int columns, double[] vt, int vtColumns)` that makes
+  the largest-magnitude entry of each **column of `U`** positive and flips the matching row of
+  `Vt` with it. That is `svd_flip(u, v, u_based_decision=True)`, and it is what NNDSVD gets.
+
+`TruncatedSvd.Fit` then reads as before with the middle replaced by one call to `Compute` followed
+by its own right-based flip. Nothing else in `Fit` changes — not `Validate`, not the Ω length
+check, not `ExplainedBy`, not the truncation.
 
 Run: `dotnet test tests/Lodestar.Decomposition.Tests -c Release --filter "FullyQualifiedName~TruncatedSvdTests"`
-Expected: PASS, still 34. A pure extraction that moves a number is not a pure extraction.
+Expected: PASS, still **41**. A pure extraction that moves a number is not a pure extraction, and
+the corpus is what says so.
 
 - [ ] **Step 2: Write the oracle generator**
 
@@ -3026,6 +3007,9 @@ internal static class NndSvd
         (double[] u, double[] s, double[] vt, int rank) = RandomizedSvd.Compute(
             matrix, componentCount, Oversampling, PowerIterations(matrix, componentCount),
             PowerIterationNormalizer.Auto, omega);
+        // _initialize_nmf calls _randomized_svd with flip_sign at its default, so the
+        // initialisation inherits the LEFT-based convention, not the estimator's.
+        SignFlip.Apply(u, rows, rank, vt, features);
 
         double[] w = new double[checked(rows * componentCount)];
         double[] h = new double[checked(componentCount * features)];
