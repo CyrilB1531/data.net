@@ -43,6 +43,7 @@ TEXT = "Lodestar.Text"
 FUZZY = "Lodestar.Fuzzy"
 EMBEDDINGS = "Lodestar.Embeddings"
 METRICS = "Lodestar.Metrics"
+ABSTRACTIONS = "Lodestar.Abstractions"
 CONFORMAL = "Lodestar.Conformal"
 ONNX = "Microsoft.ML.OnnxRuntime"
 STJ = "System.Text.Json"
@@ -61,6 +62,12 @@ TEXT_FLOOR = "0.4.0"
 # package id -> target framework -> {dependency id: declared version range}.
 # See this module's docstring for what EXPECTED's shape and ranges prove.
 EXPECTED: dict[str, dict[str, dict[str, str]]] = {
+    ABSTRACTIONS: {
+        # A sparse matrix and its products serialise nothing, so no System.Text.Json
+        # here: persistence stays in the packages that persist.
+        NET: {},
+        NETSTANDARD: {**POLYFILLS},
+    },
     TEXT: {
         NET: {},
         NETSTANDARD: {**POLYFILLS, **PERSISTENCE},

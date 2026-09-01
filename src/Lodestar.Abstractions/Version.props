@@ -1,0 +1,15 @@
+<Project>
+
+  <!--
+    Lodestar.Abstractions owns its version here, independently of the other
+    packages (see docs/decisions/0012-per-package-versioning.md).
+
+    0.1.0 is this package's first release, and it is the release Lodestar.Text
+    0.5.0 depends on: src/ references published packages, so this number has to
+    be on nuget.org before that branch can go green.
+  -->
+  <PropertyGroup>
+    <LodestarAbstractionsVersion>0.1.0</LodestarAbstractionsVersion>
+  </PropertyGroup>
+
+</Project>

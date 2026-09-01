@@ -53,7 +53,7 @@ jobs:
           VERSION: ${{ steps.tag.outputs.version }}
         run: |
           case "$PACKAGE" in
-            Lodestar.Text|Lodestar.Embeddings|Lodestar.Fuzzy|Lodestar.Metrics|Lodestar.Conformal) ;;
+            Lodestar.Abstractions|Lodestar.Text|Lodestar.Embeddings|Lodestar.Fuzzy|Lodestar.Metrics|Lodestar.Conformal) ;;
             *) echo "::error::Unknown package '$PACKAGE'."; exit 1 ;;
           esac
           declared=$(dotnet msbuild "src/$PACKAGE" -getProperty:Version -p:TargetFramework=net10.0)

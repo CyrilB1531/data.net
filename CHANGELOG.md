@@ -5,10 +5,10 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-The five packages (`Lodestar.Text`, `Lodestar.Embeddings`, `Lodestar.Fuzzy`,
-`Lodestar.Metrics` — published as `DataNet.*` up to 2026-08-15 — and
-`Lodestar.Conformal`, which is newer than that rename) version and release
-**independently**, each from its own
+The six packages (`Lodestar.Text`, `Lodestar.Embeddings`, `Lodestar.Fuzzy`,
+`Lodestar.Metrics` — published as `DataNet.*` up to 2026-08-15 — plus
+`Lodestar.Conformal` and `Lodestar.Abstractions`, both newer than that rename)
+version and release **independently**, each from its own
 `src/<Package>/Version.props`, so entries are grouped per package. Releases up to
 and including `0.2.0` predate the split and covered all three at once — see
 [`docs/decisions/0012`](docs/decisions/0012-per-package-versioning.md). From the
@@ -51,6 +51,12 @@ is one sentence, the issue and the commit; see
 - **The `.npy` read copies the block once, and a second entry point copies it none.** `NpyFile.Read(Stream)` reads the payload straight into the `float[]` the returned block keeps, where it used to stage the same bytes through two buffers first, and names that array as `NpyBlock.OwnedArray` so `EmbeddingIndex.FromOwnedBlock` can adopt it rather than copy the block once more; `NpyFile.Read(ReadOnlyMemory<byte>)` serves a caller already holding the file by **aliasing** those bytes, which must not change while the block lives, and leaves `OwnedArray` null because a borrowed block has no array to hand on. Reading the same 15 360 128 bytes against `np.load` measured 0.21–0.23× of numpy's wall time with three copies between the stream and the block, and a fourth into the index that held it; on the adopting route it now measures **1.00–1.13× cpu and 1.21–1.25× wall** — parity in the first round and slightly ahead in the other two on cpu, the column this project trusts, where it was four to five times behind. The stream read is one copy on `net10.0` and two on `netstandard2.0`, which has no `Stream.Read(Span<byte>)` to read into a caller's array — one API and one behaviour at two speeds, as [decision 0057](docs/decisions/0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md) records with the view on every path it refused. ([#466](https://github.com/CyrilB1531/lodestar/issues/466), [`a3d3145`](https://github.com/CyrilB1531/lodestar/commit/a3d3145))
 - **The payload buffer is rented, not allocated.** `EmbeddingIndex.Load(Stream)` takes its artifact buffer from `ArrayPool<byte>.Shared` and returns it once parsing is done, which removes 20.5 MB of allocation and three of the four collections a load provoked: renting is **42× the allocation and 1.74 ms a load**, about a tenth of one, because what cost was never the allocation but the large-object collection it triggered. The pool holds 33.5 MB for the life of the process in exchange — see [decision 0054](docs/decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md), which amends [0053](docs/decisions/0053-the-payload-buffer-is-not-pooled-because-residency-outlives-the-load.md) for refusing that trade without ever timing it. ([#470](https://github.com/CyrilB1531/lodestar/issues/470), [`f8de2ba`](https://github.com/CyrilB1531/lodestar/commit/f8de2ba))
 - **Half the allocation, same bytes on disk.** `EmbeddingIndex.Save` and `SaveAsync` write the vector block a slice at a time instead of handing `Utf8JsonWriter.WriteBase64String` the whole thing, so the writer's buffer no longer doubles its way up to the 20.48 MB the encoding occupies: `EmbeddingIndexSave` allocates **19.87 MB against 39.64**, with a third fewer collections in every generation, and the row against `numpy.save` moves **0.29× to 0.39×**. Slices are 245 760 bytes — a multiple of 12, so a whole number of base64 groups and of floats — which is what makes the artifact byte-for-byte what it was; `SaveAsync` loses its intermediate `MemoryStream` with it. The load pays part of it back, having been subsidised by the buffer the save used to leave behind — see [decision 0051](docs/decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md), which also records why parallelising the base64 was refused: it runs at `memcpy` speed already. ([#430](https://github.com/CyrilB1531/lodestar/issues/430), [`2a50cc1`](https://github.com/CyrilB1531/lodestar/commit/2a50cc1))
+
+### Lodestar.Abstractions
+
+#### Added
+
+- **The sparse primitive the packages share.** `CsrMatrix` and `SparseNorm` ship in a package of their own, with two new products — `Multiply(block, columnCount)` and `TransposeMultiply(block, columnCount)` — that read the matrix once per non-zero rather than once per block column. `Lodestar.Text` still declares its own copy until its next release; [decision 0071](docs/decisions/0071-csrmatrix-moves-to-an-abstractions-package.md) amends [0069](docs/decisions/0069-the-package-layout-as-built-and-what-enforces-it.md) and records the sequence. ([#440](https://github.com/CyrilB1531/lodestar/issues/440))
 
 ### Lodestar.Conformal
 
