@@ -18,13 +18,7 @@ internal static class MultiplicativeUpdates
         double[] numerator;
         double[] denominator;
 
-        if (loss == NmfBetaLoss.Frobenius)
-        {
-            numerator = MatrixTimesTranspose(matrix, h, k);          // X Hᵀ
-            double[] hht = Gram(h, k, features);                     // H Hᵀ
-            denominator = DenseProduct(w, matrix.RowCount, k, hht, k);
-        }
-        else
+        if (loss == NmfBetaLoss.KullbackLeibler)
         {
             // WH is needed only where X is non-zero, and the ratio X/WH replaces it there.
             double[] ratio = SparseRatio(matrix, w, h, k);
@@ -39,6 +33,12 @@ internal static class MultiplicativeUpdates
                 }
             }
         }
+        else
+        {
+            numerator = MatrixTimesTranspose(matrix, h, k);          // X Hᵀ
+            double[] hht = Gram(h, k, features);                     // H Hᵀ
+            denominator = DenseProduct(w, matrix.RowCount, k, hht, k);
+        }
 
         Scale(w, numerator, denominator);
     }
@@ -50,13 +50,7 @@ internal static class MultiplicativeUpdates
         double[] numerator;
         double[] denominator;
 
-        if (loss == NmfBetaLoss.Frobenius)
-        {
-            numerator = TransposeTimesMatrix(matrix, w, k);           // Wᵀ X
-            double[] wtw = DenseBlock.TransposeGram(w, matrix.RowCount, k);
-            denominator = DenseProduct(wtw, k, k, h, features);
-        }
-        else
+        if (loss == NmfBetaLoss.KullbackLeibler)
         {
             double[] ratio = SparseRatio(matrix, w, h, k);
             numerator = TransposeTimesSparsePattern(matrix, ratio, w, k);
@@ -69,6 +63,12 @@ internal static class MultiplicativeUpdates
                     denominator[(a * features) + j] = columnSums[a];
                 }
             }
+        }
+        else
+        {
+            numerator = TransposeTimesMatrix(matrix, w, k);           // Wᵀ X
+            double[] wtw = DenseBlock.TransposeGram(w, matrix.RowCount, k);
+            denominator = DenseProduct(wtw, k, k, h, features);
         }
 
         Scale(h, numerator, denominator);

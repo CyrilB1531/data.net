@@ -177,6 +177,16 @@ public sealed class TruncatedSvdTests
     }
 
     [Fact]
+    public void A_rank_above_the_row_count_is_refused()
+    {
+        // scikit-learn accepts it; here the range finder narrows the basis below k and the
+        // truncation would throw out of Array.Copy, so it is refused where a caller can read it.
+        CsrMatrix wide = new(2, 5, [1.0, 2.0, 3.0, 4.0], [0, 2, 1, 4], [0, 2, 4]);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => TruncatedSvd.Fit(wide, 3));
+    }
+
+    [Fact]
     public void A_random_matrix_of_the_wrong_shape_is_refused()
     {
         CsrMatrix matrix = Matrix(Cases[0]);

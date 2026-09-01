@@ -2,7 +2,8 @@
 
 **Verdict: use** ML.NET (or SharpLearning for a sklearn-like API), **except text
 vectorization**, which is the gap filled natively by `Lodestar.Text` (exact
-`CountVectorizer`/`TfidfVectorizer` semantics).
+`CountVectorizer`/`TfidfVectorizer` semantics), and the two `sklearn.decomposition`
+estimators that work on a sparse matrix.
 
 | sklearn need | Recommended .NET |
 | --- | --- |
@@ -10,6 +11,7 @@ vectorization**, which is the gap filled natively by `Lodestar.Text` (exact
 | sklearn-like API (trees, ensembles) | **SharpLearning** |
 | `CountVectorizer` / `TfidfVectorizer` **to the character** | **`Lodestar.Text`** |
 | `classification_report`, `roc_auc_score`, the averaging modes | **`Lodestar.Metrics`** |
+| `TruncatedSVD`, `NMF(solver="mu")` on a sparse matrix | **`Lodestar.Decomposition`** |
 
 ```bash
 dotnet add package Microsoft.ML

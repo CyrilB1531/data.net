@@ -3088,19 +3088,85 @@ def _randomized_cases() -> list[dict]:
     return cases
 
 
+def _randomized_wide_settings() -> list[tuple[int, int, float, int, int, int, str]]:
+    """rows, columns, density, k, oversampling, power iterations, normalizer.
+
+    The mirror of _randomized_settings: every matrix here has fewer rows than columns,
+    which is the shape a term-document matrix actually has and the one the corpus above
+    cannot carry. The last case draws k + p past the row count, so the range finder has
+    to narrow the block on the short side.
+    """
+    return [
+        (12, 40, 0.30, 3, 6, 2, "auto"),
+        (20, 50, 0.20, 5, 10, 4, "LU"),
+        (8, 30, 0.40, 2, 10, 1, "QR"),
+    ]
+
+
+def _randomized_wide_cases() -> list[dict]:
+    """randomized_svd on a wide matrix, without the estimator.
+
+    TruncatedSVD is deliberately not called: its ``transpose="auto"`` resolves to True
+    exactly here, so it would factorize the transpose and the comparison would be against
+    a different factorization rather than against this package. ``randomized_svd`` with
+    ``transpose=False`` is what Lodestar computes, and the right-based ``svd_flip`` the
+    estimator applies is reapplied here so the signs are the ones a caller sees.
+
+    Only the singular values and the components are frozen. The estimator's own outputs --
+    explained variance, the projection -- have no reference to compare against once the
+    estimator is out of the loop, and U is not reported by the C# side either.
+    """
+    from scipy.sparse import csr_matrix
+    from sklearn.utils.extmath import randomized_svd, svd_flip
+
+    rng = SeededRandom(SEED + 44700)
+    cases = []
+    for index, (rows, columns, density, k, p, iterations, normalizer) in enumerate(
+            _randomized_wide_settings()):
+        fixture = _sparse_fixture(rng, rows, columns, density)
+        assert rows < columns, f"{CASE}{index}: the wide corpus needs rows < columns"
+        a = csr_matrix(
+            (fixture["values"], fixture["column_indices"], fixture["row_pointers"]),
+            shape=(rows, columns))
+
+        seed = SEED + 44800 + index
+        omega = np.random.RandomState(seed).normal(size=(columns, k + p))
+
+        u, s, vt = randomized_svd(
+            a, n_components=k, n_oversamples=p, n_iter=iterations,
+            power_iteration_normalizer=normalizer, transpose=False, random_state=seed)
+        _, vt = svd_flip(u, vt, u_based_decision=False)
+
+        cases.append({
+            **fixture,
+            COMPONENT_COUNT_KEY: k,
+            "oversampling": p,
+            "power_iterations": iterations,
+            "normalizer": normalizer,
+            OMEGA_KEY: omega.ravel().tolist(),
+            "singular_values": s.tolist(),
+            "components": vt.ravel().tolist(),
+        })
+    return cases
+
+
 def generate_decomposition_svd() -> dict:
-    """The dense SVD on its own, and randomized_svd composed on top of it (#440)."""
+    """The dense SVD, randomized_svd composed on top of it, and the wide shape
+    TruncatedSVD's transpose="auto" puts out of the estimator's reach (#440)."""
     dense, randomized = _dense_svd_cases(), _randomized_cases()
+    wide = _randomized_wide_cases()
     return {"metadata": {"library": "scipy and scikit-learn",
                          "version": version("scipy"),
                          "sklearn_version": version("scikit-learn"),
                          "reference_calls": ["scipy.linalg.svd",
                                              "sklearn.utils.extmath.randomized_svd",
                                              "sklearn.decomposition.TruncatedSVD"],
-                         "seed": SEED, "count": len(dense) + len(randomized),
+                         "seed": SEED,
+                         "count": len(dense) + len(randomized) + len(wide),
                          TOLERANCE_KEY: 1e-9},
             "dense": dense,
-            "randomized": randomized}
+            "randomized": randomized,
+            "randomized_wide": wide}
 
 
 # --- NMF for Lodestar.Decomposition (#440) ---------------------------------

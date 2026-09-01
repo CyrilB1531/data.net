@@ -12,6 +12,8 @@ public sealed class NmfTests
 {
     private const double Tolerance = 1e-9;
 
+    private const string MatrixParameter = "matrix";
+
     private static readonly JsonDocument Document = OracleLoader.Load("decomposition_nmf.json");
 
     private static IReadOnlyList<JsonElement> Cases { get; } =
@@ -52,6 +54,9 @@ public sealed class NmfTests
             MaxIterations = c.GetProperty("max_iterations").GetInt32(),
             Tolerance = c.GetProperty("tolerance").GetDouble(),
         });
+
+    private static NmfOptions Loss(NmfBetaLoss loss) =>
+        new() { BetaLoss = loss, MaxIterations = 30, Tolerance = 0.0 };
 
     private static void AssertSame(double[] expected, IReadOnlyList<double> actual)
     {
@@ -194,5 +199,49 @@ public sealed class NmfTests
         w[0] = -1.0;
 
         Assert.Throws<ArgumentException>(() => Nmf.Fit(matrix, w, Doubles(c, "initial_h")));
+    }
+
+    [Fact]
+    public void A_loss_outside_the_enum_is_the_frobenius_loss()
+    {
+        // nmfoptions.md promises this, and only the polarity of four branches keeps it true:
+        // re-inverting one would take the KL updates or skip the KL snap, and move H.
+        JsonElement c = Cases[0];
+        CsrMatrix matrix = Matrix(c);
+        double[] w0 = Doubles(c, "initial_w");
+        double[] h0 = Doubles(c, "initial_h");
+
+        Nmf undefined = Nmf.Fit(matrix, w0, h0, Loss((NmfBetaLoss)7));
+        Nmf frobenius = Nmf.Fit(matrix, w0, h0, Loss(NmfBetaLoss.Frobenius));
+        Nmf kullbackLeibler = Nmf.Fit(matrix, w0, h0, Loss(NmfBetaLoss.KullbackLeibler));
+
+        AssertSame([.. frobenius.Weights], undefined.Weights);
+        AssertSame([.. frobenius.Components], undefined.Components);
+
+        // Without this the fact would pass on any polarity if the two losses agreed.
+        Assert.NotEqual(kullbackLeibler.Components, undefined.Components);
+    }
+
+    [Fact]
+    public void A_negative_matrix_is_refused_by_the_initialising_overload()
+    {
+        // Unrefused it is not an error but a wrong answer: Frobenius returns signed factors
+        // and Kullback–Leibler returns NaN out of Math.Log, where scikit-learn raises.
+        CsrMatrix signed = new(3, 4, [1.0, -2.0, 3.0, 4.0], [0, 2, 1, 3], [0, 2, 3, 4]);
+
+        ArgumentException thrown = Assert.Throws<ArgumentException>(() => Nmf.Fit(signed, 2));
+
+        Assert.Equal(MatrixParameter, thrown.ParamName);
+    }
+
+    [Fact]
+    public void A_negative_matrix_is_refused_by_the_custom_overload()
+    {
+        CsrMatrix signed = new(3, 4, [1.0, -2.0, 3.0, 4.0], [0, 2, 1, 3], [0, 2, 3, 4]);
+
+        ArgumentException thrown = Assert.Throws<ArgumentException>(
+            () => Nmf.Fit(signed, new double[6], new double[8]));
+
+        Assert.Equal(MatrixParameter, thrown.ParamName);
     }
 }

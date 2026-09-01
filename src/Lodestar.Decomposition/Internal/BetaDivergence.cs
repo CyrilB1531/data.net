@@ -16,9 +16,9 @@ internal static class BetaDivergence
     internal static double Compute(
         CsrMatrix matrix, double[] w, double[] h, int componentCount, NmfBetaLoss loss)
     {
-        double residual = loss == NmfBetaLoss.Frobenius
-            ? Frobenius(matrix, w, h, componentCount)
-            : KullbackLeibler(matrix, w, h, componentCount);
+        double residual = loss == NmfBetaLoss.KullbackLeibler
+            ? KullbackLeibler(matrix, w, h, componentCount)
+            : Frobenius(matrix, w, h, componentCount);
 
         // Rounding can push the residual just below zero on a near-perfect fit.
         return Math.Sqrt(2.0 * Math.Max(residual, 0));

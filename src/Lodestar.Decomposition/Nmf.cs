@@ -81,7 +81,7 @@ public sealed class Nmf
     /// <param name="options">The solver's settings, or null for scikit-learn's defaults.</param>
     /// <exception cref="ArgumentNullException"><paramref name="matrix"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="componentCount"/> is not in <c>[1, matrix.ColumnCount)</c>, is above <c>matrix.RowCount</c>, or an option is out of range.</exception>
-    /// <exception cref="ArgumentException"><see cref="NmfOptions.RandomMatrix"/> is not <c>matrix.ColumnCount × (componentCount + 10)</c>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="matrix"/> holds a negative value, or <see cref="NmfOptions.RandomMatrix"/> is not <c>matrix.ColumnCount × (componentCount + 10)</c>.</exception>
     public static Nmf Fit(CsrMatrix matrix, int componentCount, NmfOptions? options = null)
     {
         Guard.NotNull(matrix);
@@ -90,7 +90,9 @@ public sealed class Nmf
         {
             throw new ArgumentOutOfRangeException(
                 nameof(componentCount), componentCount,
-                $"A factorization keeps between 1 and {matrix.ColumnCount - 1} components.");
+                $"A factorization keeps between 1 and {matrix.ColumnCount - 1} components; " +
+                "Fit(matrix, initialWeights, initialComponents) reads the rank off the blocks " +
+                "instead and carries no column bound.");
         }
         if (componentCount > matrix.RowCount)
         {
@@ -108,6 +110,7 @@ public sealed class Nmf
                 $"Ω is {omega.Length} long, not {matrix.ColumnCount} × {size}.", nameof(options));
         }
 
+        RequireNonNegativeMatrix(matrix);
         (double[] w, double[] h) = NndSvd.Initialize(
             matrix, componentCount, settings.Initialization, settings.Seed, settings.RandomMatrix);
         return Fit(matrix, w, h, settings);
@@ -119,7 +122,7 @@ public sealed class Nmf
     /// <param name="initialComponents">H₀, row-major <c>componentCount × matrix.ColumnCount</c> and non-negative.</param>
     /// <param name="options">The solver's settings, or null for scikit-learn's defaults.</param>
     /// <exception cref="ArgumentNullException">An argument is null.</exception>
-    /// <exception cref="ArgumentException">The two blocks do not agree on a component count, do not fit the matrix, or hold a negative number.</exception>
+    /// <exception cref="ArgumentException"><paramref name="matrix"/> holds a negative value, or the two blocks do not agree on a component count, do not fit the matrix, or hold a negative number.</exception>
     /// <exception cref="ArgumentOutOfRangeException">An option is out of range.</exception>
     public static Nmf Fit(
         CsrMatrix matrix, double[] initialWeights, double[] initialComponents,
@@ -133,6 +136,7 @@ public sealed class Nmf
 
         int features = matrix.ColumnCount;
         int componentCount = ComponentCountOf(matrix, initialWeights, initialComponents, features);
+        RequireNonNegativeMatrix(matrix);
         RequireNonNegative(initialWeights, nameof(initialWeights));
         RequireNonNegative(initialComponents, nameof(initialComponents));
 
@@ -208,11 +212,26 @@ public sealed class Nmf
 
     private static void RequireNonNegative(double[] block, string name)
     {
-        int index = Array.FindIndex(block, value => double.IsNaN(value) || value < 0);
+        int index = FirstNegative(block);
         if (index >= 0)
         {
             throw new ArgumentException(
                 $"A non-negative factorization cannot start from {block[index]}.", name);
         }
     }
+
+    private static void RequireNonNegativeMatrix(CsrMatrix matrix)
+    {
+        int index = FirstNegative(matrix.Values);
+        if (index >= 0)
+        {
+            throw new ArgumentException(
+                $"A non-negative factorization needs a non-negative matrix, and this one holds {matrix.Values[index]}.",
+                nameof(matrix));
+        }
+    }
+
+    /// <summary>Where the first value a non-negative factorization cannot use sits, or -1.</summary>
+    private static int FirstNegative(double[] block) =>
+        Array.FindIndex(block, value => double.IsNaN(value) || value < 0);
 }

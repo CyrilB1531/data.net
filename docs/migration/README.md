@@ -17,7 +17,7 @@ native code where .NET has a real gap: **text** (similarity, vectorization).
 | **PyTorch** | tensors, autograd, training, GPU | [TorchSharp](https://github.com/dotnet/TorchSharp) (= libtorch); [ONNX Runtime](https://onnxruntime.ai/) for inference only | ✅ **Use** |
 | **matplotlib** | plotting | [ScottPlot](https://scottplot.net/), [Plotly.NET](https://plotly.net/), OxyPlot | ✅ **Use** |
 | **NumPy** | N-dim arrays, dense algebra | [Math.NET Numerics](https://numerics.mathdotnet.com/) (+ native MKL/OpenBLAS provider); `System.Numerics.Tensors` | ✅ **Use** |
-| **scikit-learn** | classical ML, pipelines, metrics | [ML.NET](https://dotnet.microsoft.com/apps/machinelearning-ai/ml-dotnet); [SharpLearning](https://github.com/mdabros/SharpLearning) | ✅ **Use** *except* text vectorization → **Lodestar.Text** and classification metrics → **Lodestar.Metrics** |
+| **scikit-learn** | classical ML, pipelines, metrics | [ML.NET](https://dotnet.microsoft.com/apps/machinelearning-ai/ml-dotnet); [SharpLearning](https://github.com/mdabros/SharpLearning) | ✅ **Use** *except* text vectorization → **Lodestar.Text**, classification metrics → **Lodestar.Metrics**, and the two sparse decompositions (`TruncatedSVD`, `NMF`) → **Lodestar.Decomposition** |
 | **MAPIE** | conformal prediction: intervals and prediction sets with a coverage guarantee | none — no C# implementation exists | 🔴 **Write** — split conformal is **Lodestar.Conformal** |
 | **pandas** | DataFrame, groupby, IO | [`Microsoft.Data.Analysis`](https://www.nuget.org/packages/Microsoft.Data.Analysis); [Deedle](https://fslab.org/Deedle/) | 🟡 **Use** (rougher) |
 | **statsmodels** | econometric regression, time series, tests | Math.NET (basics) — *not* Accord.NET, see below | 🟠 **Decide** — rich econometrics is a gap |
@@ -65,9 +65,9 @@ artifact, and the GIL between your threads and theirs.
 
 ## What Lodestar writes natively
 
-One area truly justifies native code — **text** — and one more turned out to be
-a gap the .NET options do not fill honestly: the **evaluation metrics** every
-sklearn user reaches for. That's
+One area truly justifies native code — **text** — and two more turned out to be
+gaps the .NET options do not fill honestly: the **evaluation metrics** every
+sklearn user reaches for, and the **decompositions a sparse matrix needs**. That's
 [`Lodestar.Text`](https://github.com/CyrilB1531/lodestar/blob/main/src/Lodestar.Text)
 and its siblings, delivered as lots (see the brief):
 
@@ -92,6 +92,13 @@ and its siblings, delivered as lots (see the brief):
    the guarantee's assumption leads
    [its guide](https://github.com/CyrilB1531/lodestar/blob/main/docs/guides/conformal.md)
    rather than closing it.
+7. **Sparse truncated SVD and NMF** — scikit-learn-parity `TruncatedSVD` and
+   `NMF(solver="mu")` over a `CsrMatrix`. *(done)* Math.NET is still the answer for
+   dense linear algebra and this does not replace it, but its sparse SVD request has
+   been open since 2013, and ML.NET's `ProjectToPrincipalComponents` centres the data,
+   which densifies the very matrix the sparse representation exists to keep sparse —
+   [decision 0072](../decisions/0072-omega-is-an-input-not-a-seed.md) and
+   [its guide](https://github.com/CyrilB1531/lodestar/blob/main/docs/guides/decomposition.md).
 
 ## Per-library guides
 
