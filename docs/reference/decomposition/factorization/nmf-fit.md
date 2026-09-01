@@ -12,19 +12,19 @@ public static Nmf Fit(CsrMatrix matrix, double[] initialWeights, double[] initia
 
 **Parameters** — `matrix` is the matrix to factorize, rows as samples and columns as features; it
 is read, never modified, and it must hold no negative value. `componentCount` is the rank to keep,
-at least 1, strictly below the number of columns and no greater than the number of rows.
+at least 1 and no greater than `min(rows, columns)`, which is scikit-learn's own bound.
 `initialWeights` is `W₀`, row-major `matrix.RowCount × componentCount`, and `initialComponents` is
 `H₀`, row-major `componentCount × matrix.ColumnCount`; both are non-negative, both are copied, and
-the rank is read off their lengths rather than passed again. `options` carries the solver's
-settings, or is left out for scikit-learn's defaults: the Frobenius loss, NNDSVD, 200 iterations
-and a tolerance of `1e-4`.
+the rank is read off their lengths rather than passed again — so that overload, and only that one,
+reaches a rank above `min(rows, columns)`. `options` carries the solver's settings, or is left out
+for scikit-learn's defaults: the Frobenius loss, NNDSVD, 200 iterations and a tolerance of `1e-4`.
 
 **Returns** — an `Nmf` holding `W`, `H`, the iteration count and the reconstruction error. Every
 property is populated; there is no second call to make.
 
 **Exceptions** — `ArgumentNullException` when `matrix`, `initialWeights` or `initialComponents` is
-null. `ArgumentOutOfRangeException` when `componentCount` is below 1, at or above the number of
-columns, above the number of rows, or when `MaxIterations` is below one or `Tolerance` is negative.
+null. `ArgumentOutOfRangeException` when `componentCount` is below 1 or above the smaller of the two
+dimensions, or when `MaxIterations` is below one or `Tolerance` is negative.
 `ArgumentException` when `matrix` holds a negative value or a `NaN`, on either overload — the
 precondition is checked rather than assumed, since a negative entry does not fail the loop, it
 returns signed factors under the Frobenius loss and `NaN` under Kullback–Leibler. `ArgumentException`

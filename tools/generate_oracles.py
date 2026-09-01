@@ -3280,7 +3280,11 @@ def _nmf_update_settings() -> list[tuple[int, int, float, int, str, int, float, 
     identical W on two runs. One case keeps scikit-learn's default tol so the
     stopping rule itself is compared, not just the arithmetic.
 
-    The last row zeroes a column of W0 under Kullback-Leibler, which is the one place
+    The last row is k == columns with rows >= columns, the rank scikit-learn admits and
+    a bound taken from TruncatedSVD used to refuse (#519): the edge is frozen against NMF
+    itself rather than argued from the C# code staying in range there.
+
+    The row before it zeroes a column of W0 under Kullback-Leibler, which is the one place
     the two implementations are written differently: _multiplicative_update_h replaces a
     zero column sum of W with 1.0 before dividing, while this package floors every zero
     denominator to EPSILON. Both reach zero because the numerator is zero there too, and
@@ -3294,6 +3298,7 @@ def _nmf_update_settings() -> list[tuple[int, int, float, int, str, int, float, 
         (48, 20, 0.30, 5, KULLBACK_LEIBLER, 40, 0.0, -1),
         (16, 6, 0.70, 2, FROBENIUS, 200, 1e-4, -1),
         (30, 12, 0.45, 3, KULLBACK_LEIBLER, 40, 0.0, 1),
+        (24, 8, 0.50, 8, FROBENIUS, 40, 0.0, -1),
     ]
 
 
