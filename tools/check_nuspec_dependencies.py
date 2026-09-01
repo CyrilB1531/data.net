@@ -24,7 +24,9 @@ nothing on ``net10.0`` (the dependency-free core) and only
 ``System.Text.Json`` on ``netstandard2.0`` (the one deliberate exception, so
 persisting a fitted model does not mean hand-rolling a JSON writer);
 ``Lodestar.Fuzzy`` depends on ``Lodestar.Text`` because ``Fuzz.Ratio`` is built
-on ``Indel`` -- the only inter-package edge that exists. The ranges are
+on ``Indel``, and since 0.5.0 ``Lodestar.Text`` depends on
+``Lodestar.Abstractions`` because that is where ``CsrMatrix`` moved -- the two
+inter-package edges that exist. The ranges are
 asserted too, not only the ids: a bare ``"0.2.0"`` is NuGet's shorthand for
 ``[0.2.0, )``, and an edge with the wrong floor is a different edge.
 """
@@ -59,6 +61,10 @@ PERSISTENCE = {STJ: "10.0.10"}
 # emits this floor, but LodestarUseProjectRefs emits Text's own version instead -- catching the escape hatch left on.
 TEXT_FLOOR = "0.4.0"
 
+# Must equal Directory.Packages.props' PackageVersion, for the edge decision 0071
+# added: Lodestar.Text stopped declaring CsrMatrix and consumes it from here.
+ABSTRACTIONS_FLOOR = "0.1.1"
+
 # package id -> target framework -> {dependency id: declared version range}.
 # See this module's docstring for what EXPECTED's shape and ranges prove.
 EXPECTED: dict[str, dict[str, dict[str, str]]] = {
@@ -69,8 +75,8 @@ EXPECTED: dict[str, dict[str, dict[str, str]]] = {
         NETSTANDARD: {**POLYFILLS},
     },
     TEXT: {
-        NET: {},
-        NETSTANDARD: {**POLYFILLS, **PERSISTENCE},
+        NET: {ABSTRACTIONS: ABSTRACTIONS_FLOOR},
+        NETSTANDARD: {ABSTRACTIONS: ABSTRACTIONS_FLOOR, **POLYFILLS, **PERSISTENCE},
     },
     FUZZY: {
         NET: {TEXT: TEXT_FLOOR},

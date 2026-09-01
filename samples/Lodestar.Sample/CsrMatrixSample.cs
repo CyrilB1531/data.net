@@ -1,3 +1,4 @@
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 namespace Lodestar.Sample;
@@ -16,5 +17,14 @@ internal static class CsrMatrixSample
         double[] product = matrix.Multiply(new double[matrix.ColumnCount]);
         double[,] dense = matrix.ToDense();
         Console.WriteLine($"  Multiply / ToDense: {product.Length} rows, dense {dense.GetLength(0)}x{dense.GetLength(1)}");
+
+        // Built by hand: the constructor is public API of Lodestar.Abstractions, and
+        // this is the only place that proves it reachable once packaged.
+        CsrMatrix built = new(2, 3, [1.0, 2.0, 3.0], [0, 2, 1], [0, 2, 3]);
+
+        // The block forms are what a power iteration multiplies by: one pass over the
+        // non-zeros rather than one per column of the dense operand.
+        Console.WriteLine($"  · 3x2 block      = {Inv.List(built.Multiply([1.0, 0.5, 2.0, 1.5, 3.0, 2.5], 2))}");
+        Console.WriteLine($"  transposed · 2x2 = {Inv.List(built.TransposeMultiply([1.0, 0.5, 2.0, 1.5], 2))}");
     }
 }

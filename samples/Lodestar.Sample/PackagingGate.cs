@@ -107,7 +107,6 @@ internal static class PackagingGate
         ["Lodestar.Metrics.AverageRow..ctor"] = ResultRecordCtor,
         ["Lodestar.Metrics.ClassRow..ctor"] = ResultRecordCtor,
         ["Lodestar.Metrics.PairConfusionMatrix..ctor"] = ResultRecordCtor,
-        ["Lodestar.Text.Vectorization.CsrMatrix..ctor"] = ResultRecordCtor,
     };
 
     /// <summary>What one pass over the exported surface found.</summary>
