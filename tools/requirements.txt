@@ -24,6 +24,11 @@ sentencepiece==0.2.2
 # with "No module named 'google'" while a developer machine that happens to have
 # protobuf installed passes.
 protobuf==7.35.1
+# mapie -- the reference for Lodestar.Conformal's split-conformal corpus (#441).
+# Its own dependencies (numpy, scikit-learn, scipy) were already resolved here, so
+# the graph grows by one package rather than by a tree.
+mapie==1.5.0
+
 # onnx is only needed to (re)build the tiny synthetic test model, not for
 # generate_oracles.py: onnx==1.16.0
 
