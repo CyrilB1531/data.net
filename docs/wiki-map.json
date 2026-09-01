@@ -8,6 +8,11 @@
     "docs/guides/benchmark_latest.md"
   ],
   "packages": {
+    "Lodestar.Abstractions": {
+      "wiki": "Abstractions",
+      "pages": [],
+      "covered": {}
+    },
     "Lodestar.Text": {
       "wiki": "Text",
       "pages": [
