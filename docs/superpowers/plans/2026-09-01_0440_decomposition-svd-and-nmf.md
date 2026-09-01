@@ -4438,7 +4438,10 @@ These run **once**, on the finished branch, not inside each task.
 - [ ] `dotnet format Lodestar.slnx --verify-no-changes`
 - [ ] `python3 tools/check_version_floor.py --check-feed` — `Lodestar.Abstractions` 0.1.1 must
       resolve from nuget.org for both dependents.
-- [ ] `python3 tools/check_machine_paths.py`
+- [ ] `python3 tools/check_machine_paths.py --no-environment` — in a container whose `$HOME`
+      is `/root`, the bare run's environment probe fires on two 2026-08-12 plan files that
+      quote `/root/` as an example, and neither is this branch's. `--no-environment` checks
+      the named shapes alone and comes back clean.
 - [ ] `python3 tools/check_sample_culture.py`
 - [ ] `python3 tools/check_sample_coverage.py`
 - [ ] `python3 tools/check_bench_map.py`
