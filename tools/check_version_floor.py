@@ -45,25 +45,30 @@ FLAT_CONTAINER = "https://api.nuget.org/v3-flatcontainer/{id}/index.json"
 
 @dataclass(frozen=True)
 class Floor:
-    """One edge: a package, the dependent that floors it, and where each number lives."""
+    """One edge: a package, the dependents that floor it, and where each number lives."""
 
     package: str
     version_element: str
     floor_constant: str
-    required_by: str
+    required_by: tuple[str, ...]
 
     @property
     def version_props(self) -> pathlib.Path:
         """Where the package declares what it is."""
         return ROOT / "src" / self.package / "Version.props"
 
+    @property
+    def dependents(self) -> str:
+        """The dependents, for a message a reader can act on."""
+        return " and ".join(self.required_by)
+
 
 # One row per inter-package edge. Adding an edge without adding it here is the
 # drift this script exists to catch, so the row lands in the same commit.
 FLOORS = (
-    Floor("Lodestar.Text", "LodestarTextVersion", "TEXT_FLOOR", "Lodestar.Fuzzy"),
+    Floor("Lodestar.Text", "LodestarTextVersion", "TEXT_FLOOR", ("Lodestar.Fuzzy",)),
     Floor("Lodestar.Abstractions", "LodestarAbstractionsVersion", "ABSTRACTIONS_FLOOR",
-          "Lodestar.Text"),
+          ("Lodestar.Text", "Lodestar.Decomposition")),
 )
 
 
@@ -140,7 +145,7 @@ def check(floor: Floor, check_feed: bool) -> list[str]:
     if ordering_key(pinned) > ordering_key(declared):
         failures.append(
             f"the {floor.package} floor {pinned} is above the declared version "
-            f"{declared}: {floor.required_by} would require a {floor.package} this "
+            f"{declared}: {floor.dependents} would require a {floor.package} this "
             f"repository has not written"
         )
 
@@ -155,7 +160,7 @@ def check(floor: Floor, check_feed: bool) -> list[str]:
             failures.append(
                 f"the {floor.package} floor {pinned} is not on nuget.org (published: "
                 f"{', '.join(sorted(published, key=ordering_key))}), so a clean clone "
-                f"cannot restore {floor.required_by}"
+                f"cannot restore {floor.dependents}"
             )
 
     return failures
@@ -181,7 +186,7 @@ def main(argv: list[str]) -> int:
 
     for floor in FLOORS:
         print(f"ok  {floor.package} declares {declared_version(floor)}, "
-              f"{floor.required_by} floors at {floor_version(floor)}")
+              f"{floor.dependents} floors at {floor_version(floor)}")
     return 0
 
 

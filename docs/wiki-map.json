@@ -90,6 +90,14 @@
       "covered": {
         "Lodestar.Conformal": "docs/reference/conformal/prediction"
       }
+    },
+    "Lodestar.Decomposition": {
+      "wiki": "Decomposition",
+      "pages": [
+        "docs/reference/decomposition/*.md",
+        "docs/reference/decomposition/*/*.md"
+      ],
+      "covered": {}
     }
   }
 }

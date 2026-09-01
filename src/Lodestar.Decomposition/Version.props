@@ -1,0 +1,15 @@
+<Project>
+
+  <!--
+    Lodestar.Decomposition owns its version here, independently of the other
+    packages (see docs/decisions/0012-per-package-versioning.md).
+
+    0.1.0 is this package's first release. It carries one inter-package edge, to
+    Lodestar.Abstractions, whose floor lives in src/Directory.Packages.props and
+    is deliberately decoupled from this number.
+  -->
+  <PropertyGroup>
+    <LodestarDecompositionVersion>0.1.0</LodestarDecompositionVersion>
+  </PropertyGroup>
+
+</Project>

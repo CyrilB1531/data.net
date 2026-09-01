@@ -52,7 +52,7 @@ jobs:
         run: |
           set -euo pipefail
           args=""
-          for package in Lodestar.Abstractions Lodestar.Text Lodestar.Embeddings Lodestar.Fuzzy Lodestar.Metrics Lodestar.Conformal; do
+          for package in Lodestar.Abstractions Lodestar.Text Lodestar.Embeddings Lodestar.Fuzzy Lodestar.Metrics Lodestar.Conformal Lodestar.Decomposition; do
             version=$(git tag --list "$package/v*" | sed "s|$package/v||" | sort -V | tail -1)
             if [ -n "$version" ]; then
               args="$args --released $package=$version"

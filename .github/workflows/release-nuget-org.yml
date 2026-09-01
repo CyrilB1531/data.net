@@ -20,6 +20,7 @@ on:
           - Lodestar.Metrics
           - Lodestar.Conformal
           - Lodestar.Abstractions
+          - Lodestar.Decomposition
       version:
         description: 'Version to publish (e.g. 0.3.0) — must match the declared one'
         required: true

@@ -267,15 +267,10 @@ namespace Lodestar.Decomposition.Internal;
 
 /// <summary>Standard normal draws from an <see cref="int"/> seed, reproducible everywhere.</summary>
 /// <remarks>
-/// <para>
 /// <see cref="Random"/> is not the answer: its algorithm changed in .NET 6, so the same seed
 /// gives different numbers on .NET Framework and on net10.0 — and this package ships to both.
-/// SplitMix64 with Box–Muller is a dozen lines and is identical on every runtime.
-/// </para>
-/// <para>
-/// A seed reproduces a run of <em>this</em> library and nothing else. It does not reproduce
-/// numpy's <c>RandomState.normal</c>, which is why the oracle corpora pass Ω explicitly.
-/// </para>
+/// A seed reproduces a run of <em>this</em> library and nothing else, which is why the oracle
+/// corpora pass Ω explicitly rather than seeding.
 /// </remarks>
 internal sealed class GaussianSampler
 {
@@ -480,13 +475,14 @@ CONVERTED = ["Lodestar.Text", "Lodestar.Conformal", "Lodestar.Abstractions", "Lo
 
 `docs/wiki-map.json` — the package is described now, with an empty `covered`, because
 `build_wiki.py` looks a tagged package up unconditionally and both keys are read. `covered` is
-filled in Task 5, when there is a public namespace to cover:
+filled in Task 5, when there is a public namespace to cover, and
+`docs/guides/decomposition.md` joins `pages` in Task 9, when it exists — `build_wiki.py`
+hard-fails a literal path it cannot find, and `tools/tests/test_build_wiki.py` catches it:
 
 ```json
     "Lodestar.Decomposition": {
       "wiki": "Decomposition",
       "pages": [
-        "docs/guides/decomposition.md",
         "docs/reference/decomposition/*.md",
         "docs/reference/decomposition/*/*.md"
       ],
@@ -4230,6 +4226,7 @@ Part of #440."
 - Create: `docs/guides/decomposition.md`
 - Create: `docs/decisions/0072-omega-is-an-input-not-a-seed.md`
 - Modify: `docs/decisions/README.md`
+- Modify: `docs/wiki-map.json`
 - Modify: `CHANGELOG.md`
 - Modify: `README.md`
 - Modify: `docs/migration/numpy.md`
@@ -4282,6 +4279,14 @@ Run: `python3 tools/check_adr_immutable.py --base origin/main`
 Expected: `ok`.
 
 - [ ] **Step 3: Write the guide**
+
+`docs/wiki-map.json` — the guide now exists, so it joins `Lodestar.Decomposition`'s `pages`
+above the two reference globs. Task 1 deliberately left it out: `build_wiki.py` hard-fails a
+literal path that is not in the tree, and `tools/tests/test_build_wiki.py` goes red on it.
+
+```json
+        "docs/guides/decomposition.md",
+```
 
 `docs/guides/decomposition.md`, in the shape of `docs/guides/conformal.md`. Its ` ```csharp `
 fences are compiled by the doc-snippets gate, so every one must build against the packed packages.
