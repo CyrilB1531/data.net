@@ -1260,9 +1260,12 @@ internal static class PartialPivotLu
                 continue;
             }
 
+            // Reciprocal-multiply, not per-row division, mirrors LAPACK's dgetf2 (DSCAL by
+            // ONE/AJJ): measured, dividing lands on a different pivot order entirely.
+            double reciprocal = 1.0 / head;
             for (int i = k + 1; i < rows; i++)
             {
-                double factor = work[(i * columns) + k] / head;
+                double factor = work[(i * columns) + k] * reciprocal;
                 work[(i * columns) + k] = factor;
                 for (int j = k + 1; j < columns; j++)
                 {
@@ -1305,6 +1308,11 @@ internal static class PartialPivotLu
 Run: `dotnet test tests/Lodestar.Decomposition.Tests -c Release --filter "FullyQualifiedName~PartialPivotLu"`
 Expected: PASS, 14 tests — 6 full-rank cases × the factor theory, 7 cases × the reconstruction
 theory, plus the wide-block fact.
+
+**Divide and you will not match scipy.** Measured against the corpus on the rank-deficient
+fixture: per-row division gives `max|PL − scipy| = 1.0` and `max|PL·U − A| = 1.5`, while the
+reciprocal gives `0.0` and `1.1e-16`. The last bit of each multiplier decides a later pivot
+comparison, and LAPACK's `dgetf2` multiplies by `1/AJJ`. This is parity, not micro-optimisation.
 
 The reconstruction theory runs on the rank-deficient fixture too, and must: it is what proves the
 zero-pivot guard leaves the factor finite rather than filling it with NaN. Only the factor-level
