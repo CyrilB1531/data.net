@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- This package's version, owned here rather than repository-wide. -->
+  <Import Project="Version.props" />
+
+  <PropertyGroup>
+    <Version>$(LodestarConformalVersion)</Version>
+    <TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks>
+    <RootNamespace>Lodestar.Conformal</RootNamespace>
+
+    <PackageId>Lodestar.Conformal</PackageId>
+    <Description>Split conformal prediction for .NET at MAPIE parity: turn a point prediction into an interval, or a class into a prediction set, with a finite-sample coverage guarantee. Post-hoc over scores and labels — no model, no training loop, no dependencies. The guarantee assumes exchangeable calibration and test data; it does not hold for time series.</Description>
+    <PackageTags>conformal;conformal-prediction;uncertainty;prediction-interval;coverage;mapie;lodestar</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lodestar.Conformal.Tests" />
+    <!-- Same suite, replayed against the netstandard2.0 build. -->
+    <InternalsVisibleTo Include="Lodestar.Conformal.NetStandard.Tests" />
+  </ItemGroup>
+
+</Project>

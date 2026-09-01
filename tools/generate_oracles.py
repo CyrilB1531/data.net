@@ -71,6 +71,13 @@ BOS_TOKEN = "<s>"
 # Two spellings of one fixture phrase. THE_CAT is separate because four corpora
 # reach for it and Sonar's S1192 counts them together (issue #487's quality gate).
 THE_CAT = "the cat"
+# The conformal corpus's own key names. S1192 counts a JSON key like any other
+# literal, and these are written once per case in three places each (#441).
+CALIB_SIZE = "calib"
+QUANTILE = "quantile"
+Y_CALIB = "y_calib"
+Y_CALIB_PRED = "y_calib_pred"
+Y_TEST_PRED = "y_test_pred"
 CAT_SENTENCE = THE_CAT + " sat on the mat"
 HELLO_WORLD = "hello world"
 END_OF_TEXT = "<|endoftext|>"
@@ -2558,6 +2565,233 @@ def generate_regression_deviance() -> dict:
         },
         "cases": cases,
         "multioutput": multioutput,
+    }
+
+
+# --- Split conformal prediction (#441) ------------------------------------
+
+
+def _frozen_estimators():
+    """MAPIE-compatible estimators whose predictions are a frozen table.
+
+    prefit=True means MAPIE only ever calls predict / predict_proba, so a table
+    indexed by X[:, 0] is a complete estimator here -- and unlike a fitted
+    regressor it puts no BLAS reduction between the fixture and the corpus.
+    """
+    from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
+
+    class FrozenRegressor(RegressorMixin, BaseEstimator):
+        def __init__(self, table=None):
+            self.table = table
+
+        def fit(self, X):
+            # No y: the table is the model, so fitting only records the shape and
+            # the marker sklearn's check_is_fitted looks for.
+            self.n_features_in_ = np.asarray(X).shape[1]
+            self.is_fitted_ = True
+            return self
+
+        def predict(self, X):
+            return np.asarray(self.table, dtype=float)[np.asarray(X)[:, 0].astype(int)]
+
+    class FrozenClassifier(ClassifierMixin, BaseEstimator):
+        def __init__(self, table=None, n_classes=0):
+            self.table = table
+            self.n_classes = n_classes
+
+        def fit(self, X):
+            # classes_ comes from n_classes rather than from a y: see FrozenRegressor.fit.
+            self.classes_ = np.arange(self.n_classes)
+            self.n_features_in_ = np.asarray(X).shape[1]
+            self.is_fitted_ = True
+            return self
+
+        def predict_proba(self, X):
+            return np.asarray(self.table, dtype=float)[np.asarray(X)[:, 0].astype(int)]
+
+        def predict(self, X):
+            return self.classes_[self.predict_proba(X).argmax(axis=1)]
+
+    return FrozenRegressor, FrozenClassifier
+
+
+def _conformal_quantile(scores: list[float], alpha: float) -> tuple[int, float]:
+    """The rule under test, computed here so the corpus can assert MAPIE against it."""
+    n = len(scores)
+    k = math.ceil((n + 1) * (1.0 - alpha))
+    if k > n:
+        raise ValueError(f"k={k} exceeds n={n}; this corpus holds only cases MAPIE answers")
+    return k, sorted(scores)[k - 1]
+
+
+def _conformal_regression_fixtures() -> list[dict]:
+    """Calibration/test splits for the absolute-residual score.
+
+    Every alpha satisfies MAPIE's own precondition -- 1/alpha and 1/(1 - alpha)
+    both below the calibration size -- because below it MAPIE refuses to answer at
+    all, which is the same region decision 0070 is about.
+    """
+    rng = SeededRandom(SEED + 441)
+    y_calib = [round(rng.gauss(10.0, 3.0), 6) for _ in range(30)]
+    predicted = [round(v + rng.gauss(0.0, 1.5), 6) for v in y_calib]
+    test = [round(rng.gauss(10.0, 3.0), 6) for _ in range(6)]
+    return [
+        {"name": "thirty calibration points at 90 %",
+         "alpha": 0.1, Y_CALIB: y_calib, Y_CALIB_PRED: predicted, Y_TEST_PRED: test},
+        {"name": "the same points at 50 %",
+         "alpha": 0.5, Y_CALIB: y_calib, Y_CALIB_PRED: predicted, Y_TEST_PRED: test},
+        # (n + 1)(1 - alpha) = 20 * 0.9 = 18 exactly, so the ceiling must not round
+        # up: k is 18, not 19. An implementation carrying an epsilon gets this wrong.
+        {"name": "an exact integer at the ceiling",
+         "alpha": 0.1, Y_CALIB: y_calib[:19], Y_CALIB_PRED: predicted[:19],
+         Y_TEST_PRED: test},
+        # Repeated scores: the k-th smallest is a position, not a distinct value.
+        {"name": "ties in the calibration scores",
+         "alpha": 0.3,
+         Y_CALIB: [float(v) for v in range(1, 13)],
+         Y_CALIB_PRED: [1.5, 2.5, 4.0, 5.0, 4.0, 5.75, 9.0, 8.5, 8.0, 9.75, 13.0, 11.5],
+         Y_TEST_PRED: [0.0, 6.25, 100.0]},
+    ]
+
+
+def _peaked_rows(rng: SeededRandom, rows: int, classes: int, sharpness: float) -> list[list[float]]:
+    """Probability rows, normalised in pure Python so the corpus holds exact doubles.
+
+    A numpy row-sum would put a reduction between the fixture and the file; these
+    values are committed, so they are computed the way they are written.
+    """
+    out = []
+    for _ in range(rows):
+        raw = [rng.random() ** sharpness + 1e-3 for _ in range(classes)]
+        total = math.fsum(raw)
+        out.append([v / total for v in raw])
+    return out
+
+
+def _conformal_classification_fixtures() -> list[dict]:
+    """LAC fixtures, including the one whose point is an empty prediction set."""
+    rng = SeededRandom(SEED + 4410)
+    flat = _peaked_rows(rng, 88, 4, 1.0)
+    confident = _peaked_rows(rng, 64, 3, 6.0)
+    # A deliberately flat test row under a confident model: no class clears 1 - q,
+    # and LAC's answer is the empty set rather than the arg-max.
+    confident[-1] = [0.34, 0.33, 0.33]
+    binary = _peaked_rows(rng, 40, 2, 2.0)
+    return [
+        {"name": "eighty calibration points, four classes, at 80 %",
+         "alpha": 0.2, "class_count": 4, CALIB_SIZE: 80, "proba": flat, "empty": False},
+        {"name": "a confident model, where a flat row gets an empty set",
+         "alpha": 0.25, "class_count": 3, CALIB_SIZE: 60, "proba": confident, "empty": True},
+        {"name": "two classes at 75 %",
+         "alpha": 0.25, "class_count": 2, CALIB_SIZE: 36, "proba": binary, "empty": False},
+    ]
+
+
+def _conformal_labels(rng: SeededRandom, rows: list[list[float]]) -> list[int]:
+    """A label per row, drawn from that row's own distribution.
+
+    Sampling rather than arg-max is what makes the model calibrated, which is what
+    keeps 1 - p(true) small enough for the threshold to leave a flat row empty.
+    """
+    labels = []
+    for row in rows:
+        draw = rng.random()
+        cumulative = 0.0
+        chosen = len(row) - 1
+        for index, probability in enumerate(row):
+            cumulative += probability
+            if draw < cumulative:
+                chosen = index
+                break
+        labels.append(chosen)
+    return labels
+
+
+def _conformal_classification_case(fx: dict, frozen_classifier, split_classifier) -> dict:
+    """One LAC case: MAPIE's prediction sets, asserted against the threshold rule."""
+    proba = fx["proba"]
+    classes = fx["class_count"]
+    n = fx[CALIB_SIZE]
+    labels = _conformal_labels(SeededRandom(SEED + 44100), proba[:n])
+
+    scores = [1.0 - proba[i][labels[i]] for i in range(n)]
+    k, q = _conformal_quantile(scores, fx["alpha"])
+
+    estimator = frozen_classifier(table=np.array(proba), n_classes=classes).fit(np.zeros((1, 1)))
+    mapie = split_classifier(
+        estimator=estimator, confidence_level=1.0 - fx["alpha"],
+        conformity_score="lac", prefit=True)
+    mapie.conformalize(np.arange(n).reshape(-1, 1), np.array(labels))
+    _, sets = mapie.predict_set(np.arange(n, len(proba)).reshape(-1, 1))
+
+    test = proba[n:]
+    mine = [[1 if p >= 1.0 - q else 0 for p in row] for row in test]
+    assert np.array_equal(sets[:, :, 0].astype(int), np.array(mine)), fx["name"]
+    if fx["empty"]:
+        assert any(sum(row) == 0 for row in mine), f"{fx['name']}: no empty set to freeze"
+
+    return {
+        "name": fx["name"], "alpha": fx["alpha"], "class_count": classes,
+        "calib_proba": [p for row in proba[:n] for p in row],
+        "calib_labels": labels,
+        "scores": scores, "k": k, QUANTILE: q,
+        "test_count": len(test),
+        "test_proba": [p for row in test for p in row],
+        "sets": [flag for row in mine for flag in row],
+    }
+
+
+def generate_conformal() -> dict:
+    """Split conformal prediction, against MAPIE 1.5.0 (#441)."""
+    from mapie.classification import SplitConformalClassifier
+    from mapie.regression import SplitConformalRegressor
+
+    frozen_regressor, frozen_classifier = _frozen_estimators()
+    quantile_cases: list[dict] = []
+    regression_cases: list[dict] = []
+    classification_cases: list[dict] = []
+
+    for fx in _conformal_regression_fixtures():
+        y_calib = fx[Y_CALIB]
+        calib_pred = fx[Y_CALIB_PRED]
+        test_pred = fx[Y_TEST_PRED]
+        n = len(y_calib)
+        scores = [abs(t - p) for t, p in zip(y_calib, calib_pred)]
+        k, q = _conformal_quantile(scores, fx["alpha"])
+
+        # No numpy cross-check here: np.quantile at level (1 - alpha)(n + 1)/n is a
+        # different rule (see decision 0070). MAPIE below is the reference.
+        estimator = frozen_regressor(table=np.array(calib_pred + test_pred)).fit(np.zeros((1, 1)))
+        mapie = SplitConformalRegressor(
+            estimator=estimator, confidence_level=1.0 - fx["alpha"], prefit=True)
+        mapie.conformalize(np.arange(n).reshape(-1, 1), np.array(y_calib))
+        _, interval = mapie.predict_interval(np.arange(n, n + len(test_pred)).reshape(-1, 1))
+
+        lower = [p - q for p in test_pred]
+        upper = [p + q for p in test_pred]
+        assert np.allclose(interval[:, 0, 0], lower, rtol=0, atol=1e-12), fx["name"]
+        assert np.allclose(interval[:, 1, 0], upper, rtol=0, atol=1e-12), fx["name"]
+
+        quantile_cases.append({
+            "name": fx["name"], "alpha": fx["alpha"], "scores": scores, "k": k, QUANTILE: q})
+        regression_cases.append({
+            "name": fx["name"], "alpha": fx["alpha"], Y_CALIB: y_calib,
+            Y_CALIB_PRED: calib_pred, QUANTILE: q, Y_TEST_PRED: test_pred,
+            "lower": lower, "upper": upper})
+
+    for fx in _conformal_classification_fixtures():
+        case = _conformal_classification_case(fx, frozen_classifier, SplitConformalClassifier)
+        classification_cases.append(case)
+        quantile_cases.append({
+            "name": case["name"], "alpha": case["alpha"], "scores": case["scores"],
+            "k": case["k"], QUANTILE: case[QUANTILE]})
+
+    return {
+        "metadata": {"library": "mapie", "version": version("mapie"),
+                     "count": len(regression_cases) + len(classification_cases)},
+        QUANTILE: quantile_cases,
+        "regression": regression_cases,
+        "classification": classification_cases,
     }
 
 
@@ -6414,6 +6648,7 @@ def main() -> None:
         "regression.json": generate_regression,
         "regression_conditioning.json": generate_regression_conditioning,
         "regression_deviance.json": generate_regression_deviance,
+        "conformal.json": generate_conformal,
         "bpe.json": generate_bpe,
         "orphan_bpe.json": generate_orphan_bpe,
         "bytelevel_bpe.json": generate_bytelevel_bpe,

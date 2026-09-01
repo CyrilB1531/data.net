@@ -69,6 +69,17 @@
           "docs/reference/metrics/ranking"
         ]
       }
+    },
+    "Lodestar.Conformal": {
+      "wiki": "Conformal",
+      "pages": [
+        "docs/guides/conformal.md",
+        "docs/reference/conformal/*.md",
+        "docs/reference/conformal/*/*.md"
+      ],
+      "covered": {
+        "Lodestar.Conformal": "docs/reference/conformal/prediction"
+      }
     }
   }
 }

@@ -718,7 +718,7 @@ internal static class ReferenceDocumentation
             text.Append("static ");
         }
 
-        text.Append(RenderType(method.ReturnType)).Append(' ').Append(method.Name);
+        text.Append(RenderReturn(method)).Append(' ').Append(method.Name);
         if (method.IsGenericMethodDefinition)
         {
             text.Append('<').AppendJoin(", ", method.GetGenericArguments().Select(RenderType)).Append('>');
@@ -727,6 +727,29 @@ internal static class ReferenceDocumentation
         text.Append('(');
         text.AppendJoin(", ", method.GetParameters().Select(RenderParameter)).Append(')');
         return text.Append(RenderConstraints(method)).ToString();
+    }
+
+    /// <summary>A tuple return, as C# writes it rather than as reflection spells it.</summary>
+    /// <remarks>
+    /// The CLR knows <c>ValueTuple&lt;Double, Double&gt;</c>; the element names live in a
+    /// <see cref="TupleElementNamesAttribute"/> on the return parameter, and a page that wrote
+    /// the CLR spelling would document metadata rather than a signature — the same reason
+    /// <c>RenderType</c> already rewrites <c>Nullable&lt;Int32&gt;</c> as <c>int?</c>.
+    /// </remarks>
+    private static string RenderReturn(MethodInfo method)
+    {
+        Type type = method.ReturnType;
+        IList<string?>? names = method.ReturnParameter
+            .GetCustomAttribute<TupleElementNamesAttribute>()?.TransformNames;
+        bool tuple = type.IsGenericType && type.Namespace == "System" &&
+                     type.Name.StartsWith("ValueTuple`", StringComparison.Ordinal);
+        Type[] items = tuple ? type.GetGenericArguments() : [];
+        if (!tuple || names is null || names.Count != items.Length || names.Any(name => name is null))
+        {
+            return RenderType(type);
+        }
+
+        return "(" + string.Join(", ", items.Select((item, i) => $"{RenderType(item)} {names[i]}")) + ")";
     }
 
     /// <summary>The `where` clauses of a generic method, as C# spells them, on one line.</summary>
