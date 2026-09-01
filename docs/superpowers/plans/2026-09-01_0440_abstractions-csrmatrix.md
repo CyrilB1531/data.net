@@ -44,7 +44,7 @@
 **Interfaces:**
 
 - Consumes: nothing.
-- Produces: `Lodestar.Abstractions.CsrMatrix` with the surface `Lodestar.Text.Vectorization.CsrMatrix` has today — `CsrMatrix(int, int, double[], int[], int[])`, `RowCount`, `ColumnCount`, `Values`, `ColumnIndices`, `RowPointers`, `NonZeroCount`, `this[int, int]`, `ToDense()`, `RowL1Norm(int)`, `RowL2Norm(int)`, `NormalizeRows(SparseNorm)`, `Multiply(ReadOnlySpan<double>)`, and `internal static CreateUnchecked(...)` — plus `Lodestar.Abstractions.SparseNorm` with `L1` and `L2`. Task 2 adds two members to this type.
+- Produces: `Lodestar.Abstractions.CsrMatrix` with the surface `Lodestar.Text.Vectorization.CsrMatrix` has today — `CsrMatrix(int, int, double[], int[], int[])`, `RowCount`, `ColumnCount`, `Values`, `ColumnIndices`, `RowPointers`, `NonZeroCount`, `ToDense()`, `RowL1Norm(int)`, `RowL2Norm(int)`, `NormalizeRows(SparseNorm)`, `Multiply(ReadOnlySpan<double>)`, and `internal static CreateUnchecked(...)` — plus `Lodestar.Abstractions.SparseNorm` with `L1` and `L2`. Task 2 adds two members to this type.
 
 - [ ] **Step 1: Copy the type across, changing only its namespace**
 
@@ -157,13 +157,21 @@ public sealed class CsrMatrixTests
         Assert.Equal(3.0, dense[1, 1]);
     }
 
+    /// <summary>
+    /// The three arrays are public and have been since 0.1.0, so they are part of the
+    /// contract that moved rather than an implementation detail behind it.
+    /// </summary>
     [Fact]
-    public void The_indexer_agrees_with_the_dense_form()
+    public void The_raw_arrays_are_the_ones_they_were_built_from()
     {
         CsrMatrix matrix = Sample();
 
-        Assert.Equal(2.0, matrix[0, 2]);
-        Assert.Equal(0.0, matrix[1, 0]);
+        Assert.Equal([1.0, 2.0, 3.0], matrix.Values);
+        Assert.Equal([0, 2, 1], matrix.ColumnIndices);
+        Assert.Equal([0, 2, 3], matrix.RowPointers);
+        Assert.Equal(3, matrix.NonZeroCount);
+        Assert.Equal(2, matrix.RowCount);
+        Assert.Equal(3, matrix.ColumnCount);
     }
 
     [Fact]
@@ -693,7 +701,6 @@ internal static class Lot7Abstractions
         CsrMatrix matrix = new(2, 3, Values, Columns, RowPointers);
         Console.WriteLine($"  shape                 = {Inv.F0(matrix.RowCount)} x {Inv.F0(matrix.ColumnCount)}, "
             + $"{Inv.F0(matrix.NonZeroCount)} non-zeros");
-        Console.WriteLine($"  [0,2]                 = {Inv.F1(matrix[0, 2])}");
         Console.WriteLine($"  row 0 norms           = L1 {Inv.F3(matrix.RowL1Norm(0))}, L2 {Inv.F3(matrix.RowL2Norm(0))}");
         Console.WriteLine($"  values / indices      = {Inv.List(matrix.Values)} / [{string.Join(", ", matrix.ColumnIndices)}]");
         Console.WriteLine($"  row pointers          = [{string.Join(", ", matrix.RowPointers)}]");
