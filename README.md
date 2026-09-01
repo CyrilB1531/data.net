@@ -19,23 +19,74 @@ lock, safe refactoring, and simple deployment. The only objective reason to stay
 on Python for this domain was the lack of an equivalent .NET library. Lodestar
 removes that reason.
 
-## Two deliverables
+## What has no .NET equivalent
 
-1. **Native code** where there's a gap → the packages below (string distances,
-   vectorization, embeddings, fuzzy matching) — allocation-lean, `Span`-based,
-   SIMD, zero external dependencies in the core.
-2. **Migration guides** for people coming from Python → [`docs/migration/`](docs/migration/README.md),
-   which, for each need (NumPy, pandas, scikit-learn, statsmodels, PyTorch,
-   matplotlib, seaborn), points to the right .NET building block and the pitfalls.
+The claim this project is judged on, strongest first.
 
-See the [**four-column migration inventory**](docs/migration/README.md): it's the
-project map (use / build / decide).
+1. **Sparse text vectorization.** `CountVectorizer`, `TfidfVectorizer` and
+   `HashingVectorizer` at scikit-learn semantics, over a `CsrMatrix` written here.
+   ML.NET's `FeaturizeText` produces a **dense** vector coupled to `IDataView`; for
+   the same thousand documents it materializes 81 million floats where the sparse
+   matrix stores 39 974 values. There is no third option in .NET.
+2. **Framework-free classification metrics.** 54 metric classes against ML.NET's
+   six result types — and no `IDataView`, no schema, no pipeline object between the
+   caller and a `double`. ML.NET has no call that returns one metric: asking it for
+   accuracy costs the whole evaluation bundle.
+3. **Loading the tokenizer files people actually have.** `tokenizer.json` —
+   normalizer, pre-tokenizer, model, decoder, added tokens — is what Llama-2 and
+   Mistral v0.1 ship, and `Microsoft.ML.Tokenizers` has no entry point that reads
+   one. Every one of its factories takes a vocabulary, a merges file or a
+   `spiece.model`.
+4. **Distances, embeddings and fuzzy matching**, bundled for pipeline coherence
+   rather than because .NET is empty here — it is not, and the table below says by
+   how much.
 
-> Targets: **.NET 10** (`net10.0`, all fast paths) and **.NET Standard 2.0**
-> (broad reach — also .NET Framework 4.6.1+, Mono, Xamarin, Unity). A single
-> package carries both. See [`docs/decisions/0001`](docs/decisions/0001-target-framework.md).
+All of it **with no Python at runtime**, on **.NET 10** and **.NET Standard 2.0**
+from a single package (also .NET Framework 4.6.1+, Mono, Xamarin, Unity — see
+[`docs/decisions/0001`](docs/decisions/0001-target-framework.md)).
 
-## Status — every lot of the project brief is delivered
+The second deliverable is the **migration guides** for people arriving from Python:
+[`docs/migration/`](docs/migration/README.md) points each need (NumPy, pandas,
+scikit-learn, statsmodels, PyTorch, matplotlib, seaborn) at the right .NET building
+block and its pitfalls, marks the libraries that are no longer maintained with the
+dates that prove it, and says when calling Python is still the right answer. Its
+[four-column inventory](docs/migration/README.md) is the project map — use, build,
+decide.
+
+## Measured against the .NET incumbents
+
+A claim nobody checked is a claim nobody believes, so every package is benchmarked
+against the .NET library a reader would otherwise reach for — not only against
+Python. Both sides are checked to return **the same answers** before either is
+timed; `bench/README.md`'s section 15 has the harness and the agreement checks.
+
+| package | incumbent | how it reads |
+| --- | --- | --- |
+| `Lodestar.Text` | ML.NET `FeaturizeText` | **Not like-for-like.** Per feature produced the two are within ~11 % — the advantage is the sparse representation, not a faster kernel |
+| `Lodestar.Fuzzy` | Fastenshtein, Quickenshtein, F23.StringSimilarity, Raffinert.FuzzySharp | Ahead on Levenshtein at every length, and on all four `fuzz` ratios |
+| `Lodestar.Embeddings` | `Microsoft.ML.Tokenizers`, `TensorPrimitives` | **Behind on encoding**, and the gap that justifies the package is the loader above — [decision 0068](docs/decisions/0068-the-tokenizer-gap-is-the-loader-not-the-encode-kernel.md) |
+| `Lodestar.Metrics` | ML.NET metrics | Coverage, not speed: the advantage narrows with size and the shape does not |
+
+Numbers with the machine that produced them are in
+[`docs/guides/performance.md`](docs/guides/performance.md); a shared runner's
+absolutes are not comparable and are deliberately not published there.
+
+## Why not just call Python?
+
+[CSnakes](https://github.com/tonybaloney/CSnakes) and
+[Python.NET](https://github.com/pythonnet/pythonnet) both work, both are maintained,
+and for a model that only exists as a Python package they are the right answer —
+[`docs/migration/`](docs/migration/README.md#when-calling-python-is-still-the-right-answer)
+says so. What they cost is a Python runtime to deploy and version alongside the
+application, no ahead-of-time compilation to a single artifact, and the GIL between
+your threads and theirs. Where a .NET library will do, that is a poor trade, and
+this project exists to make it an avoidable one.
+
+## What is delivered
+
+The five lots of the original brief are complete, and the repository has since
+grown past that framing — [`docs/reference/`](docs/reference/text/distances.md)
+documents considerably more than this table lists.
 
 | Lot | Contents | Status |
 | --- | --- | --- |
