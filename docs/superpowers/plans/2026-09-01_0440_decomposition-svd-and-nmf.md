@@ -41,6 +41,15 @@ scikit-learn 1.9.0 and scipy, BenchmarkDotNet.
   `1e-9`. Generate from a working directory that is **not an ancestor of the checkout** (`/var/tmp`
   when the worktree is under `/tmp`), with `.venv-oracles`' interpreter, and read the generator's
   **own** exit code — never a pipeline's.
+- **Every corpus payload carries `metadata`.** `main()` prints
+  `payload['metadata']['count']` for every generator, so a payload without it raises `KeyError`
+  and the generation exits non-zero. Return `{"metadata": {..., "count": len(cases)}, ...}` — do
+  not loosen `main()`, which is shared by forty generators.
+- **A factor-level comparison runs on full-rank fixtures only.** Past a vanished pivot a QR's
+  or an LU's factors stop being basis-independent: measured, scipy's own `|diag(R)|` moves from
+  2.124424 to 2.157438 under a 1e-14 perturbation of a duplicated column. Reconstruction and
+  structural assertions run on every fixture, the rank-deficient one included — that is what
+  proves the zero-pivot guard.
 - **Analyzers gate the build.** `SonarAnalyzer.CSharp` plus the .NET code-quality rules at
   `AnalysisMode=All`, `AnalysisLevel=10.0`, warnings as errors. A rule an area trips by being that
   area goes in that area's `Directory.Build.props` with a comment naming each rule; a rule one call
@@ -571,6 +580,7 @@ block, add:
 MATRIX_KEY = "matrix"
 ROWS_KEY = "rows"
 COLUMNS_KEY = "columns"
+FULL_RANK_KEY = "full_rank"
 
 
 def _dense_fixtures() -> list[dict]:
@@ -580,16 +590,18 @@ def _dense_fixtures() -> list[dict]:
     fixtures = []
     for rows, columns in shapes:
         values = [rng.gauss(0.0, 1.0) for _ in range(rows * columns)]
-        fixtures.append({ROWS_KEY: rows, COLUMNS_KEY: columns, MATRIX_KEY: values})
-    # A rank-deficient block: column 1 repeats column 0, so R has a zero on the
-    # diagonal and a QR that divides by it produces NaN instead of failing loudly.
+        fixtures.append(
+            {ROWS_KEY: rows, COLUMNS_KEY: columns, MATRIX_KEY: values, FULL_RANK_KEY: True})
+    # Column 1 repeats column 0: past the vanished pivot the factors stop being
+    # basis-independent, so full_rank is False and the factor comparisons skip it.
     rows, columns = 8, 3
     base = [rng.gauss(0.0, 1.0) for _ in range(rows)]
     tail = [rng.gauss(0.0, 1.0) for _ in range(rows)]
     deficient = []
     for i in range(rows):
         deficient.extend([base[i], base[i], tail[i]])
-    fixtures.append({ROWS_KEY: rows, COLUMNS_KEY: columns, MATRIX_KEY: deficient})
+    fixtures.append(
+        {ROWS_KEY: rows, COLUMNS_KEY: columns, MATRIX_KEY: deficient, FULL_RANK_KEY: False})
     return fixtures
 
 
@@ -613,12 +625,10 @@ def generate_decomposition_qr() -> dict:
             "scipy_q": q.ravel().tolist(),
             "scipy_r": r.ravel().tolist(),
         })
-    return {
-        "generator": "scipy.linalg.qr(mode='economic')",
-        "scipy_version": version("scipy"),
-        "tolerance": 1e-9,
-        "cases": cases,
-    }
+    return {"metadata": {"library": "scipy", "version": version("scipy"),
+                         "reference_calls": ["scipy.linalg.qr"],
+                         "seed": SEED, "count": len(cases), "tolerance": 1e-9},
+            "cases": cases}
 ```
 
 Register it in `main()`'s dispatch table, beside `"conformal.json"`:
@@ -743,8 +753,27 @@ public sealed class HouseholderQrTests
         }
     }
 
+    /// <summary>
+    /// The fixtures whose factors are basis-independent. Past a vanished pivot they are not:
+    /// the reflector is built from rounding noise, and scipy's own |diag(R)| moves by 0.03
+    /// under a 1e-14 perturbation of the duplicate column. The three theories above still
+    /// cover the rank-deficient block, which is what proves the zero-column guard.
+    /// </summary>
+    public static TheoryData<int> FullRankIndices()
+    {
+        var data = new TheoryData<int>();
+        for (int i = 0; i < Cases.Count; i++)
+        {
+            if (Cases[i].GetProperty("full_rank").GetBoolean())
+            {
+                data.Add(i);
+            }
+        }
+        return data;
+    }
+
     [Theory]
-    [MemberData(nameof(Indices))]
+    [MemberData(nameof(FullRankIndices))]
     public void The_singular_values_of_r_match_scipy(int index)
     {
         // R differs from scipy's by a per-column sign; |diag| does not, and it is the
@@ -952,7 +981,8 @@ internal static class HouseholderQr
 - [ ] **Step 6: Run the tests to verify they pass**
 
 Run: `dotnet test tests/Lodestar.Decomposition.Tests -c Release --filter "FullyQualifiedName~HouseholderQr"`
-Expected: PASS, 29 tests (7 cases × 4 theories, plus the wide-block fact). **Read the count.**
+Expected: PASS, 28 tests — 7 cases × 3 basis-independent theories, 6 full-rank cases × the
+diagonal theory, plus the wide-block fact. **Read the count.**
 
 Run: `dotnet test tests/Lodestar.Decomposition.NetStandard.Tests -c Release --filter "FullyQualifiedName~HouseholderQr"`
 Expected: the same count.
@@ -1025,12 +1055,10 @@ def generate_decomposition_lu() -> dict:
             "permuted_lower": pl.ravel().tolist(),
             "upper": u.ravel().tolist(),
         })
-    return {
-        "generator": "scipy.linalg.lu(permute_l=True)",
-        "scipy_version": version("scipy"),
-        "tolerance": 1e-9,
-        "cases": cases,
-    }
+    return {"metadata": {"library": "scipy", "version": version("scipy"),
+                         "reference_calls": ["scipy.linalg.lu"],
+                         "seed": SEED, "count": len(cases), "tolerance": 1e-9},
+            "cases": cases}
 ```
 
 Register it in `main()`:
@@ -1085,8 +1113,23 @@ public sealed class PartialPivotLuTests
     private static double[] Doubles(JsonElement c, string name) =>
         [.. c.GetProperty(name).EnumerateArray().Select(x => x.GetDouble())];
 
+    /// <summary>Only the full-rank fixtures: partial pivoting has a tie to break on the other,
+    /// and which way it falls is not a property either implementation owes the other.</summary>
+    public static TheoryData<int> FullRankIndices()
+    {
+        var data = new TheoryData<int>();
+        for (int i = 0; i < Cases.Count; i++)
+        {
+            if (Cases[i].GetProperty("full_rank").GetBoolean())
+            {
+                data.Add(i);
+            }
+        }
+        return data;
+    }
+
     [Theory]
-    [MemberData(nameof(Indices))]
+    [MemberData(nameof(FullRankIndices))]
     public void The_permuted_lower_factor_matches_scipy(int index)
     {
         JsonElement c = Cases[index];
@@ -1260,12 +1303,14 @@ internal static class PartialPivotLu
 - [ ] **Step 6: Run the tests to verify they pass**
 
 Run: `dotnet test tests/Lodestar.Decomposition.Tests -c Release --filter "FullyQualifiedName~PartialPivotLu"`
-Expected: PASS, 15 tests (7 cases × 2 theories, plus the wide-block fact).
+Expected: PASS, 14 tests — 6 full-rank cases × the factor theory, 7 cases × the reconstruction
+theory, plus the wide-block fact.
 
-If `The_permuted_lower_factor_matches_scipy` fails on the rank-deficient case only, scipy's
-tie-break on equal pivot magnitudes is the cause. Do not weaken the assertion: change
-`_dense_fixtures`' deficient block so the repeated column is scaled (`0.5 * base[i]` rather than
-`base[i]`), regenerate, and note in the commit that the tie was removed rather than the check.
+The reconstruction theory runs on the rank-deficient fixture too, and must: it is what proves the
+zero-pivot guard leaves the factor finite rather than filling it with NaN. Only the factor-level
+comparison skips it, for the reason Task 2 measured — past a vanished pivot the factors stop being
+basis-independent, and scipy's own answer moves under a perturbation far below the tolerance. Do
+not weaken either assertion to get green.
 
 Run: `dotnet test tests/Lodestar.Decomposition.NetStandard.Tests -c Release --filter "FullyQualifiedName~PartialPivotLu"`
 Expected: the same count.
@@ -1348,12 +1393,11 @@ def _dense_svd_cases() -> list[dict]:
 
 def generate_decomposition_svd() -> dict:
     """The dense SVD, and (from Task 5) randomized_svd on top of it (#440)."""
-    return {
-        "generator": "scipy.linalg.svd(full_matrices=False)",
-        "scipy_version": version("scipy"),
-        "tolerance": 1e-9,
-        "dense": _dense_svd_cases(),
-    }
+    dense = _dense_svd_cases()
+    return {"metadata": {"library": "scipy", "version": version("scipy"),
+                         "reference_calls": ["scipy.linalg.svd"],
+                         "seed": SEED, "count": len(dense), "tolerance": 1e-9},
+            "dense": dense}
 ```
 
 Register it in `main()`:
@@ -1851,14 +1895,17 @@ and extend `generate_decomposition_svd` to carry both halves:
 ```python
 def generate_decomposition_svd() -> dict:
     """The dense SVD on its own, and randomized_svd composed on top of it (#440)."""
-    return {
-        "generator": "scipy.linalg.svd + sklearn.utils.extmath.randomized_svd",
-        "scipy_version": version("scipy"),
-        "sklearn_version": version("scikit-learn"),
-        "tolerance": 1e-9,
-        "dense": _dense_svd_cases(),
-        "randomized": _randomized_cases(),
-    }
+    dense, randomized = _dense_svd_cases(), _randomized_cases()
+    return {"metadata": {"library": "scipy and scikit-learn",
+                         "version": version("scipy"),
+                         "sklearn_version": version("scikit-learn"),
+                         "reference_calls": ["scipy.linalg.svd",
+                                             "sklearn.utils.extmath.randomized_svd",
+                                             "sklearn.decomposition.TruncatedSVD"],
+                         "seed": SEED, "count": len(dense) + len(randomized),
+                         "tolerance": 1e-9},
+            "dense": dense,
+            "randomized": randomized}
 ```
 
 - [ ] **Step 2: Regenerate and read the generator's own exit code**
@@ -2751,12 +2798,11 @@ def _nmf_initialization_cases() -> list[dict]:
 
 def generate_decomposition_nmf() -> dict:
     """NNDSVD, and (from Task 7) the multiplicative updates on top of it (#440)."""
-    return {
-        "generator": "sklearn.decomposition NMF(solver='mu') and _initialize_nmf",
-        "sklearn_version": version("scikit-learn"),
-        "tolerance": 1e-9,
-        "initialization": _nmf_initialization_cases(),
-    }
+    initialization = _nmf_initialization_cases()
+    return {"metadata": {"library": "scikit-learn", "version": version("scikit-learn"),
+                         "reference_calls": ["sklearn.decomposition._nmf._initialize_nmf"],
+                         "seed": SEED, "count": len(initialization), "tolerance": 1e-9},
+            "initialization": initialization}
 ```
 
 Register it in `main()`:
@@ -3245,13 +3291,14 @@ and extend `generate_decomposition_nmf`:
 ```python
 def generate_decomposition_nmf() -> dict:
     """NNDSVD, and the multiplicative updates on top of it (#440)."""
-    return {
-        "generator": "sklearn.decomposition NMF(solver='mu') and _initialize_nmf",
-        "sklearn_version": version("scikit-learn"),
-        "tolerance": 1e-9,
-        "initialization": _nmf_initialization_cases(),
-        "updates": _nmf_update_cases(),
-    }
+    initialization, updates = _nmf_initialization_cases(), _nmf_update_cases()
+    return {"metadata": {"library": "scikit-learn", "version": version("scikit-learn"),
+                         "reference_calls": ["sklearn.decomposition._nmf._initialize_nmf",
+                                             "sklearn.decomposition.NMF"],
+                         "seed": SEED, "count": len(initialization) + len(updates),
+                         "tolerance": 1e-9},
+            "initialization": initialization,
+            "updates": updates}
 ```
 
 - [ ] **Step 2: Regenerate and read the generator's own exit code**
