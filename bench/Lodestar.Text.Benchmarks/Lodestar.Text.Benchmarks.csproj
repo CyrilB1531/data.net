@@ -36,6 +36,7 @@
     <ProjectReference Include="../../src/Lodestar.Fuzzy/Lodestar.Fuzzy.csproj" />
     <ProjectReference Include="../../src/Lodestar.Embeddings/Lodestar.Embeddings.csproj" />
     <ProjectReference Include="../../src/Lodestar.Metrics/Lodestar.Metrics.csproj" />
+    <ProjectReference Include="../../src/Lodestar.Decomposition/Lodestar.Decomposition.csproj" />
   </ItemGroup>
 
   <!--
