@@ -2689,7 +2689,8 @@ Part of #440."
     — `W` is row-major `matrix.RowCount × componentCount`, `H` is row-major
     `componentCount × matrix.ColumnCount`.
 
-**`NndSvdar` is not shipped.** It fills the zeros with draws from numpy's uniform stream, which
+**`NndSvdar` is not shipped.** It fills the zeros with `abs(X.mean() * rng.standard_normal(...) / 100)` — numpy's Gaussian
+stream (`_nmf.py:355-359`), which
 [the spec rejects reproducing](../specs/2026-09-01_0440_decomposition-truncated-svd-and-nmf.md#rejected)
 along with `RandomState.normal`. An initialisation that cannot be checked against the reference is
 an initialisation nobody can trust, so the enum has two members and the reference page says why.
@@ -2957,7 +2958,7 @@ namespace Lodestar.Decomposition;
 /// <remarks>
 /// Multiplicative updates never introduce a non-zero where the initialisation put a zero, so the
 /// initialisation decides the sparsity of the answer as much as the data does.
-/// scikit-learn's <c>nndsvdar</c> is not offered: it fills its zeros from numpy's uniform stream,
+/// scikit-learn's <c>nndsvdar</c> is not offered: it fills its zeros from numpy's Gaussian stream,
 /// which nothing here reproduces, so it could not be checked against the reference.
 /// </remarks>
 public enum NmfInitialization
@@ -3179,7 +3180,7 @@ oversamples and n_iter='auto', which is 7 for a small rank and 4 otherwise. The
 triplet is extracted out of TruncatedSvd.Fit rather than recomputed, so the two
 cannot drift apart on the sign convention.
 
-nndsvdar is not shipped. It fills its zeros from numpy's uniform stream, which
+nndsvdar is not shipped. It fills its zeros from numpy's Gaussian stream, which
 nothing here reproduces, so it could not be checked against the reference -- and
 an initialisation nobody can check is one nobody can trust.
 
@@ -4121,7 +4122,7 @@ the enum's documentation makes. `DecompositionSamples.Run()` calls both after th
 
 | Python | Library | C# | Differences |
 | --- | --- | --- | --- |
-| `NMF(n_components=k, solver="mu", init="nndsvd").fit(X)` | scikit-learn | [`Nmf.Fit(matrix, k)`](reference/decomposition/factorization/nmf-fit.md) | Ω is an input, as for the SVD. `nndsvdar` is not offered — it draws from numpy's uniform stream, so it could not be checked ([decision 0072](decisions/0072-omega-is-an-input-not-a-seed.md)). `solver="cd"` and the `alpha_W`/`alpha_H` regularization are out of scope for 0.1.0. |
+| `NMF(n_components=k, solver="mu", init="nndsvd").fit(X)` | scikit-learn | [`Nmf.Fit(matrix, k)`](reference/decomposition/factorization/nmf-fit.md) | Ω is an input, as for the SVD. `nndsvdar` is not offered — it draws from numpy's Gaussian stream, so it could not be checked ([decision 0072](decisions/0072-omega-is-an-input-not-a-seed.md)). `solver="cd"` and the `alpha_W`/`alpha_H` regularization are out of scope for 0.1.0. |
 | `NMF(init="custom").fit_transform(X, W=W0, H=H0)` | scikit-learn | [`Nmf.Fit(matrix, initialWeights, initialComponents)`](reference/decomposition/factorization/nmf-fit.md) | Identical. `tol = 0` makes the iteration count an input, which is what the corpus freezes. |
 | `nmf.components_`, `nmf.n_iter_`, `nmf.reconstruction_err_` | scikit-learn | `Components`, `Iterations`, `ReconstructionError` | Identical. `Weights` is what `fit_transform` returns. |
 | `beta_loss="frobenius" \| "kullback-leibler"` | scikit-learn | [`NmfBetaLoss`](reference/decomposition/factorization/nmfbetaloss.md) | Both, at `solver="mu"`. Other β values are not offered. |
@@ -4311,7 +4312,7 @@ It records three divergences from scikit-learn that share one cause — the rand
 2. **`transpose="auto"` is not offered.** It swaps the two products when there are fewer rows than
    columns, which a term-document matrix routinely has, so a flag that silently changes which
    factorization runs is a parity claim with two shapes.
-3. **`nndsvdar` is not offered.** It fills its zeros from numpy's uniform stream, so it inherits
+3. **`nndsvdar` is not offered.** It fills its zeros from numpy's Gaussian stream, so it inherits
    (1)'s cost with none of (1)'s escape hatch — there is no "pass the noise in" that a caller
    would ever use.
 

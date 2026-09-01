@@ -3104,16 +3104,29 @@ def generate_decomposition_svd() -> dict:
 
 INITIAL_W_KEY = "initial_w"
 INITIAL_H_KEY = "initial_h"
+# scikit-learn's own spelling of the sparse variant, named once because the settings
+# table reaches for it four times and S1192 counts those together.
+NNDSVD = "nndsvd"
+NNDSVDA = "nndsvda"
 
 
 def _nmf_settings() -> list[tuple[int, int, float, int, str]]:
-    """rows, columns, density, k, init. Tall again, for transpose='auto'."""
+    """rows, columns, density, k, init. Tall again, for transpose='auto'.
+
+    The last row is the only one that resolves ``n_iter='auto'`` to seven rather than
+    four: 3 < 0.1 * min(60, 40). That is the ordinary shape of the data this package
+    targets -- a term-document matrix is far taller and wider than the rank asked of it
+    -- and the branch is unselectable from the public surface, so a caller who met a
+    wrong constant there would have no knob to work around it. Without this row the
+    corpus pins only the branch small fixtures happen to take.
+    """
     return [
-        (30, 12, 0.45, 3, "nndsvd"),
-        (30, 12, 0.45, 3, "nndsvda"),
-        (48, 20, 0.30, 5, "nndsvd"),
-        (48, 20, 0.30, 5, "nndsvda"),
-        (16, 6, 0.70, 2, "nndsvd"),
+        (30, 12, 0.45, 3, NNDSVD),
+        (30, 12, 0.45, 3, NNDSVDA),
+        (48, 20, 0.30, 5, NNDSVD),
+        (48, 20, 0.30, 5, NNDSVDA),
+        (16, 6, 0.70, 2, NNDSVD),
+        (60, 40, 0.20, 3, NNDSVD),
     ]
 
 
@@ -3157,7 +3170,7 @@ def _nmf_initialization_cases() -> list[dict]:
         for expected, rebuilt in ((w[:, 0], np.sqrt(s[0]) * np.abs(u[:, 0])),
                                   (h[0, :], np.sqrt(s[0]) * np.abs(vt[0, :]))):
             rebuilt[rebuilt < 1e-6] = 0
-            if init == "nndsvda":
+            if init == NNDSVDA:
                 rebuilt[rebuilt == 0] = a.mean()
             assert np.array_equal(expected, rebuilt), f"case {index}: leading triplet diverged"
 

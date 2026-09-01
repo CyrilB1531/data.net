@@ -58,14 +58,16 @@ internal static class NndSvd
             (double[] leftPart, double leftNorm, double[] rightPart, double rightNorm) =
                 Dominant(left, right);
 
-            double sigma = Math.Sqrt(s[component] * leftNorm * rightNorm);
+            // scikit-learn's `lbd`, not its `sigma` -- there sigma is the product of the
+            // two norms and lbd is the square root of it times the singular value.
+            double lambda = Math.Sqrt(s[component] * leftNorm * rightNorm);
             for (int i = 0; i < rows; i++)
             {
-                w[(i * componentCount) + component] = sigma * leftPart[i] / leftNorm;
+                w[(i * componentCount) + component] = lambda * leftPart[i] / leftNorm;
             }
             for (int j = 0; j < features; j++)
             {
-                h[(component * features) + j] = sigma * rightPart[j] / rightNorm;
+                h[(component * features) + j] = lambda * rightPart[j] / rightNorm;
             }
         }
 

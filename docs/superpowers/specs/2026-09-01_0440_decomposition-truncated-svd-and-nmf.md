@@ -78,6 +78,12 @@ calls `randomized_svd` internally, so its `W₀, H₀` depend on `s`; measured, 
 different matrices. The NMF corpus therefore freezes `W₀, H₀` as **inputs** beside the final `W, H`,
 which decouples the initialisation from the multiplicative-update loop and lets each fail on its own.
 
+**`nndsvdar` cannot be reproduced, and that is why it is not shipped.** `_nmf.py:355-359` fills the
+zeros left by NNDSVD with `abs(X.mean() * rng.standard_normal(...) / 100)` — numpy's *Gaussian*
+stream, not a uniform one as an earlier draft of this spec said. It is the same MT19937 dependency
+the *Rejected* section refuses below, with none of Ω's escape hatch: there is no "pass the noise in"
+a caller would ever use. `nndsvd` and `nndsvda` are deterministic once Ω is fixed and both ship.
+
 **NMF is reproducible once the initialisation is fixed.** `NMF(init="nndsvd", solver="mu",
 beta_loss="kullback-leibler", tol=0.0, max_iter=60)` returns the identical `W` on two runs, and
 reports `n_iter_ = 60` — `tol=0.0` disables the early stop, so the iteration count is an input rather
