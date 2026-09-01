@@ -198,12 +198,18 @@ Three traps, each of which has already cost a session:
   [*Oracle validation*](CONTRIBUTING.md#oracle-validation) has why and the exact
   error `nltk` raises otherwise.
 - **Read the generator's own exit code**, never a pipeline's. `python … | tail`
-  reports `tail`'s status, so a failed generation looks successful — and the drift
-  check that follows then proves nothing, because nothing was regenerated.
-- **The `Oracles are reproducible` job is occasionally flaky** — the same commit
-  has gone red then green, because drift depended on which CPU the runner landed
-  on. Re-run before believing it. On failure the job uploads the regenerated
-  corpora as an artefact so the comparison can be made off the runner.
+  reports `tail`'s status, so a failed generation looks successful — and the
+  comparison that follows then proves nothing, because nothing was regenerated.
+- **The `Oracles are reproducible` job compares numbers, not bytes** — it copies
+  the committed corpora aside, regenerates, and runs
+  `tools/compare_oracles.py` over the two: floats at the same `1e-9` the suites
+  use, everything else exactly ([decision
+  0073](docs/decisions/0073-the-oracle-gate-compares-numbers-not-bytes.md)). It
+  used to `git diff` them, which failed on the last digits of a BLAS-reduced
+  value and made the job read as flaky. A red here now means a corpus moved by
+  more than any assertion tolerates, so believe it. On failure the job still
+  uploads the regenerated corpora as an artefact so the comparison can be made
+  off the runner.
 
 Where behaviour deliberately diverges from the Python reference, it goes in
 [`docs/decisions/`](docs/decisions/README.md), the fastest way to understand why
