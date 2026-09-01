@@ -1,4 +1,5 @@
 using BenchmarkDotNet.Attributes;
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 namespace Lodestar.Text.Benchmarks;

@@ -1,7 +1,6 @@
-using Lodestar.Text.Vectorization;
 using Xunit;
 
-namespace Lodestar.Text.Tests.Vectorization;
+namespace Lodestar.Abstractions.Tests;
 
 /// <summary>
 /// The public constructor takes raw arrays, so it is the boundary a deserialized

@@ -1,3 +1,4 @@
+using Lodestar.Abstractions;
 using System.Text;
 using Lodestar.Text.Persistence;
 using Lodestar.Text.Vectorization;

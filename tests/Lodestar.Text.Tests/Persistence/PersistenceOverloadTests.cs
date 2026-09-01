@@ -1,3 +1,4 @@
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 using Xunit;
 
