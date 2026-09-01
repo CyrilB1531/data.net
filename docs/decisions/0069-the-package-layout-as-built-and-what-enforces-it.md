@@ -27,8 +27,8 @@ Four packages, every one `net10.0;netstandard2.0`, one public API on both:
 | `Lodestar.Metrics` | classification, regression, clustering and ranking metrics | nothing on `net10.0`; the polyfills on `netstandard2.0` |
 
 **`Lodestar.Fuzzy → Lodestar.Text` is the only inter-package edge**, and it exists because
-`Fuzz.Ratio` is built on `Indel`. `src/` references packages, never projects, so a clean clone
-builds with no pack step (0012).
+[`Fuzz.Ratio`](../reference/fuzzy/matching/fuzz-ratio.md) is built on `Indel`. `src/` references
+packages, never projects, so a clean clone builds with no pack step (0012).
 
 ## Three rules, and what enforces each
 
