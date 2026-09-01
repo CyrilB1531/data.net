@@ -2919,6 +2919,32 @@ def generate_decomposition_qr() -> dict:
             "cases": cases}
 
 
+def generate_decomposition_lu() -> dict:
+    """LU with partial pivoting, against scipy (#440).
+
+    ``permute_l=True`` is the form scikit-learn's power iteration uses: it asks for
+    ``P @ L`` and throws ``U`` away. That product is unique for a full-rank block,
+    so unlike the QR corpus this one asserts the factor itself as well as the
+    reconstruction.
+    """
+    from scipy import linalg
+
+    cases = []
+    for fixture in _dense_fixtures():
+        rows, columns = fixture[ROWS_KEY], fixture[COLUMNS_KEY]
+        a = np.array(fixture[MATRIX_KEY]).reshape(rows, columns)
+        pl, u = linalg.lu(a, permute_l=True)
+        cases.append({
+            **fixture,
+            "permuted_lower": pl.ravel().tolist(),
+            "upper": u.ravel().tolist(),
+        })
+    return {"metadata": {"library": "scipy", "version": version("scipy"),
+                         "reference_calls": ["scipy.linalg.lu"],
+                         "seed": SEED, "count": len(cases), "tolerance": 1e-9},
+            "cases": cases}
+
+
 def _internal_validity_fixtures() -> list[dict]:
     """Clusterings chosen where a plausible implementation and the reference part company."""
     two_by_two = [[1.0, 2.0], [1.5, 1.8], [5.0, 8.0], [8.0, 8.0], [1.0, 0.6], [9.0, 11.0]]
@@ -6775,6 +6801,7 @@ def main() -> None:
         "conformal.json": generate_conformal,
         "sparse_matmul.json": generate_sparse_matmul,
         "decomposition_qr.json": generate_decomposition_qr,
+        "decomposition_lu.json": generate_decomposition_lu,
         "bpe.json": generate_bpe,
         "orphan_bpe.json": generate_orphan_bpe,
         "bytelevel_bpe.json": generate_bytelevel_bpe,
