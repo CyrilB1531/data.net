@@ -21,6 +21,7 @@ is not a saved vectorizer, or exceeds a bound in `options`.
 **Example** — restored, and hashing identically to the original.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 var original = new HashingVectorizer(new HashingVectorizerOptions { NumFeatures = 16 });

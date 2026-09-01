@@ -5,12 +5,13 @@ Hash a corpus into the fixed columns.
 <!-- docs-declaration -->
 
 ```csharp
+
 public CsrMatrix Transform(IEnumerable<string> documents)
 ```
 
 **Parameters** — `documents` is the corpus to vectorize. Nothing is learned from it.
 
-**Returns** — [`CsrMatrix`](csrmatrix.md), one row per document and exactly `NumFeatures` columns,
+**Returns** — [`CsrMatrix`](../../abstractions/sparse/csrmatrix.md), one row per document and exactly `NumFeatures` columns,
 normalized by [`HashingVectorizerOptions.Norm`](hashingvectorizeroptions.md).
 
 **Exceptions** — `ArgumentNullException` when `documents` is null.
@@ -18,6 +19,7 @@ normalized by [`HashingVectorizerOptions.Norm`](hashingvectorizeroptions.md).
 **Example** — the width is the option, not the corpus.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 var hv = new HashingVectorizer(new HashingVectorizerOptions { NumFeatures = 16 });
@@ -36,7 +38,7 @@ is the property the count vectorizers cannot offer without saving and shipping a
 A row can hold **negative** values when `AlternateSign` is on, which is the default. That is not a
 defect: it is what makes two colliding terms tend to cancel rather than sum, and it means a
 `CsrMatrix` from here is the one place in this namespace where
-[`RowL1Norm`](csrmatrix-rowl1norm.md)'s absolute values matter.
+[`RowL1Norm`](../../abstractions/sparse/csrmatrix-rowl1norm.md)'s absolute values matter.
 
 **Applies to** — net10.0, netstandard2.0.
 

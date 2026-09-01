@@ -21,6 +21,12 @@
     <PackageTags>text;similarity;levenshtein;distance;fuzzy;tfidf;nlp;lodestar</PackageTags>
   </PropertyGroup>
 
+  <!-- CsrMatrix and SparseNorm live here since 0.5.0 (decision 0071). The floor is
+       pinned in src/Directory.Packages.props, like every other src/ reference. -->
+  <ItemGroup>
+    <PackageReference Include="Lodestar.Abstractions" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="Lodestar.Text.Tests" />
     <!-- Same suite, replayed against the netstandard2.0 build. -->

@@ -6,18 +6,20 @@
   </PropertyGroup>
 
   <!--
-    Lodestar.Fuzzy depends on Lodestar.Text as a published package. This number is
-    a deliberately chosen *floor* — the minimum Lodestar.Text a consumer of
-    Lodestar.Fuzzy is required to take — and is therefore written in full rather
-    than tracking $(LodestarTextVersion).
+    Two packages here are floors on a sibling: Lodestar.Fuzzy on Lodestar.Text,
+    and since 0.5.0 Lodestar.Text on Lodestar.Abstractions (decision 0071). Each
+    number is a deliberately chosen *floor* — the minimum a consumer is required
+    to take — and is therefore written in full rather than tracking the sibling's
+    $(Lodestar*Version).
 
     Keeping it decoupled is what makes `git clone && dotnet build` work with no
     pack step: the floor always names a version that is already on nuget.org.
-    Raise it only when Lodestar.Fuzzy actually needs newer Lodestar.Text API, and
-    publish Lodestar.Text first when you do. See
+    Raise one only when the dependent actually needs newer API, and publish the
+    dependency first when you do. See
     docs/decisions/0012-per-package-versioning.md.
   -->
   <ItemGroup>
+    <PackageVersion Include="Lodestar.Abstractions" Version="0.1.1" />
     <PackageVersion Include="Lodestar.Text" Version="0.4.0" />
     <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" />
     <PackageVersion Include="PolySharp" Version="1.15.0" />

@@ -5,6 +5,7 @@ Learn the document frequencies from a count matrix.
 <!-- docs-declaration -->
 
 ```csharp
+
 public TfidfTransformer Fit(CsrMatrix counts)
 ```
 
@@ -18,6 +19,7 @@ term.
 **Example** — fit on the training counts, weight a later matrix with them.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 var cv = new CountVectorizer();

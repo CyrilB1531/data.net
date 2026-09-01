@@ -16,6 +16,7 @@ term weighted by column `i`.
 **Example** — the names, and the weight beside them.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 var tv = new TfidfVectorizer();

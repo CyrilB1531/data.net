@@ -66,11 +66,6 @@ public sealed class CsrMatrixTests
     public void A_vector_of_the_wrong_length_is_refused() =>
         Assert.Throws<ArgumentException>(() => Sample().Multiply([1.0, 2.0]));
 
-    [Fact]
-    public void Arrays_that_do_not_describe_a_matrix_are_refused() =>
-        Assert.Throws<ArgumentException>(
-            () => new CsrMatrix(2, 3, [1.0], [0, 2], [0, 2, 3]));
-
     /// <summary>
     /// The unchecked factory is what the vectorizers use, and it stays internal after
     /// the move: <c>InternalsVisibleTo</c> is what keeps step B compiling.

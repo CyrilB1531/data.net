@@ -37,7 +37,6 @@ Lot4Fuzzy.Run();
 Lot5Metrics.Run();
 Lot6Regression.Run();
 SplitConformalSample.Run();
-Lot7Abstractions.Run();
 
 if (!PackagingGate.Verify())
 {

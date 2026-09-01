@@ -14,6 +14,7 @@ their places and zeros everywhere else.
 **Example** — the cell that says `the` appears twice in the third document.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 string[] docs = ["the cat eats", "the dog eats", "the cat and the dog"];

@@ -5,13 +5,14 @@ Weight a count matrix using document frequencies already learned.
 <!-- docs-declaration -->
 
 ```csharp
+
 public CsrMatrix Transform(CsrMatrix counts)
 ```
 
 **Parameters** — `counts` is the matrix to weight. It must have the same number of columns as the
 matrix that was fitted.
 
-**Returns** — [`CsrMatrix`](csrmatrix.md), weighted and normalized, the same shape as `counts`.
+**Returns** — [`CsrMatrix`](../../abstractions/sparse/csrmatrix.md), weighted and normalized, the same shape as `counts`.
 
 **Exceptions** — `InvalidOperationException` when nothing has been fitted yet **and**
 [`TfidfOptions.UseIdf`](tfidfoptions.md) is true. With `UseIdf = false` there is no document
@@ -22,6 +23,7 @@ with the fit.
 **Example** — training frequencies applied to a later document.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 var cv = new CountVectorizer();

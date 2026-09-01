@@ -37,4 +37,4 @@ nothing.
 
 **Applies to** — net10.0, netstandard2.0.
 
-**See also** — [`CountVectorizer`](countvectorizer.md), [`CsrMatrix`](csrmatrix.md).
+**See also** — [`CountVectorizer`](countvectorizer.md), [`CsrMatrix`](../../abstractions/sparse/csrmatrix.md).

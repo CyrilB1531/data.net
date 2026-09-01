@@ -10,6 +10,7 @@ the same layout `scipy.sparse.csr_matrix` uses, so a reader who knows one knows 
 <!-- docs-declaration -->
 
 ```csharp
+
 public sealed class CsrMatrix
 ```
 
@@ -22,6 +23,7 @@ and its last is `NonZeroCount`.
 **Example** — three documents, five terms, and the three arrays that describe them.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 string[] docs = ["the cat eats", "the dog eats", "the cat and the dog"];
@@ -49,7 +51,7 @@ one pass, and it is what `Multiply` relies on.
 
 **Applies to** — net10.0, netstandard2.0.
 
-**See also** — [`CountVectorizer`](countvectorizer.md), [`SparseNorm`](sparsenorm.md), the
+**See also** — [`CountVectorizer`](../../text/vectorizers/countvectorizer.md), [`SparseNorm`](sparsenorm.md), the
 [vectorization guide](../../../guides/vectorization.md), the
 [Python equivalence table](../../../equivalence.md).
 
@@ -57,7 +59,8 @@ one pass, and it is what `Multiply` relies on.
 
 | Member | What it does |
 | --- | --- |
-| [`CsrMatrix.Multiply`](csrmatrix-multiply.md) | The matrix times a dense vector. |
+| [`CsrMatrix.Multiply`](csrmatrix-multiply.md) | The matrix times a dense vector, or times a dense block. |
+| [`CsrMatrix.TransposeMultiply`](csrmatrix-transposemultiply.md) | The transposed matrix times a dense block, without building the transpose. |
 | [`CsrMatrix.NormalizeRows`](csrmatrix-normalizerows.md) | Divide every row by its own norm, in place. |
 | [`CsrMatrix.RowL1Norm`](csrmatrix-rowl1norm.md) | The sum of one row's absolute values. |
 | [`CsrMatrix.RowL2Norm`](csrmatrix-rowl2norm.md) | The Euclidean length of one row. |

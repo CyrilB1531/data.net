@@ -20,6 +20,7 @@ is what surfaces rather than a re-wrapped one.
 **Example** — three ones give `√3`; the third row's repeated `the` makes it longer.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 string[] docs = ["the cat eats", "the dog eats", "the cat and the dog"];
@@ -31,11 +32,11 @@ double third = counts.RowL2Norm(2);   // => 2.6457513110645907
 
 **Remarks** — this is the norm that matters for similarity. Two rows divided by their L2 norms
 have a dot product equal to their cosine similarity, which is why
-[`TfidfOptions`](tfidfoptions.md) normalizes by it and why
+[`TfidfOptions`](../../text/vectorizers/tfidfoptions.md) normalizes by it and why
 [`NormalizeRows(SparseNorm.L2)`](csrmatrix-normalizerows.md) is the usual call before comparing
 documents.
 
-A matrix straight out of [`TfidfVectorizer`](tfidfvectorizer.md) is already L2-normalized, so
+A matrix straight out of [`TfidfVectorizer`](../../text/vectorizers/tfidfvectorizer.md) is already L2-normalized, so
 every row's norm is `1` and calling this on one is a way to confirm that rather than to learn
 something new.
 

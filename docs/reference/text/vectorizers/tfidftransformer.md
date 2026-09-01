@@ -3,7 +3,7 @@
 Counts in, TF-IDF weights out — the equivalent of
 `sklearn.feature_extraction.text.TfidfTransformer`.
 
-Takes a [`CsrMatrix`](csrmatrix.md) of counts from anywhere and reweights it, so a term appearing
+Takes a [`CsrMatrix`](../../abstractions/sparse/csrmatrix.md) of counts from anywhere and reweights it, so a term appearing
 in every document counts for little and one appearing in a few counts for a lot.
 
 <!-- docs-declaration -->
@@ -21,6 +21,7 @@ fitting.
 **Example** — counts from a [`CountVectorizer`](countvectorizer.md), weighted afterwards.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 string[] docs = ["the cat eats", "the dog eats", "the cat and the dog"];
@@ -41,7 +42,7 @@ Where the counts *do* come from text, [`TfidfVectorizer`](tfidfvectorizer.md) is
 **Applies to** — net10.0, netstandard2.0.
 
 **See also** — [`TfidfOptions`](tfidfoptions.md), [`TfidfVectorizer`](tfidfvectorizer.md),
-[`CsrMatrix`](csrmatrix.md), the [Python equivalence table](../../../equivalence.md).
+[`CsrMatrix`](../../abstractions/sparse/csrmatrix.md), the [Python equivalence table](../../../equivalence.md).
 
 ## Members
 

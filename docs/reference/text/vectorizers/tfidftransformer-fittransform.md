@@ -5,12 +5,13 @@ Learn the document frequencies and weight the same matrix.
 <!-- docs-declaration -->
 
 ```csharp
+
 public CsrMatrix FitTransform(CsrMatrix counts)
 ```
 
 **Parameters** — `counts` is the count matrix, both learned from and weighted.
 
-**Returns** — [`CsrMatrix`](csrmatrix.md), the same shape as `counts`, weighted and normalized by
+**Returns** — [`CsrMatrix`](../../abstractions/sparse/csrmatrix.md), the same shape as `counts`, weighted and normalized by
 [`TfidfOptions.Norm`](tfidfoptions.md).
 
 **Exceptions** — `ArgumentNullException` when `counts` is null.
@@ -18,6 +19,7 @@ public CsrMatrix FitTransform(CsrMatrix counts)
 **Example** — the common case, where the counts and the corpus to weight are the same.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 string[] docs = ["the cat eats", "the dog eats", "the cat and the dog"];
@@ -34,7 +36,7 @@ columns. A count of zero stays absent, because a term the document does not hold
 however rare it is.
 
 The returned matrix is a **new** one; `counts` is left as it was, unlike
-[`CsrMatrix.NormalizeRows`](csrmatrix-normalizerows.md), which works in place.
+[`CsrMatrix.NormalizeRows`](../../abstractions/sparse/csrmatrix-normalizerows.md), which works in place.
 
 **Applies to** — net10.0, netstandard2.0.
 

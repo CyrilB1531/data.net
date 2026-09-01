@@ -19,6 +19,7 @@ are scikit-learn's defaults, so `new CountVectorizer()` is `CountVectorizer()`.
 **Example** — three documents, and the vocabulary they produce.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 string[] docs = ["the cat eats", "the dog eats", "the cat and the dog"];
@@ -43,7 +44,7 @@ by [`TfidfTransformer`](tfidftransformer.md). To skip the vocabulary entirely,
 
 **Applies to** — net10.0, netstandard2.0.
 
-**See also** — [`CountVectorizerOptions`](countvectorizeroptions.md), [`CsrMatrix`](csrmatrix.md),
+**See also** — [`CountVectorizerOptions`](countvectorizeroptions.md), [`CsrMatrix`](../../abstractions/sparse/csrmatrix.md),
 [`TfidfVectorizer`](tfidfvectorizer.md), the
 [vectorization guide](../../../guides/vectorization.md).
 

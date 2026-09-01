@@ -10,8 +10,13 @@
   "packages": {
     "Lodestar.Abstractions": {
       "wiki": "Abstractions",
-      "pages": [],
-      "covered": {}
+      "pages": [
+        "docs/reference/abstractions/*.md",
+        "docs/reference/abstractions/*/*.md"
+      ],
+      "covered": {
+        "Lodestar.Abstractions": "docs/reference/abstractions/sparse"
+      }
     },
     "Lodestar.Text": {
       "wiki": "Text",

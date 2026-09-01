@@ -20,6 +20,7 @@ default to scikit-learn's defaults.
 **Example** — the same corpus as [`CountVectorizer`](countvectorizer.md), weighted.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 string[] docs = ["the cat eats", "the dog eats", "the cat and the dog"];

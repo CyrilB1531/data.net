@@ -1,3 +1,4 @@
+using Lodestar.Abstractions;
 namespace Lodestar.Text.Vectorization;
 
 /// <summary>Options for <see cref="TfidfVectorizer"/>: tokenization plus TF-IDF weighting.</summary>

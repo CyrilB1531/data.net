@@ -18,6 +18,7 @@ hashing changes only what happens *after* a document is cut into terms.
 **Example** — a deliberately tiny feature space, so collisions are certain.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 var hv = new HashingVectorizer(new HashingVectorizerOptions { NumFeatures = 16 });
@@ -43,5 +44,5 @@ counting those would mean the pass over the corpus that this vectorizer exists t
 **Applies to** — net10.0, netstandard2.0.
 
 **See also** — [`HashingVectorizer`](hashingvectorizer.md),
-[`CountVectorizerOptions`](countvectorizeroptions.md), [`SparseNorm`](sparsenorm.md), the
+[`CountVectorizerOptions`](countvectorizeroptions.md), [`SparseNorm`](../../abstractions/sparse/sparsenorm.md), the
 [Python equivalence table](../../../equivalence.md).
