@@ -73,6 +73,10 @@ that reads backwards.
 - The layout gains one edge and loses none: `Text → Abstractions`, `Decomposition → Abstractions`,
   and `Fuzzy → Text` as before. There is still no cycle and no duplicated public type once step B
   lands.
+- **Between steps A and B the type is duplicated, and the quality gate measures it.** Two copies
+  differing only in their first line are 33.3 % duplication on step A's new code against a 3 %
+  gate — the duplication is what the step is, not a defect in it. `sonar.cpd.exclusions` names that
+  one file, and the comment beside it says step B deletes both the copy and the exclusion.
 - `1.0.0` is no longer un-gated by this question, which 0069 had settled by deciding against the
   package. It is settled the other way instead, and the release sequence above is what it now waits
   on.

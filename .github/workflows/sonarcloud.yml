@@ -180,8 +180,15 @@ jobs:
             /d:sonar.projectBaseDir="$GITHUB_WORKSPACE" \
             /d:sonar.coverage.exclusions="tools/**,bench/**,samples/**,.claude/**" \
             /d:sonar.exclusions="tests/oracles/**,samples/Lodestar.DocSnippets/Generated/**,tools/tests/**,assets/**,.claude/**" \
-            /d:sonar.test.exclusions="tests/oracles/**"
+            /d:sonar.test.exclusions="tests/oracles/**" \
+            /d:sonar.cpd.exclusions="src/Lodestar.Abstractions/CsrMatrix.cs"
 
+      # sonar.cpd.exclusions holds exactly one file, and it is temporary. #440's
+      # step A copies CsrMatrix into Lodestar.Abstractions while Lodestar.Text
+      # still declares its own; the duplication is the point of the step rather
+      # than a defect in it, and it measured 33.3% of the new code against a 3%
+      # gate. Step B deletes Lodestar.Text's copy -- delete this line with it,
+      # and decision 0071 is what says so.
       - name: Build the solution
         run: dotnet build Lodestar.slnx --configuration Release
 

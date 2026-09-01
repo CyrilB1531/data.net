@@ -112,7 +112,7 @@ amends it rather than an edit.
 | step | package | contents |
 | --- | --- | --- |
 | A | `Lodestar.Abstractions` 0.1.0 | `CsrMatrix` and `SparseNorm`, plus the two matrix products above. Nothing else: not `IDistance`, not the tokenizer interfaces — [#427](https://github.com/CyrilB1531/lodestar/issues/427) proposed those, and nothing here needs them. |
-| B | `Lodestar.Text` 0.5.0 | drops its own `CsrMatrix`, takes a `PackageReference` on `Lodestar.Abstractions` |
+| B | `Lodestar.Text` 0.5.0 | drops its own `CsrMatrix`, takes a `PackageReference` on `Lodestar.Abstractions`, moves the seven reference pages and adds `covered`; deletes the `sonar.cpd.exclusions` line step A needed |
 | C | `Lodestar.Decomposition` 0.1.0 | `TruncatedSvd`, `Nmf`, one edge, to `Abstractions` |
 
 Step B is a **breaking source change, accepted rather than softened**: the type becomes
