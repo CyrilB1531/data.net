@@ -12,6 +12,10 @@ given:
   with — two ONNX graphs, a trained BPE, and a hand-constructed BPE — and
   commits them directly.
 - `check_nuspec_dependencies.py` verifies what the packages *declare*.
+- `compare_oracles.py` compares two directories of corpora the way the suites
+  do — floats at `1e-9`, everything else exactly — which is what the
+  `Oracles are reproducible` gate asks instead of byte-identity
+  (decision 0073).
 - `check_version_floor.py` verifies that the version numbers the source tree
   keeps in three places still agree.
 - `check_machine_paths.py` refuses a tracked file that holds a path under
@@ -75,9 +79,32 @@ generator with a sentence (`tools/python_floor.py`, and
 [decision 0065](../docs/decisions/0065-the-oracle-generators-floor-is-the-ci-interpreter.md)),
 and a working directory above the virtualenv makes `nltk` refuse its own imports.
 
-The script is **deterministic** (fixed seed, no timestamps): regenerating on
-another machine produces an identical file — diffs stay readable and reviewable.
+The script is **deterministic** (fixed seed, no timestamps): regenerating on another machine
+produces the same corpus — the same cases, in the same order, with the same values to the
+precision anything asserts on. It does *not* produce the same bytes, and it cannot: the last
+digits of a BLAS-reduced value follow the CPU the generator ran on. That is why the gate compares
+with `compare_oracles.py` below rather than with `git diff`
+([decision 0073](../docs/decisions/0073-the-oracle-gate-compares-numbers-not-bytes.md)).
 Committing the regenerated JSON is part of the change.
+
+## `compare_oracles.py`
+
+Compares two directories of corpora and reports only what the test suites would notice:
+
+```bash
+python tools/compare_oracles.py <expected-dir> <actual-dir>
+```
+
+Floats agree within `1e-9` absolute, which is the tolerance the suites replay these corpora at;
+integers, strings, booleans, nulls, an object's key set *and* key order, an array's length and
+order, and the set of files must all match exactly, and so must a non-finite value. Exit `0`
+clean, `1` with the differences printed as `::error::` lines naming each JSON path, `2` on bad
+usage.
+
+The `Oracles are reproducible` job copies `tests/oracles` aside, regenerates, and runs this over
+the two. To ask the same question locally, do the same: copy the committed corpora somewhere,
+regenerate, and compare — the generator writes in place, so there is nothing to compare against
+otherwise.
 
 ## `draw_icon.py`
 

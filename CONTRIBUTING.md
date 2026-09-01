@@ -443,9 +443,15 @@ alongside the implementation.
    results and exact comparison for strings.
 
 Generation must be deterministic: a fixed seed, no wall-clock timestamps, no
-unordered iteration. The `Oracles are reproducible` CI job regenerates and fails
-on any drift, so a corpus that is not byte-reproducible will block the pull
-request.
+unordered iteration. The `Oracles are reproducible` CI job keeps the committed
+corpora, regenerates, and compares the two with
+[`tools/compare_oracles.py`](tools/compare_oracles.py) — floats at the same `1e-9`
+step 4 asks a test for, and everything else (integers, strings, key sets and their
+order, array lengths and their order, the set of files) exactly. So a corpus whose
+*values* move, or that gains, loses or reorders anything, blocks the pull request;
+one whose last digits follow the CPU that generated it does not.
+[Decision 0073](docs/decisions/0073-the-oracle-gate-compares-numbers-not-bytes.md)
+has why the gate stopped asking for byte-identity, which no machine could hold.
 
 ### Dependencies
 

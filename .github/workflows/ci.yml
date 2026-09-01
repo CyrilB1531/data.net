@@ -300,7 +300,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Regenerate oracles and check for drift
+      - name: Regenerate the oracles and compare them numerically
         run: |
           # Install from the generated lock, not the human-edited input:
           #   --require-hashes    every artefact must match a recorded hash, which
@@ -308,24 +308,25 @@ jobs:
           #                       scikit-learn pulls scipy, and so on)
           #   --only-binary :all: no source distribution, so no setup.py executes
           pip install --only-binary :all: --require-hashes -r tools/requirements.lock.txt
+          # The generator writes over tests/oracles in place, so the committed
+          # corpora are copied aside first — there is nothing to compare against
+          # afterwards otherwise.
+          cp -R tests/oracles "${{ runner.temp }}/oracles-committed"
           python tools/generate_oracles.py
-          if ! git diff --quiet -- tests/oracles; then
-            echo "::error::Committed oracle corpora differ from a fresh generation. Run tools/generate_oracles.py and commit the result."
-            git --no-pager diff --stat -- tests/oracles
-            # The stat names the corpus that moved; only the values say why it did.
-            # -U0 because these are one-value-per-line JSON and context lines carry
-            # nothing here, and capped so that a wholesale regeneration cannot bury
-            # the log — the artefact below is what covers that case.
-            echo "--- first 400 changed lines ---"
-            git --no-pager diff -U0 -- tests/oracles | head -n 400
+          # Numerically, at the 1e-9 the suites replay these corpora at, rather
+          # than byte for byte: the last digits of a value a BLAS kernel reduced
+          # describe the CPU the job landed on, not the quantity (decision 0073).
+          if ! python tools/compare_oracles.py "${{ runner.temp }}/oracles-committed" tests/oracles; then
+            echo "::error::A regenerated corpus differs from the committed one by more than the 1e-9 the test suites compare at. Run tools/generate_oracles.py and commit the result."
             exit 1
           fi
 
       # The runner is thrown away with everything that would let the failure be
-      # reproduced: drift has already turned out to depend on which CPU the job
-      # landed on (issue #95), which no amount of log reading settles. Keeping the
-      # freshly generated corpora makes the comparison possible off the runner.
-      - name: Keep the generated corpora when they drifted
+      # reproduced: a difference this gate reports survived a 1e-9 comparison and
+      # is a real change to a corpus, which the log's capped excerpt names but
+      # does not explain. Keeping the freshly generated corpora makes the whole
+      # comparison possible off the runner.
+      - name: Keep the generated corpora when they differed
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
