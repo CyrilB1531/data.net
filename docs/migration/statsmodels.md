@@ -8,7 +8,7 @@ equivalent. It is a candidate for native code *if your usage justifies it*.
 | statsmodels need | .NET |
 | --- | --- |
 | Linear regression, least squares | **Math.NET Numerics** (`Fit`, `MultipleRegression`) |
-| Distributions, basic hypothesis tests | **Math.NET** (`Distributions`), Accord.NET |
+| Distributions, basic hypothesis tests | **Math.NET** (`Distributions`). ⛔ *not* Accord.NET — last package October 2017, last commit November 2020; [README](README.md#unmaintained-and-why-that-is-stated-with-dates) |
 | Advanced GLMs, time series, econometric summaries | ⚠️ **gap** — write or work around |
 
 ```csharp

@@ -7,6 +7,7 @@ mature and less ergonomic than pandas; expect some glue.
 | --- | --- |
 | General `DataFrame`, CSV IO, typed columns | **`Microsoft.Data.Analysis`** |
 | Time series, rich indices | **Deedle** (F# origin, excellent at time series) |
+| — | ⛔ *not* **Pandas.NET**, whose name makes it the obvious search result: last package 0.6.0 in November 2023, and its last commit, in August 2024, deleted its own CI workflow. [README](README.md#unmaintained-and-why-that-is-stated-with-dates) |
 
 ```bash
 dotnet add package Microsoft.Data.Analysis
@@ -73,4 +74,4 @@ not one: both sides already exist and the join above is one expression. A bridge
 also cost `Lodestar.Text` its no-third-party-dependency property, or need a fifth
 package to hold a `Select`.
 
-_Guide to be expanded as real needs arise._
+*Guide to be expanded as real needs arise.*
