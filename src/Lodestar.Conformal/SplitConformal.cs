@@ -1,42 +1,23 @@
 namespace Lodestar.Conformal;
 
-/// <summary>
-/// Split conformal prediction: turns a point prediction into an interval, or a class
-/// into a prediction set, with a finite-sample coverage guarantee.
-/// </summary>
+/// <summary>Split conformal prediction: an interval instead of a point, a set instead of a class.</summary>
 /// <remarks>
-/// <para>
-/// Reproduces <c>mapie.regression.SplitConformalRegressor</c> and
-/// <c>mapie.classification.SplitConformalClassifier</c> with <c>conformity_score="lac"</c>,
-/// both <c>prefit</c>. Post-hoc arithmetic over scores and labels: no model, no training
-/// loop, nothing to serialize. All members are stateless and thread-safe.
-/// </para>
-/// <para>
-/// <b>The guarantee assumes exchangeability.</b> Coverage holds when the calibration and
-/// test data are exchangeable. It does <b>not</b> hold for time series, for data with
-/// drift, or for any split that leaks — the intervals still come out, they simply do not
-/// cover, and nothing in the output says so. See <c>docs/guides/conformal.md</c>.
-/// </para>
+/// Reproduces MAPIE 1.5.0's <c>SplitConformalRegressor</c> and its
+/// <c>SplitConformalClassifier</c> at <c>conformity_score="lac"</c>, both <c>prefit</c>;
+/// every member is static and thread-safe. <b>The guarantee assumes exchangeability</b> —
+/// it does not hold for time series, for drift, or for a split that leaks, the intervals
+/// still come out, and nothing in the output says so. See <c>docs/guides/conformal.md</c>.
 /// </remarks>
 public static class SplitConformal
 {
-    /// <summary>
-    /// The calibrated quantile: the score a new point must not exceed to fall inside the
-    /// prediction, at miscoverage level <paramref name="alpha"/>.
-    /// </summary>
+    /// <summary>The score a new point must not exceed to fall inside the prediction.</summary>
     /// <remarks>
-    /// <para>
-    /// The <c>k</c>-th smallest score with <c>k = ceil((n + 1) · (1 − alpha))</c>, which is
-    /// what MAPIE computes as <c>numpy.quantile(scores, (1 − alpha)(n + 1)/n,
-    /// method="higher")</c>. The ceiling form is implemented because it says what it means.
-    /// </para>
-    /// <para>
-    /// When <c>k</c> exceeds <paramref name="scores"/>'s length the rule asks for a score
-    /// that does not exist — the calibration set is too small for the level — and the honest
-    /// answer is <see cref="double.PositiveInfinity"/>: a trivial prediction, with real
-    /// coverage. <see cref="Interval"/> and <see cref="PredictionSet"/> both carry it through.
-    /// </para>
-    /// <para><b>The guarantee assumes exchangeability</b> — see the type's remarks.</para>
+    /// The <c>k</c>-th smallest score, <c>k = ceil((n + 1) · (1 − alpha))</c>, 1-based — the rule
+    /// MAPIE was measured to follow, and not a numpy quantile. When <c>k</c> exceeds the score
+    /// count the level asks for a score that does not exist, and the answer is
+    /// <see cref="double.PositiveInfinity"/>: a trivial prediction with real coverage, carried
+    /// through by <see cref="Interval"/> and <see cref="PredictionSet"/>. MAPIE raises there;
+    /// decision 0070 says why this does not. <b>Exchangeability</b> — see the type's remarks.
     /// </remarks>
     /// <param name="scores">The calibration scores; not modified.</param>
     /// <param name="alpha">Miscoverage level in <c>(0, 1)</c>: 0.1 asks for 90 % coverage.</param>
@@ -158,13 +139,11 @@ public static class SplitConformal
 
     /// <summary>The prediction set: every class whose probability clears <c>1 − q</c>.</summary>
     /// <remarks>
-    /// <para>
-    /// MAPIE's LAC rule, reproduced including its edges. <b>The set can be empty</b>, when no
-    /// class clears the threshold; substituting the most likely class there would return
-    /// something with no coverage guarantee under a name that promises one. An infinite
-    /// <paramref name="quantile"/> returns every class, which is the trivial prediction.
-    /// </para>
-    /// <para><b>The guarantee assumes exchangeability</b>; see the type's remarks.</para>
+    /// MAPIE's LAC rule, edges included. <b>The set can be empty</b>, when no class clears
+    /// the threshold; substituting the most likely class there would return something with
+    /// no coverage guarantee under a name that promises one. An infinite
+    /// <paramref name="quantile"/> returns every class, the trivial prediction.
+    /// <b>The guarantee assumes exchangeability</b>; see the type's remarks.
     /// </remarks>
     /// <param name="probabilities">One sample's predicted probabilities, in calibration order.</param>
     /// <param name="quantile">The calibrated quantile from <see cref="Quantile"/>.</param>
