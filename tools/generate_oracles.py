@@ -2861,6 +2861,64 @@ def generate_sparse_matmul() -> dict:
             "cases": cases}
 
 
+# --- Dense kernels for Lodestar.Decomposition (#440) -----------------------
+
+# Reused by three corpora below. S1192 counts a repeated JSON key like any other
+# literal, and these are written once for that reason as much as for clarity.
+MATRIX_KEY = "matrix"
+ROWS_KEY = "rows"
+COLUMNS_KEY = "columns"
+FULL_RANK_KEY = "full_rank"
+
+
+def _dense_fixtures() -> list[dict]:
+    """Tall-and-skinny blocks, the shape a range finder actually produces."""
+    rng = SeededRandom(SEED + 44300)
+    shapes = [(6, 3), (12, 4), (25, 10), (40, 10), (9, 9), (5, 1)]
+    fixtures = []
+    for rows, columns in shapes:
+        values = [rng.gauss(0.0, 1.0) for _ in range(rows * columns)]
+        fixtures.append(
+            {ROWS_KEY: rows, COLUMNS_KEY: columns, MATRIX_KEY: values, FULL_RANK_KEY: True})
+    # Column 1 repeats column 0: past the vanished pivot the factors stop being
+    # basis-independent, so full_rank is False and the factor comparisons skip it.
+    rows, columns = 8, 3
+    base = [rng.gauss(0.0, 1.0) for _ in range(rows)]
+    tail = [rng.gauss(0.0, 1.0) for _ in range(rows)]
+    deficient = []
+    for i in range(rows):
+        deficient.extend([base[i], base[i], tail[i]])
+    fixtures.append(
+        {ROWS_KEY: rows, COLUMNS_KEY: columns, MATRIX_KEY: deficient, FULL_RANK_KEY: False})
+    return fixtures
+
+
+def generate_decomposition_qr() -> dict:
+    """Economic QR, against scipy (#440).
+
+    The factors are unique only up to a per-column sign, so the corpus freezes what
+    is actually invariant: that Q has orthonormal columns, that R is upper
+    triangular, and that Q @ R reproduces the input. scipy's own factors ride along
+    so a divergence can be looked at, never asserted on.
+    """
+    from scipy import linalg
+
+    cases = []
+    for fixture in _dense_fixtures():
+        rows, columns = fixture[ROWS_KEY], fixture[COLUMNS_KEY]
+        a = np.array(fixture[MATRIX_KEY]).reshape(rows, columns)
+        q, r = linalg.qr(a, mode="economic")
+        cases.append({
+            **fixture,
+            "scipy_q": q.ravel().tolist(),
+            "scipy_r": r.ravel().tolist(),
+        })
+    return {"metadata": {"library": "scipy", "version": version("scipy"),
+                         "reference_calls": ["scipy.linalg.qr"],
+                         "seed": SEED, "count": len(cases), "tolerance": 1e-9},
+            "cases": cases}
+
+
 def _internal_validity_fixtures() -> list[dict]:
     """Clusterings chosen where a plausible implementation and the reference part company."""
     two_by_two = [[1.0, 2.0], [1.5, 1.8], [5.0, 8.0], [8.0, 8.0], [1.0, 0.6], [9.0, 11.0]]
@@ -6716,6 +6774,7 @@ def main() -> None:
         "regression_deviance.json": generate_regression_deviance,
         "conformal.json": generate_conformal,
         "sparse_matmul.json": generate_sparse_matmul,
+        "decomposition_qr.json": generate_decomposition_qr,
         "bpe.json": generate_bpe,
         "orphan_bpe.json": generate_orphan_bpe,
         "bytelevel_bpe.json": generate_bytelevel_bpe,
