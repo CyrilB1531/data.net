@@ -1,3 +1,4 @@
+using Lodestar.Abstractions;
 using System.Text.Json;
 using Lodestar.Internal.Persistence;
 using Lodestar.Text.Vectorization;

@@ -1,3 +1,4 @@
+using Lodestar.Abstractions;
 namespace Lodestar.Text.Vectorization;
 
 /// <summary>Options for <see cref="TfidfTransformer"/> / <see cref="TfidfVectorizer"/>.</summary>
