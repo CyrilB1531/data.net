@@ -2945,6 +2945,45 @@ def generate_decomposition_lu() -> dict:
             "cases": cases}
 
 
+def _dense_svd_fixtures() -> list[dict]:
+    """Both orientations, plus the wide-and-short shape B actually has."""
+    rng = SeededRandom(SEED + 44400)
+    shapes = [(6, 3), (3, 6), (10, 10), (14, 4), (4, 14), (1, 5), (5, 1)]
+    fixtures = []
+    for rows, columns in shapes:
+        values = [rng.gauss(0.0, 1.0) for _ in range(rows * columns)]
+        fixtures.append({ROWS_KEY: rows, COLUMNS_KEY: columns, MATRIX_KEY: values})
+    return fixtures
+
+
+def _dense_svd_cases() -> list[dict]:
+    """The dense factorization on its own, so a failure in the composed algorithm
+    has somewhere smaller to land."""
+    from scipy import linalg
+
+    cases = []
+    for fixture in _dense_svd_fixtures():
+        rows, columns = fixture[ROWS_KEY], fixture[COLUMNS_KEY]
+        a = np.array(fixture[MATRIX_KEY]).reshape(rows, columns)
+        u, s, vt = linalg.svd(a, full_matrices=False)
+        cases.append({
+            **fixture,
+            "singular_values": s.tolist(),
+            "scipy_u": u.ravel().tolist(),
+            "scipy_vt": vt.ravel().tolist(),
+        })
+    return cases
+
+
+def generate_decomposition_svd() -> dict:
+    """The dense SVD, and (from Task 5) randomized_svd on top of it (#440)."""
+    dense = _dense_svd_cases()
+    return {"metadata": {"library": "scipy", "version": version("scipy"),
+                         "reference_calls": ["scipy.linalg.svd"],
+                         "seed": SEED, "count": len(dense), "tolerance": 1e-9},
+            "dense": dense}
+
+
 def _internal_validity_fixtures() -> list[dict]:
     """Clusterings chosen where a plausible implementation and the reference part company."""
     two_by_two = [[1.0, 2.0], [1.5, 1.8], [5.0, 8.0], [8.0, 8.0], [1.0, 0.6], [9.0, 11.0]]
@@ -6802,6 +6841,7 @@ def main() -> None:
         "sparse_matmul.json": generate_sparse_matmul,
         "decomposition_qr.json": generate_decomposition_qr,
         "decomposition_lu.json": generate_decomposition_lu,
+        "decomposition_svd.json": generate_decomposition_svd,
         "bpe.json": generate_bpe,
         "orphan_bpe.json": generate_orphan_bpe,
         "bytelevel_bpe.json": generate_bytelevel_bpe,
