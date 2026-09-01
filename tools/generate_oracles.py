@@ -71,6 +71,13 @@ BOS_TOKEN = "<s>"
 # Two spellings of one fixture phrase. THE_CAT is separate because four corpora
 # reach for it and Sonar's S1192 counts them together (issue #487's quality gate).
 THE_CAT = "the cat"
+# The conformal corpus's own key names. S1192 counts a JSON key like any other
+# literal, and these are written once per case in three places each (#441).
+CALIB_SIZE = "calib"
+QUANTILE = "quantile"
+Y_CALIB = "y_calib"
+Y_CALIB_PRED = "y_calib_pred"
+Y_TEST_PRED = "y_test_pred"
 CAT_SENTENCE = THE_CAT + " sat on the mat"
 HELLO_WORLD = "hello world"
 END_OF_TEXT = "<|endoftext|>"
@@ -2627,20 +2634,20 @@ def _conformal_regression_fixtures() -> list[dict]:
     test = [round(rng.gauss(10.0, 3.0), 6) for _ in range(6)]
     return [
         {"name": "thirty calibration points at 90 %",
-         "alpha": 0.1, "y_calib": y_calib, "y_calib_pred": predicted, "y_test_pred": test},
+         "alpha": 0.1, Y_CALIB: y_calib, Y_CALIB_PRED: predicted, Y_TEST_PRED: test},
         {"name": "the same points at 50 %",
-         "alpha": 0.5, "y_calib": y_calib, "y_calib_pred": predicted, "y_test_pred": test},
+         "alpha": 0.5, Y_CALIB: y_calib, Y_CALIB_PRED: predicted, Y_TEST_PRED: test},
         # (n + 1)(1 - alpha) = 20 * 0.9 = 18 exactly, so the ceiling must not round
         # up: k is 18, not 19. An implementation carrying an epsilon gets this wrong.
         {"name": "an exact integer at the ceiling",
-         "alpha": 0.1, "y_calib": y_calib[:19], "y_calib_pred": predicted[:19],
-         "y_test_pred": test},
+         "alpha": 0.1, Y_CALIB: y_calib[:19], Y_CALIB_PRED: predicted[:19],
+         Y_TEST_PRED: test},
         # Repeated scores: the k-th smallest is a position, not a distinct value.
         {"name": "ties in the calibration scores",
          "alpha": 0.3,
-         "y_calib": [float(v) for v in range(1, 13)],
-         "y_calib_pred": [1.5, 2.5, 4.0, 5.0, 4.0, 5.75, 9.0, 8.5, 8.0, 9.75, 13.0, 11.5],
-         "y_test_pred": [0.0, 6.25, 100.0]},
+         Y_CALIB: [float(v) for v in range(1, 13)],
+         Y_CALIB_PRED: [1.5, 2.5, 4.0, 5.0, 4.0, 5.75, 9.0, 8.5, 8.0, 9.75, 13.0, 11.5],
+         Y_TEST_PRED: [0.0, 6.25, 100.0]},
     ]
 
 
@@ -2669,11 +2676,11 @@ def _conformal_classification_fixtures() -> list[dict]:
     binary = _peaked_rows(rng, 40, 2, 2.0)
     return [
         {"name": "eighty calibration points, four classes, at 80 %",
-         "alpha": 0.2, "class_count": 4, "calib": 80, "proba": flat, "empty": False},
+         "alpha": 0.2, "class_count": 4, CALIB_SIZE: 80, "proba": flat, "empty": False},
         {"name": "a confident model, where a flat row gets an empty set",
-         "alpha": 0.25, "class_count": 3, "calib": 60, "proba": confident, "empty": True},
+         "alpha": 0.25, "class_count": 3, CALIB_SIZE: 60, "proba": confident, "empty": True},
         {"name": "two classes at 75 %",
-         "alpha": 0.25, "class_count": 2, "calib": 36, "proba": binary, "empty": False},
+         "alpha": 0.25, "class_count": 2, CALIB_SIZE: 36, "proba": binary, "empty": False},
     ]
 
 
@@ -2701,7 +2708,7 @@ def _conformal_classification_case(fx: dict, frozen_classifier, split_classifier
     """One LAC case: MAPIE's prediction sets, asserted against the threshold rule."""
     proba = fx["proba"]
     classes = fx["class_count"]
-    n = fx["calib"]
+    n = fx[CALIB_SIZE]
     labels = _conformal_labels(SeededRandom(SEED + 44100), proba[:n])
 
     scores = [1.0 - proba[i][labels[i]] for i in range(n)]
@@ -2725,7 +2732,7 @@ def _conformal_classification_case(fx: dict, frozen_classifier, split_classifier
         "name": fx["name"], "alpha": fx["alpha"], "class_count": classes,
         "calib_proba": [p for row in proba[:n] for p in row],
         "calib_labels": labels,
-        "scores": scores, "k": k, "quantile": q,
+        "scores": scores, "k": k, QUANTILE: q,
         "test_count": len(test),
         "test_proba": [p for row in test for p in row],
         "sets": [flag for row in mine for flag in row],
@@ -2743,9 +2750,9 @@ def generate_conformal() -> dict:
     classification_cases: list[dict] = []
 
     for fx in _conformal_regression_fixtures():
-        y_calib = fx["y_calib"]
-        calib_pred = fx["y_calib_pred"]
-        test_pred = fx["y_test_pred"]
+        y_calib = fx[Y_CALIB]
+        calib_pred = fx[Y_CALIB_PRED]
+        test_pred = fx[Y_TEST_PRED]
         n = len(y_calib)
         scores = [abs(t - p) for t, p in zip(y_calib, calib_pred)]
         k, q = _conformal_quantile(scores, fx["alpha"])
@@ -2765,10 +2772,10 @@ def generate_conformal() -> dict:
         assert np.allclose(interval[:, 1, 0], upper, rtol=0, atol=1e-12), fx["name"]
 
         quantile_cases.append({
-            "name": fx["name"], "alpha": fx["alpha"], "scores": scores, "k": k, "quantile": q})
+            "name": fx["name"], "alpha": fx["alpha"], "scores": scores, "k": k, QUANTILE: q})
         regression_cases.append({
-            "name": fx["name"], "alpha": fx["alpha"], "y_calib": y_calib,
-            "y_calib_pred": calib_pred, "quantile": q, "y_test_pred": test_pred,
+            "name": fx["name"], "alpha": fx["alpha"], Y_CALIB: y_calib,
+            Y_CALIB_PRED: calib_pred, QUANTILE: q, Y_TEST_PRED: test_pred,
             "lower": lower, "upper": upper})
 
     for fx in _conformal_classification_fixtures():
@@ -2776,12 +2783,12 @@ def generate_conformal() -> dict:
         classification_cases.append(case)
         quantile_cases.append({
             "name": case["name"], "alpha": case["alpha"], "scores": case["scores"],
-            "k": case["k"], "quantile": case["quantile"]})
+            "k": case["k"], QUANTILE: case[QUANTILE]})
 
     return {
         "metadata": {"library": "mapie", "version": version("mapie"),
                      "count": len(regression_cases) + len(classification_cases)},
-        "quantile": quantile_cases,
+        QUANTILE: quantile_cases,
         "regression": regression_cases,
         "classification": classification_cases,
     }

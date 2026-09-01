@@ -322,11 +322,13 @@ In `main()`'s `generators` dict, after the `"regression_deviance.json"` entry:
 
 - [ ] **Step 5: Generate, reading the generator's own exit code**
 
-The repository lives under `/home/user`, so `/tmp` is a neutral directory here — it is not an ancestor of the checkout, which is the only property `nltk`'s import guard cares about.
+Neutral means *not an ancestor of the checkout* — the only property `nltk`'s import guard cares
+about. `/tmp` serves whenever the worktree is not itself under `/tmp`; check before picking, and
+use `/var/tmp` when it is.
 
 ```bash
-cd /tmp && PYTHONSAFEPATH=1 /home/user/lodestar/.venv-oracles/bin/python \
-  /home/user/lodestar/tools/generate_oracles.py
+REPO=$(git rev-parse --show-toplevel)
+cd /tmp && PYTHONSAFEPATH=1 "$REPO/.venv-oracles/bin/python" "$REPO/tools/generate_oracles.py"
 echo "generator exit: $?"
 ```
 
@@ -335,7 +337,7 @@ Expected: `conformal.json: 7 cases -> .../tests/oracles/conformal.json`, exit 0,
 - [ ] **Step 6: Verify the corpus carries the two edges it exists for**
 
 ```bash
-cd /home/user/lodestar && .venv-oracles/bin/python - <<'PY'
+cd "$REPO" && .venv-oracles/bin/python - <<'PY'
 import json, pathlib
 d = json.loads(pathlib.Path("tests/oracles/conformal.json").read_text())
 print("quantile cases:", len(d["quantile"]))
