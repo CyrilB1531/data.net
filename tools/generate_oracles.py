@@ -2914,8 +2914,8 @@ def generate_decomposition_qr() -> dict:
         q, r = linalg.qr(a, mode="economic")
         cases.append({
             **fixture,
-            "scipy_q": q.ravel().tolist(),
-            "scipy_r": r.ravel().tolist(),
+            "scipy_q": [stable(v) for v in q.ravel()],
+            "scipy_r": [stable(v) for v in r.ravel()],
         })
     return {"metadata": {"library": "scipy", "version": version("scipy"),
                          "reference_calls": ["scipy.linalg.qr"],
@@ -2940,8 +2940,8 @@ def generate_decomposition_lu() -> dict:
         pl, u = linalg.lu(a, permute_l=True)
         cases.append({
             **fixture,
-            "permuted_lower": pl.ravel().tolist(),
-            "upper": u.ravel().tolist(),
+            "permuted_lower": [stable(v) for v in pl.ravel()],
+            "upper": [stable(v) for v in u.ravel()],
         })
     return {"metadata": {"library": "scipy", "version": version("scipy"),
                          "reference_calls": ["scipy.linalg.lu"],
@@ -2972,9 +2972,9 @@ def _dense_svd_cases() -> list[dict]:
         u, s, vt = linalg.svd(a, full_matrices=False)
         cases.append({
             **fixture,
-            "singular_values": s.tolist(),
-            "scipy_u": u.ravel().tolist(),
-            "scipy_vt": vt.ravel().tolist(),
+            "singular_values": [stable(v) for v in s],
+            "scipy_u": [stable(v) for v in u.ravel()],
+            "scipy_vt": [stable(v) for v in vt.ravel()],
         })
     return cases
 
@@ -3078,12 +3078,12 @@ def _randomized_cases() -> list[dict]:
             OMEGA_KEY: omega.ravel().tolist(),
             # Rides along for diagnosis the way the dense half's scipy factors do:
             # nothing in the C# suite asserts on it, because U is not reported.
-            "left_singular_vectors": u.ravel().tolist(),
-            "singular_values": s.tolist(),
-            "components": vt.ravel().tolist(),
-            "explained_variance": svd.explained_variance_.tolist(),
-            "explained_variance_ratio": svd.explained_variance_ratio_.tolist(),
-            "transform": svd.transform(a).ravel().tolist(),
+            "left_singular_vectors": [stable(v) for v in u.ravel()],
+            "singular_values": [stable(v) for v in s],
+            "components": [stable(v) for v in vt.ravel()],
+            "explained_variance": [stable(v) for v in svd.explained_variance_],
+            "explained_variance_ratio": [stable(v) for v in svd.explained_variance_ratio_],
+            "transform": [stable(v) for v in svd.transform(a).ravel()],
         })
     return cases
 
@@ -3144,8 +3144,8 @@ def _randomized_wide_cases() -> list[dict]:
             "power_iterations": iterations,
             "normalizer": normalizer,
             OMEGA_KEY: omega.ravel().tolist(),
-            "singular_values": s.tolist(),
-            "components": vt.ravel().tolist(),
+            "singular_values": [stable(v) for v in s],
+            "components": [stable(v) for v in vt.ravel()],
         })
     return cases
 
@@ -3252,8 +3252,8 @@ def _nmf_initialization_cases() -> list[dict]:
             COMPONENT_COUNT_KEY: k,
             "initialization": init,
             OMEGA_KEY: omega.ravel().tolist(),
-            INITIAL_W_KEY: w.ravel().tolist(),
-            INITIAL_H_KEY: h.ravel().tolist(),
+            INITIAL_W_KEY: [stable(v) for v in w.ravel()],
+            INITIAL_H_KEY: [stable(v) for v in h.ravel()],
         })
     return cases
 
@@ -3312,6 +3312,10 @@ def _nmf_update_cases() -> list[dict]:
 
         seed = SEED + 45000 + index
         w0, h0 = _initialize_nmf(a, k, init=NNDSVDA, random_state=seed)
+        # Rounded before the fit, not on the way out: W0 and H0 are the input both
+        # sides start from, so the estimator has to see what the corpus carries.
+        w0 = np.array([[stable(v) for v in row] for row in w0])
+        h0 = np.array([[stable(v) for v in row] for row in h0])
         if zeroed >= 0:
             w0[:, zeroed] = 0.0
 
@@ -3339,12 +3343,12 @@ def _nmf_update_cases() -> list[dict]:
             "beta_loss": loss,
             "max_iterations": iterations,
             "tolerance": tol,
-            INITIAL_W_KEY: w0.ravel().tolist(),
-            INITIAL_H_KEY: h0.ravel().tolist(),
-            "weights": w.ravel().tolist(),
-            "components": model.components_.ravel().tolist(),
+            INITIAL_W_KEY: [stable(v) for v in w0.ravel()],
+            INITIAL_H_KEY: [stable(v) for v in h0.ravel()],
+            "weights": [stable(v) for v in w.ravel()],
+            "components": [stable(v) for v in model.components_.ravel()],
             "iterations": int(model.n_iter_),
-            "reconstruction_error": float(model.reconstruction_err_),
+            "reconstruction_error": stable(model.reconstruction_err_),
         })
     return cases
 
