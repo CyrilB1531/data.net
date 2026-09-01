@@ -74,6 +74,11 @@ THE_CAT = "the cat"
 # The conformal corpus's own key names. S1192 counts a JSON key like any other
 # literal, and these are written once per case in three places each (#441).
 CALIB_SIZE = "calib"
+# The sparse-dense corpus's fixture keys, named for the same reason the conformal
+# ones above are: S1192 counts a dict key like any other literal (#440).
+COLUMNS = "columns"
+DENSE = "dense"
+WIDTH = "width"
 QUANTILE = "quantile"
 Y_CALIB = "y_calib"
 Y_CALIB_PRED = "y_calib_pred"
@@ -2793,6 +2798,67 @@ def generate_conformal() -> dict:
         "regression": regression_cases,
         "classification": classification_cases,
     }
+
+
+# --- Sparse-dense products (#440) -----------------------------------------
+
+
+def _sparse_matmul_fixtures() -> list[dict]:
+    """CSR matrices paired with a dense block, including the shapes that hide bugs."""
+    rng = SeededRandom(SEED + 440)
+    cases = [
+        # Row-major by hand, so the layout the C# reads is visible in the fixture.
+        {"name": "a gap in the first row", "rows": 2, COLUMNS: 3, WIDTH: 2,
+         DENSE: [[1.0, 0.0, 2.0], [0.0, 3.0, 0.0]]},
+        # An empty row: the row pointers repeat, and that result row must stay zero.
+        {"name": "an empty row", "rows": 3, COLUMNS: 3, WIDTH: 4,
+         DENSE: [[1.0, 2.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 5.0]]},
+        # An all-zero column: the transposed product must still produce its row.
+        {"name": "a column nothing touches", "rows": 2, COLUMNS: 4, WIDTH: 3,
+         DENSE: [[1.0, 0.0, 0.0, 2.0], [0.0, 0.0, 3.0, 0.0]]},
+        {"name": "one column of block", "rows": 3, COLUMNS: 3, WIDTH: 1,
+         DENSE: [[1.0, 0.0, 2.0], [0.0, 3.0, 0.0], [4.0, 0.0, 5.0]]},
+        {"name": "no non-zeros at all", "rows": 2, COLUMNS: 2, WIDTH: 2,
+         DENSE: [[0.0, 0.0], [0.0, 0.0]]},
+    ]
+    # One larger, denser case, so the small hand-written ones are not the whole corpus.
+    rows, columns = 12, 9
+    dense = [[round(rng.uniform(-4.0, 4.0), 6) if rng.random() < 0.35 else 0.0
+              for _ in range(columns)] for _ in range(rows)]
+    cases.append({"name": "twelve by nine at a third dense", "rows": rows,
+                  COLUMNS: columns, WIDTH: 5, DENSE: dense})
+    return cases
+
+
+def generate_sparse_matmul() -> dict:
+    """The two sparse-dense products, against scipy (#440)."""
+    from scipy import sparse
+
+    rng = SeededRandom(SEED + 4400)
+    cases = []
+    for fx in _sparse_matmul_fixtures():
+        matrix = sparse.csr_matrix(np.array(fx[DENSE], dtype=float))
+        width = fx[WIDTH]
+        block = np.array([[round(rng.uniform(-3.0, 3.0), 6) for _ in range(width)]
+                          for _ in range(fx[COLUMNS])])
+        transpose_block = np.array([[round(rng.uniform(-3.0, 3.0), 6) for _ in range(width)]
+                                    for _ in range(fx["rows"])])
+        cases.append({
+            "name": fx["name"],
+            "rows": fx["rows"], COLUMNS: fx[COLUMNS],
+            "values": [float(v) for v in matrix.data],
+            "column_indices": [int(i) for i in matrix.indices],
+            "row_pointers": [int(i) for i in matrix.indptr],
+            "block_columns": width,
+            "block": [stable(v) for v in block.ravel()],
+            "product": [stable(v) for v in (matrix @ block).ravel()],
+            "transpose_block": [stable(v) for v in transpose_block.ravel()],
+            "transpose_product": [stable(v) for v in (matrix.T @ transpose_block).ravel()],
+        })
+
+    return {"metadata": {"library": "scipy", "version": version("scipy"),
+                         "count": len(cases)},
+            "cases": cases}
 
 
 def _internal_validity_fixtures() -> list[dict]:
@@ -6649,6 +6715,7 @@ def main() -> None:
         "regression_conditioning.json": generate_regression_conditioning,
         "regression_deviance.json": generate_regression_deviance,
         "conformal.json": generate_conformal,
+        "sparse_matmul.json": generate_sparse_matmul,
         "bpe.json": generate_bpe,
         "orphan_bpe.json": generate_orphan_bpe,
         "bytelevel_bpe.json": generate_bytelevel_bpe,

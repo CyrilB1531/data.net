@@ -220,4 +220,96 @@ public sealed class CsrMatrix
         }
         return result;
     }
+
+    /// <summary>Computes the matrix-block product <c>this · block</c>.</summary>
+    /// <remarks>
+    /// The dense operand is row-major and <paramref name="columnCount"/> wide, so its length is
+    /// <see cref="ColumnCount"/> times that; the result is <see cref="RowCount"/> rows of the same
+    /// width. One pass over the non-zeros rather than <paramref name="columnCount"/> passes: each
+    /// column index is read once and the inner loop walks contiguous memory on both sides.
+    /// </remarks>
+    /// <param name="block">The dense right operand, row-major.</param>
+    /// <param name="columnCount">How many columns <paramref name="block"/> holds.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="columnCount"/> is not positive, or the product would not fit in one array.</exception>
+    /// <exception cref="ArgumentException"><paramref name="block"/> is not <see cref="ColumnCount"/> rows of that width.</exception>
+    public double[] Multiply(ReadOnlySpan<double> block, int columnCount)
+    {
+        GuardBlock(block, ColumnCount, columnCount);
+
+        double[] result = new double[ProductLength(RowCount, columnCount)];
+        for (int row = 0; row < RowCount; row++)
+        {
+            int target = row * columnCount;
+            for (int k = RowPointers[row]; k < RowPointers[row + 1]; k++)
+            {
+                double value = Values[k];
+                int source = ColumnIndices[k] * columnCount;
+                for (int column = 0; column < columnCount; column++)
+                {
+                    result[target + column] += value * block[source + column];
+                }
+            }
+        }
+        return result;
+    }
+
+    /// <summary>Computes the transposed product <c>this^T · block</c>, without transposing.</summary>
+    /// <remarks>
+    /// The dense operand is <see cref="RowCount"/> rows of <paramref name="columnCount"/>, and the
+    /// result is <see cref="ColumnCount"/> of them. Materializing the transpose would cost a second
+    /// matrix; scattering into the result instead reads each non-zero once, which is the same work.
+    /// </remarks>
+    /// <param name="block">The dense right operand, row-major.</param>
+    /// <param name="columnCount">How many columns <paramref name="block"/> holds.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="columnCount"/> is not positive, or the product would not fit in one array.</exception>
+    /// <exception cref="ArgumentException"><paramref name="block"/> is not <see cref="RowCount"/> rows of that width.</exception>
+    public double[] TransposeMultiply(ReadOnlySpan<double> block, int columnCount)
+    {
+        GuardBlock(block, RowCount, columnCount);
+
+        double[] result = new double[ProductLength(ColumnCount, columnCount)];
+        for (int row = 0; row < RowCount; row++)
+        {
+            int source = row * columnCount;
+            for (int k = RowPointers[row]; k < RowPointers[row + 1]; k++)
+            {
+                double value = Values[k];
+                int target = ColumnIndices[k] * columnCount;
+                for (int column = 0; column < columnCount; column++)
+                {
+                    result[target + column] += value * block[source + column];
+                }
+            }
+        }
+        return result;
+    }
+
+    /// <summary>Refuses a dense operand whose shape does not fit the side it multiplies.</summary>
+    private static void GuardBlock(ReadOnlySpan<double> block, int expectedRows, int columnCount)
+    {
+        if (columnCount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(columnCount), columnCount, "A dense block has at least one column.");
+        }
+        if (block.Length != (long)expectedRows * columnCount)
+        {
+            throw new ArgumentException(
+                $"A block of {expectedRows} rows and {columnCount} columns holds "
+                    + $"{(long)expectedRows * columnCount} values, not {block.Length}.",
+                nameof(block));
+        }
+    }
+
+    /// <summary>The result's length, refused rather than wrapped when it overflows an int.</summary>
+    private static int ProductLength(int rows, int columnCount)
+    {
+        long length = (long)rows * columnCount;
+        if (length > int.MaxValue)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(columnCount), columnCount, "The product would not fit in a single array.");
+        }
+        return (int)length;
+    }
 }
