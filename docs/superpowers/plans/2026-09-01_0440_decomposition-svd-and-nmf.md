@@ -1772,6 +1772,7 @@ Part of #440."
 - Modify: `tests/oracles/decomposition_svd.json` (regenerated, gains `randomized`)
 - Modify: `docs/wiki-map.json` (fills `covered`)
 - Modify: `docs/equivalence.md`
+- Modify: `samples/Lodestar.Sample/PackagingGate.cs`
 
 **Interfaces:**
 
@@ -1793,6 +1794,24 @@ Part of #440."
     `internal static double[] Find(CsrMatrix matrix, ReadOnlySpan<double> omega, int size, int powerIterations, PowerIterationNormalizer normalizer)`
   - `internal static class SignFlip` with
     `internal static void Apply(double[] u, int rows, int columns, double[] vt, int vtColumns)`
+
+**Three things in this task's code blocks were measured wrong and the implementation corrected
+them** — the spec now carries all three, and they are what the corpus asserts:
+
+- The sign flip is on the **right** vectors. `TruncatedSVD` asks `_randomized_svd` for
+  `flip_sign=False` and then calls `svd_flip(U, VT, u_based_decision=False)`
+  (`_truncated_svd.py:248-253`). The bare `randomized_svd`'s left-based flip, which the blocks
+  below describe, disagrees with it on four of the six fixtures.
+- **Explained variance is taken over `X · componentsᵀ`, not `U · Σ`** — `_truncated_svd.py:257-262`
+  for `algorithm="randomized"`, under the comment "X @ V is not the same as U @ Sigma".
+- A block reaching the normalizer can be wider than it is tall when `k + p` exceeds the feature
+  count; scipy's economic QR narrows it to `min(n, k+p)` rather than refusing, and two fixtures
+  reach that.
+
+**`PackagingGate.cs` gains a seventh probe.** Its `packaged` array names one assembly per package
+and had none for this one, so ADR 0009's gate skipped every public member of it. Add
+`typeof(TruncatedSvd).Assembly,` and the `using`; then run the sample and let the gate name what
+no sample references.
 
 **There is no unfitted state.** `Fit` is the only way to get a `TruncatedSvd`, so no property has
 to throw and CA1065 never comes up. `FitTransform` is deliberately absent: scikit-learn's computes

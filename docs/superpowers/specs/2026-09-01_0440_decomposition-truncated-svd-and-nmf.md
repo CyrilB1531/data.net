@@ -38,7 +38,10 @@ Two public algorithms, in one new package:
   variance and its ratio. Explained variance is scikit-learn's: the per-component variance of the
   **transformed** data, and the ratio divides it by the total variance of the input's columns — not
   by the sum of the kept components, which is what makes the ratios sum to less than one and is the
-  number a caller reads to decide the rank.
+  number a caller reads to decide the rank. *Transformed* means `X · componentsᵀ`, not `U · Σ`:
+  `_truncated_svd.py:257-262` takes the first for `algorithm="randomized"`, under the comment
+  "X @ V is not the same as U @ Sigma", and the two disagree in the last bits. An earlier draft of
+  this line said `U · Σ`; the implementation measured it.
   `randomized_svd`'s `transpose="auto"` is **not offered**: it swaps the two products when there are
   fewer rows than columns, which a term-document matrix routinely has, and a flag that silently
   changes which factorization runs is a parity claim with two shapes. `transpose=False` is what the
@@ -92,10 +95,22 @@ products, public on `CsrMatrix`, and three factorizations internal to `Lodestar.
 | one-sided Jacobi SVD | `(k+p) × n`, wide and short | the small factorization the whole method exists to reach |
 | LU with partial pivoting | `m × (k+p)` | `power_iteration_normalizer="LU"`, sklearn's default at `n_iter ≥ 3` |
 
+A block reaching the normalizer can be **wider than it is tall** when `k + p` exceeds the feature
+count: `Aᵀ Q` is then `n × (k+p)` with `n < k+p`, and scipy's economic QR answers with a basis of
+`min(n, k+p)` columns rather than refusing. The block narrows from there, and two corpus fixtures
+reach it.
+
 QR sign conventions do not leak into the answer. `Q → QD` for a diagonal sign matrix `D` leaves
 `B = QᵀA` as `DB`, whose SVD returns `DŨ`, and `QD · DŨ = QŨ`. The final `U`, `s` and `Vᵀ` are
 invariant, which is why a Householder QR that differs from LAPACK's column-for-column still lands on
-the same answer. `svd_flip` then pins the remaining sign freedom exactly as scikit-learn does.
+the same answer. `svd_flip` then pins the remaining sign freedom exactly as scikit-learn does —
+**on the right vectors, not the left.** `TruncatedSVD` does not take `randomized_svd`'s own flip:
+`_truncated_svd.py:248-253` asks for `flip_sign=False` and then calls
+`svd_flip(U, VT, u_based_decision=False)`, "to be consistent with PCA". The two conventions
+disagree on four of the six corpus fixtures — measured, the stored `U` fails the left-based rule
+there while `Vᵀ` satisfies the right-based one on all six — so the corpus asserts the estimator's
+convention and the generator carries `assert np.array_equal(vt, svd.components_)` to keep proving
+it. An earlier draft of this line described the bare function's flip, which is the wrong reference.
 
 ## Placement, and the package it forces
 
