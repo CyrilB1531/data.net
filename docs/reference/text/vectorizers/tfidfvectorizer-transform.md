@@ -5,13 +5,14 @@ Weight a corpus against the vocabulary and frequencies already learned.
 <!-- docs-declaration -->
 
 ```csharp
+
 public CsrMatrix Transform(IEnumerable<string> documents)
 ```
 
 **Parameters** — `documents` is the corpus to weight. Terms absent from the learned vocabulary are
 dropped.
 
-**Returns** — [`CsrMatrix`](csrmatrix.md), as wide as the fit, weighted and normalized.
+**Returns** — [`CsrMatrix`](../../abstractions/sparse/csrmatrix.md), as wide as the fit, weighted and normalized.
 
 **Exceptions** — `InvalidOperationException` when nothing has been fitted yet.
 `ArgumentNullException` when `documents` is null.
@@ -19,6 +20,7 @@ dropped.
 **Example** — the fit's width, whatever this corpus holds.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 var tv = new TfidfVectorizer();
@@ -39,4 +41,4 @@ quietly rank last rather than erroring.
 **Applies to** — net10.0, netstandard2.0.
 
 **See also** — [`TfidfVectorizer.Fit`](tfidfvectorizer-fit.md),
-[`CsrMatrix.NormalizeRows`](csrmatrix-normalizerows.md).
+[`CsrMatrix.NormalizeRows`](../../abstractions/sparse/csrmatrix-normalizerows.md).

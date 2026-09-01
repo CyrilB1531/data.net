@@ -20,6 +20,7 @@ empty rows against.
 **Example** — fit on one corpus, transform another.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 string[] training = ["the cat eats", "the dog eats"];

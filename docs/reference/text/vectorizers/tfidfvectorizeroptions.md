@@ -16,6 +16,7 @@ weight. Both default to their own defaults, so `new TfidfVectorizerOptions()` is
 **Example** — stop words removed before the weighting, which is the usual reason to reach for this.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 var options = new TfidfVectorizerOptions

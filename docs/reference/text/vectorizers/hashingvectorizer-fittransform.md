@@ -5,12 +5,13 @@ The same as [`Transform`](hashingvectorizer-transform.md) — there is nothing t
 <!-- docs-declaration -->
 
 ```csharp
+
 public CsrMatrix FitTransform(IEnumerable<string> documents)
 ```
 
 **Parameters** — `documents` is the corpus to vectorize.
 
-**Returns** — [`CsrMatrix`](csrmatrix.md), identical to what
+**Returns** — [`CsrMatrix`](../../abstractions/sparse/csrmatrix.md), identical to what
 [`Transform`](hashingvectorizer-transform.md) returns for the same input.
 
 **Exceptions** — `ArgumentNullException` when `documents` is null.
@@ -18,6 +19,7 @@ public CsrMatrix FitTransform(IEnumerable<string> documents)
 **Example** — the two calls agree, which is the whole content of this member.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 string[] docs = ["the cat eats", "the dog eats"];

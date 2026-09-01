@@ -19,6 +19,7 @@ rows against.
 **Example** — fit on training documents, weight a later one with those frequencies.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 var tv = new TfidfVectorizer();

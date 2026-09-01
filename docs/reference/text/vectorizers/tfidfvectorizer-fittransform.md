@@ -5,12 +5,13 @@ Learn the vocabulary and frequencies, and weight the same corpus.
 <!-- docs-declaration -->
 
 ```csharp
+
 public CsrMatrix FitTransform(IEnumerable<string> documents)
 ```
 
 **Parameters** — `documents` is the corpus, both learned from and weighted.
 
-**Returns** — [`CsrMatrix`](csrmatrix.md), one row per document, weighted and normalized by
+**Returns** — [`CsrMatrix`](../../abstractions/sparse/csrmatrix.md), one row per document, weighted and normalized by
 [`TfidfOptions.Norm`](tfidfoptions.md).
 
 **Exceptions** — `ArgumentNullException` when `documents` is null. A corpus that leaves no terms does **not**
@@ -20,6 +21,7 @@ rows against.
 **Example** — the whole corpus in one call, which is the usual way in.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 string[] docs = ["the cat eats", "the dog eats", "the cat and the dog"];
@@ -38,4 +40,4 @@ not cosmetic here: the document frequencies would come from the wrong corpus.
 **Applies to** — net10.0, netstandard2.0.
 
 **See also** — [`TfidfVectorizer.Fit`](tfidfvectorizer-fit.md),
-[`TfidfTransformer.FitTransform`](tfidftransformer-fittransform.md), [`CsrMatrix`](csrmatrix.md).
+[`TfidfTransformer.FitTransform`](tfidftransformer-fittransform.md), [`CsrMatrix`](../../abstractions/sparse/csrmatrix.md).

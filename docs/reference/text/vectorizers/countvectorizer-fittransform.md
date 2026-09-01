@@ -5,12 +5,13 @@ Learn the vocabulary and count the same corpus, in one pass.
 <!-- docs-declaration -->
 
 ```csharp
+
 public CsrMatrix FitTransform(IEnumerable<string> documents)
 ```
 
 **Parameters** — `documents` is the corpus, both learned from and counted.
 
-**Returns** — [`CsrMatrix`](csrmatrix.md), one row per document and one column per learned term.
+**Returns** — [`CsrMatrix`](../../abstractions/sparse/csrmatrix.md), one row per document and one column per learned term.
 
 **Exceptions** — `ArgumentNullException` when `documents` is null. A corpus that leaves no terms does **not**
 throw: it yields a model of zero columns, which every later transform will produce empty
@@ -19,6 +20,7 @@ rows against.
 **Example** — the whole corpus at once.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 string[] docs = ["the cat eats", "the dog eats", "the cat and the dog"];
@@ -40,4 +42,4 @@ The fit is kept, so the vectorizer can go on to transform further corpora afterw
 **Applies to** — net10.0, netstandard2.0.
 
 **See also** — [`CountVectorizer.Fit`](countvectorizer-fit.md),
-[`CountVectorizer.Transform`](countvectorizer-transform.md), [`CsrMatrix`](csrmatrix.md).
+[`CountVectorizer.Transform`](countvectorizer-transform.md), [`CsrMatrix`](../../abstractions/sparse/csrmatrix.md).

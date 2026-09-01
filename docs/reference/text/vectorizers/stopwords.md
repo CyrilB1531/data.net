@@ -16,6 +16,7 @@ one allocates nothing and the same instance comes back every time.
 **Example** — the English list, passed where a vectorizer expects one.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 int english = StopWords.English.Count;  // => 318

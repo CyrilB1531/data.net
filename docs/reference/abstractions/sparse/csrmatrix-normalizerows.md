@@ -5,6 +5,7 @@ Divide every row by its own norm, in place.
 <!-- docs-declaration -->
 
 ```csharp
+
 public void NormalizeRows(SparseNorm norm)
 ```
 
@@ -17,6 +18,7 @@ makes it a trap: a caller holding another reference to the same matrix sees the 
 **Example** — after normalizing, every row's norm is `1`.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 string[] docs = ["the cat eats", "the dog eats", "the cat and the dog"];
@@ -39,11 +41,11 @@ A row that is entirely zero has no norm to divide by and is **left alone** rathe
 `NaN`. That is scikit-learn's choice too, and it is the reason an empty document does not poison a
 matrix.
 
-[`TfidfVectorizer`](tfidfvectorizer.md) already normalizes, by
-[`TfidfOptions.Norm`](tfidfoptions.md); calling this on its output normalizes twice, which for L2
+[`TfidfVectorizer`](../../text/vectorizers/tfidfvectorizer.md) already normalizes, by
+[`TfidfOptions.Norm`](../../text/vectorizers/tfidfoptions.md); calling this on its output normalizes twice, which for L2
 is a no-op and for L1 is not.
 
 **Applies to** — net10.0, netstandard2.0.
 
 **See also** — [`SparseNorm`](sparsenorm.md), [`CsrMatrix.RowL2Norm`](csrmatrix-rowl2norm.md),
-[`TfidfOptions`](tfidfoptions.md).
+[`TfidfOptions`](../../text/vectorizers/tfidfoptions.md).

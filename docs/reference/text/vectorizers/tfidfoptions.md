@@ -19,6 +19,7 @@ twenty times counts as a little more than one appearing ten, rather than twice a
 **Example** — the defaults, and the row they produce.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 string[] docs = ["the cat eats", "the dog eats", "the cat and the dog"];
@@ -41,5 +42,5 @@ off.
 **Applies to** — net10.0, netstandard2.0.
 
 **See also** — [`TfidfTransformer`](tfidftransformer.md),
-[`TfidfVectorizer`](tfidfvectorizer.md), [`SparseNorm`](sparsenorm.md), the
+[`TfidfVectorizer`](tfidfvectorizer.md), [`SparseNorm`](../../abstractions/sparse/sparsenorm.md), the
 [Python equivalence table](../../../equivalence.md).

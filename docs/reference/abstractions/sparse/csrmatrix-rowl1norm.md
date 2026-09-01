@@ -19,6 +19,7 @@ is what surfaces rather than a re-wrapped one.
 **Example** — on raw counts, the L1 norm is how many terms the document holds.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 string[] docs = ["the cat eats", "the dog eats", "the cat and the dog"];
@@ -29,7 +30,7 @@ double third = counts.RowL1Norm(2);   // => 5
 ```
 
 **Remarks** — absolute values, which matters only where a matrix can hold negatives:
-[`HashingVectorizer`](hashingvectorizer.md) with `AlternateSign` on produces them by design, and
+[`HashingVectorizer`](../../text/vectorizers/hashingvectorizer.md) with `AlternateSign` on produces them by design, and
 there the L1 norm is the total weight rather than a net one.
 
 Dividing a row by this norm turns it into a distribution over terms, which is what

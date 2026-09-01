@@ -20,6 +20,7 @@ are scikit-learn's.
 **Example** — no fitting, and a width chosen rather than discovered.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 var hv = new HashingVectorizer(new HashingVectorizerOptions { NumFeatures = 16 });
@@ -43,7 +44,7 @@ possibly two unrelated terms at once, and there is no way back.
 **Applies to** — net10.0, netstandard2.0.
 
 **See also** — [`HashingVectorizerOptions`](hashingvectorizeroptions.md),
-[`CountVectorizer`](countvectorizer.md), [`CsrMatrix`](csrmatrix.md), the
+[`CountVectorizer`](countvectorizer.md), [`CsrMatrix`](../../abstractions/sparse/csrmatrix.md), the
 [vectorization guide](../../../guides/vectorization.md).
 
 ## Members

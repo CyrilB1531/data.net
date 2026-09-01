@@ -39,6 +39,7 @@ in between. Both of these work — the typed column already enumerates as string
 the untyped indexer needs a cast:
 
 ```csharp
+using Lodestar.Abstractions;
 using Microsoft.Data.Analysis;
 using Lodestar.Text.Vectorization;
 
@@ -60,7 +61,7 @@ CsrMatrix counts = new TfidfVectorizer().FitTransform(documents);
 document is a row of zeros that looks like a legitimate answer. Filter the nulls out if
 that is what you mean.
 
-Going back is reading, not converting: [`CsrMatrix`](../reference/text/vectorizers/csrmatrix.md)
+Going back is reading, not converting: [`CsrMatrix`](../reference/abstractions/sparse/csrmatrix.md)
 exposes `Values`, `ColumnIndices` and `RowPointers`, and `ToDense()` if the shape is
 small enough to want a rectangle. **Materialising a document-term matrix into a
 `DataFrame` is usually the wrong move** — a vocabulary of thirty thousand terms is

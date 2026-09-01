@@ -24,6 +24,8 @@ is one sentence, the issue and the commit; see
 
 #### Changed
 
+- **`CsrMatrix` and `SparseNorm` moved to `Lodestar.Abstractions`.** Consuming code adds `using Lodestar.Abstractions;`; the vectorizers still return the same type, and the seven reference pages moved with it. ([#440](https://github.com/CyrilB1531/lodestar/issues/440))
+
 - `Lcs.SubsequenceLength` takes the bit-parallel route from a pattern of 2 characters and `Levenshtein.Distance` from 5, while a pattern holding a character above U+00FF is refused below 6 and 10 instead. ([#411](https://github.com/CyrilB1531/lodestar/issues/411), [`a5c0d52`](https://github.com/CyrilB1531/lodestar/commit/a5c0d52))
 
 #### Fixed

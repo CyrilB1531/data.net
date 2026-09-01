@@ -58,12 +58,19 @@ the second exists so the three vectorizers can be swapped for one another.
 
 ## The matrix they return
 
-Every one of them returns a [`CsrMatrix`](vectorizers/csrmatrix.md): compressed
+Every one of them returns a [`CsrMatrix`](../abstractions/sparse/csrmatrix.md): compressed
 sparse row, the same layout `scipy.sparse.csr_matrix` uses. A corpus of ten thousand
 documents over fifty thousand terms is almost entirely zeros, and storing those zeros
 is what this layout exists to avoid.
 
-Read [`ToDense`](vectorizers/csrmatrix-todense.md) only when you mean it: it
+**The type ships in `Lodestar.Abstractions`, not here.** More than one package needs a
+sparse matrix and they do not need each other, so it moved out in `Lodestar.Text` 0.5.0
+— consuming code adds `using Lodestar.Abstractions;`, and
+[decision 0071](../../decisions/0071-csrmatrix-moves-to-an-abstractions-package.md) says
+why. Its own [reference page](../abstractions/sparse.md) documents the matrix and both of
+its products.
+
+Read [`ToDense`](../abstractions/sparse/csrmatrix-todense.md) only when you mean it: it
 allocates `RowCount × ColumnCount` doubles, which is exactly the array the sparse
 layout was avoiding.
 
@@ -90,10 +97,8 @@ Two defaults surprise people, and both are scikit-learn's:
 | [`AnalyzerKind`](vectorizers/analyzerkind.md) | Whether features are words or character n-grams. |
 | [`CountVectorizer`](vectorizers/countvectorizer.md) | Term counts, over a vocabulary learned from the corpus. |
 | [`CountVectorizerOptions`](vectorizers/countvectorizeroptions.md) | Everything that decides what counts as a term. |
-| [`CsrMatrix`](vectorizers/csrmatrix.md) | The compressed-sparse-row matrix every vectorizer returns. |
 | [`HashingVectorizer`](vectorizers/hashingvectorizer.md) | Counts into a fixed number of columns, learning nothing. |
 | [`HashingVectorizerOptions`](vectorizers/hashingvectorizeroptions.md) | The column count, and what the hashing does with signs. |
-| [`SparseNorm`](vectorizers/sparsenorm.md) | Which norm `CsrMatrix.NormalizeRows` divides each row by. |
 | [`StopWords`](vectorizers/stopwords.md) | The six built-in stop-word lists. |
 | [`TfidfOptions`](vectorizers/tfidfoptions.md) | The four switches that decide how the weighting is computed. |
 | [`TfidfTransformer`](vectorizers/tfidftransformer.md) | Counts in, TF-IDF weights out. |

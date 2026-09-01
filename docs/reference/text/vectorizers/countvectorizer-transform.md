@@ -5,13 +5,14 @@ Count a corpus against the vocabulary already learned.
 <!-- docs-declaration -->
 
 ```csharp
+
 public CsrMatrix Transform(IEnumerable<string> documents)
 ```
 
 **Parameters** — `documents` is the corpus to count. Its terms are looked up in the vocabulary
 learned by [`Fit`](countvectorizer-fit.md); terms absent from it are dropped.
 
-**Returns** — [`CsrMatrix`](csrmatrix.md), one row per document and one column per **learned**
+**Returns** — [`CsrMatrix`](../../abstractions/sparse/csrmatrix.md), one row per document and one column per **learned**
 term, so its width is the fit's width whatever this corpus holds.
 
 **Exceptions** — `InvalidOperationException` when nothing has been fitted yet.
@@ -20,6 +21,7 @@ term, so its width is the fit's width whatever this corpus holds.
 **Example** — a document holding an unseen term, and one holding none of the vocabulary.
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 var cv = new CountVectorizer();

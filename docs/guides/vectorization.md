@@ -10,6 +10,7 @@ dotnet add package Lodestar.Text
 ## Bag of words — `CountVectorizer`
 
 ```csharp
+using Lodestar.Abstractions;
 using Lodestar.Text.Vectorization;
 
 string[] docs =
@@ -77,6 +78,8 @@ The formula is scikit-learn's, **to the character** (a classic pitfall):
 `idf(t) = ln((1 + n) / (1 + df(t))) + 1`, then L2 normalization of each row.
 
 ```csharp
+using Lodestar.Abstractions;
+
 var tv = new TfidfVectorizer();
 CsrMatrix tfidf = tv.FitTransform(docs);
 IReadOnlyList<double> idf = tv.Idf;   // the learned idf vector
@@ -90,6 +93,8 @@ No vocabulary (hence stateless, ideal for streaming). Uses MurmurHash3-32,
 identical to sklearn.
 
 ```csharp
+using Lodestar.Abstractions;
+
 var hv = new HashingVectorizer(new HashingVectorizerOptions { NumFeatures = 1 << 18 });
 CsrMatrix hashed = hv.Transform(docs);   // no Fit needed
 ```
@@ -97,6 +102,8 @@ CsrMatrix hashed = hv.Transform(docs);   // no Fit needed
 ## Cosine similarity between two documents
 
 ```csharp
+using Lodestar.Abstractions;
+
 CsrMatrix m = new TfidfVectorizer().FitTransform(["the cat eats", "the dog eats"]);
 double[,] d = m.ToDense();
 // dot product of the two rows (already L2-normalized) = cosine
@@ -112,6 +119,8 @@ process unless you write them down — so training on a corpus and scoring later
 the normal split in any real pipeline, needs persistence.
 
 ```csharp
+using Lodestar.Abstractions;
+
 var tfidf = new TfidfVectorizer().Fit(trainingDocuments);
 tfidf.Save("model.json");
 
