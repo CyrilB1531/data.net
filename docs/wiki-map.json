@@ -33,7 +33,8 @@
         "Lodestar.Text.Persistence": "docs/reference/text/persistence",
         "Lodestar.Text.Stemming": "docs/reference/text/stemming",
         "Lodestar.Text.Phonetics": "docs/reference/text/phonetics",
-        "Lodestar.Text.Similarity": "docs/reference/text/similarity"
+        "Lodestar.Text.Similarity": "docs/reference/text/similarity",
+        "Lodestar.Text.Indexing": "docs/reference/text/indexing"
       },
       "exceptionsUnchecked": []
     },
