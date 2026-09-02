@@ -96,6 +96,147 @@ public sealed class BkTree
         }
     }
 
+    /// <summary>Every indexed item within <paramref name="maxDistance"/> of the query.</summary>
+    /// <param name="query">The string to search around.</param>
+    /// <param name="maxDistance">The inclusive radius; 0 finds only an exactly equal item.</param>
+    /// <param name="limit">
+    /// Caps the returned list at the <i>nearest</i> hits, never the first the traversal reached.
+    /// It is not a bound on the search: a nearer hit can be found at any point in it.
+    /// </param>
+    /// <returns>Distance ascending, ties by insertion order.</returns>
+    public IReadOnlyList<BkTreeMatch> WithinDistance(string query, int maxDistance, int? limit = null)
+    {
+        Guard.NotNull(query);
+        Guard.NotLessThan(maxDistance, 0);
+        if (limit is { } cap)
+        {
+            Guard.NotLessThan(cap, 0);
+        }
+
+        List<Hit> hits = this.Collect(query, maxDistance);
+        return Sorted(hits, limit);
+    }
+
+    /// <summary>The <paramref name="count"/> nearest indexed items, however far they are.</summary>
+    /// <returns>Distance ascending, ties by insertion order; shorter than
+    /// <paramref name="count"/> when the tree holds fewer items.</returns>
+    /// <remarks>The radius starts unbounded and tightens to the worst hit held once
+    /// <paramref name="count"/> are found, so the pruning strengthens as the search proceeds.
+    /// That is an optimization: the answer is the first <paramref name="count"/> of
+    /// <see cref="WithinDistance"/> at an unbounded radius, and a test asserts it.</remarks>
+    public IReadOnlyList<BkTreeMatch> Nearest(string query, int count)
+    {
+        Guard.NotNull(query);
+        Guard.NotLessThan(count, 0);
+
+        if (this.root is null || count == 0)
+        {
+            return [];
+        }
+
+        var best = new List<Hit>(count + 1);
+        int radius = int.MaxValue;
+        var stack = new Stack<Node>();
+        stack.Push(this.root);
+
+        while (stack.Count > 0)
+        {
+            Node node = stack.Pop();
+            int d = this.metric(query, node.Item);
+
+            if (d <= radius)
+            {
+                Insert(best, new Hit(node.Item, d, node.Order), count);
+                if (best.Count == count)
+                {
+                    radius = best[count - 1].Distance;
+                }
+            }
+
+            foreach (KeyValuePair<int, Node> child in node.Children)
+            {
+                // int.MaxValue - radius would overflow the upper bound, and an unbounded
+                // radius admits every child anyway.
+                if (radius == int.MaxValue || (child.Key >= d - radius && child.Key <= d + radius))
+                {
+                    stack.Push(child.Value);
+                }
+            }
+        }
+
+        return [.. best.Select(static h => new BkTreeMatch(h.Item, h.Distance))];
+    }
+
+    /// <summary>Walks the tree once, keeping everything inside the radius.</summary>
+    private List<Hit> Collect(string query, int maxDistance)
+    {
+        var hits = new List<Hit>();
+        if (this.root is null)
+        {
+            return hits;
+        }
+
+        var stack = new Stack<Node>();
+        stack.Push(this.root);
+        while (stack.Count > 0)
+        {
+            Node node = stack.Pop();
+            int d = this.metric(query, node.Item);
+            if (d <= maxDistance)
+            {
+                hits.Add(new Hit(node.Item, d, node.Order));
+            }
+
+            foreach (KeyValuePair<int, Node> child in node.Children)
+            {
+                if (maxDistance == int.MaxValue || (child.Key >= d - maxDistance && child.Key <= d + maxDistance))
+                {
+                    stack.Push(child.Value);
+                }
+            }
+        }
+
+        return hits;
+    }
+
+    /// <summary>Sorts by distance then insertion order, and applies the cap after that.</summary>
+    private static BkTreeMatch[] Sorted(List<Hit> hits, int? limit)
+    {
+        hits.Sort(static (x, y) =>
+        {
+            int c = x.Distance.CompareTo(y.Distance);
+            return c != 0 ? c : x.Order.CompareTo(y.Order);
+        });
+
+        int take = limit is { } cap && cap < hits.Count ? cap : hits.Count;
+        var ordered = new BkTreeMatch[take];
+        for (int i = 0; i < take; i++)
+        {
+            ordered[i] = new BkTreeMatch(hits[i].Item, hits[i].Distance);
+        }
+        return ordered;
+    }
+
+    /// <summary>Inserts into an already-sorted bounded list, dropping the worst past the cap.</summary>
+    private static void Insert(List<Hit> best, Hit hit, int capacity)
+    {
+        int at = best.Count;
+        while (at > 0 && (best[at - 1].Distance > hit.Distance
+            || (best[at - 1].Distance == hit.Distance && best[at - 1].Order > hit.Order)))
+        {
+            at--;
+        }
+
+        best.Insert(at, hit);
+        if (best.Count > capacity)
+        {
+            best.RemoveAt(best.Count - 1);
+        }
+    }
+
+    /// <summary>A hit carrying the insertion rank the public result drops.</summary>
+    private readonly record struct Hit(string Item, int Distance, int Order);
+
     /// <summary>One indexed item, its insertion rank, and its children keyed by exact distance.</summary>
     /// <remarks>Insertion rank is the tie-break the queries order by, so an answer does not
     /// depend on the shape insertion order gave the tree.</remarks>
