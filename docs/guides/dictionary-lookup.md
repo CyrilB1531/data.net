@@ -80,18 +80,21 @@ Measured with `BkTreeBenchmarks` (see
 [`bench/README.md`](https://github.com/CyrilB1531/lodestar/blob/main/bench/README.md#17-bk-tree-vs-a-length-filtered-scan-issue-526)
 for how) against
 the baseline a caller actually writes instead of an index: a linear scan that skips any word whose
-*length* already puts it out of range, then computes `Levenshtein.Distance` on what survives. 20
-000 words, 200 queries drawn from the corpus itself — looking up a word already in the dictionary
-is the hardest case for the tree, since its own neighbourhood is dense. `uniform` is independent
-random words; `clustered` is 2 500 roots plus one or two edits each, the shape a natural dictionary
-has.
+*length* already puts it out of range, then computes `Levenshtein.Distance` on what survives.
+**Both arms materialise and sort the same shape of answer** — a `(item, distance)` list ordered by
+distance ascending — so neither is charged for producing a result the other does not; an earlier
+version of this benchmark counted hits on the scan side and let only the tree pay for sorting its
+result, which would have overstated the tree's cost. 20 000 words, 200 queries drawn from the
+corpus itself — looking up a word already in the dictionary is the hardest case for the tree,
+since its own neighbourhood is dense. `uniform` is independent random words; `clustered` is 2 500
+roots plus one or two edits each, the shape a natural dictionary has.
 
 | radius | tree / length-filtered scan (uniform) | (clustered) |
 | ---: | ---: | ---: |
-| 1 | 0.54 | 0.61 |
-| 2 | 1.32 | 1.54 |
-| 3 | 1.58 | 1.83 |
-| 4 | 1.80 | 1.70 |
+| 1 | 0.52 | 0.59 |
+| 2 | 1.35 | 1.58 |
+| 3 | 1.66 | 1.75 |
+| 4 | 1.79 | 1.74 |
 
 Ratio is wall-clock mean time, tree over scan — machine and window are in
 [`docs/guides/performance.md`](performance.md#bk-tree-vs-a-length-filtered-scan-issue-526). Below
@@ -105,10 +108,10 @@ tree's advantage also fades fast rather than holding: about a third as many dist
 scan at `k = 1`, but 79–86% of them by `k = 2` and 92–96% by `k = 4` — almost the whole scan,
 computed one node at a time instead of one array element at a time. Wall-clock time crosses over
 one radius sooner than that comparison count does, because every tree node the traversal visits
-costs a dictionary lookup keyed by exact distance, a stack push, and list growth for each hit,
-against a scan whose rejected candidates cost one array read and one integer subtraction. A
-comparison-count budget and a wall-clock budget are different quantities, and only the second is
-what a caller actually pays.
+costs a dictionary lookup keyed by exact distance and a stack push, on top of the same list growth
+both arms now pay for their result — against a scan whose rejected candidates cost one array read
+and one integer subtraction. That per-node traversal cost, not the cost of sorting a result, is
+what a comparison-count budget cannot see and a wall-clock budget always pays.
 
 `k = 1` is also what a spelling corrector's first pass needs, which is why the structure exists.
 Past it, a large radius over a large dictionary is a linear scan wearing a tree — reach for

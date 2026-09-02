@@ -20,10 +20,10 @@ plus one or two edits each, the shape a natural dictionary has.
 
 | radius | tree / length-filtered scan (uniform) | (clustered) |
 | ---: | ---: | ---: |
-| k = 1 | 0.54 | 0.61 |
-| k = 2 | 1.32 | 1.54 |
-| k = 3 | 1.58 | 1.83 |
-| k = 4 | 1.80 | 1.70 |
+| k = 1 | 0.52 | 0.59 |
+| k = 2 | 1.35 | 1.58 |
+| k = 3 | 1.66 | 1.75 |
+| k = 4 | 1.79 | 1.74 |
 
 Ratio is wall-clock mean time, tree over scan. **Worth using only at `k = 1`, where it costs
 roughly half the time; past it, worse than not building the tree at all.** Counted by distance

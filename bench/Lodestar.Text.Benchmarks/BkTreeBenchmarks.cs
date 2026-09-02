@@ -57,17 +57,25 @@ public class BkTreeBenchmarks
         int found = 0;
         foreach (string query in this.queries)
         {
+            // Symmetric with TreeWithinDistance below: both arms materialise and sort a
+            // (item, distance) list rather than one counting hits and the other building
+            // BkTreeMatch's sorted result set — a scan charged only for the counter it
+            // increments would be compared against a tree charged for the answer it hands back.
+            var hits = new List<BkTreeMatch>();
             foreach (string word in this.words)
             {
                 if (Math.Abs(word.Length - query.Length) > this.Radius)
                 {
                     continue;
                 }
-                if (Levenshtein.Distance(word, query) <= this.Radius)
+                int distance = Levenshtein.Distance(word, query);
+                if (distance <= this.Radius)
                 {
-                    found++;
+                    hits.Add(new BkTreeMatch(word, distance));
                 }
             }
+            hits.Sort(static (x, y) => x.Distance.CompareTo(y.Distance));
+            found += hits.Count;
         }
         return found;
     }
