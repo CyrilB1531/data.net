@@ -39,3 +39,4 @@ so `ExtractOne` can return **nothing**.
 | --- | --- |
 | [`Process.Extract`](process-extract.md) | The best candidates, ranked. |
 | [`Process.ExtractOne`](process-extractone.md) | The single best, or nothing. |
+| [`Process.ExtractIndexed`](process-extractindexed.md) | A `BkTree` prefilter in front of `Extract`. |
