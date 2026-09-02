@@ -42,6 +42,10 @@ public sealed class NmfTests
         Ints(c, "column_indices"),
         Ints(c, "row_pointers"));
 
+    /// <summary>The corpus case at <c>k == columns &lt;= rows</c>, the rank the two bounds parted on.</summary>
+    private static JsonElement FullRankCase => Cases.First(
+        c => c.GetProperty("component_count").GetInt32() == c.GetProperty("columns").GetInt32());
+
     private static Nmf Fit(JsonElement c) => Nmf.Fit(
         Matrix(c),
         Doubles(c, "initial_w"),
@@ -142,7 +146,23 @@ public sealed class NmfTests
     }
 
     [Fact]
-    public void A_rank_above_the_row_count_is_refused()
+    public void A_rank_at_the_smaller_dimension_is_accepted()
+    {
+        // scikit-learn's own bound, n_components <= min(n_samples, n_features), where this
+        // overload used to stop one short of the column count (#519).
+        JsonElement c = FullRankCase;
+        CsrMatrix matrix = Matrix(c);
+        int k = c.GetProperty("component_count").GetInt32();
+
+        Nmf fitted = Nmf.Fit(matrix, k, new NmfOptions { MaxIterations = 5, Tolerance = 0.0 });
+
+        Assert.Equal(Math.Min(matrix.RowCount, matrix.ColumnCount), k);
+        Assert.Equal(k, fitted.ComponentCount);
+        Assert.Equal(matrix.ColumnCount, fitted.FeatureCount);
+    }
+
+    [Fact]
+    public void A_rank_above_the_smaller_dimension_is_refused()
     {
         // Three components of two rows survives the range finder and breaks the truncation
         // once the economic QR narrows the block, so it is refused before either happens.

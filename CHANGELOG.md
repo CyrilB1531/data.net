@@ -79,6 +79,10 @@ is one sentence, the issue and the commit; see
 
 - **`Nmf` — `sklearn.decomposition.NMF(solver="mu")` at parity, on both β losses, from the NNDSVD family.** The dense kernels it needs — thin Householder QR, LU with partial pivoting, one-sided Jacobi SVD — are written here, so the package's only dependency is `Lodestar.Abstractions`. ([#440](https://github.com/CyrilB1531/lodestar/issues/440))
 
+#### Changed
+
+- **`Nmf.Fit(matrix, k)` accepts `k == min(rows, columns)`**, scikit-learn's own bound, where it refused any `k` at or above the column count — a bound inherited from the validation `TruncatedSvd` needs rather than from anything NMF does, so a square matrix at full rank was a fit there and an `ArgumentOutOfRangeException` here. The oracle corpus now freezes a `24 × 8` fit at `k = 8` against `NMF` itself, and `TruncatedSvd`'s own bound is untouched: `n_components >= n_features` is what scikit-learn refuses there too. ([#519](https://github.com/CyrilB1531/lodestar/issues/519))
+
 ## Released — 2026-08-21
 
 Four deliverables, cut in two steps on the same day. `Lodestar.Text`,

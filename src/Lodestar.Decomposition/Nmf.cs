@@ -80,27 +80,23 @@ public sealed class Nmf
     /// <param name="componentCount">How many components to keep.</param>
     /// <param name="options">The solver's settings, or null for scikit-learn's defaults.</param>
     /// <exception cref="ArgumentNullException"><paramref name="matrix"/> is null.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="componentCount"/> is not in <c>[1, matrix.ColumnCount)</c>, is above <c>matrix.RowCount</c>, or an option is out of range.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="componentCount"/> is not in <c>[1, min(matrix.RowCount, matrix.ColumnCount)]</c>, or an option is out of range.</exception>
     /// <exception cref="ArgumentException"><paramref name="matrix"/> holds a negative value, or <see cref="NmfOptions.RandomMatrix"/> is not <c>matrix.ColumnCount × (componentCount + 10)</c>.</exception>
     public static Nmf Fit(CsrMatrix matrix, int componentCount, NmfOptions? options = null)
     {
         Guard.NotNull(matrix);
         NmfOptions settings = options ?? new NmfOptions();
-        if (componentCount < 1 || componentCount >= matrix.ColumnCount)
+        int maximumRank = Math.Min(matrix.RowCount, matrix.ColumnCount);
+        if (componentCount < 1 || componentCount > maximumRank)
         {
+            // Past min(rows, columns) a rank survives the range finder and breaks the truncation
+            // once the economic factorization narrows the block: a stack trace, not an answer.
             throw new ArgumentOutOfRangeException(
                 nameof(componentCount), componentCount,
-                $"A factorization keeps between 1 and {matrix.ColumnCount - 1} components; " +
-                "Fit(matrix, initialWeights, initialComponents) reads the rank off the blocks " +
-                "instead and carries no column bound.");
-        }
-        if (componentCount > matrix.RowCount)
-        {
-            // A rank above the row count survives the range finder and breaks the truncation
-            // once the economic QR narrows the block, which is a stack trace and not an answer.
-            throw new ArgumentOutOfRangeException(
-                nameof(componentCount), componentCount,
-                $"A matrix of {matrix.RowCount} rows has no more than that many components.");
+                $"A factorization keeps between 1 and {maximumRank} components, which is " +
+                "scikit-learn's min(n_samples, n_features); above that, only " +
+                "Fit(matrix, initialWeights, initialComponents) is defined, reading the rank " +
+                "off the blocks it is handed.");
         }
 
         int size = componentCount + NndSvd.Oversampling;
