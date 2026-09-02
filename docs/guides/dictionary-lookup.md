@@ -1,0 +1,124 @@
+# Indexing strings for fast lookup — `Lodestar.Text.Indexing`
+
+`Process.Extract` is linear: every call scores the query against every choice, in full. That is
+fine for one query against a short list. It stops being fine for a spelling corrector that repeats
+the same full scan for every keystroke against a dictionary of thousands of words.
+`Lodestar.Text.Indexing` holds a metric index built once and queried many times: `BkTree` answers
+"everything within edit distance `k`" without touching the whole corpus, on any distance that
+satisfies the triangle inequality.
+
+```bash
+dotnet add package Lodestar.Text
+dotnet add package Lodestar.Fuzzy    # for Process.ExtractIndexed, below
+```
+
+## Building the tree and querying a radius
+
+```csharp
+using Lodestar.Text.Indexing;
+
+BkTree dictionary = BkTree.OverLevenshtein();
+dictionary.AddRange(["book", "books", "boo", "cook", "cake"]);
+
+IReadOnlyList<BkTreeMatch> hits = dictionary.WithinDistance("bok", maxDistance: 1);
+int found = hits.Count;         // nearest first: "boo" and "book" are one edit from "bok"
+string nearest = hits[0].Item;
+```
+
+`OverLevenshtein` is one of four factories — `OverDamerauLevenshtein`, `OverIndel` and
+`OverHamming` are the others — each bound to a distance that is a true metric. `Osa.Distance` is
+not offered: it fails the triangle inequality the pruning relies on
+(`d("ab","bca") = 3 > d("ab","ba") + d("ba","bca") = 2`), and using it would return an incomplete
+result set rather than throw.
+
+## `ExtractIndexed`: the tree as a prefilter in front of a scorer
+
+`Process.ExtractIndexed` runs the tree first, then ranks only what came back — the way
+`Process.Extract` ranks, over a smaller candidate set instead of the whole dictionary:
+
+```csharp
+using Lodestar.Fuzzy;
+using Lodestar.Text.Indexing;
+
+BkTree index = BkTree.OverLevenshtein();
+index.AddRange(["book", "books", "boo", "cook", "cake"]);
+
+IReadOnlyList<ExtractResult> best = Process.ExtractIndexed("book", index, maxDistance: 1);
+
+int count = best.Count;        // 4: "cake" is 4 edits away and never reaches the scorer
+string top = best[0].Choice;   // "book"
+```
+
+**The default scorer, `Fuzz.WRatio`, is not a function of the tree's distance.** A caller who
+leaves `scoreCutoff` at its default of `0` gets a *subset* of what `Extract` would return —
+silently, because the tree already dropped candidates `WRatio` never got a chance to score.
+`"cake"` above is the demonstration. When that silent narrowing is not acceptable, pair the tree
+with a scorer built from the same distance it indexes on:
+
+```csharp
+using Lodestar.Fuzzy;
+using Lodestar.Text.Distances;
+using Lodestar.Text.Indexing;
+
+BkTree index = BkTree.OverLevenshtein();
+index.AddRange(["book", "books", "boo", "cook", "cake"]);
+
+IReadOnlyList<ExtractResult> best = Process.ExtractIndexed(
+    "book", index, maxDistance: 1,
+    scorer: (a, b) => Levenshtein.NormalizedSimilarity(a, b) * 100);
+
+double topScore = best[0].Score;   // 100: "book" against itself
+```
+
+With a Levenshtein-derived scorer, everything the tree admits scores no lower than a value
+determined entirely by that same edit distance, so a `scoreCutoff` chosen against `maxDistance`
+cannot silently drop something `Extract` would have kept.
+
+## Where the tree stops paying
+
+Measured with `BkTreeBenchmarks` (see
+[`bench/README.md`](https://github.com/CyrilB1531/lodestar/blob/main/bench/README.md#17-bk-tree-vs-a-length-filtered-scan-issue-526)
+for how) against
+the baseline a caller actually writes instead of an index: a linear scan that skips any word whose
+*length* already puts it out of range, then computes `Levenshtein.Distance` on what survives. 20
+000 words, 200 queries drawn from the corpus itself — looking up a word already in the dictionary
+is the hardest case for the tree, since its own neighbourhood is dense. `uniform` is independent
+random words; `clustered` is 2 500 roots plus one or two edits each, the shape a natural dictionary
+has.
+
+| radius | tree / length-filtered scan (uniform) | (clustered) |
+| ---: | ---: | ---: |
+| 1 | 0.54 | 0.61 |
+| 2 | 1.32 | 1.54 |
+| 3 | 1.58 | 1.83 |
+| 4 | 1.80 | 1.70 |
+
+Ratio is wall-clock mean time, tree over scan — machine and window are in
+[`docs/guides/performance.md`](performance.md#bk-tree-vs-a-length-filtered-scan-issue-526). Below
+`1` the tree wins; **above `1` it is slower to use than not building it at all.**
+
+**Worthwhile only at `k = 1`, where it costs roughly half the time.** From `k = 2` on, the
+length-filtered scan is the better answer — not merely "less of a win", but measurably slower to
+use the tree. Counted purely by distance computations (the way a BK-tree's pruning is usually
+judged, and how the figures a Python simulation predicted for this table were derived), the
+tree's advantage also fades fast rather than holding: about a third as many distance calls as the
+scan at `k = 1`, but 79–86% of them by `k = 2` and 92–96% by `k = 4` — almost the whole scan,
+computed one node at a time instead of one array element at a time. Wall-clock time crosses over
+one radius sooner than that comparison count does, because every tree node the traversal visits
+costs a dictionary lookup keyed by exact distance, a stack push, and list growth for each hit,
+against a scan whose rejected candidates cost one array read and one integer subtraction. A
+comparison-count budget and a wall-clock budget are different quantities, and only the second is
+what a caller actually pays.
+
+`k = 1` is also what a spelling corrector's first pass needs, which is why the structure exists.
+Past it, a large radius over a large dictionary is a linear scan wearing a tree — reach for
+`WithinDistance` at `k = 1`, and for a length-filtered scan beyond it.
+
+## See also
+
+- [`BkTree`](../reference/text/indexing/bktree.md) — the full admissible-distance table and every
+  member.
+- [`Process.ExtractIndexed`](../reference/fuzzy/matching/process-extractindexed.md) — the
+  reference page for the pairing shown above.
+- [`docs/guides/performance.md`](performance.md#bk-tree-vs-a-length-filtered-scan-issue-526) — the
+  measured table, with its machine and window.

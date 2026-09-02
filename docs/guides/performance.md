@@ -2505,3 +2505,70 @@ the table.
 The reasoning behind the opt-in default, the absent `-1` sentinel and the absent
 threshold is in
 [`../decisions/0018-multiclass-roc-auc-parallelism-is-opt-in.md`](../decisions/0018-multiclass-roc-auc-parallelism-is-opt-in.md).
+
+## BK-tree vs a length-filtered scan (issue #526)
+
+Machine: 4-core Intel Xeon Processor @ 2.10GHz (BenchmarkDotNet's own header; the physical CPU
+model behind this virtualized host is not otherwise identified), Ubuntu 24.04.4 LTS, .NET SDK
+10.0.111, .NET 10.0.11 runtime — a hosted session container, not a dedicated benchmark machine, so
+**this row is indicative, not authoritative**, the same caveat every other "dev machine" row in
+this document carries; [decision 0051](../decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md)
+records a case where a container read a full 3× slower than the dedicated machine on the same
+code, so treat the ratios below as directional rather than exact. Window: one `BenchmarkDotNet`
+run, default job, 2026-09-02, no other load on the container during the run; total run time 6 min
+13 s across the 16 benchmarks (8 pairs).
+
+```bash
+python3 bench/corpus/generate_dictionary.py
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- --filter '*BkTree*'
+```
+
+`BkTreeBenchmarks.LengthFilteredScan` is the baseline: a linear scan that skips any word whose
+length already rules it out, then calls `Levenshtein.Distance` on what survives. 20 000 words per
+shape, 200 queries drawn from the corpus itself.
+
+| Method | Radius | Shape | Mean | Ratio | Allocated |
+| --- | ---: | --- | ---: | ---: | ---: |
+| `LengthFilteredScan` | 1 | clustered | 150.04 ms | 1.00 | – |
+| `TreeWithinDistance` | 1 | clustered | 92.06 ms | 0.61 | 106 KB |
+| `LengthFilteredScan` | 1 | uniform | 160.68 ms | 1.00 | – |
+| `TreeWithinDistance` | 1 | uniform | 87.26 ms | 0.54 | 119 KB |
+| `LengthFilteredScan` | 2 | clustered | 224.54 ms | 1.00 | – |
+| `TreeWithinDistance` | 2 | clustered | 346.56 ms | 1.54 | 266 KB |
+| `LengthFilteredScan` | 2 | uniform | 231.19 ms | 1.00 | – |
+| `TreeWithinDistance` | 2 | uniform | 304.92 ms | 1.32 | 198 KB |
+| `LengthFilteredScan` | 3 | clustered | 277.71 ms | 1.00 | – |
+| `TreeWithinDistance` | 3 | clustered | 507.13 ms | 1.83 | 1.40 MB |
+| `LengthFilteredScan` | 3 | uniform | 286.65 ms | 1.00 | – |
+| `TreeWithinDistance` | 3 | uniform | 453.23 ms | 1.58 | 1.18 MB |
+| `LengthFilteredScan` | 4 | clustered | 327.90 ms | 1.00 | – |
+| `TreeWithinDistance` | 4 | clustered | 557.22 ms | 1.70 | 7.39 MB |
+| `LengthFilteredScan` | 4 | uniform | 326.25 ms | 1.00 | – |
+| `TreeWithinDistance` | 4 | uniform | 588.66 ms | 1.80 | 8.16 MB |
+
+Ratio is `Mean(TreeWithinDistance) / Mean(LengthFilteredScan)`, BenchmarkDotNet's own baseline
+column. Below `1` the tree is faster; above `1` it is slower than never having built it. Only the
+`k = 1` rows are below `1`; every `k = 2`, `3` and `4` row is above, and the gap widens with
+radius rather than closing.
+
+**This disagrees with a plan simulation that counted only distance computations**, expecting the
+ratio to keep improving toward roughly 0.93–0.96 at `k = 3`–`4` rather than crossing above `1` at
+`k = 2`. An ad hoc instrumented run in the same window — wrapping the tree's metric delegate in a
+call counter, over the same corpus and query set, `[GlobalSetup]`'s own build excluded — confirms
+the simulation was right about that narrower question: raw distance-computation counts (tree over
+scan) came back at 0.33 / 0.34 (`k = 1`), 0.79 / 0.86 (`k = 2`), 0.92 / 0.95 (`k = 3`) and 0.96 /
+0.93 (`k = 4`, uniform / clustered) — inside a few points of the plan's 0.32/0.29, 0.78/0.67,
+0.93/0.79, 0.96/0.85. What the simulation could not see is per-node traversal cost: every tree node
+`WithinDistance` visits pays a `Dictionary<int, Node>` lookup keyed by exact distance, a
+`Stack<Node>` push, and growth of the hit list, where the scan's corresponding unit of work is one
+array read and one integer subtraction. That fixed cost per node is cheap next to a 20 000-word
+scan at `k = 1`, where the tree visits a third as many nodes as the scan has candidates — and it
+dominates by `k = 2`, where the tree is already visiting most of the corpus one node at a time
+instead of one array element at a time. A raw comparison count is a proxy for work; wall-clock time
+is the work a caller actually pays for, and only the table above is that.
+
+The `Allocated` column tracks the same story: `WithinDistance` builds a fresh hit list and result
+array per call, `TreeWithinDistance`'s allocation triples between `k = 1` and `k = 2` and again
+toward `k = 4`, while the scan allocates nothing. [`docs/guides/dictionary-lookup.md`](dictionary-lookup.md) carries
+the reader-facing version of this table and its conclusion: the tree is worth using at `k = 1`,
+and a length-filtered scan is the better answer past it.

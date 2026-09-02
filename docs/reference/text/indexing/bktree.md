@@ -13,21 +13,28 @@ rather than walked, so reading it is free.
 ## Where it stops paying
 
 Measured against the baseline a caller actually writes — a linear scan that skips any word whose
-length already puts it out of range — over 20 000 words and 200 queries, counting distance
-computations. The `uniform` corpus is random words; `clustered` is 2 500 roots plus one or two
-edits each, the shape a natural dictionary has.
+length already puts it out of range — over 20 000 words and 200 queries
+([`docs/guides/performance.md`](../../../guides/performance.md#bk-tree-vs-a-length-filtered-scan-issue-526)
+has the machine and the window). The `uniform` corpus is random words; `clustered` is 2 500 roots
+plus one or two edits each, the shape a natural dictionary has.
 
 | radius | tree / length-filtered scan (uniform) | (clustered) |
 | ---: | ---: | ---: |
-| k = 1 | 0.32 | 0.29 |
-| k = 2 | 0.78 | 0.67 |
-| k = 3 | 0.93 | 0.79 |
-| k = 4 | 0.96 | 0.85 |
+| k = 1 | 0.54 | 0.61 |
+| k = 2 | 1.32 | 1.54 |
+| k = 3 | 1.58 | 1.83 |
+| k = 4 | 1.80 | 1.70 |
 
-**Worth about three times fewer distance computations at `k = 1`, worth something at `k = 2`, and
-worth nothing at `k >= 3`** — a visited node costs a full distance computation, the same work the
-scan does. Those first two are the radii a spelling corrector uses, which is why the structure
-exists; past them, scan.
+Ratio is wall-clock mean time, tree over scan. **Worth using only at `k = 1`, where it costs
+roughly half the time; past it, worse than not building the tree at all.** Counted by distance
+computations alone the tree still wins out to `k = 3`–`4` — a visited node costs one distance
+call, and the tree visits far fewer of them at low radius — but every visited node also costs a
+`Dictionary<int, Node>` lookup, a stack push and list growth, against a scan candidate's one array
+read and one integer subtraction; that per-node cost overtakes the fewer-calls advantage at
+`k = 2` and the gap widens from there.
+[`docs/guides/dictionary-lookup.md`](../../../guides/dictionary-lookup.md#where-the-tree-stops-paying) has the full
+account of the two measures diverging. `k = 1` is the radius a spelling corrector's first pass
+uses, which is why the structure exists; past it, scan.
 
 ## Which distances it accepts
 

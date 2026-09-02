@@ -6,10 +6,9 @@ times: a Burkhard-Keller tree that answers "everything within edit distance `k`"
 nearest" without a full scan, on any distance that satisfies the triangle inequality.
 
 [`BkTree`](indexing/bktree.md) is the whole namespace. It carries the measured cost of the
-pruning — worth roughly three times fewer distance computations at a radius of 1, nothing at a
-radius of 3 or more — and the table of which distances in
-[`Lodestar.Text.Distances`](distances.md) are admissible. Read it before choosing a radius or a
-factory method.
+pruning — worth using at a radius of 1, measurably slower than a length-filtered scan past it —
+and the table of which distances in [`Lodestar.Text.Distances`](distances.md) are admissible. Read
+it before choosing a radius or a factory method.
 
 ## Types
 

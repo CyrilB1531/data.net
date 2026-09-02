@@ -23,6 +23,7 @@
       "pages": [
         "docs/guides/quickstart.md",
         "docs/guides/vectorization.md",
+        "docs/guides/dictionary-lookup.md",
         "docs/reference/text/*.md",
         "docs/reference/text/*/*.md"
       ],

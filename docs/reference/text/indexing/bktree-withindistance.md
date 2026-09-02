@@ -34,9 +34,10 @@ string nearest = hits[0].Item; // => book
 satisfy it. At `int.MaxValue` the bound is skipped rather than computed, since it would overflow
 and admits everything anyway.
 
-The pruning is worth roughly three times fewer distance computations at a radius of 1 and nothing
-at a radius of 3 or more — see [`BkTree`](bktree.md) for the measured table. A large radius over a
-large corpus is a linear scan wearing a tree.
+The pruning is worth using at a radius of 1, where it runs in roughly half the wall-clock time of
+a length-filtered scan; past that radius it measures **slower**, not merely no longer faster — see
+[`BkTree`](bktree.md) for the measured table. A large radius over a large corpus is a linear scan
+wearing a tree.
 
 **Applies to** — net10.0, netstandard2.0.
 
