@@ -36,7 +36,7 @@ within `maxDistance`, so it returns what `Extract` returns over the same choices
 choice further away would have scored below `scoreCutoff`. The tree filters on an integer edit
 distance; the default `WRatio` scorer is a similarity in `[0, 100]` that is not a function of that
 distance, so a caller who leaves `scoreCutoff` at its default of `0` gets a subset of `Extract`'s
-result, silently. `cake` is one such choice above: two edits away from `"book"`, so the tree drops
+result, silently. `cake` is one such choice above: four edits away from `"book"`, so the tree drops
 it before `WRatio` ever sees it.
 
 **Applies to** — net10.0, netstandard2.0.
