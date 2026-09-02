@@ -7160,6 +7160,44 @@ def generate_bpe_split_literal() -> dict:
     }
 
 
+def generate_text_bktree() -> dict:
+    """Radius queries answered by brute force, for BkTree to replay (#526).
+
+    No canonical Python BK-tree exists to freeze, and none is wanted: the answer to
+    "everything within k" is a property of the distance and the corpus, so scanning
+    is the reference. The distances themselves are already frozen by levenshtein.json
+    and its siblings, so this corpus adds the set, not the arithmetic.
+    """
+    alphabet = "abcd"
+    cases = []
+    for corpus_index, (size, max_length) in enumerate([(20, 4), (60, 6), (150, 8)]):
+        rng = SeededRandom(SEED + 52600 + corpus_index)
+        words = sorted({
+            "".join(rng.choice(alphabet) for _ in range(rng.randint(1, max_length)))
+            for _ in range(size * 3)
+        })[:size]
+        for query_index in range(6):
+            query = "".join(
+                rng.choice(alphabet) for _ in range(rng.randint(1, max_length)))
+            for radius in (0, 1, 2, 3):
+                hits = sorted(
+                    ({"item": w, "distance": Levenshtein.distance(w, query)} for w in words),
+                    key=lambda h: (h["distance"], h["item"]))
+                hits = [h for h in hits if h["distance"] <= radius]
+                cases.append({
+                    "id": len(cases),
+                    "corpus": words,
+                    "query": query,
+                    "radius": radius,
+                    "hits": hits,
+                })
+            del query_index
+    return {"metadata": {"library": "brute force", "version": "n/a",
+                         "reference_calls": ["linear scan over Levenshtein"],
+                         "seed": SEED, "count": len(cases)},
+            "cases": cases}
+
+
 def main() -> None:
     """Write every oracle deterministically, byte for byte.
 
@@ -7190,6 +7228,7 @@ def main() -> None:
         "jaro.json": generate_jaro,
         "jaro_winkler.json": generate_jaro_winkler,
         "lcs.json": generate_lcs,
+        "text_bktree.json": generate_text_bktree,
         "ratcliff.json": generate_ratcliff,
         "set_similarity.json": generate_set_similarity,
         "phonetics.json": generate_phonetics,

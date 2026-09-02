@@ -23,6 +23,7 @@
       "pages": [
         "docs/guides/quickstart.md",
         "docs/guides/vectorization.md",
+        "docs/guides/dictionary-lookup.md",
         "docs/reference/text/*.md",
         "docs/reference/text/*/*.md"
       ],
@@ -33,7 +34,8 @@
         "Lodestar.Text.Persistence": "docs/reference/text/persistence",
         "Lodestar.Text.Stemming": "docs/reference/text/stemming",
         "Lodestar.Text.Phonetics": "docs/reference/text/phonetics",
-        "Lodestar.Text.Similarity": "docs/reference/text/similarity"
+        "Lodestar.Text.Similarity": "docs/reference/text/similarity",
+        "Lodestar.Text.Indexing": "docs/reference/text/indexing"
       },
       "exceptionsUnchecked": []
     },

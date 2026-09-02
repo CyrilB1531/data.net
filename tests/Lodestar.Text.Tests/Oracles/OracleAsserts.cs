@@ -147,3 +147,21 @@ public static class OracleAsserts
         return sb.Append('"').ToString();
     }
 }
+
+/// <summary>One frozen radius query: the corpus, the query, the radius, and the hits a
+/// linear scan returns.</summary>
+public sealed record BkTreeCase
+{
+    [JsonPropertyName("id")] public int Id { get; init; }
+    [JsonPropertyName("corpus")] public IReadOnlyList<string> Corpus { get; init; } = [];
+    [JsonPropertyName("query")] public string Query { get; init; } = "";
+    [JsonPropertyName("radius")] public int Radius { get; init; }
+    [JsonPropertyName("hits")] public IReadOnlyList<BkTreeHit> Hits { get; init; } = [];
+}
+
+/// <summary>One expected hit inside a <see cref="BkTreeCase"/>.</summary>
+public sealed record BkTreeHit
+{
+    [JsonPropertyName("item")] public string Item { get; init; } = "";
+    [JsonPropertyName("distance")] public int Distance { get; init; }
+}

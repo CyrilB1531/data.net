@@ -143,7 +143,8 @@ before the `dotnet run`, and `Remove-Item Env:NUGET_PACKAGES` after it.
 Full guide: [`docs/guides/quickstart.md`](docs/guides/quickstart.md). See also the
 [vectorization](docs/guides/vectorization.md), [embeddings](docs/guides/embeddings.md),
 [fuzzy-matching](docs/guides/migrating-from-rapidfuzz.md),
-[decomposition](docs/guides/decomposition.md) and
+[decomposition](docs/guides/decomposition.md),
+[dictionary-lookup](docs/guides/dictionary-lookup.md) and
 [metrics](docs/guides/metrics.md) guides — the last one answers _which_ metric to
 reach for, which the per-member reference pages deliberately cannot.
 

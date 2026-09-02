@@ -1579,3 +1579,36 @@ run on a shared cloud container is not the machine `docs/guides/performance.md` 
 row there has read 3× slower on one. `docs/guides/performance.md` carries no row for this class
 yet. A row lands once the three numbers above are taken on a named machine, the way every other
 section's did.
+
+## 17. BK-tree vs a length-filtered scan (issue #526)
+
+`BkTreeBenchmarks` measures `BkTree.WithinDistance` against the baseline a caller writes instead
+of an index: a linear scan that skips any word whose *length* already puts it out of range, then
+calls `Levenshtein.Distance` on what survives. Both sides answer the identical question —
+"everything within edit distance `k`" — over the same corpus, so this is like-for-like without the
+caveats sections 15 and 16 need.
+
+The corpus is generated rather than committed, like the other two:
+
+```bash
+python3 bench/corpus/generate_dictionary.py   # writes bench/corpus/dictionary.json, git-ignored
+```
+
+20 000 words in two shapes: `uniform` (independent random 4–10 letter strings) and `clustered`
+(2 500 roots, each generated word one or two mutations from a root) — the shape a natural
+dictionary has, where near neighbours are common rather than incidental.
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- --filter '*BkTree*'
+```
+
+`[Params]` sweeps `Radius` (1 to 4) and `Shape` (`uniform`, `clustered`) against
+`LengthFilteredScan` as the baseline — 8 pairs, 16 benchmarks, default job. 200 queries drawn from
+the corpus itself: looking up a word already in the dictionary is the case a spelling corrector
+hits every keystroke, and the densest neighbourhood the tree has to work through.
+
+Numbers are published in
+[`docs/guides/performance.md`](../docs/guides/performance.md#bk-tree-vs-a-length-filtered-scan-issue-526),
+and the reader-facing take-away is in
+[`docs/guides/dictionary-lookup.md`](../docs/guides/dictionary-lookup.md#where-the-tree-stops-paying) — this section
+documents how to measure, not what was measured.

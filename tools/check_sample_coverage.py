@@ -36,7 +36,8 @@ WAITING = ["Lodestar.Fuzzy", "Lodestar.Embeddings", "Lodestar.Metrics"]
 
 DECLARATION = re.compile(
     r"^public\s+(?:static\s+|sealed\s+|abstract\s+|partial\s+|readonly\s+)*"
-    r"(class|record|struct|enum|interface)\s+(\w+)", re.MULTILINE)
+    r"(record\s+class|record\s+struct|class|record|struct|enum|interface)\s+(\w+)",
+    re.MULTILINE)
 
 
 def public_classes(package: str) -> dict[str, pathlib.Path]:

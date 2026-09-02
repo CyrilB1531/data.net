@@ -23,6 +23,10 @@ is one sentence, the issue and the commit; see
 
 ### Lodestar.Text
 
+#### Added
+
+- **`BkTree`** is a metric index over the integer distances, worth building only at a radius of 1 — [`docs/guides/dictionary-lookup.md`](docs/guides/dictionary-lookup.md) has the measurement. ([#526](https://github.com/CyrilB1531/lodestar/issues/526))
+
 #### Changed
 
 - **`CsrMatrix` and `SparseNorm` moved to `Lodestar.Abstractions`.** Consuming code adds `using Lodestar.Abstractions;`; the vectorizers still return the same type, and the seven reference pages moved with it. ([#440](https://github.com/CyrilB1531/lodestar/issues/440))

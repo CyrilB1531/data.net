@@ -149,6 +149,14 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | `process.extractOne(q, choices)` | rapidfuzz | [`Process.ExtractOne(q, choices)`](reference/fuzzy/matching/process-extractone.md) | Best candidate or `null`. |
 | blocking deduplication | — (application pattern) | [`Deduplicator.FindClusters(...)`](reference/fuzzy/matching/deduplicator-findclusters.md) | Partition by blocking key + transitive closure (union-find). Avoids O(n²). |
 
+## Lodestar.Text — indexing
+
+No canonical Python library exposes a BK-tree; there is nothing to map against.
+
+| Python | Library | C# | Differences |
+| --- | --- | --- | --- |
+| — (no Python counterpart) | — | [`BkTree`](reference/text/indexing/bktree.md) | A Burkhard-Keller tree: a metric index over strings, built once and queried many times for "everything within edit distance `k`". Correct only over a distance satisfying the triangle inequality — the four factory methods bind the ones that qualify. Measured against a length-filtered linear scan in [`docs/guides/dictionary-lookup.md`](guides/dictionary-lookup.md): worthwhile at `k = 1`, not past it. |
+
 ## Lodestar.Metrics — classification metrics
 
 | Python | Library | C# | Differences |

@@ -40,6 +40,8 @@ Lot5Metrics.Run();
 Lot6Regression.Run();
 SplitConformalSample.Run();
 DecompositionSamples.Run();
+BkTreeSample.Run();
+BkTreeMatchSample.Run();
 
 if (!PackagingGate.Verify())
 {

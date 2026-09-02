@@ -27,6 +27,10 @@
       "src/Lodestar.Embeddings/Tokenization/**",
       "src/Lodestar.Embeddings/Pooling/**"
     ],
+    "BkTreeBenchmarks": [
+      "src/Lodestar.Text/Indexing/**",
+      "src/Lodestar.Text/Distances/**"
+    ],
     "BlockedTableBenchmarks": [
       "src/Lodestar.Text/Distances/**"
     ],
