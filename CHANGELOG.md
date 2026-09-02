@@ -23,6 +23,10 @@ is one sentence, the issue and the commit; see
 
 ### Lodestar.Text
 
+#### Added
+
+- **`BkTree`, a metric index over the integer distances.** `WithinDistance` answers "everything within `k`" without scanning the corpus, `Nearest` takes the *n* closest with a shrinking radius, and `Add` is incremental so a dictionary takes a new word without a rebuild. Four factories bind the distances that satisfy the triangle inequality — `Levenshtein`, `DamerauLevenshtein`, `Indel` and `Hamming`; `Osa` does not and is excluded. Measured against a length-filtered linear scan on the same corpus, it is about twice as fast at a radius of 1 and **slower from a radius of 2 on** — the pruning saves distance computations, but past a radius of 1 the per-node cost of walking the tree outweighs what it saves. ([#526](https://github.com/CyrilB1531/lodestar/issues/526))
+
 #### Changed
 
 - **`CsrMatrix` and `SparseNorm` moved to `Lodestar.Abstractions`.** Consuming code adds `using Lodestar.Abstractions;`; the vectorizers still return the same type, and the seven reference pages moved with it. ([#440](https://github.com/CyrilB1531/lodestar/issues/440))
@@ -32,6 +36,12 @@ is one sentence, the issue and the commit; see
 #### Fixed
 
 - The blocked bit-parallel equality table is sized from the pattern's characters above U+00FF rather than from its length, and a pattern too long to tabulate takes the dynamic program instead of wrapping the table's length in `int`. ([#413](https://github.com/CyrilB1531/lodestar/issues/413), [`52d68cc`](https://github.com/CyrilB1531/lodestar/commit/52d68cc))
+
+### Lodestar.Fuzzy
+
+#### Added
+
+- **`Process.ExtractIndexed`** scores only the choices a `BkTree` puts within a radius, then ranks them exactly as `Extract` does. A prefilter, not a faster `Extract`: the two agree only when every choice outside the radius would have scored below the cutoff. ([#526](https://github.com/CyrilB1531/lodestar/issues/526))
 
 ### Lodestar.Embeddings
 

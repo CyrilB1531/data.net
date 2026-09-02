@@ -1,6 +1,6 @@
 # Indexing strings for fast lookup — `Lodestar.Text.Indexing`
 
-`Process.Extract` is linear: every call scores the query against every choice, in full. That is
+[`Process.Extract`](../reference/fuzzy/matching/process-extract.md) is linear: every call scores the query against every choice, in full. That is
 fine for one query against a short list. It stops being fine for a spelling corrector that repeats
 the same full scan for every keystroke against a dictionary of thousands of words.
 `Lodestar.Text.Indexing` holds a metric index built once and queried many times: `BkTree` answers
@@ -25,16 +25,19 @@ int found = hits.Count;         // nearest first: "boo" and "book" are one edit 
 string nearest = hits[0].Item;
 ```
 
-`OverLevenshtein` is one of four factories — `OverDamerauLevenshtein`, `OverIndel` and
-`OverHamming` are the others — each bound to a distance that is a true metric. `Osa.Distance` is
+[`BkTree.OverLevenshtein`](../reference/text/indexing/bktree-overlevenshtein.md) is one of four
+factories — `OverDamerauLevenshtein`, `OverIndel` and `OverHamming` are the others — each bound to
+a distance that is a true metric. [`Osa.Distance`](../reference/text/distances/osa-distance.md) is
 not offered: it fails the triangle inequality the pruning relies on
 (`d("ab","bca") = 3 > d("ab","ba") + d("ba","bca") = 2`), and using it would return an incomplete
 result set rather than throw.
 
 ## `ExtractIndexed`: the tree as a prefilter in front of a scorer
 
-`Process.ExtractIndexed` runs the tree first, then ranks only what came back — the way
-`Process.Extract` ranks, over a smaller candidate set instead of the whole dictionary:
+[`Process.ExtractIndexed`](../reference/fuzzy/matching/process-extractindexed.md) runs the tree
+first, then ranks only what came back — the way
+[`Process.Extract`](../reference/fuzzy/matching/process-extract.md) ranks, over a smaller
+candidate set instead of the whole dictionary:
 
 ```csharp
 using Lodestar.Fuzzy;
@@ -49,7 +52,8 @@ int count = best.Count;        // 4: "cake" is 4 edits away and never reaches th
 string top = best[0].Choice;   // "book"
 ```
 
-**The default scorer, `Fuzz.WRatio`, is not a function of the tree's distance.** A caller who
+**The default scorer, [`Fuzz.WRatio`](../reference/fuzzy/matching/fuzz-wratio.md), is not a
+function of the tree's distance.** A caller who
 leaves `scoreCutoff` at its default of `0` gets a *subset* of what `Extract` would return —
 silently, because the tree already dropped candidates `WRatio` never got a chance to score.
 `"cake"` above is the demonstration. When that silent narrowing is not acceptable, pair the tree
@@ -70,9 +74,11 @@ IReadOnlyList<ExtractResult> best = Process.ExtractIndexed(
 double topScore = best[0].Score;   // 100: "book" against itself
 ```
 
-With a Levenshtein-derived scorer, everything the tree admits scores no lower than a value
-determined entirely by that same edit distance, so a `scoreCutoff` chosen against `maxDistance`
-cannot silently drop something `Extract` would have kept.
+With a
+[`Levenshtein.NormalizedSimilarity`](../reference/text/distances/levenshtein-normalizedsimilarity.md)-derived
+scorer, everything the tree admits scores no lower than a value determined entirely by that same
+edit distance, so a `scoreCutoff` chosen against `maxDistance` cannot silently drop something
+`Extract` would have kept.
 
 ## Where the tree stops paying
 
@@ -80,14 +86,18 @@ Measured with `BkTreeBenchmarks` (see
 [`bench/README.md`](https://github.com/CyrilB1531/lodestar/blob/main/bench/README.md#17-bk-tree-vs-a-length-filtered-scan-issue-526)
 for how) against
 the baseline a caller actually writes instead of an index: a linear scan that skips any word whose
-*length* already puts it out of range, then computes `Levenshtein.Distance` on what survives.
+*length* already puts it out of range, then computes
+[`Levenshtein.Distance`](../reference/text/distances/levenshtein-distance.md) on what survives.
 **Both arms materialise and sort the same shape of answer** — a `(item, distance)` list ordered by
 distance ascending — so neither is charged for producing a result the other does not; an earlier
 version of this benchmark counted hits on the scan side and let only the tree pay for sorting its
 result, which would have overstated the tree's cost. 20 000 words, 200 queries drawn from the
 corpus itself — looking up a word already in the dictionary is the hardest case for the tree,
 since its own neighbourhood is dense. `uniform` is independent random words; `clustered` is 2 500
-roots plus one or two edits each, the shape a natural dictionary has.
+roots plus one or two edits each, the shape a natural dictionary has. **Building the tree is
+excluded from the table below** — it runs once in BenchmarkDotNet's `[GlobalSetup]`, before timing
+starts, so every ratio compares query cost alone; the scan pays no equivalent setup, which is the
+one asymmetry in the tree's favour anywhere in this comparison.
 
 | radius | tree / length-filtered scan (uniform) | (clustered) |
 | ---: | ---: | ---: |
@@ -108,10 +118,12 @@ tree's advantage also fades fast rather than holding: about a third as many dist
 scan at `k = 1`, but 79–86% of them by `k = 2` and 92–96% by `k = 4` — almost the whole scan,
 computed one node at a time instead of one array element at a time. Wall-clock time crosses over
 one radius sooner than that comparison count does, because every tree node the traversal visits
-costs a dictionary lookup keyed by exact distance and a stack push, on top of the same list growth
-both arms now pay for their result — against a scan whose rejected candidates cost one array read
-and one integer subtraction. That per-node traversal cost, not the cost of sorting a result, is
-what a comparison-count budget cannot see and a wall-clock budget always pays.
+costs a dictionary lookup keyed by exact distance, a stack push, and one call through the metric
+delegate the tree stores rather than the inlinable static method the scan calls directly — on top
+of the same list growth both arms now pay for their result, plus the array copy the tree's own
+sort step makes to hand back its answer — against a scan whose rejected candidates cost one array
+read and one integer subtraction. That per-node traversal cost, not the cost of sorting a result,
+is what a comparison-count budget cannot see and a wall-clock budget always pays.
 
 `k = 1` is also what a spelling corrector's first pass needs, which is why the structure exists.
 Past it, a large radius over a large dictionary is a linear scan wearing a tree — reach for

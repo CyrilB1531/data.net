@@ -2524,31 +2524,42 @@ dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- --filter '*BkT
 ```
 
 `BkTreeBenchmarks.LengthFilteredScan` is the baseline: a linear scan that skips any word whose
-length already rules it out, then calls `Levenshtein.Distance` on what survives. **Both arms
+length already rules it out, then calls
+[`Levenshtein.Distance`](../reference/text/distances/levenshtein-distance.md) on what survives.
+**Both arms
 materialise and sort the same shape of result** — a `List<BkTreeMatch>` ordered by distance
 ascending, `Count` returned — so neither pays a cost the other is exempt from; a first version of
 this benchmark let the scan stop at a counter while only the tree built and sorted its answer,
 which would have charged the tree for work the comparison never asked the scan to do. 20 000
-words per shape, 200 queries drawn from the corpus itself.
+words per shape, 200 queries drawn from the corpus itself. **Building the tree — `AddRange` over
+the whole corpus — runs in `[GlobalSetup]`, which BenchmarkDotNet excludes from every measured
+iteration below; only the query loop is timed.** That exclusion is the one asymmetry in the tree's
+favour anywhere in this table: the scan pays no equivalent setup cost because it has no structure
+to build, so a reader weighing the `k = 1` win against the cost of adopting a tree should price the
+build in separately, not read it as already included.
 
-| Method | Radius | Shape | Mean | Ratio | Allocated | Alloc Ratio |
-| --- | ---: | --- | ---: | ---: | ---: | ---: |
-| `LengthFilteredScan` | 1 | clustered | 153.01 ms | 1.00 | 27.25 KB | 1.00 |
-| `TreeWithinDistance` | 1 | clustered | 90.91 ms | 0.59 | 103.75 KB | 3.81 |
-| `LengthFilteredScan` | 1 | uniform | 161.09 ms | 1.00 | 23.86 KB | 1.00 |
-| `TreeWithinDistance` | 1 | uniform | 84.03 ms | 0.52 | 116.56 KB | 4.88 |
-| `LengthFilteredScan` | 2 | clustered | 223.35 ms | 1.00 | 103.44 KB | 1.00 |
-| `TreeWithinDistance` | 2 | clustered | 352.15 ms | 1.58 | 260.13 KB | 2.51 |
-| `LengthFilteredScan` | 2 | uniform | 234.14 ms | 1.00 | 54.65 KB | 1.00 |
-| `TreeWithinDistance` | 2 | uniform | 315.79 ms | 1.35 | 193.09 KB | 3.53 |
-| `LengthFilteredScan` | 3 | clustered | 279.42 ms | 1.00 | 949.90 KB | 1.00 |
-| `TreeWithinDistance` | 3 | clustered | 489.30 ms | 1.75 | 1366.63 KB | 1.44 |
-| `LengthFilteredScan` | 3 | uniform | 286.40 ms | 1.00 | 741.56 KB | 1.00 |
-| `TreeWithinDistance` | 3 | uniform | 476.27 ms | 1.66 | 1153.80 KB | 1.56 |
-| `LengthFilteredScan` | 4 | clustered | 327.14 ms | 1.00 | 5113.56 KB | 1.00 |
-| `TreeWithinDistance` | 4 | clustered | 569.75 ms | 1.74 | 7216.20 KB | 1.41 |
-| `LengthFilteredScan` | 4 | uniform | 326.21 ms | 1.00 | 5514.13 KB | 1.00 |
-| `TreeWithinDistance` | 4 | uniform | 584.62 ms | 1.79 | 7964.50 KB | 1.44 |
+| Method | Radius | Shape | Mean | Ratio | RatioSD | Allocated | Alloc Ratio |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| `LengthFilteredScan` | 1 | clustered | 153.01 ms | 1.00 | 0.02 | 27.25 KB | 1.00 |
+| `TreeWithinDistance` | 1 | clustered | 90.91 ms | 0.59 | 0.02 | 103.75 KB | 3.81 |
+| `LengthFilteredScan` | 1 | uniform | 161.09 ms | 1.00 | 0.02 | 23.86 KB | 1.00 |
+| `TreeWithinDistance` | 1 | uniform | 84.03 ms | 0.52 | 0.02 | 116.56 KB | 4.88 |
+| `LengthFilteredScan` | 2 | clustered | 223.35 ms | 1.00 | 0.01 | 103.44 KB | 1.00 |
+| `TreeWithinDistance` | 2 | clustered | 352.15 ms | 1.58 | 0.02 | 260.13 KB | 2.51 |
+| `LengthFilteredScan` | 2 | uniform | 234.14 ms | 1.00 | 0.03 | 54.65 KB | 1.00 |
+| `TreeWithinDistance` | 2 | uniform | 315.79 ms | 1.35 | 0.06 | 193.09 KB | 3.53 |
+| `LengthFilteredScan` | 3 | clustered | 279.42 ms | 1.00 | 0.02 | 949.90 KB | 1.00 |
+| `TreeWithinDistance` | 3 | clustered | 489.30 ms | 1.75 | 0.04 | 1366.63 KB | 1.44 |
+| `LengthFilteredScan` | 3 | uniform | 286.40 ms | 1.00 | 0.02 | 741.56 KB | 1.00 |
+| `TreeWithinDistance` | 3 | uniform | 476.27 ms | 1.66 | 0.07 | 1153.80 KB | 1.56 |
+| `LengthFilteredScan` | 4 | clustered | 327.14 ms | 1.00 | 0.03 | 5113.56 KB | 1.00 |
+| `TreeWithinDistance` | 4 | clustered | 569.75 ms | 1.74 | 0.06 | 7216.20 KB | 1.41 |
+| `LengthFilteredScan` | 4 | uniform | 326.21 ms | 1.00 | 0.01 | 5514.13 KB | 1.00 |
+| `TreeWithinDistance` | 4 | uniform | 584.62 ms | 1.79 | 0.07 | 7964.50 KB | 1.44 |
+
+`RatioSD` is BenchmarkDotNet's own standard deviation of the ratio across iterations, at 0.01–0.07
+here — small next to the 0.52–1.79 spread the ratio itself covers, which is what makes a shared,
+non-dedicated container (see the machine note above) a tolerable source for a directional table.
 
 Ratio is `Mean(TreeWithinDistance) / Mean(LengthFilteredScan)`, BenchmarkDotNet's own baseline
 column. Below `1` the tree is faster; above `1` it is slower than never having built it. Only the
@@ -2571,10 +2582,15 @@ scan) came back at 0.33 / 0.34 (`k = 1`), 0.79 / 0.86 (`k = 2`), 0.92 / 0.95 (`k
 traversal bookkeeping, no result materialisation, no sort, on either arm — the narrowest possible
 measure of "how much work does the pruning save", and the only one of the three the plan's
 simulation could have produced. What it could not see is per-node traversal cost: every tree node
-`WithinDistance` visits pays a `Dictionary<int, Node>` lookup keyed by exact distance and a
-`Stack<Node>` push, on top of the same list growth the symmetric benchmark now charges both arms
-for. The scan's corresponding unit of work per rejected candidate is one array read and one
-integer subtraction. That fixed cost per node is cheap next to a 20 000-word scan at `k = 1`,
+`WithinDistance` visits pays a `Dictionary<int, Node>` lookup keyed by exact distance, a
+`Stack<Node>` push, and one call through the `Func<string, string, int>` metric delegate the tree
+stores — an indirection the scan does not pay, since it calls
+[`Levenshtein.Distance`](../reference/text/distances/levenshtein-distance.md) directly, a static
+method the JIT can inline — on top of the same list growth the symmetric benchmark now
+charges both arms for; `Sorted`'s final step copies the sorted hit list into a fresh
+`BkTreeMatch[]`, one more allocation and pass the scan's `List<BkTreeMatch>.Sort` does not have an
+equivalent of. The scan's corresponding unit of work per rejected candidate is one array read and
+one integer subtraction. That fixed cost per node is cheap next to a 20 000-word scan at `k = 1`,
 where the tree visits a third as many nodes as the scan has candidates — and it dominates by
 `k = 2`, where the tree is already visiting most of the corpus one node at a time instead of one
 array element at a time. A raw comparison count is a proxy for work; wall-clock time is the work a
@@ -2582,9 +2598,9 @@ caller actually pays for, and only the table above is that.
 
 The `Allocated` column carries the same story once both arms allocate: `LengthFilteredScan`'s
 result list only grows as large as the radius admits, so it tracks the corpus's own growth in
-hits from `k = 1` (23–27 KB) to `k = 4` (5.1–5.5 MB); `TreeWithinDistance` starts at 4–5× that
-because a `Stack<Node>` and the tree's internal traversal cost more than a 20-word hit list at
-`k = 1`, and that ratio *shrinks* to 1.4–1.6× by `k = 4` as the shared result list comes to
-dominate both sides' allocation. [`docs/guides/dictionary-lookup.md`](dictionary-lookup.md) carries
+hits from `k = 1` (23–27 KB) to `k = 4` (5.1–5.5 MB); `TreeWithinDistance` starts at **3.81× to
+4.88×** that at `k = 1`, because a `Stack<Node>` and the tree's internal traversal cost more than a
+20-word hit list, and that ratio *shrinks* to **1.41× to 1.44×** by `k = 4` alone as the shared
+result list comes to dominate both sides' allocation. [`docs/guides/dictionary-lookup.md`](dictionary-lookup.md) carries
 the reader-facing version of this table and its conclusion: the tree is worth using at `k = 1`,
 and a length-filtered scan is the better answer past it.

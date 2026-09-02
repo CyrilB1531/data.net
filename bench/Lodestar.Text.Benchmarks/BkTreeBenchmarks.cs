@@ -57,10 +57,8 @@ public class BkTreeBenchmarks
         int found = 0;
         foreach (string query in this.queries)
         {
-            // Symmetric with TreeWithinDistance below: both arms materialise and sort a
-            // (item, distance) list rather than one counting hits and the other building
-            // BkTreeMatch's sorted result set — a scan charged only for the counter it
-            // increments would be compared against a tree charged for the answer it hands back.
+            // Symmetric with TreeWithinDistance: both arms materialise and sort a
+            // (item, distance) list, so neither is charged for work the other skips.
             var hits = new List<BkTreeMatch>();
             foreach (string word in this.words)
             {
