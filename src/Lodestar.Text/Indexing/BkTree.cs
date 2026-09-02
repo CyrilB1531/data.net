@@ -45,7 +45,8 @@ public sealed class BkTree
 
     /// <summary>Over <see cref="Hamming.Distance(ReadOnlySpan{char}, ReadOnlySpan{char}, TextElement)"/>.</summary>
     /// <remarks>Lodestar's Hamming adds the absolute length difference rather than refusing
-    /// unequal lengths; that variant was checked exhaustively and satisfies the inequality.</remarks>
+    /// unequal lengths, so it is not textbook Hamming and its triangle inequality had to be
+    /// checked rather than assumed — <c>AdmissibleMetricTests</c> does that exhaustively.</remarks>
     public static BkTree OverHamming(TextElement element = TextElement.Utf16Unit) =>
         new((a, b) => Hamming.Distance(a.AsSpan(), b.AsSpan(), element));
 
