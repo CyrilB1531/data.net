@@ -1,0 +1,9346 @@
+{
+ "metadata": {
+  "library": "brute force",
+  "version": "n/a",
+  "reference_calls": [
+   "linear scan over Levenshtein"
+  ],
+  "seed": 20260801,
+  "count": 72
+ },
+ "cases": [
+  {
+   "id": 0,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "b",
+   "radius": 0,
+   "hits": [
+    {
+     "item": "b",
+     "distance": 0
+    }
+   ]
+  },
+  {
+   "id": 1,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "b",
+   "radius": 1,
+   "hits": [
+    {
+     "item": "b",
+     "distance": 0
+    },
+    {
+     "item": "a",
+     "distance": 1
+    },
+    {
+     "item": "ab",
+     "distance": 1
+    },
+    {
+     "item": "bc",
+     "distance": 1
+    },
+    {
+     "item": "bd",
+     "distance": 1
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "b",
+   "radius": 2,
+   "hits": [
+    {
+     "item": "b",
+     "distance": 0
+    },
+    {
+     "item": "a",
+     "distance": 1
+    },
+    {
+     "item": "ab",
+     "distance": 1
+    },
+    {
+     "item": "bc",
+     "distance": 1
+    },
+    {
+     "item": "bd",
+     "distance": 1
+    },
+    {
+     "item": "ac",
+     "distance": 2
+    },
+    {
+     "item": "ad",
+     "distance": 2
+    },
+    {
+     "item": "bcb",
+     "distance": 2
+    },
+    {
+     "item": "bcc",
+     "distance": 2
+    },
+    {
+     "item": "bcd",
+     "distance": 2
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "b",
+   "radius": 3,
+   "hits": [
+    {
+     "item": "b",
+     "distance": 0
+    },
+    {
+     "item": "a",
+     "distance": 1
+    },
+    {
+     "item": "ab",
+     "distance": 1
+    },
+    {
+     "item": "bc",
+     "distance": 1
+    },
+    {
+     "item": "bd",
+     "distance": 1
+    },
+    {
+     "item": "ac",
+     "distance": 2
+    },
+    {
+     "item": "ad",
+     "distance": 2
+    },
+    {
+     "item": "bcb",
+     "distance": 2
+    },
+    {
+     "item": "bcc",
+     "distance": 2
+    },
+    {
+     "item": "bcd",
+     "distance": 2
+    },
+    {
+     "item": "aad",
+     "distance": 3
+    },
+    {
+     "item": "abad",
+     "distance": 3
+    },
+    {
+     "item": "abdb",
+     "distance": 3
+    },
+    {
+     "item": "abdd",
+     "distance": 3
+    },
+    {
+     "item": "acbd",
+     "distance": 3
+    },
+    {
+     "item": "baaa",
+     "distance": 3
+    },
+    {
+     "item": "badd",
+     "distance": 3
+    },
+    {
+     "item": "bbba",
+     "distance": 3
+    },
+    {
+     "item": "bbca",
+     "distance": 3
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "acb",
+   "radius": 0,
+   "hits": []
+  },
+  {
+   "id": 5,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "acb",
+   "radius": 1,
+   "hits": [
+    {
+     "item": "ab",
+     "distance": 1
+    },
+    {
+     "item": "ac",
+     "distance": 1
+    },
+    {
+     "item": "acbd",
+     "distance": 1
+    },
+    {
+     "item": "bcb",
+     "distance": 1
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "acb",
+   "radius": 2,
+   "hits": [
+    {
+     "item": "ab",
+     "distance": 1
+    },
+    {
+     "item": "ac",
+     "distance": 1
+    },
+    {
+     "item": "acbd",
+     "distance": 1
+    },
+    {
+     "item": "bcb",
+     "distance": 1
+    },
+    {
+     "item": "a",
+     "distance": 2
+    },
+    {
+     "item": "aad",
+     "distance": 2
+    },
+    {
+     "item": "abdb",
+     "distance": 2
+    },
+    {
+     "item": "accd",
+     "distance": 2
+    },
+    {
+     "item": "ad",
+     "distance": 2
+    },
+    {
+     "item": "b",
+     "distance": 2
+    },
+    {
+     "item": "bc",
+     "distance": 2
+    },
+    {
+     "item": "bcc",
+     "distance": 2
+    },
+    {
+     "item": "bcd",
+     "distance": 2
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "acb",
+   "radius": 3,
+   "hits": [
+    {
+     "item": "ab",
+     "distance": 1
+    },
+    {
+     "item": "ac",
+     "distance": 1
+    },
+    {
+     "item": "acbd",
+     "distance": 1
+    },
+    {
+     "item": "bcb",
+     "distance": 1
+    },
+    {
+     "item": "a",
+     "distance": 2
+    },
+    {
+     "item": "aad",
+     "distance": 2
+    },
+    {
+     "item": "abdb",
+     "distance": 2
+    },
+    {
+     "item": "accd",
+     "distance": 2
+    },
+    {
+     "item": "ad",
+     "distance": 2
+    },
+    {
+     "item": "b",
+     "distance": 2
+    },
+    {
+     "item": "bc",
+     "distance": 2
+    },
+    {
+     "item": "bcc",
+     "distance": 2
+    },
+    {
+     "item": "bcd",
+     "distance": 2
+    },
+    {
+     "item": "abad",
+     "distance": 3
+    },
+    {
+     "item": "abdd",
+     "distance": 3
+    },
+    {
+     "item": "baaa",
+     "distance": 3
+    },
+    {
+     "item": "badd",
+     "distance": 3
+    },
+    {
+     "item": "bbba",
+     "distance": 3
+    },
+    {
+     "item": "bbca",
+     "distance": 3
+    },
+    {
+     "item": "bd",
+     "distance": 3
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "d",
+   "radius": 0,
+   "hits": []
+  },
+  {
+   "id": 9,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "d",
+   "radius": 1,
+   "hits": [
+    {
+     "item": "a",
+     "distance": 1
+    },
+    {
+     "item": "ad",
+     "distance": 1
+    },
+    {
+     "item": "b",
+     "distance": 1
+    },
+    {
+     "item": "bd",
+     "distance": 1
+    }
+   ]
+  },
+  {
+   "id": 10,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "d",
+   "radius": 2,
+   "hits": [
+    {
+     "item": "a",
+     "distance": 1
+    },
+    {
+     "item": "ad",
+     "distance": 1
+    },
+    {
+     "item": "b",
+     "distance": 1
+    },
+    {
+     "item": "bd",
+     "distance": 1
+    },
+    {
+     "item": "aad",
+     "distance": 2
+    },
+    {
+     "item": "ab",
+     "distance": 2
+    },
+    {
+     "item": "ac",
+     "distance": 2
+    },
+    {
+     "item": "bc",
+     "distance": 2
+    },
+    {
+     "item": "bcd",
+     "distance": 2
+    }
+   ]
+  },
+  {
+   "id": 11,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "d",
+   "radius": 3,
+   "hits": [
+    {
+     "item": "a",
+     "distance": 1
+    },
+    {
+     "item": "ad",
+     "distance": 1
+    },
+    {
+     "item": "b",
+     "distance": 1
+    },
+    {
+     "item": "bd",
+     "distance": 1
+    },
+    {
+     "item": "aad",
+     "distance": 2
+    },
+    {
+     "item": "ab",
+     "distance": 2
+    },
+    {
+     "item": "ac",
+     "distance": 2
+    },
+    {
+     "item": "bc",
+     "distance": 2
+    },
+    {
+     "item": "bcd",
+     "distance": 2
+    },
+    {
+     "item": "abad",
+     "distance": 3
+    },
+    {
+     "item": "abdb",
+     "distance": 3
+    },
+    {
+     "item": "abdd",
+     "distance": 3
+    },
+    {
+     "item": "acbd",
+     "distance": 3
+    },
+    {
+     "item": "accd",
+     "distance": 3
+    },
+    {
+     "item": "badd",
+     "distance": 3
+    },
+    {
+     "item": "bcb",
+     "distance": 3
+    },
+    {
+     "item": "bcc",
+     "distance": 3
+    }
+   ]
+  },
+  {
+   "id": 12,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "bdbb",
+   "radius": 0,
+   "hits": []
+  },
+  {
+   "id": 13,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "bdbb",
+   "radius": 1,
+   "hits": []
+  },
+  {
+   "id": 14,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "bdbb",
+   "radius": 2,
+   "hits": [
+    {
+     "item": "abdb",
+     "distance": 2
+    },
+    {
+     "item": "bbba",
+     "distance": 2
+    },
+    {
+     "item": "bcb",
+     "distance": 2
+    },
+    {
+     "item": "bd",
+     "distance": 2
+    }
+   ]
+  },
+  {
+   "id": 15,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "bdbb",
+   "radius": 3,
+   "hits": [
+    {
+     "item": "abdb",
+     "distance": 2
+    },
+    {
+     "item": "bbba",
+     "distance": 2
+    },
+    {
+     "item": "bcb",
+     "distance": 2
+    },
+    {
+     "item": "bd",
+     "distance": 2
+    },
+    {
+     "item": "ab",
+     "distance": 3
+    },
+    {
+     "item": "abdd",
+     "distance": 3
+    },
+    {
+     "item": "acbd",
+     "distance": 3
+    },
+    {
+     "item": "ad",
+     "distance": 3
+    },
+    {
+     "item": "b",
+     "distance": 3
+    },
+    {
+     "item": "baaa",
+     "distance": 3
+    },
+    {
+     "item": "badd",
+     "distance": 3
+    },
+    {
+     "item": "bbca",
+     "distance": 3
+    },
+    {
+     "item": "bc",
+     "distance": 3
+    },
+    {
+     "item": "bcc",
+     "distance": 3
+    },
+    {
+     "item": "bcd",
+     "distance": 3
+    }
+   ]
+  },
+  {
+   "id": 16,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "cbd",
+   "radius": 0,
+   "hits": []
+  },
+  {
+   "id": 17,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "cbd",
+   "radius": 1,
+   "hits": [
+    {
+     "item": "acbd",
+     "distance": 1
+    },
+    {
+     "item": "bd",
+     "distance": 1
+    }
+   ]
+  },
+  {
+   "id": 18,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "cbd",
+   "radius": 2,
+   "hits": [
+    {
+     "item": "acbd",
+     "distance": 1
+    },
+    {
+     "item": "bd",
+     "distance": 1
+    },
+    {
+     "item": "aad",
+     "distance": 2
+    },
+    {
+     "item": "ab",
+     "distance": 2
+    },
+    {
+     "item": "abad",
+     "distance": 2
+    },
+    {
+     "item": "abdb",
+     "distance": 2
+    },
+    {
+     "item": "abdd",
+     "distance": 2
+    },
+    {
+     "item": "accd",
+     "distance": 2
+    },
+    {
+     "item": "ad",
+     "distance": 2
+    },
+    {
+     "item": "b",
+     "distance": 2
+    },
+    {
+     "item": "bc",
+     "distance": 2
+    },
+    {
+     "item": "bcb",
+     "distance": 2
+    },
+    {
+     "item": "bcd",
+     "distance": 2
+    }
+   ]
+  },
+  {
+   "id": 19,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "cbd",
+   "radius": 3,
+   "hits": [
+    {
+     "item": "acbd",
+     "distance": 1
+    },
+    {
+     "item": "bd",
+     "distance": 1
+    },
+    {
+     "item": "aad",
+     "distance": 2
+    },
+    {
+     "item": "ab",
+     "distance": 2
+    },
+    {
+     "item": "abad",
+     "distance": 2
+    },
+    {
+     "item": "abdb",
+     "distance": 2
+    },
+    {
+     "item": "abdd",
+     "distance": 2
+    },
+    {
+     "item": "accd",
+     "distance": 2
+    },
+    {
+     "item": "ad",
+     "distance": 2
+    },
+    {
+     "item": "b",
+     "distance": 2
+    },
+    {
+     "item": "bc",
+     "distance": 2
+    },
+    {
+     "item": "bcb",
+     "distance": 2
+    },
+    {
+     "item": "bcd",
+     "distance": 2
+    },
+    {
+     "item": "a",
+     "distance": 3
+    },
+    {
+     "item": "ac",
+     "distance": 3
+    },
+    {
+     "item": "badd",
+     "distance": 3
+    },
+    {
+     "item": "bbba",
+     "distance": 3
+    },
+    {
+     "item": "bbca",
+     "distance": 3
+    },
+    {
+     "item": "bcc",
+     "distance": 3
+    }
+   ]
+  },
+  {
+   "id": 20,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "bcda",
+   "radius": 0,
+   "hits": []
+  },
+  {
+   "id": 21,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "bcda",
+   "radius": 1,
+   "hits": [
+    {
+     "item": "bcd",
+     "distance": 1
+    }
+   ]
+  },
+  {
+   "id": 22,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "bcda",
+   "radius": 2,
+   "hits": [
+    {
+     "item": "bcd",
+     "distance": 1
+    },
+    {
+     "item": "baaa",
+     "distance": 2
+    },
+    {
+     "item": "badd",
+     "distance": 2
+    },
+    {
+     "item": "bbba",
+     "distance": 2
+    },
+    {
+     "item": "bbca",
+     "distance": 2
+    },
+    {
+     "item": "bc",
+     "distance": 2
+    },
+    {
+     "item": "bcb",
+     "distance": 2
+    },
+    {
+     "item": "bcc",
+     "distance": 2
+    },
+    {
+     "item": "bd",
+     "distance": 2
+    }
+   ]
+  },
+  {
+   "id": 23,
+   "corpus": [
+    "a",
+    "aad",
+    "ab",
+    "abad",
+    "abdb",
+    "abdd",
+    "ac",
+    "acbd",
+    "accd",
+    "ad",
+    "b",
+    "baaa",
+    "badd",
+    "bbba",
+    "bbca",
+    "bc",
+    "bcb",
+    "bcc",
+    "bcd",
+    "bd"
+   ],
+   "query": "bcda",
+   "radius": 3,
+   "hits": [
+    {
+     "item": "bcd",
+     "distance": 1
+    },
+    {
+     "item": "baaa",
+     "distance": 2
+    },
+    {
+     "item": "badd",
+     "distance": 2
+    },
+    {
+     "item": "bbba",
+     "distance": 2
+    },
+    {
+     "item": "bbca",
+     "distance": 2
+    },
+    {
+     "item": "bc",
+     "distance": 2
+    },
+    {
+     "item": "bcb",
+     "distance": 2
+    },
+    {
+     "item": "bcc",
+     "distance": 2
+    },
+    {
+     "item": "bd",
+     "distance": 2
+    },
+    {
+     "item": "a",
+     "distance": 3
+    },
+    {
+     "item": "aad",
+     "distance": 3
+    },
+    {
+     "item": "abad",
+     "distance": 3
+    },
+    {
+     "item": "abdb",
+     "distance": 3
+    },
+    {
+     "item": "abdd",
+     "distance": 3
+    },
+    {
+     "item": "ac",
+     "distance": 3
+    },
+    {
+     "item": "acbd",
+     "distance": 3
+    },
+    {
+     "item": "accd",
+     "distance": 3
+    },
+    {
+     "item": "ad",
+     "distance": 3
+    },
+    {
+     "item": "b",
+     "distance": 3
+    }
+   ]
+  },
+  {
+   "id": 24,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "dcddbd",
+   "radius": 0,
+   "hits": []
+  },
+  {
+   "id": 25,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "dcddbd",
+   "radius": 1,
+   "hits": []
+  },
+  {
+   "id": 26,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "dcddbd",
+   "radius": 2,
+   "hits": [
+    {
+     "item": "bcddd",
+     "distance": 2
+    }
+   ]
+  },
+  {
+   "id": 27,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "dcddbd",
+   "radius": 3,
+   "hits": [
+    {
+     "item": "bcddd",
+     "distance": 2
+    },
+    {
+     "item": "abdbd",
+     "distance": 3
+    },
+    {
+     "item": "acadbb",
+     "distance": 3
+    },
+    {
+     "item": "acbdd",
+     "distance": 3
+    },
+    {
+     "item": "acdbc",
+     "distance": 3
+    },
+    {
+     "item": "addba",
+     "distance": 3
+    },
+    {
+     "item": "bcbd",
+     "distance": 3
+    },
+    {
+     "item": "bcbdb",
+     "distance": 3
+    }
+   ]
+  },
+  {
+   "id": 28,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "dc",
+   "radius": 0,
+   "hits": []
+  },
+  {
+   "id": 29,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "dc",
+   "radius": 1,
+   "hits": [
+    {
+     "item": "ac",
+     "distance": 1
+    },
+    {
+     "item": "bc",
+     "distance": 1
+    }
+   ]
+  },
+  {
+   "id": 30,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "dc",
+   "radius": 2,
+   "hits": [
+    {
+     "item": "ac",
+     "distance": 1
+    },
+    {
+     "item": "bc",
+     "distance": 1
+    },
+    {
+     "item": "a",
+     "distance": 2
+    },
+    {
+     "item": "aac",
+     "distance": 2
+    },
+    {
+     "item": "ab",
+     "distance": 2
+    },
+    {
+     "item": "acb",
+     "distance": 2
+    },
+    {
+     "item": "acd",
+     "distance": 2
+    },
+    {
+     "item": "ad",
+     "distance": 2
+    },
+    {
+     "item": "ada",
+     "distance": 2
+    },
+    {
+     "item": "adbc",
+     "distance": 2
+    },
+    {
+     "item": "b",
+     "distance": 2
+    },
+    {
+     "item": "ba",
+     "distance": 2
+    },
+    {
+     "item": "bcc",
+     "distance": 2
+    },
+    {
+     "item": "bd",
+     "distance": 2
+    },
+    {
+     "item": "bda",
+     "distance": 2
+    }
+   ]
+  },
+  {
+   "id": 31,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "dc",
+   "radius": 3,
+   "hits": [
+    {
+     "item": "ac",
+     "distance": 1
+    },
+    {
+     "item": "bc",
+     "distance": 1
+    },
+    {
+     "item": "a",
+     "distance": 2
+    },
+    {
+     "item": "aac",
+     "distance": 2
+    },
+    {
+     "item": "ab",
+     "distance": 2
+    },
+    {
+     "item": "acb",
+     "distance": 2
+    },
+    {
+     "item": "acd",
+     "distance": 2
+    },
+    {
+     "item": "ad",
+     "distance": 2
+    },
+    {
+     "item": "ada",
+     "distance": 2
+    },
+    {
+     "item": "adbc",
+     "distance": 2
+    },
+    {
+     "item": "b",
+     "distance": 2
+    },
+    {
+     "item": "ba",
+     "distance": 2
+    },
+    {
+     "item": "bcc",
+     "distance": 2
+    },
+    {
+     "item": "bd",
+     "distance": 2
+    },
+    {
+     "item": "bda",
+     "distance": 2
+    },
+    {
+     "item": "aaac",
+     "distance": 3
+    },
+    {
+     "item": "aab",
+     "distance": 3
+    },
+    {
+     "item": "aacb",
+     "distance": 3
+    },
+    {
+     "item": "aacc",
+     "distance": 3
+    },
+    {
+     "item": "aadcd",
+     "distance": 3
+    },
+    {
+     "item": "abcb",
+     "distance": 3
+    },
+    {
+     "item": "abd",
+     "distance": 3
+    },
+    {
+     "item": "acda",
+     "distance": 3
+    },
+    {
+     "item": "acdbc",
+     "distance": 3
+    },
+    {
+     "item": "bab",
+     "distance": 3
+    },
+    {
+     "item": "badd",
+     "distance": 3
+    },
+    {
+     "item": "bbac",
+     "distance": 3
+    },
+    {
+     "item": "bbb",
+     "distance": 3
+    },
+    {
+     "item": "bbd",
+     "distance": 3
+    },
+    {
+     "item": "bbdcd",
+     "distance": 3
+    },
+    {
+     "item": "bcab",
+     "distance": 3
+    },
+    {
+     "item": "bcbd",
+     "distance": 3
+    },
+    {
+     "item": "bdab",
+     "distance": 3
+    },
+    {
+     "item": "bdabc",
+     "distance": 3
+    }
+   ]
+  },
+  {
+   "id": 32,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "aac",
+   "radius": 0,
+   "hits": [
+    {
+     "item": "aac",
+     "distance": 0
+    }
+   ]
+  },
+  {
+   "id": 33,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "aac",
+   "radius": 1,
+   "hits": [
+    {
+     "item": "aac",
+     "distance": 0
+    },
+    {
+     "item": "aaac",
+     "distance": 1
+    },
+    {
+     "item": "aab",
+     "distance": 1
+    },
+    {
+     "item": "aacb",
+     "distance": 1
+    },
+    {
+     "item": "aacc",
+     "distance": 1
+    },
+    {
+     "item": "ac",
+     "distance": 1
+    }
+   ]
+  },
+  {
+   "id": 34,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "aac",
+   "radius": 2,
+   "hits": [
+    {
+     "item": "aac",
+     "distance": 0
+    },
+    {
+     "item": "aaac",
+     "distance": 1
+    },
+    {
+     "item": "aab",
+     "distance": 1
+    },
+    {
+     "item": "aacb",
+     "distance": 1
+    },
+    {
+     "item": "aacc",
+     "distance": 1
+    },
+    {
+     "item": "ac",
+     "distance": 1
+    },
+    {
+     "item": "a",
+     "distance": 2
+    },
+    {
+     "item": "aabcd",
+     "distance": 2
+    },
+    {
+     "item": "aadcd",
+     "distance": 2
+    },
+    {
+     "item": "ab",
+     "distance": 2
+    },
+    {
+     "item": "abad",
+     "distance": 2
+    },
+    {
+     "item": "abcb",
+     "distance": 2
+    },
+    {
+     "item": "abd",
+     "distance": 2
+    },
+    {
+     "item": "acb",
+     "distance": 2
+    },
+    {
+     "item": "acd",
+     "distance": 2
+    },
+    {
+     "item": "ad",
+     "distance": 2
+    },
+    {
+     "item": "ada",
+     "distance": 2
+    },
+    {
+     "item": "adbc",
+     "distance": 2
+    },
+    {
+     "item": "ba",
+     "distance": 2
+    },
+    {
+     "item": "baaa",
+     "distance": 2
+    },
+    {
+     "item": "baab",
+     "distance": 2
+    },
+    {
+     "item": "bab",
+     "distance": 2
+    },
+    {
+     "item": "bbac",
+     "distance": 2
+    },
+    {
+     "item": "bc",
+     "distance": 2
+    },
+    {
+     "item": "bcc",
+     "distance": 2
+    }
+   ]
+  },
+  {
+   "id": 35,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "aac",
+   "radius": 3,
+   "hits": [
+    {
+     "item": "aac",
+     "distance": 0
+    },
+    {
+     "item": "aaac",
+     "distance": 1
+    },
+    {
+     "item": "aab",
+     "distance": 1
+    },
+    {
+     "item": "aacb",
+     "distance": 1
+    },
+    {
+     "item": "aacc",
+     "distance": 1
+    },
+    {
+     "item": "ac",
+     "distance": 1
+    },
+    {
+     "item": "a",
+     "distance": 2
+    },
+    {
+     "item": "aabcd",
+     "distance": 2
+    },
+    {
+     "item": "aadcd",
+     "distance": 2
+    },
+    {
+     "item": "ab",
+     "distance": 2
+    },
+    {
+     "item": "abad",
+     "distance": 2
+    },
+    {
+     "item": "abcb",
+     "distance": 2
+    },
+    {
+     "item": "abd",
+     "distance": 2
+    },
+    {
+     "item": "acb",
+     "distance": 2
+    },
+    {
+     "item": "acd",
+     "distance": 2
+    },
+    {
+     "item": "ad",
+     "distance": 2
+    },
+    {
+     "item": "ada",
+     "distance": 2
+    },
+    {
+     "item": "adbc",
+     "distance": 2
+    },
+    {
+     "item": "ba",
+     "distance": 2
+    },
+    {
+     "item": "baaa",
+     "distance": 2
+    },
+    {
+     "item": "baab",
+     "distance": 2
+    },
+    {
+     "item": "bab",
+     "distance": 2
+    },
+    {
+     "item": "bbac",
+     "distance": 2
+    },
+    {
+     "item": "bc",
+     "distance": 2
+    },
+    {
+     "item": "bcc",
+     "distance": 2
+    },
+    {
+     "item": "aabcbb",
+     "distance": 3
+    },
+    {
+     "item": "abaad",
+     "distance": 3
+    },
+    {
+     "item": "abba",
+     "distance": 3
+    },
+    {
+     "item": "abbd",
+     "distance": 3
+    },
+    {
+     "item": "acaabc",
+     "distance": 3
+    },
+    {
+     "item": "acda",
+     "distance": 3
+    },
+    {
+     "item": "acdbc",
+     "distance": 3
+    },
+    {
+     "item": "adadbc",
+     "distance": 3
+    },
+    {
+     "item": "b",
+     "distance": 3
+    },
+    {
+     "item": "babad",
+     "distance": 3
+    },
+    {
+     "item": "badd",
+     "distance": 3
+    },
+    {
+     "item": "bbb",
+     "distance": 3
+    },
+    {
+     "item": "bbbac",
+     "distance": 3
+    },
+    {
+     "item": "bbd",
+     "distance": 3
+    },
+    {
+     "item": "bcab",
+     "distance": 3
+    },
+    {
+     "item": "bd",
+     "distance": 3
+    },
+    {
+     "item": "bda",
+     "distance": 3
+    },
+    {
+     "item": "bdab",
+     "distance": 3
+    },
+    {
+     "item": "bdabc",
+     "distance": 3
+    }
+   ]
+  },
+  {
+   "id": 36,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "dcc",
+   "radius": 0,
+   "hits": []
+  },
+  {
+   "id": 37,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "dcc",
+   "radius": 1,
+   "hits": [
+    {
+     "item": "bcc",
+     "distance": 1
+    }
+   ]
+  },
+  {
+   "id": 38,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "dcc",
+   "radius": 2,
+   "hits": [
+    {
+     "item": "bcc",
+     "distance": 1
+    },
+    {
+     "item": "aac",
+     "distance": 2
+    },
+    {
+     "item": "aacc",
+     "distance": 2
+    },
+    {
+     "item": "ac",
+     "distance": 2
+    },
+    {
+     "item": "acb",
+     "distance": 2
+    },
+    {
+     "item": "acd",
+     "distance": 2
+    },
+    {
+     "item": "adbc",
+     "distance": 2
+    },
+    {
+     "item": "bc",
+     "distance": 2
+    }
+   ]
+  },
+  {
+   "id": 39,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "dcc",
+   "radius": 3,
+   "hits": [
+    {
+     "item": "bcc",
+     "distance": 1
+    },
+    {
+     "item": "aac",
+     "distance": 2
+    },
+    {
+     "item": "aacc",
+     "distance": 2
+    },
+    {
+     "item": "ac",
+     "distance": 2
+    },
+    {
+     "item": "acb",
+     "distance": 2
+    },
+    {
+     "item": "acd",
+     "distance": 2
+    },
+    {
+     "item": "adbc",
+     "distance": 2
+    },
+    {
+     "item": "bc",
+     "distance": 2
+    },
+    {
+     "item": "a",
+     "distance": 3
+    },
+    {
+     "item": "aaac",
+     "distance": 3
+    },
+    {
+     "item": "aab",
+     "distance": 3
+    },
+    {
+     "item": "aacb",
+     "distance": 3
+    },
+    {
+     "item": "aadcd",
+     "distance": 3
+    },
+    {
+     "item": "ab",
+     "distance": 3
+    },
+    {
+     "item": "abcb",
+     "distance": 3
+    },
+    {
+     "item": "abd",
+     "distance": 3
+    },
+    {
+     "item": "acda",
+     "distance": 3
+    },
+    {
+     "item": "acdbc",
+     "distance": 3
+    },
+    {
+     "item": "ad",
+     "distance": 3
+    },
+    {
+     "item": "ada",
+     "distance": 3
+    },
+    {
+     "item": "adbcdc",
+     "distance": 3
+    },
+    {
+     "item": "b",
+     "distance": 3
+    },
+    {
+     "item": "ba",
+     "distance": 3
+    },
+    {
+     "item": "bab",
+     "distance": 3
+    },
+    {
+     "item": "bbac",
+     "distance": 3
+    },
+    {
+     "item": "bbb",
+     "distance": 3
+    },
+    {
+     "item": "bbd",
+     "distance": 3
+    },
+    {
+     "item": "bbdcd",
+     "distance": 3
+    },
+    {
+     "item": "bcab",
+     "distance": 3
+    },
+    {
+     "item": "bcbd",
+     "distance": 3
+    },
+    {
+     "item": "bccbb",
+     "distance": 3
+    },
+    {
+     "item": "bcccc",
+     "distance": 3
+    },
+    {
+     "item": "bd",
+     "distance": 3
+    },
+    {
+     "item": "bda",
+     "distance": 3
+    },
+    {
+     "item": "bdab",
+     "distance": 3
+    },
+    {
+     "item": "bdabc",
+     "distance": 3
+    }
+   ]
+  },
+  {
+   "id": 40,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "ddb",
+   "radius": 0,
+   "hits": []
+  },
+  {
+   "id": 41,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "ddb",
+   "radius": 1,
+   "hits": []
+  },
+  {
+   "id": 42,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "ddb",
+   "radius": 2,
+   "hits": [
+    {
+     "item": "aab",
+     "distance": 2
+    },
+    {
+     "item": "ab",
+     "distance": 2
+    },
+    {
+     "item": "acb",
+     "distance": 2
+    },
+    {
+     "item": "ad",
+     "distance": 2
+    },
+    {
+     "item": "ada",
+     "distance": 2
+    },
+    {
+     "item": "adbc",
+     "distance": 2
+    },
+    {
+     "item": "addba",
+     "distance": 2
+    },
+    {
+     "item": "b",
+     "distance": 2
+    },
+    {
+     "item": "bab",
+     "distance": 2
+    },
+    {
+     "item": "bbb",
+     "distance": 2
+    },
+    {
+     "item": "bd",
+     "distance": 2
+    },
+    {
+     "item": "bda",
+     "distance": 2
+    },
+    {
+     "item": "bdab",
+     "distance": 2
+    }
+   ]
+  },
+  {
+   "id": 43,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "ddb",
+   "radius": 3,
+   "hits": [
+    {
+     "item": "aab",
+     "distance": 2
+    },
+    {
+     "item": "ab",
+     "distance": 2
+    },
+    {
+     "item": "acb",
+     "distance": 2
+    },
+    {
+     "item": "ad",
+     "distance": 2
+    },
+    {
+     "item": "ada",
+     "distance": 2
+    },
+    {
+     "item": "adbc",
+     "distance": 2
+    },
+    {
+     "item": "addba",
+     "distance": 2
+    },
+    {
+     "item": "b",
+     "distance": 2
+    },
+    {
+     "item": "bab",
+     "distance": 2
+    },
+    {
+     "item": "bbb",
+     "distance": 2
+    },
+    {
+     "item": "bd",
+     "distance": 2
+    },
+    {
+     "item": "bda",
+     "distance": 2
+    },
+    {
+     "item": "bdab",
+     "distance": 2
+    },
+    {
+     "item": "a",
+     "distance": 3
+    },
+    {
+     "item": "aac",
+     "distance": 3
+    },
+    {
+     "item": "aacb",
+     "distance": 3
+    },
+    {
+     "item": "abba",
+     "distance": 3
+    },
+    {
+     "item": "abbd",
+     "distance": 3
+    },
+    {
+     "item": "abcb",
+     "distance": 3
+    },
+    {
+     "item": "abd",
+     "distance": 3
+    },
+    {
+     "item": "abdbd",
+     "distance": 3
+    },
+    {
+     "item": "ac",
+     "distance": 3
+    },
+    {
+     "item": "acd",
+     "distance": 3
+    },
+    {
+     "item": "acda",
+     "distance": 3
+    },
+    {
+     "item": "acdbc",
+     "distance": 3
+    },
+    {
+     "item": "adadbc",
+     "distance": 3
+    },
+    {
+     "item": "adddab",
+     "distance": 3
+    },
+    {
+     "item": "ba",
+     "distance": 3
+    },
+    {
+     "item": "baab",
+     "distance": 3
+    },
+    {
+     "item": "badd",
+     "distance": 3
+    },
+    {
+     "item": "bbd",
+     "distance": 3
+    },
+    {
+     "item": "bc",
+     "distance": 3
+    },
+    {
+     "item": "bcab",
+     "distance": 3
+    },
+    {
+     "item": "bcbd",
+     "distance": 3
+    },
+    {
+     "item": "bcbdb",
+     "distance": 3
+    },
+    {
+     "item": "bcc",
+     "distance": 3
+    },
+    {
+     "item": "bcddd",
+     "distance": 3
+    },
+    {
+     "item": "bdabc",
+     "distance": 3
+    }
+   ]
+  },
+  {
+   "id": 44,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "cbddd",
+   "radius": 0,
+   "hits": []
+  },
+  {
+   "id": 45,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "cbddd",
+   "radius": 1,
+   "hits": []
+  },
+  {
+   "id": 46,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "cbddd",
+   "radius": 2,
+   "hits": [
+    {
+     "item": "abdbd",
+     "distance": 2
+    },
+    {
+     "item": "acbdd",
+     "distance": 2
+    },
+    {
+     "item": "badd",
+     "distance": 2
+    },
+    {
+     "item": "bbdcd",
+     "distance": 2
+    },
+    {
+     "item": "bcddd",
+     "distance": 2
+    }
+   ]
+  },
+  {
+   "id": 47,
+   "corpus": [
+    "a",
+    "aaabad",
+    "aaac",
+    "aab",
+    "aabcbb",
+    "aabcd",
+    "aac",
+    "aacb",
+    "aacc",
+    "aadcd",
+    "ab",
+    "abaad",
+    "abad",
+    "abba",
+    "abbd",
+    "abcb",
+    "abd",
+    "abdbd",
+    "ac",
+    "acaabc",
+    "acadbb",
+    "acb",
+    "acbdd",
+    "acd",
+    "acda",
+    "acdbc",
+    "ad",
+    "ada",
+    "adadbc",
+    "adbc",
+    "adbcdc",
+    "addba",
+    "adddab",
+    "b",
+    "ba",
+    "baaa",
+    "baab",
+    "bab",
+    "babad",
+    "badd",
+    "bbac",
+    "bbacdd",
+    "bbb",
+    "bbbac",
+    "bbcba",
+    "bbd",
+    "bbdcd",
+    "bc",
+    "bcab",
+    "bcbd",
+    "bcbdb",
+    "bcc",
+    "bccacd",
+    "bccbb",
+    "bcccc",
+    "bcddd",
+    "bd",
+    "bda",
+    "bdab",
+    "bdabc"
+   ],
+   "query": "cbddd",
+   "radius": 3,
+   "hits": [
+    {
+     "item": "abdbd",
+     "distance": 2
+    },
+    {
+     "item": "acbdd",
+     "distance": 2
+    },
+    {
+     "item": "badd",
+     "distance": 2
+    },
+    {
+     "item": "bbdcd",
+     "distance": 2
+    },
+    {
+     "item": "bcddd",
+     "distance": 2
+    },
+    {
+     "item": "aadcd",
+     "distance": 3
+    },
+    {
+     "item": "abaad",
+     "distance": 3
+    },
+    {
+     "item": "abad",
+     "distance": 3
+    },
+    {
+     "item": "abbd",
+     "distance": 3
+    },
+    {
+     "item": "abd",
+     "distance": 3
+    },
+    {
+     "item": "bbacdd",
+     "distance": 3
+    },
+    {
+     "item": "bbd",
+     "distance": 3
+    },
+    {
+     "item": "bcbd",
+     "distance": 3
+    },
+    {
+     "item": "bcbdb",
+     "distance": 3
+    },
+    {
+     "item": "bd",
+     "distance": 3
+    },
+    {
+     "item": "bda",
+     "distance": 3
+    },
+    {
+     "item": "bdab",
+     "distance": 3
+    }
+   ]
+  },
+  {
+   "id": 48,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "cb",
+   "radius": 0,
+   "hits": []
+  },
+  {
+   "id": 49,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "cb",
+   "radius": 1,
+   "hits": [
+    {
+     "item": "ab",
+     "distance": 1
+    },
+    {
+     "item": "b",
+     "distance": 1
+    },
+    {
+     "item": "bb",
+     "distance": 1
+    },
+    {
+     "item": "bcb",
+     "distance": 1
+    }
+   ]
+  },
+  {
+   "id": 50,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "cb",
+   "radius": 2,
+   "hits": [
+    {
+     "item": "ab",
+     "distance": 1
+    },
+    {
+     "item": "b",
+     "distance": 1
+    },
+    {
+     "item": "bb",
+     "distance": 1
+    },
+    {
+     "item": "bcb",
+     "distance": 1
+    },
+    {
+     "item": "a",
+     "distance": 2
+    },
+    {
+     "item": "aa",
+     "distance": 2
+    },
+    {
+     "item": "aba",
+     "distance": 2
+    },
+    {
+     "item": "abc",
+     "distance": 2
+    },
+    {
+     "item": "abcb",
+     "distance": 2
+    },
+    {
+     "item": "ac",
+     "distance": 2
+    },
+    {
+     "item": "acba",
+     "distance": 2
+    },
+    {
+     "item": "acbd",
+     "distance": 2
+    },
+    {
+     "item": "acc",
+     "distance": 2
+    },
+    {
+     "item": "acd",
+     "distance": 2
+    },
+    {
+     "item": "acdb",
+     "distance": 2
+    },
+    {
+     "item": "ad",
+     "distance": 2
+    },
+    {
+     "item": "adb",
+     "distance": 2
+    },
+    {
+     "item": "bab",
+     "distance": 2
+    },
+    {
+     "item": "bacb",
+     "distance": 2
+    },
+    {
+     "item": "bba",
+     "distance": 2
+    },
+    {
+     "item": "bbb",
+     "distance": 2
+    },
+    {
+     "item": "bbc",
+     "distance": 2
+    },
+    {
+     "item": "bbd",
+     "distance": 2
+    },
+    {
+     "item": "bc",
+     "distance": 2
+    },
+    {
+     "item": "bcba",
+     "distance": 2
+    },
+    {
+     "item": "bcbd",
+     "distance": 2
+    },
+    {
+     "item": "bcd",
+     "distance": 2
+    },
+    {
+     "item": "bcdb",
+     "distance": 2
+    },
+    {
+     "item": "bd",
+     "distance": 2
+    },
+    {
+     "item": "bdb",
+     "distance": 2
+    }
+   ]
+  },
+  {
+   "id": 51,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "cb",
+   "radius": 3,
+   "hits": [
+    {
+     "item": "ab",
+     "distance": 1
+    },
+    {
+     "item": "b",
+     "distance": 1
+    },
+    {
+     "item": "bb",
+     "distance": 1
+    },
+    {
+     "item": "bcb",
+     "distance": 1
+    },
+    {
+     "item": "a",
+     "distance": 2
+    },
+    {
+     "item": "aa",
+     "distance": 2
+    },
+    {
+     "item": "aba",
+     "distance": 2
+    },
+    {
+     "item": "abc",
+     "distance": 2
+    },
+    {
+     "item": "abcb",
+     "distance": 2
+    },
+    {
+     "item": "ac",
+     "distance": 2
+    },
+    {
+     "item": "acba",
+     "distance": 2
+    },
+    {
+     "item": "acbd",
+     "distance": 2
+    },
+    {
+     "item": "acc",
+     "distance": 2
+    },
+    {
+     "item": "acd",
+     "distance": 2
+    },
+    {
+     "item": "acdb",
+     "distance": 2
+    },
+    {
+     "item": "ad",
+     "distance": 2
+    },
+    {
+     "item": "adb",
+     "distance": 2
+    },
+    {
+     "item": "bab",
+     "distance": 2
+    },
+    {
+     "item": "bacb",
+     "distance": 2
+    },
+    {
+     "item": "bba",
+     "distance": 2
+    },
+    {
+     "item": "bbb",
+     "distance": 2
+    },
+    {
+     "item": "bbc",
+     "distance": 2
+    },
+    {
+     "item": "bbd",
+     "distance": 2
+    },
+    {
+     "item": "bc",
+     "distance": 2
+    },
+    {
+     "item": "bcba",
+     "distance": 2
+    },
+    {
+     "item": "bcbd",
+     "distance": 2
+    },
+    {
+     "item": "bcd",
+     "distance": 2
+    },
+    {
+     "item": "bcdb",
+     "distance": 2
+    },
+    {
+     "item": "bd",
+     "distance": 2
+    },
+    {
+     "item": "bdb",
+     "distance": 2
+    },
+    {
+     "item": "aaa",
+     "distance": 3
+    },
+    {
+     "item": "aabb",
+     "distance": 3
+    },
+    {
+     "item": "aabc",
+     "distance": 3
+    },
+    {
+     "item": "aabd",
+     "distance": 3
+    },
+    {
+     "item": "aac",
+     "distance": 3
+    },
+    {
+     "item": "aad",
+     "distance": 3
+    },
+    {
+     "item": "aadcb",
+     "distance": 3
+    },
+    {
+     "item": "abab",
+     "distance": 3
+    },
+    {
+     "item": "abbc",
+     "distance": 3
+    },
+    {
+     "item": "abbcb",
+     "distance": 3
+    },
+    {
+     "item": "accd",
+     "distance": 3
+    },
+    {
+     "item": "acda",
+     "distance": 3
+    },
+    {
+     "item": "acdab",
+     "distance": 3
+    },
+    {
+     "item": "acdc",
+     "distance": 3
+    },
+    {
+     "item": "ada",
+     "distance": 3
+    },
+    {
+     "item": "adcc",
+     "distance": 3
+    },
+    {
+     "item": "babd",
+     "distance": 3
+    },
+    {
+     "item": "bacc",
+     "distance": 3
+    },
+    {
+     "item": "bacd",
+     "distance": 3
+    },
+    {
+     "item": "bad",
+     "distance": 3
+    },
+    {
+     "item": "bbab",
+     "distance": 3
+    },
+    {
+     "item": "bbbb",
+     "distance": 3
+    },
+    {
+     "item": "bcbdc",
+     "distance": 3
+    },
+    {
+     "item": "bccbc",
+     "distance": 3
+    },
+    {
+     "item": "bcccb",
+     "distance": 3
+    },
+    {
+     "item": "bccd",
+     "distance": 3
+    },
+    {
+     "item": "bda",
+     "distance": 3
+    },
+    {
+     "item": "bdba",
+     "distance": 3
+    },
+    {
+     "item": "bdbc",
+     "distance": 3
+    }
+   ]
+  },
+  {
+   "id": 52,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "cbddbcdb",
+   "radius": 0,
+   "hits": []
+  },
+  {
+   "id": 53,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "cbddbcdb",
+   "radius": 1,
+   "hits": []
+  },
+  {
+   "id": 54,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "cbddbcdb",
+   "radius": 2,
+   "hits": []
+  },
+  {
+   "id": 55,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "cbddbcdb",
+   "radius": 3,
+   "hits": [
+    {
+     "item": "acbdcbdb",
+     "distance": 3
+    },
+    {
+     "item": "badbcab",
+     "distance": 3
+    }
+   ]
+  },
+  {
+   "id": 56,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "bccdcad",
+   "radius": 0,
+   "hits": []
+  },
+  {
+   "id": 57,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "bccdcad",
+   "radius": 1,
+   "hits": []
+  },
+  {
+   "id": 58,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "bccdcad",
+   "radius": 2,
+   "hits": [
+    {
+     "item": "bccca",
+     "distance": 2
+    },
+    {
+     "item": "bcdaad",
+     "distance": 2
+    },
+    {
+     "item": "bcdad",
+     "distance": 2
+    }
+   ]
+  },
+  {
+   "id": 59,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "bccdcad",
+   "radius": 3,
+   "hits": [
+    {
+     "item": "bccca",
+     "distance": 2
+    },
+    {
+     "item": "bcdaad",
+     "distance": 2
+    },
+    {
+     "item": "bcdad",
+     "distance": 2
+    },
+    {
+     "item": "abccdab",
+     "distance": 3
+    },
+    {
+     "item": "accdcdbd",
+     "distance": 3
+    },
+    {
+     "item": "acdad",
+     "distance": 3
+    },
+    {
+     "item": "bacdda",
+     "distance": 3
+    },
+    {
+     "item": "bbcaad",
+     "distance": 3
+    },
+    {
+     "item": "bcacbad",
+     "distance": 3
+    },
+    {
+     "item": "bcbbbad",
+     "distance": 3
+    },
+    {
+     "item": "bcbbca",
+     "distance": 3
+    },
+    {
+     "item": "bcbdc",
+     "distance": 3
+    },
+    {
+     "item": "bcbdcc",
+     "distance": 3
+    },
+    {
+     "item": "bccbc",
+     "distance": 3
+    },
+    {
+     "item": "bcccb",
+     "distance": 3
+    },
+    {
+     "item": "bccd",
+     "distance": 3
+    },
+    {
+     "item": "bcdda",
+     "distance": 3
+    },
+    {
+     "item": "bcddddd",
+     "distance": 3
+    },
+    {
+     "item": "bdacad",
+     "distance": 3
+    }
+   ]
+  },
+  {
+   "id": 60,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "bcacbb",
+   "radius": 0,
+   "hits": []
+  },
+  {
+   "id": 61,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "bcacbb",
+   "radius": 1,
+   "hits": []
+  },
+  {
+   "id": 62,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "bcacbb",
+   "radius": 2,
+   "hits": [
+    {
+     "item": "bacb",
+     "distance": 2
+    },
+    {
+     "item": "bcacbad",
+     "distance": 2
+    },
+    {
+     "item": "bccbc",
+     "distance": 2
+    },
+    {
+     "item": "bcccb",
+     "distance": 2
+    }
+   ]
+  },
+  {
+   "id": 63,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "bcacbb",
+   "radius": 3,
+   "hits": [
+    {
+     "item": "bacb",
+     "distance": 2
+    },
+    {
+     "item": "bcacbad",
+     "distance": 2
+    },
+    {
+     "item": "bccbc",
+     "distance": 2
+    },
+    {
+     "item": "bcccb",
+     "distance": 2
+    },
+    {
+     "item": "aabb",
+     "distance": 3
+    },
+    {
+     "item": "abbcacbd",
+     "distance": 3
+    },
+    {
+     "item": "acaccbc",
+     "distance": 3
+    },
+    {
+     "item": "acba",
+     "distance": 3
+    },
+    {
+     "item": "acbacb",
+     "distance": 3
+    },
+    {
+     "item": "acbd",
+     "distance": 3
+    },
+    {
+     "item": "acdb",
+     "distance": 3
+    },
+    {
+     "item": "bab",
+     "distance": 3
+    },
+    {
+     "item": "babd",
+     "distance": 3
+    },
+    {
+     "item": "bacc",
+     "distance": 3
+    },
+    {
+     "item": "bacd",
+     "distance": 3
+    },
+    {
+     "item": "bbab",
+     "distance": 3
+    },
+    {
+     "item": "bbb",
+     "distance": 3
+    },
+    {
+     "item": "bbbb",
+     "distance": 3
+    },
+    {
+     "item": "bbcabab",
+     "distance": 3
+    },
+    {
+     "item": "bbcabba",
+     "distance": 3
+    },
+    {
+     "item": "bcb",
+     "distance": 3
+    },
+    {
+     "item": "bcba",
+     "distance": 3
+    },
+    {
+     "item": "bcbd",
+     "distance": 3
+    },
+    {
+     "item": "bccca",
+     "distance": 3
+    },
+    {
+     "item": "bccd",
+     "distance": 3
+    },
+    {
+     "item": "bcdb",
+     "distance": 3
+    },
+    {
+     "item": "bdacad",
+     "distance": 3
+    },
+    {
+     "item": "bdacca",
+     "distance": 3
+    }
+   ]
+  },
+  {
+   "id": 64,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "cb",
+   "radius": 0,
+   "hits": []
+  },
+  {
+   "id": 65,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "cb",
+   "radius": 1,
+   "hits": [
+    {
+     "item": "ab",
+     "distance": 1
+    },
+    {
+     "item": "b",
+     "distance": 1
+    },
+    {
+     "item": "bb",
+     "distance": 1
+    },
+    {
+     "item": "bcb",
+     "distance": 1
+    }
+   ]
+  },
+  {
+   "id": 66,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "cb",
+   "radius": 2,
+   "hits": [
+    {
+     "item": "ab",
+     "distance": 1
+    },
+    {
+     "item": "b",
+     "distance": 1
+    },
+    {
+     "item": "bb",
+     "distance": 1
+    },
+    {
+     "item": "bcb",
+     "distance": 1
+    },
+    {
+     "item": "a",
+     "distance": 2
+    },
+    {
+     "item": "aa",
+     "distance": 2
+    },
+    {
+     "item": "aba",
+     "distance": 2
+    },
+    {
+     "item": "abc",
+     "distance": 2
+    },
+    {
+     "item": "abcb",
+     "distance": 2
+    },
+    {
+     "item": "ac",
+     "distance": 2
+    },
+    {
+     "item": "acba",
+     "distance": 2
+    },
+    {
+     "item": "acbd",
+     "distance": 2
+    },
+    {
+     "item": "acc",
+     "distance": 2
+    },
+    {
+     "item": "acd",
+     "distance": 2
+    },
+    {
+     "item": "acdb",
+     "distance": 2
+    },
+    {
+     "item": "ad",
+     "distance": 2
+    },
+    {
+     "item": "adb",
+     "distance": 2
+    },
+    {
+     "item": "bab",
+     "distance": 2
+    },
+    {
+     "item": "bacb",
+     "distance": 2
+    },
+    {
+     "item": "bba",
+     "distance": 2
+    },
+    {
+     "item": "bbb",
+     "distance": 2
+    },
+    {
+     "item": "bbc",
+     "distance": 2
+    },
+    {
+     "item": "bbd",
+     "distance": 2
+    },
+    {
+     "item": "bc",
+     "distance": 2
+    },
+    {
+     "item": "bcba",
+     "distance": 2
+    },
+    {
+     "item": "bcbd",
+     "distance": 2
+    },
+    {
+     "item": "bcd",
+     "distance": 2
+    },
+    {
+     "item": "bcdb",
+     "distance": 2
+    },
+    {
+     "item": "bd",
+     "distance": 2
+    },
+    {
+     "item": "bdb",
+     "distance": 2
+    }
+   ]
+  },
+  {
+   "id": 67,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "cb",
+   "radius": 3,
+   "hits": [
+    {
+     "item": "ab",
+     "distance": 1
+    },
+    {
+     "item": "b",
+     "distance": 1
+    },
+    {
+     "item": "bb",
+     "distance": 1
+    },
+    {
+     "item": "bcb",
+     "distance": 1
+    },
+    {
+     "item": "a",
+     "distance": 2
+    },
+    {
+     "item": "aa",
+     "distance": 2
+    },
+    {
+     "item": "aba",
+     "distance": 2
+    },
+    {
+     "item": "abc",
+     "distance": 2
+    },
+    {
+     "item": "abcb",
+     "distance": 2
+    },
+    {
+     "item": "ac",
+     "distance": 2
+    },
+    {
+     "item": "acba",
+     "distance": 2
+    },
+    {
+     "item": "acbd",
+     "distance": 2
+    },
+    {
+     "item": "acc",
+     "distance": 2
+    },
+    {
+     "item": "acd",
+     "distance": 2
+    },
+    {
+     "item": "acdb",
+     "distance": 2
+    },
+    {
+     "item": "ad",
+     "distance": 2
+    },
+    {
+     "item": "adb",
+     "distance": 2
+    },
+    {
+     "item": "bab",
+     "distance": 2
+    },
+    {
+     "item": "bacb",
+     "distance": 2
+    },
+    {
+     "item": "bba",
+     "distance": 2
+    },
+    {
+     "item": "bbb",
+     "distance": 2
+    },
+    {
+     "item": "bbc",
+     "distance": 2
+    },
+    {
+     "item": "bbd",
+     "distance": 2
+    },
+    {
+     "item": "bc",
+     "distance": 2
+    },
+    {
+     "item": "bcba",
+     "distance": 2
+    },
+    {
+     "item": "bcbd",
+     "distance": 2
+    },
+    {
+     "item": "bcd",
+     "distance": 2
+    },
+    {
+     "item": "bcdb",
+     "distance": 2
+    },
+    {
+     "item": "bd",
+     "distance": 2
+    },
+    {
+     "item": "bdb",
+     "distance": 2
+    },
+    {
+     "item": "aaa",
+     "distance": 3
+    },
+    {
+     "item": "aabb",
+     "distance": 3
+    },
+    {
+     "item": "aabc",
+     "distance": 3
+    },
+    {
+     "item": "aabd",
+     "distance": 3
+    },
+    {
+     "item": "aac",
+     "distance": 3
+    },
+    {
+     "item": "aad",
+     "distance": 3
+    },
+    {
+     "item": "aadcb",
+     "distance": 3
+    },
+    {
+     "item": "abab",
+     "distance": 3
+    },
+    {
+     "item": "abbc",
+     "distance": 3
+    },
+    {
+     "item": "abbcb",
+     "distance": 3
+    },
+    {
+     "item": "accd",
+     "distance": 3
+    },
+    {
+     "item": "acda",
+     "distance": 3
+    },
+    {
+     "item": "acdab",
+     "distance": 3
+    },
+    {
+     "item": "acdc",
+     "distance": 3
+    },
+    {
+     "item": "ada",
+     "distance": 3
+    },
+    {
+     "item": "adcc",
+     "distance": 3
+    },
+    {
+     "item": "babd",
+     "distance": 3
+    },
+    {
+     "item": "bacc",
+     "distance": 3
+    },
+    {
+     "item": "bacd",
+     "distance": 3
+    },
+    {
+     "item": "bad",
+     "distance": 3
+    },
+    {
+     "item": "bbab",
+     "distance": 3
+    },
+    {
+     "item": "bbbb",
+     "distance": 3
+    },
+    {
+     "item": "bcbdc",
+     "distance": 3
+    },
+    {
+     "item": "bccbc",
+     "distance": 3
+    },
+    {
+     "item": "bcccb",
+     "distance": 3
+    },
+    {
+     "item": "bccd",
+     "distance": 3
+    },
+    {
+     "item": "bda",
+     "distance": 3
+    },
+    {
+     "item": "bdba",
+     "distance": 3
+    },
+    {
+     "item": "bdbc",
+     "distance": 3
+    }
+   ]
+  },
+  {
+   "id": 68,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "ac",
+   "radius": 0,
+   "hits": [
+    {
+     "item": "ac",
+     "distance": 0
+    }
+   ]
+  },
+  {
+   "id": 69,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "ac",
+   "radius": 1,
+   "hits": [
+    {
+     "item": "ac",
+     "distance": 0
+    },
+    {
+     "item": "a",
+     "distance": 1
+    },
+    {
+     "item": "aa",
+     "distance": 1
+    },
+    {
+     "item": "aac",
+     "distance": 1
+    },
+    {
+     "item": "ab",
+     "distance": 1
+    },
+    {
+     "item": "abc",
+     "distance": 1
+    },
+    {
+     "item": "acc",
+     "distance": 1
+    },
+    {
+     "item": "acd",
+     "distance": 1
+    },
+    {
+     "item": "ad",
+     "distance": 1
+    },
+    {
+     "item": "bc",
+     "distance": 1
+    }
+   ]
+  },
+  {
+   "id": 70,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "ac",
+   "radius": 2,
+   "hits": [
+    {
+     "item": "ac",
+     "distance": 0
+    },
+    {
+     "item": "a",
+     "distance": 1
+    },
+    {
+     "item": "aa",
+     "distance": 1
+    },
+    {
+     "item": "aac",
+     "distance": 1
+    },
+    {
+     "item": "ab",
+     "distance": 1
+    },
+    {
+     "item": "abc",
+     "distance": 1
+    },
+    {
+     "item": "acc",
+     "distance": 1
+    },
+    {
+     "item": "acd",
+     "distance": 1
+    },
+    {
+     "item": "ad",
+     "distance": 1
+    },
+    {
+     "item": "bc",
+     "distance": 1
+    },
+    {
+     "item": "aaa",
+     "distance": 2
+    },
+    {
+     "item": "aabc",
+     "distance": 2
+    },
+    {
+     "item": "aad",
+     "distance": 2
+    },
+    {
+     "item": "aba",
+     "distance": 2
+    },
+    {
+     "item": "abbc",
+     "distance": 2
+    },
+    {
+     "item": "abcb",
+     "distance": 2
+    },
+    {
+     "item": "acba",
+     "distance": 2
+    },
+    {
+     "item": "acbd",
+     "distance": 2
+    },
+    {
+     "item": "accd",
+     "distance": 2
+    },
+    {
+     "item": "acda",
+     "distance": 2
+    },
+    {
+     "item": "acdb",
+     "distance": 2
+    },
+    {
+     "item": "acdc",
+     "distance": 2
+    },
+    {
+     "item": "ada",
+     "distance": 2
+    },
+    {
+     "item": "adb",
+     "distance": 2
+    },
+    {
+     "item": "adcc",
+     "distance": 2
+    },
+    {
+     "item": "b",
+     "distance": 2
+    },
+    {
+     "item": "bab",
+     "distance": 2
+    },
+    {
+     "item": "bacb",
+     "distance": 2
+    },
+    {
+     "item": "bacc",
+     "distance": 2
+    },
+    {
+     "item": "bacd",
+     "distance": 2
+    },
+    {
+     "item": "bad",
+     "distance": 2
+    },
+    {
+     "item": "bb",
+     "distance": 2
+    },
+    {
+     "item": "bbc",
+     "distance": 2
+    },
+    {
+     "item": "bcb",
+     "distance": 2
+    },
+    {
+     "item": "bcd",
+     "distance": 2
+    },
+    {
+     "item": "bd",
+     "distance": 2
+    }
+   ]
+  },
+  {
+   "id": 71,
+   "corpus": [
+    "a",
+    "aa",
+    "aaa",
+    "aaaa",
+    "aaacc",
+    "aaad",
+    "aaadbd",
+    "aabb",
+    "aabbadac",
+    "aabc",
+    "aabcc",
+    "aabcd",
+    "aabd",
+    "aac",
+    "aacaabdb",
+    "aacada",
+    "aacdbcb",
+    "aacdddaa",
+    "aad",
+    "aadbbabd",
+    "aadbbb",
+    "aadbbdc",
+    "aadcb",
+    "aadcd",
+    "aaddbc",
+    "aaddbca",
+    "ab",
+    "aba",
+    "abab",
+    "abadcdc",
+    "abbbdab",
+    "abbc",
+    "abbcacbd",
+    "abbcb",
+    "abbcdbc",
+    "abc",
+    "abcb",
+    "abcbcaaa",
+    "abccbda",
+    "abcccaba",
+    "abccdab",
+    "abdaada",
+    "abddc",
+    "ac",
+    "acabddcb",
+    "acacacbd",
+    "acaccbc",
+    "acacdddd",
+    "acadaa",
+    "acaddba",
+    "acaddcdd",
+    "acba",
+    "acbacb",
+    "acbccaa",
+    "acbd",
+    "acbdcbdb",
+    "acc",
+    "accd",
+    "accdcdbd",
+    "acd",
+    "acda",
+    "acdab",
+    "acdac",
+    "acdad",
+    "acdadb",
+    "acdb",
+    "acdc",
+    "acdcccbb",
+    "acddd",
+    "ad",
+    "ada",
+    "adaa",
+    "adabcb",
+    "adadcba",
+    "adb",
+    "adbac",
+    "adbbaa",
+    "adcaa",
+    "adcaac",
+    "adcac",
+    "adcbcca",
+    "adcc",
+    "addabadd",
+    "addcddcc",
+    "adddbd",
+    "b",
+    "baaa",
+    "bab",
+    "babadb",
+    "babadc",
+    "babbdc",
+    "babcc",
+    "babd",
+    "bacaabaa",
+    "bacb",
+    "bacc",
+    "bacd",
+    "bacdda",
+    "bacdddb",
+    "bad",
+    "badaa",
+    "badaca",
+    "badada",
+    "badadc",
+    "badbbada",
+    "badbcab",
+    "baddaa",
+    "bb",
+    "bba",
+    "bbab",
+    "bbaddd",
+    "bbb",
+    "bbbb",
+    "bbbca",
+    "bbc",
+    "bbcaad",
+    "bbcabab",
+    "bbcabba",
+    "bbd",
+    "bc",
+    "bcacbad",
+    "bcb",
+    "bcba",
+    "bcbadac",
+    "bcbbbad",
+    "bcbbbbba",
+    "bcbbca",
+    "bcbd",
+    "bcbdc",
+    "bcbdcc",
+    "bccaadbd",
+    "bccbc",
+    "bccca",
+    "bcccb",
+    "bccd",
+    "bcd",
+    "bcdaad",
+    "bcdad",
+    "bcdb",
+    "bcdbddd",
+    "bcdda",
+    "bcddddd",
+    "bd",
+    "bda",
+    "bdacad",
+    "bdacca",
+    "bdb",
+    "bdba",
+    "bdbab",
+    "bdbc"
+   ],
+   "query": "ac",
+   "radius": 3,
+   "hits": [
+    {
+     "item": "ac",
+     "distance": 0
+    },
+    {
+     "item": "a",
+     "distance": 1
+    },
+    {
+     "item": "aa",
+     "distance": 1
+    },
+    {
+     "item": "aac",
+     "distance": 1
+    },
+    {
+     "item": "ab",
+     "distance": 1
+    },
+    {
+     "item": "abc",
+     "distance": 1
+    },
+    {
+     "item": "acc",
+     "distance": 1
+    },
+    {
+     "item": "acd",
+     "distance": 1
+    },
+    {
+     "item": "ad",
+     "distance": 1
+    },
+    {
+     "item": "bc",
+     "distance": 1
+    },
+    {
+     "item": "aaa",
+     "distance": 2
+    },
+    {
+     "item": "aabc",
+     "distance": 2
+    },
+    {
+     "item": "aad",
+     "distance": 2
+    },
+    {
+     "item": "aba",
+     "distance": 2
+    },
+    {
+     "item": "abbc",
+     "distance": 2
+    },
+    {
+     "item": "abcb",
+     "distance": 2
+    },
+    {
+     "item": "acba",
+     "distance": 2
+    },
+    {
+     "item": "acbd",
+     "distance": 2
+    },
+    {
+     "item": "accd",
+     "distance": 2
+    },
+    {
+     "item": "acda",
+     "distance": 2
+    },
+    {
+     "item": "acdb",
+     "distance": 2
+    },
+    {
+     "item": "acdc",
+     "distance": 2
+    },
+    {
+     "item": "ada",
+     "distance": 2
+    },
+    {
+     "item": "adb",
+     "distance": 2
+    },
+    {
+     "item": "adcc",
+     "distance": 2
+    },
+    {
+     "item": "b",
+     "distance": 2
+    },
+    {
+     "item": "bab",
+     "distance": 2
+    },
+    {
+     "item": "bacb",
+     "distance": 2
+    },
+    {
+     "item": "bacc",
+     "distance": 2
+    },
+    {
+     "item": "bacd",
+     "distance": 2
+    },
+    {
+     "item": "bad",
+     "distance": 2
+    },
+    {
+     "item": "bb",
+     "distance": 2
+    },
+    {
+     "item": "bbc",
+     "distance": 2
+    },
+    {
+     "item": "bcb",
+     "distance": 2
+    },
+    {
+     "item": "bcd",
+     "distance": 2
+    },
+    {
+     "item": "bd",
+     "distance": 2
+    },
+    {
+     "item": "aaaa",
+     "distance": 3
+    },
+    {
+     "item": "aaacc",
+     "distance": 3
+    },
+    {
+     "item": "aaad",
+     "distance": 3
+    },
+    {
+     "item": "aabb",
+     "distance": 3
+    },
+    {
+     "item": "aabcc",
+     "distance": 3
+    },
+    {
+     "item": "aabcd",
+     "distance": 3
+    },
+    {
+     "item": "aabd",
+     "distance": 3
+    },
+    {
+     "item": "aadcb",
+     "distance": 3
+    },
+    {
+     "item": "aadcd",
+     "distance": 3
+    },
+    {
+     "item": "abab",
+     "distance": 3
+    },
+    {
+     "item": "abbcb",
+     "distance": 3
+    },
+    {
+     "item": "abddc",
+     "distance": 3
+    },
+    {
+     "item": "acdab",
+     "distance": 3
+    },
+    {
+     "item": "acdac",
+     "distance": 3
+    },
+    {
+     "item": "acdad",
+     "distance": 3
+    },
+    {
+     "item": "acddd",
+     "distance": 3
+    },
+    {
+     "item": "adaa",
+     "distance": 3
+    },
+    {
+     "item": "adbac",
+     "distance": 3
+    },
+    {
+     "item": "adcaa",
+     "distance": 3
+    },
+    {
+     "item": "adcac",
+     "distance": 3
+    },
+    {
+     "item": "baaa",
+     "distance": 3
+    },
+    {
+     "item": "babcc",
+     "distance": 3
+    },
+    {
+     "item": "babd",
+     "distance": 3
+    },
+    {
+     "item": "bba",
+     "distance": 3
+    },
+    {
+     "item": "bbab",
+     "distance": 3
+    },
+    {
+     "item": "bbb",
+     "distance": 3
+    },
+    {
+     "item": "bbd",
+     "distance": 3
+    },
+    {
+     "item": "bcba",
+     "distance": 3
+    },
+    {
+     "item": "bcbd",
+     "distance": 3
+    },
+    {
+     "item": "bccd",
+     "distance": 3
+    },
+    {
+     "item": "bcdb",
+     "distance": 3
+    },
+    {
+     "item": "bda",
+     "distance": 3
+    },
+    {
+     "item": "bdb",
+     "distance": 3
+    },
+    {
+     "item": "bdbc",
+     "distance": 3
+    }
+   ]
+  }
+ ]
+}
