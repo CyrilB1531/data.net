@@ -28,25 +28,6 @@ public sealed class HouseholderQrTests
         return data;
     }
 
-    /// <summary>
-    /// The fixtures whose factors are basis-independent. Past a vanished pivot they are not:
-    /// the reflector is built from rounding noise, and scipy's own |diag(R)| moves by 0.03 under
-    /// a 1e-14 perturbation of the duplicate column. The three assertions above still cover the
-    /// rank-deficient block, which is what proves the zero-column guard.
-    /// </summary>
-    public static TheoryData<int> FullRankIndices()
-    {
-        var data = new TheoryData<int>();
-        for (int i = 0; i < Cases.Count; i++)
-        {
-            if (Cases[i].GetProperty("full_rank").GetBoolean())
-            {
-                data.Add(i);
-            }
-        }
-        return data;
-    }
-
     private static double[] Doubles(JsonElement c, string name) =>
         [.. c.GetProperty(name).EnumerateArray().Select(x => x.GetDouble())];
 
@@ -119,7 +100,7 @@ public sealed class HouseholderQrTests
     }
 
     [Theory]
-    [MemberData(nameof(FullRankIndices))]
+    [MemberData(nameof(Indices))]
     public void The_singular_values_of_r_match_scipy(int index)
     {
         // R differs from scipy's by a per-column sign; |diag| does not, and it is the
@@ -135,6 +116,42 @@ public sealed class HouseholderQrTests
         {
             Assert.Equal(
                 Math.Abs(expected[(i * columns) + i]), Math.Abs(r[(i * columns) + i]), Tolerance);
+        }
+    }
+
+    [Fact]
+    public void A_vanished_pivot_leaves_the_factors_finite()
+    {
+        // Structural rather than a comparison: past a vanished pivot the reflector is built
+        // from rounding noise, so the factors are the host's property and not the input's.
+        const int rows = 4;
+        const int columns = 3;
+
+        // Column 1 is entirely zero and the first reflection leaves it so, its update
+        // subtracting a multiple of a zero dot product; step 1 is the vanished-column path.
+        double[] a =
+        [
+            4.0, 0.0, 1.0,
+            3.0, 0.0, 0.0,
+            0.0, 0.0, 2.0,
+            0.0, 0.0, -1.0,
+        ];
+
+        (double[] q, double[] r) = HouseholderQr.Decompose(a, rows, columns);
+
+        Assert.All(q, value => Assert.True(double.IsFinite(value)));
+        Assert.All(r, value => Assert.True(double.IsFinite(value)));
+        for (int i = 0; i < rows; i++)
+        {
+            for (int j = 0; j < columns; j++)
+            {
+                double acc = 0;
+                for (int k = 0; k < columns; k++)
+                {
+                    acc += q[(i * columns) + k] * r[(k * columns) + j];
+                }
+                Assert.Equal(a[(i * columns) + j], acc, Tolerance);
+            }
         }
     }
 

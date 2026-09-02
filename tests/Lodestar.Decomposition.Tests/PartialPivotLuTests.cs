@@ -30,23 +30,8 @@ public sealed class PartialPivotLuTests
     private static double[] Doubles(JsonElement c, string name) =>
         [.. c.GetProperty(name).EnumerateArray().Select(x => x.GetDouble())];
 
-    /// <summary>Only the full-rank fixtures: partial pivoting has a tie to break on the other,
-    /// and which way it falls is not a property either implementation owes the other.</summary>
-    public static TheoryData<int> FullRankIndices()
-    {
-        var data = new TheoryData<int>();
-        for (int i = 0; i < Cases.Count; i++)
-        {
-            if (Cases[i].GetProperty("full_rank").GetBoolean())
-            {
-                data.Add(i);
-            }
-        }
-        return data;
-    }
-
     [Theory]
-    [MemberData(nameof(FullRankIndices))]
+    [MemberData(nameof(Indices))]
     public void The_permuted_lower_factor_matches_scipy(int index)
     {
         JsonElement c = Cases[index];
@@ -87,6 +72,43 @@ public sealed class PartialPivotLuTests
                     acc += pl[(i * columns) + k] * u[(k * columns) + j];
                 }
                 Assert.Equal(a[(i * columns) + j], acc, Tolerance);
+            }
+        }
+    }
+
+    [Fact]
+    public void A_vanished_pivot_leaves_the_permuted_lower_factor_finite()
+    {
+        // Structural rather than a comparison: past a vanished pivot the elimination runs on
+        // rounding noise, so the factor is the host's property and not the input's.
+        const int rows = 4;
+        const int columns = 3;
+
+        // Column 1 is entirely zero, so step 1 finds no non-zero pivot to swap in and would
+        // divide by an exactly zero head — the path EliminateColumn guards.
+        double[] a =
+        [
+            4.0, 0.0, 1.0,
+            3.0, 0.0, 0.0,
+            0.0, 0.0, 2.0,
+            0.0, 0.0, -1.0,
+        ];
+
+        double[] pl = PartialPivotLu.PermutedLower(a, rows, columns);
+
+        Assert.All(pl, value => Assert.True(double.IsFinite(value)));
+        for (int i = 0; i < rows; i++)
+        {
+            for (int j = 0; j < columns; j++)
+            {
+                if (i == j)
+                {
+                    Assert.Equal(1.0, pl[(i * columns) + j]);
+                }
+                else if (j > i)
+                {
+                    Assert.Equal(0.0, pl[(i * columns) + j]);
+                }
             }
         }
     }

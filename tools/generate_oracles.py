@@ -2883,28 +2883,24 @@ def generate_sparse_matmul() -> dict:
 MATRIX_KEY = "matrix"
 ROWS_KEY = "rows"
 COLUMNS_KEY = "columns"
-FULL_RANK_KEY = "full_rank"
 
 
 def _dense_fixtures() -> list[dict]:
-    """Tall-and-skinny blocks, the shape a range finder actually produces."""
+    """Tall-and-skinny blocks, the shape a range finder actually produces.
+
+    Every one is full-rank on purpose. A rank-deficient block has no reference factors
+    to freeze: past a vanished pivot the reflector is built from rounding noise, so
+    scipy's own Q and R are a property of the host rather than of the input, and a
+    corpus that stored them broke the drift gate across runners (#440). The property
+    that block was there for — that the factor stays finite — is asserted directly in
+    ``HouseholderQrTests`` and ``PartialPivotLuTests``, where it needs no oracle.
+    """
     rng = SeededRandom(SEED + 44300)
     shapes = [(6, 3), (12, 4), (25, 10), (40, 10), (9, 9), (5, 1)]
     fixtures = []
     for rows, columns in shapes:
         values = [rng.gauss(0.0, 1.0) for _ in range(rows * columns)]
-        fixtures.append(
-            {ROWS_KEY: rows, COLUMNS_KEY: columns, MATRIX_KEY: values, FULL_RANK_KEY: True})
-    # Column 1 repeats column 0: past the vanished pivot the factors stop being
-    # basis-independent, so full_rank is False and the factor comparisons skip it.
-    rows, columns = 8, 3
-    base = [rng.gauss(0.0, 1.0) for _ in range(rows)]
-    tail = [rng.gauss(0.0, 1.0) for _ in range(rows)]
-    deficient = []
-    for i in range(rows):
-        deficient.extend([base[i], base[i], tail[i]])
-    fixtures.append(
-        {ROWS_KEY: rows, COLUMNS_KEY: columns, MATRIX_KEY: deficient, FULL_RANK_KEY: False})
+        fixtures.append({ROWS_KEY: rows, COLUMNS_KEY: columns, MATRIX_KEY: values})
     return fixtures
 
 
@@ -2938,9 +2934,9 @@ def generate_decomposition_lu() -> dict:
     """LU with partial pivoting, against scipy (#440).
 
     ``permute_l=True`` is the form scikit-learn's power iteration uses: it asks for
-    ``P @ L`` and throws ``U`` away. That product is unique for a full-rank block,
-    so unlike the QR corpus this one asserts the factor itself as well as the
-    reconstruction.
+    ``P @ L`` and throws ``U`` away. That product is unique for the full-rank blocks
+    this corpus carries, so unlike the QR corpus this one asserts the factor itself as
+    well as the reconstruction.
     """
     from scipy import linalg
 
