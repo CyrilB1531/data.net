@@ -41,5 +41,4 @@ wearing a tree.
 
 **Applies to** — net10.0, netstandard2.0.
 
-**See also** — [`BkTree.Nearest`](bktree-nearest.md), [`BkTreeMatch`](bktreematch.md),
-[`Process.ExtractIndexed`](../../fuzzy/matching/process-extractindexed.md).
+**See also** — [`BkTree.Nearest`](bktree-nearest.md), [`BkTreeMatch`](bktreematch.md).

@@ -21,5 +21,3 @@ it before choosing a radius or a factory method.
 
 - [`Lodestar.Text.Distances`](distances.md) — the distances a tree is built over, and the triangle
   inequality that decides which ones qualify.
-- [`Process.ExtractIndexed`](../fuzzy/matching/process-extractindexed.md) — a `BkTree` used as a
-  prefilter in front of a fuzzy-matching scorer.

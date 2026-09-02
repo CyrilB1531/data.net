@@ -61,7 +61,7 @@ PERSISTENCE = {STJ: "10.0.10"}
 
 # Must equal Directory.Packages.props' PackageVersion: a PackageReference
 # emits this floor, but LodestarUseProjectRefs emits Text's own version instead -- catching the escape hatch left on.
-TEXT_FLOOR = "0.6.0"
+TEXT_FLOOR = "0.4.0"
 
 # Must equal Directory.Packages.props' PackageVersion, for the edge decision 0071
 # added: Lodestar.Text stopped declaring CsrMatrix and consumes it from here.

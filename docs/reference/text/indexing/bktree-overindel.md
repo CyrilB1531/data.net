@@ -24,10 +24,9 @@ int found = tree.WithinDistance("book", 1).Count;   // => 2
 ```
 
 **Remarks** — `Indel` is `len(a) + len(b) - 2 x Lcs.SubsequenceLength(a, b)`, the LCS edit distance,
-and it is a metric. It is also the measure behind rapidfuzz's `fuzz.ratio`, which makes this the
-factory to pair with [`Process.ExtractIndexed`](../../fuzzy/matching/process-extractindexed.md)
-when the scorer is `Fuzz.Ratio`: the radius and the score then move together, which is what that
-method's contract asks of a caller.
+and it is a metric. It is also the measure behind rapidfuzz's `fuzz.ratio`, so a radius on this
+tree and a `Fuzz.Ratio` cutoff move together whenever the two are used against the same pair of
+strings.
 
 `Lcs` itself is not a candidate for a tree — `Lcs.SubsequenceLength` returns a length, not a
 distance.

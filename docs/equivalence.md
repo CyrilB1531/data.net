@@ -148,7 +148,6 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | `process.extract(q, choices, limit=…, score_cutoff=…)` | rapidfuzz | [`Process.Extract`](reference/fuzzy/matching/process-extract.md)`(q, choices, limit:…, scoreCutoff:…)` | Default scorer `WRatio`, score-descending order (index tie-break), cutoff, short-circuit. |
 | `process.extractOne(q, choices)` | rapidfuzz | [`Process.ExtractOne(q, choices)`](reference/fuzzy/matching/process-extractone.md) | Best candidate or `null`. |
 | blocking deduplication | — (application pattern) | [`Deduplicator.FindClusters(...)`](reference/fuzzy/matching/deduplicator-findclusters.md) | Partition by blocking key + transitive closure (union-find). Avoids O(n²). |
-| — (no rapidfuzz counterpart) | — | [`Process.ExtractIndexed(q, index, maxDistance, …)`](reference/fuzzy/matching/process-extractindexed.md) | `Extract` prefiltered by a `BkTree`: scores only the choices within `maxDistance`, not the whole corpus. rapidfuzz exposes no metric index to prefilter through. |
 
 ## Lodestar.Text — indexing
 

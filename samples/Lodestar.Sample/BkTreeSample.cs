@@ -1,4 +1,3 @@
-using Lodestar.Fuzzy;
 using Lodestar.Text;
 using Lodestar.Text.Distances;
 using Lodestar.Text.Indexing;
@@ -49,15 +48,6 @@ internal static class BkTreeSample
         BkTree hamming = BkTree.OverHamming();
         hamming.AddRange(["1010", "1011", "0000"]);
         Console.WriteLine($"  hamming, 1 of '1010'  = {hamming.WithinDistance("1010", 1).Count}");
-
-        // The prefilter contract: this scorer is a function of the radius, so a cutoff of 90
-        // discards exactly what a radius of 1 does and the two agree.
-        IReadOnlyList<ExtractResult> ranked = Process.ExtractIndexed(
-            "bok", tree, maxDistance: 1, ByLevenshtein, limit: null, scoreCutoff: 90.0);
-        Console.WriteLine($"  ranked by the index   = {string.Join(", ", ranked.Select(r => r.Choice))}");
         Console.WriteLine();
     }
-
-    private static double ByLevenshtein(string a, string b) =>
-        Math.Max(0.0, 100.0 - (10.0 * Levenshtein.Distance(a, b)));
 }

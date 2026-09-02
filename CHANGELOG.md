@@ -37,12 +37,6 @@ is one sentence, the issue and the commit; see
 
 - The blocked bit-parallel equality table is sized from the pattern's characters above U+00FF rather than from its length, and a pattern too long to tabulate takes the dynamic program instead of wrapping the table's length in `int`. ([#413](https://github.com/CyrilB1531/lodestar/issues/413), [`52d68cc`](https://github.com/CyrilB1531/lodestar/commit/52d68cc))
 
-### Lodestar.Fuzzy
-
-#### Added
-
-- **`Process.ExtractIndexed`** scores only the choices a `BkTree` puts within a radius, then ranks them exactly as `Extract` does. A prefilter, not a faster `Extract`: the two agree only when every choice outside the radius would have scored below the cutoff. ([#526](https://github.com/CyrilB1531/lodestar/issues/526))
-
 ### Lodestar.Embeddings
 
 #### Added

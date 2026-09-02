@@ -9,7 +9,6 @@ satisfies the triangle inequality.
 
 ```bash
 dotnet add package Lodestar.Text
-dotnet add package Lodestar.Fuzzy    # for Process.ExtractIndexed, below
 ```
 
 ## Building the tree and querying a radius
@@ -31,58 +30,6 @@ a distance that is a true metric. [`Osa.Distance`](../reference/text/distances/o
 not offered: it fails the triangle inequality the pruning relies on
 (`d("ab","bca") = 3 > d("ab","ba") + d("ba","bca") = 2`), and using it would return an incomplete
 result set rather than throw.
-
-## `ExtractIndexed`: the tree as a prefilter in front of a scorer
-
-[`Process.ExtractIndexed`](../reference/fuzzy/matching/process-extractindexed.md) runs the tree
-first, then ranks only what came back — the way
-[`Process.Extract`](../reference/fuzzy/matching/process-extract.md) ranks, over a smaller
-candidate set instead of the whole dictionary:
-
-```csharp
-using Lodestar.Fuzzy;
-using Lodestar.Text.Indexing;
-
-BkTree index = BkTree.OverLevenshtein();
-index.AddRange(["book", "books", "boo", "cook", "cake"]);
-
-IReadOnlyList<ExtractResult> best = Process.ExtractIndexed("book", index, maxDistance: 1);
-
-int count = best.Count;        // 4: "cake" is 4 edits away and never reaches the scorer
-string top = best[0].Choice;   // "book"
-```
-
-**The default scorer, [`Fuzz.WRatio`](../reference/fuzzy/matching/fuzz-wratio.md), is not a
-function of the tree's distance.** A caller who
-leaves `scoreCutoff` at its default of `0` gets a *subset* of what `Extract` would return —
-silently, because the tree already dropped candidates `WRatio` never got a chance to score.
-`"cake"` above is the demonstration. When that silent narrowing is not acceptable, pair the tree
-with a scorer built from the same distance it indexes on:
-
-```csharp
-using Lodestar.Fuzzy;
-using Lodestar.Text.Distances;
-using Lodestar.Text.Indexing;
-
-BkTree index = BkTree.OverLevenshtein();
-index.AddRange(["book", "books", "boo", "cook", "cake"]);
-
-IReadOnlyList<ExtractResult> best = Process.ExtractIndexed(
-    "book", index, maxDistance: 1,
-    scorer: (a, b) => Math.Max(0.0, 100.0 - (10.0 * Levenshtein.Distance(a, b))),
-    scoreCutoff: 90.0);
-
-double topScore = best[0].Score;   // 100: "book" against itself
-```
-
-This scorer is a direct function of [`Levenshtein.Distance`](../reference/text/distances/levenshtein-distance.md),
-not a length-normalised similarity, so the cutoff can be chosen to match the radius exactly rather
-than merely bounded by it: distance `0` scores `100`, distance `1` scores `90`, and a `scoreCutoff`
-of `90` excludes exactly what `maxDistance: 1` excludes — no more, no less. Leaving `scoreCutoff` at
-its default of `0` would still under-score nothing here, but it would keep candidates the tree
-already dropped from ever reaching the cutoff, silently narrowing the result the way the previous
-section warned against; pairing the radius with a matching cutoff, as above, is what closes that
-gap.
 
 ## Where the tree stops paying
 
@@ -137,7 +84,5 @@ Past it, a large radius over a large dictionary is a linear scan wearing a tree 
 
 - [`BkTree`](../reference/text/indexing/bktree.md) — the full admissible-distance table and every
   member.
-- [`Process.ExtractIndexed`](../reference/fuzzy/matching/process-extractindexed.md) — the
-  reference page for the pairing shown above.
 - [`docs/guides/performance.md`](performance.md#bk-tree-vs-a-length-filtered-scan-issue-526) — the
   measured table, with its machine and window.
