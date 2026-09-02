@@ -25,7 +25,7 @@ is one sentence, the issue and the commit; see
 
 #### Added
 
-- **`BkTree`, a metric index over the integer distances.** `WithinDistance` answers "everything within `k`" without scanning the corpus, `Nearest` takes the *n* closest with a shrinking radius, and `Add` is incremental so a dictionary takes a new word without a rebuild. Four factories bind the distances that satisfy the triangle inequality — `Levenshtein`, `DamerauLevenshtein`, `Indel` and `Hamming`; `Osa` does not and is excluded. Measured against a length-filtered linear scan on the same corpus, it is about twice as fast at a radius of 1 and **slower from a radius of 2 on** — the pruning saves distance computations, but past a radius of 1 the per-node cost of walking the tree outweighs what it saves. ([#526](https://github.com/CyrilB1531/lodestar/issues/526))
+- **`BkTree`** is a metric index over the integer distances, worth building only at a radius of 1 — [`docs/guides/dictionary-lookup.md`](docs/guides/dictionary-lookup.md) has the measurement. ([#526](https://github.com/CyrilB1531/lodestar/issues/526))
 
 #### Changed
 
