@@ -59,6 +59,7 @@ built from it.
 
 | Member | What it does |
 | --- | --- |
+| [`BkTree(Func<string, string, int> metric)`](bktree-constructor.md) | Builds an empty tree over a caller-supplied metric; the caller owns the triangle-inequality precondition. |
 | [`BkTree.OverLevenshtein`](bktree-overlevenshtein.md) | Builds a tree over `Levenshtein.Distance`. |
 | [`BkTree.OverDamerauLevenshtein`](bktree-overdameraulevenshtein.md) | Builds a tree over `DamerauLevenshtein.Distance`. |
 | [`BkTree.OverIndel`](bktree-overindel.md) | Builds a tree over `Indel.Distance`. |

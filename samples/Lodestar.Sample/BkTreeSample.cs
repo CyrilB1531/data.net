@@ -30,7 +30,8 @@ internal static class BkTreeSample
         IReadOnlyList<BkTreeMatch> nearest = tree.Nearest("bok", 3);
         Console.WriteLine($"  three nearest         = {string.Join(", ", nearest.Select(h => h.Item))}");
 
-        // A metric the four factories do not offer: the constructor is what reaches it.
+        // A metric the four factories do not offer: the constructor is what reaches it -- and,
+        // on purpose, one that breaks "return 0 only for equal inputs": "Book" and "book" fold to 0.
         BkTree caseFolded = new((a, b) => Levenshtein.Distance(a.ToUpperInvariant(), b.ToUpperInvariant()));
         caseFolded.AddRange(["Book", "cook"]);
         Console.WriteLine($"  custom ctor, 1 of 'BOOK' = {caseFolded.WithinDistance("BOOK", 1).Count}");

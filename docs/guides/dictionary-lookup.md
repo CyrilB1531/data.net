@@ -21,7 +21,7 @@ BkTree dictionary = BkTree.OverLevenshtein();
 dictionary.AddRange(["book", "books", "boo", "cook", "cake"]);
 
 IReadOnlyList<BkTreeMatch> hits = dictionary.WithinDistance("bok", maxDistance: 1);
-int found = hits.Count;         // nearest first: "boo" and "book" are one edit from "bok"
+int found = hits.Count;         // nearest first: "book" and "boo" are one edit from "bok"
 string nearest = hits[0].Item;
 ```
 
@@ -69,16 +69,20 @@ index.AddRange(["book", "books", "boo", "cook", "cake"]);
 
 IReadOnlyList<ExtractResult> best = Process.ExtractIndexed(
     "book", index, maxDistance: 1,
-    scorer: (a, b) => Levenshtein.NormalizedSimilarity(a, b) * 100);
+    scorer: (a, b) => Math.Max(0.0, 100.0 - (10.0 * Levenshtein.Distance(a, b))),
+    scoreCutoff: 90.0);
 
 double topScore = best[0].Score;   // 100: "book" against itself
 ```
 
-With a
-[`Levenshtein.NormalizedSimilarity`](../reference/text/distances/levenshtein-normalizedsimilarity.md)-derived
-scorer, everything the tree admits scores no lower than a value determined entirely by that same
-edit distance, so a `scoreCutoff` chosen against `maxDistance` cannot silently drop something
-`Extract` would have kept.
+This scorer is a direct function of [`Levenshtein.Distance`](../reference/text/distances/levenshtein-distance.md),
+not a length-normalised similarity, so the cutoff can be chosen to match the radius exactly rather
+than merely bounded by it: distance `0` scores `100`, distance `1` scores `90`, and a `scoreCutoff`
+of `90` excludes exactly what `maxDistance: 1` excludes — no more, no less. Leaving `scoreCutoff` at
+its default of `0` would still under-score nothing here, but it would keep candidates the tree
+already dropped from ever reaching the cutoff, silently narrowing the result the way the previous
+section warned against; pairing the radius with a matching cutoff, as above, is what closes that
+gap.
 
 ## Where the tree stops paying
 

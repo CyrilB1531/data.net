@@ -5,17 +5,23 @@ namespace Lodestar.Text.Tests.Indexing;
 
 /// <summary>
 /// The correctness precondition every <c>BkTree</c> factory rests on: the triangle
-/// inequality, checked exhaustively -- not sampled -- over every triple drawn from the
-/// 121 words up to length 4 on the three-letter alphabet <c>"abc"</c> (1 771 561 triples
-/// per metric, matching the spec's own claim). <c>Osa</c> is checked too, for the
-/// opposite reason: excluded because it fails this same property.
+/// inequality, checked exhaustively -- not sampled. Two sweeps, both exhaustive over
+/// every triple: the 121 words up to length 4 on the three-letter alphabet <c>"abc"</c>
+/// (1 771 561 triples per metric), and the 127 words up to length 6 on the two-letter
+/// alphabet <c>"ab"</c> (2 048 383 triples per metric) -- both counts matching the
+/// reference page's own claim. <c>Osa</c> is checked too, for the opposite reason:
+/// excluded because it fails this same property.
 /// </summary>
 public sealed class AdmissibleMetricTests
 {
-    private const string Alphabet = "abc";
-    private const int MaxLength = 4;
+    private const string ThreeLetterAlphabet = "abc";
+    private const int ThreeLetterMaxLength = 4;
 
-    private static readonly List<string> Words = AllWordsUpTo(Alphabet, MaxLength);
+    private const string TwoLetterAlphabet = "ab";
+    private const int TwoLetterMaxLength = 6;
+
+    private static readonly List<string> ThreeLetterWords = AllWordsUpTo(ThreeLetterAlphabet, ThreeLetterMaxLength);
+    private static readonly List<string> TwoLetterWords = AllWordsUpTo(TwoLetterAlphabet, TwoLetterMaxLength);
 
     private static List<string> AllWordsUpTo(string alphabet, int maxLength)
     {
@@ -40,16 +46,16 @@ public sealed class AdmissibleMetricTests
         return words;
     }
 
-    private static void AssertTriangleInequalityExhaustively(Func<string, string, int> metric)
+    private static void AssertTriangleInequalityExhaustively(Func<string, string, int> metric, List<string> words)
     {
-        int n = Words.Count;
+        int n = words.Count;
         var distance = new int[n][];
         for (int i = 0; i < n; i++)
         {
             distance[i] = new int[n];
             for (int j = 0; j < n; j++)
             {
-                distance[i][j] = metric(Words[i], Words[j]);
+                distance[i][j] = metric(words[i], words[j]);
             }
         }
 
@@ -63,29 +69,50 @@ public sealed class AdmissibleMetricTests
                     int dab = distance[i][j];
                     int dbc = distance[j][k];
 
-                    Assert.True(dac <= dab + dbc,
-                        $"triangle inequality: d(\"{Words[i]}\",\"{Words[k]}\")={dac} > " +
-                        $"d(\"{Words[i]}\",\"{Words[j]}\")={dab} + d(\"{Words[j]}\",\"{Words[k]}\")={dbc}");
+                    // Built only on failure: eager evaluation as an Assert.True argument would
+                    // cost several million wasted allocations across the four metrics and two sweeps.
+                    if (dac > dab + dbc)
+                    {
+                        Assert.Fail(
+                            $"triangle inequality: d(\"{words[i]}\",\"{words[k]}\")={dac} > " +
+                            $"d(\"{words[i]}\",\"{words[j]}\")={dab} + d(\"{words[j]}\",\"{words[k]}\")={dbc}");
+                    }
                 }
             }
         }
     }
 
     [Fact]
-    public void Levenshtein_satisfies_the_triangle_inequality_exhaustively() =>
-        AssertTriangleInequalityExhaustively(static (a, b) => Levenshtein.Distance(a, b));
+    public void Levenshtein_satisfies_the_triangle_inequality_exhaustively_three_letter_alphabet() =>
+        AssertTriangleInequalityExhaustively(static (a, b) => Levenshtein.Distance(a, b), ThreeLetterWords);
 
     [Fact]
-    public void DamerauLevenshtein_satisfies_the_triangle_inequality_exhaustively() =>
-        AssertTriangleInequalityExhaustively(static (a, b) => DamerauLevenshtein.Distance(a, b));
+    public void DamerauLevenshtein_satisfies_the_triangle_inequality_exhaustively_three_letter_alphabet() =>
+        AssertTriangleInequalityExhaustively(static (a, b) => DamerauLevenshtein.Distance(a, b), ThreeLetterWords);
 
     [Fact]
-    public void Indel_satisfies_the_triangle_inequality_exhaustively() =>
-        AssertTriangleInequalityExhaustively(static (a, b) => Indel.Distance(a, b));
+    public void Indel_satisfies_the_triangle_inequality_exhaustively_three_letter_alphabet() =>
+        AssertTriangleInequalityExhaustively(static (a, b) => Indel.Distance(a, b), ThreeLetterWords);
 
     [Fact]
-    public void Hamming_satisfies_the_triangle_inequality_exhaustively() =>
-        AssertTriangleInequalityExhaustively(static (a, b) => Hamming.Distance(a, b));
+    public void Hamming_satisfies_the_triangle_inequality_exhaustively_three_letter_alphabet() =>
+        AssertTriangleInequalityExhaustively(static (a, b) => Hamming.Distance(a, b), ThreeLetterWords);
+
+    [Fact]
+    public void Levenshtein_satisfies_the_triangle_inequality_exhaustively_two_letter_alphabet() =>
+        AssertTriangleInequalityExhaustively(static (a, b) => Levenshtein.Distance(a, b), TwoLetterWords);
+
+    [Fact]
+    public void DamerauLevenshtein_satisfies_the_triangle_inequality_exhaustively_two_letter_alphabet() =>
+        AssertTriangleInequalityExhaustively(static (a, b) => DamerauLevenshtein.Distance(a, b), TwoLetterWords);
+
+    [Fact]
+    public void Indel_satisfies_the_triangle_inequality_exhaustively_two_letter_alphabet() =>
+        AssertTriangleInequalityExhaustively(static (a, b) => Indel.Distance(a, b), TwoLetterWords);
+
+    [Fact]
+    public void Hamming_satisfies_the_triangle_inequality_exhaustively_two_letter_alphabet() =>
+        AssertTriangleInequalityExhaustively(static (a, b) => Hamming.Distance(a, b), TwoLetterWords);
 
     [Fact]
     public void Osa_violates_the_triangle_inequality()

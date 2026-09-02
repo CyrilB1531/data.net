@@ -134,7 +134,10 @@ public sealed class BkTree
             return [];
         }
 
-        var best = new List<Hit>(count + 1);
+        // Capped at what the tree could ever hand back -- never more than count and never
+        // more than this.count -- so count == int.MaxValue cannot overflow the +1 below.
+        int capacity = Math.Min(count, this.count);
+        var best = new List<Hit>(capacity + 1);
         int radius = int.MaxValue;
         var stack = new Stack<Node>();
         stack.Push(this.root);
@@ -155,9 +158,9 @@ public sealed class BkTree
 
             foreach (KeyValuePair<int, Node> child in node.Children)
             {
-                // int.MaxValue - radius would overflow the upper bound, and an unbounded
-                // radius admits every child anyway.
-                if (radius == int.MaxValue || (child.Key >= d - radius && child.Key <= d + radius))
+                // Branchless and overflow-safe: unlike d + radius or d - radius, a subtraction
+                // of two small distances cannot overflow, however close radius is to int.MaxValue.
+                if (child.Key - d <= radius && d - child.Key <= radius)
                 {
                     stack.Push(child.Value);
                 }
@@ -189,7 +192,9 @@ public sealed class BkTree
 
             foreach (KeyValuePair<int, Node> child in node.Children)
             {
-                if (maxDistance == int.MaxValue || (child.Key >= d - maxDistance && child.Key <= d + maxDistance))
+                // Branchless and overflow-safe: unlike d + maxDistance or d - maxDistance, a
+                // subtraction of two small distances cannot overflow near int.MaxValue.
+                if (child.Key - d <= maxDistance && d - child.Key <= maxDistance)
                 {
                     stack.Push(child.Value);
                 }

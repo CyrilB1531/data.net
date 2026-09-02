@@ -139,4 +139,42 @@ public sealed class BkTreeUnitTests
         Assert.Throws<ArgumentOutOfRangeException>(() => tree.WithinDistance("book", 1, limit: -1));
         Assert.Throws<ArgumentOutOfRangeException>(() => tree.Nearest("book", -1));
     }
+
+    // A radius near int.MaxValue (not equal to it) used to overflow d + maxDistance and
+    // silently prune a subtree that should have been kept -- an incomplete answer, not a crash.
+    [Fact]
+    public void A_radius_near_intmaxvalue_still_finds_every_item()
+    {
+        BkTree tree = Dictionary();
+
+        IReadOnlyList<BkTreeMatch> hits = tree.WithinDistance("book", int.MaxValue - 1);
+
+        Assert.Equal(tree.Count, hits.Count);
+    }
+
+    // Same overflow, on the other walk: the pruning test in Nearest used the same
+    // d + radius / d - radius shape once the radius tightened past the requested count.
+    [Fact]
+    public void Nearest_with_a_radius_near_intmaxvalue_still_finds_every_item()
+    {
+        BkTree tree = Dictionary();
+
+        IReadOnlyList<BkTreeMatch> nearest = tree.Nearest("book", tree.Count);
+        IReadOnlyList<BkTreeMatch> all = tree.WithinDistance("book", int.MaxValue - 1);
+
+        Assert.Equal(all.OrderBy(static h => h.Item, StringComparer.Ordinal),
+            nearest.OrderBy(static h => h.Item, StringComparer.Ordinal));
+    }
+
+    // new List<Hit>(count + 1) overflowed to a negative capacity when count was
+    // int.MaxValue, throwing before the walk even started on a tree far smaller than that.
+    [Fact]
+    public void Nearest_with_count_at_intmaxvalue_does_not_throw()
+    {
+        BkTree tree = Dictionary();
+
+        IReadOnlyList<BkTreeMatch> nearest = tree.Nearest("book", int.MaxValue);
+
+        Assert.Equal(tree.Count, nearest.Count);
+    }
 }
