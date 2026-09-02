@@ -80,6 +80,12 @@ jobs:
       # the rest still carry their Lot* files, and #280 closes when that list is empty.
       - name: Every public class has a sample of its own
         run: python tools/check_sample_coverage.py
+      # A mirror pins its library to netstandard2.0, but SetTargetFramework does not travel
+      # across a PackageReference -- so a mirror that pins only its own library still loads
+      # its dependencies' net10.0 build, green and half-blind. Lodestar.Text and
+      # Lodestar.Decomposition were doing exactly that for 832 tests (#529).
+      - name: Every netstandard2.0 mirror really mirrors
+        run: python tools/check_netstandard_guards.py
       # An accepted ADR is never edited, addition included -- "Amend 0004 in a decision
       # of its own instead of editing it" is why even a `> update:` blockquote no longer
       # passes here (#399). Only a pull_request event has a base commit to diff against;

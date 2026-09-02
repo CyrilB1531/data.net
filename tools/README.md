@@ -18,6 +18,9 @@ given:
   (decision 0073).
 - `check_version_floor.py` verifies that the version numbers the source tree
   keeps in three places still agree.
+- `check_netstandard_guards.py` refuses a netstandard2.0 mirror that carries no
+  assembly guard, or that leaves one of its library's Lodestar dependencies
+  unpinned and therefore loaded from net10.0.
 - `check_machine_paths.py` refuses a tracked file that holds a path under
   someone's home directory.
 - `check_comment_length.py` refuses a comment block that runs past its budget
@@ -227,6 +230,31 @@ much as the id here: a `PackageReference` emits the floor from
 emits `Lodestar.Text`'s own current version. Same id, different number — which is
 what lets this check catch a package accidentally built with the escape hatch
 left on.
+
+## `check_netstandard_guards.py`
+
+Refuses a `tests/*.NetStandard.Tests` mirror that cannot prove it mirrors.
+
+```bash
+python tools/check_netstandard_guards.py
+```
+
+Two rules, both of which failed silently before [#529](https://github.com/CyrilB1531/lodestar/issues/529).
+
+**Every `Lodestar.*` package the library depends on needs its own pinned
+`ProjectReference` in the mirror.** `SetTargetFramework` does not travel across a
+`PackageReference`: NuGet resolves package assets against the *consuming* project's
+framework, which for a mirror is `net10.0`. So a mirror that pins only its own library
+still loads its dependencies' `net10.0` build. Measured on 2026-09-02: `Lodestar.Text`
+and `Lodestar.Decomposition` were running 832 tests against the `net10.0`
+`Lodestar.Abstractions`, all green.
+
+**Every mirror carries `NetStandardAssemblyGuardTests.cs`**, which reads the loaded
+assembly's `TargetFrameworkAttribute` at run time. Three of seven mirrors had no such
+file, which is how the first rule's breakage survived unnoticed.
+
+A mirror therefore reports more tests than its sibling suite, by exactly the number of
+guard facts it carries — one per assembly it must prove it loaded.
 
 ## `check_version_floor.py`
 
