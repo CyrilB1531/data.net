@@ -20,7 +20,7 @@
   -->
   <ItemGroup>
     <PackageVersion Include="Lodestar.Abstractions" Version="0.1.1" />
-    <PackageVersion Include="Lodestar.Text" Version="0.4.0" />
+    <PackageVersion Include="Lodestar.Text" Version="0.6.0" />
     <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.28.0" />
     <PackageVersion Include="PolySharp" Version="1.15.0" />
     <!-- Analyzer only, pinned in the root Directory.Build.props so src/, tests/
