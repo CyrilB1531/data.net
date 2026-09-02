@@ -2,7 +2,7 @@ using System.Reflection;
 using System.Runtime.Versioning;
 using Xunit;
 
-namespace Lodestar.Text.Tests;
+namespace Lodestar.Decomposition.Tests;
 
 /// <summary>
 /// Guards the premise of this project: that the suite is replaying against the
@@ -10,16 +10,15 @@ namespace Lodestar.Text.Tests;
 /// </summary>
 /// <remarks>
 /// Without this, a reference that quietly resolved back to net10.0 would leave
-/// every test passing while proving nothing — the exact failure mode the
-/// comparison benchmark hit before its isolation was fixed. The assertion is
-/// cheap; the false confidence it prevents is not.
+/// every test passing while proving nothing. The assertion is cheap; the false
+/// confidence it prevents is not.
 /// </remarks>
 public sealed class NetStandardAssemblyGuardTests
 {
     [Fact]
     public void Suite_runs_against_the_netstandard2_0_build()
     {
-        Assembly assembly = typeof(Lodestar.Text.Distances.Levenshtein).Assembly;
+        Assembly assembly = typeof(Lodestar.Decomposition.TruncatedSvd).Assembly;
         string? framework = assembly.GetCustomAttribute<TargetFrameworkAttribute>()?.FrameworkName;
 
         Assert.Equal(".NETStandard,Version=v2.0", framework);
@@ -30,7 +29,7 @@ public sealed class NetStandardAssemblyGuardTests
     /// <remarks>
     /// <c>SetTargetFramework</c> does not cross a <c>PackageReference</c>: NuGet resolves
     /// package assets against this project's own framework, net10.0. Left alone the suite
-    /// would run the netstandard2.0 Lodestar.Text against the net10.0 Abstractions — half a
+    /// would run the netstandard2.0 Decomposition against the net10.0 Abstractions — half a
     /// mirror, every test green (#529).
     /// </remarks>
     [Fact]

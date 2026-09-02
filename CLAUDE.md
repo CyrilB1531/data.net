@@ -153,6 +153,15 @@ The `*.NetStandard.Tests` projects **link the same test sources** and pin
 Framework, Mono and Unity would be compile-verified but never executed. Any new
 test file is picked up by both automatically.
 
+**A mirror reports more tests than its suite, and that is expected**: each carries
+`NetStandardAssemblyGuardTests`, one fact per assembly it must prove it loaded. **Pin every
+`Lodestar.*` package the library depends on**, with its own `ProjectReference` — a
+`PackageReference` is where the pin leaks, because `SetTargetFramework` does not travel across
+one and NuGet resolves package assets against the *mirror's* framework, net10.0. `Lodestar.Text`
+and `Lodestar.Decomposition` ran 832 tests against the net10.0 `Lodestar.Abstractions` that way,
+all green ([#529](https://github.com/CyrilB1531/lodestar/issues/529)).
+`python3 tools/check_netstandard_guards.py` now enforces both halves.
+
 The one deliberate behavioural split is `VectorMath.Dot` — `Vector<T>` SIMD on
 net10, scalar loop on netstandard2.0.
 

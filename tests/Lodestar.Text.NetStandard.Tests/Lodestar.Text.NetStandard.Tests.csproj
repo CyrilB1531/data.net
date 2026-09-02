@@ -33,9 +33,22 @@
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
 
-  <!-- SetTargetFramework is what pins the reference to the netstandard2.0 build. -->
+  <!--
+    SetTargetFramework is what pins the reference to the netstandard2.0 build.
+
+    Lodestar.Abstractions is listed explicitly, and that is not redundant. Lodestar.Text
+    reaches it through a PackageReference, and SetTargetFramework does not travel
+    across one: NuGet resolves package assets against *this* project's target
+    framework (net10.0), so the transitive Lodestar.Abstractions came from
+    lib/net10.0 and the mirror stopped mirroring — silently, since the guard only
+    ever inspected the Lodestar.Text assembly. A direct ProjectReference takes precedence
+    over the package of the same id, which restores the netstandard2.0 build; the
+    extended guard proves it (#529).
+  -->
   <ItemGroup>
     <ProjectReference Include="../../src/Lodestar.Text/Lodestar.Text.csproj"
+                      SetTargetFramework="TargetFramework=netstandard2.0" />
+    <ProjectReference Include="../../src/Lodestar.Abstractions/Lodestar.Abstractions.csproj"
                       SetTargetFramework="TargetFramework=netstandard2.0" />
   </ItemGroup>
 
