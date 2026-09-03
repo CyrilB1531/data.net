@@ -97,12 +97,25 @@ public sealed class BatchEncoder
     /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
     public EncodedBatch EncodeBatch(IEnumerable<string> texts, CancellationToken cancellationToken = default)
     {
-        List<long[]> sequences = EncodeAll(texts, cancellationToken);
-        return Pad(sequences, 0, sequences.Count, null);
+        IReadOnlyList<long[]> sequences = EncodeAll(texts, cancellationToken);
+        return Pad(sequences, 0, sequences.Count);
     }
 
-    /// <summary>Encodes every text, without padding — the shared front half of both public entry points.</summary>
-    internal List<long[]> EncodeAll(IEnumerable<string> texts, CancellationToken cancellationToken)
+    /// <summary>
+    /// Encodes every text into its own row of ids, without padding and without
+    /// laying them out as a batch.
+    /// </summary>
+    /// <remarks>
+    /// The front half of <see cref="EncodeBatch"/>, public because a caller that
+    /// sub-batches — an inference package running a corpus through a session a
+    /// few rows at a time, say — needs the lengths before it can decide how to
+    /// group them. Pair it with <see cref="Pad"/>, which is the back half.
+    /// </remarks>
+    /// <param name="texts">The texts to encode.</param>
+    /// <param name="cancellationToken">Observed between texts; tokenizing a large corpus is not instant.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="texts"/> is null.</exception>
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
+    public IReadOnlyList<long[]> EncodeAll(IEnumerable<string> texts, CancellationToken cancellationToken = default)
     {
         Guard.NotNull(texts);
         var sequences = new List<long[]>();
@@ -114,19 +127,34 @@ public sealed class BatchEncoder
         return sequences;
     }
 
-    /// <summary>
-    /// Lays <paramref name="count"/> sequences out as one rectangular batch, padded
-    /// to the longest of them.
-    /// </summary>
+    /// <summary>Lays a window of <paramref name="count"/> sequences out as one rectangle, padded to its own longest row.</summary>
     /// <param name="sequences">The unpadded encodings.</param>
     /// <param name="start">Index of the first sequence to take.</param>
     /// <param name="count">How many to take.</param>
-    /// <param name="order">
-    /// Optional indirection: when present, row <c>i</c> of the batch is
-    /// <c>sequences[order[start + i]]</c>. This is what length bucketing uses.
-    /// </param>
-    internal EncodedBatch Pad(IReadOnlyList<long[]> sequences, int start, int count, int[]? order)
+    /// <param name="order">Optional indirection: row <c>i</c> is <c>sequences[order[start + i]]</c>, which is how length bucketing is expressed.</param>
+    /// <remarks>
+    /// The back half of <see cref="EncodeBatch"/>: public so that a caller grouping
+    /// rows itself does not write a second padding that can drift from this one.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="sequences"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The window is negative, or runs past <paramref name="sequences"/> (or <paramref name="order"/>).</exception>
+    public EncodedBatch Pad(IReadOnlyList<long[]> sequences, int start, int count, int[]? order = null)
     {
+        Guard.NotNull(sequences);
+        Guard.NotLessThan(start, 0);
+        Guard.NotLessThan(count, 0);
+
+        // The window was unreachable while both callers lived in this file; a public
+        // entry point is where that stops being true.
+        int available = order?.Length ?? sequences.Count;
+        if (start > available - count)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(count),
+                count,
+                $"start {start} plus count {count} exceeds the {available} entries available.");
+        }
+
         int width = 0;
         var lengths = new int[count];
         for (int i = 0; i < count; i++)

@@ -208,7 +208,7 @@ public sealed class OnnxTextEmbedder : IDisposable
     {
         ThrowIfDisposed();
         Guard.NotNull(encoder);
-        List<long[]> sequences = encoder.EncodeAll(texts, cancellationToken);
+        IReadOnlyList<long[]> sequences = encoder.EncodeAll(texts, cancellationToken);
 
         int total = sequences.Count;
         var embeddings = new float[total][];
@@ -283,7 +283,7 @@ public sealed class OnnxTextEmbedder : IDisposable
     }
 
     /// <summary>Indices of <paramref name="sequences"/> ordered by length, ties by original position.</summary>
-    private static int[] SortedByLength(List<long[]> sequences)
+    private static int[] SortedByLength(IReadOnlyList<long[]> sequences)
     {
         var order = new int[sequences.Count];
         for (int i = 0; i < order.Length; i++)
