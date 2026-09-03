@@ -735,7 +735,8 @@ exactly as the C# does, and that generation downloads no nltk data."
 **Interfaces:**
 
 - Consumes: nothing from earlier tasks.
-- Produces: `internal sealed class WordGraph` with `WordGraph(IReadOnlyList<string> stems, int window)`, `IReadOnlyList<string> Nodes { get; }` (insertion order, unreachable nodes removed), and `double[] Rank(double damping, double tolerance, int maxIterations)` returning the dominant left eigenvector, L2-normalised, in `Nodes` order.
+- Produces: `internal sealed class WordGraph` with `WordGraph(IReadOnlyList<string?> stream, int window)`, `IReadOnlyList<string> Nodes { get; }` (first-occurrence order, unreachable nodes removed), and `double[] Rank(double damping, double tolerance, int maxIterations)` returning the dominant left eigenvector, L2-normalised, in `Nodes` order.
+- **The stream is the raw token stream, with `null` at every position that is not a node.** A stop word occupies a position and forms no node, which is what keeps `compatibility` and `systems` from being adjacent across the `of` between them. Windowing the filtered stream instead gives this document 12 edges rather than summa's 5, and removes nothing.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -749,20 +750,22 @@ namespace Lodestar.Text.Tests.Keywords;
 
 public sealed class WordGraphTests
 {
-    // The stems summa produces for
+    // The raw token stream of
     // "Compatibility of systems of linear constraints over the set of natural numbers.
     //  Criteria of compatibility of a system of linear Diophantine equations."
-    // with its stop words removed, in source order.
-    private static readonly string[] Stems =
+    // stemmed, with null wherever a stop word stood. The nulls are the point: they hold
+    // the positions that keep compat and system from neighbouring each other.
+    private static readonly string?[] Stream =
     [
-        "compat", "system", "linear", "constraint", "set", "natur", "number",
-        "criteria", "compat", "system", "linear", "diophantin", "equat",
+        "compat", null, "system", null, "linear", "constraint", null, null, "set", null,
+        "natur", "number", "criteria", null, "compat", null, null, "system", null,
+        "linear", "diophantin", "equat",
     ];
 
     [Fact]
     public void A_node_with_no_edge_is_removed_before_ranking()
     {
-        var graph = new WordGraph(Stems, window: 2);
+        var graph = new WordGraph(Stream, window: 2);
 
         // compat, system and set only ever neighbour a node they equal or a removed one.
         Assert.Equal(
@@ -773,7 +776,7 @@ public sealed class WordGraphTests
     [Fact]
     public void Rank_reproduces_the_scores_summa_publishes()
     {
-        var graph = new WordGraph(Stems, window: 2);
+        var graph = new WordGraph(Stream, window: 2);
         double[] scores = graph.Rank(damping: 0.85, tolerance: 1e-12, maxIterations: 1000);
 
         Dictionary<string, double> byStem = graph.Nodes
@@ -787,9 +790,19 @@ public sealed class WordGraphTests
     }
 
     [Fact]
+    public void Only_tokens_adjacent_in_the_raw_stream_share_an_edge()
+    {
+        // summa's five, measured: a stop word between two words is a position, so
+        // "compatibility of systems" makes no compat-system edge.
+        var graph = new WordGraph(Stream, window: 2);
+
+        Assert.Equal(5, graph.EdgeCount);
+    }
+
+    [Fact]
     public void The_ranking_vector_has_unit_L2_norm()
     {
-        double[] scores = new WordGraph(Stems, window: 2).Rank(0.85, 1e-12, 1000);
+        double[] scores = new WordGraph(Stream, window: 2).Rank(0.85, 1e-12, 1000);
 
         Assert.Equal(1.0, Math.Sqrt(scores.Sum(s => s * s)), 12);
     }
@@ -797,7 +810,7 @@ public sealed class WordGraphTests
     [Fact]
     public void A_document_whose_words_never_co_occur_ranks_nothing()
     {
-        var graph = new WordGraph(["alpha"], window: 2);
+        var graph = new WordGraph(["alpha", null], window: 2);
 
         Assert.Empty(graph.Nodes);
         Assert.Empty(graph.Rank(0.85, 1e-12, 1000));
@@ -806,7 +819,7 @@ public sealed class WordGraphTests
     [Fact]
     public void Failing_to_converge_is_an_error_rather_than_a_half_iterated_vector()
     {
-        var graph = new WordGraph(Stems, window: 2);
+        var graph = new WordGraph(Stream, window: 2);
 
         Assert.Throws<InvalidOperationException>(() => graph.Rank(0.85, 1e-18, maxIterations: 2));
     }
@@ -827,9 +840,11 @@ namespace Lodestar.Text.Keywords;
 /// The undirected co-occurrence graph TextRank ranks, and the power iteration that ranks it.
 /// </summary>
 /// <remarks>
-/// Nodes of zero weighted degree are deleted before ranking. Without that the transition
-/// matrix is substochastic and its dominant eigenvector is a different vector — measured
-/// against summa, whose own pipeline deletes them.
+/// The window runs over the RAW token stream: a stop word is a null that occupies a
+/// position and forms no node, so two words separated by one are not adjacent. Nodes of
+/// zero weighted degree are then deleted, without which the transition matrix is
+/// substochastic and its dominant eigenvector is a different vector. Both measured
+/// against summa, whose pipeline does the same two things.
 /// </remarks>
 internal sealed class WordGraph
 {
@@ -837,25 +852,33 @@ internal sealed class WordGraph
     private readonly Dictionary<string, int> _index = new(StringComparer.Ordinal);
     private double[,] _weights;
 
-    public WordGraph(IReadOnlyList<string> stems, int window)
+    public WordGraph(IReadOnlyList<string?> stream, int window)
     {
-        foreach (string stem in stems)
+        foreach (string? token in stream)
         {
-            if (!_index.ContainsKey(stem))
+            if (token is not null && !_index.ContainsKey(token))
             {
-                _index[stem] = _nodes.Count;
-                _nodes.Add(stem);
+                _index[token] = _nodes.Count;
+                _nodes.Add(token);
             }
         }
 
         int n = _nodes.Count;
         var weights = new double[n, n];
-        for (int i = 0; i < stems.Count; i++)
+        for (int i = 0; i < stream.Count; i++)
         {
-            for (int j = i + 1; j < Math.Min(i + window, stems.Count); j++)
+            if (stream[i] is not string left)
             {
-                int a = _index[stems[i]];
-                int b = _index[stems[j]];
+                continue;
+            }
+            for (int j = i + 1; j < Math.Min(i + window, stream.Count); j++)
+            {
+                if (stream[j] is not string right)
+                {
+                    continue;
+                }
+                int a = _index[left];
+                int b = _index[right];
                 if (a == b)
                 {
                     continue;
@@ -871,6 +894,26 @@ internal sealed class WordGraph
 
     /// <summary>The ranked words, in first-occurrence order, with the unreachable ones gone.</summary>
     public IReadOnlyList<string> Nodes => _nodes;
+
+    /// <summary>How many undirected edges survive, which is what a window bug changes first.</summary>
+    public int EdgeCount
+    {
+        get
+        {
+            int edges = 0;
+            for (int i = 0; i < _nodes.Count; i++)
+            {
+                for (int j = i + 1; j < _nodes.Count; j++)
+                {
+                    if (_weights[i, j] != 0)
+                    {
+                        edges++;
+                    }
+                }
+            }
+            return edges;
+        }
+    }
 
     /// <summary>The dominant left eigenvector of <c>d·A + (1 − d)/n</c>, L2-normalised.</summary>
     /// <exception cref="InvalidOperationException">The iteration did not converge within <paramref name="maxIterations"/>.</exception>
@@ -1024,7 +1067,8 @@ against summa, which deletes them too."
 
 **Interfaces:**
 
-- Consumes: `WordGraph` (Task 4), `PhraseTokenizer.Words(string)` and `KeywordMatch` (Task 1), `EnglishSnowballStemmer` from `Lodestar.Text.Stemming`, `StopWords.English`.
+- Consumes: `WordGraph(IReadOnlyList<string?> stream, int window)`, `.Nodes` and `.Rank(damping, tolerance, maxIterations)` (Task 4); `PhraseTokenizer.Words(string)` and `KeywordMatch` (Task 1); `EnglishSnowballStemmer` from `Lodestar.Text.Stemming`; `StopWords.English`.
+- **Build the stream `WordGraph` wants: one entry per raw token, the stem where the token is kept and `null` where a stop word stood.** Do not compact it — the nulls are what make the window match summa's.
 - Produces: `public sealed class TextRank` with `TextRank(TextRankOptions? options = null)` and `IReadOnlyList<KeywordMatch> Extract(string text)`; `public sealed record TextRankOptions`.
 
 - [ ] **Step 1: Write the failing test**
@@ -1222,19 +1266,21 @@ public sealed class TextRank
         Guard.NotNull(text);
 
         IReadOnlyList<string> words = _tokenizer.Words(text);
-        var kept = new List<string>();
-        var stems = new List<string>();
+
+        // One entry per raw token: the stem where the word is kept, null where a stop
+        // word stood. The nulls hold the positions the co-occurrence window counts.
+        var stream = new string?[words.Count];
         var surface = new Dictionary<string, Dictionary<string, int>>(StringComparer.Ordinal);
-        foreach (string word in words)
+        for (int i = 0; i < words.Count; i++)
         {
+            string word = words[i];
             if (_stopWords.Contains(word))
             {
                 continue;
             }
-            string stem = _stemmer.Stem(word);
-            kept.Add(word);
-            stems.Add(stem);
 
+            string stem = _stemmer.Stem(word);
+            stream[i] = stem;
             if (!surface.TryGetValue(stem, out Dictionary<string, int>? counts))
             {
                 surface[stem] = counts = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -1242,7 +1288,7 @@ public sealed class TextRank
             counts[word] = counts.TryGetValue(word, out int c) ? c + 1 : 1;
         }
 
-        var graph = new WordGraph(stems, _options.Window);
+        var graph = new WordGraph(stream, _options.Window);
         if (graph.Nodes.Count == 0)
         {
             return [];
@@ -1258,24 +1304,24 @@ public sealed class TextRank
             .Take(take)
             .ToDictionary(p => p.stem, p => p.Item2, StringComparer.Ordinal);
 
-        return Glue(kept, stems, scoreByStem, surface);
+        return Glue(stream, scoreByStem, surface);
     }
 
-    // Two selected stems that stood next to each other become one phrase, scored by the
-    // mean of their parts. The reference glues over the raw split, so a phrase can cross
-    // what a reader would call a clause.
+    // Selected stems that stood next to each other in the raw stream become one phrase,
+    // scored by the mean of their parts. A null breaks the run, which is why a stop word
+    // between two keywords keeps them apart — summa glues over the raw split for the
+    // same reason.
     private static IReadOnlyList<KeywordMatch> Glue(
-        IReadOnlyList<string> words,
-        IReadOnlyList<string> stems,
+        IReadOnlyList<string?> stream,
         Dictionary<string, double> scoreByStem,
         Dictionary<string, Dictionary<string, int>> surface)
     {
         var hits = new List<KeywordMatch>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
         int i = 0;
-        while (i < stems.Count)
+        while (i < stream.Count)
         {
-            if (!scoreByStem.ContainsKey(stems[i]))
+            if (stream[i] is not string head || !scoreByStem.ContainsKey(head))
             {
                 i++;
                 continue;
@@ -1284,9 +1330,11 @@ public sealed class TextRank
             int j = i;
             double total = 0;
             var parts = new List<string>();
-            while (j < stems.Count && scoreByStem.TryGetValue(stems[j], out double score))
+            while (j < stream.Count
+                   && stream[j] is string stem
+                   && scoreByStem.TryGetValue(stem, out double score))
             {
-                parts.Add(Best(surface[stems[j]]));
+                parts.Add(Best(surface[stem]));
                 total += score;
                 j++;
             }
