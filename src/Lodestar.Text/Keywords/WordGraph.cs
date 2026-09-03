@@ -6,8 +6,8 @@ namespace Lodestar.Text.Keywords;
 /// <remarks>
 /// The window runs over the RAW token stream: a stop word is a null that occupies a
 /// position and forms no node, so two words separated by one are not adjacent. Nodes of
-/// zero weighted degree are then deleted, without which the transition matrix is
-/// substochastic and its dominant eigenvector is a different vector. Both measured
+/// zero weighted degree are then deleted in one pass, without which the transition matrix
+/// is substochastic and its dominant eigenvector is a different vector. Both measured
 /// against summa, whose pipeline does the same two things.
 /// </remarks>
 internal sealed class WordGraph
@@ -224,27 +224,22 @@ internal sealed class WordGraph
         return m;
     }
 
-    // A zero-degree row makes the transition matrix substochastic. Removing a node can
-    // isolate another, so this repeats until nothing moves.
+    // One pass is enough: a node of zero weighted degree has no edges, so removing it
+    // lowers nobody else's degree and can isolate no one. summa's is one `for` too.
     private void RemoveUnreachable()
     {
-        bool removed = true;
-        while (removed)
+        for (int i = _nodes.Count - 1; i >= 0; i--)
         {
-            removed = false;
-            for (int i = _nodes.Count - 1; i >= 0; i--)
+            double degree = 0;
+            for (int j = 0; j < _nodes.Count; j++)
             {
-                double degree = 0;
-                for (int j = 0; j < _nodes.Count; j++)
-                {
-                    degree += _weights[i][j];
-                }
+                degree += _weights[i][j];
+            }
 
-                if (IsZero(degree))
-                {
-                    Drop(i);
-                    removed = true;
-                }
+            if (IsZero(degree))
+            {
+                // Descending, so Drop never invalidates an index still to visit.
+                Drop(i);
             }
         }
     }

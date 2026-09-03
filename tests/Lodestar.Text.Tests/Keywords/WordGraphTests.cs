@@ -69,6 +69,20 @@ public sealed class WordGraphTests
     }
 
     [Fact]
+    public void A_null_stream_is_refused()
+    {
+        Assert.Throws<ArgumentNullException>(() => new WordGraph(null!, window: 2));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void A_window_below_one_is_refused(int window)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new WordGraph(Stream, window));
+    }
+
+    [Fact]
     public void Failing_to_converge_is_an_error_rather_than_a_half_iterated_vector()
     {
         var graph = new WordGraph(Stream, window: 2);
