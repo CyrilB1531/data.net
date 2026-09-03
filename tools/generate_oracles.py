@@ -7403,6 +7403,61 @@ def generate_keywords_textrank() -> dict:
     }
 
 
+MMR_CASES = [
+    ("orthogonal_tail",
+     [1.0, 0.0, 0.0],
+     [[1.0, 0.0, 0.0], [0.8, 0.6, 0.0], [0.6, 0.0, 0.8], [0.0, 1.0, 0.0]],
+     3, [0.0, 0.25, 0.5, 0.75, 1.0]),
+    ("two_clusters",
+     [1.0, 1.0, 0.0],
+     [[1.0, 0.9, 0.0], [0.9, 1.0, 0.0], [0.0, 0.0, 1.0], [0.1, 0.0, 1.0], [1.0, 0.0, 0.0]],
+     3, [0.0, 0.5, 1.0]),
+]
+
+
+def generate_mmr() -> dict:
+    """MMR replayed against keybert 0.9.0's own selector (#525).
+
+    keybert sorts its picks by relevance to the document, not by selection
+    order, so the corpus freezes the selected *set* rather than the sequence
+    -- see Mmr.Select's own doc comment for why the C# side returns order.
+    """
+    import numpy as np  # noqa: PLC0415
+    from keybert._mmr import mmr  # noqa: PLC0415
+
+    cases = []
+    for name, query, candidates, count, lambdas in MMR_CASES:
+        for lam in lambdas:
+            labels = [str(i) for i in range(len(candidates))]
+            chosen = mmr(
+                np.array([query]), np.array(candidates), labels,
+                top_n=count, diversity=1 - lam,
+            )
+            cases.append({
+                "id": len(cases),
+                "name": f"{name}:lambda={lam}",
+                "query": query,
+                "candidates": candidates,
+                "count": count,
+                "lambda": lam,
+                # keybert sorts by similarity to the document, not by selection order,
+                # so the set is what the two implementations can be held to.
+                "selected": sorted(int(label) for label, _ in chosen),
+            })
+
+    return {
+        "metadata": {
+            "algorithm": "Mmr",
+            "library": "keybert",
+            "library_version": version("keybert"),
+            "reference_calls": ["keybert._mmr.mmr(doc_embedding, word_embeddings, words, top_n, diversity)"],
+            "note": "diversity = 1 - lambda; keybert returns its picks sorted by relevance, so only the set is compared",
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     """Write every oracle deterministically, byte for byte.
 
@@ -7436,6 +7491,7 @@ def main() -> None:
         "text_bktree.json": generate_text_bktree,
         "keywords_rake.json": generate_keywords_rake,
         "keywords_textrank.json": generate_keywords_textrank,
+        "mmr.json": generate_mmr,
         "ratcliff.json": generate_ratcliff,
         "set_similarity.json": generate_set_similarity,
         "phonetics.json": generate_phonetics,

@@ -314,6 +314,11 @@ jobs:
           #                       scikit-learn pulls scipy, and so on)
           #   --only-binary :all: no source distribution, so no setup.py executes
           pip install --only-binary :all: --require-hashes -r tools/requirements.lock.txt
+          # keybert (the MMR oracle's reference) is not in the lock: its own
+          # install_requires drags in sentence-transformers and, through it, torch
+          # and transformers, none of which keybert._mmr.mmr needs. --no-deps
+          # keeps the lock's resolved graph untouched; see tools/requirements-nodeps.txt.
+          pip install --no-deps --require-hashes -r tools/requirements-nodeps.txt
           # The generator writes over tests/oracles in place, so the committed
           # corpora are copied aside first — there is nothing to compare against
           # afterwards otherwise.

@@ -90,6 +90,12 @@ with `compare_oracles.py` below rather than with `git diff`
 ([decision 0073](../docs/decisions/0073-the-oracle-gate-compares-numbers-not-bytes.md)).
 Committing the regenerated JSON is part of the change.
 
+`mmr.json` needs one more package than the lock installs: `tools/requirements-nodeps.txt` pins
+keybert, hash-only, installed with `pip install --no-deps --require-hashes` so its own
+dependencies (sentence-transformers, and through it torch) never enter `requirements.lock.txt` —
+`generate_mmr` calls only `keybert._mmr.mmr`, which imports nothing but numpy and scikit-learn.
+[`../CONTRIBUTING.md`](../CONTRIBUTING.md#dependencies) has the full reasoning.
+
 ## `compare_oracles.py`
 
 Compares two directories of corpora and reports only what the test suites would notice:
