@@ -143,7 +143,7 @@ public sealed class TextRank
     }
 
     // Adjacent selected stems become one phrase, scored by the mean of their parts. A
-    // null or a dirty continuation (see ScanClean) both break the run.
+    // stem already spent by an earlier phrase behaves as unselected — summa's per-document `pop`.
     private static List<KeywordMatch> Glue(
         string?[] stream,
         bool[] clean,
@@ -151,21 +151,18 @@ public sealed class TextRank
         Dictionary<string, Dictionary<string, int>> surface)
     {
         var hits = new List<KeywordMatch>();
-        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var consumed = new HashSet<string>(StringComparer.Ordinal);
         int i = 0;
         while (i < stream.Length)
         {
-            if (stream[i] is not string head || !scoreByStem.ContainsKey(head))
+            if (stream[i] is not string head || !scoreByStem.ContainsKey(head) || consumed.Contains(head))
             {
                 i++;
                 continue;
             }
 
-            (KeywordMatch hit, int next) = GlueRun(stream, clean, i, scoreByStem, surface);
-            if (seen.Add(hit.Phrase))
-            {
-                hits.Add(hit);
-            }
+            (KeywordMatch hit, int next) = GlueRun(stream, clean, i, scoreByStem, surface, consumed);
+            hits.Add(hit);
             i = next;
         }
 
@@ -173,25 +170,32 @@ public sealed class TextRank
         return hits;
     }
 
-    // The run starting at i: every stem in scoreByStem, consecutive in the raw stream,
-    // with every entry past the head required clean.
+    // A continuation must be clean, unconsumed and new to this run; the whole set used
+    // here joins consumed once the run below is done building it.
     private static (KeywordMatch Hit, int Next) GlueRun(
         string?[] stream,
         bool[] clean,
         int i,
         Dictionary<string, double> scoreByStem,
-        Dictionary<string, Dictionary<string, int>> surface)
+        Dictionary<string, Dictionary<string, int>> surface,
+        HashSet<string> consumed)
     {
         int j = i;
         double total = 0;
         var parts = new List<string>();
+        var used = new HashSet<string>(StringComparer.Ordinal);
         while (j < stream.Length && (j == i || clean[j])
-               && stream[j] is string stem && scoreByStem.TryGetValue(stem, out double score))
+               && stream[j] is string stem
+               && scoreByStem.TryGetValue(stem, out double score)
+               && !consumed.Contains(stem)
+               && used.Add(stem))
         {
             parts.Add(Best(surface[stem]));
             total += score;
             j++;
         }
+
+        consumed.UnionWith(used);
 
         string phrase = string.Join(" ", parts);
         return (new KeywordMatch(phrase, total / parts.Count), j);

@@ -11,6 +11,17 @@ public sealed class TextRankTests
         "Compatibility of systems of linear constraints over the set of natural numbers. " +
         "Criteria of compatibility of a system of linear Diophantine equations.";
 
+    // linear occurs twice; summa (measured, 1.2.0) glues only the first occurrence, so the
+    // second contributes no separate phrase -- the same once-per-document rule as Glue's.
+    [Fact]
+    public void A_keyword_occurring_twice_appears_in_exactly_one_phrase()
+    {
+        IReadOnlyList<KeywordMatch> hits = new TextRank(new TextRankOptions { Words = 7 }).Extract(TwoSentences);
+
+        Assert.Equal(6, hits.Count);
+        Assert.Single(hits, h => h.Phrase.Split(' ').Contains("linear", StringComparer.Ordinal));
+    }
+
     [Fact]
     public void The_four_highest_match_what_summa_publishes()
     {
