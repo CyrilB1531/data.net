@@ -4,8 +4,8 @@ using Lodestar.Text.Vectorization;
 
 namespace Lodestar.Text.Keywords;
 
-// CA1308 (normalize to uppercase): ScanClean asks whether the source already spelled a
-// token lower-case, the same question PhraseTokenizer asks of stop words; ToUpperInvariant
+// CA1308 (normalize to uppercase): Scan asks whether the source already spelled a token
+// lower-case, the same question PhraseTokenizer asks of stop words; ToUpperInvariant
 // would answer a different question.
 #pragma warning disable CA1308
 
@@ -22,7 +22,6 @@ namespace Lodestar.Text.Keywords;
 public sealed class TextRank
 {
     private readonly TextRankOptions _options;
-    private readonly PhraseTokenizer _tokenizer;
     private readonly StopWordSet _stopWords;
     private readonly Regex _rawToken;
 
@@ -45,7 +44,6 @@ public sealed class TextRank
 
         IReadOnlyCollection<string> stop = _options.StopWords ?? StopWords.English;
         _stopWords = StopWordSet.Adopt(stop);
-        _tokenizer = new PhraseTokenizer(stop, _options.TokenPattern);
         _rawToken = new Regex(_options.TokenPattern, RegexOptions.Compiled | RegexOptions.CultureInvariant, RegexDefaults.MatchTimeout);
     }
 
@@ -58,8 +56,8 @@ public sealed class TextRank
     {
         Guard.NotNull(text);
 
-        IReadOnlyList<string> words = _tokenizer.Words(text);
-        (string?[] stream, Dictionary<string, Dictionary<string, int>> surface) = BuildStream(words);
+        (string[] words, bool[] clean) = Scan(text);
+        string?[] stream = BuildStream(words);
 
         var graph = new WordGraph(stream, _options.Window);
         if (graph.Nodes.Count == 0)
@@ -70,63 +68,43 @@ public sealed class TextRank
         double[] ranked = graph.Rank(_options.Damping, _options.Tolerance, _options.MaxIterations);
         Dictionary<string, double> scoreByStem = TopStems(graph.Nodes, ranked);
 
-        bool[] clean = ScanClean(text, words.Count);
-        return Glue(stream, clean, scoreByStem, surface);
+        return Glue(stream, words, clean, scoreByStem);
+    }
+
+    // One pass over the source: each match yields its spelling and cleanliness together,
+    // so the two can never disagree the way two passes over differently-cased text could.
+    private (string[] Words, bool[] Clean) Scan(string text)
+    {
+        var words = new List<string>();
+        var clean = new List<bool>();
+        foreach (Match m in _rawToken.Matches(text))
+        {
+            words.Add(m.Value.ToLowerInvariant());
+            bool precededByGap = m.Index == 0 || char.IsWhiteSpace(text[m.Index - 1]);
+            int end = m.Index + m.Length;
+            bool followedByGap = end == text.Length || char.IsWhiteSpace(text[end]);
+            clean.Add(precededByGap && followedByGap && string.Equals(m.Value, m.Value.ToLowerInvariant(), StringComparison.Ordinal));
+        }
+
+        return (words.ToArray(), clean.ToArray());
     }
 
     // One entry per raw token, never compacted: the stem where the word is kept, null
     // where a stop word stood, so the co-occurrence window still counts its position.
-    private (string?[] Stream, Dictionary<string, Dictionary<string, int>> Surface) BuildStream(
-        IReadOnlyList<string> words)
+    private string?[] BuildStream(string[] words)
     {
-        var stream = new string?[words.Count];
-        var surface = new Dictionary<string, Dictionary<string, int>>(StringComparer.Ordinal);
-        for (int i = 0; i < words.Count; i++)
+        var stream = new string?[words.Length];
+        for (int i = 0; i < words.Length; i++)
         {
-            string word = words[i];
-            if (_stopWords.Contains(word))
+            if (_stopWords.Contains(words[i]))
             {
                 continue;
             }
 
-            string stem = EnglishSnowballStemmer.Stem(word);
-            stream[i] = stem;
-            RecordSurface(surface, stem, word);
+            stream[i] = EnglishSnowballStemmer.Stem(words[i]);
         }
 
-        return (stream, surface);
-    }
-
-    private static void RecordSurface(Dictionary<string, Dictionary<string, int>> surface, string stem, string word)
-    {
-        if (!surface.TryGetValue(stem, out Dictionary<string, int>? counts))
-        {
-            surface[stem] = counts = new Dictionary<string, int>(StringComparer.Ordinal);
-        }
-        counts[word] = counts.TryGetValue(word, out int c) ? c + 1 : 1;
-    }
-
-    // Clean: spelled exactly as its lower-cased form, whitespace on both edges — no
-    // attached punctuation, no stray case. Only a clean token may extend a glued run.
-    private bool[] ScanClean(string text, int expectedCount)
-    {
-        var clean = new bool[expectedCount];
-        int i = 0;
-        foreach (Match m in _rawToken.Matches(text))
-        {
-            if (i >= expectedCount)
-            {
-                break;
-            }
-
-            bool precededByGap = m.Index == 0 || char.IsWhiteSpace(text[m.Index - 1]);
-            int end = m.Index + m.Length;
-            bool followedByGap = end == text.Length || char.IsWhiteSpace(text[end]);
-            clean[i] = precededByGap && followedByGap && string.Equals(m.Value, m.Value.ToLowerInvariant(), StringComparison.Ordinal);
-            i++;
-        }
-
-        return clean;
+        return stream;
     }
 
     private Dictionary<string, double> TopStems(IReadOnlyList<string> nodes, double[] ranked)
@@ -143,26 +121,29 @@ public sealed class TextRank
     }
 
     // Adjacent selected stems become one phrase, scored by the mean of their parts. A
-    // stem already spent by an earlier phrase behaves as unselected — summa's per-document `pop`.
+    // spelling already spent by an earlier phrase behaves as unselected — summa's `pop`.
     private static List<KeywordMatch> Glue(
         string?[] stream,
+        string[] words,
         bool[] clean,
-        Dictionary<string, double> scoreByStem,
-        Dictionary<string, Dictionary<string, int>> surface)
+        Dictionary<string, double> scoreByStem)
     {
         var hits = new List<KeywordMatch>();
         var consumed = new HashSet<string>(StringComparer.Ordinal);
         int i = 0;
         while (i < stream.Length)
         {
-            if (stream[i] is not string head || !scoreByStem.ContainsKey(head) || consumed.Contains(head))
+            if (stream[i] is not string head || !scoreByStem.ContainsKey(head) || consumed.Contains(words[i]))
             {
                 i++;
                 continue;
             }
 
-            (KeywordMatch hit, int next) = GlueRun(stream, clean, i, scoreByStem, surface, consumed);
-            hits.Add(hit);
+            (KeywordMatch? hit, int next) = GlueRun(stream, words, clean, i, scoreByStem, consumed);
+            if (hit is { } value)
+            {
+                hits.Add(value);
+            }
             i = next;
         }
 
@@ -170,14 +151,14 @@ public sealed class TextRank
         return hits;
     }
 
-    // A continuation must be clean, unconsumed and new to this run; the whole set used
-    // here joins consumed once the run below is done building it.
-    private static (KeywordMatch Hit, int Next) GlueRun(
+    // A continuation must be clean, its own spelling unconsumed, and new to this run. A
+    // run that only stops because the document ran out reports and spends nothing.
+    private static (KeywordMatch? Hit, int Next) GlueRun(
         string?[] stream,
+        string[] words,
         bool[] clean,
         int i,
         Dictionary<string, double> scoreByStem,
-        Dictionary<string, Dictionary<string, int>> surface,
         HashSet<string> consumed)
     {
         int j = i;
@@ -187,20 +168,21 @@ public sealed class TextRank
         while (j < stream.Length && (j == i || clean[j])
                && stream[j] is string stem
                && scoreByStem.TryGetValue(stem, out double score)
-               && !consumed.Contains(stem)
-               && used.Add(stem))
+               && !consumed.Contains(words[j])
+               && used.Add(words[j]))
         {
-            parts.Add(Best(surface[stem]));
+            parts.Add(words[j]);
             total += score;
             j++;
         }
 
-        consumed.UnionWith(used);
+        if (j == stream.Length && parts.Count > 1)
+        {
+            return (null, i + 1);
+        }
 
+        consumed.UnionWith(used);
         string phrase = string.Join(" ", parts);
         return (new KeywordMatch(phrase, total / parts.Count), j);
     }
-
-    private static string Best(Dictionary<string, int> counts) =>
-        counts.OrderByDescending(p => p.Value).ThenBy(p => p.Key, StringComparer.Ordinal).First().Key;
 }

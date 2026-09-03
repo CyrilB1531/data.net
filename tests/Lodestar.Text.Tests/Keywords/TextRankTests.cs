@@ -11,6 +11,53 @@ public sealed class TextRankTests
         "Compatibility of systems of linear constraints over the set of natural numbers. " +
         "Criteria of compatibility of a system of linear Diophantine equations.";
 
+    // A clean run reaching the document's last token is dropped whole (summa's inner loop
+    // reports only on a rejected continuation). Measured against summa 1.2.0.
+    [Fact]
+    public void A_clean_run_reaching_the_last_token_is_dropped_whole()
+    {
+        const string doc = "Copper wires conduct electricity through metal circuits";
+        IReadOnlyList<KeywordMatch> withoutPeriod = new TextRank(new TextRankOptions { Words = 4 }).Extract(doc);
+        IReadOnlyList<KeywordMatch> withPeriod = new TextRank(new TextRankOptions { Words = 4 }).Extract(doc + ".");
+
+        Assert.Equal(2, withoutPeriod.Count);
+        Assert.DoesNotContain(withoutPeriod, h => h.Phrase.Contains("metal", StringComparison.Ordinal));
+        KeywordMatch circuitsAlone = Assert.Single(withoutPeriod, h => h.Phrase == "circuits");
+        Assert.Equal(0.3966567303643845, circuitsAlone.Score, 12);
+
+        Assert.Equal(3, withPeriod.Count);
+        KeywordMatch metalAlone = Assert.Single(withPeriod, h => h.Phrase == "metal");
+        Assert.Equal(0.39665673036438454, metalAlone.Score, 12);
+    }
+
+    // A phrase carries the spelling at its own position, never a document-wide most
+    // common form, and consumption is per spelling. Measured against summa 1.2.0.
+    [Fact]
+    public void A_phrase_carries_its_own_spelling_and_frees_the_other()
+    {
+        const string doc = "Copper equation predicts electric current while linear equations describe circuits";
+        IReadOnlyList<KeywordMatch> hits = new TextRank(new TextRankOptions { Words = 4 }).Extract(doc);
+
+        Assert.Equal(2, hits.Count);
+        KeywordMatch phrase = Assert.Single(hits, h => h.Phrase == "equation predicts electric current");
+        Assert.Equal(0.44770524766997183, phrase.Score, 12);
+        KeywordMatch standalone = Assert.Single(hits, h => h.Phrase == "equations");
+        Assert.Equal(0.6525526168600424, standalone.Score, 12);
+    }
+
+    // words and clean must come from one pass: a second pass over a differently-cased
+    // string could misalign them for a case-sensitive TokenPattern (no summa counterpart).
+    [Fact]
+    public void A_case_sensitive_pattern_keeps_words_and_cleanliness_aligned()
+    {
+        IReadOnlyList<KeywordMatch> hits = new TextRank(new TextRankOptions { TokenPattern = @"\b[a-z]+\b", Words = 2 })
+            .Extract("Alpha beta Gamma delta epsilon");
+
+        KeywordMatch hit = Assert.Single(hits);
+        Assert.Equal("beta delta", hit.Phrase, StringComparer.Ordinal);
+        Assert.Equal(0.6121700988537723, hit.Score, 12);
+    }
+
     // linear occurs twice; summa (measured, 1.2.0) glues only the first occurrence, so the
     // second contributes no separate phrase -- the same once-per-document rule as Glue's.
     [Fact]
