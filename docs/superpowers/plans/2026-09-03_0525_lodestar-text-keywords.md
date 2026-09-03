@@ -1349,10 +1349,9 @@ public sealed class TextRank
         return Glue(stream, scoreByStem, surface);
     }
 
-    // Selected stems that stood next to each other in the raw stream become one phrase,
-    // scored by the mean of their parts. A null breaks the run, which is why a stop word
-    // between two keywords keeps them apart — summa glues over the raw split for the
-    // same reason.
+    // A continuation must be selected, must equal its raw whitespace-split token (so
+    // "numbers." breaks the run), and must not already be in the phrase being built.
+    // Each keyword is consumed once per document, as summa's _keywords.pop does.
     private static IReadOnlyList<KeywordMatch> Glue(
         IReadOnlyList<string?> stream,
         Dictionary<string, double> scoreByStem,

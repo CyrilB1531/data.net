@@ -160,6 +160,20 @@ public sealed class TextRank
 }
 ```
 
+**Gluing has three conditions, not one**, and `summa`'s own line is the specification:
+
+```python
+if other_word in _keywords and other_word == split_text[j] and other_word not in combined_word:
+```
+
+A continuation must be a selected keyword, must **equal its raw whitespace-split token** — so
+`"numbers."` breaks the run, because it is not `"numbers"` — and must not already be in the phrase
+being built. The head word is stripped of punctuation; continuations are not. And each keyword is
+**consumed once for the whole document**: `_keywords.pop(keyword)` removes every word of a
+completed phrase, so a repeated keyword appears in at most one output phrase. That is why the
+two-sentence document returns four separate entries at `Words = 4` rather than gluing `numbers`
+to the `Criteria` that follows it.
+
 The pipeline, in the order `summa` runs it: tokenize; drop stop words; stem with
 `EnglishSnowballStemmer`; build the undirected co-occurrence graph over a sliding window of
 `Window`; **delete every node of zero weighted degree**; row-normalize by weighted degree;
