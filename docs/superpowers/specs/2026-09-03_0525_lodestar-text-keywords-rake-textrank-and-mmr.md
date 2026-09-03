@@ -47,15 +47,25 @@ calls `scipy.linalg.eig(M, left=True, right=False)`. `CONVERGENCE_THRESHOLD = 0.
 on this path. Its `process_results` takes `abs(vecs[i][0])` — the first column LAPACK returns,
 not the one belonging to the largest eigenvalue.
 
-`M` is row-stochastic, so its dominant left eigenvector is the stationary distribution, and power
-iteration converges to the same vector `scipy` returns **when LAPACK orders the Perron root first**.
-That ordering is not a contract, so the generator asserts it per document: it recomputes the
-stationary distribution independently and refuses to freeze a case where `summa`'s first column is
-not it. A corpus entry that silently froze a non-dominant eigenvector would make the C# side fail
-for being right.
-`scipy` normalizes eigenvectors to unit L2 norm, so **the scores are the stationary distribution
-scaled to unit L2 norm**. That is reproducible to a numerical tolerance, and not exactly. It is
-recorded as a divergence rather than hidden behind a looser assertion.
+**`keywords()` deletes every unreachable node before ranking**, which `get_graph` does not — a
+word whose weighted degree is zero is dropped by `remove_unreachable_nodes`. That step is
+load-bearing and easy to miss: with the isolated nodes still in, `M`'s rows sum to `{0.15, 1.0}`,
+the matrix is substochastic, and its dominant eigenvector is a different vector. After the removal,
+every row sums to `1.0`.
+
+So `M` is row-stochastic *once the unreachable nodes are gone*, its dominant left eigenvector is
+the stationary distribution, and `scipy` normalizes eigenvectors to unit L2 norm — **the scores are
+that distribution scaled to unit L2 norm**.
+
+Measured on a two-sentence document: power iteration with per-step renormalisation reproduces the
+four scores `summa` returns to within **2e-15** — `linear` at `0.4686942795397482` against
+`summa`'s `0.46869427953974613`. The agreement is at machine precision, not at the `1e-6` a first
+reading of "eigensolver against power iteration" would suggest.
+
+LAPACK's column ordering is still not a contract, and `process_results` reads `vecs[i][0]`
+regardless. The generator therefore asserts per document that `summa`'s own output matches an
+independently computed stationary distribution, and refuses to freeze a case where it does not: a
+corpus entry holding a non-dominant eigenvector would make the C# side fail for being right.
 
 ## The POS filter is inert, so the no-tagger constraint holds
 
@@ -152,7 +162,8 @@ public sealed class TextRank
 
 The pipeline, in the order `summa` runs it: tokenize; drop stop words; stem with
 `EnglishSnowballStemmer`; build the undirected co-occurrence graph over a sliding window of
-`Window`; row-normalize by weighted degree; power-iterate to the stationary distribution;
+`Window`; **delete every node of zero weighted degree**; row-normalize by weighted degree;
+power-iterate to the stationary distribution, renormalising each step;
 normalize to unit L2 norm; take the top `Ratio` proportion (or `Words` count) of stems; map each
 back to its most frequent surface form; **re-glue stems adjacent in the source**, scoring a glued
 phrase as the mean of its parts.
@@ -236,8 +247,8 @@ declaring `library`, `library_version` and `reference_calls` like every other.
 | corpus | oracle | compared |
 | --- | --- | --- |
 | `keywords_rake.json` | `rake-nltk` 1.0.6 | phrases **exactly**, scores at `1e-9` |
-| `keywords_textrank.json` | `summa` 1.2.0 | phrases **exactly**, scores at `1e-6` |
-| `mmr.json` | `keybert` 0.9.0, `keybert._mmr.mmr` | index sequence **exactly** |
+| `keywords_textrank.json` | `summa` 1.2.0 | phrases **exactly**, scores at `1e-12` |
+| `mmr.json` | `keybert` 0.9.0, `keybert._mmr.mmr` | selected **set** exactly |
 
 All three are **MIT**, which [ADR 0003](../../decisions/0003-provenance-and-licensing.md) requires
 even of a library used only to generate test data.
@@ -262,10 +273,15 @@ importing and running it in the oracle environment.
 ### Divergences, for the ADR
 
 1. **TextRank scores agree numerically, not exactly.** Power iteration against `scipy.linalg.eig`,
-   compared at `1e-6`. The ranking is exact; the last digits are not.
+   compared at `1e-12` — measured agreement is 2e-15. The ranking is exact; the last digits are not
+   guaranteed to be.
 2. **`keybert` parameterises `diversity = 1 − λ`.** `Mmr.Select` takes `lambda`, per the paper.
-3. **`keybert` rounds its returned scores to four decimals.** Returning indices sidesteps it, which
-   is a second reason the signature returns indices.
+3. **`keybert` rounds its returned scores to four decimals**, and **sorts its result by similarity
+   to the document rather than by selection order** — measured at `lambda = 0`, where it returns
+   `[c0, c2, c3]` for a selection that ran `c0, c3, c2`. The corpus therefore compares the selected
+   **set**, which is what MMR determines; the order `Select` returns is this repository's contract
+   and is asserted by its own tests. Returning indices rather than keybert's rounded scores is a
+   second reason for the signature.
 4. **The API's default stop-word list is none of the three oracles'.** Deliberate: a caller of
    `Lodestar.Text` should get `Lodestar.Text`'s list.
 
