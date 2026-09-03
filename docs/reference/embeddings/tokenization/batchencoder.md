@@ -63,3 +63,5 @@ day.
 | --- | --- |
 | [`BatchEncoder.Encode`](batchencoder-encode.md) | One string to ids, template applied. |
 | [`BatchEncoder.EncodeBatch`](batchencoder-encodebatch.md) | Many strings to one padded rectangle. |
+| [`BatchEncoder.EncodeAll`](batchencoder-encodeall.md) | Every text as its own row of ids, unpadded. |
+| [`BatchEncoder.Pad`](batchencoder-pad.md) | A window of encoded rows, laid out as one rectangle. |

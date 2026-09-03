@@ -41,6 +41,8 @@ is one sentence, the issue and the commit; see
 
 #### Added
 
+- **`BatchEncoder.EncodeAll` and `BatchEncoder.Pad` are public**, so a caller that groups rows itself no longer needs a second copy of the padding. `EncodeAll` returns one unpadded row per text, template applied and truncation done; `Pad` lays a **window** of those rows out as one rectangle, widened to the longest row in that window rather than in the corpus — which is what makes grouping by length worth anything. `EncodeBatch` is unchanged, and is still the two of them over the whole corpus at once. ([#533](https://github.com/CyrilB1531/lodestar/issues/533))
+
 - `EmbeddingIndex.FromBlock` and `EmbeddingIndex.FromOwnedBlock` build an index from a contiguous block of vectors in one copy or none, where replaying the block through `Add` cost three times the read that produced it — the adopting factory keeps the caller's array for the life of the index, an invariant the caller keeps and [decision 0056](docs/decisions/0056-a-block-may-be-adopted-and-the-invariant-is-the-callers-to-keep.md) argues for. ([#474](https://github.com/CyrilB1531/lodestar/issues/474), [`13bdacc`](https://github.com/CyrilB1531/lodestar/commit/13bdacc))
 
 - `bench/Lodestar.Text.Benchmarks -- sidecar` prices a binary sidecar against the JSON artifact in bytes and in time, and [decision 0055](docs/decisions/0055-the-artifact-gets-a-binary-sidecar-once-a-block-can-be-ingested-whole.md) takes one — conditional on a bulk ingest into `EmbeddingIndex`, without which the sidecar route is slower than what it replaces. No shipped behaviour changes yet. ([#436](https://github.com/CyrilB1531/lodestar/issues/436), [`7ab80d1`](https://github.com/CyrilB1531/lodestar/commit/7ab80d1))

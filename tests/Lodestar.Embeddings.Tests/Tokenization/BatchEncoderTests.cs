@@ -135,6 +135,54 @@ public sealed class BatchEncoderTests
     }
 
     [Fact]
+    public void EncodeAll_leaves_every_row_its_own_length()
+    {
+        IReadOnlyList<long[]> sequences = Encoder().EncodeAll(["cat", "the cat sat"]);
+
+        Assert.Equal(2, sequences.Count);
+        Assert.Equal([7, 2, 8], sequences[0]);
+        Assert.Equal([7, 1, 2, 3, 8], sequences[1]);
+    }
+
+    [Fact]
+    public void Pad_widens_to_the_window_rather_than_to_the_corpus()
+    {
+        IReadOnlyList<long[]> sequences = Encoder().EncodeAll(["cat", "the cat sat"]);
+
+        // The whole point of splitting EncodeBatch in two: a window holding only the
+        // short row costs 3 columns, where the corpus-wide call costs 5 for both rows.
+        EncodedBatch narrow = Encoder().Pad(sequences, 0, 1);
+        Assert.Equal(3, narrow.SequenceLength);
+        Assert.Equal([7, 2, 8], narrow.InputIds.ToArray());
+
+        EncodedBatch wide = Encoder().Pad(sequences, 0, 2);
+        Assert.Equal(5, wide.SequenceLength);
+    }
+
+    [Fact]
+    public void Pad_reads_its_window_through_order_when_one_is_given()
+    {
+        IReadOnlyList<long[]> sequences = Encoder().EncodeAll(["cat", "the cat sat"]);
+
+        EncodedBatch batch = Encoder().Pad(sequences, 0, 1, [1, 0]);
+
+        Assert.Equal([7, 1, 2, 3, 8], batch.InputIds.ToArray());
+    }
+
+    [Fact]
+    public void Pad_refuses_a_window_that_runs_past_what_it_was_given()
+    {
+        IReadOnlyList<long[]> sequences = Encoder().EncodeAll(["cat", "the cat sat"]);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => Encoder().Pad(sequences, 1, 2));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Encoder().Pad(sequences, -1, 1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Encoder().Pad(sequences, 0, -1));
+
+        // order, not sequences, is what bounds the window when one is given.
+        Assert.Throws<ArgumentOutOfRangeException>(() => Encoder().Pad(sequences, 0, 2, [1]));
+    }
+
+    [Fact]
     public void An_empty_batch_is_empty_rather_than_a_zero_width_tensor()
     {
         EncodedBatch batch = Encoder().EncodeBatch([]);

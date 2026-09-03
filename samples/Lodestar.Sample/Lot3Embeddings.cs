@@ -270,6 +270,13 @@ internal static class Lot3Embeddings
                 + $"unpadded=[{string.Join(", ", batch.Sequence(row).ToArray())}]");
         }
 
+        // The same two halves, taken apart: EncodeAll shows the lengths before any
+        // padding, and Pad charges one window for its own longest row.
+        IReadOnlyList<long[]> sequences = batchEncoder.EncodeAll(["text", SampleText]);
+        EncodedBatch window = batchEncoder.Pad(sequences, 0, 1);
+        Console.WriteLine($"  EncodeAll        : lengths=[{string.Join(", ", sequences.Select(row => row.Length))}]");
+        Console.WriteLine($"  Pad (first row)  : padded to {window.SequenceLength}, not {batch.SequenceLength}");
+
         // Pooling. Two tokens of three dimensions, the second one padding — the
         // attention mask is what keeps the padding out of the mean.
         float[] tokenEmbeddings = [1f, 0f, 0f, 9f, 9f, 9f];
