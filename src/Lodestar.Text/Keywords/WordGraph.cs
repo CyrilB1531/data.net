@@ -34,7 +34,10 @@ internal sealed class WordGraph
     /// <summary>The ranked words, in first-occurrence order, with the unreachable ones gone.</summary>
     public IReadOnlyList<string> Nodes => _nodes;
 
-    /// <summary>How many undirected edges survive, which is what a window bug changes first.</summary>
+    /// <summary>
+    /// How many undirected off-diagonal edges survive, which is what a window bug changes
+    /// first. A self-loop lives on the diagonal and is never counted here.
+    /// </summary>
     public int EdgeCount
     {
         get
@@ -89,8 +92,9 @@ internal sealed class WordGraph
             $"The power iteration did not converge to {tolerance} within {maxIterations} iterations.");
     }
 
-    // Weights are sums of exact 1.0 increments, well under a double's 53-bit mantissa, so
-    // testing against zero is exact rather than an approximation that S1244 wants ranged.
+    // Every stored weight is set, never accumulated, to exactly 1.0 or left at the array's
+    // default 0.0, so testing against zero is exact rather than an approximation S1244 wants
+    // ranged.
 #pragma warning disable S1244
     private static bool IsZero(double weight) => weight == 0;
 #pragma warning restore S1244
@@ -177,8 +181,8 @@ internal sealed class WordGraph
         return weights;
     }
 
-    // Pairs token i with i+1 .. i+window-1, summa's own window semantics: only tokens
-    // that far apart in the RAW stream — nulls included — ever share an edge.
+    // Pairs token i with i+1 .. i+window-1 (summa's window), always at weight 1 — mirrors
+    // add_edge's `not has_edge` guard. a == b writes the one diagonal cell, not a skip.
     private void AddEdgesFrom(IReadOnlyList<string?> stream, double[][] weights, int i, string left, int window)
     {
         int end = Math.Min(i + window, stream.Count);
@@ -191,18 +195,16 @@ internal sealed class WordGraph
             }
 
             int b = _index[right];
-            if (a == b)
+            weights[a][b] = 1;
+            if (a != b)
             {
-                continue;
+                weights[b][a] = 1;
             }
-
-            weights[a][b] += 1;
-            weights[b][a] += 1;
         }
     }
 
-    // The row-stochastic transition matrix d·A + (1 − d)/n, built once per Rank call so
-    // Rank itself only ever multiplies and renormalises.
+    // The row-stochastic transition matrix d·A + (1 − d)/n. Degree sums the whole row,
+    // diagonal included, but only i != j gets a damping term — build_adjacency_matrix's rule.
     private double[][] BuildTransitionMatrix(double damping, int n)
     {
         double[][] m = CreateMatrix(n);
@@ -217,7 +219,8 @@ internal sealed class WordGraph
 
             for (int j = 0; j < n; j++)
             {
-                m[i][j] = teleport + (IsZero(degree) ? 0 : (damping * _weights[i][j] / degree));
+                bool offDiagonal = i != j && !IsZero(degree);
+                m[i][j] = teleport + (offDiagonal ? damping * _weights[i][j] / degree : 0);
             }
         }
 

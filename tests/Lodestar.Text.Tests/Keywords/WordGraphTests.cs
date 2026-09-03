@@ -89,4 +89,43 @@ public sealed class WordGraphTests
 
         Assert.Throws<InvalidOperationException>(() => graph.Rank(0.85, 1e-18, maxIterations: 2));
     }
+
+    // Measured against summa 1.2.0. linear-system repeats (0-1, 3-4) but never raises the
+    // weight past 1, so system's two edges stay equal -- pre-fix, its degree was 3 (2+1), not 2.
+    [Fact]
+    public void A_repeated_adjacent_pair_leaves_the_edge_weight_at_one()
+    {
+        string?[] stream = ["linear", "system", null, "linear", "system", null, "system", "theori"];
+        var graph = new WordGraph(stream, window: 2);
+
+        Assert.Equal(["linear", "system", "theori"], graph.Nodes);
+        Assert.Equal(2, graph.EdgeCount);
+
+        double[] scores = graph.Rank(damping: 0.85, tolerance: 1e-12, maxIterations: 1000);
+        Dictionary<string, double> byStem = graph.Nodes
+            .Select((s, i) => (s, scores[i]))
+            .ToDictionary(p => p.s, p => p.Item2, StringComparer.Ordinal);
+
+        Assert.Equal(byStem["linear"], byStem["theori"], 12);
+        Assert.Equal(0.42295388648078086, byStem["linear"], 10);
+        Assert.Equal(0.8013863112267425, byStem["system"], 10);
+    }
+
+    // Measured against summa 1.2.0. "matrix matrix" alone survives RemoveUnreachable on its
+    // self-loop; adding "theory" halves matrix's outgoing share to 1/2, where the pre-fix skip left it at 1/1.
+    [Fact]
+    public void A_self_loop_survives_removal_and_halves_the_outgoing_share()
+    {
+        var loopOnly = new WordGraph(["matrix", "matrix"], window: 2);
+        Assert.Equal(["matrix"], loopOnly.Nodes);
+
+        var withNeighbor = new WordGraph(["matrix", "matrix", "theori"], window: 2);
+        double[] scores = withNeighbor.Rank(damping: 0.85, tolerance: 1e-12, maxIterations: 1000);
+        Dictionary<string, double> byStem = withNeighbor.Nodes
+            .Select((s, i) => (s, scores[i]))
+            .ToDictionary(p => p.s, p => p.Item2, StringComparer.Ordinal);
+
+        Assert.Equal(0.8056815791722831, byStem["matrix"], 10);
+        Assert.Equal(0.5923488777590923, byStem["theori"], 10);
+    }
 }
