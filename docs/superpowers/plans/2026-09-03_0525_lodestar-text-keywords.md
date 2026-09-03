@@ -851,6 +851,20 @@ public sealed class WordGraphTests
     }
 
     [Fact]
+    public void A_null_stream_is_refused()
+    {
+        Assert.Throws<ArgumentNullException>(() => new WordGraph(null!, window: 2));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void A_window_below_one_is_refused(int window)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new WordGraph(Stream, window));
+    }
+
+    [Fact]
     public void Failing_to_converge_is_an_error_rather_than_a_half_iterated_vector()
     {
         var graph = new WordGraph(Stream, window: 2);
@@ -876,8 +890,8 @@ namespace Lodestar.Text.Keywords;
 /// <remarks>
 /// The window runs over the RAW token stream: a stop word is a null that occupies a
 /// position and forms no node, so two words separated by one are not adjacent. Nodes of
-/// zero weighted degree are then deleted, without which the transition matrix is
-/// substochastic and its dominant eigenvector is a different vector. Both measured
+/// zero weighted degree are then deleted in one pass, without which the transition matrix
+/// is substochastic and its dominant eigenvector is a different vector. Both measured
 /// against summa, whose pipeline does the same two things.
 /// </remarks>
 internal sealed class WordGraph
@@ -1016,27 +1030,21 @@ internal sealed class WordGraph
             $"The power iteration did not converge to {tolerance} within {maxIterations} iterations.");
     }
 
-    // A word that never shares a window with a different word contributes no edge, and a
-    // row of zeros makes the transition matrix substochastic. Removing one can isolate
-    // another, so this repeats until nothing moves.
+    // One pass is enough: a node of zero weighted degree has no edges, so removing it
+    // lowers nobody else's degree and can isolate no one. summa's is one `for` too.
     private void RemoveUnreachable()
     {
-        bool removed = true;
-        while (removed)
+        for (int i = _nodes.Count - 1; i >= 0; i--)
         {
-            removed = false;
-            for (int i = _nodes.Count - 1; i >= 0; i--)
+            double degree = 0;
+            for (int j = 0; j < _nodes.Count; j++)
             {
-                double degree = 0;
-                for (int j = 0; j < _nodes.Count; j++)
-                {
-                    degree += _weights[i, j];
-                }
-                if (degree == 0)
-                {
-                    Drop(i);
-                    removed = true;
-                }
+                degree += _weights[i, j];
+            }
+            if (degree == 0)
+            {
+                // Descending, so Drop never invalidates an index still to visit.
+                Drop(i);
             }
         }
     }
