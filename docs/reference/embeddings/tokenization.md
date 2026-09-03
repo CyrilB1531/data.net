@@ -117,5 +117,5 @@ than encoded into something the model will misread.
 ## See also
 
 - [Semantic search with embeddings](../../guides/embeddings.md) — the guide, end to end.
-- [ONNX inference](onnx.md) — what consumes the ids this namespace produces.
+- [ONNX inference](../onnx/inference.md) — `Lodestar.Onnx`, what consumes the ids this namespace produces.
 - [Python → C# equivalence](../../equivalence.md) — every `tokenizers` call and its counterpart.

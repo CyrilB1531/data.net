@@ -46,7 +46,7 @@ and building it here avoids a copy at the boundary.
 **Applies to** — net10.0, netstandard2.0.
 
 **See also** — [`BatchEncoder.EncodeBatch`](batchencoder-encodebatch.md),
-[`OnnxTextEmbedder.EmbedBatch`](../onnx/onnxtextembedder-embedbatch.md).
+[`OnnxTextEmbedder.EmbedBatch`](../../onnx/inference/onnxtextembedder-embedbatch.md).
 
 ## Members
 
