@@ -59,33 +59,44 @@ is one sentence, the issue and the commit; see
 - **The payload buffer is rented, not allocated.** `EmbeddingIndex.Load(Stream)` takes its artifact buffer from `ArrayPool<byte>.Shared` and returns it once parsing is done, which removes 20.5 MB of allocation and three of the four collections a load provoked: renting is **42× the allocation and 1.74 ms a load**, about a tenth of one, because what cost was never the allocation but the large-object collection it triggered. The pool holds 33.5 MB for the life of the process in exchange — see [decision 0054](docs/decisions/0054-the-payload-buffer-is-pooled-after-all-because-the-collection-is-the-cost.md), which amends [0053](docs/decisions/0053-the-payload-buffer-is-not-pooled-because-residency-outlives-the-load.md) for refusing that trade without ever timing it. ([#470](https://github.com/CyrilB1531/lodestar/issues/470), [`f8de2ba`](https://github.com/CyrilB1531/lodestar/commit/f8de2ba))
 - **Half the allocation, same bytes on disk.** `EmbeddingIndex.Save` and `SaveAsync` write the vector block a slice at a time instead of handing `Utf8JsonWriter.WriteBase64String` the whole thing, so the writer's buffer no longer doubles its way up to the 20.48 MB the encoding occupies: `EmbeddingIndexSave` allocates **19.87 MB against 39.64**, with a third fewer collections in every generation, and the row against `numpy.save` moves **0.29× to 0.39×**. Slices are 245 760 bytes — a multiple of 12, so a whole number of base64 groups and of floats — which is what makes the artifact byte-for-byte what it was; `SaveAsync` loses its intermediate `MemoryStream` with it. The load pays part of it back, having been subsidised by the buffer the save used to leave behind — see [decision 0051](docs/decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md), which also records why parallelising the base64 was refused: it runs at `memcpy` speed already. ([#430](https://github.com/CyrilB1531/lodestar/issues/430), [`2a50cc1`](https://github.com/CyrilB1531/lodestar/commit/2a50cc1))
 
-### Lodestar.Abstractions
+### Lodestar.Decomposition
 
-#### Fixed
+#### Changed
 
-- **The shared internal helpers are no longer compiled into this package.** `src/Shared/Guard.cs` and its siblings are compiled into every library, and this one grants `InternalsVisibleTo` to `Lodestar.Text`, which compiles them too — one internal type in both assemblies is CS0436 at every call site on the consuming side, 96 of them across the two target frameworks. `CsrMatrix` carries the two argument guards it needs instead; behaviour and exception types are unchanged. ([#440](https://github.com/CyrilB1531/lodestar/issues/440))
+- **`Nmf.Fit(matrix, k)` accepts `k == min(rows, columns)`**, scikit-learn's own bound, where it refused any `k` at or above the column count — a bound inherited from the validation `TruncatedSvd` needs rather than from anything NMF does, so a square matrix at full rank was a fit there and an `ArgumentOutOfRangeException` here. The oracle corpus now freezes a `24 × 8` fit at `k = 8` against `NMF` itself, and `TruncatedSvd`'s own bound is untouched: `n_components >= n_features` is what scikit-learn refuses there too. ([#519](https://github.com/CyrilB1531/lodestar/issues/519))
+
+## Released — 2026-09-01
+
+Four tags on one day, and none of them had a section here: the three packages below
+kept their entries under *Unreleased* while their releases were already on the feed.
+Each entry is filed under the tag its own commit is an ancestor of, which is how the
+2026-08-16 wave was reconstructed too. `Nmf.Fit`'s component bound stays unreleased —
+it landed after `Lodestar.Decomposition/v0.1.0` was cut.
+
+### Lodestar.Abstractions — 0.1.0
 
 #### Added
 
 - **The sparse primitive the packages share.** `CsrMatrix` and `SparseNorm` ship in a package of their own, with two new products — `Multiply(block, columnCount)` and `TransposeMultiply(block, columnCount)` — that read the matrix once per non-zero rather than once per block column. `Lodestar.Text` still declares its own copy until its next release; [decision 0071](docs/decisions/0071-csrmatrix-moves-to-an-abstractions-package.md) amends [0069](docs/decisions/0069-the-package-layout-as-built-and-what-enforces-it.md) and records the sequence. ([#440](https://github.com/CyrilB1531/lodestar/issues/440))
 
-### Lodestar.Conformal
+### Lodestar.Conformal — 0.1.0
 
 #### Added
 
 - **Split conformal prediction, at MAPIE 1.5.0 parity.** `SplitConformal` turns a point prediction into an interval or a class into a prediction set, with a finite-sample coverage guarantee: `AbsoluteResiduals` and `LeastAmbiguousScores` score a calibration set, `Quantile` reduces the scores to the one number that carries the guarantee, and `Interval` and `PredictionSet` apply it. Static and dependency-free, the fifth package under [decision 0069](docs/decisions/0069-the-package-layout-as-built-and-what-enforces-it.md)'s first rule. The empty LAC prediction set is reproduced rather than repaired, and `k > n` returns an infinite interval instead of MAPIE's clamp to the widest score — [decision 0070](docs/decisions/0070-k-greater-than-n-returns-an-infinite-interval.md). The guarantee assumes exchangeability, which the guide leads with. ([#441](https://github.com/CyrilB1531/lodestar/issues/441))
 
-### Lodestar.Decomposition
+### Lodestar.Decomposition — 0.1.0
 
 #### Added
 
 - **`TruncatedSvd` — `sklearn.decomposition.TruncatedSVD(algorithm="randomized")` at parity, over a `CsrMatrix` and without centring it.** Fit, transform, components, singular values, explained variance and its ratio; all three power-iteration normalizers, including `Auto`'s rule. Ω is an input rather than a seed, which is what makes a randomized algorithm an ordinary parity target — [decision 0072](docs/decisions/0072-omega-is-an-input-not-a-seed.md) has the measurement and what it refuses. ([#440](https://github.com/CyrilB1531/lodestar/issues/440))
-
 - **`Nmf` — `sklearn.decomposition.NMF(solver="mu")` at parity, on both β losses, from the NNDSVD family.** The dense kernels it needs — thin Householder QR, LU with partial pivoting, one-sided Jacobi SVD — are written here, so the package's only dependency is `Lodestar.Abstractions`. ([#440](https://github.com/CyrilB1531/lodestar/issues/440))
 
-#### Changed
+### Lodestar.Abstractions — 0.1.1
 
-- **`Nmf.Fit(matrix, k)` accepts `k == min(rows, columns)`**, scikit-learn's own bound, where it refused any `k` at or above the column count — a bound inherited from the validation `TruncatedSvd` needs rather than from anything NMF does, so a square matrix at full rank was a fit there and an `ArgumentOutOfRangeException` here. The oracle corpus now freezes a `24 × 8` fit at `k = 8` against `NMF` itself, and `TruncatedSvd`'s own bound is untouched: `n_components >= n_features` is what scikit-learn refuses there too. ([#519](https://github.com/CyrilB1531/lodestar/issues/519))
+#### Fixed
+
+- **The shared internal helpers are no longer compiled into this package.** `src/Shared/Guard.cs` and its siblings are compiled into every library, and this one grants `InternalsVisibleTo` to `Lodestar.Text`, which compiles them too — one internal type in both assemblies is CS0436 at every call site on the consuming side, 96 of them across the two target frameworks. `CsrMatrix` carries the two argument guards it needs instead; behaviour and exception types are unchanged. ([#440](https://github.com/CyrilB1531/lodestar/issues/440))
 
 ## Released — 2026-08-21
 
