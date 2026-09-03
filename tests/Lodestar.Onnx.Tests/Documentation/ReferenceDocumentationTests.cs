@@ -1,17 +1,15 @@
-using Lodestar.Embeddings.Tokenization;
 using Lodestar.Tests.Documentation;
 using Xunit;
 
-namespace Lodestar.Embeddings.Tests.Documentation;
+namespace Lodestar.Onnx.Tests.Documentation;
 
 /// <summary>
-/// The reference gate for <c>Lodestar.Embeddings</c>, whose first covered namespace
-/// arrived with #235.
+/// The reference gate over the one page <c>Lodestar.Onnx</c> declares covered.
 /// </summary>
 /// <remarks>
-/// Until then this package had none, so a <c>covered</c> entry would have been prose
-/// nothing read — the state #204 exists to end rather than reproduce. The checker's
-/// own fixtures are not duplicated here: it is one shared file, tested where it lives.
+/// The engine and its own unit tests live with <c>Lodestar.Text</c>; what is here is this
+/// package's half — its namespace against its pages, on whichever build of the library the
+/// surrounding project references.
 /// </remarks>
 public sealed class ReferenceDocumentationTests
 {
@@ -25,7 +23,7 @@ public sealed class ReferenceDocumentationTests
     public void Every_covered_namespace_is_documented()
     {
         IReadOnlyList<string> complaints = ReferenceDocumentation.Check(
-            typeof(WordPieceTokenizer).Assembly, "Lodestar.Embeddings", Map, Root);
+            typeof(OnnxTextEmbedder).Assembly, "Lodestar.Onnx", Map, Root);
 
         Assert.Empty(complaints);
     }
@@ -34,7 +32,7 @@ public sealed class ReferenceDocumentationTests
     public void Every_documented_member_named_in_the_docs_links_to_its_entry()
     {
         IReadOnlyList<string> complaints = ReferenceDocumentation.CheckLinks(
-            typeof(WordPieceTokenizer).Assembly, "Lodestar.Embeddings", Map, Docs);
+            typeof(OnnxTextEmbedder).Assembly, "Lodestar.Onnx", Map, Docs);
 
         Assert.Empty(complaints);
     }

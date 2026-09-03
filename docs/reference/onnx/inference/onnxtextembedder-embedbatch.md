@@ -30,7 +30,7 @@ between sub-batches. `ObjectDisposedException` after
 <!-- docs-run: skip - constructing it loads an ONNX model, and model weights are never committed -->
 
 ```csharp
-using Lodestar.Embeddings.Onnx;
+using Lodestar.Onnx;
 
 using var embedder = new OnnxTextEmbedder("model.onnx");
 

@@ -45,8 +45,8 @@ public sealed record EncodingOptions
     /// <remarks>
     /// Matches <c>max_length</c>; the budget covers the special tokens, so with
     /// <see cref="SpecialTokenTemplate.Bert"/> and <c>MaxLength = 8</c> at most six
-    /// survive. Left <see langword="null"/>, see <c>docs/guides/embeddings.md</c>'s
-    /// "Embed a batch" for what <c>OnnxTextEmbedder</c> substitutes.
+    /// survive. Left <see langword="null"/>, see <c>docs/guides/onnx.md</c>'s
+    /// "Embed a batch" for what <c>OnnxTextEmbedder</c> substitutes (Lodestar.Onnx).
     /// </remarks>
     public int? MaxLength { get; init; }
 

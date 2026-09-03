@@ -17,23 +17,19 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Lodestar.Embeddings/Lodestar.Embeddings.csproj" />
+    <ProjectReference Include="../../src/Lodestar.Onnx/Lodestar.Onnx.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The two tiny models tools/build_tiny_models.py writes; the whole suite is an
+         ONNX Runtime session, so there is nothing here to test without them. -->
+    <None Include="../oracles/**/*.onnx" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
+    <!-- batch_encoding.json carries the vocabulary and the embedding table the
+         end-to-end batch facts replay against. -->
     <None Include="../oracles/**/*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
-    <!-- The SentencePiece loader is replayed against the real model file, not a copy of its contents. -->
-    <None Include="../oracles/**/*.model" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
-    <!-- merges.txt is a fixture like any other; without this glob the BPE suite cannot find it. -->
-    <None Include="../oracles/**/*.txt" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
-    <!-- Every .npy here was written by numpy itself (#450). They are committed rather than
-         generated at test time because the point is to read what numpy produces, and a
-         fixture this project builds from its own understanding of the format proves
-         nothing about the format. -->
-    <None Include="Fixtures/Npy/*.npy" CopyToOutputDirectory="PreserveNewest" LinkBase="Fixtures/Npy" />
   </ItemGroup>
 
-  <!-- batch_encoding.json is replayed by two suites — the encoder facts here and the
+  <!-- batch_encoding.json is replayed by two suites — the encoder facts and the
        end-to-end embedding facts in Lodestar.Onnx.Tests — so its reader is linked
        rather than copied, the way the reference gate's engine is. -->
   <ItemGroup>
@@ -41,11 +37,10 @@
   </ItemGroup>
 
   <!-- The reference gate reads the published pages and the map beside the assembly,
-       the way the oracle corpora already are. Added with #235, the package's first
-       covered namespace: without this the covered entry would enforce nothing. -->
+       the way the oracle corpora already are. -->
   <ItemGroup>
     <Compile Include="../Shared/ReferenceDocumentation.cs" Link="Documentation/ReferenceDocumentation.cs" />
-    <None Include="../../docs/reference/embeddings/**/*.md" CopyToOutputDirectory="PreserveNewest"
+    <None Include="../../docs/reference/onnx/**/*.md" CopyToOutputDirectory="PreserveNewest"
           LinkBase="reference" />
     <None Include="../../docs/wiki-map.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../docs/**/*.md" Exclude="../../docs/superpowers/**"

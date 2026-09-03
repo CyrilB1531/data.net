@@ -47,11 +47,22 @@
         "docs/reference/embeddings/*/*.md"
       ],
       "covered": {
-        "Lodestar.Embeddings.Onnx": "docs/reference/embeddings/onnx",
         "Lodestar.Embeddings.Tokenization": "docs/reference/embeddings/tokenization",
         "Lodestar.Embeddings.Pooling": "docs/reference/embeddings/pooling",
         "Lodestar.Embeddings.Search": "docs/reference/embeddings/search",
         "Lodestar.Embeddings.Persistence": "docs/reference/embeddings/persistence"
+      },
+      "exceptionsUnchecked": []
+    },
+    "Lodestar.Onnx": {
+      "wiki": "Onnx",
+      "pages": [
+        "docs/guides/onnx.md",
+        "docs/reference/onnx/*.md",
+        "docs/reference/onnx/*/*.md"
+      ],
+      "covered": {
+        "Lodestar.Onnx": "docs/reference/onnx/inference"
       },
       "exceptionsUnchecked": []
     },

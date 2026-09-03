@@ -36,6 +36,8 @@
                       SetTargetFramework="TargetFramework=netstandard2.0" />
     <ProjectReference Include="../../src/Lodestar.Metrics/Lodestar.Metrics.csproj"
                       SetTargetFramework="TargetFramework=netstandard2.0" />
+    <ProjectReference Include="../../src/Lodestar.Onnx/Lodestar.Onnx.csproj"
+                      SetTargetFramework="TargetFramework=netstandard2.0" />
   </ItemGroup>
 
   <!-- One source of truth for the benchmark bodies: link, never copy. -->

@@ -11,15 +11,9 @@
     <LodestarIncludesPersistence>true</LodestarIncludesPersistence>
 
     <PackageId>Lodestar.Embeddings</PackageId>
-    <Description>Sub-word tokenizers, pooling and semantic (kNN) search for .NET. ONNX Runtime is isolated to this package so Lodestar.Text stays dependency-free.</Description>
-    <PackageTags>embeddings;onnx;wordpiece;semantic-search;knn;nlp;lodestar</PackageTags>
+    <Description>Sub-word tokenizers (WordPiece, SentencePiece, BPE and byte-level BPE), batch encoding, pooling and SIMD kNN search for .NET. No external dependency: ONNX inference lives in Lodestar.Onnx, so a caller who only tokenizes never restores a native runtime.</Description>
+    <PackageTags>embeddings;tokenizer;wordpiece;sentencepiece;bpe;semantic-search;knn;nlp;lodestar</PackageTags>
   </PropertyGroup>
-
-  <!-- ONNX Runtime is the one external dependency, isolated to this package so
-       Lodestar.Text stays dependency-free. Only the OnnxTextEmbedder type uses it. -->
-  <ItemGroup>
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
-  </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Lodestar.Embeddings.Tests" />

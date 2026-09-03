@@ -1,8 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Replays the entire Lodestar.Embeddings.Tests suite against the *netstandard2.0* build of
-    the library, instead of the net10.0 one the original project references.
+    Replays the entire Lodestar.Onnx.Tests suite against the *netstandard2.0*
+    build of the library, instead of the net10.0 one the original project
+    references.
 
     netstandard2.0 is a contract, not a runtime, so the tests cannot run *on* it.
     They run on net10.0 — identical host — and only the assembly under test
@@ -16,8 +17,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
-    <AssemblyName>Lodestar.Embeddings.NetStandard.Tests</AssemblyName>
-    <RootNamespace>Lodestar.Embeddings.Tests</RootNamespace>
+    <AssemblyName>Lodestar.Onnx.NetStandard.Tests</AssemblyName>
+    <RootNamespace>Lodestar.Onnx.Tests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,28 +31,36 @@
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
 
-  <!-- SetTargetFramework is what pins the reference to the netstandard2.0 build. -->
+  <!--
+    SetTargetFramework is what pins the reference to the netstandard2.0 build.
+
+    Lodestar.Embeddings is listed explicitly, and that is not redundant. Lodestar.Onnx
+    reaches it through a PackageReference, and SetTargetFramework does not travel
+    across one: NuGet resolves package assets against *this* project's target
+    framework (net10.0), so the transitive Lodestar.Embeddings would come from
+    lib/net10.0 and the mirror would stop mirroring — silently, since a guard that
+    only inspected the Lodestar.Onnx assembly would still pass. A direct
+    ProjectReference takes precedence over the package of the same id, which restores
+    the netstandard2.0 build; the extended guard proves it (#529).
+  -->
   <ItemGroup>
+    <ProjectReference Include="../../src/Lodestar.Onnx/Lodestar.Onnx.csproj"
+                      SetTargetFramework="TargetFramework=netstandard2.0" />
     <ProjectReference Include="../../src/Lodestar.Embeddings/Lodestar.Embeddings.csproj"
                       SetTargetFramework="TargetFramework=netstandard2.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="../Lodestar.Embeddings.Tests/**/*.cs"
-             Exclude="../Lodestar.Embeddings.Tests/bin/**;../Lodestar.Embeddings.Tests/obj/**"
+    <Compile Include="../Lodestar.Onnx.Tests/**/*.cs"
+             Exclude="../Lodestar.Onnx.Tests/bin/**;../Lodestar.Onnx.Tests/obj/**"
              Link="%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="../oracles/**/*.onnx" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
+    <!-- batch_encoding.json carries the vocabulary and the embedding table the
+         end-to-end batch facts replay against. -->
     <None Include="../oracles/**/*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
-    <!-- The SentencePiece loader is replayed against the real model file, not a copy of its contents. -->
-    <None Include="../oracles/**/*.model" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
-    <!-- merges.txt is a fixture like any other; without this glob the BPE suite cannot find it. -->
-    <None Include="../oracles/**/*.txt" CopyToOutputDirectory="PreserveNewest" LinkBase="oracles" />
-    <!-- The .npy fixtures live beside the net10.0 suite that owns them, and this project
-         compiles the same test sources, so it needs them beside its own assembly too (#450). -->
-    <None Include="../Lodestar.Embeddings.Tests/Fixtures/Npy/*.npy" CopyToOutputDirectory="PreserveNewest"
-          LinkBase="Fixtures/Npy" />
   </ItemGroup>
 
   <!-- batch_encoding.json is replayed by two suites — the encoder facts and the
@@ -61,12 +70,12 @@
     <Compile Include="../Shared/BatchCorpus.cs" Link="Fixtures/BatchCorpus.cs" />
   </ItemGroup>
 
-  <!-- The mirror links the same test sources, so it compiles the reference gate too
-       and needs the engine, the pages and the map exactly as the net10 project does.
-       Without this the linked test file does not compile (#235). -->
+  <!-- The gate's engine is shared by every package's suite, so it is linked rather
+       than copied; the pages and the map are read from the output directory, the
+       way the oracle corpora already are. -->
   <ItemGroup>
     <Compile Include="../Shared/ReferenceDocumentation.cs" Link="Documentation/ReferenceDocumentation.cs" />
-    <None Include="../../docs/reference/embeddings/**/*.md" CopyToOutputDirectory="PreserveNewest"
+    <None Include="../../docs/reference/onnx/**/*.md" CopyToOutputDirectory="PreserveNewest"
           LinkBase="reference" />
     <None Include="../../docs/wiki-map.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../docs/**/*.md" Exclude="../../docs/superpowers/**"

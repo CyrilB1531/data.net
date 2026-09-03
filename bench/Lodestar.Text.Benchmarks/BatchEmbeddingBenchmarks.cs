@@ -1,7 +1,7 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
-using Lodestar.Embeddings.Onnx;
 using Lodestar.Embeddings.Tokenization;
+using Lodestar.Onnx;
 
 namespace Lodestar.Text.Benchmarks;
 

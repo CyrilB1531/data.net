@@ -1,0 +1,16 @@
+<Project>
+
+  <!--
+    Lodestar.Onnx owns its version here, independently of the other packages
+    (see docs/decisions/0012-per-package-versioning.md).
+
+    0.1.0 is this package's first release. It carries one edge, to
+    Lodestar.Embeddings, whose tokenizers and pooling it feeds an ONNX session
+    with, so its floor moves when that package publishes API this one needs —
+    which so far it has not.
+  -->
+  <PropertyGroup>
+    <LodestarOnnxVersion>0.1.0</LodestarOnnxVersion>
+  </PropertyGroup>
+
+</Project>
