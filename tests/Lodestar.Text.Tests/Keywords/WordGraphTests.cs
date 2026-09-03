@@ -1,0 +1,78 @@
+using Lodestar.Text.Keywords;
+using Xunit;
+
+namespace Lodestar.Text.Tests.Keywords;
+
+public sealed class WordGraphTests
+{
+    // The raw stemmed token stream of summa's own sample document, null wherever a stop
+    // word stood -- the nulls keep compat and system from neighbouring each other.
+    private static readonly string?[] Stream =
+    [
+        "compat", null, "system", null, "linear", "constraint", null, null, "set", null,
+        "natur", "number", "criteria", null, "compat", null, null, "system", null,
+        "linear", "diophantin", "equat",
+    ];
+
+    [Fact]
+    public void A_node_with_no_edge_is_removed_before_ranking()
+    {
+        var graph = new WordGraph(Stream, window: 2);
+
+        // compat, system and set only ever neighbour a node they equal or a removed one.
+        Assert.Equal(
+            ["linear", "constraint", "natur", "number", "criteria", "diophantin", "equat"],
+            graph.Nodes);
+    }
+
+    [Fact]
+    public void Rank_reproduces_the_scores_summa_publishes()
+    {
+        var graph = new WordGraph(Stream, window: 2);
+        double[] scores = graph.Rank(damping: 0.85, tolerance: 1e-12, maxIterations: 1000);
+
+        Dictionary<string, double> byStem = graph.Nodes
+            .Select((s, i) => (s, scores[i]))
+            .ToDictionary(p => p.s, p => p.Item2, StringComparer.Ordinal);
+
+        Assert.Equal(0.526895906655717, byStem["number"], 12);
+        Assert.Equal(0.4686942795397464, byStem["diophantin"], 12);
+        Assert.Equal(0.46869427953974613, byStem["linear"], 12);
+        Assert.Equal(0.27808395073496167, byStem["criteria"], 12);
+    }
+
+    [Fact]
+    public void Only_tokens_adjacent_in_the_raw_stream_share_an_edge()
+    {
+        // summa's five, measured: a stop word between two words is a position, so
+        // "compatibility of systems" makes no compat-system edge.
+        var graph = new WordGraph(Stream, window: 2);
+
+        Assert.Equal(5, graph.EdgeCount);
+    }
+
+    [Fact]
+    public void The_ranking_vector_has_unit_L2_norm()
+    {
+        double[] scores = new WordGraph(Stream, window: 2).Rank(0.85, 1e-12, 1000);
+
+        Assert.Equal(1.0, Math.Sqrt(scores.Sum(s => s * s)), 12);
+    }
+
+    [Fact]
+    public void A_document_whose_words_never_co_occur_ranks_nothing()
+    {
+        var graph = new WordGraph(["alpha", null], window: 2);
+
+        Assert.Empty(graph.Nodes);
+        Assert.Empty(graph.Rank(0.85, 1e-12, 1000));
+    }
+
+    [Fact]
+    public void Failing_to_converge_is_an_error_rather_than_a_half_iterated_vector()
+    {
+        var graph = new WordGraph(Stream, window: 2);
+
+        Assert.Throws<InvalidOperationException>(() => graph.Rank(0.85, 1e-18, maxIterations: 2));
+    }
+}
