@@ -7,11 +7,15 @@ namespace Lodestar.Embeddings.Tests.Search;
 /// <summary>Replays every case of <c>mmr.json</c> against keybert's own selections.</summary>
 public sealed class MmrOracleTests
 {
-    public static TheoryData<string> Cases()
+    private static readonly JsonDocument Document = OracleLoader.Load("mmr.json");
+
+    private static IReadOnlyList<JsonElement> Cases { get; } =
+        [.. Document.RootElement.GetProperty("cases").EnumerateArray()];
+
+    public static TheoryData<string> CaseNames()
     {
         var names = new TheoryData<string>();
-        using JsonDocument doc = OracleLoader.Load("mmr.json");
-        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
+        foreach (JsonElement c in Cases)
         {
             names.Add(c.GetProperty("name").GetString()!);
         }
@@ -19,12 +23,10 @@ public sealed class MmrOracleTests
     }
 
     [Theory]
-    [MemberData(nameof(Cases))]
+    [MemberData(nameof(CaseNames))]
     public void Matches_keybert(string name)
     {
-        using JsonDocument doc = OracleLoader.Load("mmr.json");
-        JsonElement expected = doc.RootElement.GetProperty("cases").EnumerateArray()
-            .First(c => c.GetProperty("name").GetString() == name);
+        JsonElement expected = Cases.First(c => c.GetProperty("name").GetString() == name);
 
         float[] query = Row(expected.GetProperty("query"));
         float[][] candidates = [.. expected.GetProperty("candidates").EnumerateArray().Select(Row)];
@@ -39,6 +41,18 @@ public sealed class MmrOracleTests
         Assert.Equal(
             expected.GetProperty("selected").EnumerateArray().Select(e => e.GetInt32()).Order(),
             chosen.Order());
+    }
+
+    // The empty-theory silent pass is the one failure the cases can't catch themselves:
+    // a corpus lost to a bad load or merge would run zero theories and report success.
+    [Fact]
+    public void The_corpus_is_the_one_that_was_committed()
+    {
+        JsonElement metadata = Document.RootElement.GetProperty("metadata");
+        Assert.Equal(8, Cases.Count);
+        Assert.Equal(8, metadata.GetProperty("count").GetInt32());
+        Assert.Equal("keybert", metadata.GetProperty("library").GetString());
+        Assert.Equal("0.9.0", metadata.GetProperty("library_version").GetString());
     }
 
     private static float[] Row(JsonElement array) =>
