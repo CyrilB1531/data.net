@@ -7198,6 +7198,100 @@ def generate_text_bktree() -> dict:
             "cases": cases}
 
 
+KEYWORDS_STOP_WORDS = [
+    "a", "all", "and", "are", "for", "in", "is", "of", "over", "that", "the", "this", "to",
+]
+
+KEYWORDS_TOKEN_PATTERN = r"\b\w+\b"
+
+KEYWORDS_DOCUMENTS = [
+    ("rose_abstract",
+     "Compatibility of systems of linear constraints over the set of natural numbers. "
+     "Criteria of compatibility of a system of linear Diophantine equations, strict "
+     "inequations, and nonstrict inequations are considered. Upper bounds for components "
+     "of a minimal set of solutions and algorithms of construction of minimal generating "
+     "sets of solutions for all types of systems are given."),
+    ("one_sentence",
+     "Compatibility of systems of linear constraints over the set of natural numbers."),
+    ("punctuation_only_boundaries", "red, green; blue"),
+    ("all_stop_words", "of the and over a"),
+    ("empty", ""),
+]
+
+
+def generate_keywords_rake() -> dict:
+    """RAKE replayed against rake-nltk 1.0.6, its own tokenizer injected (#525).
+
+    Injecting the tokenizer and the stop words means the reference tokenizes
+    exactly as the C# does, and that generation needs no nltk.download.
+    """
+    import re  # noqa: PLC0415
+
+    from rake_nltk import Metric, Rake  # noqa: PLC0415
+
+    token = re.compile(KEYWORDS_TOKEN_PATTERN)
+    stop = set(KEYWORDS_STOP_WORDS)
+
+    # Injected rather than nltk's: the reference then tokenizes exactly as the C# does,
+    # and generation needs no nltk.download of punkt_tab or stopwords.
+    def sentences(text: str) -> list[str]:
+        return [s for s in re.split(r"[.!?;:,\n]", text) if s.strip()]
+
+    def words(sentence: str) -> list[str]:
+        return token.findall(sentence.lower())
+
+    metrics = {
+        "DegreeToFrequencyRatio": Metric.DEGREE_TO_FREQUENCY_RATIO,
+        "WordDegree": Metric.WORD_DEGREE,
+        "WordFrequency": Metric.WORD_FREQUENCY,
+    }
+
+    cases = []
+    for name, text in KEYWORDS_DOCUMENTS:
+        for metric_name, metric in metrics.items():
+            # Both settings, because the flag changes the degree and frequency tables and
+            # not merely the output: freezing only True would leave the other half unread.
+            for repeats in (True, False):
+                rake = Rake(
+                    stopwords=stop,
+                    punctuations=set(),
+                    ranking_metric=metric,
+                    include_repeated_phrases=repeats,
+                    sentence_tokenizer=sentences,
+                    word_tokenizer=words,
+                )
+                rake.extract_keywords_from_text(text)
+                cases.append({
+                    "id": len(cases),
+                    "name": f"{name}:{metric_name}:repeats={repeats}",
+                    "text": text,
+                    "metric": metric_name,
+                    "min_length": 1,
+                    "max_length": 100000,
+                    "include_repeated_phrases": repeats,
+                    "expected": [
+                        {"phrase": phrase, "score": score}
+                        for score, phrase in rake.get_ranked_phrases_with_scores()
+                    ],
+                })
+
+    return {
+        "metadata": {
+            "algorithm": "Rake",
+            "library": "rake-nltk",
+            "library_version": version("rake-nltk"),
+            "reference_calls": [
+                "rake_nltk.Rake(stopwords=..., punctuations=set(), ranking_metric=...,"
+                " sentence_tokenizer=..., word_tokenizer=...).get_ranked_phrases_with_scores()"
+            ],
+            "stop_words": KEYWORDS_STOP_WORDS,
+            "token_pattern": KEYWORDS_TOKEN_PATTERN,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     """Write every oracle deterministically, byte for byte.
 
@@ -7229,6 +7323,7 @@ def main() -> None:
         "jaro_winkler.json": generate_jaro_winkler,
         "lcs.json": generate_lcs,
         "text_bktree.json": generate_text_bktree,
+        "keywords_rake.json": generate_keywords_rake,
         "ratcliff.json": generate_ratcliff,
         "set_similarity.json": generate_set_similarity,
         "phonetics.json": generate_phonetics,
