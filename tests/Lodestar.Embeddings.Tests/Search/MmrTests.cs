@@ -66,6 +66,39 @@ public sealed class MmrTests
     }
 
     [Fact]
+    public void A_zero_vector_query_has_no_cosine_and_is_refused()
+    {
+        float[] zeroQuery = [0f, 0f, 0f];
+
+        ArgumentException error = Assert.Throws<ArgumentException>(
+            () => Mmr.Select(zeroQuery, Candidates, count: 2));
+
+        Assert.Contains("query", error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("index", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_zero_vector_query_is_refused_even_when_nothing_would_be_selected()
+    {
+        // Guards against the query check regressing back behind the count == 0
+        // short-circuit, which would let this call return [] instead of throwing.
+        float[] zeroQuery = [0f, 0f, 0f];
+
+        Assert.Throws<ArgumentException>(() => Mmr.Select(zeroQuery, Candidates, count: 0));
+    }
+
+    [Fact]
+    public void A_nan_candidate_has_no_cosine_and_is_refused()
+    {
+        float[][] withNaN = [[1f, 0f, 0f], [float.NaN, 0f, 0f]];
+
+        ArgumentException error = Assert.Throws<ArgumentException>(
+            () => Mmr.Select(Query, withNaN, count: 2));
+
+        Assert.Contains("index 1", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_candidate_of_the_wrong_width_is_refused()
     {
         float[][] ragged = [[1f, 0f, 0f], [1f, 0f]];

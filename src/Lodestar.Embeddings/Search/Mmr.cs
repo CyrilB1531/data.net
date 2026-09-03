@@ -17,9 +17,10 @@ public static class Mmr
     /// <param name="count">How many to select. More than there are selects them all.</param>
     /// <param name="lambda">1 is pure relevance, 0 pure diversity.</param>
     /// <returns>The chosen indices, <b>in selection order</b>.</returns>
+    /// <remarks><see cref="VectorMath.Dot"/> sums in a different order on net10 (SIMD) than on netstandard2.0 (scalar), so a genuine near-tie between two candidates can select a different index on the two targets -- accepted, not a defect.</remarks>
     /// <exception cref="ArgumentNullException"><paramref name="candidates"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="count"/> is negative, or <paramref name="lambda"/> is outside <c>[0, 1]</c>.</exception>
-    /// <exception cref="ArgumentException">A candidate is null, of a different length, or the zero vector, whose cosine is undefined.</exception>
+    /// <exception cref="ArgumentException">A candidate is null, of a different length than <paramref name="query"/>, or has a zero or non-finite norm; so does <paramref name="query"/> itself. Cosine is undefined in either case.</exception>
     public static int[] Select(
         ReadOnlySpan<float> query,
         IReadOnlyList<float[]> candidates,
@@ -33,17 +34,21 @@ public static class Mmr
             throw new ArgumentOutOfRangeException(nameof(lambda), lambda, "Lambda must lie in [0, 1].");
         }
 
+        // Validated before the count short-circuit below: an invalid query must throw
+        // whether or not anything would end up selected, not only when count > 0.
+        float[] norms = ComputeNorms(query, candidates);
+        float queryNorm = VectorMath.L2Norm(query);
+        // NaN spelled out rather than left to a negated comparison: `!(x > 0)` is true
+        // for NaN too, but reads as if it meant `x <= 0` (SplitConformal.cs's same choice).
+        if (float.IsNaN(queryNorm) || queryNorm <= 0)
+        {
+            throw new ArgumentException("The query has a zero or non-finite norm, whose cosine is undefined.", nameof(query));
+        }
+
         int n = Math.Min(count, candidates.Count);
         if (n == 0)
         {
             return [];
-        }
-
-        float[] norms = ComputeNorms(query, candidates);
-        float queryNorm = VectorMath.L2Norm(query);
-        if (queryNorm <= 0)
-        {
-            throw new ArgumentException("The query is the zero vector, whose cosine is undefined.", nameof(query));
         }
 
         double[] toQuery = ComputeQuerySimilarities(query, candidates, norms, queryNorm);
@@ -51,7 +56,7 @@ public static class Mmr
     }
 
     // Split from Select so each half stays under the cognitive-complexity cap: this one
-    // owns validation (a candidate's shape, and the zero vector whose cosine is undefined).
+    // owns validation -- a candidate's shape, and a norm too degenerate to give a cosine.
     private static float[] ComputeNorms(ReadOnlySpan<float> query, IReadOnlyList<float[]> candidates)
     {
         var norms = new float[candidates.Count];
@@ -65,10 +70,10 @@ public static class Mmr
             }
 
             norms[i] = VectorMath.L2Norm(candidate);
-            if (norms[i] <= 0)
+            if (float.IsNaN(norms[i]) || norms[i] <= 0)
             {
                 throw new ArgumentException(
-                    $"Candidate at index {i} is the zero vector, whose cosine is undefined.", nameof(candidates));
+                    $"Candidate at index {i} has a zero or non-finite norm, whose cosine is undefined.", nameof(candidates));
             }
         }
 
@@ -87,8 +92,8 @@ public static class Mmr
         return toQuery;
     }
 
-    // Picks the most relevant candidate first, then repeatedly the unpicked one that
-    // scores best against relevance minus its worst-case redundancy with what is chosen.
+    // The first pick has nothing to be redundant with yet, so it is chosen by relevance
+    // alone rather than folded into the loop below against a redundancy array seeded to zero.
     private static int[] SelectIndices(
         IReadOnlyList<float[]> candidates, float[] norms, double[] toQuery, int n, double lambda)
     {
