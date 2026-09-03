@@ -35,23 +35,31 @@ public sealed class TextRankOracleTests
         IReadOnlyList<KeywordMatch> actual = new TextRank(options).Extract(expected.Text);
 
         Assert.Equal(expected.Expected.Count, actual.Count);
-
-        // Compared as a multiset: components tied below either algorithm's convergence
-        // tolerance can land in either order, a tie-break neither implementation promises.
-        Assert.Equal(
-            expected.Expected.Select(p => (p.Phrase, p.Score))
-                .OrderBy(p => p.Phrase, StringComparer.Ordinal).ThenBy(p => p.Score),
-            actual.Select(m => (m.Phrase, m.Score))
-                .OrderBy(p => p.Phrase, StringComparer.Ordinal).ThenBy(p => p.Score),
-            new PhraseScoreComparer());
+        AssertRankingMatches(expected.Expected, actual);
     }
 
-    private sealed class PhraseScoreComparer : IEqualityComparer<(string Phrase, double Score)>
+    // Order is free only within a run of adjacent scores tied inside 1e-9; a real rank gap
+    // is checked positionally, catching the right phrases and scores reported at the wrong rank.
+    private static void AssertRankingMatches(IReadOnlyList<TextRankPhrase> expected, IReadOnlyList<KeywordMatch> actual)
     {
-        public bool Equals((string Phrase, double Score) a, (string Phrase, double Score) b) =>
-            string.Equals(a.Phrase, b.Phrase, StringComparison.Ordinal) && Math.Abs(a.Score - b.Score) <= 1e-9;
+        var comparer = new ApproximatePhraseScoreComparer();
+        int start = 0;
+        for (int i = 0; i < expected.Count; i++)
+        {
+            bool tiedWithNext = i + 1 < expected.Count && Math.Abs(expected[i].Score - expected[i + 1].Score) <= 1e-9;
+            if (tiedWithNext)
+            {
+                continue;
+            }
 
-        public int GetHashCode((string Phrase, double Score) value) => value.Phrase.GetHashCode(StringComparison.Ordinal);
+            int length = i - start + 1;
+            IEnumerable<(string Phrase, double Score)> expectedRun = expected.Skip(start).Take(length)
+                .Select(p => (p.Phrase, p.Score)).OrderBy(p => p.Phrase, StringComparer.Ordinal);
+            IEnumerable<(string Phrase, double Score)> actualRun = actual.Skip(start).Take(length)
+                .Select(m => (m.Phrase, m.Score)).OrderBy(p => p.Phrase, StringComparer.Ordinal);
+            Assert.Equal(expectedRun, actualRun, comparer);
+            start = i + 1;
+        }
     }
 
     // The empty-theory silent pass is the one failure the cases themselves cannot catch:

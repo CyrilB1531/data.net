@@ -202,3 +202,19 @@ public sealed record TextRankPhrase
     [JsonPropertyName("phrase")] public string Phrase { get; init; } = "";
     [JsonPropertyName("score")] public double Score { get; init; }
 }
+
+/// <summary>
+/// Equates a (phrase, score) pair the way an oracle replay does: the phrase ordinally,
+/// the score within the suite's 1e-9 floating tolerance. Shared by <c>RakeOracleTests</c>
+/// and <c>TextRankOracleTests</c>, whose reference libraries both leave phrases tied on
+/// score in an order neither promises to reproduce.
+/// </summary>
+public sealed class ApproximatePhraseScoreComparer : IEqualityComparer<(string Phrase, double Score)>
+{
+    private const double Tolerance = 1e-9;
+
+    public bool Equals((string Phrase, double Score) a, (string Phrase, double Score) b) =>
+        string.Equals(a.Phrase, b.Phrase, StringComparison.Ordinal) && Math.Abs(a.Score - b.Score) <= Tolerance;
+
+    public int GetHashCode((string Phrase, double Score) value) => value.Phrase.GetHashCode(StringComparison.Ordinal);
+}

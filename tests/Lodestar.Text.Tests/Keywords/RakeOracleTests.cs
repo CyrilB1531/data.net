@@ -46,7 +46,7 @@ public sealed class RakeOracleTests
                 .OrderBy(p => p.Phrase, StringComparer.Ordinal).ThenBy(p => p.Score),
             actual.Select(m => (m.Phrase, m.Score))
                 .OrderBy(p => p.Phrase, StringComparer.Ordinal).ThenBy(p => p.Score),
-            new PhraseScoreComparer());
+            new ApproximatePhraseScoreComparer());
     }
 
     [Fact]
@@ -54,13 +54,5 @@ public sealed class RakeOracleTests
     {
         Assert.Equal(Corpus.Metadata.Count, Corpus.Cases.Count);
         Assert.NotEmpty(Corpus.Cases);
-    }
-
-    private sealed class PhraseScoreComparer : IEqualityComparer<(string Phrase, double Score)>
-    {
-        public bool Equals((string Phrase, double Score) a, (string Phrase, double Score) b) =>
-            string.Equals(a.Phrase, b.Phrase, StringComparison.Ordinal) && Math.Abs(a.Score - b.Score) <= 1e-9;
-
-        public int GetHashCode((string Phrase, double Score) value) => value.Phrase.GetHashCode(StringComparison.Ordinal);
     }
 }
