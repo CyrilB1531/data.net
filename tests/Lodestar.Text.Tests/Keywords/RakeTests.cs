@@ -60,6 +60,18 @@ public sealed class RakeTests
     }
 
     [Fact]
+    public void A_run_the_length_filter_dropped_contributes_to_no_table()
+    {
+        // With MinLength = 2 the lone "linear" is gone before the tables build, so the
+        // pair scores 4; counting the dropped run first would make it 3.5.
+        IReadOnlyList<KeywordMatch> hits =
+            Extractor(new RakeOptions { MinLength = 2 }).Extract("linear constraints and linear");
+
+        Assert.Single(hits);
+        Assert.Equal(4.0, hits[0].Score, 12);
+    }
+
+    [Fact]
     public void A_repeated_phrase_is_reported_once_when_repeats_are_excluded()
     {
         var options = new RakeOptions { IncludeRepeatedPhrases = false };
@@ -67,6 +79,19 @@ public sealed class RakeTests
 
         Assert.Single(hits);
         Assert.Equal("linear constraints", hits[0].Phrase, StringComparer.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(RakeMetric.WordFrequency, 2.0)]
+    [InlineData(RakeMetric.WordDegree, 4.0)]
+    public void Excluding_repeats_removes_them_from_the_tables_too(RakeMetric metric, double expected)
+    {
+        // Measured against rake-nltk: include_repeated_phrases=False leaves degree 2 and
+        // frequency 1, not 4 and 2. Deduplicating only the output would read 4.0 and 8.0.
+        var options = new RakeOptions { IncludeRepeatedPhrases = false, Metric = metric };
+        IReadOnlyList<KeywordMatch> hits = Extractor(options).Extract("linear constraints and linear constraints");
+
+        Assert.Equal(expected, hits[0].Score, 12);
     }
 
     [Fact]

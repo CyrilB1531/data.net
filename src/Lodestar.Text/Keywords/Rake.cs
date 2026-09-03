@@ -42,9 +42,18 @@ public sealed class Rake
     {
         Guard.NotNull(text);
 
-        IReadOnlyList<string>[] candidates = _tokenizer.Split(text)
-            .Where(run => run.Count >= _options.MinLength && run.Count <= _options.MaxLength)
-            .ToArray();
+        IEnumerable<IReadOnlyList<string>> runs = _tokenizer.Split(text)
+            .Where(run => run.Count >= _options.MinLength && run.Count <= _options.MaxLength);
+
+        // Deduplication happens here, ahead of the tables: the reference measures the
+        // repeated phrase's words at degree 2 and frequency 1, not 4 and 2.
+        if (!_options.IncludeRepeatedPhrases)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            runs = runs.Where(run => seen.Add(string.Join(" ", run)));
+        }
+
+        IReadOnlyList<string>[] candidates = runs.ToArray();
 
         (Dictionary<string, int> degree, Dictionary<string, int> frequency) = CountCooccurrence(candidates);
         List<KeywordMatch> scored = ScoreCandidates(candidates, degree, frequency);
@@ -76,15 +85,9 @@ public sealed class Rake
         Dictionary<string, int> frequency)
     {
         var scored = new List<KeywordMatch>(candidates.Length);
-        var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (IReadOnlyList<string> run in candidates)
         {
             string phrase = string.Join(" ", run);
-            if (!_options.IncludeRepeatedPhrases && !seen.Add(phrase))
-            {
-                continue;
-            }
-
             scored.Add(new KeywordMatch(phrase, ScorePhrase(run, degree, frequency)));
         }
         return scored;
