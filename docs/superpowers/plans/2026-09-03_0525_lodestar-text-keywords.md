@@ -307,7 +307,20 @@ public sealed class RakeTests
             Extractor(new RakeOptions { MinLength = 2 }).Extract(Abstract);
 
         Assert.Equal(2, pairs.Count);
-        Assert.All(pairs, h => Assert.Contains(' ', h.Phrase, StringComparison.Ordinal));
+        Assert.All(pairs, h => Assert.Contains(' ', h.Phrase));
+    }
+
+    [Fact]
+    public void A_run_the_length_filter_dropped_contributes_to_no_table()
+    {
+        // "linear" occurs twice, once in a pair and once alone. With MinLength = 2 the
+        // lone one is gone before the tables: linear is degree 2 over frequency 1, so the
+        // pair scores 4. Counting the dropped run first would make it 3.5.
+        IReadOnlyList<KeywordMatch> hits =
+            Extractor(new RakeOptions { MinLength = 2 }).Extract("linear constraints and linear");
+
+        Assert.Single(hits);
+        Assert.Equal(4.0, hits[0].Score, 12);
     }
 
     [Fact]
@@ -318,6 +331,19 @@ public sealed class RakeTests
 
         Assert.Single(hits);
         Assert.Equal("linear constraints", hits[0].Phrase, StringComparer.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(RakeMetric.WordFrequency, 2.0)]
+    [InlineData(RakeMetric.WordDegree, 4.0)]
+    public void Excluding_repeats_removes_them_from_the_tables_too(RakeMetric metric, double expected)
+    {
+        // Measured against rake-nltk: include_repeated_phrases=False leaves degree 2 and
+        // frequency 1, not 4 and 2. Deduplicating only the output would read 4.0 and 8.0.
+        var options = new RakeOptions { IncludeRepeatedPhrases = false, Metric = metric };
+        IReadOnlyList<KeywordMatch> hits = Extractor(options).Extract("linear constraints and linear constraints");
+
+        Assert.Equal(expected, hits[0].Score, 12);
     }
 
     [Fact]
@@ -439,9 +465,19 @@ public sealed class Rake
     {
         Guard.NotNull(text);
 
-        IReadOnlyList<IReadOnlyList<string>> candidates = _tokenizer.Split(text)
-            .Where(run => run.Count >= _options.MinLength && run.Count <= _options.MaxLength)
-            .ToArray();
+        IEnumerable<IReadOnlyList<string>> runs = _tokenizer.Split(text)
+            .Where(run => run.Count >= _options.MinLength && run.Count <= _options.MaxLength);
+
+        // Deduplication happens here, ahead of the tables, because that is where the
+        // reference does it: measured, include_repeated_phrases=False leaves the repeated
+        // phrase's words at degree 2 and frequency 1, not 4 and 2.
+        if (!_options.IncludeRepeatedPhrases)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            runs = runs.Where(run => seen.Add(string.Join(" ", run)));
+        }
+
+        IReadOnlyList<IReadOnlyList<string>> candidates = runs.ToArray();
 
         var degree = new Dictionary<string, int>(StringComparer.Ordinal);
         var frequency = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -455,15 +491,9 @@ public sealed class Rake
         }
 
         var scored = new List<KeywordMatch>(candidates.Count);
-        var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (IReadOnlyList<string> run in candidates)
         {
             string phrase = string.Join(" ", run);
-            if (!_options.IncludeRepeatedPhrases && !seen.Add(phrase))
-            {
-                continue;
-            }
-
             double score = 0;
             foreach (string word in run)
             {
@@ -570,27 +600,31 @@ def generate_keywords_rake() -> dict:
     cases = []
     for name, text in KEYWORDS_DOCUMENTS:
         for metric_name, metric in metrics.items():
-            rake = Rake(
-                stopwords=stop,
-                punctuations=set(),
-                ranking_metric=metric,
-                sentence_tokenizer=sentences,
-                word_tokenizer=words,
-            )
-            rake.extract_keywords_from_text(text)
-            cases.append({
-                "id": len(cases),
-                "name": f"{name}:{metric_name}",
-                "text": text,
-                "metric": metric_name,
-                "min_length": 1,
-                "max_length": 100000,
-                "include_repeated_phrases": True,
-                "expected": [
-                    {"phrase": phrase, "score": score}
-                    for score, phrase in rake.get_ranked_phrases_with_scores()
-                ],
-            })
+            # Both settings, because the flag changes the degree and frequency tables and
+            # not merely the output: freezing only True would leave the other half unread.
+            for repeats in (True, False):
+                rake = Rake(
+                    stopwords=stop,
+                    punctuations=set(),
+                    ranking_metric=metric,
+                    include_repeated_phrases=repeats,
+                    sentence_tokenizer=sentences,
+                    word_tokenizer=words,
+                )
+                rake.extract_keywords_from_text(text)
+                cases.append({
+                    "id": len(cases),
+                    "name": f"{name}:{metric_name}:repeats={repeats}",
+                    "text": text,
+                    "metric": metric_name,
+                    "min_length": 1,
+                    "max_length": 100000,
+                    "include_repeated_phrases": repeats,
+                    "expected": [
+                        {"phrase": phrase, "score": score}
+                        for score, phrase in rake.get_ranked_phrases_with_scores()
+                    ],
+                })
 
     return {
         "metadata": {
