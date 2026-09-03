@@ -4,15 +4,16 @@
     Lodestar.Embeddings owns its version here, independently of the other packages
     (see docs/decisions/0012-per-package-versioning.md).
 
-    0.4.0 shipped the vocabulary loaders, the BPE normalizer and the lossy
-    byte-level decode. 0.5.0 makes BatchEncoder.EncodeAll and BatchEncoder.Pad
-    public, so a package that sub-batches a corpus itself does not need a second
-    copy of the padding (#533). Additive, hence the minor. This is the next
-    declared version, and it must stay ahead of the feed: a number already
-    published would make two different assemblies answer to the same identity.
+    0.5.0 made BatchEncoder.EncodeAll and BatchEncoder.Pad public, so that a
+    package sub-batching a corpus itself needs no second copy of the padding.
+    0.6.0 is what that was for: OnnxTextEmbedder moves to Lodestar.Onnx and this
+    package carries no external dependency at all (#533). Removing a public type
+    is breaking, hence the minor. This is the next declared version, and it must
+    stay ahead of the feed: a number already published would make two different
+    assemblies answer to the same identity.
   -->
   <PropertyGroup>
-    <LodestarEmbeddingsVersion>0.5.0</LodestarEmbeddingsVersion>
+    <LodestarEmbeddingsVersion>0.6.0</LodestarEmbeddingsVersion>
   </PropertyGroup>
 
 </Project>

@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- This package's version, owned here rather than repository-wide. -->
+  <Import Project="Version.props" />
+
+  <PropertyGroup>
+    <Version>$(LodestarOnnxVersion)</Version>
+    <TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks>
+    <RootNamespace>Lodestar.Onnx</RootNamespace>
+
+    <PackageId>Lodestar.Onnx</PackageId>
+    <Description>ONNX Runtime inference for Lodestar: runs a transformer encoder exported to ONNX and pools its token outputs into a sentence embedding. Split out of Lodestar.Embeddings so the tokenizers, the pooling and the kNN index reach a caller who does not want a native runtime.</Description>
+    <PackageTags>onnx;onnxruntime;embeddings;inference;sentence-embedding;transformer;nlp;lodestar</PackageTags>
+  </PropertyGroup>
+
+  <!-- The only external dependency in the repository, and the reason this package
+       exists: a core package carries none, so ONNX Runtime gets its own. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
+  </ItemGroup>
+
+  <!--
+    OnnxTextEmbedder feeds a session with Lodestar.Embeddings' tokenizers, encoding
+    options and pooling, so the dependency is real and permanent. Expressed as a
+    PackageReference against the published package, like every other src/ edge, so
+    the build graph is the graph consumers see (decision 0012).
+
+    The opt-in below exists only so that editing both packages in one branch does
+    not require a pack-and-restore cycle per edit:
+
+        export LodestarUseProjectRefs=true
+
+    It is never set in CI, and the packed .nuspec is asserted there.
+  -->
+  <ItemGroup Condition="'$(LodestarUseProjectRefs)' == 'true'">
+    <ProjectReference Include="../Lodestar.Embeddings/Lodestar.Embeddings.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(LodestarUseProjectRefs)' != 'true'">
+    <PackageReference Include="Lodestar.Embeddings" />
+  </ItemGroup>
+
+  <!-- Loud on purpose: a local build that silently differed from the shipped one
+       is the failure mode this whole arrangement is designed to avoid. -->
+  <Target Name="WarnOnLocalProjectRefs" BeforeTargets="Build"
+          Condition="'$(LodestarUseProjectRefs)' == 'true'">
+    <Message Importance="high"
+             Text="Lodestar.Onnx: LodestarUseProjectRefs=true — referencing Lodestar.Embeddings by project, not by package. This is the developer loop, not what ships." />
+  </Target>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lodestar.Onnx.Tests" />
+    <!-- Same suite, replayed against the netstandard2.0 build. -->
+    <InternalsVisibleTo Include="Lodestar.Onnx.NetStandard.Tests" />
+  </ItemGroup>
+
+</Project>

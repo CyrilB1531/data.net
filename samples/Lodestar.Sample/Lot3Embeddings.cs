@@ -8,9 +8,9 @@ namespace Lodestar.Sample;
 
 /// <summary>
 /// Lot 3 — tokenize, pool, index. ONNX inference is the one thing missing:
-/// <c>OnnxTextEmbedder</c> needs model weights, and weights are deliberately
-/// never committed, so the vectors pooled below are synthetic. That exclusion is
-/// declared in PackagingGate rather than left implicit.
+/// <c>OnnxTextEmbedder</c> (now <c>Lodestar.Onnx</c>) needs model weights, and
+/// weights are deliberately never committed, so the vectors pooled below are
+/// synthetic. That exclusion is declared in PackagingGate rather than left implicit.
 /// </summary>
 internal static class Lot3Embeddings
 {

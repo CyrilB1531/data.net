@@ -27,9 +27,15 @@ persisting a fitted model does not mean hand-rolling a JSON writer);
 on ``Indel``, and since 0.5.0 ``Lodestar.Text`` depends on
 ``Lodestar.Abstractions`` because that is where ``CsrMatrix`` moved --
 ``Lodestar.Decomposition`` depends on ``Lodestar.Abstractions`` the same way,
-for the same matrix -- the three inter-package edges that exist. The ranges are
-asserted too, not only the ids: a bare ``"0.2.0"`` is NuGet's shorthand for
-``[0.2.0, )``, and an edge with the wrong floor is a different edge.
+for the same matrix -- and ``Lodestar.Onnx`` depends on ``Lodestar.Embeddings``
+for the tokenizers and the pooling it feeds a session with: the four
+inter-package edges that exist. The ranges are asserted too, not only the ids: a
+bare ``"0.2.0"`` is NuGet's shorthand for ``[0.2.0, )``, and an edge with the
+wrong floor is a different edge.
+
+``Microsoft.ML.OnnxRuntime`` appears exactly once, under ``Lodestar.Onnx``. That
+is the tier rule of #533 in assertable form: a core package carries no external
+dependency, and this file is what fails when one reappears.
 """
 
 from __future__ import annotations
@@ -49,7 +55,8 @@ METRICS = "Lodestar.Metrics"
 ABSTRACTIONS = "Lodestar.Abstractions"
 CONFORMAL = "Lodestar.Conformal"
 DECOMPOSITION = "Lodestar.Decomposition"
-ONNX = "Microsoft.ML.OnnxRuntime"
+ONNX = "Lodestar.Onnx"
+ONNX_RUNTIME = "Microsoft.ML.OnnxRuntime"
 STJ = "System.Text.Json"
 
 # Span/Memory/Vector<T> are in-box on net10.0, packaged on netstandard2.0 --
@@ -66,6 +73,10 @@ TEXT_FLOOR = "0.4.0"
 # Must equal Directory.Packages.props' PackageVersion, for the edge decision 0071
 # added: Lodestar.Text stopped declaring CsrMatrix and consumes it from here.
 ABSTRACTIONS_FLOOR = "0.1.1"
+
+# Directory.Packages.props' PackageVersion for the edge #533 added. 0.5.0 is
+# where BatchEncoder.EncodeAll and Pad became public, and Lodestar.Onnx calls both.
+EMBEDDINGS_FLOOR = "0.5.0"
 
 # package id -> target framework -> {dependency id: declared version range}.
 # See this module's docstring for what EXPECTED's shape and ranges prove.
@@ -85,8 +96,16 @@ EXPECTED: dict[str, dict[str, dict[str, str]]] = {
         NETSTANDARD: {TEXT: TEXT_FLOOR, **POLYFILLS},
     },
     EMBEDDINGS: {
-        NET: {ONNX: "1.28.0"},
-        NETSTANDARD: {ONNX: "1.28.0", **POLYFILLS, **PERSISTENCE},
+        # Nothing external since 0.5.0: ONNX Runtime left with OnnxTextEmbedder,
+        # so tokenizing, pooling or searching no longer restores a native runtime.
+        NET: {},
+        NETSTANDARD: {**POLYFILLS, **PERSISTENCE},
+    },
+    ONNX: {
+        # The repository's only external dependency, and the only package that
+        # carries one. That is what makes this package worth its release checklist.
+        NET: {EMBEDDINGS: EMBEDDINGS_FLOOR, ONNX_RUNTIME: "1.28.0"},
+        NETSTANDARD: {EMBEDDINGS: EMBEDDINGS_FLOOR, ONNX_RUNTIME: "1.28.0", **POLYFILLS},
     },
     METRICS: {
         # Nothing on net10.0, only the polyfills on netstandard2.0: metrics

@@ -37,6 +37,7 @@
     <ProjectReference Include="../../src/Lodestar.Embeddings/Lodestar.Embeddings.csproj" />
     <ProjectReference Include="../../src/Lodestar.Metrics/Lodestar.Metrics.csproj" />
     <ProjectReference Include="../../src/Lodestar.Decomposition/Lodestar.Decomposition.csproj" />
+    <ProjectReference Include="../../src/Lodestar.Onnx/Lodestar.Onnx.csproj" />
   </ItemGroup>
 
   <!--

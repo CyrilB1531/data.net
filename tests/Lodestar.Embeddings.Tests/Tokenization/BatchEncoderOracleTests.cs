@@ -1,4 +1,5 @@
 using Lodestar.Embeddings.Tokenization;
+using Lodestar.Tests.Fixtures;
 using Xunit;
 
 namespace Lodestar.Embeddings.Tests;

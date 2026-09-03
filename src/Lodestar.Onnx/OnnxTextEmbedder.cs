@@ -4,7 +4,7 @@ using Lodestar.Embeddings.Tokenization;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 
-namespace Lodestar.Embeddings.Onnx;
+namespace Lodestar.Onnx;
 
 /// <summary>
 /// Runs a transformer encoder exported to ONNX and turns its token outputs into a
@@ -225,7 +225,7 @@ public sealed class OnnxTextEmbedder : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             int count = Math.Min(batchSize, total - start);
             EncodedBatch batch = encoder.Pad(sequences, start, count, order);
-            float[][] vectors = Run(batch.Ids, batch.Mask, count, batch.SequenceLength);
+            float[][] vectors = RunBatch(batch);
             for (int i = 0; i < count; i++)
             {
                 embeddings[order is null ? start + i : order[start + i]] = vectors[i];
@@ -249,7 +249,7 @@ public sealed class OnnxTextEmbedder : IDisposable
         ThrowIfDisposed();
         Guard.NotNull(batch);
         cancellationToken.ThrowIfCancellationRequested();
-        return batch.Count == 0 ? [] : Run(batch.Ids, batch.Mask, batch.Count, batch.SequenceLength);
+        return batch.Count == 0 ? [] : RunBatch(batch);
     }
 
     /// <summary>Releases the underlying ONNX Runtime session.</summary>
@@ -298,6 +298,25 @@ public sealed class OnnxTextEmbedder : IDisposable
             return byLength != 0 ? byLength : a.CompareTo(b);
         });
         return order;
+    }
+
+    // ONNX Runtime wraps a Memory<T>, which EncodedBatch exposes only as spans:
+    // renting and copying beats a second padding that can drift from BatchEncoder's.
+    private float[][] RunBatch(EncodedBatch batch)
+    {
+        long[] ids = ArrayPool<long>.Shared.Rent(batch.InputIds.Length);
+        long[] mask = ArrayPool<long>.Shared.Rent(batch.AttentionMask.Length);
+        try
+        {
+            batch.InputIds.CopyTo(ids);
+            batch.AttentionMask.CopyTo(mask);
+            return Run(ids, mask, batch.Count, batch.SequenceLength);
+        }
+        finally
+        {
+            ArrayPool<long>.Shared.Return(ids);
+            ArrayPool<long>.Shared.Return(mask);
+        }
     }
 
     /// <summary>Runs one padded batch and pools it.</summary>

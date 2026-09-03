@@ -69,6 +69,8 @@ FLOORS = (
     Floor("Lodestar.Text", "LodestarTextVersion", "TEXT_FLOOR", ("Lodestar.Fuzzy",)),
     Floor("Lodestar.Abstractions", "LodestarAbstractionsVersion", "ABSTRACTIONS_FLOOR",
           ("Lodestar.Text", "Lodestar.Decomposition")),
+    Floor("Lodestar.Embeddings", "LodestarEmbeddingsVersion", "EMBEDDINGS_FLOOR",
+          ("Lodestar.Onnx",)),
 )
 
 

@@ -1,7 +1,6 @@
-using Lodestar.Embeddings.Onnx;
 using Xunit;
 
-namespace Lodestar.Embeddings.Tests;
+namespace Lodestar.Onnx.Tests;
 
 public sealed class OnnxTextEmbedderTests
 {

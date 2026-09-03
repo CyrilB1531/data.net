@@ -1,8 +1,8 @@
-using Lodestar.Embeddings.Onnx;
 using Lodestar.Embeddings.Tokenization;
+using Lodestar.Tests.Fixtures;
 using Xunit;
 
-namespace Lodestar.Embeddings.Tests;
+namespace Lodestar.Onnx.Tests;
 
 /// <summary>
 /// The whole pipeline, end to end: text in, one normalized vector per text out. Runs against

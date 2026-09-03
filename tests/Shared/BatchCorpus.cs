@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Lodestar.Embeddings.Tokenization;
 
-namespace Lodestar.Embeddings.Tests;
+namespace Lodestar.Tests.Fixtures;
 
 /// <summary>
 /// Reads <c>batch_encoding.json</c> — the vocabulary, the six batches and the
@@ -23,7 +23,16 @@ internal static class BatchCorpus
 
     private static BatchOracle Load()
     {
-        using JsonDocument doc = OracleLoader.Load("batch_encoding.json");
+        // Linked into two suites, each with its own OracleLoader in its own
+        // namespace, so neither of those is reachable from here.
+        string path = Path.Combine(AppContext.BaseDirectory, "oracles", "batch_encoding.json");
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException(
+                $"Oracle 'batch_encoding.json' not found at '{path}'. Run tools/generate_oracles.py.", path);
+        }
+
+        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(path));
         JsonElement metadata = doc.RootElement.GetProperty("metadata");
 
         var vocabulary = new Dictionary<string, int>(StringComparer.Ordinal);

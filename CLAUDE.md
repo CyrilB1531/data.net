@@ -118,21 +118,34 @@ dotnet build samples/Lodestar.DocSnippets -c Release
 
 ```bash
 dotnet run -c Release --project bench/Lodestar.Text.Benchmarks -- --filter '*Levenshtein*'
-for p in src/Lodestar.Text src/Lodestar.Embeddings src/Lodestar.Fuzzy src/Lodestar.Metrics; do
+for p in src/Lodestar.Abstractions src/Lodestar.Text src/Lodestar.Embeddings src/Lodestar.Fuzzy \
+         src/Lodestar.Metrics src/Lodestar.Conformal src/Lodestar.Decomposition src/Lodestar.Onnx; do
   dotnet pack "$p" -c Release -o ./artifacts
 done
 ```
 
 ## Architecture
 
-Four independently versioned packages under `src/`:
+Eight independently versioned packages under `src/`. Seven are **core tier** and carry
+no external dependency at all; `Lodestar.Onnx` is the one satellite, and carrying ONNX
+Runtime is the whole reason it is a package
+([decision 0076](docs/decisions/0076-a-core-package-carries-no-external-dependency.md)).
+Adding an external dependency to a core package fails
+`tools/check_nuspec_dependencies.py`, not a review.
 
-| Package | Holds |
-| --- | --- |
-| `Lodestar.Text` | distances, phonetics, set similarity, stemmers, tokenizers, sparse vectorizers (`CsrMatrix`), persistence. No third-party dependency beyond polyfills. |
-| `Lodestar.Embeddings` | sub-word tokenizers (WordPiece, SentencePiece, BPE/byte-level BPE), batch encoding pipeline, pooling, SIMD kNN `EmbeddingIndex`, ONNX inference. ONNX Runtime is isolated here. |
-| `Lodestar.Fuzzy` | `fuzz.*`, `process.extract`, blocking deduplication. |
-| `Lodestar.Metrics` | classification metrics at scikit-learn parity. |
+| Package | Tier | Holds |
+| --- | --- | --- |
+| `Lodestar.Abstractions` | core | `CsrMatrix`, `SparseNorm` and the dense-block products — the sparse primitive the others share (decision 0071). |
+| `Lodestar.Text` | core | distances, phonetics, set similarity, stemmers, tokenizers, sparse vectorizers, persistence, `BkTree`. |
+| `Lodestar.Embeddings` | core | sub-word tokenizers (WordPiece, SentencePiece, BPE/byte-level BPE), batch encoding pipeline, pooling, SIMD kNN `EmbeddingIndex`, `.npy` interop. |
+| `Lodestar.Fuzzy` | core | `fuzz.*`, `process.extract`, blocking deduplication. |
+| `Lodestar.Metrics` | core | classification, regression, clustering and ranking metrics at scikit-learn parity. |
+| `Lodestar.Conformal` | core | split conformal intervals and prediction sets, at MAPIE parity. |
+| `Lodestar.Decomposition` | core | truncated SVD and NMF over a `CsrMatrix`, with the dense kernels written here. |
+| `Lodestar.Onnx` | satellite | `OnnxTextEmbedder`, and **the repository's only external dependency**, `Microsoft.ML.OnnxRuntime`. |
+
+The edges: `Text` → `Abstractions`, `Decomposition` → `Abstractions`, `Fuzzy` → `Text`,
+`Onnx` → `Embeddings`. Four, all asserted per target framework and per version range.
 
 Four cross-cutting facts explain most of the layout, and none of them is visible
 from a single file.

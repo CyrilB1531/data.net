@@ -20,7 +20,7 @@ rather than refused here.
 <!-- docs-run: skip - constructing it loads an ONNX model, and model weights are never committed (CONTRIBUTING.md, ADR 0003) -->
 
 ```csharp
-using Lodestar.Embeddings.Onnx;
+using Lodestar.Onnx;
 
 using var embedder = new OnnxTextEmbedder("model.onnx");
 
@@ -35,16 +35,17 @@ is the rule, and the packaging sample declares the same exclusion for the same r
 are still **compiled** against the packed package, so a renamed member still fails CI; only the
 values are unchecked, which is why none of them carries a `// =>`.
 
-ONNX Runtime is referenced by this namespace and nowhere else in Lodestar. A consumer who never
-touches this type never pays for that dependency, which is the reason for the isolation.
+ONNX Runtime is referenced by this package and nowhere else in Lodestar, and this type is the only
+one in it. A consumer who tokenizes, pools or searches without inferring never restores a native
+runtime — that is what `Lodestar.Onnx` exists to make true, rather than nearly true.
 
 It is `IDisposable` and holds native resources: the model session outlives garbage collection, so
 [`Dispose`](onnxtextembedder-dispose.md) is not optional.
 
 **Applies to** — net10.0, netstandard2.0.
 
-**See also** — `BatchEncoder`, the
-[embeddings guide](../../../guides/embeddings.md), the
+**See also** — `BatchEncoder`, the [ONNX inference guide](../../../guides/onnx.md), the
+[semantic search guide](../../../guides/embeddings.md), the
 [Python equivalence table](../../../equivalence.md).
 
 ## Members

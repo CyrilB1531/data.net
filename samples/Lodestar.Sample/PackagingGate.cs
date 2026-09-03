@@ -8,6 +8,7 @@ using Lodestar.Decomposition;
 using Lodestar.Embeddings.Tokenization;
 using Lodestar.Fuzzy;
 using Lodestar.Metrics;
+using Lodestar.Onnx;
 using Lodestar.Text.Distances;
 
 namespace Lodestar.Sample;
@@ -55,7 +56,7 @@ internal static class PackagingGate
     /// </summary>
     private static readonly Dictionary<string, string> Excluded = new(StringComparer.Ordinal)
     {
-        ["Lodestar.Embeddings.Onnx.OnnxTextEmbedder"] =
+        ["Lodestar.Onnx.OnnxTextEmbedder"] =
             "constructing it loads an ONNX model, and model weights are never committed "
             + "(CONTRIBUTING.md); ADR 0009 already records that the sample stops at the tokenizer",
         ["Lodestar.Metrics.UndefinedMetricException"] =
@@ -130,6 +131,7 @@ internal static class PackagingGate
             typeof(SplitConformal).Assembly,
             typeof(CsrMatrix).Assembly,
             typeof(TruncatedSvd).Assembly,
+            typeof(OnnxTextEmbedder).Assembly,
         ];
 
         var packagedNames = packaged.Select(a => a.GetName().Name!).ToHashSet(StringComparer.Ordinal);

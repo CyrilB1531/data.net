@@ -13,7 +13,7 @@ public void Dispose()
 <!-- docs-run: skip - constructing it loads an ONNX model, and model weights are never committed -->
 
 ```csharp
-using Lodestar.Embeddings.Onnx;
+using Lodestar.Onnx;
 
 using var embedder = new OnnxTextEmbedder("model.onnx");
 float[] vector = embedder.Embed([101, 2054, 102], [1, 1, 1]);

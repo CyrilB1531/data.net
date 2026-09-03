@@ -75,6 +75,7 @@ timed; `bench/README.md`'s section 15 has the harness and the agreement checks.
 | `Lodestar.Metrics` | ML.NET metrics | Coverage, not speed: the advantage narrows with size and the shape does not |
 | `Lodestar.Conformal` | — | **No incumbent exists**, which is the finding rather than a gap in the harness — `bench/README.md` section 15 says what would change that |
 | `Lodestar.Decomposition` | ML.NET `ProjectToPrincipalComponents` | **Not like-for-like.** Centred dense PCA against uncentred sparse truncated SVD and a non-negative factorization — three different decompositions, so each side is checked against its own reconstruction error rather than against the other's numbers |
+| `Lodestar.Onnx` | ONNX Runtime itself | **Nothing to beat.** The package is a caller of the runtime, not a rival to it; what it adds is the pooling and the batching, which `bench/Lodestar.Text.Benchmarks -- '*BatchEmbedding*'` measures against a single-sequence loop |
 
 Numbers with the machine that produced them are in
 [`docs/guides/performance.md`](docs/guides/performance.md); a shared runner's
@@ -101,7 +102,7 @@ documents considerably more than this table lists.
 | --- | --- | --- |
 | 1 | String distances & similarity | ✅ **complete** — Levenshtein (+ Myers), OSA, Damerau-Levenshtein, Hamming, Jaro, Jaro-Winkler, Indel, LCS, Ratcliff-Obershelp, Jaccard, Dice, Overlap, Tversky, Cosine, Soundex, Metaphone, NYSIIS |
 | 2 | Tokenization & sparse vectorization | ✅ **complete** — CSR, tokenizers (word/char/char_wb), CountVectorizer, TfidfVectorizer, HashingVectorizer, Porter, Snowball EN/FR/DE/ES/IT/PT, stop words in six languages |
-| 3 | Embeddings & semantic search | ✅ **complete** — WordPiece, SentencePiece, BPE and byte-level BPE (GPT-2, Llama-3, Qwen2), pooling, SIMD kNN, ONNX inference |
+| 3 | Embeddings & semantic search | ✅ **complete** — WordPiece, SentencePiece, BPE and byte-level BPE (GPT-2, Llama-3, Qwen2), pooling, SIMD kNN, and ONNX inference in `Lodestar.Onnx` |
 | 4 | Applied fuzzy matching | ✅ **complete** — `fuzz.*` (ratio/partial/token_sort/token_set/WRatio), `process.extract`/`extractOne`, blocking deduplication |
 | 5 | Classification metrics | ✅ **complete** — confusion matrix, accuracy, precision/recall/F1/F-beta in all four averaging modes, `classification_report` character for character, ROC-AUC binary and multiclass (`ovr`/`ovo`) |
 
@@ -127,7 +128,7 @@ A runnable version of the above, consuming the packages exactly as you would:
 ```bash
 for p in src/Lodestar.Abstractions src/Lodestar.Text src/Lodestar.Embeddings \
          src/Lodestar.Fuzzy src/Lodestar.Metrics src/Lodestar.Conformal \
-         src/Lodestar.Decomposition; do
+         src/Lodestar.Decomposition src/Lodestar.Onnx; do
   dotnet pack "$p" -c Release -o ./artifacts
 done
 NUGET_PACKAGES=$(mktemp -d) dotnet run -c Release --project samples/Lodestar.Sample
@@ -183,11 +184,12 @@ replays them with a `1e-9` tolerance. Python is a development-only dependency. S
 Lodestar.slnx
 ├── src/Lodestar.Abstractions/              CsrMatrix and SparseNorm — the sparse primitive the others share (no dependencies)
 ├── src/Lodestar.Text/                      distances, similarity, tokenizers, vectorizers, stemmers
-├── src/Lodestar.Embeddings/                sub-word tokenizers, pooling, SIMD kNN, ONNX inference (ONNX Runtime isolated here)
+├── src/Lodestar.Embeddings/                sub-word tokenizers, pooling, SIMD kNN (no dependencies)
 ├── src/Lodestar.Fuzzy/                     fuzz.*, process.extract, deduplication
 ├── src/Lodestar.Metrics/                   confusion matrix, precision/recall/F1, report, ROC-AUC
 ├── src/Lodestar.Conformal/                 split conformal intervals and prediction sets (no dependencies)
 ├── src/Lodestar.Decomposition/             truncated SVD and non-negative matrix factorization over a CsrMatrix
+├── src/Lodestar.Onnx/                      ONNX inference — the one package with an external dependency (decision 0076)
 ├── tests/                                  xUnit: two projects per package — net10.0, and a mirror linking the same sources against netstandard2.0
 ├── tests/oracles/                          frozen JSON corpora (generated from Python) + a synthetic ONNX model
 ├── bench/Lodestar.Text.Benchmarks/         BenchmarkDotNet: every non-netstandard benchmark, whatever package it measures
@@ -223,9 +225,12 @@ you whether to correct the document itself or something upstream of it.
 
 ## Publishing
 
-Seven NuGet packages are produced: `Lodestar.Abstractions`, `Lodestar.Text`,
-`Lodestar.Embeddings`, `Lodestar.Fuzzy`, `Lodestar.Metrics`, `Lodestar.Conformal` and
-`Lodestar.Decomposition`. **Each versions and releases on its own**: shared metadata
+Eight NuGet packages are produced: `Lodestar.Abstractions`, `Lodestar.Text`,
+`Lodestar.Embeddings`, `Lodestar.Fuzzy`, `Lodestar.Metrics`, `Lodestar.Conformal`,
+`Lodestar.Decomposition` and `Lodestar.Onnx`. Seven of them are **core tier** and carry
+no external dependency; `Lodestar.Onnx` is the satellite that carries ONNX Runtime, which
+is the whole reason it is a package — [`decisions/0076`](docs/decisions/0076-a-core-package-carries-no-external-dependency.md).
+**Each versions and releases on its own**: shared metadata
 (license, README, repository) lives in `Directory.Build.props`, while the version
 is declared per project in `src/<Package>/Version.props`. `Lodestar.Fuzzy` depends
 on `Lodestar.Text` as a published package, not as a project reference — see

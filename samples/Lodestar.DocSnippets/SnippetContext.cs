@@ -19,7 +19,7 @@ internal sealed partial class Vectorization
 
 internal sealed partial class Embeddings
 {
-    /// <summary>One embedding, as <c>OnnxTextEmbedder.Embed</c> returns it.</summary>
+    /// <summary>One embedding, as <c>OnnxTextEmbedder.Embed</c> returns it (Lodestar.Onnx).</summary>
     public readonly float[] vector = new float[384];
 
     /// <summary>The embedded corpus an index is filled from.</summary>
@@ -32,15 +32,13 @@ internal sealed partial class Embeddings
     public readonly float[] queryVector = new float[384];
 
     /// <summary>The tokenizer an embedder is built with; the guide builds one several fences earlier.</summary>
-    public readonly WordPieceTokenizer wp = new(
-        new Dictionary<string, int>(StringComparer.Ordinal)
-        {
-            ["[UNK]"] = 0,
-            ["[CLS]"] = 1,
-            ["[SEP]"] = 2,
-            ["[PAD]"] = 3,
-        },
-        "[UNK]");
+    public readonly WordPieceTokenizer wp = SnippetVocabulary.WordPiece();
+}
+
+internal sealed partial class Onnx
+{
+    /// <summary>The tokenizer an embedder is built with; the embeddings guide builds one.</summary>
+    public readonly WordPieceTokenizer wp = SnippetVocabulary.WordPiece();
 
     /// <summary>The corpus a batch call embeds.</summary>
     public readonly string[] texts = ["the cat sat", "the dog ran"];
@@ -50,4 +48,19 @@ internal sealed partial class Embeddings
 
     /// <summary>The mask that goes with them.</summary>
     public readonly long[] mask = [1, 1, 1];
+}
+
+// Two guides build the same four-token vocabulary, and S1192 counts the literals
+// once they are written twice.
+internal static class SnippetVocabulary
+{
+    public static WordPieceTokenizer WordPiece() => new(
+        new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["[UNK]"] = 0,
+            ["[CLS]"] = 1,
+            ["[SEP]"] = 2,
+            ["[PAD]"] = 3,
+        },
+        "[UNK]");
 }
