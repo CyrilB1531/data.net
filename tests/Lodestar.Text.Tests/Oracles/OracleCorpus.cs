@@ -50,6 +50,8 @@ public sealed record OracleMetadata
     [JsonPropertyName("library_version")] public string LibraryVersion { get; init; } = "";
     [JsonPropertyName("semantics")] public string Semantics { get; init; } = "";
     [JsonPropertyName("count")] public int Count { get; init; }
+    [JsonPropertyName("stop_words")] public IReadOnlyList<string> StopWords { get; init; } = [];
+    [JsonPropertyName("token_pattern")] public string TokenPattern { get; init; } = "";
 }
 
 /// <summary>A single Levenshtein reference case.</summary>

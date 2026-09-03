@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Lodestar.Text.Keywords;
+using Lodestar.Text.Tests.Oracles;
 using Xunit;
 
 namespace Lodestar.Text.Tests.Keywords;
@@ -7,52 +7,53 @@ namespace Lodestar.Text.Tests.Keywords;
 /// <summary>Replays every case of <c>keywords_rake.json</c> against rake-nltk's own numbers.</summary>
 public sealed class RakeOracleTests
 {
-    public static TheoryData<string> Cases()
+    private static readonly OracleFile<RakeCase> Corpus =
+        OracleCorpus.Load<RakeCase>("keywords_rake.json");
+
+    public static TheoryData<int> Indices()
     {
-        var names = new TheoryData<string>();
-        using JsonDocument doc = OracleLoader.Load("keywords_rake.json");
-        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
+        var data = new TheoryData<int>();
+        for (int i = 0; i < Corpus.Cases.Count; i++)
         {
-            names.Add(c.GetProperty("name").GetString()!);
+            data.Add(i);
         }
-        return names;
+        return data;
     }
 
     [Theory]
-    [MemberData(nameof(Cases))]
-    public void Matches_rake_nltk(string name)
+    [MemberData(nameof(Indices))]
+    public void Matches_rake_nltk(int index)
     {
-        using JsonDocument doc = OracleLoader.Load("keywords_rake.json");
-        JsonElement metadata = doc.RootElement.GetProperty("metadata");
-        string[] stop = metadata.GetProperty("stop_words").EnumerateArray().Select(e => e.GetString()!).ToArray();
-        string pattern = metadata.GetProperty("token_pattern").GetString()!;
-
-        JsonElement expected = doc.RootElement.GetProperty("cases").EnumerateArray()
-            .First(c => c.GetProperty("name").GetString() == name);
-
+        RakeCase expected = Corpus.Cases[index];
         var options = new RakeOptions
         {
-            StopWords = stop,
-            TokenPattern = pattern,
-            Metric = Enum.Parse<RakeMetric>(expected.GetProperty("metric").GetString()!),
-            MinLength = expected.GetProperty("min_length").GetInt32(),
-            MaxLength = expected.GetProperty("max_length").GetInt32(),
-            IncludeRepeatedPhrases = expected.GetProperty("include_repeated_phrases").GetBoolean(),
+            StopWords = Corpus.Metadata.StopWords,
+            TokenPattern = Corpus.Metadata.TokenPattern,
+            Metric = Enum.Parse<RakeMetric>(expected.Metric),
+            MinLength = expected.MinLength,
+            MaxLength = expected.MaxLength,
+            IncludeRepeatedPhrases = expected.IncludeRepeatedPhrases,
         };
 
-        IReadOnlyList<KeywordMatch> actual = new Rake(options).Extract(expected.GetProperty("text").GetString()!);
-        JsonElement[] rows = [.. expected.GetProperty("expected").EnumerateArray()];
+        IReadOnlyList<KeywordMatch> actual = new Rake(options).Extract(expected.Text);
 
-        Assert.Equal(rows.Length, actual.Count);
+        Assert.Equal(expected.Expected.Count, actual.Count);
 
         // Compared as a multiset: rake-nltk's order among equal scores is its sort's,
         // and a tie-break neither implementation promises is not a behaviour to match.
         Assert.Equal(
-            rows.Select(r => (r.GetProperty("phrase").GetString()!, r.GetProperty("score").GetDouble()))
-                .OrderBy(p => p.Item1, StringComparer.Ordinal).ThenBy(p => p.Item2),
+            expected.Expected.Select(r => (r.Phrase, r.Score))
+                .OrderBy(p => p.Phrase, StringComparer.Ordinal).ThenBy(p => p.Score),
             actual.Select(m => (m.Phrase, m.Score))
                 .OrderBy(p => p.Phrase, StringComparer.Ordinal).ThenBy(p => p.Score),
             new PhraseScoreComparer());
+    }
+
+    [Fact]
+    public void The_corpus_is_the_one_that_was_committed()
+    {
+        Assert.Equal(Corpus.Metadata.Count, Corpus.Cases.Count);
+        Assert.NotEmpty(Corpus.Cases);
     }
 
     private sealed class PhraseScoreComparer : IEqualityComparer<(string Phrase, double Score)>
