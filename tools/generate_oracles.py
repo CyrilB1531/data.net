@@ -7292,6 +7292,117 @@ def generate_keywords_rake() -> dict:
     }
 
 
+KEYWORDS_TEXTRANK_DOCUMENTS = [
+    # words=5, not the brief's 4: "criteria" and "natural" sit 1.1e-16 apart, a tie no
+    # power iteration can be trusted to break the way LAPACK did; 5 clears the next real gap.
+    ("two_sentences",
+     "Compatibility of systems of linear constraints over the set of natural numbers. "
+     "Criteria of compatibility of a system of linear Diophantine equations.", 5),
+    ("natural_language",
+     "Challenges in natural language processing frequently involve speech recognition, "
+     "natural language understanding, natural language generation, and machine translation. "
+     "Machine learning algorithms learn statistical models from large corpora of annotated "
+     "text, and those models drive modern speech recognition systems.", 6),
+    ("domestic_cat",
+     "The domestic cat is a small carnivorous mammal. Cats are valued by humans for "
+     "companionship and their ability to hunt rodents. Domestic cats communicate by meowing, "
+     "purring, trilling, hissing, and growling, and cat body language conveys mood.", 6),
+    ("no_co_occurrence", "Alpha.", 4),
+    ("empty", "", 4),
+]
+
+
+def generate_keywords_textrank() -> dict:
+    """TextRank replayed against summa 1.2.0, with a dominance guard (#525).
+
+    summa's ``pagerank_weighted_scipy`` takes ``vecs[i][0]`` — LAPACK's first
+    column — with no check that it belongs to the largest eigenvalue. For a
+    near-bipartite co-occurrence graph it is not. Each candidate document is
+    screened by recomputing the stationary distribution through power
+    iteration and refusing to freeze a case where the two disagree.
+    """
+    from summa import keywords as sk  # noqa: PLC0415
+    from summa.commons import build_graph, remove_unreachable_nodes  # noqa: PLC0415
+    from summa.preprocessing.stopwords import get_stopwords_by_language  # noqa: PLC0415
+
+    # get_stopwords_by_language returns one blob string; summa itself reads it with
+    # .split() (textcleaner.py:51) -- sorted() of the raw string sorts characters instead.
+    stop_words = sorted(get_stopwords_by_language("english").split())
+
+    def stationary(text: str) -> dict:
+        """The dominant left eigenvector, by power iteration, in summa's own node order."""
+        tokens = sk._clean_text_by_word(text, "english", deacc=False, additional_stopwords=None)
+        graph = build_graph(sk._get_words_for_graph(tokens))
+        sk._set_graph_edges(graph, tokens, list(sk._tokenize_by_word(text)))
+        remove_unreachable_nodes(graph)
+
+        nodes = graph.nodes()
+        n = len(nodes)
+        if n == 0:
+            return {}
+
+        adjacency = np.zeros((n, n))
+        for i, u in enumerate(nodes):
+            total = sum(graph.edge_weight((u, v)) for v in graph.neighbors(u))
+            for j, v in enumerate(nodes):
+                weight = float(graph.edge_weight((u, v)))
+                if i != j and weight != 0:
+                    adjacency[i, j] = weight / total
+
+        # Written exactly as summa writes it. `1 - 0.85` is 0.15000000000000002, not
+        # 0.15, and that last bit changes the order LAPACK returns eigenvectors in.
+        matrix = 0.85 * adjacency + (1 - 0.85) * (1.0 / n)
+        x = np.ones(n) / np.sqrt(n)
+        for _ in range(100_000):
+            y = x @ matrix
+            y /= np.linalg.norm(y)
+            if np.abs(y - x).max() < 1e-15:
+                x = y
+                break
+            x = y
+        return dict(zip(nodes, np.abs(x)))
+
+    cases = []
+    for name, text, words in KEYWORDS_TEXTRANK_DOCUMENTS:
+        published = sk.keywords(text, words=words, scores=True) if text.strip() else []
+        reference = stationary(text)
+
+        # summa takes eig's first column, dominant only by LAPACK's ordering: a corpus
+        # frozen from a non-dominant eigenvector would fail the C# for being right.
+        for phrase, score in published:
+            if " " in phrase:
+                continue
+            stem = sk._clean_text_by_word(phrase, "english", deacc=False, additional_stopwords=None)
+            lemma = next(iter(stem.values())).token
+            if abs(reference.get(lemma, float("nan")) - float(score)) > 1e-9:
+                raise SystemExit(
+                    f"keywords_textrank '{name}': summa's score for {phrase!r} ({score}) is not the "
+                    f"dominant eigenvector's ({reference.get(lemma)}). Refusing to freeze it."
+                )
+
+        cases.append({
+            "id": len(cases),
+            "name": name,
+            "text": text,
+            "words": words,
+            "expected": [{"phrase": phrase, "score": float(score)} for phrase, score in published],
+        })
+
+    return {
+        "metadata": {
+            "algorithm": "TextRank",
+            "library": "summa",
+            "library_version": version("summa"),
+            "reference_calls": ["summa.keywords.keywords(text, words=n, scores=True)"],
+            "stop_words": stop_words,
+            "window": 2,
+            "damping": 0.85,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     """Write every oracle deterministically, byte for byte.
 
@@ -7324,6 +7435,7 @@ def main() -> None:
         "lcs.json": generate_lcs,
         "text_bktree.json": generate_text_bktree,
         "keywords_rake.json": generate_keywords_rake,
+        "keywords_textrank.json": generate_keywords_textrank,
         "ratcliff.json": generate_ratcliff,
         "set_similarity.json": generate_set_similarity,
         "phonetics.json": generate_phonetics,

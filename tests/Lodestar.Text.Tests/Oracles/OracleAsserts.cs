@@ -185,3 +185,20 @@ public sealed record RakePhrase
     [JsonPropertyName("phrase")] public string Phrase { get; init; } = "";
     [JsonPropertyName("score")] public double Score { get; init; }
 }
+
+/// <summary>One TextRank reference case, replayed from <c>keywords_textrank.json</c>.</summary>
+public sealed record TextRankCase
+{
+    [JsonPropertyName("id")] public int Id { get; init; }
+    [JsonPropertyName("name")] public string Name { get; init; } = "";
+    [JsonPropertyName("text")] public string Text { get; init; } = "";
+    [JsonPropertyName("words")] public int Words { get; init; }
+    [JsonPropertyName("expected")] public IReadOnlyList<TextRankPhrase> Expected { get; init; } = [];
+}
+
+/// <summary>One expected phrase inside a <see cref="TextRankCase"/>.</summary>
+public sealed record TextRankPhrase
+{
+    [JsonPropertyName("phrase")] public string Phrase { get; init; } = "";
+    [JsonPropertyName("score")] public double Score { get; init; }
+}

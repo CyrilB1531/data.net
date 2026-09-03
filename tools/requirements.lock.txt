@@ -628,6 +628,7 @@ scipy==1.18.0 \
     # via
     #   mapie
     #   scikit-learn
+    #   summa
 sentencepiece==0.2.2 \
     --hash=sha256:046b15ea22d8042e2e173561d464ec3b64a9c2081324df70ebce7bf7ebb3e497 \
     --hash=sha256:0e2aae42960392d6dcb9a72d8e1e65a97294c965071b43c7b3429a42f350250e \
@@ -686,6 +687,9 @@ sentencepiece==0.2.2 \
     --hash=sha256:f7c06c751c19d923435a54bff4f7e66e728fad160e8da28254f133abc9725820 \
     --hash=sha256:fa9f5ef0e2a82233dd0b8b32ea3f5710e0c44afbc07ed3620219f32601e56090 \
     --hash=sha256:fd523c4992041faa5c2b3cde62253d11a96c30d73a34afe48a486e8e2254cd1c
+    # via -r tools/requirements.txt
+summa==1.2.0 \
+    --hash=sha256:6eb60e4e3d3859e7d951f36a3515573becf096ca404ae806a2f1e8fa7a53a0fc
     # via -r tools/requirements.txt
 textdistance==4.6.3 \
     --hash=sha256:0cb1b2cc8e3339ddc3e0f8c870e49fb49de6ecc42a718917308b3c971f34aa56 \
