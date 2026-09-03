@@ -99,6 +99,29 @@ public sealed class MmrTests
     }
 
     [Fact]
+    public void An_overflowing_candidate_has_no_cosine_and_is_refused()
+    {
+        float[][] withOverflow = [[1f, 0f, 0f], [2e38f, 2e38f, 0f]];
+
+        ArgumentException error = Assert.Throws<ArgumentException>(
+            () => Mmr.Select(Query, withOverflow, count: 2));
+
+        Assert.Contains("index 1", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_overflowing_query_has_no_cosine_and_is_refused()
+    {
+        float[] overflowingQuery = [2e38f, 2e38f, 0f];
+
+        ArgumentException error = Assert.Throws<ArgumentException>(
+            () => Mmr.Select(overflowingQuery, Candidates, count: 2));
+
+        Assert.Contains("query", error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("index", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_candidate_of_the_wrong_width_is_refused()
     {
         float[][] ragged = [[1f, 0f, 0f], [1f, 0f]];

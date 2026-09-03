@@ -38,9 +38,9 @@ public static class Mmr
         // whether or not anything would end up selected, not only when count > 0.
         float[] norms = ComputeNorms(query, candidates);
         float queryNorm = VectorMath.L2Norm(query);
-        // NaN spelled out rather than left to a negated comparison: `!(x > 0)` is true
-        // for NaN too, but reads as if it meant `x <= 0` (SplitConformal.cs's same choice).
-        if (float.IsNaN(queryNorm) || queryNorm <= 0)
+        // NaN and infinity spelled out rather than left to a negated comparison: `!(x > 0)`
+        // rejects both too, but reads as if it meant `x <= 0` (SplitConformal.cs's choice).
+        if (float.IsNaN(queryNorm) || float.IsInfinity(queryNorm) || queryNorm <= 0)
         {
             throw new ArgumentException("The query has a zero or non-finite norm, whose cosine is undefined.", nameof(query));
         }
@@ -70,7 +70,7 @@ public static class Mmr
             }
 
             norms[i] = VectorMath.L2Norm(candidate);
-            if (float.IsNaN(norms[i]) || norms[i] <= 0)
+            if (float.IsNaN(norms[i]) || float.IsInfinity(norms[i]) || norms[i] <= 0)
             {
                 throw new ArgumentException(
                     $"Candidate at index {i} has a zero or non-finite norm, whose cosine is undefined.", nameof(candidates));
