@@ -469,6 +469,32 @@ Then regenerate the corpora and confirm they are unchanged. If they move, the
 dependency bump changed reference output — resolve that deliberately, in the same
 commit, rather than letting it land on someone else's pull request.
 
+`tools/requirements-nodeps.txt` holds two packages that cannot live in the lock, for two different
+reasons.
+
+keybert (the MMR oracle's reference) declares `sentence-transformers`, and through it torch and
+transformers, as its own dependencies, even though `keybert._mmr.mmr` — the only call the generator
+makes — imports nothing but numpy and scikit-learn, both already pinned in the lock. `pip-compile`
+has no per-package `--no-deps`, so pulling keybert into `requirements.txt` would pin that whole
+stack into the lock that five other CI jobs install, two of them benchmark workflows that need none
+of it. keybert is instead hash-pinned in its own file and installed with
+`pip install --no-deps --require-hashes`, which skips dependency resolution entirely — only the
+*Oracles are reproducible* job installs it, immediately after the lock.
+
+summa (the TextRank oracle's reference) has a different problem: it publishes no wheel
+at all, only an sdist, so `--only-binary :all:` — the flag every one of the five install sites
+passes, lock and no-deps file alike — refuses it outright. It is hash-pinned here too, and the
+*Oracles are reproducible* job's install of this file adds `--no-binary summa` alongside its
+existing `--only-binary :all:`, so pip's per-package override lets that one setup.py run while
+every other package, at every install site, stays wheels-only.
+
+Anything added to this file must import nothing outside `requirements.lock.txt`, or the same
+problem `--no-deps` exists to avoid reappears one entry later — the test summa passes on `scipy`
+(via scikit-learn) and `numpy` (pinned directly) exactly as keybert passes it on numpy and
+scikit-learn.
+[Decision 0078](docs/decisions/0078-keybert-is-declared-nodeps-not-compiled-into-the-lock.md)
+records that boundary, both packages' reasons for needing it, and the options each beat.
+
 Where behavior deliberately diverges from the Python reference, record it in
 [`docs/decisions/`](docs/decisions/README.md) rather than in a code comment alone — see
 [`0005`](docs/decisions/0005-hamming-jellyfish-divergence.md) for the shape of

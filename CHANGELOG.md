@@ -27,6 +27,8 @@ is one sentence, the issue and the commit; see
 
 - **`BkTree`** is a metric index over the integer distances, worth building only at a radius of 1 — [`docs/guides/dictionary-lookup.md`](docs/guides/dictionary-lookup.md) has the measurement. ([#526](https://github.com/CyrilB1531/lodestar/issues/526))
 
+- **`Lodestar.Text.Keywords` adds two unsupervised keyword extractors, `Rake` and `TextRank`.** Neither trains or downloads a model: `Rake` scores the runs between stop words by their word co-occurrence, and `TextRank` ranks a co-occurrence graph of the document's own stems the way PageRank ranks a link graph. Each replays a frozen oracle against its Python reference — `rake-nltk` 1.0.6 in `tests/oracles/keywords_rake.json`, `summa` 1.2.0 in `tests/oracles/keywords_textrank.json` — and [decision 0077](docs/decisions/0077-the-keyword-extractors-take-their-oracles-lists-and-not-their-own.md) records where each is measured to diverge from it. [`docs/guides/keyword-extraction.md`](docs/guides/keyword-extraction.md) has both, plus the KeyBERT-style composition with `Mmr.Select`. ([#525](https://github.com/CyrilB1531/lodestar/issues/525))
+
 #### Changed
 
 - **`CsrMatrix` and `SparseNorm` moved to `Lodestar.Abstractions`.** Consuming code adds `using Lodestar.Abstractions;`; the vectorizers still return the same type, and the seven reference pages moved with it. ([#440](https://github.com/CyrilB1531/lodestar/issues/440))
@@ -40,6 +42,8 @@ is one sentence, the issue and the commit; see
 ### Lodestar.Embeddings
 
 #### Added
+
+- **`Mmr.Select` (`Lodestar.Embeddings.Search`) picks a diverse, relevance-weighted subset of candidate vectors — Maximal Marginal Relevance**, knowing nothing about text: the candidates are vectors and the result is their indices, in selection order. It replays `keybert` 0.9.0's own selection step, `keybert._mmr.mmr`, compared as a set rather than a sequence (`tests/oracles/mmr.json`) — [decision 0077](docs/decisions/0077-the-keyword-extractors-take-their-oracles-lists-and-not-their-own.md) has the three divergences, and [decision 0078](docs/decisions/0078-keybert-is-declared-nodeps-not-compiled-into-the-lock.md) why `keybert` itself stays out of the oracle lock file. Composes with `Rake` and `OnnxTextEmbedder` into a KeyBERT-style pipeline, walked through in [`docs/guides/keyword-extraction.md`](docs/guides/keyword-extraction.md). ([#525](https://github.com/CyrilB1531/lodestar/issues/525))
 
 - **`BatchEncoder.EncodeAll` and `BatchEncoder.Pad` are public**, so a caller that groups rows itself no longer needs a second copy of the padding. `EncodeAll` returns one unpadded row per text, template applied and truncation done; `Pad` lays a **window** of those rows out as one rectangle, widened to the longest row in that window rather than in the corpus — which is what makes grouping by length worth anything. `EncodeBatch` is unchanged, and is still the two of them over the whole corpus at once. ([#533](https://github.com/CyrilB1531/lodestar/issues/533))
 

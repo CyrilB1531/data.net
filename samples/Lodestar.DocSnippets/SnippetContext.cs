@@ -50,6 +50,15 @@ internal sealed partial class Onnx
     public readonly long[] mask = [1, 1, 1];
 }
 
+internal sealed partial class KeywordExtraction
+{
+    /// <summary>The document the KeyBERT-style composition extracts keywords from.</summary>
+    public readonly string document = "Compatibility of systems of linear constraints over the set of natural numbers.";
+
+    /// <summary>The tokenizer <c>OnnxTextEmbedder</c> is built with; the ONNX guide builds one the same way.</summary>
+    public readonly WordPieceTokenizer wp = SnippetVocabulary.WordPiece();
+}
+
 // Two guides build the same four-token vocabulary, and S1192 counts the literals
 // once they are written twice.
 internal static class SnippetVocabulary

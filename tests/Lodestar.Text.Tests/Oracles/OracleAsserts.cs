@@ -165,3 +165,57 @@ public sealed record BkTreeHit
     [JsonPropertyName("item")] public string Item { get; init; } = "";
     [JsonPropertyName("distance")] public int Distance { get; init; }
 }
+
+/// <summary>One RAKE reference case: a document, its options, and the ranked phrases.</summary>
+public sealed record RakeCase
+{
+    [JsonPropertyName("id")] public int Id { get; init; }
+    [JsonPropertyName("name")] public string Name { get; init; } = "";
+    [JsonPropertyName("text")] public string Text { get; init; } = "";
+    [JsonPropertyName("metric")] public string Metric { get; init; } = "";
+    [JsonPropertyName("min_length")] public int MinLength { get; init; }
+    [JsonPropertyName("max_length")] public int MaxLength { get; init; }
+    [JsonPropertyName("include_repeated_phrases")] public bool IncludeRepeatedPhrases { get; init; }
+    [JsonPropertyName("expected")] public IReadOnlyList<RakePhrase> Expected { get; init; } = [];
+}
+
+/// <summary>One expected phrase inside a <see cref="RakeCase"/>.</summary>
+public sealed record RakePhrase
+{
+    [JsonPropertyName("phrase")] public string Phrase { get; init; } = "";
+    [JsonPropertyName("score")] public double Score { get; init; }
+}
+
+/// <summary>One TextRank reference case, replayed from <c>keywords_textrank.json</c>.</summary>
+public sealed record TextRankCase
+{
+    [JsonPropertyName("id")] public int Id { get; init; }
+    [JsonPropertyName("name")] public string Name { get; init; } = "";
+    [JsonPropertyName("text")] public string Text { get; init; } = "";
+    [JsonPropertyName("words")] public int Words { get; init; }
+    [JsonPropertyName("expected")] public IReadOnlyList<TextRankPhrase> Expected { get; init; } = [];
+}
+
+/// <summary>One expected phrase inside a <see cref="TextRankCase"/>.</summary>
+public sealed record TextRankPhrase
+{
+    [JsonPropertyName("phrase")] public string Phrase { get; init; } = "";
+    [JsonPropertyName("score")] public double Score { get; init; }
+}
+
+/// <summary>
+/// Equates a (phrase, score) pair the way an oracle replay does: the phrase ordinally,
+/// the score within the suite's 1e-9 floating tolerance. Shared by <c>RakeOracleTests</c>,
+/// which compares positionally now that rake-nltk's tie order is known and matched, and
+/// <c>TextRankOracleTests</c>, whose two eigensolvers can still disagree on tie order
+/// within a run of scores tied inside the same tolerance.
+/// </summary>
+public sealed class ApproximatePhraseScoreComparer : IEqualityComparer<(string Phrase, double Score)>
+{
+    private const double Tolerance = 1e-9;
+
+    public bool Equals((string Phrase, double Score) a, (string Phrase, double Score) b) =>
+        string.Equals(a.Phrase, b.Phrase, StringComparison.Ordinal) && Math.Abs(a.Score - b.Score) <= Tolerance;
+
+    public int GetHashCode((string Phrase, double Score) value) => value.Phrase.GetHashCode(StringComparison.Ordinal);
+}

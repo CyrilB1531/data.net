@@ -1,0 +1,1055 @@
+{
+ "metadata": {
+  "algorithm": "Rake",
+  "library": "rake-nltk",
+  "library_version": "1.0.6",
+  "reference_calls": [
+   "rake_nltk.Rake(stopwords=..., punctuations=set(), ranking_metric=..., sentence_tokenizer=..., word_tokenizer=...).get_ranked_phrases_with_scores()"
+  ],
+  "stop_words": [
+   "a",
+   "all",
+   "and",
+   "are",
+   "for",
+   "in",
+   "is",
+   "of",
+   "over",
+   "that",
+   "the",
+   "this",
+   "to"
+  ],
+  "token_pattern": "\\b\\w+\\b",
+  "count": 30
+ },
+ "cases": [
+  {
+   "id": 0,
+   "name": "rose_abstract:DegreeToFrequencyRatio:repeats=True",
+   "text": "Compatibility of systems of linear constraints over the set of natural numbers. Criteria of compatibility of a system of linear Diophantine equations, strict inequations, and nonstrict inequations are considered. Upper bounds for components of a minimal set of solutions and algorithms of construction of minimal generating sets of solutions for all types of systems are given.",
+   "metric": "DegreeToFrequencyRatio",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": true,
+   "expected": [
+    {
+     "phrase": "minimal generating sets",
+     "score": 8.5
+    },
+    {
+     "phrase": "linear diophantine equations",
+     "score": 8.5
+    },
+    {
+     "phrase": "linear constraints",
+     "score": 4.5
+    },
+    {
+     "phrase": "upper bounds",
+     "score": 4.0
+    },
+    {
+     "phrase": "strict inequations",
+     "score": 4.0
+    },
+    {
+     "phrase": "nonstrict inequations",
+     "score": 4.0
+    },
+    {
+     "phrase": "natural numbers",
+     "score": 4.0
+    },
+    {
+     "phrase": "minimal set",
+     "score": 4.0
+    },
+    {
+     "phrase": "set",
+     "score": 1.5
+    },
+    {
+     "phrase": "types",
+     "score": 1.0
+    },
+    {
+     "phrase": "systems",
+     "score": 1.0
+    },
+    {
+     "phrase": "systems",
+     "score": 1.0
+    },
+    {
+     "phrase": "system",
+     "score": 1.0
+    },
+    {
+     "phrase": "solutions",
+     "score": 1.0
+    },
+    {
+     "phrase": "solutions",
+     "score": 1.0
+    },
+    {
+     "phrase": "given",
+     "score": 1.0
+    },
+    {
+     "phrase": "criteria",
+     "score": 1.0
+    },
+    {
+     "phrase": "construction",
+     "score": 1.0
+    },
+    {
+     "phrase": "considered",
+     "score": 1.0
+    },
+    {
+     "phrase": "components",
+     "score": 1.0
+    },
+    {
+     "phrase": "compatibility",
+     "score": 1.0
+    },
+    {
+     "phrase": "compatibility",
+     "score": 1.0
+    },
+    {
+     "phrase": "algorithms",
+     "score": 1.0
+    }
+   ]
+  },
+  {
+   "id": 1,
+   "name": "rose_abstract:DegreeToFrequencyRatio:repeats=False",
+   "text": "Compatibility of systems of linear constraints over the set of natural numbers. Criteria of compatibility of a system of linear Diophantine equations, strict inequations, and nonstrict inequations are considered. Upper bounds for components of a minimal set of solutions and algorithms of construction of minimal generating sets of solutions for all types of systems are given.",
+   "metric": "DegreeToFrequencyRatio",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": false,
+   "expected": [
+    {
+     "phrase": "minimal generating sets",
+     "score": 8.5
+    },
+    {
+     "phrase": "linear diophantine equations",
+     "score": 8.5
+    },
+    {
+     "phrase": "linear constraints",
+     "score": 4.5
+    },
+    {
+     "phrase": "upper bounds",
+     "score": 4.0
+    },
+    {
+     "phrase": "strict inequations",
+     "score": 4.0
+    },
+    {
+     "phrase": "nonstrict inequations",
+     "score": 4.0
+    },
+    {
+     "phrase": "natural numbers",
+     "score": 4.0
+    },
+    {
+     "phrase": "minimal set",
+     "score": 4.0
+    },
+    {
+     "phrase": "set",
+     "score": 1.5
+    },
+    {
+     "phrase": "types",
+     "score": 1.0
+    },
+    {
+     "phrase": "systems",
+     "score": 1.0
+    },
+    {
+     "phrase": "system",
+     "score": 1.0
+    },
+    {
+     "phrase": "solutions",
+     "score": 1.0
+    },
+    {
+     "phrase": "given",
+     "score": 1.0
+    },
+    {
+     "phrase": "criteria",
+     "score": 1.0
+    },
+    {
+     "phrase": "construction",
+     "score": 1.0
+    },
+    {
+     "phrase": "considered",
+     "score": 1.0
+    },
+    {
+     "phrase": "components",
+     "score": 1.0
+    },
+    {
+     "phrase": "compatibility",
+     "score": 1.0
+    },
+    {
+     "phrase": "algorithms",
+     "score": 1.0
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "name": "rose_abstract:WordDegree:repeats=True",
+   "text": "Compatibility of systems of linear constraints over the set of natural numbers. Criteria of compatibility of a system of linear Diophantine equations, strict inequations, and nonstrict inequations are considered. Upper bounds for components of a minimal set of solutions and algorithms of construction of minimal generating sets of solutions for all types of systems are given.",
+   "metric": "WordDegree",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": true,
+   "expected": [
+    {
+     "phrase": "minimal generating sets",
+     "score": 11.0
+    },
+    {
+     "phrase": "linear diophantine equations",
+     "score": 11.0
+    },
+    {
+     "phrase": "minimal set",
+     "score": 8.0
+    },
+    {
+     "phrase": "linear constraints",
+     "score": 7.0
+    },
+    {
+     "phrase": "strict inequations",
+     "score": 6.0
+    },
+    {
+     "phrase": "nonstrict inequations",
+     "score": 6.0
+    },
+    {
+     "phrase": "upper bounds",
+     "score": 4.0
+    },
+    {
+     "phrase": "natural numbers",
+     "score": 4.0
+    },
+    {
+     "phrase": "set",
+     "score": 3.0
+    },
+    {
+     "phrase": "systems",
+     "score": 2.0
+    },
+    {
+     "phrase": "systems",
+     "score": 2.0
+    },
+    {
+     "phrase": "solutions",
+     "score": 2.0
+    },
+    {
+     "phrase": "solutions",
+     "score": 2.0
+    },
+    {
+     "phrase": "compatibility",
+     "score": 2.0
+    },
+    {
+     "phrase": "compatibility",
+     "score": 2.0
+    },
+    {
+     "phrase": "types",
+     "score": 1.0
+    },
+    {
+     "phrase": "system",
+     "score": 1.0
+    },
+    {
+     "phrase": "given",
+     "score": 1.0
+    },
+    {
+     "phrase": "criteria",
+     "score": 1.0
+    },
+    {
+     "phrase": "construction",
+     "score": 1.0
+    },
+    {
+     "phrase": "considered",
+     "score": 1.0
+    },
+    {
+     "phrase": "components",
+     "score": 1.0
+    },
+    {
+     "phrase": "algorithms",
+     "score": 1.0
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "name": "rose_abstract:WordDegree:repeats=False",
+   "text": "Compatibility of systems of linear constraints over the set of natural numbers. Criteria of compatibility of a system of linear Diophantine equations, strict inequations, and nonstrict inequations are considered. Upper bounds for components of a minimal set of solutions and algorithms of construction of minimal generating sets of solutions for all types of systems are given.",
+   "metric": "WordDegree",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": false,
+   "expected": [
+    {
+     "phrase": "minimal generating sets",
+     "score": 11.0
+    },
+    {
+     "phrase": "linear diophantine equations",
+     "score": 11.0
+    },
+    {
+     "phrase": "minimal set",
+     "score": 8.0
+    },
+    {
+     "phrase": "linear constraints",
+     "score": 7.0
+    },
+    {
+     "phrase": "strict inequations",
+     "score": 6.0
+    },
+    {
+     "phrase": "nonstrict inequations",
+     "score": 6.0
+    },
+    {
+     "phrase": "upper bounds",
+     "score": 4.0
+    },
+    {
+     "phrase": "natural numbers",
+     "score": 4.0
+    },
+    {
+     "phrase": "set",
+     "score": 3.0
+    },
+    {
+     "phrase": "types",
+     "score": 1.0
+    },
+    {
+     "phrase": "systems",
+     "score": 1.0
+    },
+    {
+     "phrase": "system",
+     "score": 1.0
+    },
+    {
+     "phrase": "solutions",
+     "score": 1.0
+    },
+    {
+     "phrase": "given",
+     "score": 1.0
+    },
+    {
+     "phrase": "criteria",
+     "score": 1.0
+    },
+    {
+     "phrase": "construction",
+     "score": 1.0
+    },
+    {
+     "phrase": "considered",
+     "score": 1.0
+    },
+    {
+     "phrase": "components",
+     "score": 1.0
+    },
+    {
+     "phrase": "compatibility",
+     "score": 1.0
+    },
+    {
+     "phrase": "algorithms",
+     "score": 1.0
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "name": "rose_abstract:WordFrequency:repeats=True",
+   "text": "Compatibility of systems of linear constraints over the set of natural numbers. Criteria of compatibility of a system of linear Diophantine equations, strict inequations, and nonstrict inequations are considered. Upper bounds for components of a minimal set of solutions and algorithms of construction of minimal generating sets of solutions for all types of systems are given.",
+   "metric": "WordFrequency",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": true,
+   "expected": [
+    {
+     "phrase": "minimal set",
+     "score": 4.0
+    },
+    {
+     "phrase": "minimal generating sets",
+     "score": 4.0
+    },
+    {
+     "phrase": "linear diophantine equations",
+     "score": 4.0
+    },
+    {
+     "phrase": "strict inequations",
+     "score": 3.0
+    },
+    {
+     "phrase": "nonstrict inequations",
+     "score": 3.0
+    },
+    {
+     "phrase": "linear constraints",
+     "score": 3.0
+    },
+    {
+     "phrase": "upper bounds",
+     "score": 2.0
+    },
+    {
+     "phrase": "systems",
+     "score": 2.0
+    },
+    {
+     "phrase": "systems",
+     "score": 2.0
+    },
+    {
+     "phrase": "solutions",
+     "score": 2.0
+    },
+    {
+     "phrase": "solutions",
+     "score": 2.0
+    },
+    {
+     "phrase": "set",
+     "score": 2.0
+    },
+    {
+     "phrase": "natural numbers",
+     "score": 2.0
+    },
+    {
+     "phrase": "compatibility",
+     "score": 2.0
+    },
+    {
+     "phrase": "compatibility",
+     "score": 2.0
+    },
+    {
+     "phrase": "types",
+     "score": 1.0
+    },
+    {
+     "phrase": "system",
+     "score": 1.0
+    },
+    {
+     "phrase": "given",
+     "score": 1.0
+    },
+    {
+     "phrase": "criteria",
+     "score": 1.0
+    },
+    {
+     "phrase": "construction",
+     "score": 1.0
+    },
+    {
+     "phrase": "considered",
+     "score": 1.0
+    },
+    {
+     "phrase": "components",
+     "score": 1.0
+    },
+    {
+     "phrase": "algorithms",
+     "score": 1.0
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "name": "rose_abstract:WordFrequency:repeats=False",
+   "text": "Compatibility of systems of linear constraints over the set of natural numbers. Criteria of compatibility of a system of linear Diophantine equations, strict inequations, and nonstrict inequations are considered. Upper bounds for components of a minimal set of solutions and algorithms of construction of minimal generating sets of solutions for all types of systems are given.",
+   "metric": "WordFrequency",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": false,
+   "expected": [
+    {
+     "phrase": "minimal set",
+     "score": 4.0
+    },
+    {
+     "phrase": "minimal generating sets",
+     "score": 4.0
+    },
+    {
+     "phrase": "linear diophantine equations",
+     "score": 4.0
+    },
+    {
+     "phrase": "strict inequations",
+     "score": 3.0
+    },
+    {
+     "phrase": "nonstrict inequations",
+     "score": 3.0
+    },
+    {
+     "phrase": "linear constraints",
+     "score": 3.0
+    },
+    {
+     "phrase": "upper bounds",
+     "score": 2.0
+    },
+    {
+     "phrase": "set",
+     "score": 2.0
+    },
+    {
+     "phrase": "natural numbers",
+     "score": 2.0
+    },
+    {
+     "phrase": "types",
+     "score": 1.0
+    },
+    {
+     "phrase": "systems",
+     "score": 1.0
+    },
+    {
+     "phrase": "system",
+     "score": 1.0
+    },
+    {
+     "phrase": "solutions",
+     "score": 1.0
+    },
+    {
+     "phrase": "given",
+     "score": 1.0
+    },
+    {
+     "phrase": "criteria",
+     "score": 1.0
+    },
+    {
+     "phrase": "construction",
+     "score": 1.0
+    },
+    {
+     "phrase": "considered",
+     "score": 1.0
+    },
+    {
+     "phrase": "components",
+     "score": 1.0
+    },
+    {
+     "phrase": "compatibility",
+     "score": 1.0
+    },
+    {
+     "phrase": "algorithms",
+     "score": 1.0
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "name": "one_sentence:DegreeToFrequencyRatio:repeats=True",
+   "text": "Compatibility of systems of linear constraints over the set of natural numbers.",
+   "metric": "DegreeToFrequencyRatio",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": true,
+   "expected": [
+    {
+     "phrase": "natural numbers",
+     "score": 4.0
+    },
+    {
+     "phrase": "linear constraints",
+     "score": 4.0
+    },
+    {
+     "phrase": "systems",
+     "score": 1.0
+    },
+    {
+     "phrase": "set",
+     "score": 1.0
+    },
+    {
+     "phrase": "compatibility",
+     "score": 1.0
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "name": "one_sentence:DegreeToFrequencyRatio:repeats=False",
+   "text": "Compatibility of systems of linear constraints over the set of natural numbers.",
+   "metric": "DegreeToFrequencyRatio",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": false,
+   "expected": [
+    {
+     "phrase": "natural numbers",
+     "score": 4.0
+    },
+    {
+     "phrase": "linear constraints",
+     "score": 4.0
+    },
+    {
+     "phrase": "systems",
+     "score": 1.0
+    },
+    {
+     "phrase": "set",
+     "score": 1.0
+    },
+    {
+     "phrase": "compatibility",
+     "score": 1.0
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "name": "one_sentence:WordDegree:repeats=True",
+   "text": "Compatibility of systems of linear constraints over the set of natural numbers.",
+   "metric": "WordDegree",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": true,
+   "expected": [
+    {
+     "phrase": "natural numbers",
+     "score": 4.0
+    },
+    {
+     "phrase": "linear constraints",
+     "score": 4.0
+    },
+    {
+     "phrase": "systems",
+     "score": 1.0
+    },
+    {
+     "phrase": "set",
+     "score": 1.0
+    },
+    {
+     "phrase": "compatibility",
+     "score": 1.0
+    }
+   ]
+  },
+  {
+   "id": 9,
+   "name": "one_sentence:WordDegree:repeats=False",
+   "text": "Compatibility of systems of linear constraints over the set of natural numbers.",
+   "metric": "WordDegree",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": false,
+   "expected": [
+    {
+     "phrase": "natural numbers",
+     "score": 4.0
+    },
+    {
+     "phrase": "linear constraints",
+     "score": 4.0
+    },
+    {
+     "phrase": "systems",
+     "score": 1.0
+    },
+    {
+     "phrase": "set",
+     "score": 1.0
+    },
+    {
+     "phrase": "compatibility",
+     "score": 1.0
+    }
+   ]
+  },
+  {
+   "id": 10,
+   "name": "one_sentence:WordFrequency:repeats=True",
+   "text": "Compatibility of systems of linear constraints over the set of natural numbers.",
+   "metric": "WordFrequency",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": true,
+   "expected": [
+    {
+     "phrase": "natural numbers",
+     "score": 2.0
+    },
+    {
+     "phrase": "linear constraints",
+     "score": 2.0
+    },
+    {
+     "phrase": "systems",
+     "score": 1.0
+    },
+    {
+     "phrase": "set",
+     "score": 1.0
+    },
+    {
+     "phrase": "compatibility",
+     "score": 1.0
+    }
+   ]
+  },
+  {
+   "id": 11,
+   "name": "one_sentence:WordFrequency:repeats=False",
+   "text": "Compatibility of systems of linear constraints over the set of natural numbers.",
+   "metric": "WordFrequency",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": false,
+   "expected": [
+    {
+     "phrase": "natural numbers",
+     "score": 2.0
+    },
+    {
+     "phrase": "linear constraints",
+     "score": 2.0
+    },
+    {
+     "phrase": "systems",
+     "score": 1.0
+    },
+    {
+     "phrase": "set",
+     "score": 1.0
+    },
+    {
+     "phrase": "compatibility",
+     "score": 1.0
+    }
+   ]
+  },
+  {
+   "id": 12,
+   "name": "punctuation_only_boundaries:DegreeToFrequencyRatio:repeats=True",
+   "text": "red, green; blue",
+   "metric": "DegreeToFrequencyRatio",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": true,
+   "expected": [
+    {
+     "phrase": "red",
+     "score": 1.0
+    },
+    {
+     "phrase": "green",
+     "score": 1.0
+    },
+    {
+     "phrase": "blue",
+     "score": 1.0
+    }
+   ]
+  },
+  {
+   "id": 13,
+   "name": "punctuation_only_boundaries:DegreeToFrequencyRatio:repeats=False",
+   "text": "red, green; blue",
+   "metric": "DegreeToFrequencyRatio",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": false,
+   "expected": [
+    {
+     "phrase": "red",
+     "score": 1.0
+    },
+    {
+     "phrase": "green",
+     "score": 1.0
+    },
+    {
+     "phrase": "blue",
+     "score": 1.0
+    }
+   ]
+  },
+  {
+   "id": 14,
+   "name": "punctuation_only_boundaries:WordDegree:repeats=True",
+   "text": "red, green; blue",
+   "metric": "WordDegree",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": true,
+   "expected": [
+    {
+     "phrase": "red",
+     "score": 1.0
+    },
+    {
+     "phrase": "green",
+     "score": 1.0
+    },
+    {
+     "phrase": "blue",
+     "score": 1.0
+    }
+   ]
+  },
+  {
+   "id": 15,
+   "name": "punctuation_only_boundaries:WordDegree:repeats=False",
+   "text": "red, green; blue",
+   "metric": "WordDegree",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": false,
+   "expected": [
+    {
+     "phrase": "red",
+     "score": 1.0
+    },
+    {
+     "phrase": "green",
+     "score": 1.0
+    },
+    {
+     "phrase": "blue",
+     "score": 1.0
+    }
+   ]
+  },
+  {
+   "id": 16,
+   "name": "punctuation_only_boundaries:WordFrequency:repeats=True",
+   "text": "red, green; blue",
+   "metric": "WordFrequency",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": true,
+   "expected": [
+    {
+     "phrase": "red",
+     "score": 1.0
+    },
+    {
+     "phrase": "green",
+     "score": 1.0
+    },
+    {
+     "phrase": "blue",
+     "score": 1.0
+    }
+   ]
+  },
+  {
+   "id": 17,
+   "name": "punctuation_only_boundaries:WordFrequency:repeats=False",
+   "text": "red, green; blue",
+   "metric": "WordFrequency",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": false,
+   "expected": [
+    {
+     "phrase": "red",
+     "score": 1.0
+    },
+    {
+     "phrase": "green",
+     "score": 1.0
+    },
+    {
+     "phrase": "blue",
+     "score": 1.0
+    }
+   ]
+  },
+  {
+   "id": 18,
+   "name": "all_stop_words:DegreeToFrequencyRatio:repeats=True",
+   "text": "of the and over a",
+   "metric": "DegreeToFrequencyRatio",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": true,
+   "expected": []
+  },
+  {
+   "id": 19,
+   "name": "all_stop_words:DegreeToFrequencyRatio:repeats=False",
+   "text": "of the and over a",
+   "metric": "DegreeToFrequencyRatio",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": false,
+   "expected": []
+  },
+  {
+   "id": 20,
+   "name": "all_stop_words:WordDegree:repeats=True",
+   "text": "of the and over a",
+   "metric": "WordDegree",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": true,
+   "expected": []
+  },
+  {
+   "id": 21,
+   "name": "all_stop_words:WordDegree:repeats=False",
+   "text": "of the and over a",
+   "metric": "WordDegree",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": false,
+   "expected": []
+  },
+  {
+   "id": 22,
+   "name": "all_stop_words:WordFrequency:repeats=True",
+   "text": "of the and over a",
+   "metric": "WordFrequency",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": true,
+   "expected": []
+  },
+  {
+   "id": 23,
+   "name": "all_stop_words:WordFrequency:repeats=False",
+   "text": "of the and over a",
+   "metric": "WordFrequency",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": false,
+   "expected": []
+  },
+  {
+   "id": 24,
+   "name": "empty:DegreeToFrequencyRatio:repeats=True",
+   "text": "",
+   "metric": "DegreeToFrequencyRatio",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": true,
+   "expected": []
+  },
+  {
+   "id": 25,
+   "name": "empty:DegreeToFrequencyRatio:repeats=False",
+   "text": "",
+   "metric": "DegreeToFrequencyRatio",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": false,
+   "expected": []
+  },
+  {
+   "id": 26,
+   "name": "empty:WordDegree:repeats=True",
+   "text": "",
+   "metric": "WordDegree",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": true,
+   "expected": []
+  },
+  {
+   "id": 27,
+   "name": "empty:WordDegree:repeats=False",
+   "text": "",
+   "metric": "WordDegree",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": false,
+   "expected": []
+  },
+  {
+   "id": 28,
+   "name": "empty:WordFrequency:repeats=True",
+   "text": "",
+   "metric": "WordFrequency",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": true,
+   "expected": []
+  },
+  {
+   "id": 29,
+   "name": "empty:WordFrequency:repeats=False",
+   "text": "",
+   "metric": "WordFrequency",
+   "min_length": 1,
+   "max_length": 100000,
+   "include_repeated_phrases": false,
+   "expected": []
+  }
+ ]
+}

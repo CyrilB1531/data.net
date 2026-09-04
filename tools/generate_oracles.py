@@ -7198,6 +7198,286 @@ def generate_text_bktree() -> dict:
             "cases": cases}
 
 
+KEYWORDS_STOP_WORDS = [
+    "a", "all", "and", "are", "for", "in", "is", "of", "over", "that", "the", "this", "to",
+]
+
+KEYWORDS_TOKEN_PATTERN = r"\b\w+\b"
+
+KEYWORDS_DOCUMENTS = [
+    ("rose_abstract",
+     "Compatibility of systems of linear constraints over the set of natural numbers. "
+     "Criteria of compatibility of a system of linear Diophantine equations, strict "
+     "inequations, and nonstrict inequations are considered. Upper bounds for components "
+     "of a minimal set of solutions and algorithms of construction of minimal generating "
+     "sets of solutions for all types of systems are given."),
+    ("one_sentence",
+     "Compatibility of systems of linear constraints over the set of natural numbers."),
+    ("punctuation_only_boundaries", "red, green; blue"),
+    ("all_stop_words", "of the and over a"),
+    ("empty", ""),
+]
+
+
+def generate_keywords_rake() -> dict:
+    """RAKE replayed against rake-nltk 1.0.6, its own tokenizer injected (#525).
+
+    Injecting the tokenizer and the stop words means the reference tokenizes
+    exactly as the C# does, and that generation needs no nltk.download.
+    """
+    import re  # noqa: PLC0415
+
+    from rake_nltk import Metric, Rake  # noqa: PLC0415
+
+    token = re.compile(KEYWORDS_TOKEN_PATTERN)
+    stop = set(KEYWORDS_STOP_WORDS)
+
+    # Injected rather than nltk's: the reference then tokenizes exactly as the C# does,
+    # and generation needs no nltk.download of punkt_tab or stopwords.
+    def sentences(text: str) -> list[str]:
+        return [s for s in re.split(r"[.!?;:,\n]", text) if s.strip()]
+
+    def words(sentence: str) -> list[str]:
+        return token.findall(sentence.lower())
+
+    metrics = {
+        "DegreeToFrequencyRatio": Metric.DEGREE_TO_FREQUENCY_RATIO,
+        "WordDegree": Metric.WORD_DEGREE,
+        "WordFrequency": Metric.WORD_FREQUENCY,
+    }
+
+    cases = []
+    for name, text in KEYWORDS_DOCUMENTS:
+        for metric_name, metric in metrics.items():
+            # Both settings, because the flag changes the degree and frequency tables and
+            # not merely the output: freezing only True would leave the other half unread.
+            for repeats in (True, False):
+                rake = Rake(
+                    stopwords=stop,
+                    punctuations=set(),
+                    ranking_metric=metric,
+                    include_repeated_phrases=repeats,
+                    sentence_tokenizer=sentences,
+                    word_tokenizer=words,
+                )
+                rake.extract_keywords_from_text(text)
+                cases.append({
+                    "id": len(cases),
+                    "name": f"{name}:{metric_name}:repeats={repeats}",
+                    "text": text,
+                    "metric": metric_name,
+                    "min_length": 1,
+                    "max_length": 100000,
+                    "include_repeated_phrases": repeats,
+                    "expected": [
+                        {"phrase": phrase, "score": score}
+                        for score, phrase in rake.get_ranked_phrases_with_scores()
+                    ],
+                })
+
+    return {
+        "metadata": {
+            "algorithm": "Rake",
+            "library": "rake-nltk",
+            "library_version": version("rake-nltk"),
+            "reference_calls": [
+                "rake_nltk.Rake(stopwords=..., punctuations=set(), ranking_metric=...,"
+                " sentence_tokenizer=..., word_tokenizer=...).get_ranked_phrases_with_scores()"
+            ],
+            "stop_words": KEYWORDS_STOP_WORDS,
+            "token_pattern": KEYWORDS_TOKEN_PATTERN,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+KEYWORDS_TEXTRANK_DOCUMENTS = [
+    # words=5, not the brief's 4: "criteria" and "natural" sit 1.1e-16 apart, a tie no
+    # power iteration can be trusted to break the way LAPACK did; 5 clears the next real gap.
+    ("two_sentences",
+     "Compatibility of systems of linear constraints over the set of natural numbers. "
+     "Criteria of compatibility of a system of linear Diophantine equations.", 5),
+    ("natural_language",
+     "Challenges in natural language processing frequently involve speech recognition, "
+     "natural language understanding, natural language generation, and machine translation. "
+     "Machine learning algorithms learn statistical models from large corpora of annotated "
+     "text, and those models drive modern speech recognition systems.", 6),
+    ("domestic_cat",
+     "The domestic cat is a small carnivorous mammal. Cats are valued by humans for "
+     "companionship and their ability to hunt rodents. Domestic cats communicate by meowing, "
+     "purring, trilling, hissing, and growling, and cat body language conveys mood.", 6),
+    ("no_co_occurrence", "Alpha.", 4),
+    ("empty", "", 4),
+]
+
+
+def generate_keywords_textrank() -> dict:
+    """TextRank replayed against summa 1.2.0, with a deterministic pagerank (#525).
+
+    summa's own ``pagerank_weighted_scipy`` takes ``vecs[i][0]`` -- ``scipy.linalg.eig``'s
+    first left-eigenvector column -- with no check that it belongs to the largest
+    eigenvalue. When the transition matrix has a repeated eigenvalue the eigenvector
+    basis is not unique and LAPACK's column order is BLAS-build-dependent: measured,
+    'two_sentences' has |eigenvalue| 0.85 with multiplicity 3 (and 'domestic_cat'
+    likewise), and a GitHub Actions runner and this machine disagree about which
+    column comes first. summa's raw published score for such a document is therefore
+    not reproducible across machines.
+
+    So the generator does not trust summa's own eigenvector pick. It replaces
+    ``summa.keywords._pagerank`` (that module imports ``pagerank_weighted_scipy``
+    under that alias, so it -- not ``summa.pagerank_weighted`` -- is what must be
+    patched) with a deterministic version, for the span of one ``summa.keywords.keywords``
+    call, that:
+
+    - builds summa's own matrix bit for bit, including ``1 - 0.85 ==
+      0.15000000000000002``, not ``0.15``;
+    - selects the left eigenvector belonging to the eigenvalue of the largest
+      modulus, by index rather than by column position;
+    - asserts that eigenvalue is actually dominant and that the vector it picked
+      satisfies ``v^T M ~= lambda v^T`` to a tight tolerance, raising ``SystemExit``
+      naming the document otherwise;
+    - returns ``{node: abs(component)}`` over the unit-normalised vector, matching
+      the scale ``process_results`` assumes.
+
+    Every other summa step -- tokenization, graph construction, extraction, phrase
+    combination -- runs unchanged, and the original ``_pagerank`` is restored once
+    all documents are done so no other generator is affected.
+    """
+    from scipy.linalg import eig  # noqa: PLC0415
+    from summa import keywords as sk  # noqa: PLC0415
+    from summa.pagerank_weighted import build_adjacency_matrix, build_probability_matrix  # noqa: PLC0415
+    from summa.preprocessing.stopwords import get_stopwords_by_language  # noqa: PLC0415
+
+    # get_stopwords_by_language returns one blob string; summa itself reads it with
+    # .split() (textcleaner.py:51) -- sorted() of the raw string sorts characters instead.
+    stop_words = sorted(get_stopwords_by_language("english").split())
+
+    def make_deterministic_pagerank(name: str):
+        def deterministic_pagerank(graph, damping=0.85):
+            # Written exactly as pagerank_weighted_scipy writes it: `1 - 0.85` is
+            # 0.15000000000000002, not 0.15, and that changes the matrix LAPACK diagonalises.
+            adjacency_matrix = build_adjacency_matrix(graph)
+            probability_matrix = build_probability_matrix(graph)
+            matrix = damping * adjacency_matrix.todense() + (1 - damping) * probability_matrix
+
+            vals, vecs = eig(matrix, left=True, right=False)
+            idx = int(np.argmax(np.abs(vals)))
+            dominant = vals[idx]
+
+            if np.any(np.abs(vals) > np.abs(dominant) + 1e-12):
+                raise SystemExit(
+                    f"keywords_textrank {name!r}: eigenvalue at index {idx} ({dominant}) "
+                    f"picked by argmax is not the largest modulus among {vals!r}."
+                )
+
+            vector = np.asarray(vecs[:, idx]).ravel()
+            vector = vector / np.linalg.norm(vector)
+            residual = np.abs(vector @ matrix - dominant * vector).max()
+            if residual > 1e-9:
+                raise SystemExit(
+                    f"keywords_textrank {name!r}: selected vector does not satisfy "
+                    f"v^T M = lambda v^T (max residual {residual})."
+                )
+
+            return dict(zip(graph.nodes(), np.abs(vector)))
+
+        return deterministic_pagerank
+
+    cases = []
+    original_pagerank = sk._pagerank
+    try:
+        for name, text, words in KEYWORDS_TEXTRANK_DOCUMENTS:
+            if text.strip():
+                sk._pagerank = make_deterministic_pagerank(name)
+                published = sk.keywords(text, words=words, scores=True)
+            else:
+                published = []
+
+            cases.append({
+                "id": len(cases),
+                "name": name,
+                "text": text,
+                "words": words,
+                "expected": [{"phrase": phrase, "score": float(score)} for phrase, score in published],
+            })
+    finally:
+        sk._pagerank = original_pagerank
+
+    return {
+        "metadata": {
+            "algorithm": "TextRank",
+            "library": "summa",
+            "library_version": version("summa"),
+            "reference_calls": ["summa.keywords.keywords(text, words=n, scores=True)"],
+            "stop_words": stop_words,
+            "window": 2,
+            "damping": 0.85,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+MMR_CASES = [
+    ("orthogonal_tail",
+     [1.0, 0.0, 0.0],
+     [[1.0, 0.0, 0.0], [0.8, 0.6, 0.0], [0.6, 0.0, 0.8], [0.0, 1.0, 0.0]],
+     3, [0.0, 0.25, 0.5, 0.75, 1.0]),
+    ("two_clusters",
+     [1.0, 1.0, 0.0],
+     [[1.0, 0.9, 0.0], [0.9, 1.0, 0.0], [0.0, 0.0, 1.0], [0.1, 0.0, 1.0], [1.0, 0.0, 0.0]],
+     3, [0.0, 0.5, 1.0]),
+    ("opposing_pair",
+     [1.0, 0.0],
+     [[1.0, 0.0], [-1.0, 0.0], [0.0, 1.0]],
+     2, [0.0, 0.25, 0.5, 0.75, 1.0]),
+]
+
+
+def generate_mmr() -> dict:
+    """MMR replayed against keybert 0.9.0's own selector (#525).
+
+    keybert sorts its picks by relevance to the document, not by selection
+    order, so the corpus freezes the selected *set* rather than the sequence
+    -- see Mmr.Select's own doc comment for why the C# side returns order.
+    """
+    import numpy as np  # noqa: PLC0415
+    from keybert._mmr import mmr  # noqa: PLC0415
+
+    cases = []
+    for name, query, candidates, count, lambdas in MMR_CASES:
+        for lam in lambdas:
+            labels = [str(i) for i in range(len(candidates))]
+            chosen = mmr(
+                np.array([query]), np.array(candidates), labels,
+                top_n=count, diversity=1 - lam,
+            )
+            cases.append({
+                "id": len(cases),
+                "name": f"{name}:lambda={lam}",
+                "query": query,
+                "candidates": candidates,
+                "count": count,
+                "lambda": lam,
+                # keybert sorts by similarity to the document, not by selection order,
+                # so the set is what the two implementations can be held to.
+                "selected": sorted(int(label) for label, _ in chosen),
+            })
+
+    return {
+        "metadata": {
+            "algorithm": "Mmr",
+            "library": "keybert",
+            "library_version": version("keybert"),
+            "reference_calls": ["keybert._mmr.mmr(doc_embedding, word_embeddings, words, top_n, diversity)"],
+            "note": "diversity = 1 - lambda; keybert returns its picks sorted by relevance, so only the set is compared",
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 def main() -> None:
     """Write every oracle deterministically, byte for byte.
 
@@ -7229,6 +7509,9 @@ def main() -> None:
         "jaro_winkler.json": generate_jaro_winkler,
         "lcs.json": generate_lcs,
         "text_bktree.json": generate_text_bktree,
+        "keywords_rake.json": generate_keywords_rake,
+        "keywords_textrank.json": generate_keywords_textrank,
+        "mmr.json": generate_mmr,
         "ratcliff.json": generate_ratcliff,
         "set_similarity.json": generate_set_similarity,
         "phonetics.json": generate_phonetics,

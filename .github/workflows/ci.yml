@@ -314,6 +314,23 @@ jobs:
           #                       scikit-learn pulls scipy, and so on)
           #   --only-binary :all: no source distribution, so no setup.py executes
           pip install --only-binary :all: --require-hashes -r tools/requirements.lock.txt
+          # keybert (the MMR oracle's reference) is not in the lock: its own
+          # install_requires drags in sentence-transformers and, through it, torch
+          # and transformers, none of which keybert._mmr.mmr needs. --no-deps
+          # keeps the lock's resolved graph untouched; see tools/requirements-nodeps.txt.
+          # --only-binary :all: as on the lock install above: keybert 0.9.0 also
+          # publishes an sdist, and the pinned hash is the wheel's alone.
+          #
+          # summa (the TextRank oracle's reference) is the one entry in
+          # that file --only-binary :all: cannot satisfy at all: it ships no wheel,
+          # only an sdist, so `pip install --only-binary :all: summa==1.2.0` finds no
+          # candidate on every one of this repository's five install sites. Here,
+          # and only here, `--no-binary summa` overrides that flag for this one
+          # package -- pip resolves per-package binary/source constraints, and the
+          # more specific one wins -- so its setup.py runs, hash-checked against the
+          # pinned sdist, and no other install site is affected because none of them
+          # read this file.
+          pip install --no-deps --only-binary :all: --no-binary summa --require-hashes -r tools/requirements-nodeps.txt
           # The generator writes over tests/oracles in place, so the committed
           # corpora are copied aside first — there is nothing to compare against
           # afterwards otherwise.

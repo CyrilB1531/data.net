@@ -1,0 +1,28 @@
+# A companion to requirements.lock.txt (#525) for two different reasons, one
+# per package below.
+#
+# keybert 0.9.0's own install_requires pulls sentence-transformers, and through
+# it torch and transformers, into the resolved graph, but MMR's own reference,
+# keybert._mmr.mmr, imports only numpy and scikit-learn, both already pinned in
+# requirements.lock.txt. keybert is declared here instead, hash-pinned, and
+# installed with `pip install --no-deps --require-hashes` so pip never resolves
+# its declared dependencies.
+#
+# summa 1.2.0 publishes no wheel at all -- only an sdist -- so it fails every
+# `--only-binary :all:` install site outright (`pip install --dry-run
+# --only-binary :all: summa==1.2.0` finds no candidate). It is declared here,
+# hash-pinned to that sdist, and the one install site that reads this file
+# (the *Oracles are reproducible* job) adds `--no-binary summa` so pip's
+# per-package override lets that one setup.py run. summa's own install_requires
+# is `scipy >= 0.19` alone, and its source imports nothing beyond that and
+# numpy (checked against the sdist, not assumed) -- both already pinned in
+# requirements.lock.txt through scikit-learn and directly, respectively -- so
+# it satisfies the same closure test keybert does below.
+#
+# Anything added to this file must import nothing outside requirements.lock.txt
+# -- that is the whole reason it is a separate file rather than an entry in
+# requirements.txt.
+keybert==0.9.0 \
+    --hash=sha256:afa2f300a72f69d279e4482bc85d8b34493b119876dc0818cb4f260466285b36
+summa==1.2.0 \
+    --hash=sha256:6eb60e4e3d3859e7d951f36a3515573becf096ca404ae806a2f1e8fa7a53a0fc
