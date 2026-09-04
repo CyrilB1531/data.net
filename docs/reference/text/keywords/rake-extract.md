@@ -15,7 +15,8 @@ runs of it, kept as new strings in the result, so nothing is saved by taking a s
 descending score; a tie breaks by phrase, ordinal **descending over UTF-16 code units** —
 rake-nltk's own rule (`rake_nltk/rake.py:241`, `(score, phrase)` sorted with `reverse=True`
 over Python's **code-point** order), not text order. The two agree except when the deciding
-character sits outside the Basic Multilingual Plane. Empty when the document has none — every
+character is supplementary and the one it is compared against sits in `U+E000`–`U+FFFF`, the
+only range a surrogate pair's leading unit sorts below. Empty when the document has none — every
 token was a stop word, or nothing survived `RakeOptions.MinLength`/`MaxLength`.
 
 **Exceptions** — `ArgumentNullException` when `text` is null.
