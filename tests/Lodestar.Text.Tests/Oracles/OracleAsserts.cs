@@ -66,6 +66,23 @@ public sealed record PhoneticCase
     [JsonPropertyName("nysiis")] public string Nysiis { get; init; } = "";
 }
 
+/// <summary>A reference case for the Match Rating codex: a word and its jellyfish codex.</summary>
+public sealed record MatchRatingCodexCase
+{
+    [JsonPropertyName("id")] public int Id { get; init; }
+    [JsonPropertyName("word")] public string Word { get; init; } = "";
+    [JsonPropertyName("codex")] public string Codex { get; init; } = "";
+}
+
+/// <summary>A reference case for the Match Rating comparison: two names and jellyfish's verdict.</summary>
+public sealed record MatchRatingComparisonCase
+{
+    [JsonPropertyName("id")] public int Id { get; init; }
+    [JsonPropertyName("a")] public string A { get; init; } = "";
+    [JsonPropertyName("b")] public string B { get; init; } = "";
+    [JsonPropertyName("comparison")] public bool? Comparison { get; init; }
+}
+
 /// <summary>Aggregating oracle assertions: report every mismatch, not just the first.</summary>
 public static class OracleAsserts
 {
@@ -113,6 +130,35 @@ public static class OracleAsserts
 
         Assert.True(failures.Length == 0, $"{cases.Count} cases checked; mismatches:\n{failures}");
     }
+
+    /// <summary>Asserts a nullable-bool computation matches the oracle exactly for every case,
+    /// treating <c>null</c> as its own value rather than a missing one.</summary>
+    public static void ExactNullableBool<T>(
+        IReadOnlyList<T> cases,
+        Func<T, bool?> expected,
+        Func<T, bool?> actual,
+        Func<T, string> describe)
+    {
+        var failures = new StringBuilder();
+        foreach (T c in cases)
+        {
+            bool? e = expected(c);
+            bool? a = actual(c);
+            if (e != a && failures.Length < ReportCap)
+            {
+                failures.Append(CultureInfo.InvariantCulture, $"  {describe(c)}: expected {Render(e)}, got {Render(a)}\n");
+            }
+        }
+
+        Assert.True(failures.Length == 0, $"{cases.Count} cases checked; mismatches:\n{failures}");
+    }
+
+    private static string Render(bool? value) => value switch
+    {
+        null => "null",
+        true => "true",
+        false => "false",
+    };
 
     /// <summary>Asserts a floating computation matches the oracle within tolerance for every case.</summary>
     public static void Approx<T>(
