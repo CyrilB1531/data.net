@@ -37,9 +37,12 @@ public sealed class Rake
     /// <summary>Extracts the ranked candidates of one document.</summary>
     /// <param name="text">The document.</param>
     /// <returns>
-    /// Candidates in descending score; a tie breaks by phrase, ordinal <b>descending</b> --
-    /// rake-nltk's own rule, sorting <c>(score, phrase)</c> tuples with <c>reverse=True</c>.
-    /// Empty when the document has none.
+    /// Candidates in descending score; a tie breaks by phrase, ordinal <b>descending</b> over
+    /// UTF-16 code units -- rake-nltk's own rule, sorting <c>(score, phrase)</c> tuples with
+    /// <c>reverse=True</c> over Python's code-point order. The two agree everywhere except a
+    /// tie whose deciding character sits outside the Basic Multilingual Plane, where a
+    /// UTF-16 comparison and a code-point comparison can disagree. Empty when the document
+    /// has none.
     /// </returns>
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
     public IReadOnlyList<KeywordMatch> Extract(string text)

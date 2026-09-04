@@ -12,10 +12,11 @@ public IReadOnlyList<KeywordMatch> Extract(string text)
 runs of it, kept as new strings in the result, so nothing is saved by taking a span in.
 
 **Returns** — `IReadOnlyList<KeywordMatch>`, one entry per surviving candidate, sorted by
-descending score; a tie breaks by phrase, ordinal **descending** — rake-nltk's own rule
-(`rake_nltk/rake.py:241`, `(score, phrase)` sorted with `reverse=True`), not text order. Empty
-when the document has none — every token was a stop word, or nothing survived
-`RakeOptions.MinLength`/`MaxLength`.
+descending score; a tie breaks by phrase, ordinal **descending over UTF-16 code units** —
+rake-nltk's own rule (`rake_nltk/rake.py:241`, `(score, phrase)` sorted with `reverse=True`
+over Python's **code-point** order), not text order. The two agree except when the deciding
+character sits outside the Basic Multilingual Plane. Empty when the document has none — every
+token was a stop word, or nothing survived `RakeOptions.MinLength`/`MaxLength`.
 
 **Exceptions** — `ArgumentNullException` when `text` is null.
 

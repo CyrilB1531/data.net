@@ -113,24 +113,28 @@ public sealed class TextRankTests
             .ToDictionary(p => p.stem, p => p.score, StringComparer.Ordinal);
     }
 
-    // long-comment: an exact tie, not an approximate one, is what makes this catch a
-    //     regression to List<T>.Sort's unstable introsort rather than pass either way.
-    //     A single isolated edge is symmetric under swapping its two endpoints -- same
-    //     matrix row, same uniform starting vector -- so alpha and beta rank exactly
-    //     equal, bit for bit: IEEE-754 addition is commutative, and every iteration sums
-    //     the same two products in swapped order for the two nodes. Window=3 lets the
-    //     edge span the one stop word between them without Glue joining the two into one
-    //     phrase, since gluing still requires raw adjacency, which the stop word breaks.
+    // long-comment: 20, not 2 -- an unstable sort is a stable insertion sort below 16
+    //     elements in the current implementation, so a two-item tie cannot catch a
+    //     regression to it (measured: 0/1000 trials swap). "hub" adjacent to 20 leaves
+    //     is a star: every leaf's row of the transition matrix differs from every
+    //     other leaf's only by which column it is, never by the sequence of values
+    //     summed or their order, so all untouched leaf scores come out exactly equal,
+    //     bit for bit -- "hub leaf0" glues away leaf0 and ties only among the rest.
     [Fact]
     public void A_genuine_tie_keeps_the_order_gluing_produced_it_in()
     {
-        IReadOnlyList<KeywordMatch> hits =
-            new TextRank(new TextRankOptions { Window = 3, Words = 2 }).Extract("alpha the beta");
+        const int leafCount = 20;
+        string[] leaves = [.. Enumerable.Range(1, leafCount - 1).Select(i => $"leaf{i}")];
+        string doc = string.Join(" ", Enumerable.Range(0, leafCount).Select(i => $"hub leaf{i}"));
 
-        Assert.Equal(2, hits.Count);
-        Assert.Equal(hits[0].Score, hits[1].Score);
-        Assert.Equal("alpha", hits[0].Phrase, StringComparer.Ordinal);
-        Assert.Equal("beta", hits[1].Phrase, StringComparer.Ordinal);
+        IReadOnlyList<KeywordMatch> hits =
+            new TextRank(new TextRankOptions { Words = leafCount + 1 }).Extract(doc);
+        IReadOnlyList<KeywordMatch> tied = [.. hits.Where(hit => hit.Phrase != "hub leaf0")];
+
+        Assert.Equal(leafCount, hits.Count);
+        Assert.Equal(leafCount - 1, tied.Count);
+        Assert.All(tied, hit => Assert.Equal(tied[0].Score, hit.Score));
+        Assert.Equal(leaves, tied.Select(hit => hit.Phrase), StringComparer.Ordinal);
     }
 
     [Fact]
