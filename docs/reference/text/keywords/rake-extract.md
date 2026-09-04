@@ -12,13 +12,17 @@ public IReadOnlyList<KeywordMatch> Extract(string text)
 runs of it, kept as new strings in the result, so nothing is saved by taking a span in.
 
 **Returns** — `IReadOnlyList<KeywordMatch>`, one entry per surviving candidate, sorted by
-descending score. Empty when the document has none — every token was a stop word, or nothing
-survived `RakeOptions.MinLength`/`MaxLength`.
+descending score; a tie breaks by phrase, ordinal **descending** — rake-nltk's own rule
+(`rake_nltk/rake.py:241`, `(score, phrase)` sorted with `reverse=True`), not text order. Empty
+when the document has none — every token was a stop word, or nothing survived
+`RakeOptions.MinLength`/`MaxLength`.
 
 **Exceptions** — `ArgumentNullException` when `text` is null.
 
 **Example** — two two-word candidates tie for the top score; unlike `TextRank.Extract`, nothing
-here is glued back together, so a candidate is exactly the run RAKE found.
+here is glued back together, so a candidate is exactly the run RAKE found. The tie puts "natural
+numbers" first, ahead of "linear constraints" — reverse-alphabetical, not the order either
+phrase occurs in the source.
 
 ```csharp
 using Lodestar.Text.Keywords;
@@ -28,6 +32,7 @@ var rake = new Rake(new RakeOptions { StopWords = stop });
 
 var hits = rake.Extract("Compatibility of systems of linear constraints over the set of natural numbers.");
 int count = hits.Count;        // => 5
+string top = hits[0].Phrase;      // => natural numbers
 double topScore = hits[0].Score;  // => 4
 ```
 

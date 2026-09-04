@@ -10,7 +10,9 @@ public sealed class Rake
 ```
 
 **Example** — the paper's own worked sentence, with a small stop-word list standing in for
-`StopWords.English`.
+`StopWords.English`. Two candidates tie at the top score, and the tie breaks by phrase
+descending, rake-nltk's own rule — "natural numbers" before "linear constraints", not the order
+either one occurs in the source.
 
 ```csharp
 using Lodestar.Text.Keywords;
@@ -19,7 +21,7 @@ string[] stop = ["of", "the", "over", "a", "and", "are", "for", "all", "to", "in
 var rake = new Rake(new RakeOptions { StopWords = stop });
 
 var hits = rake.Extract("Compatibility of systems of linear constraints over the set of natural numbers.");
-string top = hits[0].Phrase;   // => linear constraints
+string top = hits[0].Phrase;   // => natural numbers
 double score = hits[0].Score;  // => 4
 ```
 

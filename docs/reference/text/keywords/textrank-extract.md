@@ -11,7 +11,8 @@ public IReadOnlyList<KeywordMatch> Extract(string text)
 **Parameters** — `text` is the document.
 
 **Returns** — `IReadOnlyList<KeywordMatch>`, sorted by descending score, glued where their parts
-were adjacent in the source. Empty when the document has no co-occurrence at all — too short, or
+were adjacent in the source; a tie keeps the order gluing produced it in — summa's own sort is
+Python's, which is stable. Empty when the document has no co-occurrence at all — too short, or
 every token a stop word.
 
 **Exceptions** — `ArgumentNullException` when `text` is null. `InvalidOperationException` when the
