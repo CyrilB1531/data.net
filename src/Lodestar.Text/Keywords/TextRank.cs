@@ -49,7 +49,10 @@ public sealed class TextRank
 
     /// <summary>Extracts the ranked keywords of one document.</summary>
     /// <param name="text">The document.</param>
-    /// <returns>Keywords in descending score, glued where their parts were adjacent.</returns>
+    /// <returns>
+    /// Keywords in descending score, glued where their parts were adjacent; a tie keeps the
+    /// order gluing produced it in -- summa's own sort is Python's, which is stable.
+    /// </returns>
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
     /// <exception cref="InvalidOperationException">The ranking did not converge within <c>MaxIterations</c>.</exception>
     public IReadOnlyList<KeywordMatch> Extract(string text)
@@ -147,8 +150,9 @@ public sealed class TextRank
             i = next;
         }
 
-        hits.Sort((a, b) => b.Score.CompareTo(a.Score));
-        return hits;
+        // summa's sort is Python's, which is stable, so a tie keeps Glue's own order --
+        // an unstable in-place sort (introsort) must not stand in for it here.
+        return [.. hits.OrderByDescending(hit => hit.Score)];
     }
 
     // A continuation must be clean, its own spelling unconsumed, and new to this run. A

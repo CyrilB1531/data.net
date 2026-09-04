@@ -22,10 +22,25 @@ public sealed class RakeTests
         Assert.Equal(5, hits.Count);
         Assert.Equal(4.0, hits[0].Score, 12);
         Assert.Equal(4.0, hits[1].Score, 12);
-        Assert.Equal(
-            ["linear constraints", "natural numbers"],
-            hits.Take(2).Select(h => h.Phrase).Order(StringComparer.Ordinal));
+        // rake-nltk's tie order (rake_nltk/rake.py:241): phrase descending, the opposite
+        // of both text order and ascending alphabetical order.
+        Assert.Equal("natural numbers", hits[0].Phrase, StringComparer.Ordinal);
+        Assert.Equal("linear constraints", hits[1].Phrase, StringComparer.Ordinal);
         Assert.All(hits.Skip(2), h => Assert.Equal(1.0, h.Score, 12));
+    }
+
+    [Fact]
+    public void A_three_way_tie_breaks_by_phrase_descending_not_by_text_order()
+    {
+        // Three pairs tied at 4.0, ordered the same way by text order and by ascending
+        // alphabetical order -- only descending-by-phrase gives zeta, gamma, alpha.
+        IReadOnlyList<KeywordMatch> hits = Extractor().Extract("alpha beta and gamma delta and zeta eta");
+
+        Assert.Equal(
+            ["zeta eta", "gamma delta", "alpha beta"],
+            hits.Select(h => h.Phrase),
+            StringComparer.Ordinal);
+        Assert.All(hits, h => Assert.Equal(4.0, h.Score, 12));
     }
 
     [Fact]

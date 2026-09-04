@@ -39,13 +39,11 @@ public sealed class RakeOracleTests
 
         Assert.Equal(expected.Expected.Count, actual.Count);
 
-        // Compared as a multiset: rake-nltk's order among equal scores is its sort's,
-        // and a tie-break neither implementation promises is not a behaviour to match.
+        // Compared positionally, not as a multiset: rake-nltk's tie order is specified
+        // (rake_nltk/rake.py:241) and only the score keeps a tolerance.
         Assert.Equal(
-            expected.Expected.Select(r => (r.Phrase, r.Score))
-                .OrderBy(p => p.Phrase, StringComparer.Ordinal).ThenBy(p => p.Score),
-            actual.Select(m => (m.Phrase, m.Score))
-                .OrderBy(p => p.Phrase, StringComparer.Ordinal).ThenBy(p => p.Score),
+            expected.Expected.Select(r => (r.Phrase, r.Score)),
+            actual.Select(m => (m.Phrase, m.Score)),
             new ApproximatePhraseScoreComparer());
     }
 

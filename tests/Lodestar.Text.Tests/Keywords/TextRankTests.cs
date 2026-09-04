@@ -113,6 +113,26 @@ public sealed class TextRankTests
             .ToDictionary(p => p.stem, p => p.score, StringComparer.Ordinal);
     }
 
+    // long-comment: an exact tie, not an approximate one, is what makes this catch a
+    //     regression to List<T>.Sort's unstable introsort rather than pass either way.
+    //     A single isolated edge is symmetric under swapping its two endpoints -- same
+    //     matrix row, same uniform starting vector -- so alpha and beta rank exactly
+    //     equal, bit for bit: IEEE-754 addition is commutative, and every iteration sums
+    //     the same two products in swapped order for the two nodes. Window=3 lets the
+    //     edge span the one stop word between them without Glue joining the two into one
+    //     phrase, since gluing still requires raw adjacency, which the stop word breaks.
+    [Fact]
+    public void A_genuine_tie_keeps_the_order_gluing_produced_it_in()
+    {
+        IReadOnlyList<KeywordMatch> hits =
+            new TextRank(new TextRankOptions { Window = 3, Words = 2 }).Extract("alpha the beta");
+
+        Assert.Equal(2, hits.Count);
+        Assert.Equal(hits[0].Score, hits[1].Score);
+        Assert.Equal("alpha", hits[0].Phrase, StringComparer.Ordinal);
+        Assert.Equal("beta", hits[1].Phrase, StringComparer.Ordinal);
+    }
+
     [Fact]
     public void Words_overrides_ratio()
     {

@@ -36,7 +36,11 @@ public sealed class Rake
 
     /// <summary>Extracts the ranked candidates of one document.</summary>
     /// <param name="text">The document.</param>
-    /// <returns>Candidates in descending score. Empty when the document has none.</returns>
+    /// <returns>
+    /// Candidates in descending score; a tie breaks by phrase, ordinal <b>descending</b> --
+    /// rake-nltk's own rule, sorting <c>(score, phrase)</c> tuples with <c>reverse=True</c>.
+    /// Empty when the document has none.
+    /// </returns>
     /// <exception cref="ArgumentNullException"><paramref name="text"/> is null.</exception>
     public IReadOnlyList<KeywordMatch> Extract(string text)
     {
@@ -57,7 +61,14 @@ public sealed class Rake
 
         (Dictionary<string, int> degree, Dictionary<string, int> frequency) = CountCooccurrence(candidates);
         List<KeywordMatch> scored = ScoreCandidates(candidates, degree, frequency);
-        scored.Sort((a, b) => b.Score.CompareTo(a.Score));
+
+        // rake-nltk sorts (score, phrase) with reverse=True (rake_nltk/rake.py:241): a tie
+        // breaks by phrase descending, not by whatever order this list happens to hold.
+        scored.Sort((a, b) =>
+        {
+            int byScore = b.Score.CompareTo(a.Score);
+            return byScore != 0 ? byScore : string.CompareOrdinal(b.Phrase, a.Phrase);
+        });
         return scored;
     }
 

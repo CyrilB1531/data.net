@@ -205,9 +205,10 @@ public sealed record TextRankPhrase
 
 /// <summary>
 /// Equates a (phrase, score) pair the way an oracle replay does: the phrase ordinally,
-/// the score within the suite's 1e-9 floating tolerance. Shared by <c>RakeOracleTests</c>
-/// and <c>TextRankOracleTests</c>, whose reference libraries both leave phrases tied on
-/// score in an order neither promises to reproduce.
+/// the score within the suite's 1e-9 floating tolerance. Shared by <c>RakeOracleTests</c>,
+/// which compares positionally now that rake-nltk's tie order is known and matched, and
+/// <c>TextRankOracleTests</c>, whose two eigensolvers can still disagree on tie order
+/// within a run of scores tied inside the same tolerance.
 /// </summary>
 public sealed class ApproximatePhraseScoreComparer : IEqualityComparer<(string Phrase, double Score)>
 {
