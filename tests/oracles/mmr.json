@@ -7,7 +7,7 @@
    "keybert._mmr.mmr(doc_embedding, word_embeddings, words, top_n, diversity)"
   ],
   "note": "diversity = 1 - lambda; keybert returns its picks sorted by relevance, so only the set is compared",
-  "count": 8
+  "count": 13
  },
  "cases": [
   {
@@ -327,6 +327,146 @@
     0,
     1,
     4
+   ]
+  },
+  {
+   "id": 8,
+   "name": "opposing_pair:lambda=0.0",
+   "query": [
+    1.0,
+    0.0
+   ],
+   "candidates": [
+    [
+     1.0,
+     0.0
+    ],
+    [
+     -1.0,
+     0.0
+    ],
+    [
+     0.0,
+     1.0
+    ]
+   ],
+   "count": 2,
+   "lambda": 0.0,
+   "selected": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": 9,
+   "name": "opposing_pair:lambda=0.25",
+   "query": [
+    1.0,
+    0.0
+   ],
+   "candidates": [
+    [
+     1.0,
+     0.0
+    ],
+    [
+     -1.0,
+     0.0
+    ],
+    [
+     0.0,
+     1.0
+    ]
+   ],
+   "count": 2,
+   "lambda": 0.25,
+   "selected": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": 10,
+   "name": "opposing_pair:lambda=0.5",
+   "query": [
+    1.0,
+    0.0
+   ],
+   "candidates": [
+    [
+     1.0,
+     0.0
+    ],
+    [
+     -1.0,
+     0.0
+    ],
+    [
+     0.0,
+     1.0
+    ]
+   ],
+   "count": 2,
+   "lambda": 0.5,
+   "selected": [
+    0,
+    1
+   ]
+  },
+  {
+   "id": 11,
+   "name": "opposing_pair:lambda=0.75",
+   "query": [
+    1.0,
+    0.0
+   ],
+   "candidates": [
+    [
+     1.0,
+     0.0
+    ],
+    [
+     -1.0,
+     0.0
+    ],
+    [
+     0.0,
+     1.0
+    ]
+   ],
+   "count": 2,
+   "lambda": 0.75,
+   "selected": [
+    0,
+    2
+   ]
+  },
+  {
+   "id": 12,
+   "name": "opposing_pair:lambda=1.0",
+   "query": [
+    1.0,
+    0.0
+   ],
+   "candidates": [
+    [
+     1.0,
+     0.0
+    ],
+    [
+     -1.0,
+     0.0
+    ],
+    [
+     0.0,
+     1.0
+    ]
+   ],
+   "count": 2,
+   "lambda": 1.0,
+   "selected": [
+    0,
+    2
    ]
   }
  ]

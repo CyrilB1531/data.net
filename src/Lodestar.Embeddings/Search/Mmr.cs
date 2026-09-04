@@ -93,13 +93,19 @@ public static class Mmr
     }
 
     // The first pick has nothing to be redundant with yet, so it is chosen by relevance
-    // alone rather than folded into the loop below against a redundancy array seeded to zero.
+    // alone rather than folded into the loop below against a not-yet-seeded redundancy array.
     private static int[] SelectIndices(
         IReadOnlyList<float[]> candidates, float[] norms, double[] toQuery, int n, double lambda)
     {
         var chosen = new int[n];
         var taken = new bool[candidates.Count];
+        // Seeded to negative infinity, not zero: keybert/_mmr.py:48 takes the raw max
+        // similarity with no floor, so a pointing-away candidate must score negative here.
         var redundancy = new double[candidates.Count];
+        for (int i = 0; i < redundancy.Length; i++)
+        {
+            redundancy[i] = double.NegativeInfinity;
+        }
 
         int first = PickMostRelevant(toQuery);
         chosen[0] = first;

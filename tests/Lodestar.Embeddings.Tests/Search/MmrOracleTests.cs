@@ -49,8 +49,8 @@ public sealed class MmrOracleTests
     public void The_corpus_is_the_one_that_was_committed()
     {
         JsonElement metadata = Document.RootElement.GetProperty("metadata");
-        Assert.Equal(8, Cases.Count);
-        Assert.Equal(8, metadata.GetProperty("count").GetInt32());
+        Assert.Equal(13, Cases.Count);
+        Assert.Equal(13, metadata.GetProperty("count").GetInt32());
         Assert.Equal("keybert", metadata.GetProperty("library").GetString());
         Assert.Equal("0.9.0", metadata.GetProperty("library_version").GetString());
     }

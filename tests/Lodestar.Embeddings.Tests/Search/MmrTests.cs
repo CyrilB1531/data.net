@@ -148,4 +148,15 @@ public sealed class MmrTests
     {
         Assert.Throws<ArgumentNullException>(() => Mmr.Select(Query, null!, count: 1));
     }
+
+    [Fact]
+    public void A_negative_redundancy_is_not_floored_at_zero()
+    {
+        // keybert/_mmr.py:48 takes the raw max, unfloored: candidate 1 (cosine -1 to 0)
+        // beats orthogonal candidate 2 (cosine 0) here; a floored version clamps and picks 2.
+        float[] query = [1f, 0f];
+        float[][] candidates = [[1f, 0f], [-1f, 0f], [0f, 1f]];
+
+        Assert.Equal([0, 1], Mmr.Select(query, candidates, count: 2, lambda: 0.5));
+    }
 }
