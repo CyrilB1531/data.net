@@ -50,7 +50,8 @@ public sealed class RakeOracleTests
     [Fact]
     public void The_corpus_is_the_one_that_was_committed()
     {
-        Assert.Equal(Corpus.Metadata.Count, Corpus.Cases.Count);
-        Assert.NotEmpty(Corpus.Cases);
+        Assert.Equal(30, Corpus.Cases.Count);
+        Assert.Equal("rake-nltk", Corpus.Metadata.Library);
+        Assert.Equal("1.0.6", Corpus.Metadata.LibraryVersion);
     }
 }

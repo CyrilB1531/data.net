@@ -27,12 +27,16 @@ public sealed class TextRank
 
     /// <summary>Builds an extractor.</summary>
     /// <param name="options">Null takes every default.</param>
-    /// <exception cref="ArgumentOutOfRangeException"><c>Window</c> is below 1, <c>Damping</c> is outside <c>(0, 1)</c>, <c>Ratio</c> is outside <c>(0, 1]</c>, or <c>MaxIterations</c> is below 1.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><c>Window</c> is below 1, <c>Damping</c> is outside <c>(0, 1)</c>, <c>Ratio</c> is outside <c>(0, 1]</c>, <c>MaxIterations</c> is below 1, or <c>Words</c> is set and negative.</exception>
     public TextRank(TextRankOptions? options = null)
     {
         _options = options ?? new TextRankOptions();
         Guard.NotLessThan(_options.Window, 1);
         Guard.NotLessThan(_options.MaxIterations, 1);
+        if (_options.Words is { } words)
+        {
+            Guard.NotLessThan(words, 0);
+        }
         if (_options.Damping <= 0 || _options.Damping >= 1)
         {
             throw new ArgumentOutOfRangeException(nameof(options), _options.Damping, "Damping must lie in (0, 1).");
@@ -112,9 +116,8 @@ public sealed class TextRank
 
     private Dictionary<string, double> TopStems(IReadOnlyList<string> nodes, double[] ranked)
     {
-        int take = _options.Words ?? (int)(nodes.Count * _options.Ratio);
-        // netstandard2.0 has no Math.Clamp; nodes.Count bounds take from both sides.
-        take = take < 0 ? 0 : Math.Min(take, nodes.Count);
+        // Words is guarded non-negative at construction; only the upper bound is left to enforce here.
+        int take = Math.Min(_options.Words ?? (int)(nodes.Count * _options.Ratio), nodes.Count);
 
         return nodes
             .Select((stem, i) => (stem, score: ranked[i]))

@@ -188,4 +188,21 @@ public sealed class TextRankTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new TextRank(new TextRankOptions { Ratio = ratio }));
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Max_iterations_below_one_is_refused(int maxIterations)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new TextRank(new TextRankOptions { MaxIterations = maxIterations }));
+    }
+
+    // Window, Damping and Ratio all throw on an invalid value; Words used to clamp a
+    // negative count to zero in silence, the one guard here that disagreed with its siblings.
+    [Fact]
+    public void A_negative_words_is_refused_like_its_siblings()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new TextRank(new TextRankOptions { Words = -1 }));
+    }
 }

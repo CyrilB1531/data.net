@@ -16,7 +16,7 @@ bound — summa solves the eigenproblem outright and has no tolerance to expose.
 `MaxIterations` (default `1_000`) is how many power-iteration steps `Extract` runs before giving up
 rather than return a half-ranked vector. `Ratio` (default `0.2`) is what proportion of ranked words
 to keep, ignored when `Words` is set. `Words` (default `null`) overrides `Ratio` with an exact
-count. `TokenPattern` (default `\b\w+\b`) is what counts as a word.
+count, non-negative when set. `TokenPattern` (default `\b\w+\b`) is what counts as a word.
 
 **Example** — `Words` overriding `Ratio` on the same document.
 

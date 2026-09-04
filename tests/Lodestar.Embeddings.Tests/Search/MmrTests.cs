@@ -159,4 +159,15 @@ public sealed class MmrTests
 
         Assert.Equal([0, 1], Mmr.Select(query, candidates, count: 2, lambda: 0.5));
     }
+
+    [Fact]
+    public void A_duplicate_of_the_first_pick_waits_behind_a_less_redundant_candidate()
+    {
+        // Candidate 1 duplicates candidate 0: once 0 is chosen its score (-0.1) loses to
+        // candidate 2's (0.0), less relevant but not yet redundant with anything chosen.
+        float[] query = [1f, 0f, 0f];
+        float[][] candidates = [[0.8f, 0.6f, 0f], [0.8f, 0.6f, 0f], [0f, 0f, 1f]];
+
+        Assert.Equal([0, 2, 1], Mmr.Select(query, candidates, count: 3, lambda: 0.5));
+    }
 }

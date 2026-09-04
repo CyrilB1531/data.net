@@ -75,6 +75,30 @@ public sealed class RakeTests
     }
 
     [Fact]
+    public void MaxLength_is_inclusive_and_keeps_a_candidate_at_the_bound()
+    {
+        // A candidate exactly at MaxLength must survive; a "<" in place of "<=" would drop it.
+        IReadOnlyList<KeywordMatch> hits =
+            Extractor(new RakeOptions { MaxLength = 2 }).Extract(Abstract);
+
+        Assert.Contains(hits, h => h.Phrase == "natural numbers");
+        Assert.Contains(hits, h => h.Phrase == "linear constraints");
+    }
+
+    [Fact]
+    public void TokenPattern_narrows_what_counts_as_a_word()
+    {
+        // The excluded digit still sits between the words, so it splits the run into two
+        // candidates; a Rake that ignored TokenPattern would report one hit here, not two.
+        IReadOnlyList<KeywordMatch> hits = Extractor(new RakeOptions { TokenPattern = @"\b[a-zA-Z]+\b" })
+            .Extract("linear 123 constraints");
+
+        Assert.Equal(2, hits.Count);
+        Assert.Contains(hits, h => h.Phrase == "linear");
+        Assert.Contains(hits, h => h.Phrase == "constraints");
+    }
+
+    [Fact]
     public void A_run_the_length_filter_dropped_contributes_to_no_table()
     {
         // With MinLength = 2 the lone "linear" is gone before the tables build, so the
