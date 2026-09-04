@@ -655,22 +655,16 @@ def generate_phonetics() -> dict:
     }
 
 
-# The issue's own fixed points, plus space handling (accepted, and collapses like
-# any other repeated character) and a few Unicode letters -- each kept short
-# enough (<=6 UTF-8 bytes) that jellyfish's own codex does not corrupt itself on
-# the multi-byte truncation bug decision 0079 records, so every entry here is a
-# clean jellyfish/Lodestar parity case rather than a divergence one.
+# Every Unicode entry is kept under 7 UTF-8 bytes so jellyfish's own codex does not
+# corrupt itself on the truncation bug decision 0080 records: parity cases, not divergences.
 MRA_WORDS = [
     "Smith", "Smyth", "Byrne", "Boern", "Catherine", "Kathryn", "aeiou",
     "Mississippi", "Bhattacharya", "Schwarzenegger", "Constantinople", "",
     "Zzzz zzzz", "  ", " ", "élan", "Ünal", "日本",
 ]
 
-# Pairs named in the issue, exercising every answer the comparison gives: True,
-# False (by omission -- the random pairs below supply it), and None both from a
-# length gap and from an empty operand. "abcdefghi", not the issue's own
-# "abcdefgh": that literal already sits at S1192's threshold in the fuzzy-matching
-# corpus below, and this pair only needs *a* five-character gap, not that exact word.
+# "abcdefghi", not the issue's "abcdefgh": that literal already sits at S1192's
+# threshold below, and the pair only needs *a* five-character gap, not that word.
 MRA_PAIRS = [
     ("Smith", "Smyth"), ("Byrne", "Boern"), ("Catherine", "Kathryn"),
     ("Smith", "Smith"), ("", ""), ("Sm", "Sm"), ("Tim", "Timothy"),
@@ -704,9 +698,8 @@ def generate_match_rating_codex() -> dict:
 
 
 def generate_match_rating_comparison() -> dict:
-    # phonetic_words alone, not match_rating_words: its words are ASCII, so a
-    # codex's character length and UTF-8 byte length always agree -- decision
-    # 0079's divergence never enters a pair built from this list.
+    # phonetic_words alone, not match_rating_words: its words are ASCII, so character
+    # and UTF-8 byte length always agree and decision 0080's divergence cannot enter.
     words = list(phonetic_words(SeededRandom(SEED)))
     pairs = list(MRA_PAIRS)
     # Consecutive words from that list, deterministically -- covers every bucket
