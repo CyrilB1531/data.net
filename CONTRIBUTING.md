@@ -483,6 +483,8 @@ which skips dependency resolution entirely — only the *Oracles are
 reproducible* job installs it, immediately after the lock. Anything else added
 to that file must import nothing outside `requirements.lock.txt`, or the same
 problem reappears one entry later.
+[Decision 0078](docs/decisions/0078-keybert-is-declared-nodeps-not-compiled-into-the-lock.md)
+records that boundary and the options it beat.
 
 Where behavior deliberately diverges from the Python reference, record it in
 [`docs/decisions/`](docs/decisions/README.md) rather than in a code comment alone — see

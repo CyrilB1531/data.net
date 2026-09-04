@@ -24,6 +24,7 @@
         "docs/guides/quickstart.md",
         "docs/guides/vectorization.md",
         "docs/guides/dictionary-lookup.md",
+        "docs/guides/keyword-extraction.md",
         "docs/reference/text/*.md",
         "docs/reference/text/*/*.md"
       ],
@@ -35,7 +36,8 @@
         "Lodestar.Text.Stemming": "docs/reference/text/stemming",
         "Lodestar.Text.Phonetics": "docs/reference/text/phonetics",
         "Lodestar.Text.Similarity": "docs/reference/text/similarity",
-        "Lodestar.Text.Indexing": "docs/reference/text/indexing"
+        "Lodestar.Text.Indexing": "docs/reference/text/indexing",
+        "Lodestar.Text.Keywords": "docs/reference/text/keywords"
       },
       "exceptionsUnchecked": []
     },

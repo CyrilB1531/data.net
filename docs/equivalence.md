@@ -138,6 +138,12 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | `faiss.write_index(idx, path)` / `faiss.read_index(path)` | faiss | [`index.Save(path)`](reference/embeddings/search/embeddingindex-save.md) / [`EmbeddingIndex.Load(path)`](reference/embeddings/search/embeddingindex-load.md) | Comparable in purpose, not in structure: Lodestar's index is exhaustive (`IndexFlatIP`-shaped), so there is no graph or quantizer to serialize. An approximate index is a separate decision, not made. |
 | — (a parallel `list[str]` the caller keeps) | — | `index.Add(vector, id)` / `index.GetId(i)` | Deliberate addition: without ids in the file, a reloaded index is a wall of anonymous integers. |
 
+## Lodestar.Embeddings — vector selection
+
+| Python | Library | C# | Differences |
+| --- | --- | --- | --- |
+| `keybert._mmr.mmr(doc_embedding, word_embeddings, words, top_n, diversity)` | keybert | [`Mmr.Select(query, candidates, count, lambda)`](reference/embeddings/search/mmr-select.md) | keybert parameterises `diversity = 1 − λ` and rounds its scores to four decimals. It returns its picks sorted by **relevance**, not by selection order, so only the selected **set** is comparable. |
+
 ## Lodestar.Fuzzy — applied fuzzy matching
 
 | Python | Library | C# | Differences |
@@ -158,6 +164,13 @@ No canonical Python library exposes a BK-tree; there is nothing to map against.
 | Python | Library | C# | Differences |
 | --- | --- | --- | --- |
 | — (no Python counterpart) | — | [`BkTree`](reference/text/indexing/bktree.md) | A Burkhard-Keller tree: a metric index over strings, built once and queried many times for "everything within edit distance `k`". Correct only over a distance satisfying the triangle inequality — the four factory methods bind the ones that qualify. Measured against a length-filtered linear scan in [`docs/guides/dictionary-lookup.md`](guides/dictionary-lookup.md): worthwhile at `k = 1`, not past it. |
+
+## Lodestar.Text — keyword extraction
+
+| Python | Library | C# | Differences |
+| --- | --- | --- | --- |
+| `rake_nltk.Rake(...).get_ranked_phrases_with_scores()` | rake-nltk | [`Rake.Extract(text)`](reference/text/keywords/rake-extract.md) | Stop words and the token pattern are **supplied**, never downloaded — `RakeOptions` has no default corpus. `IncludeRepeatedPhrases = false` removes the duplicate **before** the degree and frequency tables, as rake-nltk does, so it changes the scores and not only the output. |
+| `summa.keywords.keywords(text, words=n, scores=True)` | summa | [`TextRank.Extract(text)`](reference/text/keywords/textrank-extract.md) | Numerical parity at `1e-12`. `Rank` returns the **dominant** left eigenvector; summa reads `scipy.linalg.eig`'s first column without checking it is dominant, and for a near-bipartite co-occurrence graph it is not. summa also raises `IndexError` when `words` exceeds the graph's node count, where the C# returns what there is. |
 
 ## Lodestar.Metrics — classification metrics
 
