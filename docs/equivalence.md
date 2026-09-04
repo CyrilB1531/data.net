@@ -47,7 +47,7 @@ implemented, never retrofitted at the end (§6.1 of the brief).
 | `metaphone(s)` | jellyfish | [`Metaphone.Encode(s)`](reference/text/phonetics/metaphone-encode.md) | Parity on real words; jellyfish non-word quirks not reproduced ([decision 0007](decisions/0007-metaphone-scope.md)). |
 | `nysiis(s)` | jellyfish | [`Nysiis.Encode(s)`](reference/text/phonetics/nysiis-encode.md) | Non-truncated variant. Exact parity (402 words). |
 | `match_rating_codex(s)` | jellyfish | [`MatchRatingApproach.Codex(s)`](reference/text/phonetics/matchratingapproach-codex.md) | Unlike the three above, refuses (`ArgumentException`) a character that is neither a letter nor a space, instead of ignoring it — jellyfish does the same (`ValueError`). Exact parity (420 words). |
-| `match_rating_comparison(a, b)` | jellyfish | [`MatchRatingApproach.Compare(a, b)`](reference/text/phonetics/matchratingapproach-compare.md) | `bool?`: `null` where jellyfish returns `None` (codices too far apart in length to rate). Length is measured in **characters**, not jellyfish's UTF-8 bytes — [decision 0079](decisions/0079-match-rating-approach-comparison-uses-character-length-not-byte-length.md) has the two cases this changes. Exact parity within that range (212 pairs). |
+| `match_rating_comparison(a, b)` | jellyfish | [`MatchRatingApproach.Compare(a, b)`](reference/text/phonetics/matchratingapproach-compare.md) | `bool?`: `null` where jellyfish returns `None` (codices too far apart in length to rate). Length is measured in **characters**, not jellyfish's UTF-8 bytes — [decision 0080](decisions/0080-match-rating-approach-comparison-uses-character-length-not-byte-length.md) has the two cases this changes. Exact parity within that range (212 pairs). |
 
 ## Lodestar.Text — sparse vectorization
 

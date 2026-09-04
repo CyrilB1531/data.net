@@ -31,7 +31,7 @@ sounds like, and refusing says so rather than guessing.
 
 Reference behaviour is `jellyfish.match_rating_codex` and `jellyfish.match_rating_comparison`,
 matched over 420 words and 212 pairs — except where codex length is measured in UTF-8 bytes rather
-than characters, which [decision 0079](../../../decisions/0079-match-rating-approach-comparison-uses-character-length-not-byte-length.md)
+than characters, which [decision 0080](../../../decisions/0080-match-rating-approach-comparison-uses-character-length-not-byte-length.md)
 does not reproduce.
 
 **Applies to** — net10.0, netstandard2.0.

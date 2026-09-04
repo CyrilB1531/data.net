@@ -67,7 +67,7 @@ public sealed class MatchRatingApproachOracleTests
         Assert.Equal(expected, MatchRatingApproach.Compare(a, b));
     }
 
-    // Decision 0079: jellyfish measures a codex's length in bytes, so these two are pinned
+    // Decision 0080: jellyfish measures a codex's length in bytes, so these two are pinned
     // directly rather than replayed from the jellyfish-parity oracle.
     [Fact]
     public void Codex_does_not_grow_a_short_multibyte_word_under_truncation()

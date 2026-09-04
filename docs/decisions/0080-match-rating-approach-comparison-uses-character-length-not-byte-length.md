@@ -1,4 +1,4 @@
-# 0079 — MatchRatingApproach.Compare measures codex length in characters, not bytes
+# 0080 — MatchRatingApproach.Compare measures codex length in characters, not bytes
 
 **Status:** accepted · **Date:** 2026-09-04
 
