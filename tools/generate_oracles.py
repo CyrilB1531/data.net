@@ -655,6 +655,82 @@ def generate_phonetics() -> dict:
     }
 
 
+# The issue's own fixed points, plus space handling (accepted, and collapses like
+# any other repeated character) and a few Unicode letters -- each kept short
+# enough (<=6 UTF-8 bytes) that jellyfish's own codex does not corrupt itself on
+# the multi-byte truncation bug decision 0079 records, so every entry here is a
+# clean jellyfish/Lodestar parity case rather than a divergence one.
+MRA_WORDS = [
+    "Smith", "Smyth", "Byrne", "Boern", "Catherine", "Kathryn", "aeiou",
+    "Mississippi", "Bhattacharya", "Schwarzenegger", "Constantinople", "",
+    "Zzzz zzzz", "  ", " ", "élan", "Ünal", "日本",
+]
+
+# Pairs named in the issue, exercising every answer the comparison gives: True,
+# False (by omission -- the random pairs below supply it), and None both from a
+# length gap and from an empty operand. "abcdefghi", not the issue's own
+# "abcdefgh": that literal already sits at S1192's threshold in the fuzzy-matching
+# corpus below, and this pair only needs *a* five-character gap, not that exact word.
+MRA_PAIRS = [
+    ("Smith", "Smyth"), ("Byrne", "Boern"), ("Catherine", "Kathryn"),
+    ("Smith", "Smith"), ("", ""), ("Sm", "Sm"), ("Tim", "Timothy"),
+    ("abc", "abcdefghi"), ("Smith", "Smithsonian"), ("ab", "abcde"),
+    ("Smith", ""),
+]
+
+
+def match_rating_words(rng: SeededRandom):
+    yield from MRA_WORDS
+    yield from phonetic_words(rng)
+
+
+def generate_match_rating_codex() -> dict:
+    rng = SeededRandom(SEED)
+    cases = []
+    for idx, word in enumerate(match_rating_words(rng)):
+        cases.append({"id": idx, "word": word, "codex": jellyfish.match_rating_codex(word)})
+    return {
+        "metadata": {
+            "algorithm": "MatchRatingApproach.Codex",
+            "library": "jellyfish",
+            "library_version": version("jellyfish"),
+            "reference_calls": ["jellyfish.match_rating_codex"],
+            "corpus": "the issue's fixed points, plus phonetic_words' real names and random words",
+            "seed": SEED,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
+def generate_match_rating_comparison() -> dict:
+    # phonetic_words alone, not match_rating_words: its words are ASCII, so a
+    # codex's character length and UTF-8 byte length always agree -- decision
+    # 0079's divergence never enters a pair built from this list.
+    words = list(phonetic_words(SeededRandom(SEED)))
+    pairs = list(MRA_PAIRS)
+    # Consecutive words from that list, deterministically -- covers every bucket
+    # of the combined-codex-length -> minimum-rating table.
+    for i in range(0, len(words) - 1, 2):
+        pairs.append((words[i], words[i + 1]))
+
+    cases = []
+    for idx, (a, b) in enumerate(pairs):
+        cases.append({"id": idx, "a": a, "b": b, "comparison": jellyfish.match_rating_comparison(a, b)})
+    return {
+        "metadata": {
+            "algorithm": "MatchRatingApproach.Compare",
+            "library": "jellyfish",
+            "library_version": version("jellyfish"),
+            "reference_calls": ["jellyfish.match_rating_comparison"],
+            "corpus": "the issue's own worked pairs, plus consecutive pairs from the codex corpus",
+            "seed": SEED,
+            "count": len(cases),
+        },
+        "cases": cases,
+    }
+
+
 CORPUS_A = [
     CAT_SENTENCE,
     "a cat and a dog",
@@ -7516,6 +7592,8 @@ def main() -> None:
         "set_similarity.json": generate_set_similarity,
         "phonetics.json": generate_phonetics,
         "metaphone.json": generate_metaphone,
+        "match_rating_codex.json": generate_match_rating_codex,
+        "match_rating_comparison.json": generate_match_rating_comparison,
         "countvectorizer.json": generate_countvectorizer,
         "tfidfvectorizer.json": generate_tfidfvectorizer,
         "hashingvectorizer.json": generate_hashingvectorizer,

@@ -1,0 +1,1287 @@
+{
+ "metadata": {
+  "algorithm": "MatchRatingApproach.Compare",
+  "library": "jellyfish",
+  "library_version": "1.2.1",
+  "reference_calls": [
+   "jellyfish.match_rating_comparison"
+  ],
+  "corpus": "the issue's own worked pairs, plus consecutive pairs from the codex corpus",
+  "seed": 20260801,
+  "count": 212
+ },
+ "cases": [
+  {
+   "id": 0,
+   "a": "Smith",
+   "b": "Smyth",
+   "comparison": true
+  },
+  {
+   "id": 1,
+   "a": "Byrne",
+   "b": "Boern",
+   "comparison": true
+  },
+  {
+   "id": 2,
+   "a": "Catherine",
+   "b": "Kathryn",
+   "comparison": true
+  },
+  {
+   "id": 3,
+   "a": "Smith",
+   "b": "Smith",
+   "comparison": true
+  },
+  {
+   "id": 4,
+   "a": "",
+   "b": "",
+   "comparison": true
+  },
+  {
+   "id": 5,
+   "a": "Sm",
+   "b": "Sm",
+   "comparison": true
+  },
+  {
+   "id": 6,
+   "a": "Tim",
+   "b": "Timothy",
+   "comparison": null
+  },
+  {
+   "id": 7,
+   "a": "abc",
+   "b": "abcdefghi",
+   "comparison": null
+  },
+  {
+   "id": 8,
+   "a": "Smith",
+   "b": "Smithsonian",
+   "comparison": true
+  },
+  {
+   "id": 9,
+   "a": "ab",
+   "b": "abcde",
+   "comparison": true
+  },
+  {
+   "id": 10,
+   "a": "Smith",
+   "b": "",
+   "comparison": null
+  },
+  {
+   "id": 11,
+   "a": "Robert",
+   "b": "Rupert",
+   "comparison": true
+  },
+  {
+   "id": 12,
+   "a": "Rubin",
+   "b": "Ashcraft",
+   "comparison": null
+  },
+  {
+   "id": 13,
+   "a": "Ashcroft",
+   "b": "Tymczak",
+   "comparison": false
+  },
+  {
+   "id": 14,
+   "a": "Pfister",
+   "b": "Honeyman",
+   "comparison": false
+  },
+  {
+   "id": 15,
+   "a": "Washington",
+   "b": "Lee",
+   "comparison": null
+  },
+  {
+   "id": 16,
+   "a": "Gutierrez",
+   "b": "Jackson",
+   "comparison": false
+  },
+  {
+   "id": 17,
+   "a": "VanDeusen",
+   "b": "Deusen",
+   "comparison": true
+  },
+  {
+   "id": 18,
+   "a": "Knuth",
+   "b": "Euler",
+   "comparison": false
+  },
+  {
+   "id": 19,
+   "a": "Gauss",
+   "b": "Kant",
+   "comparison": false
+  },
+  {
+   "id": 20,
+   "a": "Lloyd",
+   "b": "Bob",
+   "comparison": false
+  },
+  {
+   "id": 21,
+   "a": "a",
+   "b": "MacDonald",
+   "comparison": null
+  },
+  {
+   "id": 22,
+   "a": "Christina",
+   "b": "Catherine",
+   "comparison": false
+  },
+  {
+   "id": 23,
+   "a": "Smith",
+   "b": "Smyth",
+   "comparison": true
+  },
+  {
+   "id": 24,
+   "a": "Schmidt",
+   "b": "Jefferson",
+   "comparison": false
+  },
+  {
+   "id": 25,
+   "a": "Adams",
+   "b": "Wojcik",
+   "comparison": false
+  },
+  {
+   "id": 26,
+   "a": "Nguyen",
+   "b": "Johnson",
+   "comparison": false
+  },
+  {
+   "id": 27,
+   "a": "Williams",
+   "b": "Brown",
+   "comparison": false
+  },
+  {
+   "id": 28,
+   "a": "Garcia",
+   "b": "Martinez",
+   "comparison": false
+  },
+  {
+   "id": 29,
+   "a": "Anderson",
+   "b": "Thompson",
+   "comparison": true
+  },
+  {
+   "id": 30,
+   "a": "Phillip",
+   "b": "Xavier",
+   "comparison": false
+  },
+  {
+   "id": 31,
+   "a": "Yvonne",
+   "b": "Zachary",
+   "comparison": false
+  },
+  {
+   "id": 32,
+   "a": "Quinn",
+   "b": "Wright",
+   "comparison": null
+  },
+  {
+   "id": 33,
+   "a": "Knight",
+   "b": "Gnome",
+   "comparison": false
+  },
+  {
+   "id": 34,
+   "a": "Psalm",
+   "b": "Thomas",
+   "comparison": false
+  },
+  {
+   "id": 35,
+   "a": "Theodore",
+   "b": "Czar",
+   "comparison": false
+  },
+  {
+   "id": 36,
+   "a": "Pizza",
+   "b": "Aegean",
+   "comparison": false
+  },
+  {
+   "id": 37,
+   "a": "Wvirvedwhi",
+   "b": "Sw",
+   "comparison": null
+  },
+  {
+   "id": 38,
+   "a": "Wofztxrwjr",
+   "b": "eckhy",
+   "comparison": false
+  },
+  {
+   "id": 39,
+   "a": "xvbnv",
+   "b": "Bfcpialp",
+   "comparison": false
+  },
+  {
+   "id": 40,
+   "a": "Dmtpbf",
+   "b": "Rysct",
+   "comparison": false
+  },
+  {
+   "id": 41,
+   "a": "igw",
+   "b": "laykfjyq",
+   "comparison": null
+  },
+  {
+   "id": 42,
+   "a": "Nohplufwqe",
+   "b": "eufgneh",
+   "comparison": false
+  },
+  {
+   "id": 43,
+   "a": "mai",
+   "b": "margeljg",
+   "comparison": null
+  },
+  {
+   "id": 44,
+   "a": "Sfookq",
+   "b": "pms",
+   "comparison": false
+  },
+  {
+   "id": 45,
+   "a": "lnvppqfv",
+   "b": "hv",
+   "comparison": null
+  },
+  {
+   "id": 46,
+   "a": "jil",
+   "b": "Pqymsruh",
+   "comparison": null
+  },
+  {
+   "id": 47,
+   "a": "vongtph",
+   "b": "Tjrizselyme",
+   "comparison": false
+  },
+  {
+   "id": 48,
+   "a": "Ocso",
+   "b": "Iy",
+   "comparison": false
+  },
+  {
+   "id": 49,
+   "a": "nkwpkqosftt",
+   "b": "Sfgobknjiaj",
+   "comparison": false
+  },
+  {
+   "id": 50,
+   "a": "Jgdlorez",
+   "b": "Itbbwb",
+   "comparison": false
+  },
+  {
+   "id": 51,
+   "a": "Cqdlljwm",
+   "b": "Ruxistgq",
+   "comparison": false
+  },
+  {
+   "id": 52,
+   "a": "Atdaulkzuri",
+   "b": "Unz",
+   "comparison": null
+  },
+  {
+   "id": 53,
+   "a": "jiv",
+   "b": "crnkxv",
+   "comparison": null
+  },
+  {
+   "id": 54,
+   "a": "xg",
+   "b": "mkgdjokkf",
+   "comparison": null
+  },
+  {
+   "id": 55,
+   "a": "ohlwhyq",
+   "b": "Sysdouwaw",
+   "comparison": false
+  },
+  {
+   "id": 56,
+   "a": "Jnfghybzvsv",
+   "b": "kxarjkcpa",
+   "comparison": false
+  },
+  {
+   "id": 57,
+   "a": "qn",
+   "b": "Wyzwt",
+   "comparison": null
+  },
+  {
+   "id": 58,
+   "a": "Tdlosxsy",
+   "b": "Ksxnav",
+   "comparison": false
+  },
+  {
+   "id": 59,
+   "a": "Jgsnm",
+   "b": "Gbnfyafonjb",
+   "comparison": false
+  },
+  {
+   "id": 60,
+   "a": "klxyjbbzhrm",
+   "b": "Zpqdghkeyf",
+   "comparison": false
+  },
+  {
+   "id": 61,
+   "a": "Xruyh",
+   "b": "vwgalatsfvr",
+   "comparison": false
+  },
+  {
+   "id": 62,
+   "a": "rocxkange",
+   "b": "Ul",
+   "comparison": null
+  },
+  {
+   "id": 63,
+   "a": "Hduqnylngi",
+   "b": "Nduj",
+   "comparison": null
+  },
+  {
+   "id": 64,
+   "a": "fytvkfrecqc",
+   "b": "Sl",
+   "comparison": null
+  },
+  {
+   "id": 65,
+   "a": "Wdbliugoljg",
+   "b": "Andsyvnwt",
+   "comparison": false
+  },
+  {
+   "id": 66,
+   "a": "Zpt",
+   "b": "Uvkmemopq",
+   "comparison": null
+  },
+  {
+   "id": 67,
+   "a": "Wsrhemiyb",
+   "b": "ikzywazurbm",
+   "comparison": false
+  },
+  {
+   "id": 68,
+   "a": "Ijqupddcmmp",
+   "b": "Nhlqaprl",
+   "comparison": false
+  },
+  {
+   "id": 69,
+   "a": "nfntoykmbk",
+   "b": "nlyois",
+   "comparison": false
+  },
+  {
+   "id": 70,
+   "a": "Pqxiy",
+   "b": "Ajhxmitkow",
+   "comparison": false
+  },
+  {
+   "id": 71,
+   "a": "Engqanhfez",
+   "b": "mqjar",
+   "comparison": false
+  },
+  {
+   "id": 72,
+   "a": "Dakv",
+   "b": "Avzcz",
+   "comparison": false
+  },
+  {
+   "id": 73,
+   "a": "utwx",
+   "b": "qqpvxtqwjjg",
+   "comparison": false
+  },
+  {
+   "id": 74,
+   "a": "ccl",
+   "b": "heyxtfewq",
+   "comparison": null
+  },
+  {
+   "id": 75,
+   "a": "fuuhes",
+   "b": "kjvbr",
+   "comparison": false
+  },
+  {
+   "id": 76,
+   "a": "dujuz",
+   "b": "Bu",
+   "comparison": false
+  },
+  {
+   "id": 77,
+   "a": "Ccznwiceow",
+   "b": "fvyghxtwvlg",
+   "comparison": false
+  },
+  {
+   "id": 78,
+   "a": "Ff",
+   "b": "Ylhm",
+   "comparison": null
+  },
+  {
+   "id": 79,
+   "a": "tj",
+   "b": "nxdn",
+   "comparison": false
+  },
+  {
+   "id": 80,
+   "a": "Fxxkuw",
+   "b": "Hpaceholgtm",
+   "comparison": false
+  },
+  {
+   "id": 81,
+   "a": "Mwneqmlce",
+   "b": "Jesbgmd",
+   "comparison": false
+  },
+  {
+   "id": 82,
+   "a": "Viymay",
+   "b": "Rwg",
+   "comparison": false
+  },
+  {
+   "id": 83,
+   "a": "ffkgzihfz",
+   "b": "Lkg",
+   "comparison": null
+  },
+  {
+   "id": 84,
+   "a": "upv",
+   "b": "Hplft",
+   "comparison": false
+  },
+  {
+   "id": 85,
+   "a": "xttxzc",
+   "b": "Nnayyviqh",
+   "comparison": false
+  },
+  {
+   "id": 86,
+   "a": "dbjb",
+   "b": "adc",
+   "comparison": false
+  },
+  {
+   "id": 87,
+   "a": "Izbwu",
+   "b": "adnzman",
+   "comparison": false
+  },
+  {
+   "id": 88,
+   "a": "jpiz",
+   "b": "dm",
+   "comparison": false
+  },
+  {
+   "id": 89,
+   "a": "clmfqolv",
+   "b": "Sczlbxaowb",
+   "comparison": false
+  },
+  {
+   "id": 90,
+   "a": "Tcacmoa",
+   "b": "jzbhit",
+   "comparison": false
+  },
+  {
+   "id": 91,
+   "a": "Iv",
+   "b": "fgtrek",
+   "comparison": null
+  },
+  {
+   "id": 92,
+   "a": "jamdcz",
+   "b": "Oesjwleiu",
+   "comparison": false
+  },
+  {
+   "id": 93,
+   "a": "uoxsevy",
+   "b": "uirhw",
+   "comparison": false
+  },
+  {
+   "id": 94,
+   "a": "upfqy",
+   "b": "yzt",
+   "comparison": false
+  },
+  {
+   "id": 95,
+   "a": "dxiftzjxb",
+   "b": "Uab",
+   "comparison": null
+  },
+  {
+   "id": 96,
+   "a": "lqen",
+   "b": "aspc",
+   "comparison": false
+  },
+  {
+   "id": 97,
+   "a": "stsjomyece",
+   "b": "jabwqaqjvvj",
+   "comparison": false
+  },
+  {
+   "id": 98,
+   "a": "wghsop",
+   "b": "qrs",
+   "comparison": false
+  },
+  {
+   "id": 99,
+   "a": "Jrm",
+   "b": "umkydqja",
+   "comparison": null
+  },
+  {
+   "id": 100,
+   "a": "Uyjrx",
+   "b": "Qva",
+   "comparison": null
+  },
+  {
+   "id": 101,
+   "a": "Jihwvuqpg",
+   "b": "Lwwpegpolit",
+   "comparison": false
+  },
+  {
+   "id": 102,
+   "a": "Mzthytrwv",
+   "b": "Jlswd",
+   "comparison": false
+  },
+  {
+   "id": 103,
+   "a": "zaydwn",
+   "b": "Ejv",
+   "comparison": false
+  },
+  {
+   "id": 104,
+   "a": "Ogylxkqy",
+   "b": "Tmr",
+   "comparison": null
+  },
+  {
+   "id": 105,
+   "a": "ukclyemzgwl",
+   "b": "Ebkjz",
+   "comparison": false
+  },
+  {
+   "id": 106,
+   "a": "Rwpwxeskw",
+   "b": "lifwvizihfa",
+   "comparison": false
+  },
+  {
+   "id": 107,
+   "a": "jossdzzzl",
+   "b": "wdeqkwvi",
+   "comparison": false
+  },
+  {
+   "id": 108,
+   "a": "ulmcncaj",
+   "b": "Qaormva",
+   "comparison": false
+  },
+  {
+   "id": 109,
+   "a": "Ajr",
+   "b": "Mt",
+   "comparison": false
+  },
+  {
+   "id": 110,
+   "a": "Fzc",
+   "b": "Inesvax",
+   "comparison": false
+  },
+  {
+   "id": 111,
+   "a": "euelja",
+   "b": "Ntwabraznc",
+   "comparison": null
+  },
+  {
+   "id": 112,
+   "a": "Opm",
+   "b": "ehekp",
+   "comparison": false
+  },
+  {
+   "id": 113,
+   "a": "Dxmekfeaqxc",
+   "b": "Jpscffzn",
+   "comparison": false
+  },
+  {
+   "id": 114,
+   "a": "Vx",
+   "b": "Dhesizhkch",
+   "comparison": null
+  },
+  {
+   "id": 115,
+   "a": "vhdh",
+   "b": "Xwsmtb",
+   "comparison": false
+  },
+  {
+   "id": 116,
+   "a": "Jybz",
+   "b": "Hodrfkdv",
+   "comparison": false
+  },
+  {
+   "id": 117,
+   "a": "awnqtbb",
+   "b": "aogyejiyss",
+   "comparison": false
+  },
+  {
+   "id": 118,
+   "a": "Edolyxrm",
+   "b": "Oibqghegbd",
+   "comparison": false
+  },
+  {
+   "id": 119,
+   "a": "Ajpd",
+   "b": "ymyytyvaj",
+   "comparison": false
+  },
+  {
+   "id": 120,
+   "a": "Ychhjgxip",
+   "b": "Szywad",
+   "comparison": false
+  },
+  {
+   "id": 121,
+   "a": "Wsyidyzxudp",
+   "b": "Khtllse",
+   "comparison": false
+  },
+  {
+   "id": 122,
+   "a": "bhxafxrsn",
+   "b": "Ci",
+   "comparison": null
+  },
+  {
+   "id": 123,
+   "a": "doxrk",
+   "b": "Vhayjtteliz",
+   "comparison": false
+  },
+  {
+   "id": 124,
+   "a": "gxezpxo",
+   "b": "suq",
+   "comparison": null
+  },
+  {
+   "id": 125,
+   "a": "Hl",
+   "b": "lxtzpkdac",
+   "comparison": null
+  },
+  {
+   "id": 126,
+   "a": "kmkxralu",
+   "b": "epkt",
+   "comparison": false
+  },
+  {
+   "id": 127,
+   "a": "Ar",
+   "b": "uw",
+   "comparison": false
+  },
+  {
+   "id": 128,
+   "a": "Fgwwljfmmd",
+   "b": "Bg",
+   "comparison": null
+  },
+  {
+   "id": 129,
+   "a": "Qmnqiupjluj",
+   "b": "Qbjo",
+   "comparison": null
+  },
+  {
+   "id": 130,
+   "a": "nuv",
+   "b": "Eansmzzvdcl",
+   "comparison": null
+  },
+  {
+   "id": 131,
+   "a": "dfncqvm",
+   "b": "pokotuxpjx",
+   "comparison": false
+  },
+  {
+   "id": 132,
+   "a": "Gx",
+   "b": "alq",
+   "comparison": false
+  },
+  {
+   "id": 133,
+   "a": "Tulueulr",
+   "b": "Cg",
+   "comparison": false
+  },
+  {
+   "id": 134,
+   "a": "ybuxcx",
+   "b": "Zlnygt",
+   "comparison": false
+  },
+  {
+   "id": 135,
+   "a": "plosi",
+   "b": "qorrqa",
+   "comparison": false
+  },
+  {
+   "id": 136,
+   "a": "ho",
+   "b": "Pmytpui",
+   "comparison": null
+  },
+  {
+   "id": 137,
+   "a": "aoagqjxjx",
+   "b": "zicqv",
+   "comparison": false
+  },
+  {
+   "id": 138,
+   "a": "grfcm",
+   "b": "ugdtmg",
+   "comparison": false
+  },
+  {
+   "id": 139,
+   "a": "Gaicrudver",
+   "b": "Xqkflt",
+   "comparison": false
+  },
+  {
+   "id": 140,
+   "a": "Tdym",
+   "b": "xsf",
+   "comparison": false
+  },
+  {
+   "id": 141,
+   "a": "qdh",
+   "b": "vba",
+   "comparison": false
+  },
+  {
+   "id": 142,
+   "a": "Vren",
+   "b": "izzz",
+   "comparison": false
+  },
+  {
+   "id": 143,
+   "a": "ulnbg",
+   "b": "Ujd",
+   "comparison": false
+  },
+  {
+   "id": 144,
+   "a": "Xcj",
+   "b": "ayddotbn",
+   "comparison": null
+  },
+  {
+   "id": 145,
+   "a": "Abg",
+   "b": "wjfgpqnmd",
+   "comparison": null
+  },
+  {
+   "id": 146,
+   "a": "Vjmoxqr",
+   "b": "Uoht",
+   "comparison": null
+  },
+  {
+   "id": 147,
+   "a": "Muomyvwp",
+   "b": "ldogxdgobh",
+   "comparison": false
+  },
+  {
+   "id": 148,
+   "a": "Txrwohqlger",
+   "b": "Tlqmcgpz",
+   "comparison": false
+  },
+  {
+   "id": 149,
+   "a": "lrfepflpekk",
+   "b": "aj",
+   "comparison": null
+  },
+  {
+   "id": 150,
+   "a": "xkt",
+   "b": "Ya",
+   "comparison": false
+  },
+  {
+   "id": 151,
+   "a": "htgu",
+   "b": "Pfwrhpu",
+   "comparison": null
+  },
+  {
+   "id": 152,
+   "a": "Pswtyqb",
+   "b": "Ywvmfvwbyk",
+   "comparison": false
+  },
+  {
+   "id": 153,
+   "a": "Yrys",
+   "b": "Jwbminoy",
+   "comparison": false
+  },
+  {
+   "id": 154,
+   "a": "Klxyzheqb",
+   "b": "nqipkgvpg",
+   "comparison": false
+  },
+  {
+   "id": 155,
+   "a": "osfvgxykyd",
+   "b": "obmswenxj",
+   "comparison": false
+  },
+  {
+   "id": 156,
+   "a": "Xtoqjrnp",
+   "b": "blpwz",
+   "comparison": false
+  },
+  {
+   "id": 157,
+   "a": "Rjs",
+   "b": "Pd",
+   "comparison": false
+  },
+  {
+   "id": 158,
+   "a": "spdz",
+   "b": "fxsrmeluwg",
+   "comparison": false
+  },
+  {
+   "id": 159,
+   "a": "mdpjilwrx",
+   "b": "Vqbbvfh",
+   "comparison": false
+  },
+  {
+   "id": 160,
+   "a": "Jbtmkvfc",
+   "b": "mlg",
+   "comparison": null
+  },
+  {
+   "id": 161,
+   "a": "dbioxq",
+   "b": "wof",
+   "comparison": false
+  },
+  {
+   "id": 162,
+   "a": "Kcjqbit",
+   "b": "Nch",
+   "comparison": null
+  },
+  {
+   "id": 163,
+   "a": "wpbczgtr",
+   "b": "wnndsazxfl",
+   "comparison": false
+  },
+  {
+   "id": 164,
+   "a": "qquk",
+   "b": "Ki",
+   "comparison": true
+  },
+  {
+   "id": 165,
+   "a": "duwf",
+   "b": "Uugb",
+   "comparison": false
+  },
+  {
+   "id": 166,
+   "a": "Lvqymi",
+   "b": "eeweaj",
+   "comparison": false
+  },
+  {
+   "id": 167,
+   "a": "nbumgo",
+   "b": "Fesofxhv",
+   "comparison": false
+  },
+  {
+   "id": 168,
+   "a": "yjjondqf",
+   "b": "Jso",
+   "comparison": null
+  },
+  {
+   "id": 169,
+   "a": "fyhjya",
+   "b": "Hckmmlkiu",
+   "comparison": false
+  },
+  {
+   "id": 170,
+   "a": "xhdzhumzj",
+   "b": "rsngy",
+   "comparison": false
+  },
+  {
+   "id": 171,
+   "a": "mhnakeyva",
+   "b": "ilmitv",
+   "comparison": false
+  },
+  {
+   "id": 172,
+   "a": "kpapahru",
+   "b": "Xnmbd",
+   "comparison": false
+  },
+  {
+   "id": 173,
+   "a": "kijcvtrpor",
+   "b": "rdttnfso",
+   "comparison": false
+  },
+  {
+   "id": 174,
+   "a": "spq",
+   "b": "khc",
+   "comparison": false
+  },
+  {
+   "id": 175,
+   "a": "Axdplm",
+   "b": "Vrcnh",
+   "comparison": false
+  },
+  {
+   "id": 176,
+   "a": "Glxd",
+   "b": "kzaeyq",
+   "comparison": false
+  },
+  {
+   "id": 177,
+   "a": "Rgiadbwezpg",
+   "b": "Mqvb",
+   "comparison": false
+  },
+  {
+   "id": 178,
+   "a": "Nfgttt",
+   "b": "qappjvg",
+   "comparison": false
+  },
+  {
+   "id": 179,
+   "a": "Awqjznn",
+   "b": "Liwcfi",
+   "comparison": false
+  },
+  {
+   "id": 180,
+   "a": "Ml",
+   "b": "Kgoi",
+   "comparison": false
+  },
+  {
+   "id": 181,
+   "a": "Axxo",
+   "b": "Vovoxbhlzui",
+   "comparison": null
+  },
+  {
+   "id": 182,
+   "a": "Eazvm",
+   "b": "rxfm",
+   "comparison": true
+  },
+  {
+   "id": 183,
+   "a": "Rsuhx",
+   "b": "bjtgwgibmpz",
+   "comparison": false
+  },
+  {
+   "id": 184,
+   "a": "by",
+   "b": "aophzwij",
+   "comparison": null
+  },
+  {
+   "id": 185,
+   "a": "havpobdjbe",
+   "b": "Rccjwbxvqj",
+   "comparison": false
+  },
+  {
+   "id": 186,
+   "a": "Cj",
+   "b": "ghhh",
+   "comparison": false
+  },
+  {
+   "id": 187,
+   "a": "Enkiahmryl",
+   "b": "Jtvx",
+   "comparison": false
+  },
+  {
+   "id": 188,
+   "a": "Cgmdngg",
+   "b": "kncz",
+   "comparison": false
+  },
+  {
+   "id": 189,
+   "a": "Ciykhvututc",
+   "b": "ixdgc",
+   "comparison": false
+  },
+  {
+   "id": 190,
+   "a": "hkxobvgtd",
+   "b": "Bclsmc",
+   "comparison": false
+  },
+  {
+   "id": 191,
+   "a": "ypcleb",
+   "b": "Lwulfxyw",
+   "comparison": false
+  },
+  {
+   "id": 192,
+   "a": "Mebgbeu",
+   "b": "Oc",
+   "comparison": false
+  },
+  {
+   "id": 193,
+   "a": "mgscedfcd",
+   "b": "Vx",
+   "comparison": null
+  },
+  {
+   "id": 194,
+   "a": "Wibhlyw",
+   "b": "Omgjzbc",
+   "comparison": false
+  },
+  {
+   "id": 195,
+   "a": "hlrzadlzze",
+   "b": "Jfthooxpn",
+   "comparison": false
+  },
+  {
+   "id": 196,
+   "a": "Nuss",
+   "b": "Wkbvxuqung",
+   "comparison": null
+  },
+  {
+   "id": 197,
+   "a": "sp",
+   "b": "Kbfbtgujb",
+   "comparison": null
+  },
+  {
+   "id": 198,
+   "a": "lqmims",
+   "b": "Yeuafi",
+   "comparison": null
+  },
+  {
+   "id": 199,
+   "a": "Nlhdo",
+   "b": "oeosyvaoq",
+   "comparison": false
+  },
+  {
+   "id": 200,
+   "a": "Lo",
+   "b": "Ehrx",
+   "comparison": null
+  },
+  {
+   "id": 201,
+   "a": "Dr",
+   "b": "Kentlaaidrw",
+   "comparison": null
+  },
+  {
+   "id": 202,
+   "a": "Ihlr",
+   "b": "Kd",
+   "comparison": false
+  },
+  {
+   "id": 203,
+   "a": "aayxoojfy",
+   "b": "Ict",
+   "comparison": null
+  },
+  {
+   "id": 204,
+   "a": "fikboc",
+   "b": "Rwkveovuxqs",
+   "comparison": false
+  },
+  {
+   "id": 205,
+   "a": "pinxplz",
+   "b": "Odxg",
+   "comparison": false
+  },
+  {
+   "id": 206,
+   "a": "ctsj",
+   "b": "Fydpqmg",
+   "comparison": false
+  },
+  {
+   "id": 207,
+   "a": "kqjerp",
+   "b": "kohouytivo",
+   "comparison": false
+  },
+  {
+   "id": 208,
+   "a": "Yjedgiunku",
+   "b": "zzlmmqgmk",
+   "comparison": true
+  },
+  {
+   "id": 209,
+   "a": "joximhg",
+   "b": "zfvp",
+   "comparison": false
+  },
+  {
+   "id": 210,
+   "a": "Kcbwt",
+   "b": "Zjrxvgwnzd",
+   "comparison": false
+  },
+  {
+   "id": 211,
+   "a": "Pfxhfg",
+   "b": "la",
+   "comparison": null
+  }
+ ]
+}

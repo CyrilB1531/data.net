@@ -1,0 +1,2115 @@
+{
+ "metadata": {
+  "algorithm": "MatchRatingApproach.Codex",
+  "library": "jellyfish",
+  "library_version": "1.2.1",
+  "reference_calls": [
+   "jellyfish.match_rating_codex"
+  ],
+  "corpus": "the issue's fixed points, plus phonetic_words' real names and random words",
+  "seed": 20260801,
+  "count": 420
+ },
+ "cases": [
+  {
+   "id": 0,
+   "word": "Smith",
+   "codex": "SMTH"
+  },
+  {
+   "id": 1,
+   "word": "Smyth",
+   "codex": "SMYTH"
+  },
+  {
+   "id": 2,
+   "word": "Byrne",
+   "codex": "BYRN"
+  },
+  {
+   "id": 3,
+   "word": "Boern",
+   "codex": "BRN"
+  },
+  {
+   "id": 4,
+   "word": "Catherine",
+   "codex": "CTHRN"
+  },
+  {
+   "id": 5,
+   "word": "Kathryn",
+   "codex": "KTHRYN"
+  },
+  {
+   "id": 6,
+   "word": "aeiou",
+   "codex": "A"
+  },
+  {
+   "id": 7,
+   "word": "Mississippi",
+   "codex": "MSSP"
+  },
+  {
+   "id": 8,
+   "word": "Bhattacharya",
+   "codex": "BHTHRY"
+  },
+  {
+   "id": 9,
+   "word": "Schwarzenegger",
+   "codex": "SCHNGR"
+  },
+  {
+   "id": 10,
+   "word": "Constantinople",
+   "codex": "CNSNPL"
+  },
+  {
+   "id": 11,
+   "word": "",
+   "codex": ""
+  },
+  {
+   "id": 12,
+   "word": "Zzzz zzzz",
+   "codex": "Z Z"
+  },
+  {
+   "id": 13,
+   "word": "  ",
+   "codex": " "
+  },
+  {
+   "id": 14,
+   "word": " ",
+   "codex": " "
+  },
+  {
+   "id": 15,
+   "word": "élan",
+   "codex": "ÉLN"
+  },
+  {
+   "id": 16,
+   "word": "Ünal",
+   "codex": "ÜNL"
+  },
+  {
+   "id": 17,
+   "word": "日本",
+   "codex": "日本"
+  },
+  {
+   "id": 18,
+   "word": "Robert",
+   "codex": "RBRT"
+  },
+  {
+   "id": 19,
+   "word": "Rupert",
+   "codex": "RPRT"
+  },
+  {
+   "id": 20,
+   "word": "Rubin",
+   "codex": "RBN"
+  },
+  {
+   "id": 21,
+   "word": "Ashcraft",
+   "codex": "ASHRFT"
+  },
+  {
+   "id": 22,
+   "word": "Ashcroft",
+   "codex": "ASHRFT"
+  },
+  {
+   "id": 23,
+   "word": "Tymczak",
+   "codex": "TYMCZK"
+  },
+  {
+   "id": 24,
+   "word": "Pfister",
+   "codex": "PFSTR"
+  },
+  {
+   "id": 25,
+   "word": "Honeyman",
+   "codex": "HNYMN"
+  },
+  {
+   "id": 26,
+   "word": "Washington",
+   "codex": "WSHGTN"
+  },
+  {
+   "id": 27,
+   "word": "Lee",
+   "codex": "L"
+  },
+  {
+   "id": 28,
+   "word": "Gutierrez",
+   "codex": "GTRZ"
+  },
+  {
+   "id": 29,
+   "word": "Jackson",
+   "codex": "JCKSN"
+  },
+  {
+   "id": 30,
+   "word": "VanDeusen",
+   "codex": "VNDSN"
+  },
+  {
+   "id": 31,
+   "word": "Deusen",
+   "codex": "DSN"
+  },
+  {
+   "id": 32,
+   "word": "Knuth",
+   "codex": "KNTH"
+  },
+  {
+   "id": 33,
+   "word": "Euler",
+   "codex": "ELR"
+  },
+  {
+   "id": 34,
+   "word": "Gauss",
+   "codex": "GS"
+  },
+  {
+   "id": 35,
+   "word": "Kant",
+   "codex": "KNT"
+  },
+  {
+   "id": 36,
+   "word": "Lloyd",
+   "codex": "LYD"
+  },
+  {
+   "id": 37,
+   "word": "Bob",
+   "codex": "BB"
+  },
+  {
+   "id": 38,
+   "word": "a",
+   "codex": "A"
+  },
+  {
+   "id": 39,
+   "word": "MacDonald",
+   "codex": "MCDNLD"
+  },
+  {
+   "id": 40,
+   "word": "Christina",
+   "codex": "CHRSTN"
+  },
+  {
+   "id": 41,
+   "word": "Catherine",
+   "codex": "CTHRN"
+  },
+  {
+   "id": 42,
+   "word": "Smith",
+   "codex": "SMTH"
+  },
+  {
+   "id": 43,
+   "word": "Smyth",
+   "codex": "SMYTH"
+  },
+  {
+   "id": 44,
+   "word": "Schmidt",
+   "codex": "SCHMDT"
+  },
+  {
+   "id": 45,
+   "word": "Jefferson",
+   "codex": "JFRSN"
+  },
+  {
+   "id": 46,
+   "word": "Adams",
+   "codex": "ADMS"
+  },
+  {
+   "id": 47,
+   "word": "Wojcik",
+   "codex": "WJCK"
+  },
+  {
+   "id": 48,
+   "word": "Nguyen",
+   "codex": "NGYN"
+  },
+  {
+   "id": 49,
+   "word": "Johnson",
+   "codex": "JHNSN"
+  },
+  {
+   "id": 50,
+   "word": "Williams",
+   "codex": "WLMS"
+  },
+  {
+   "id": 51,
+   "word": "Brown",
+   "codex": "BRWN"
+  },
+  {
+   "id": 52,
+   "word": "Garcia",
+   "codex": "GRC"
+  },
+  {
+   "id": 53,
+   "word": "Martinez",
+   "codex": "MRTNZ"
+  },
+  {
+   "id": 54,
+   "word": "Anderson",
+   "codex": "ANDRSN"
+  },
+  {
+   "id": 55,
+   "word": "Thompson",
+   "codex": "THMPSN"
+  },
+  {
+   "id": 56,
+   "word": "Phillip",
+   "codex": "PHLP"
+  },
+  {
+   "id": 57,
+   "word": "Xavier",
+   "codex": "XVR"
+  },
+  {
+   "id": 58,
+   "word": "Yvonne",
+   "codex": "YVN"
+  },
+  {
+   "id": 59,
+   "word": "Zachary",
+   "codex": "ZCHRY"
+  },
+  {
+   "id": 60,
+   "word": "Quinn",
+   "codex": "QN"
+  },
+  {
+   "id": 61,
+   "word": "Wright",
+   "codex": "WRGHT"
+  },
+  {
+   "id": 62,
+   "word": "Knight",
+   "codex": "KNGHT"
+  },
+  {
+   "id": 63,
+   "word": "Gnome",
+   "codex": "GNM"
+  },
+  {
+   "id": 64,
+   "word": "Psalm",
+   "codex": "PSLM"
+  },
+  {
+   "id": 65,
+   "word": "Thomas",
+   "codex": "THMS"
+  },
+  {
+   "id": 66,
+   "word": "Theodore",
+   "codex": "THDR"
+  },
+  {
+   "id": 67,
+   "word": "Czar",
+   "codex": "CZR"
+  },
+  {
+   "id": 68,
+   "word": "Pizza",
+   "codex": "PZ"
+  },
+  {
+   "id": 69,
+   "word": "Aegean",
+   "codex": "AGN"
+  },
+  {
+   "id": 70,
+   "word": "Wvirvedwhi",
+   "codex": "WVRDWH"
+  },
+  {
+   "id": 71,
+   "word": "Sw",
+   "codex": "SW"
+  },
+  {
+   "id": 72,
+   "word": "Wofztxrwjr",
+   "codex": "WFZWJR"
+  },
+  {
+   "id": 73,
+   "word": "eckhy",
+   "codex": "ECKHY"
+  },
+  {
+   "id": 74,
+   "word": "xvbnv",
+   "codex": "XVBNV"
+  },
+  {
+   "id": 75,
+   "word": "Bfcpialp",
+   "codex": "BFCPLP"
+  },
+  {
+   "id": 76,
+   "word": "Dmtpbf",
+   "codex": "DMTPBF"
+  },
+  {
+   "id": 77,
+   "word": "Rysct",
+   "codex": "RYSCT"
+  },
+  {
+   "id": 78,
+   "word": "igw",
+   "codex": "IGW"
+  },
+  {
+   "id": 79,
+   "word": "laykfjyq",
+   "codex": "LYKJYQ"
+  },
+  {
+   "id": 80,
+   "word": "Nohplufwqe",
+   "codex": "NHPFWQ"
+  },
+  {
+   "id": 81,
+   "word": "eufgneh",
+   "codex": "EFGNH"
+  },
+  {
+   "id": 82,
+   "word": "mai",
+   "codex": "M"
+  },
+  {
+   "id": 83,
+   "word": "margeljg",
+   "codex": "MRGLJG"
+  },
+  {
+   "id": 84,
+   "word": "Sfookq",
+   "codex": "SFKQ"
+  },
+  {
+   "id": 85,
+   "word": "pms",
+   "codex": "PMS"
+  },
+  {
+   "id": 86,
+   "word": "lnvppqfv",
+   "codex": "LNVQFV"
+  },
+  {
+   "id": 87,
+   "word": "hv",
+   "codex": "HV"
+  },
+  {
+   "id": 88,
+   "word": "jil",
+   "codex": "JL"
+  },
+  {
+   "id": 89,
+   "word": "Pqymsruh",
+   "codex": "PQYSRH"
+  },
+  {
+   "id": 90,
+   "word": "vongtph",
+   "codex": "VNGTPH"
+  },
+  {
+   "id": 91,
+   "word": "Tjrizselyme",
+   "codex": "TJRLYM"
+  },
+  {
+   "id": 92,
+   "word": "Ocso",
+   "codex": "OCS"
+  },
+  {
+   "id": 93,
+   "word": "Iy",
+   "codex": "IY"
+  },
+  {
+   "id": 94,
+   "word": "nkwpkqosftt",
+   "codex": "NKWSFT"
+  },
+  {
+   "id": 95,
+   "word": "Sfgobknjiaj",
+   "codex": "SFGNJJ"
+  },
+  {
+   "id": 96,
+   "word": "Jgdlorez",
+   "codex": "JGDLRZ"
+  },
+  {
+   "id": 97,
+   "word": "Itbbwb",
+   "codex": "ITBWB"
+  },
+  {
+   "id": 98,
+   "word": "Cqdlljwm",
+   "codex": "CQDJWM"
+  },
+  {
+   "id": 99,
+   "word": "Ruxistgq",
+   "codex": "RXSTGQ"
+  },
+  {
+   "id": 100,
+   "word": "Atdaulkzuri",
+   "codex": "ATDKZR"
+  },
+  {
+   "id": 101,
+   "word": "Unz",
+   "codex": "UNZ"
+  },
+  {
+   "id": 102,
+   "word": "jiv",
+   "codex": "JV"
+  },
+  {
+   "id": 103,
+   "word": "crnkxv",
+   "codex": "CRNKXV"
+  },
+  {
+   "id": 104,
+   "word": "xg",
+   "codex": "XG"
+  },
+  {
+   "id": 105,
+   "word": "mkgdjokkf",
+   "codex": "MKGJKF"
+  },
+  {
+   "id": 106,
+   "word": "ohlwhyq",
+   "codex": "OHLHYQ"
+  },
+  {
+   "id": 107,
+   "word": "Sysdouwaw",
+   "codex": "SYSDWW"
+  },
+  {
+   "id": 108,
+   "word": "Jnfghybzvsv",
+   "codex": "JNFVSV"
+  },
+  {
+   "id": 109,
+   "word": "kxarjkcpa",
+   "codex": "KXRKCP"
+  },
+  {
+   "id": 110,
+   "word": "qn",
+   "codex": "QN"
+  },
+  {
+   "id": 111,
+   "word": "Wyzwt",
+   "codex": "WYZWT"
+  },
+  {
+   "id": 112,
+   "word": "Tdlosxsy",
+   "codex": "TDLXSY"
+  },
+  {
+   "id": 113,
+   "word": "Ksxnav",
+   "codex": "KSXNV"
+  },
+  {
+   "id": 114,
+   "word": "Jgsnm",
+   "codex": "JGSNM"
+  },
+  {
+   "id": 115,
+   "word": "Gbnfyafonjb",
+   "codex": "GBNNJB"
+  },
+  {
+   "id": 116,
+   "word": "klxyjbbzhrm",
+   "codex": "KLXHRM"
+  },
+  {
+   "id": 117,
+   "word": "Zpqdghkeyf",
+   "codex": "ZPQKYF"
+  },
+  {
+   "id": 118,
+   "word": "Xruyh",
+   "codex": "XRYH"
+  },
+  {
+   "id": 119,
+   "word": "vwgalatsfvr",
+   "codex": "VWGFVR"
+  },
+  {
+   "id": 120,
+   "word": "rocxkange",
+   "codex": "RCXKNG"
+  },
+  {
+   "id": 121,
+   "word": "Ul",
+   "codex": "UL"
+  },
+  {
+   "id": 122,
+   "word": "Hduqnylngi",
+   "codex": "HDQLNG"
+  },
+  {
+   "id": 123,
+   "word": "Nduj",
+   "codex": "NDJ"
+  },
+  {
+   "id": 124,
+   "word": "fytvkfrecqc",
+   "codex": "FYTCQC"
+  },
+  {
+   "id": 125,
+   "word": "Sl",
+   "codex": "SL"
+  },
+  {
+   "id": 126,
+   "word": "Wdbliugoljg",
+   "codex": "WDBLJG"
+  },
+  {
+   "id": 127,
+   "word": "Andsyvnwt",
+   "codex": "ANDNWT"
+  },
+  {
+   "id": 128,
+   "word": "Zpt",
+   "codex": "ZPT"
+  },
+  {
+   "id": 129,
+   "word": "Uvkmemopq",
+   "codex": "UVKMPQ"
+  },
+  {
+   "id": 130,
+   "word": "Wsrhemiyb",
+   "codex": "WSRMYB"
+  },
+  {
+   "id": 131,
+   "word": "ikzywazurbm",
+   "codex": "IKZRBM"
+  },
+  {
+   "id": 132,
+   "word": "Ijqupddcmmp",
+   "codex": "IJQCMP"
+  },
+  {
+   "id": 133,
+   "word": "Nhlqaprl",
+   "codex": "NHLPRL"
+  },
+  {
+   "id": 134,
+   "word": "nfntoykmbk",
+   "codex": "NFNMBK"
+  },
+  {
+   "id": 135,
+   "word": "nlyois",
+   "codex": "NLYS"
+  },
+  {
+   "id": 136,
+   "word": "Pqxiy",
+   "codex": "PQXY"
+  },
+  {
+   "id": 137,
+   "word": "Ajhxmitkow",
+   "codex": "AJHTKW"
+  },
+  {
+   "id": 138,
+   "word": "Engqanhfez",
+   "codex": "ENGHFZ"
+  },
+  {
+   "id": 139,
+   "word": "mqjar",
+   "codex": "MQJR"
+  },
+  {
+   "id": 140,
+   "word": "Dakv",
+   "codex": "DKV"
+  },
+  {
+   "id": 141,
+   "word": "Avzcz",
+   "codex": "AVZCZ"
+  },
+  {
+   "id": 142,
+   "word": "utwx",
+   "codex": "UTWX"
+  },
+  {
+   "id": 143,
+   "word": "qqpvxtqwjjg",
+   "codex": "QPVWJG"
+  },
+  {
+   "id": 144,
+   "word": "ccl",
+   "codex": "CL"
+  },
+  {
+   "id": 145,
+   "word": "heyxtfewq",
+   "codex": "HYXFWQ"
+  },
+  {
+   "id": 146,
+   "word": "fuuhes",
+   "codex": "FHS"
+  },
+  {
+   "id": 147,
+   "word": "kjvbr",
+   "codex": "KJVBR"
+  },
+  {
+   "id": 148,
+   "word": "dujuz",
+   "codex": "DJZ"
+  },
+  {
+   "id": 149,
+   "word": "Bu",
+   "codex": "B"
+  },
+  {
+   "id": 150,
+   "word": "Ccznwiceow",
+   "codex": "CZNWCW"
+  },
+  {
+   "id": 151,
+   "word": "fvyghxtwvlg",
+   "codex": "FVYVLG"
+  },
+  {
+   "id": 152,
+   "word": "Ff",
+   "codex": "F"
+  },
+  {
+   "id": 153,
+   "word": "Ylhm",
+   "codex": "YLHM"
+  },
+  {
+   "id": 154,
+   "word": "tj",
+   "codex": "TJ"
+  },
+  {
+   "id": 155,
+   "word": "nxdn",
+   "codex": "NXDN"
+  },
+  {
+   "id": 156,
+   "word": "Fxxkuw",
+   "codex": "FXKW"
+  },
+  {
+   "id": 157,
+   "word": "Hpaceholgtm",
+   "codex": "HPCGTM"
+  },
+  {
+   "id": 158,
+   "word": "Mwneqmlce",
+   "codex": "MWNMLC"
+  },
+  {
+   "id": 159,
+   "word": "Jesbgmd",
+   "codex": "JSBGMD"
+  },
+  {
+   "id": 160,
+   "word": "Viymay",
+   "codex": "VYMY"
+  },
+  {
+   "id": 161,
+   "word": "Rwg",
+   "codex": "RWG"
+  },
+  {
+   "id": 162,
+   "word": "ffkgzihfz",
+   "codex": "FKGHFZ"
+  },
+  {
+   "id": 163,
+   "word": "Lkg",
+   "codex": "LKG"
+  },
+  {
+   "id": 164,
+   "word": "upv",
+   "codex": "UPV"
+  },
+  {
+   "id": 165,
+   "word": "Hplft",
+   "codex": "HPLFT"
+  },
+  {
+   "id": 166,
+   "word": "xttxzc",
+   "codex": "XTXZC"
+  },
+  {
+   "id": 167,
+   "word": "Nnayyviqh",
+   "codex": "NYVQH"
+  },
+  {
+   "id": 168,
+   "word": "dbjb",
+   "codex": "DBJB"
+  },
+  {
+   "id": 169,
+   "word": "adc",
+   "codex": "ADC"
+  },
+  {
+   "id": 170,
+   "word": "Izbwu",
+   "codex": "IZBW"
+  },
+  {
+   "id": 171,
+   "word": "adnzman",
+   "codex": "ADNZMN"
+  },
+  {
+   "id": 172,
+   "word": "jpiz",
+   "codex": "JPZ"
+  },
+  {
+   "id": 173,
+   "word": "dm",
+   "codex": "DM"
+  },
+  {
+   "id": 174,
+   "word": "clmfqolv",
+   "codex": "CLMQLV"
+  },
+  {
+   "id": 175,
+   "word": "Sczlbxaowb",
+   "codex": "SCZXWB"
+  },
+  {
+   "id": 176,
+   "word": "Tcacmoa",
+   "codex": "TCCM"
+  },
+  {
+   "id": 177,
+   "word": "jzbhit",
+   "codex": "JZBHT"
+  },
+  {
+   "id": 178,
+   "word": "Iv",
+   "codex": "IV"
+  },
+  {
+   "id": 179,
+   "word": "fgtrek",
+   "codex": "FGTRK"
+  },
+  {
+   "id": 180,
+   "word": "jamdcz",
+   "codex": "JMDCZ"
+  },
+  {
+   "id": 181,
+   "word": "Oesjwleiu",
+   "codex": "OSJWL"
+  },
+  {
+   "id": 182,
+   "word": "uoxsevy",
+   "codex": "UXSVY"
+  },
+  {
+   "id": 183,
+   "word": "uirhw",
+   "codex": "URHW"
+  },
+  {
+   "id": 184,
+   "word": "upfqy",
+   "codex": "UPFQY"
+  },
+  {
+   "id": 185,
+   "word": "yzt",
+   "codex": "YZT"
+  },
+  {
+   "id": 186,
+   "word": "dxiftzjxb",
+   "codex": "DXFJXB"
+  },
+  {
+   "id": 187,
+   "word": "Uab",
+   "codex": "UB"
+  },
+  {
+   "id": 188,
+   "word": "lqen",
+   "codex": "LQN"
+  },
+  {
+   "id": 189,
+   "word": "aspc",
+   "codex": "ASPC"
+  },
+  {
+   "id": 190,
+   "word": "stsjomyece",
+   "codex": "STSMYC"
+  },
+  {
+   "id": 191,
+   "word": "jabwqaqjvvj",
+   "codex": "JBWJVJ"
+  },
+  {
+   "id": 192,
+   "word": "wghsop",
+   "codex": "WGHSP"
+  },
+  {
+   "id": 193,
+   "word": "qrs",
+   "codex": "QRS"
+  },
+  {
+   "id": 194,
+   "word": "Jrm",
+   "codex": "JRM"
+  },
+  {
+   "id": 195,
+   "word": "umkydqja",
+   "codex": "UMKDQJ"
+  },
+  {
+   "id": 196,
+   "word": "Uyjrx",
+   "codex": "UYJRX"
+  },
+  {
+   "id": 197,
+   "word": "Qva",
+   "codex": "QV"
+  },
+  {
+   "id": 198,
+   "word": "Jihwvuqpg",
+   "codex": "JHWQPG"
+  },
+  {
+   "id": 199,
+   "word": "Lwwpegpolit",
+   "codex": "LWPPLT"
+  },
+  {
+   "id": 200,
+   "word": "Mzthytrwv",
+   "codex": "MZTRWV"
+  },
+  {
+   "id": 201,
+   "word": "Jlswd",
+   "codex": "JLSWD"
+  },
+  {
+   "id": 202,
+   "word": "zaydwn",
+   "codex": "ZYDWN"
+  },
+  {
+   "id": 203,
+   "word": "Ejv",
+   "codex": "EJV"
+  },
+  {
+   "id": 204,
+   "word": "Ogylxkqy",
+   "codex": "OGYKQY"
+  },
+  {
+   "id": 205,
+   "word": "Tmr",
+   "codex": "TMR"
+  },
+  {
+   "id": 206,
+   "word": "ukclyemzgwl",
+   "codex": "UKCGWL"
+  },
+  {
+   "id": 207,
+   "word": "Ebkjz",
+   "codex": "EBKJZ"
+  },
+  {
+   "id": 208,
+   "word": "Rwpwxeskw",
+   "codex": "RWPSKW"
+  },
+  {
+   "id": 209,
+   "word": "lifwvizihfa",
+   "codex": "LFWZHF"
+  },
+  {
+   "id": 210,
+   "word": "jossdzzzl",
+   "codex": "JSDZL"
+  },
+  {
+   "id": 211,
+   "word": "wdeqkwvi",
+   "codex": "WDQKWV"
+  },
+  {
+   "id": 212,
+   "word": "ulmcncaj",
+   "codex": "ULMNCJ"
+  },
+  {
+   "id": 213,
+   "word": "Qaormva",
+   "codex": "QRMV"
+  },
+  {
+   "id": 214,
+   "word": "Ajr",
+   "codex": "AJR"
+  },
+  {
+   "id": 215,
+   "word": "Mt",
+   "codex": "MT"
+  },
+  {
+   "id": 216,
+   "word": "Fzc",
+   "codex": "FZC"
+  },
+  {
+   "id": 217,
+   "word": "Inesvax",
+   "codex": "INSVX"
+  },
+  {
+   "id": 218,
+   "word": "euelja",
+   "codex": "ELJ"
+  },
+  {
+   "id": 219,
+   "word": "Ntwabraznc",
+   "codex": "NTWZNC"
+  },
+  {
+   "id": 220,
+   "word": "Opm",
+   "codex": "OPM"
+  },
+  {
+   "id": 221,
+   "word": "ehekp",
+   "codex": "EHKP"
+  },
+  {
+   "id": 222,
+   "word": "Dxmekfeaqxc",
+   "codex": "DXMQXC"
+  },
+  {
+   "id": 223,
+   "word": "Jpscffzn",
+   "codex": "JPSFZN"
+  },
+  {
+   "id": 224,
+   "word": "Vx",
+   "codex": "VX"
+  },
+  {
+   "id": 225,
+   "word": "Dhesizhkch",
+   "codex": "DHSKCH"
+  },
+  {
+   "id": 226,
+   "word": "vhdh",
+   "codex": "VHDH"
+  },
+  {
+   "id": 227,
+   "word": "Xwsmtb",
+   "codex": "XWSMTB"
+  },
+  {
+   "id": 228,
+   "word": "Jybz",
+   "codex": "JYBZ"
+  },
+  {
+   "id": 229,
+   "word": "Hodrfkdv",
+   "codex": "HDRKDV"
+  },
+  {
+   "id": 230,
+   "word": "awnqtbb",
+   "codex": "AWNQTB"
+  },
+  {
+   "id": 231,
+   "word": "aogyejiyss",
+   "codex": "AGYJYS"
+  },
+  {
+   "id": 232,
+   "word": "Edolyxrm",
+   "codex": "EDLXRM"
+  },
+  {
+   "id": 233,
+   "word": "Oibqghegbd",
+   "codex": "OBQGBD"
+  },
+  {
+   "id": 234,
+   "word": "Ajpd",
+   "codex": "AJPD"
+  },
+  {
+   "id": 235,
+   "word": "ymyytyvaj",
+   "codex": "YMYYVJ"
+  },
+  {
+   "id": 236,
+   "word": "Ychhjgxip",
+   "codex": "YCHGXP"
+  },
+  {
+   "id": 237,
+   "word": "Szywad",
+   "codex": "SZYWD"
+  },
+  {
+   "id": 238,
+   "word": "Wsyidyzxudp",
+   "codex": "WSYXDP"
+  },
+  {
+   "id": 239,
+   "word": "Khtllse",
+   "codex": "KHTLS"
+  },
+  {
+   "id": 240,
+   "word": "bhxafxrsn",
+   "codex": "BHXRSN"
+  },
+  {
+   "id": 241,
+   "word": "Ci",
+   "codex": "C"
+  },
+  {
+   "id": 242,
+   "word": "doxrk",
+   "codex": "DXRK"
+  },
+  {
+   "id": 243,
+   "word": "Vhayjtteliz",
+   "codex": "VHYTLZ"
+  },
+  {
+   "id": 244,
+   "word": "gxezpxo",
+   "codex": "GXZPX"
+  },
+  {
+   "id": 245,
+   "word": "suq",
+   "codex": "SQ"
+  },
+  {
+   "id": 246,
+   "word": "Hl",
+   "codex": "HL"
+  },
+  {
+   "id": 247,
+   "word": "lxtzpkdac",
+   "codex": "LXTKDC"
+  },
+  {
+   "id": 248,
+   "word": "kmkxralu",
+   "codex": "KMKXRL"
+  },
+  {
+   "id": 249,
+   "word": "epkt",
+   "codex": "EPKT"
+  },
+  {
+   "id": 250,
+   "word": "Ar",
+   "codex": "AR"
+  },
+  {
+   "id": 251,
+   "word": "uw",
+   "codex": "UW"
+  },
+  {
+   "id": 252,
+   "word": "Fgwwljfmmd",
+   "codex": "FGWFMD"
+  },
+  {
+   "id": 253,
+   "word": "Bg",
+   "codex": "BG"
+  },
+  {
+   "id": 254,
+   "word": "Qmnqiupjluj",
+   "codex": "QMNJLJ"
+  },
+  {
+   "id": 255,
+   "word": "Qbjo",
+   "codex": "QBJ"
+  },
+  {
+   "id": 256,
+   "word": "nuv",
+   "codex": "NV"
+  },
+  {
+   "id": 257,
+   "word": "Eansmzzvdcl",
+   "codex": "ENSDCL"
+  },
+  {
+   "id": 258,
+   "word": "dfncqvm",
+   "codex": "DFNQVM"
+  },
+  {
+   "id": 259,
+   "word": "pokotuxpjx",
+   "codex": "PKTPJX"
+  },
+  {
+   "id": 260,
+   "word": "Gx",
+   "codex": "GX"
+  },
+  {
+   "id": 261,
+   "word": "alq",
+   "codex": "ALQ"
+  },
+  {
+   "id": 262,
+   "word": "Tulueulr",
+   "codex": "TLLR"
+  },
+  {
+   "id": 263,
+   "word": "Cg",
+   "codex": "CG"
+  },
+  {
+   "id": 264,
+   "word": "ybuxcx",
+   "codex": "YBXCX"
+  },
+  {
+   "id": 265,
+   "word": "Zlnygt",
+   "codex": "ZLNYGT"
+  },
+  {
+   "id": 266,
+   "word": "plosi",
+   "codex": "PLS"
+  },
+  {
+   "id": 267,
+   "word": "qorrqa",
+   "codex": "QRQ"
+  },
+  {
+   "id": 268,
+   "word": "ho",
+   "codex": "H"
+  },
+  {
+   "id": 269,
+   "word": "Pmytpui",
+   "codex": "PMYTP"
+  },
+  {
+   "id": 270,
+   "word": "aoagqjxjx",
+   "codex": "AGQXJX"
+  },
+  {
+   "id": 271,
+   "word": "zicqv",
+   "codex": "ZCQV"
+  },
+  {
+   "id": 272,
+   "word": "grfcm",
+   "codex": "GRFCM"
+  },
+  {
+   "id": 273,
+   "word": "ugdtmg",
+   "codex": "UGDTMG"
+  },
+  {
+   "id": 274,
+   "word": "Gaicrudver",
+   "codex": "GCRDVR"
+  },
+  {
+   "id": 275,
+   "word": "Xqkflt",
+   "codex": "XQKFLT"
+  },
+  {
+   "id": 276,
+   "word": "Tdym",
+   "codex": "TDYM"
+  },
+  {
+   "id": 277,
+   "word": "xsf",
+   "codex": "XSF"
+  },
+  {
+   "id": 278,
+   "word": "qdh",
+   "codex": "QDH"
+  },
+  {
+   "id": 279,
+   "word": "vba",
+   "codex": "VB"
+  },
+  {
+   "id": 280,
+   "word": "Vren",
+   "codex": "VRN"
+  },
+  {
+   "id": 281,
+   "word": "izzz",
+   "codex": "IZ"
+  },
+  {
+   "id": 282,
+   "word": "ulnbg",
+   "codex": "ULNBG"
+  },
+  {
+   "id": 283,
+   "word": "Ujd",
+   "codex": "UJD"
+  },
+  {
+   "id": 284,
+   "word": "Xcj",
+   "codex": "XCJ"
+  },
+  {
+   "id": 285,
+   "word": "ayddotbn",
+   "codex": "AYDTBN"
+  },
+  {
+   "id": 286,
+   "word": "Abg",
+   "codex": "ABG"
+  },
+  {
+   "id": 287,
+   "word": "wjfgpqnmd",
+   "codex": "WJFNMD"
+  },
+  {
+   "id": 288,
+   "word": "Vjmoxqr",
+   "codex": "VJMXQR"
+  },
+  {
+   "id": 289,
+   "word": "Uoht",
+   "codex": "UHT"
+  },
+  {
+   "id": 290,
+   "word": "Muomyvwp",
+   "codex": "MMYVWP"
+  },
+  {
+   "id": 291,
+   "word": "ldogxdgobh",
+   "codex": "LDGGBH"
+  },
+  {
+   "id": 292,
+   "word": "Txrwohqlger",
+   "codex": "TXRLGR"
+  },
+  {
+   "id": 293,
+   "word": "Tlqmcgpz",
+   "codex": "TLQGPZ"
+  },
+  {
+   "id": 294,
+   "word": "lrfepflpekk",
+   "codex": "LRFLPK"
+  },
+  {
+   "id": 295,
+   "word": "aj",
+   "codex": "AJ"
+  },
+  {
+   "id": 296,
+   "word": "xkt",
+   "codex": "XKT"
+  },
+  {
+   "id": 297,
+   "word": "Ya",
+   "codex": "Y"
+  },
+  {
+   "id": 298,
+   "word": "htgu",
+   "codex": "HTG"
+  },
+  {
+   "id": 299,
+   "word": "Pfwrhpu",
+   "codex": "PFWRHP"
+  },
+  {
+   "id": 300,
+   "word": "Pswtyqb",
+   "codex": "PSWYQB"
+  },
+  {
+   "id": 301,
+   "word": "Ywvmfvwbyk",
+   "codex": "YWVBYK"
+  },
+  {
+   "id": 302,
+   "word": "Yrys",
+   "codex": "YRYS"
+  },
+  {
+   "id": 303,
+   "word": "Jwbminoy",
+   "codex": "JWBMNY"
+  },
+  {
+   "id": 304,
+   "word": "Klxyzheqb",
+   "codex": "KLXHQB"
+  },
+  {
+   "id": 305,
+   "word": "nqipkgvpg",
+   "codex": "NQPVPG"
+  },
+  {
+   "id": 306,
+   "word": "osfvgxykyd",
+   "codex": "OSFKYD"
+  },
+  {
+   "id": 307,
+   "word": "obmswenxj",
+   "codex": "OBMNXJ"
+  },
+  {
+   "id": 308,
+   "word": "Xtoqjrnp",
+   "codex": "XTQRNP"
+  },
+  {
+   "id": 309,
+   "word": "blpwz",
+   "codex": "BLPWZ"
+  },
+  {
+   "id": 310,
+   "word": "Rjs",
+   "codex": "RJS"
+  },
+  {
+   "id": 311,
+   "word": "Pd",
+   "codex": "PD"
+  },
+  {
+   "id": 312,
+   "word": "spdz",
+   "codex": "SPDZ"
+  },
+  {
+   "id": 313,
+   "word": "fxsrmeluwg",
+   "codex": "FXSLWG"
+  },
+  {
+   "id": 314,
+   "word": "mdpjilwrx",
+   "codex": "MDPWRX"
+  },
+  {
+   "id": 315,
+   "word": "Vqbbvfh",
+   "codex": "VQBVFH"
+  },
+  {
+   "id": 316,
+   "word": "Jbtmkvfc",
+   "codex": "JBTVFC"
+  },
+  {
+   "id": 317,
+   "word": "mlg",
+   "codex": "MLG"
+  },
+  {
+   "id": 318,
+   "word": "dbioxq",
+   "codex": "DBXQ"
+  },
+  {
+   "id": 319,
+   "word": "wof",
+   "codex": "WF"
+  },
+  {
+   "id": 320,
+   "word": "Kcjqbit",
+   "codex": "KCJQBT"
+  },
+  {
+   "id": 321,
+   "word": "Nch",
+   "codex": "NCH"
+  },
+  {
+   "id": 322,
+   "word": "wpbczgtr",
+   "codex": "WPBGTR"
+  },
+  {
+   "id": 323,
+   "word": "wnndsazxfl",
+   "codex": "WNDXFL"
+  },
+  {
+   "id": 324,
+   "word": "qquk",
+   "codex": "QK"
+  },
+  {
+   "id": 325,
+   "word": "Ki",
+   "codex": "K"
+  },
+  {
+   "id": 326,
+   "word": "duwf",
+   "codex": "DWF"
+  },
+  {
+   "id": 327,
+   "word": "Uugb",
+   "codex": "UGB"
+  },
+  {
+   "id": 328,
+   "word": "Lvqymi",
+   "codex": "LVQYM"
+  },
+  {
+   "id": 329,
+   "word": "eeweaj",
+   "codex": "EWJ"
+  },
+  {
+   "id": 330,
+   "word": "nbumgo",
+   "codex": "NBMG"
+  },
+  {
+   "id": 331,
+   "word": "Fesofxhv",
+   "codex": "FSFXHV"
+  },
+  {
+   "id": 332,
+   "word": "yjjondqf",
+   "codex": "YJNDQF"
+  },
+  {
+   "id": 333,
+   "word": "Jso",
+   "codex": "JS"
+  },
+  {
+   "id": 334,
+   "word": "fyhjya",
+   "codex": "FYHJY"
+  },
+  {
+   "id": 335,
+   "word": "Hckmmlkiu",
+   "codex": "HCKMLK"
+  },
+  {
+   "id": 336,
+   "word": "xhdzhumzj",
+   "codex": "XHDMZJ"
+  },
+  {
+   "id": 337,
+   "word": "rsngy",
+   "codex": "RSNGY"
+  },
+  {
+   "id": 338,
+   "word": "mhnakeyva",
+   "codex": "MHNKYV"
+  },
+  {
+   "id": 339,
+   "word": "ilmitv",
+   "codex": "ILMTV"
+  },
+  {
+   "id": 340,
+   "word": "kpapahru",
+   "codex": "KPPHR"
+  },
+  {
+   "id": 341,
+   "word": "Xnmbd",
+   "codex": "XNMBD"
+  },
+  {
+   "id": 342,
+   "word": "kijcvtrpor",
+   "codex": "KJCRPR"
+  },
+  {
+   "id": 343,
+   "word": "rdttnfso",
+   "codex": "RDTNFS"
+  },
+  {
+   "id": 344,
+   "word": "spq",
+   "codex": "SPQ"
+  },
+  {
+   "id": 345,
+   "word": "khc",
+   "codex": "KHC"
+  },
+  {
+   "id": 346,
+   "word": "Axdplm",
+   "codex": "AXDPLM"
+  },
+  {
+   "id": 347,
+   "word": "Vrcnh",
+   "codex": "VRCNH"
+  },
+  {
+   "id": 348,
+   "word": "Glxd",
+   "codex": "GLXD"
+  },
+  {
+   "id": 349,
+   "word": "kzaeyq",
+   "codex": "KZYQ"
+  },
+  {
+   "id": 350,
+   "word": "Rgiadbwezpg",
+   "codex": "RGDZPG"
+  },
+  {
+   "id": 351,
+   "word": "Mqvb",
+   "codex": "MQVB"
+  },
+  {
+   "id": 352,
+   "word": "Nfgttt",
+   "codex": "NFGT"
+  },
+  {
+   "id": 353,
+   "word": "qappjvg",
+   "codex": "QPJVG"
+  },
+  {
+   "id": 354,
+   "word": "Awqjznn",
+   "codex": "AWQJZN"
+  },
+  {
+   "id": 355,
+   "word": "Liwcfi",
+   "codex": "LWCF"
+  },
+  {
+   "id": 356,
+   "word": "Ml",
+   "codex": "ML"
+  },
+  {
+   "id": 357,
+   "word": "Kgoi",
+   "codex": "KG"
+  },
+  {
+   "id": 358,
+   "word": "Axxo",
+   "codex": "AX"
+  },
+  {
+   "id": 359,
+   "word": "Vovoxbhlzui",
+   "codex": "VVXHLZ"
+  },
+  {
+   "id": 360,
+   "word": "Eazvm",
+   "codex": "EZVM"
+  },
+  {
+   "id": 361,
+   "word": "rxfm",
+   "codex": "RXFM"
+  },
+  {
+   "id": 362,
+   "word": "Rsuhx",
+   "codex": "RSHX"
+  },
+  {
+   "id": 363,
+   "word": "bjtgwgibmpz",
+   "codex": "BJTMPZ"
+  },
+  {
+   "id": 364,
+   "word": "by",
+   "codex": "BY"
+  },
+  {
+   "id": 365,
+   "word": "aophzwij",
+   "codex": "APHZWJ"
+  },
+  {
+   "id": 366,
+   "word": "havpobdjbe",
+   "codex": "HVPDJB"
+  },
+  {
+   "id": 367,
+   "word": "Rccjwbxvqj",
+   "codex": "RCJVQJ"
+  },
+  {
+   "id": 368,
+   "word": "Cj",
+   "codex": "CJ"
+  },
+  {
+   "id": 369,
+   "word": "ghhh",
+   "codex": "GH"
+  },
+  {
+   "id": 370,
+   "word": "Enkiahmryl",
+   "codex": "ENKRYL"
+  },
+  {
+   "id": 371,
+   "word": "Jtvx",
+   "codex": "JTVX"
+  },
+  {
+   "id": 372,
+   "word": "Cgmdngg",
+   "codex": "CGMDNG"
+  },
+  {
+   "id": 373,
+   "word": "kncz",
+   "codex": "KNCZ"
+  },
+  {
+   "id": 374,
+   "word": "Ciykhvututc",
+   "codex": "CYKTTC"
+  },
+  {
+   "id": 375,
+   "word": "ixdgc",
+   "codex": "IXDGC"
+  },
+  {
+   "id": 376,
+   "word": "hkxobvgtd",
+   "codex": "HKXGTD"
+  },
+  {
+   "id": 377,
+   "word": "Bclsmc",
+   "codex": "BCLSMC"
+  },
+  {
+   "id": 378,
+   "word": "ypcleb",
+   "codex": "YPCLB"
+  },
+  {
+   "id": 379,
+   "word": "Lwulfxyw",
+   "codex": "LWLXYW"
+  },
+  {
+   "id": 380,
+   "word": "Mebgbeu",
+   "codex": "MBGB"
+  },
+  {
+   "id": 381,
+   "word": "Oc",
+   "codex": "OC"
+  },
+  {
+   "id": 382,
+   "word": "mgscedfcd",
+   "codex": "MGSFCD"
+  },
+  {
+   "id": 383,
+   "word": "Vx",
+   "codex": "VX"
+  },
+  {
+   "id": 384,
+   "word": "Wibhlyw",
+   "codex": "WBHLYW"
+  },
+  {
+   "id": 385,
+   "word": "Omgjzbc",
+   "codex": "OMGZBC"
+  },
+  {
+   "id": 386,
+   "word": "hlrzadlzze",
+   "codex": "HLRDLZ"
+  },
+  {
+   "id": 387,
+   "word": "Jfthooxpn",
+   "codex": "JFTXPN"
+  },
+  {
+   "id": 388,
+   "word": "Nuss",
+   "codex": "NS"
+  },
+  {
+   "id": 389,
+   "word": "Wkbvxuqung",
+   "codex": "WKBQNG"
+  },
+  {
+   "id": 390,
+   "word": "sp",
+   "codex": "SP"
+  },
+  {
+   "id": 391,
+   "word": "Kbfbtgujb",
+   "codex": "KBFGJB"
+  },
+  {
+   "id": 392,
+   "word": "lqmims",
+   "codex": "LQMMS"
+  },
+  {
+   "id": 393,
+   "word": "Yeuafi",
+   "codex": "YF"
+  },
+  {
+   "id": 394,
+   "word": "Nlhdo",
+   "codex": "NLHD"
+  },
+  {
+   "id": 395,
+   "word": "oeosyvaoq",
+   "codex": "OSYVQ"
+  },
+  {
+   "id": 396,
+   "word": "Lo",
+   "codex": "L"
+  },
+  {
+   "id": 397,
+   "word": "Ehrx",
+   "codex": "EHRX"
+  },
+  {
+   "id": 398,
+   "word": "Dr",
+   "codex": "DR"
+  },
+  {
+   "id": 399,
+   "word": "Kentlaaidrw",
+   "codex": "KNTDRW"
+  },
+  {
+   "id": 400,
+   "word": "Ihlr",
+   "codex": "IHLR"
+  },
+  {
+   "id": 401,
+   "word": "Kd",
+   "codex": "KD"
+  },
+  {
+   "id": 402,
+   "word": "aayxoojfy",
+   "codex": "AYXJFY"
+  },
+  {
+   "id": 403,
+   "word": "Ict",
+   "codex": "ICT"
+  },
+  {
+   "id": 404,
+   "word": "fikboc",
+   "codex": "FKBC"
+  },
+  {
+   "id": 405,
+   "word": "Rwkveovuxqs",
+   "codex": "RWKXQS"
+  },
+  {
+   "id": 406,
+   "word": "pinxplz",
+   "codex": "PNXPLZ"
+  },
+  {
+   "id": 407,
+   "word": "Odxg",
+   "codex": "ODXG"
+  },
+  {
+   "id": 408,
+   "word": "ctsj",
+   "codex": "CTSJ"
+  },
+  {
+   "id": 409,
+   "word": "Fydpqmg",
+   "codex": "FYDQMG"
+  },
+  {
+   "id": 410,
+   "word": "kqjerp",
+   "codex": "KQJRP"
+  },
+  {
+   "id": 411,
+   "word": "kohouytivo",
+   "codex": "KHYTV"
+  },
+  {
+   "id": 412,
+   "word": "Yjedgiunku",
+   "codex": "YJDGNK"
+  },
+  {
+   "id": 413,
+   "word": "zzlmmqgmk",
+   "codex": "ZLMGMK"
+  },
+  {
+   "id": 414,
+   "word": "joximhg",
+   "codex": "JXMHG"
+  },
+  {
+   "id": 415,
+   "word": "zfvp",
+   "codex": "ZFVP"
+  },
+  {
+   "id": 416,
+   "word": "Kcbwt",
+   "codex": "KCBWT"
+  },
+  {
+   "id": 417,
+   "word": "Zjrxvgwnzd",
+   "codex": "ZJRNZD"
+  },
+  {
+   "id": 418,
+   "word": "Pfxhfg",
+   "codex": "PFXHFG"
+  },
+  {
+   "id": 419,
+   "word": "la",
+   "codex": "L"
+  }
+ ]
+}

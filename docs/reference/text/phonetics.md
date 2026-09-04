@@ -5,7 +5,10 @@ string comparison. A phonetic encoder reduces a word to a code that stands for h
 two spellings of one name become one key and meet in an index.
 
 `Lodestar.Text.Phonetics` holds three of them, one static class each, all with the same single
-method: a word in, a code out.
+method: a word in, a code out. A fourth, [`MatchRatingApproach`](phonetics/matchratingapproach.md),
+adds the one thing the other three cannot answer on their own: not just a code, but whether two
+codes count as a match — its `Compare` reads a minimum-rating table keyed by both codices'
+combined length, which is not something a caller can derive from either code alone.
 
 ## Which encoder?
 
@@ -62,20 +65,23 @@ is usually the one that matters.
 
 - **A code is a key, not a pronunciation.** Compare codes to each other; never show one, and never
   try to read a word back out of one.
-- **They are English heuristics.** None is Unicode-aware, and none has anything reliable to say
-  about a name that is not English in origin — which includes many of the names a real dataset
-  holds.
-- **Non-letters are ignored**, and the empty string encodes to the empty string.
+- **They are English heuristics.** None is Unicode-aware beyond case folding, and none has
+  anything reliable to say about a name that is not English in origin — which includes many of
+  the names a real dataset holds.
+- **Non-letters are ignored, except by `MatchRatingApproach`**, which refuses one instead — see
+  [its own page](phonetics/matchratingapproach.md) for why. The empty string always encodes to
+  the empty string.
 - **A `null` word is refused**, the same rule the [stemmers next door](stemming.md) apply —
   [decision 0042](../../decisions/0042-phonetic-encoders-refuse-a-null-word.md).
   [`Soundex.Encode`](phonetics/soundex-encode.md) shows it.
-- **Each is a static class with no state**, so all three are safe to call from any number of
+- **Each is a static class with no state**, so all four are safe to call from any number of
   threads at once.
 
 ## Types
 
 | Type | What it is |
 | --- | --- |
+| [`MatchRatingApproach`](phonetics/matchratingapproach.md) | A codex, and the rule for deciding whether two of them match. |
 | [`Metaphone`](phonetics/metaphone.md) | English spelling modelled as sound; silent letters dropped. |
 | [`Nysiis`](phonetics/nysiis.md) | The finest of the three, built for names. |
 | [`Soundex`](phonetics/soundex.md) | The 1918 classic: one letter, three digits, and it merges a lot. |
