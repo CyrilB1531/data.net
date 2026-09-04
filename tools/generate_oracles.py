@@ -7312,6 +7312,20 @@ KEYWORDS_TEXTRANK_DOCUMENTS = [
 ]
 
 
+# Within a run of adjacent scores tied at 1e-9, summa's order is BLAS-noise, not the
+# algorithm; TextRankOracleTests.AssertRankingMatches enforces this exact ordinal sort back.
+def _canonicalize_tied_runs(published):
+    result = list(published)
+    start = 0
+    for i in range(len(result)):
+        tied_with_next = i + 1 < len(result) and abs(result[i][1] - result[i + 1][1]) <= 1e-9
+        if tied_with_next:
+            continue
+        result[start:i + 1] = sorted(result[start:i + 1], key=lambda pair: pair[0])
+        start = i + 1
+    return result
+
+
 def generate_keywords_textrank() -> dict:
     """TextRank replayed against summa 1.2.0, with a deterministic pagerank (#525).
 
@@ -7390,7 +7404,7 @@ def generate_keywords_textrank() -> dict:
         for name, text, words in KEYWORDS_TEXTRANK_DOCUMENTS:
             if text.strip():
                 sk._pagerank = make_deterministic_pagerank(name)
-                published = sk.keywords(text, words=words, scores=True)
+                published = _canonicalize_tied_runs(sk.keywords(text, words=words, scores=True))
             else:
                 published = []
 
