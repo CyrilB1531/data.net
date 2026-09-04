@@ -316,6 +316,12 @@ internal static class Lot3Embeddings
             Console.WriteLine($"    #{hit.Index} {index.GetId(hit.Index)} score={Inv.F4(hit.Score)}");
         }
 
+        // Diversity over the same three vectors: east-north-east is nearly redundant
+        // with east, so it loses out to the orthogonal north.
+        float[][] indexedVectors = [[1f, 0f, 0f], [0f, 1f, 0f], [0.9f, 0.1f, 0f]];
+        int[] spread = Mmr.Select([1f, 0f, 0f], indexedVectors, count: 2, lambda: 0.5);
+        Console.WriteLine($"  MMR, 2 of {indexedVectors.Length}      : [{string.Join(", ", spread)}]");
+
         // The bulk ingest, which is what a caller holding a whole corpus reaches for. Both
         // factories appear because the packaging gate is a reference from outside the assembly.
         float[] corpus = [1f, 0f, 0f, 0f, 1f, 0f];

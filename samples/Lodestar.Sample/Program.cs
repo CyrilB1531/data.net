@@ -38,6 +38,7 @@ Lot3Embeddings.Run();
 Lot4Fuzzy.Run();
 Lot5Metrics.Run();
 Lot6Regression.Run();
+Lot7Keywords.Run();
 SplitConformalSample.Run();
 DecompositionSamples.Run();
 BkTreeSample.Run();
