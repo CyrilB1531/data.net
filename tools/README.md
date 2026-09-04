@@ -90,10 +90,14 @@ with `compare_oracles.py` below rather than with `git diff`
 ([decision 0073](../docs/decisions/0073-the-oracle-gate-compares-numbers-not-bytes.md)).
 Committing the regenerated JSON is part of the change.
 
-`mmr.json` needs one more package than the lock installs: `tools/requirements-nodeps.txt` pins
-keybert, hash-only, installed with `pip install --no-deps --require-hashes` so its own
-dependencies (sentence-transformers, and through it torch) never enter `requirements.lock.txt` —
-`generate_mmr` calls only `keybert._mmr.mmr`, which imports nothing but numpy and scikit-learn.
+Two generators need a package the lock doesn't install, each pinned in
+`tools/requirements-nodeps.txt` instead, for a different reason: `mmr.json` needs keybert, whose
+own dependencies (sentence-transformers, and through it torch) never enter `requirements.lock.txt`
+because `generate_mmr` calls only `keybert._mmr.mmr`, which imports nothing but numpy and
+scikit-learn — installed with `pip install --no-deps --require-hashes` so those dependencies are
+never resolved at all. `keywords_textrank.json` needs summa, which publishes no wheel and so fails
+the `--only-binary :all:` every install site otherwise passes; installing this file adds
+`--no-binary summa` to let its sdist build, hash-checked like everything else here.
 [`../CONTRIBUTING.md`](../CONTRIBUTING.md#dependencies) has the full reasoning.
 
 ## `compare_oracles.py`
