@@ -25,15 +25,22 @@ byte-for-byte parity with a specific `rake-nltk` run supplies that run's own lis
 `generate_keywords_rake`), which is what makes the frozen corpus a parity claim at all rather than a
 comparison between two different stop-word lists wearing the same name.
 
-**2. TextRank's parity is numerical, at `1e-12`, not exact.** summa solves its co-occurrence
-graph's eigenproblem outright, through `scipy.linalg.eig`; the internal graph
+**2. TextRank's parity is numerical, not exact, and is checked at the same `1e-9` every oracle
+corpus in this repository is.** summa solves its co-occurrence graph's eigenproblem outright,
+through `scipy.linalg.eig`; the internal graph
 [`TextRank.Extract`](../reference/text/keywords/textrank-extract.md) builds reaches the same ranking
 by power iteration, because a from-scratch general eigensolver is a large, easy-to-get-subtly-wrong
 undertaking for one call site, and the algorithm's own literature already describes it as an
-iterative method. The two solvers agree to `1e-12` on the frozen corpus — tighter than the `1e-9`
-this repository otherwise commits to for floating-point parity, because a looser bound let a
+iterative method. `TextRankOracleTests` asserts `1e-9`, not tighter — a looser bound would have let a
 genuine dominance divergence (below) hide inside the tolerance during development, rounding a
-wrong eigenvector's coordinates to look like the right one's.
+wrong eigenvector's coordinates to look like the right one's. Replaying `WordGraph.Rank`'s loop by
+hand against the frozen corpus measures the actual agreement well past that: under `4.48e-13` on
+the loosest case (`two_sentences`, phrase `numbers`) — descriptively true of this build, but a
+measurement, not a gate. `TextRankOptions.Tolerance`'s `1e-12` default is a different quantity again:
+it is the power iteration's own convergence delta, the change between successive iterates that stops
+the loop, not the distance from the fixed point summa's direct solve reaches — at `Damping = 0.85`
+the latter runs about `6.7`× the former, so reading `Tolerance` as the parity figure conflates the
+two.
 
 **3. TextRank's internal graph ranks by the dominant left eigenvector; summa does not check that
 its own does.**
@@ -45,17 +52,24 @@ al. — the RAKE paper's own worked example, already the source of `Rake`'s doc-
 reads column 0 at eigenvalue **−0.85** against a dominant **1.0**, and
 `"Matrix matrix theory over natural numbers and linear systems"` reads **−0.6024** against a
 dominant **0.9663**. A port that copied `eig`'s first column would have reproduced both failures
-exactly, keyword for keyword, rather than TextRank's actual ranking. Both documents were **refused
-freezing** rather than adjusted to pass — `tools/generate_oracles.py`'s `generate_keywords_textrank`
-recomputes each candidate document's ranking by power iteration and raises `SystemExit` rather than
-write a case where the two disagree, so a document that fails the screen cannot reach the committed
-corpus by any path. The three documents that did clear it (`two_sentences`, `natural_language`,
-`domestic_cat`; 7, 22 and 16 graph nodes) agree with the power iteration to `1e-12`. Power
-iteration always converges to the dominant eigenvector by construction, so the corpus is a parity
-claim over documents where the two algorithms provably agree rather than one that
+exactly, keyword for keyword, rather than TextRank's actual ranking. Both documents were **removed
+from the candidate list by hand** once the check found them, not filtered out automatically by
+anything running at generation time — `generate_keywords_textrank`'s guard, added afterwards,
+recomputes each candidate document's ranking by power iteration and, if a *published, single-word*
+score disagrees with it by more than `1e-9`, raises `SystemExit`, halting the whole run rather than
+skipping the offending document and continuing. So it is not a filter over "every document": it is
+the net that would catch a *future* document shaped like these two, and it never fires on the
+committed corpus because the two that would have tripped it are no longer in the candidate list. The
+three documents that are (`two_sentences`, `natural_language`, `domestic_cat`; 7, 22 and 16 graph
+nodes) agree with the power iteration under `4.48e-13`, well inside the `1e-9` the guard actually
+checks. Power iteration always converges to the dominant eigenvector by construction, so the corpus
+is a parity claim over documents where the two algorithms provably agree rather than one that
 happened never to exercise the disagreement — and
 [`TextRank`](../reference/text/keywords/textrank.md)'s own Remarks say so for a reader who never
-opens this file.
+opens this file. The guard itself only walks `sk.keywords`'s **published, single-word** entries —
+it skips every glued multi-word phrase — so what it proves is agreement on the top-N that was
+actually returned, not that the same top-N would come out of the true dominant vector for a document
+whose published set happens to differ.
 
 **4. `words` past the graph's size returns what there is; summa raises.** `summa.keywords.keywords`
 computes `int(len(nodes) * ratio)` or takes `words` directly, then indexes the sorted node list with
@@ -76,8 +90,9 @@ disagree with the formula computing it. `keybert` also rounds every similarity t
 places before comparing, which changes which of two near-tied candidates wins on the fifth digit —
 not reproduced, since a documented rounding step is a numerical-stability choice specific to one
 implementation, not a property of the algorithm to match bit for bit. Both are why the oracle
-corpus compares scores loosely rather than at the `1e-9`/`1e-12` this repository otherwise holds
-floating point to.
+corpus carries no scores at all: `tests/oracles/mmr.json`'s cases store `id`, `name`, `query`,
+`candidates`, `count`, `lambda` and `selected`, and `MmrOracleTests.Matches_keybert` compares only
+the selected index set — there is no score column to hold to a tolerance, loose or otherwise.
 
 The ordering divergence is a different kind, and costs more to work around than to document:
 `keybert` returns its final picks **sorted by relevance to the query**, discarding the order MMR
@@ -108,5 +123,7 @@ time here would be the same fact under two names.
 rake-nltk 1.0.6, summa 1.2.0 and keybert 0.9.0 respectively, generated by
 `tools/generate_oracles.py` and compared in `RakeOracleTests`, `TextRankOracleTests` and
 `MmrOracleTests`. The dominance screen for divergence 3 lives in `generate_keywords_textrank`
-itself, not in a comment: a document summa would rank wrongly on is never offered to the corpus,
-rather than offered and excused.
+itself, not in a comment, and raises rather than silently drops a bad case — but it walks only the
+published, single-word entries, so it is the net that would catch a *future* candidate document
+shaped like the two this session excluded by hand, not a proof that covers every entry summa could
+publish.

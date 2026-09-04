@@ -35,8 +35,11 @@ bool overridden = byRatio.Count != byCount.Count;  // => True
 
 **Remarks** — `Tolerance` and `MaxIterations` have no counterpart in summa, which calls
 `scipy.linalg.eig` rather than iterating: this implementation's own power iteration is what makes
-`Tolerance` and `MaxIterations` parameters at all, and their defaults are tight enough that the
-frozen oracle corpus agrees with summa's closed-form ranking to `1e-12`.
+`Tolerance` and `MaxIterations` parameters at all, and their defaults are tight enough that
+`TextRankOracleTests` passes at the `1e-9` this repository checks every oracle corpus against —
+replaying the loop by hand against the frozen corpus measures the agreement itself well past that,
+under `4.48e-13` on the loosest case. `Tolerance`'s own `1e-12` is the loop's convergence delta, not
+that distance — the two are different quantities.
 
 **Applies to** — net10.0, netstandard2.0.
 

@@ -121,7 +121,12 @@ public sealed class Rake
 `TokenPattern` is `\b\w+\b` and not the vectorizers' `\b\w\w+\b`: a one-letter word is a phrase
 boundary's neighbour, not a stop word, and dropping it silently would merge two candidates that the
 paper keeps apart. **The generator injects this same pattern into `rake-nltk`'s `word_tokenizer`**,
-so the two sides tokenize identically by construction rather than by coincidence.
+so word-level tokenization matches by construction rather than by coincidence — narrower than the
+whole pipeline: `PhraseTokenizer.Split`'s phrase-boundary rule (any non-whitespace gap ends a run) is
+a separate mechanism from rake-nltk's own `sentence_tokenizer`/`punctuations`, and the generator
+configures those to agree with it only on this corpus's five documents, which use nothing but `.`,
+`,` and `;`. `docs/equivalence.md` records where the two boundary rules diverge outside that
+intersection.
 
 All three metrics ship. They are one `switch` over the same degree and frequency tables, the paper
 defines all three, and `rake-nltk` exposes all three — offering one and calling it parity would be
@@ -261,7 +266,7 @@ declaring `library`, `library_version` and `reference_calls` like every other.
 | corpus | oracle | compared |
 | --- | --- | --- |
 | `keywords_rake.json` | `rake-nltk` 1.0.6 | phrases **exactly**, scores at `1e-9` |
-| `keywords_textrank.json` | `summa` 1.2.0 | phrases **exactly**, scores at `1e-12` |
+| `keywords_textrank.json` | `summa` 1.2.0 | phrases **exactly**, scores at `1e-9` (measured agreement is tighter, under `4.48e-13`) |
 | `mmr.json` | `keybert` 0.9.0, `keybert._mmr.mmr` | selected **set** exactly |
 
 All three are **MIT**, which [ADR 0003](../../decisions/0003-provenance-and-licensing.md) requires
@@ -287,8 +292,8 @@ importing and running it in the oracle environment.
 ### Divergences, for the ADR
 
 1. **TextRank scores agree numerically, not exactly.** Power iteration against `scipy.linalg.eig`,
-   compared at `1e-12` — measured agreement is 2e-15. The ranking is exact; the last digits are not
-   guaranteed to be.
+   compared at the repository's usual `1e-9` — measured agreement is tighter, under `4.48e-13` on
+   the loosest corpus case. The ranking is exact; the last digits are not guaranteed to be.
 2. **`keybert` parameterises `diversity = 1 − λ`.** `Mmr.Select` takes `lambda`, per the paper.
 3. **`keybert` rounds its returned scores to four decimals**, and **sorts its result by similarity
    to the document rather than by selection order** — measured at `lambda = 0`, where it returns

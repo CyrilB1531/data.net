@@ -31,9 +31,12 @@ int count = hits.Count;        // => 1
 string phrase = hits[0].Phrase;  // => linear constraints
 ```
 
-**Remarks** — every default here is the paper's and rake-nltk's own, except that rake-nltk
-downloads its stop-word list from the `nltk` corpus at run time and this does not; a caller who
-wants exact parity supplies rake-nltk's list through `StopWords`
+**Remarks** — every default here is the paper's, with two exceptions: rake-nltk downloads its
+stop-word list from the `nltk` corpus at run time and this does not, and `TokenPattern`'s `\b\w+\b`
+is not rake-nltk's own default tokenizer either — it is what the oracle generator injects into
+rake-nltk's `word_tokenizer` so the two sides can be compared at all. A caller who wants exact
+parity with a specific rake-nltk run supplies that run's own list and tokenizer through `StopWords`
+and `TokenPattern`
 ([decision 0077](../../../decisions/0077-the-keyword-extractors-take-their-oracles-lists-and-not-their-own.md)).
 
 `Rake`'s constructor validates two of these fields eagerly: a `MinLength` below `1` or a
