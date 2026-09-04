@@ -23,6 +23,12 @@ is one sentence, the issue and the commit; see
 
 ### Lodestar.Text
 
+#### Fixed
+
+- **The TextRank oracle no longer freezes a tie order that floating-point noise decides.** Two adjacent entries of `tests/oracles/keywords_textrank.json` sat one or two units in the last place apart, so the reference's descending sort ordered them by noise and a runner's BLAS broke the near-tie the other way — failing *Oracles are reproducible* on pull requests that touch nothing near it. The generator now sorts each run of scores tied within `1e-9` by phrase, which is the model `TextRankOracleTests` already applies on replay, so corpus and test agree by construction rather than by the test quietly absorbing one machine's order. No score moved. ([#541](https://github.com/CyrilB1531/lodestar/issues/541), [decision 0079](docs/decisions/0079-tied-textrank-scores-canonicalize-by-phrase-not-blas.md))
+
+### Lodestar.Text
+
 #### Added
 
 - **`Lodestar.Text.Phonetics` adds `MatchRatingApproach`, the Match Rating Approach (Western Airlines, 1977).** `Codex` reduces a name to its Match Rating code, and `Compare` decides whether two names' codes rate as a match — a `bool?`, `null` when the codes are too far apart in length to rate at all, rather than the codex either could give a caller on its own: the minimum rating a comparison must clear is read from a table keyed by their **combined** length. Written from the published algorithm description rather than a reference implementation (ADR 0003), and unlike `Soundex`, `Metaphone` and `Nysiis` next door, a character that is neither a Unicode letter nor a space is refused (`ArgumentException`) rather than ignored. Replays `jellyfish` 1.2.1's `match_rating_codex` (420 words) and `match_rating_comparison` (212 pairs); [decision 0080](docs/decisions/0080-match-rating-approach-comparison-uses-character-length-not-byte-length.md) records the one divergence found and not reproduced — jellyfish measures a codex's length in UTF-8 bytes rather than characters for a handful of non-Latin inputs. ([#313](https://github.com/CyrilB1531/lodestar/issues/313))
