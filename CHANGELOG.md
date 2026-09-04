@@ -23,6 +23,12 @@ is one sentence, the issue and the commit; see
 
 ### Lodestar.Text
 
+#### Fixed
+
+- **The TextRank oracle no longer freezes a tie order that floating-point noise decides.** Two adjacent entries of `tests/oracles/keywords_textrank.json` sat one or two units in the last place apart, so the reference's descending sort ordered them by noise and a runner's BLAS broke the near-tie the other way — failing *Oracles are reproducible* on pull requests that touch nothing near it. The generator now sorts each run of scores tied within `1e-9` by phrase, which is the model `TextRankOracleTests` already applies on replay, so corpus and test agree by construction rather than by the test quietly absorbing one machine's order. No score moved. ([#541](https://github.com/CyrilB1531/lodestar/issues/541), [decision 0079](docs/decisions/0079-tied-textrank-scores-canonicalize-by-phrase-not-blas.md))
+
+### Lodestar.Text
+
 #### Added
 
 - **`BkTree`** is a metric index over the integer distances, worth building only at a radius of 1 — [`docs/guides/dictionary-lookup.md`](docs/guides/dictionary-lookup.md) has the measurement. ([#526](https://github.com/CyrilB1531/lodestar/issues/526))

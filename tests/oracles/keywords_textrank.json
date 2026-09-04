@@ -387,11 +387,11 @@
    "words": 6,
    "expected": [
     {
-     "phrase": "learning",
+     "phrase": "learn",
      "score": 0.3205555536480347
     },
     {
-     "phrase": "learn",
+     "phrase": "learning",
      "score": 0.3205555536480347
     },
     {
@@ -427,24 +427,24 @@
      "score": 0.460978541918453
     },
     {
-     "phrase": "trilling",
-     "score": 0.30667952446970936
-    },
-    {
      "phrase": "purring",
      "score": 0.30667952446970914
+    },
+    {
+     "phrase": "trilling",
+     "score": 0.30667952446970936
     },
     {
      "phrase": "conveys",
      "score": 0.2709420599798315
     },
     {
-     "phrase": "rodents",
-     "score": 0.266836099503712
-    },
-    {
      "phrase": "carnivorous",
      "score": 0.26683609950371184
+    },
+    {
+     "phrase": "rodents",
+     "score": 0.266836099503712
     }
    ]
   },
