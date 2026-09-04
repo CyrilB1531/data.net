@@ -43,33 +43,53 @@ the latter runs about `6.7`× the former, so reading `Tolerance` as the parity f
 two.
 
 **3. TextRank's internal graph ranks by the dominant left eigenvector; summa does not check that
-its own does.**
+its own does — and which column summa reads is not reproducible.**
 `scipy.linalg.eig`'s `pagerank_weighted_scipy` path returns eigenvalues and eigenvectors in no
 particular order, and `summa` reads column 0 unconditionally (`vecs[:, 0]`), trusting it to be the
 dominant one — true for a strongly connected graph, and not guaranteed for one that is not. Two
-documents drafted for the oracle corpus measure the failure directly: the abstract from Rose et
+documents drafted for the oracle corpus measured that failure directly: the abstract from Rose et
 al. — the RAKE paper's own worked example, already the source of `Rake`'s doc-page examples —
 reads column 0 at eigenvalue **−0.85** against a dominant **1.0**, and
 `"Matrix matrix theory over natural numbers and linear systems"` reads **−0.6024** against a
 dominant **0.9663**. A port that copied `eig`'s first column would have reproduced both failures
 exactly, keyword for keyword, rather than TextRank's actual ranking. Both documents were **removed
-from the candidate list by hand** once the check found them, not filtered out automatically by
-anything running at generation time — `generate_keywords_textrank`'s guard, added afterwards,
-recomputes each candidate document's ranking by power iteration and, if a *published, single-word*
-score disagrees with it by more than `1e-9`, raises `SystemExit`, halting the whole run rather than
-skipping the offending document and continuing. So it is not a filter over "every document": it is
-the net that would catch a *future* document shaped like these two, and it never fires on the
-committed corpus because the two that would have tripped it are no longer in the candidate list. The
-three documents that are (`two_sentences`, `natural_language`, `domestic_cat`; 7, 22 and 16 graph
-nodes) agree with the power iteration under `4.48e-13`, well inside the `1e-9` the guard actually
-checks. Power iteration always converges to the dominant eigenvector by construction, so the corpus
-is a parity claim over documents where the two algorithms provably agree rather than one that
-happened never to exercise the disagreement — and
-[`TextRank`](../reference/text/keywords/textrank.md)'s own Remarks say so for a reader who never
-opens this file. The guard itself only walks `sk.keywords`'s **published, single-word** entries —
-it skips every glued multi-word phrase — so what it proves is agreement on the top-N that was
-actually returned, not that the same top-N would come out of the true dominant vector for a document
-whose published set happens to differ.
+from the candidate list by hand** once the check found them; neither is in
+`KEYWORDS_TEXTRANK_DOCUMENTS`.
+
+That removal alone turned out not to be enough. The three documents that remained still measure
+eigenvalue **0.85 with multiplicity 3** — `two_sentences` at `|vals| = 1, 0.85, 0.85, 0.85, 0.425`,
+`domestic_cat` at `1, 0.85, 0.85, 0.85, 0.774` — and a repeated eigenvalue means the eigenvector
+basis is not unique: LAPACK is free to return the degenerate columns in whatever order its BLAS
+build produces. `generate_keywords_textrank` used to trust `summa.keywords.keywords`'s raw published
+score and only *screen* it, by recomputing the stationary distribution through power iteration and
+raising `SystemExit` when the two disagreed by more than `1e-9`. That screen only ever proved the
+column the *generating machine's* LAPACK happened to load was dominant on that machine — it never
+made the generator pick the same column a different machine's BLAS would. Measured directly: the
+GitHub Actions runner and a developer machine disagreed about which of the three degenerate columns
+loads first for `two_sentences`, so the *Oracles are reproducible* job — which regenerates the
+corpus on the runner and diffs it against the one regenerated locally, [decision
+0073](0073-the-oracle-gate-compares-numbers-not-bytes.md) — failed with `summa`'s published score
+for `'diophantine'` not matching the frozen one, both sides having passed the very screen meant to
+catch exactly this.
+
+So the generator no longer lets `summa` pick a column at all. For the span of each
+`summa.keywords.keywords` call, `generate_keywords_textrank` replaces
+`summa.keywords._pagerank` — the name `summa.keywords` imports `pagerank_weighted_scipy` under,
+so that is the alias that has to be patched, not `summa.pagerank_weighted` itself — with a version
+that builds summa's own matrix bit for bit (`damping * build_adjacency_matrix(graph).todense() +
+(1 - damping) * build_probability_matrix(graph)`, and `1 - 0.85` is `0.15000000000000002`, not
+`0.15`, which changes the matrix LAPACK diagonalises), then selects the left eigenvector belonging
+to the eigenvalue of the largest modulus **by index**, not by column position. Before returning it,
+the replacement asserts the two things it promises — that the selected eigenvalue is actually the
+largest in modulus, and that the selected vector satisfies `vᵀM ≈ λvᵀ` to a tight tolerance —
+raising `SystemExit` naming the document if either fails, which is the guard's successor: the old
+screen is meaningless once the pick is forced rather than trusted, so it was replaced rather than
+kept alongside a mechanism it no longer needs to catch. The original `_pagerank` is restored once
+every document is done, so no other generator step is affected. This is forced by reproducibility,
+not chosen for its own sake: with column 0 dominant on the machine that originally froze the corpus,
+`summa`'s live output already equalled the committed numbers exactly for all five documents, so the
+fix buys a generation that agrees with itself across machines, not new values — confirmed by
+regenerating twice and diffing both runs with `tools/compare_oracles.py`.
 
 **4. `words` past the graph's size returns what there is; summa raises.** `summa.keywords.keywords`
 computes `int(len(nodes) * ratio)` or takes `words` directly, then indexes the sorted node list with
@@ -122,8 +142,8 @@ time here would be the same fact under two names.
 `tests/oracles/keywords_rake.json`, `keywords_textrank.json` and `mmr.json` are frozen replays of
 rake-nltk 1.0.6, summa 1.2.0 and keybert 0.9.0 respectively, generated by
 `tools/generate_oracles.py` and compared in `RakeOracleTests`, `TextRankOracleTests` and
-`MmrOracleTests`. The dominance screen for divergence 3 lives in `generate_keywords_textrank`
-itself, not in a comment, and raises rather than silently drops a bad case — but it walks only the
-published, single-word entries, so it is the net that would catch a *future* candidate document
-shaped like the two this session excluded by hand, not a proof that covers every entry summa could
-publish.
+`MmrOracleTests`. Divergence 3's deterministic eigenvector pick lives in
+`generate_keywords_textrank` itself, not in a comment, patching `summa.keywords._pagerank` for the
+span of each `summa.keywords.keywords` call and restoring it afterwards; its own dominance and
+left-eigenvector assertions raise `SystemExit` naming the document rather than silently freezing a
+column that fails either check.

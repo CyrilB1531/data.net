@@ -7313,80 +7313,96 @@ KEYWORDS_TEXTRANK_DOCUMENTS = [
 
 
 def generate_keywords_textrank() -> dict:
-    """TextRank replayed against summa 1.2.0, with a dominance guard (#525).
+    """TextRank replayed against summa 1.2.0, with a deterministic pagerank (#525).
 
-    summa's ``pagerank_weighted_scipy`` takes ``vecs[i][0]`` — LAPACK's first
-    column — with no check that it belongs to the largest eigenvalue. For a
-    near-bipartite co-occurrence graph it is not. Each candidate document is
-    screened by recomputing the stationary distribution through power
-    iteration and refusing to freeze a case where the two disagree.
+    summa's own ``pagerank_weighted_scipy`` takes ``vecs[i][0]`` -- ``scipy.linalg.eig``'s
+    first left-eigenvector column -- with no check that it belongs to the largest
+    eigenvalue. When the transition matrix has a repeated eigenvalue the eigenvector
+    basis is not unique and LAPACK's column order is BLAS-build-dependent: measured,
+    'two_sentences' has |eigenvalue| 0.85 with multiplicity 3 (and 'domestic_cat'
+    likewise), and a GitHub Actions runner and this machine disagree about which
+    column comes first. summa's raw published score for such a document is therefore
+    not reproducible across machines.
+
+    So the generator does not trust summa's own eigenvector pick. It replaces
+    ``summa.keywords._pagerank`` (that module imports ``pagerank_weighted_scipy``
+    under that alias, so it -- not ``summa.pagerank_weighted`` -- is what must be
+    patched) with a deterministic version, for the span of one ``summa.keywords.keywords``
+    call, that:
+
+    - builds summa's own matrix bit for bit, including ``1 - 0.85 ==
+      0.15000000000000002``, not ``0.15``;
+    - selects the left eigenvector belonging to the eigenvalue of the largest
+      modulus, by index rather than by column position;
+    - asserts that eigenvalue is actually dominant and that the vector it picked
+      satisfies ``v^T M ~= lambda v^T`` to a tight tolerance, raising ``SystemExit``
+      naming the document otherwise;
+    - returns ``{node: abs(component)}`` over the unit-normalised vector, matching
+      the scale ``process_results`` assumes.
+
+    Every other summa step -- tokenization, graph construction, extraction, phrase
+    combination -- runs unchanged, and the original ``_pagerank`` is restored once
+    all documents are done so no other generator is affected.
     """
+    from scipy.linalg import eig  # noqa: PLC0415
     from summa import keywords as sk  # noqa: PLC0415
-    from summa.commons import build_graph, remove_unreachable_nodes  # noqa: PLC0415
+    from summa.pagerank_weighted import build_adjacency_matrix, build_probability_matrix  # noqa: PLC0415
     from summa.preprocessing.stopwords import get_stopwords_by_language  # noqa: PLC0415
 
     # get_stopwords_by_language returns one blob string; summa itself reads it with
     # .split() (textcleaner.py:51) -- sorted() of the raw string sorts characters instead.
     stop_words = sorted(get_stopwords_by_language("english").split())
 
-    def stationary(text: str) -> dict:
-        """The dominant left eigenvector, by power iteration, in summa's own node order."""
-        tokens = sk._clean_text_by_word(text, "english", deacc=False, additional_stopwords=None)
-        graph = build_graph(sk._get_words_for_graph(tokens))
-        sk._set_graph_edges(graph, tokens, list(sk._tokenize_by_word(text)))
-        remove_unreachable_nodes(graph)
+    def make_deterministic_pagerank(name: str):
+        def deterministic_pagerank(graph, damping=0.85):
+            # Written exactly as pagerank_weighted_scipy writes it: `1 - 0.85` is
+            # 0.15000000000000002, not 0.15, and that changes the matrix LAPACK diagonalises.
+            adjacency_matrix = build_adjacency_matrix(graph)
+            probability_matrix = build_probability_matrix(graph)
+            matrix = damping * adjacency_matrix.todense() + (1 - damping) * probability_matrix
 
-        nodes = graph.nodes()
-        n = len(nodes)
-        if n == 0:
-            return {}
+            vals, vecs = eig(matrix, left=True, right=False)
+            idx = int(np.argmax(np.abs(vals)))
+            dominant = vals[idx]
 
-        adjacency = np.zeros((n, n))
-        for i, u in enumerate(nodes):
-            total = sum(graph.edge_weight((u, v)) for v in graph.neighbors(u))
-            for j, v in enumerate(nodes):
-                weight = float(graph.edge_weight((u, v)))
-                if i != j and weight != 0:
-                    adjacency[i, j] = weight / total
-
-        # Written exactly as summa writes it. `1 - 0.85` is 0.15000000000000002, not
-        # 0.15, and that last bit changes the order LAPACK returns eigenvectors in.
-        matrix = 0.85 * adjacency + (1 - 0.85) * (1.0 / n)
-        x = np.ones(n) / np.sqrt(n)
-        for _ in range(100_000):
-            y = x @ matrix
-            y /= np.linalg.norm(y)
-            if np.abs(y - x).max() < 1e-15:
-                x = y
-                break
-            x = y
-        return dict(zip(nodes, np.abs(x)))
-
-    cases = []
-    for name, text, words in KEYWORDS_TEXTRANK_DOCUMENTS:
-        published = sk.keywords(text, words=words, scores=True) if text.strip() else []
-        reference = stationary(text)
-
-        # summa takes eig's first column, dominant only by LAPACK's ordering: a corpus
-        # frozen from a non-dominant eigenvector would fail the C# for being right.
-        for phrase, score in published:
-            if " " in phrase:
-                continue
-            stem = sk._clean_text_by_word(phrase, "english", deacc=False, additional_stopwords=None)
-            lemma = next(iter(stem.values())).token
-            if abs(reference.get(lemma, float("nan")) - float(score)) > 1e-9:
+            if np.any(np.abs(vals) > np.abs(dominant) + 1e-12):
                 raise SystemExit(
-                    f"keywords_textrank '{name}': summa's score for {phrase!r} ({score}) is not the "
-                    f"dominant eigenvector's ({reference.get(lemma)}). Refusing to freeze it."
+                    f"keywords_textrank {name!r}: eigenvalue at index {idx} ({dominant}) "
+                    f"picked by argmax is not the largest modulus among {vals!r}."
                 )
 
-        cases.append({
-            "id": len(cases),
-            "name": name,
-            "text": text,
-            "words": words,
-            "expected": [{"phrase": phrase, "score": float(score)} for phrase, score in published],
-        })
+            vector = np.asarray(vecs[:, idx]).ravel()
+            vector = vector / np.linalg.norm(vector)
+            residual = np.abs(vector @ matrix - dominant * vector).max()
+            if residual > 1e-9:
+                raise SystemExit(
+                    f"keywords_textrank {name!r}: selected vector does not satisfy "
+                    f"v^T M = lambda v^T (max residual {residual})."
+                )
+
+            return dict(zip(graph.nodes(), np.abs(vector)))
+
+        return deterministic_pagerank
+
+    cases = []
+    original_pagerank = sk._pagerank
+    try:
+        for name, text, words in KEYWORDS_TEXTRANK_DOCUMENTS:
+            if text.strip():
+                sk._pagerank = make_deterministic_pagerank(name)
+                published = sk.keywords(text, words=words, scores=True)
+            else:
+                published = []
+
+            cases.append({
+                "id": len(cases),
+                "name": name,
+                "text": text,
+                "words": words,
+                "expected": [{"phrase": phrase, "score": float(score)} for phrase, score in published],
+            })
+    finally:
+        sk._pagerank = original_pagerank
 
     return {
         "metadata": {

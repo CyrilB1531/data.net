@@ -42,8 +42,11 @@ equality check.
 column is not the dominant one — measured on the Rose abstract, where it belongs to λ = −0.85
 against a dominant 1.0. `TextRank.Extract` always returns the dominant ranking; two documents
 drafted for the frozen oracle corpus disagreed with it for this reason and were removed by hand
-before the corpus was written, and the generator now carries a guard that raises rather than freeze
-a future document shaped the same way
+before the corpus was written. Even among the documents that remain, a repeated eigenvalue —
+measured, `two_sentences` carries 0.85 at multiplicity 3 — makes which column `eig` returns first a
+property of the machine's BLAS build, not of the document, so the oracle generator no longer reads
+summa's raw column: it selects the dominant left eigenvector itself, by eigenvalue rather than by
+column position, before calling summa at all — forced by reproducibility, not chosen
 ([decision 0077](../../../decisions/0077-the-keyword-extractors-take-their-oracles-lists-and-not-their-own.md)).
 
 For a run-based alternative that scores candidates without building a graph, see [`Rake`](rake.md).

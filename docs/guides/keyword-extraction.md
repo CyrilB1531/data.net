@@ -63,8 +63,12 @@ column without checking it is the dominant one, and for a near-bipartite co-occu
 often is not — measured on a real abstract, where that column belongs to an eigenvalue of −0.85
 against a dominant 1.0. [`TextRank.Extract`](../reference/text/keywords/textrank-extract.md) always
 ranks by the dominant eigenvector; two documents drafted for the frozen oracle corpus disagreed with
-it for exactly this reason and were removed by hand before the corpus was written, and the
-generator now carries a guard that raises rather than freeze a future document shaped the same way.
+it for exactly this reason and were removed by hand before the corpus was written. What is left is
+worse than a wrong pick: when the graph's transition matrix has a repeated eigenvalue — measured,
+`two_sentences` carries 0.85 at multiplicity 3 — which column `eig` returns first is not even the
+same from one machine's BLAS build to another's, so summa's own output is not reproducible. The
+oracle generator no longer trusts it: it selects the dominant left eigenvector itself, by eigenvalue
+rather than by column position, before calling summa at all — forced by reproducibility, not chosen.
 [Decision 0077](../decisions/0077-the-keyword-extractors-take-their-oracles-lists-and-not-their-own.md)
 has the measurement and [`TextRank`](../reference/text/keywords/textrank.md)'s own Remarks have the
 rest of the divergence.
