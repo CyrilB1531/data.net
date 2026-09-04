@@ -23,6 +23,12 @@ is one sentence, the issue and the commit; see
 
 ### Lodestar.Text
 
+#### Fixed
+
+- **The TextRank oracle no longer freezes a tie order that floating-point noise decides.** Two adjacent entries of `tests/oracles/keywords_textrank.json` sat one or two units in the last place apart, so the reference's descending sort ordered them by noise and a runner's BLAS broke the near-tie the other way — failing *Oracles are reproducible* on pull requests that touch nothing near it. The generator now sorts each run of scores tied within `1e-9` by phrase, which is the model `TextRankOracleTests` already applies on replay, so corpus and test agree by construction rather than by the test quietly absorbing one machine's order. No score moved. ([#541](https://github.com/CyrilB1531/lodestar/issues/541), [decision 0079](docs/decisions/0079-tied-textrank-scores-canonicalize-by-phrase-not-blas.md))
+
+### Lodestar.Text
+
 #### Added
 
 - **`BkTree`** is a metric index over the integer distances, worth building only at a radius of 1 — [`docs/guides/dictionary-lookup.md`](docs/guides/dictionary-lookup.md) has the measurement. ([#526](https://github.com/CyrilB1531/lodestar/issues/526))
@@ -56,6 +62,8 @@ is one sentence, the issue and the commit; see
 - **`byte_fallback` resolves an uncovered symbol into `<0xXX>` byte pieces instead of the unknown token, so Llama-2 and Mistral v0.1 both load.** `BpeVocabulary.ByteFallback` and `TokenizerJsonLoader.LoadBpe` require the vocabulary to carry all 256 pieces, refusing by name a file that does not rather than reproduce the silent degradation — or, with no unknown token declared, the dropped symbol — `tokenizers` 0.23.1 falls back to; the expansion runs before the merges, on the decorated symbol, so a `continuing_subword_prefix` or `end_of_word_suffix` on it is itself encoded as bytes. `BpeTokenizer.Decode` now reproduces such a file's `decoder` block too, a bare `ByteFallback` or Llama-2's own `Sequence[Replace, ByteFallback, Fuse, Strip]`, round-tripping the byte pieces and the whitespace escape together — [decision 0063](docs/decisions/0063-byte-fallback-requires-the-whole-alphabet-and-its-decoder-is-read-strictly-too.md) has the measurements against the reference, including an upstream ordering bug found and not reproduced. ([#317](https://github.com/CyrilB1531/lodestar/issues/317), [`6b4f2b6`](https://github.com/CyrilB1531/lodestar/commit/6b4f2b6))
 
 #### Removed
+
+- **The `SentencePieceTokenizer(IReadOnlyList<SentencePiece>, int)` constructor is gone.** It guessed which pieces were controls from their ids being 0, 1 or 2, which is wrong for any model laying them out differently; `SentencePieceTokenizer(SentencePieceVocabulary)` is told instead, by the file. It carried an `[Obsolete]` since 0.4.0 — **whose message named v2.0.0, and this removal lands in 0.6.0 instead**: v2.0.0 is not a release this project has planned, and waiting for one would mean shipping a constructor that is wrong by construction indefinitely. A caller still on it passes `SentencePieceModelLoader.Load` or `TokenizerJsonLoader.LoadUnigram` output to the remaining constructor, or builds a `SentencePieceVocabulary` with the piece types it knows. ([#539](https://github.com/CyrilB1531/lodestar/issues/539))
 
 - **`OnnxTextEmbedder` moved to the new `Lodestar.Onnx` package, and this one now carries no external dependency at all.** `Microsoft.ML.OnnxRuntime` 1.28.0 was the repository's only external dependency and was reached by one file of 407 lines, while the four sub-word tokenizers, the batch encoder, the pooling, the `.npy` reader and the SIMD kNN index could not be had without it — `dotnet add package Lodestar.Embeddings` restored a native runtime for a caller who only tokenizes. Migration is one `using`: the type is `Lodestar.Onnx.OnnxTextEmbedder`, with the same members and the same behaviour, in a package that depends on this one. [Decision 0076](docs/decisions/0076-a-core-package-carries-no-external-dependency.md) states the rule it settles — a core package carries no external dependency, an external dependency earns its own satellite package — supersedes [0069](docs/decisions/0069-the-package-layout-as-built-and-what-enforces-it.md), and records what was refused. ([#533](https://github.com/CyrilB1531/lodestar/issues/533))
 

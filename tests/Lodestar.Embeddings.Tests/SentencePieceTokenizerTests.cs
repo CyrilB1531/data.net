@@ -7,30 +7,16 @@ namespace Lodestar.Embeddings.Tests;
 
 public sealed class SentencePieceTokenizerTests
 {
-    // The id-based constructor is obsolete but still shipped, and "still shipped"
-    // is only true if it still behaves. These tests exercise it deliberately.
-#pragma warning disable CS0618
-
-    private static SentencePieceTokenizer BuildFromOracle(JsonDocument doc)
-    {
-        JsonElement meta = doc.RootElement.GetProperty("metadata");
-        var vocab = new List<SentencePiece>();
-        foreach (JsonElement e in meta.GetProperty("vocab").EnumerateArray())
-        {
-            vocab.Add(new SentencePiece(
-                e.GetProperty("piece").GetString()!,
-                e.GetProperty("score").GetDouble(),
-                e.GetProperty("id").GetInt32()));
-        }
-        int unkId = meta.GetProperty("unk_id").GetInt32();
-        return new SentencePieceTokenizer(vocab, unkId);
-    }
+    // The corpus's own metadata carries pieces, scores and ids but no piece TYPES, so the
+    // vocabulary comes from the model file the corpus was generated from.
+    private static SentencePieceTokenizer FromTheModelBehindTheCorpus() =>
+        new(SentencePieceModelLoader.Load(Path.Combine(AppContext.BaseDirectory, "oracles", "tiny_sp.model")));
 
     [Fact]
     public void Encode_matches_sentencepiece()
     {
         using JsonDocument doc = OracleLoader.Load("sentencepiece.json");
-        SentencePieceTokenizer tokenizer = BuildFromOracle(doc);
+        SentencePieceTokenizer tokenizer = FromTheModelBehindTheCorpus();
 
         var failures = new List<string>();
         foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
@@ -50,28 +36,18 @@ public sealed class SentencePieceTokenizerTests
     }
 
     /// <summary>
-    /// The obsolete constructor guesses which pieces are controls from their ids;
-    /// the new one is told. On a model that puts its markers at 0, 1 and 2 — the
-    /// case the guess was written for — the two must agree exactly. That is what
-    /// makes the deprecation safe rather than a silent behaviour change.
+    /// The corpus's own <c>unk_id</c> has to be the one the model file declares, or the replay
+    /// above is against a different vocabulary than the one that produced it.
     /// </summary>
     [Fact]
-    public void The_obsolete_constructor_agrees_with_the_type_based_one()
+    public void The_model_file_declares_the_corpus_s_own_unknown_id()
     {
         using JsonDocument doc = OracleLoader.Load("sentencepiece.json");
-        SentencePieceTokenizer byId = BuildFromOracle(doc);
-        var byType = new SentencePieceTokenizer(
-            SentencePieceModelLoader.Load(Path.Combine(AppContext.BaseDirectory, "oracles", "tiny_sp.model")));
+        SentencePieceVocabulary vocabulary =
+            SentencePieceModelLoader.Load(Path.Combine(AppContext.BaseDirectory, "oracles", "tiny_sp.model"));
 
-        foreach (JsonElement c in doc.RootElement.GetProperty("cases").EnumerateArray())
-        {
-            string text = c.GetProperty("text").GetString()!;
-            Assert.Equal(byId.Encode(text).Tokens, byType.Encode(text).Tokens);
-            Assert.Equal(byId.Encode(text).Ids, byType.Encode(text).Ids);
-        }
+        Assert.Equal(doc.RootElement.GetProperty("metadata").GetProperty("unk_id").GetInt32(), vocabulary.UnkId);
     }
-
-#pragma warning restore CS0618
 
     /// <summary>
     /// A control marker sitting outside ids 0-2 -- the failure the id-based guess cannot see -- must
