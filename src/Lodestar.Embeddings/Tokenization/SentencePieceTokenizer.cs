@@ -89,39 +89,6 @@ public sealed class SentencePieceTokenizer : ISubwordTokenizer
         _unkScore = minScore - 10.0; // heavy penalty; only used for uncovered characters
     }
 
-    /// <summary>Creates a tokenizer from a unigram vocabulary (index = id).</summary>
-    /// <param name="vocab">Pieces with scores; ids 0..n-1 in order. Control pieces (unk/bos/eos) may be included.</param>
-    /// <param name="unkId">The unknown-piece id (default 0).</param>
-    // SonarLint S1133: the removal is already scheduled, and the message below names
-    // the release. Dropping a public constructor is a breaking change and so waits
-    // for a major; until then the overload has to stay for the callers it was
-    // deprecated for, and this rule fires on every [Obsolete] there is.
-#pragma warning disable S1133
-    [Obsolete("Use SentencePieceTokenizer(SentencePieceVocabulary) instead — id-based control filtering will be removed in v2.0.0")]
-#pragma warning restore S1133
-    public SentencePieceTokenizer(IReadOnlyList<SentencePiece> vocab, int unkId = 0)
-    {
-        Guard.NotNull(vocab);
-        var matchable = new List<KeyValuePair<string, SentencePiece>>(vocab.Count);
-        _nonMatchableIds = new Dictionary<string, int>(StringComparer.Ordinal);
-        double minScore = 0;
-        foreach (SentencePiece p in vocab)
-        {
-            // Skip the control pieces so they never match real text.
-            if (p.Id is 0 or 1 or 2 && p.Piece.StartsWith('<'))
-            {
-                _nonMatchableIds[p.Piece] = p.Id;
-                continue;
-            }
-            matchable.Add(new KeyValuePair<string, SentencePiece>(p.Piece, p));
-            _maxPieceLength = Math.Max(_maxPieceLength, p.Piece.Length);
-            minScore = Math.Min(minScore, p.Score);
-        }
-        _pieces = new CharSpanMap<SentencePiece>(matchable);
-        _unkId = unkId;
-        _unkScore = minScore - 10.0; // heavy penalty; only used for uncovered characters
-    }
-
     /// <summary>Tokenizes <paramref name="text"/> into unigram pieces and their ids.</summary>
     public TokenizationResult Encode(string text)
     {
