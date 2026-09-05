@@ -190,8 +190,8 @@ internal static class Kolmogorov
             return Math.Min(1.0, 2.0 * SmirnovSf(count, d));
         }
 
-        // Rows 9-10 (n*d^2 < 2.2): scipy's exact DMTW route is capped at n*d^1.5 <= 1.4;
-        // past it, Pelz-Good -- parity with what scipy returns, not a more accurate number.
+        // Rows 9-10 (n*d^2 below 2.2): scipy's exact DMTW route is capped at n*d^1.5 up to 1.4,
+        // past which Pelz-Good takes over -- parity with what scipy returns, not a more accurate number.
         return count <= ExactMatrixCap && count * Math.Pow(d, 1.5) <= ExactSlopeThreshold
             ? 1.0 - DurbinCdf(count, d)
             : 1.0 - PelzGoodCdf(count, d);
