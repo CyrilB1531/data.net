@@ -136,7 +136,9 @@ public static class Wilcoxon
         {
             NullDistribution.Permutation =>
                 PermutationPValue(nonZeroRanks, sums.RawPositive, sums.RawNegative, alternative),
-            NullDistribution.Exact => ExactPValue(positive, negative, nonZeroRanks.Length, alternative),
+            // ranked.Length, not nonZeroRanks.Length: scipy's own table size
+            // is the full zero-method-processed length, zero group included.
+            NullDistribution.Exact => ExactPValue(positive, ranked.Length, alternative),
             _ => AsymptoticPValue(positive, negative, varianceRanks, alternative, continuity),
         };
 
@@ -310,32 +312,52 @@ public static class Wilcoxon
         return sum;
     }
 
-    private static double ExactPValue(
-        double positive, double negative, int n, Alternative alternative)
+    // long-comment: the choice to read only `positive`, rounded two different
+    // ways by alternative, looks arbitrary without the source it comes from.
+    // Measured against scipy 1.18.0 (gh-19872): the exact branch reads only
+    // the positive rank sum, never the negative one, rounded toward whichever
+    // tail it is about to ask for -- ceiling before a CDF, floor before a
+    // survival function. Untied, rounding is a no-op and the negative sum
+    // would have agreed by symmetry; under ties neither is true, which is
+    // exactly what no corpus case exercised (task-6-report.md, fix round 1,
+    // Finding 2).
+    private static double ExactPValue(double positive, int n, Alternative alternative)
     {
         double[] counts = RankDistributions.SignedRankCounts(n);
         double total = Math.Pow(2.0, n);
 
-        double atMostPositive = 0.0;
-        for (int w = 0; w < counts.Length && w <= positive; w++)
-        {
-            atMostPositive += counts[w];
-        }
-
-        double atMostNegative = 0.0;
-        for (int w = 0; w < counts.Length && w <= negative; w++)
-        {
-            atMostNegative += counts[w];
-        }
-
         return alternative switch
         {
-            Alternative.Less => atMostPositive / total,
-            Alternative.Greater => atMostNegative / total,
-            Alternative.TwoSided => Math.Min(
-                1.0, 2.0 * Math.Min(atMostPositive, atMostNegative) / total),
+            Alternative.Less => RoundedCumulativeAtMost(counts, Math.Ceiling(positive)) / total,
+            Alternative.Greater => SurvivalAtLeast(counts, Math.Floor(positive)) / total,
+            Alternative.TwoSided => Math.Min(1.0, 2.0 * Math.Min(
+                SurvivalAtLeast(counts, Math.Floor(positive)),
+                RoundedCumulativeAtMost(counts, Math.Ceiling(positive))) / total),
             _ => throw new ArgumentOutOfRangeException(nameof(alternative), alternative, null),
         };
+    }
+
+    private static double RoundedCumulativeAtMost(double[] counts, double ceiling)
+    {
+        double sum = 0.0;
+        for (int i = 0; i < counts.Length && i <= ceiling; i++)
+        {
+            sum += counts[i];
+        }
+
+        return sum;
+    }
+
+    private static double SurvivalAtLeast(double[] counts, double floor)
+    {
+        int start = Math.Max(0, (int)floor);
+        double sum = 0.0;
+        for (int i = start; i < counts.Length; i++)
+        {
+            sum += counts[i];
+        }
+
+        return sum;
     }
 
     private static double AsymptoticPValue(

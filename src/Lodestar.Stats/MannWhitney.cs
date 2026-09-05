@@ -21,9 +21,13 @@ public static class MannWhitney
     // table on each of n outer iterations -- O(n^2 * m^2). At n=m=200 that
     // walks 1.6 billion entries and allocates 64 MB per outer iteration, 200
     // times over: tens of seconds under heavy GC pressure. 20,000 keeps the
-    // table a few megabytes and the walk under a second, while sitting far
-    // above anything Auto itself can reach (Auto's own threshold caps n*m
-    // at 63, well inside the bound).
+    // table a few megabytes and the walk under a second. Auto's own
+    // threshold does NOT bound n*m by itself: the exact branch only needs
+    // the *smaller* sample at or under eight, so n=8, m=10000 still
+    // qualifies and would build a 6.4 GB table if let through unguarded --
+    // Auto is bounded below as well, falling back to asymptotic rather than
+    // refusing, since a caller who never asked for Exact must not be
+    // handed an exception over it.
     private const long MaxExactProduct = 20_000;
 
     /// <summary>Compares two independent samples by their ranks.</summary>
@@ -34,7 +38,12 @@ public static class MannWhitney
     /// Whether the normal approximation gets the half-unit correction. Ignored
     /// on the exact branch, where there is nothing to approximate.
     /// </param>
-    /// <param name="method">Exact, asymptotic, or chosen by sample size and ties.</param>
+    /// <param name="method">
+    /// Exact, asymptotic, or chosen by sample size and ties. Past the same
+    /// size bound <see cref="ExactMethod.Exact"/> is refused for,
+    /// <see cref="ExactMethod.Auto"/> falls back to asymptotic rather than
+    /// building the table -- it never throws.
+    /// </param>
     /// <returns>U for the first sample, and the p-value.</returns>
     /// <exception cref="ArgumentException">Either sample is empty.</exception>
     /// <exception cref="ArgumentOutOfRangeException">
@@ -79,14 +88,15 @@ public static class MannWhitney
         double u = rankSumX - (n * (n + 1) / 2.0);
 
         bool ties = Ranks.HasTies(pooled);
-        bool exact = method switch
+        bool wantsExact = method switch
         {
             ExactMethod.Exact => true,
             ExactMethod.Asymptotic => false,
             _ => !ties && (n <= AutoExactThreshold || m <= AutoExactThreshold),
         };
 
-        if (method == ExactMethod.Exact && (long)n * m > MaxExactProduct)
+        bool tableTooLarge = (long)n * m > MaxExactProduct;
+        if (method == ExactMethod.Exact && tableTooLarge)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(method),
@@ -95,6 +105,10 @@ public static class MannWhitney
                 $"got {n} * {m} = {(long)n * m}. Pass ExactMethod.Asymptotic instead.");
         }
 
+        // Auto never throws: past the bound it falls back to asymptotic
+        // instead, since nothing the caller wrote asked for an exact answer.
+        bool exact = wantsExact && !tableTooLarge;
+
         double pValue = exact
             ? ExactPValue(u, n, m, alternative)
             : AsymptoticPValue(u, n, m, pooled, alternative, continuity);
@@ -102,6 +116,15 @@ public static class MannWhitney
         return new TestResult(u, pValue);
     }
 
+    // long-comment: this reads as an unmotivated detour from "compute atMost
+    // and atLeast" without the corpus history behind why it changed shape.
+    // Measured against scipy 1.18.0: the exact branch never calls a CDF, only
+    // a survival function, truncating the chosen statistic toward zero first.
+    // Less reads U2's survival rather than U1's CDF, which the null
+    // distribution's symmetry makes this equivalent when untied; under ties
+    // the truncation and the choice of which U feeds the lookup both matter,
+    // and no corpus case exercised that (task-6-report.md, fix round 1,
+    // Finding 2).
     private static double ExactPValue(double u, int n, int m, Alternative alternative)
     {
         double[] counts = RankDistributions.MannWhitneyCounts(n, m);
@@ -111,24 +134,28 @@ public static class MannWhitney
             total += counts[i];
         }
 
-        double atMost = CumulativeAtMost(counts, u);
-        double atLeast = total - CumulativeAtMost(counts, u - 1);
+        double u1 = u;
+        double u2 = (n * m) - u;
 
-        return alternative switch
+        (double chosen, double factor) = alternative switch
         {
-            Alternative.Less => atMost / total,
-            Alternative.Greater => atLeast / total,
-            // Twice the smaller tail, clamped: a discrete distribution's two
-            // one-sided p-values can exceed one when doubled at the centre.
-            Alternative.TwoSided => Math.Min(1.0, 2.0 * Math.Min(atMost, atLeast) / total),
+            Alternative.Greater => (u1, 1.0),
+            Alternative.Less => (u2, 1.0),
+            Alternative.TwoSided => (Math.Max(u1, u2), 2.0),
             _ => throw new ArgumentOutOfRangeException(nameof(alternative), alternative, null),
         };
+
+        double survival = SurvivalAtLeast(counts, chosen);
+        return Math.Min(1.0, factor * survival / total);
     }
 
-    private static double CumulativeAtMost(double[] counts, double u)
+    // (int) truncates toward zero, matching numpy's astype(int64) on the
+    // always-nonnegative U scipy feeds it here.
+    private static double SurvivalAtLeast(double[] counts, double k)
     {
+        int floor = Math.Max(0, (int)k);
         double sum = 0.0;
-        for (int i = 0; i < counts.Length && i <= u; i++)
+        for (int i = floor; i < counts.Length; i++)
         {
             sum += counts[i];
         }

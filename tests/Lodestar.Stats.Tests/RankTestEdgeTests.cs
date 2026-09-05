@@ -1,3 +1,4 @@
+using Lodestar.Stats.Tests.Oracles;
 using Xunit;
 
 namespace Lodestar.Stats.Tests;
@@ -77,6 +78,46 @@ public sealed class RankTestEdgeTests
     }
 
     [Fact]
+    public void MannWhitney_auto_falls_back_to_asymptotic_past_the_bound_on_a_skewed_shape()
+    {
+        // n=8 alone satisfies Auto's exact-branch size rule (the smaller
+        // sample only), but n*m = 24,000 exceeds MaxExactProduct: Auto must
+        // answer from the asymptotic branch rather than building a table
+        // sized (m+1) x (n*m+1), or throwing the way an explicit Exact would.
+        double[] small = [1.0, 4.0, 7.0, 9.0, 11.0, 13.0, 15.0, 17.0];
+        double[] large = new double[3000];
+        for (int i = 0; i < large.Length; i++)
+        {
+            large[i] = i * 0.1;
+        }
+
+        TestResult auto = MannWhitney.Test(small, large, method: ExactMethod.Auto);
+        TestResult asymptotic = MannWhitney.Test(small, large, method: ExactMethod.Asymptotic);
+
+        Assert.Equal(asymptotic.PValue, auto.PValue, 1e-15);
+    }
+
+    [Fact]
+    public void MannWhitney_exact_matches_scipy_on_tied_data()
+    {
+        // Measured with scipy 1.18.0:
+        // mannwhitneyu([1,2,2,3], [2,3,4,4], method="exact", alternative=...).
+        double[] a = [1.0, 2.0, 2.0, 3.0];
+        double[] b = [2.0, 3.0, 4.0, 4.0];
+
+        TestResult twoSided = MannWhitney.Test(a, b, Alternative.TwoSided, method: ExactMethod.Exact);
+        TestResult less = MannWhitney.Test(a, b, Alternative.Less, method: ExactMethod.Exact);
+        TestResult greater = MannWhitney.Test(a, b, Alternative.Greater, method: ExactMethod.Exact);
+
+        StatsOracleAsserts.Statistic(2.5, twoSided.Statistic, "two-sided");
+        StatsOracleAsserts.PValue(0.2, twoSided.PValue, "two-sided");
+        StatsOracleAsserts.Statistic(2.5, less.Statistic, "less");
+        StatsOracleAsserts.PValue(0.1, less.PValue, "less");
+        StatsOracleAsserts.Statistic(2.5, greater.Statistic, "greater");
+        StatsOracleAsserts.PValue(0.9714285714285714, greater.PValue, "greater");
+    }
+
+    [Fact]
     public void Wilcoxon_refuses_samples_of_different_length()
     {
         Assert.Throws<ArgumentException>(() => Wilcoxon.Paired([1.0, 2.0, 3.0], [1.0, 2.0]));
@@ -109,5 +150,45 @@ public sealed class RankTestEdgeTests
 
         Assert.Equal(0.0, result.Statistic);
         Assert.Equal(1.0, result.PValue);
+    }
+
+    // Measured with scipy 1.18.0: wilcoxon([1,1,-1,2,-2,0], zero_method=...,
+    // correction=False, alternative=..., method="exact"). Ties (two 1's,
+    // two 2's) and a zero, so all three ZeroMethod rules disagree.
+    private static readonly double[] TiedWithZero = [1.0, 1.0, -1.0, 2.0, -2.0, 0.0];
+
+    [Fact]
+    public void Wilcoxon_exact_matches_scipy_on_tied_data_wilcox()
+    {
+        AssertExactMatchesScipy(ZeroMethod.Wilcox, Alternative.TwoSided, 6.5, 1.0);
+        AssertExactMatchesScipy(ZeroMethod.Wilcox, Alternative.Less, 8.5, 0.6875);
+        AssertExactMatchesScipy(ZeroMethod.Wilcox, Alternative.Greater, 8.5, 0.5);
+    }
+
+    [Fact]
+    public void Wilcoxon_exact_matches_scipy_on_tied_data_pratt()
+    {
+        AssertExactMatchesScipy(ZeroMethod.Pratt, Alternative.TwoSided, 8.5, 1.0);
+        AssertExactMatchesScipy(ZeroMethod.Pratt, Alternative.Less, 11.5, 0.65625);
+        AssertExactMatchesScipy(ZeroMethod.Pratt, Alternative.Greater, 11.5, 0.5);
+    }
+
+    [Fact]
+    public void Wilcoxon_exact_matches_scipy_on_tied_data_zsplit()
+    {
+        AssertExactMatchesScipy(ZeroMethod.ZSplit, Alternative.TwoSided, 9.0, 0.84375);
+        AssertExactMatchesScipy(ZeroMethod.ZSplit, Alternative.Less, 12.0, 0.65625);
+        AssertExactMatchesScipy(ZeroMethod.ZSplit, Alternative.Greater, 12.0, 0.421875);
+    }
+
+    private static void AssertExactMatchesScipy(
+        ZeroMethod zeroMethod, Alternative alternative, double statistic, double pValue)
+    {
+        TestResult result = Wilcoxon.OneSample(
+            TiedWithZero, zeroMethod, alternative, Continuity.None, ExactMethod.Exact);
+
+        string name = $"{zeroMethod}/{alternative}";
+        StatsOracleAsserts.Statistic(statistic, result.Statistic, name);
+        StatsOracleAsserts.PValue(pValue, result.PValue, name);
     }
 }
