@@ -67,9 +67,13 @@ internal static class Beta
         double denominator = df + tSquared;
         double x = df / denominator;
 
-        // long-comment: this is the fix for a measured defect, not routine
-        //     commentary -- StudentSf was off by 2.2e-4 relative at df = 1e12
-        //     before it, caught by StudentQuantile's own oracle test below.
+        // long-comment: this is the fix for a measured far-tail collapse, not
+        //     routine commentary -- reflecting unconditionally returned exactly
+        //     0.0 at ordinary df once t was large enough (df = 200, t = 10 is
+        //     BetaTests's non-regression case). A residual remains above
+        //     roughly df = 1.5e9 -- about 1.5 billion observations through
+        //     TTest's n1 + n2 - 2 -- where RegularizedIncomplete itself
+        //     saturates to exactly 1.0, which no branch choice here repairs.
         // Direct evaluation of I_x(df/2, 1/2) is what the far-tail case needs:
         // reflecting through I_x(a,b) = 1 - I_{1-x}(b,a) trades one cancellation
         // for another one downstream -- 1.0 minus a value that is itself within
@@ -87,11 +91,8 @@ internal static class Beta
         return t >= 0.0 ? tail : 1.0 - tail;
     }
 
-    // x <= 0.5 (t^2 >= df) is always safe: 1 - x is then at least 0.5, nowhere
-    // near a cancellation. Past that, direct evaluation stays accurate exactly
-    // as long as subtracting x from 1 still recovers its true complement --
-    // comparing the two is what tells them apart, not a fixed threshold on x,
-    // complement or df, none of which alone separates every case correctly.
+    // x <= 0.5 (t^2 >= df) is always safe. Past that, direct evaluation is
+    // accurate exactly when 1 - x still recovers the true (divided) complement.
     private static bool IsDirectlyAccurate(double x, double complement)
     {
         if (x <= 0.5)
