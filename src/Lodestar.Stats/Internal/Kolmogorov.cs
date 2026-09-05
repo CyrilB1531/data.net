@@ -46,28 +46,55 @@ internal static class Kolmogorov
         return q > 1.0 ? 1.0 : q;
     }
 
-    // long-comment: attributing five borrowed cutoffs together needs more
-    //     than two lines, and each one is load-bearing -- fix-round-2 shipped
-    //     because one of them (DirectSurvivalThreshold) was applied outside
-    //     the branch scipy itself confines it to.
-    // Every threshold below is scipy's own, read from _ksstats.py's
-    // _kolmogn, borrowed under ADR 0003 (scipy is BSD-3, an explicitly
-    // permitted behavioural reference) rather than tuned in this file.
-    // LargeSampleBranch is the sample size where _kolmogn itself switches
-    // between two entirely different dispatch strategies -- everything past
-    // it belongs only inside that large-sample dispatch. Applying it at
-    // every sample size regardless, as fix-round-1 did, was a regression:
-    // a small sample whose scaled statistic sits in scipy's Pomeranz range
-    // has an exact answer available here too, through DurbinCdf, that the
-    // direct survival formula only approximates (task-8-report.md's
-    // fix-round-2 has the measurement). The remaining two cutoffs gate
-    // DurbinCdf itself, inside that same large-sample dispatch: past them
-    // scipy stops computing the exact value and falls back to Pelz-Good, so
-    // this file does too -- this package's contract is parity with what
-    // scipy returns, not a more accurate number scipy itself does not.
+    // long-comment: this is the complete dispatch table (task-8-report.md's
+    //     fix-round-3), not a per-bound note -- fix-round-1 shipped because
+    //     one cutoff was applied outside its branch, fix-round-2 shipped
+    //     because the branch it was restored to had no upper bound of its
+    //     own. Both were a single bound read out of context; this comment
+    //     exists so the next change sees every bound scipy has, together.
+    //
+    // Every threshold below, and the branch order itself, is read from
+    // scipy's own _ksstats.py _kolmogn (n of type integer, x in (0, 1)),
+    // borrowed under ADR 0003 (scipy is BSD-3, an explicitly permitted
+    // behavioural reference) rather than tuned in this file. Its full
+    // decision table, computing the survival probability (scipy's cdf=False,
+    // what kstwo.sf asks for) rather than the CDF:
+    //
+    //   t = n * d
+    //   1. t <= 0.5                          -> SF = 1 (Ruben-Gambino)
+    //   2. 0.5 < t <= 1                      -> exact closed form (Ruben-Gambino)
+    //   3. t >= n - 1                        -> SF = 2*(1-d)^n (Ruben-Gambino)
+    //   4. d >= 0.5                          -> SF = 2*smirnov(n,d), exact
+    //   5. n <= 140, n*d^2 <= 4              -> exact (DMTW to 0.754693, Pomeranz to 4)
+    //   6. n <= 140, n*d^2 > 4               -> SF = 2*smirnov(n,d) (Miller's approximation)
+    //   7. n > 140, n*d^2 >= 370             -> SF = 0 (underflows a double outright)
+    //   8. n > 140, 2.2 <= n*d^2 < 370       -> SF = 2*smirnov(n,d) (direct; scipy's own approximation past 2.2, see below)
+    //   9. n > 140, n*d^2 < 2.2, n*d^1.5 <= 1.4  -> exact (DMTW)
+    //  10. n > 140, n*d^2 < 2.2, n*d^1.5 > 1.4   -> Pelz-Good asymptotic expansion
+    //
+    // Rows 1-3 are not separate code paths here: this file has one exact
+    // method (DurbinCdf) rather than scipy's three (Ruben-Gambino's closed
+    // forms, DMTW, Pomeranz), and DurbinCdf already produces their answer.
+    // Row 1 is DurbinCdf's own `nd <= 0.5 -> cdf = 0` guard, the same
+    // condition. Row 2: at n*d in (0.5, 1], DurbinCdf's k is always 1 (a
+    // trivial 1x1 matrix), and the algebra its matrix reduces to at k = 1 --
+    // (2t-1)^n scaled by n!/n^n -- is Ruben-Gambino's own closed form,
+    // verified by derivation and cross-checked against scipy directly (n=2,
+    // d=0.49: both give exactly 0.5392), not merely close by coincidence.
+    // Row 3 needs t >= n - 1, i.e. d >= (n-1)/n; for every n >= 2 that is
+    // already >= 0.5, so it is a subset of row 4, already handled before
+    // n*d^2 is even computed. (n = 1 forces t >= n - 1 unconditionally,
+    // since n - 1 = 0 -- verified directly against every d, matched by
+    // DurbinCdf's own row-1 guard there too.) Rows 5-6 are this round's
+    // fix: fix-round-2 restored row 5 but let it run unbounded into row 6's
+    // territory, where 1 - DurbinCdf collapses the identical way row 8's
+    // direct formula exists to prevent -- FiniteTwoSidedSf(140, 0.495) gave
+    // 1.44e-15 against scipy's 3.36e-32, a floor at 2^-51, not an answer
+    // (task-8-report.md's fix-round-3 sweep has the full measurement).
     private const int LargeSampleBranch = 140;
     private const double UnderflowThreshold = 370.0;
     private const double DirectSurvivalThreshold = 2.2;
+    private const double ExactRouteCeiling = 4.0;
     private const int ExactMatrixCap = 100_000;
     private const double ExactSlopeThreshold = 1.4;
 
@@ -116,17 +143,23 @@ internal static class Kolmogorov
     /// only as 1/sqrt(n) (measured in task-8-report.md's fix-round-1 sweep),
     /// so no threshold short of an astronomical sample size would bring
     /// <see cref="Sf"/> under this package's own tolerance. This method
-    /// reproduces scipy's own dispatch instead of picking one route for
-    /// every <paramref name="n"/>: exact (<see cref="SmirnovSf"/> or
-    /// <see cref="DurbinCdf"/>) through n = 140 and past it wherever scipy's
-    /// own exact route still applies, and Pelz-Good's published asymptotic
-    /// expansion (<see cref="PelzGoodCdf"/>) exactly where scipy itself
-    /// stops computing the exact value -- deliberately matching scipy's
-    /// answer there rather than a more accurate one it does not return,
-    /// since this package's contract is parity (task-8-report.md,
-    /// fix-round-2, finding 3). <paramref name="n"/> is rounded, not
-    /// truncated: it arrives as a two-sample test's effective size
-    /// n1*n2/(n1+n2), which is rarely integral.
+    /// reproduces scipy's own dispatch (the full decision table is on the
+    /// thresholds just above this method, attributed there) rather than
+    /// picking one route for every <paramref name="n"/>: <see cref="DurbinCdf"/>
+    /// only where the exact value is safe to compute as 1 - CDF (bounded on
+    /// <b>both</b> sides by n * d^2, not only the lower one -- fix-round-1
+    /// dropped the lower bound, fix-round-2 dropped the upper one), the
+    /// direct one-sided survival formula (<see cref="SmirnovSf"/>) wherever
+    /// scipy itself prefers it (exact once d &gt;= 0.5, an approximation it
+    /// still returns past either n * d^2 bound), and Pelz-Good's published
+    /// asymptotic expansion (<see cref="PelzGoodCdf"/>) exactly where scipy
+    /// stops computing the exact value altogether -- deliberately matching
+    /// scipy's answer in both approximated bands rather than a more
+    /// accurate one it does not return, since this package's contract is
+    /// parity (task-8-report.md, fix-round-2 finding 3 and fix-round-3).
+    /// <paramref name="n"/> is rounded, not truncated: it arrives as a
+    /// two-sample test's effective size n1*n2/(n1+n2), which is rarely
+    /// integral.
     /// </remarks>
     internal static double FiniteTwoSidedSf(double n, double d)
     {
@@ -145,48 +178,52 @@ internal static class Kolmogorov
 
         int count = Math.Max(1, (int)Math.Round(n, MidpointRounding.ToEven));
 
-        // scipy's own unconditional shortcut, any n: exact, since D_n+ >= d
-        // and D_n- >= d cannot both hold once d >= 0.5.
+        // Row 4 (and, for n = 1, the whole of row 3 too -- see the dispatch
+        // table above): exact, since D_n+ >= d and D_n- >= d cannot both
+        // hold once d >= 0.5.
         if (d >= 0.5)
         {
             return Math.Min(1.0, 2.0 * SmirnovSf(count, d));
         }
 
-        // d < 0.5 from here. Through n = 140, scipy keeps computing the
-        // exact value regardless of n * d^2 (Pomeranz above 0.754693,
-        // Miller's approximation only past 4 -- neither reachable here,
-        // since this file's own DurbinCdf has no reason to trade accuracy
-        // for speed at a matrix size this small, unlike scipy choosing
-        // between three algorithms tuned for its own performance profile).
-        // Applying the n > 140 thresholds below at every n was fix-round-1's
-        // own regression: a small n with n * d^2 in [2.2, 4] has an exact
-        // route here, and the direct survival formula only approximates it
-        // (task-8-report.md's fix-round-2 measurement).
+        // d < 0.5 from here -- rows 1-3 are handled above or by DurbinCdf's
+        // own guard, see the dispatch table. Rows 5-6: through n = 140, the
+        // exact route through DurbinCdf is only safe up to n * d^2 = 4.
+        // Past that ceiling, 1 - DurbinCdf reaches the same collapse row 8's
+        // direct formula exists to prevent, just approached from the other
+        // side. Fix-round-1 applied that direct formula outside n <= 140
+        // altogether; fix-round-2 restored the exact route here without
+        // ever giving it this upper bound. This is fix-round-3.
         if (count <= LargeSampleBranch)
         {
-            return 1.0 - DurbinCdf(count, d);
+            double smallSampleDSquared = count * d * d;
+            return smallSampleDSquared <= ExactRouteCeiling
+                ? 1.0 - DurbinCdf(count, d)
+                : Math.Min(1.0, 2.0 * SmirnovSf(count, d));
         }
 
+        // Row 7: n > 140 from here.
         double countDSquared = count * d * d;
         if (countDSquared >= UnderflowThreshold)
         {
             return 0.0;
         }
 
-        // The direct one-sided survival formula, never 1 - (a CDF near 1):
-        // DurbinCdf(200, 0.9) rounds to exactly 1.0 in a double, and 1 minus
-        // that is an exact 0.0 where the true tail is still representable.
-        // 2 * SmirnovSf is exactly P(D_n > d) only for d >= 0.5 (handled
-        // above); below that it drops the D_n+/D_n- intersection term,
-        // which is scipy's own published approximation here (Li-Chien/
-        // Korolyuk) -- the gap it leaves is what DirectSurvivalThreshold
-        // keeps small enough that this file's own contract still holds.
+        // Row 8. The direct one-sided survival formula, never 1 - (a CDF
+        // near 1): DurbinCdf(200, 0.9) rounds to exactly 1.0 in a double,
+        // and 1 minus that is an exact 0.0 where the true tail is still
+        // representable. 2 * SmirnovSf is exactly P(D_n > d) only for
+        // d >= 0.5 (handled above); below that it drops the D_n+/D_n-
+        // intersection term, which is scipy's own published approximation
+        // here (Li-Chien/Korolyuk) -- the gap it leaves is what
+        // DirectSurvivalThreshold keeps small enough that this file's own
+        // contract still holds.
         if (countDSquared >= DirectSurvivalThreshold)
         {
             return Math.Min(1.0, 2.0 * SmirnovSf(count, d));
         }
 
-        // n > 140, n * d^2 < 2.2: scipy's own exact route (its DMTW) is
+        // Rows 9-10: n * d^2 < 2.2. scipy's own exact route (its DMTW) is
         // capped at n * d^1.5 <= 1.4, past which it hands off to Pelz-Good.
         // This file follows the same cap, for the same reason as above --
         // parity with what scipy returns, not a more accurate number it
