@@ -43,4 +43,22 @@ public sealed class NormalTests
         Assert.Equal(0.0, Normal.Erfc(double.PositiveInfinity));
         Assert.Equal(0.0, Normal.Sf(double.PositiveInfinity));
     }
+
+    [Theory]
+    [InlineData(0.5, 0.0)]
+    [InlineData(0.025, 1.959963984540054)]
+    [InlineData(0.05, 1.6448536269514722)]
+    [InlineData(0.975, -1.959963984540054)]
+    [InlineData(1e-10, 6.361340902404056)]
+    public void Quantile_inverts_the_upper_tail(double p, double expected)
+    {
+        Assert.Equal(expected, Normal.Quantile(p), 1e-9);
+    }
+
+    [Fact]
+    public void Quantile_refuses_a_probability_outside_the_open_unit_interval()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => Normal.Quantile(0.0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Normal.Quantile(1.0));
+    }
 }
