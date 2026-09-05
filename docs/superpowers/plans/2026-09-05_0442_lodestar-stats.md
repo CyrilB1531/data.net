@@ -291,30 +291,16 @@ public sealed record TTestResult(double Statistic, double PValue, double Df)
 
     /// <summary>Which tail was tested, which decides whether the interval is half-open.</summary>
     internal Alternative Alternative { get; init; }
-
-    /// <summary>The confidence interval for the difference this test measured.</summary>
-    /// <remarks>
-    /// A method rather than a property because it takes a level, which is how
-    /// scipy exposes it too (<c>TtestResult.confidence_interval</c>). Returning
-    /// a named tuple rather than a record keeps a two-double carrier from
-    /// costing a public type, a reference page and a sample file.
-    ///
-    /// A one-sided test's interval is half-open, not narrower: asking whether
-    /// the difference is greater than zero says nothing about how large it can
-    /// be, so the other bound is an infinity rather than a number.
-    /// </remarks>
-    /// <param name="level">The confidence level, strictly between 0 and 1.</param>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="level"/> is NaN or outside <c>(0, 1)</c>.
-    /// </exception>
-    public (double Low, double High) ConfidenceInterval(double level = 0.95)
-    {
-        // Written in Task 5, which is where the standard error it needs is
-        // computed. The shape is fixed here so the reference page and the
-        // corpus columns can be written against it.
-        throw new NotImplementedException();
-    }
 }
+```
+
+**`ConfidenceInterval` is deliberately absent here.** Task 5 adds it, together
+with the `Beta.StudentQuantile` it needs. A `throw new NotImplementedException()`
+placeholder would ship in a package built with `AnalysisMode=All` and
+warnings-as-errors, and nothing under `src/` throws one today; the method has no
+caller until Task 5 either way.
+
+```csharp
 
 /// <summary>A contingency-table chi-square result.</summary>
 /// <param name="Statistic">The chi-square statistic.</param>
@@ -2278,8 +2264,10 @@ def generate_stats_shapiro() -> dict:
          "x": [round(rng.gauss(0.0, 1.0), 6) for _ in range(20)]},
         {"name": "fifty normal draws",
          "x": [round(rng.gauss(0.0, 1.0), 6) for _ in range(50)]},
+        # SeededRandom exposes random/randint/randrange/choice/uniform/gauss and
+        # no expovariate, so the exponential draw is its own inverse CDF.
         {"name": "two hundred exponential draws, p below 1e-15",
-         "x": [round(rng.expovariate(1.0), 6) for _ in range(200)]},
+         "x": [round(-math.log(1.0 - rng.random()), 6) for _ in range(200)]},
         {"name": "a sample with ties",
          "x": [1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 5.0, 9.0, 9.0]},
     ]
@@ -2421,6 +2409,31 @@ internal static class StatsCorpus
 
     internal static double[][] Table(JsonElement element) =>
         [.. element.EnumerateArray().Select(Doubles)];
+
+    /// <summary>The <c>alternative</c> a case was generated with.</summary>
+    /// <remarks>
+    /// Here rather than in each replay: five of the ten families read the same
+    /// three spellings, and a switch written five times is a switch that drifts
+    /// four ways.
+    /// </remarks>
+    internal static Alternative Alternative(JsonElement args) =>
+        args.GetProperty("alternative").GetString() switch
+        {
+            "two-sided" => Lodestar.Stats.Alternative.TwoSided,
+            "less" => Lodestar.Stats.Alternative.Less,
+            "greater" => Lodestar.Stats.Alternative.Greater,
+            var other => throw new InvalidDataException($"Unknown alternative '{other}'."),
+        };
+
+    /// <summary>The <c>method</c> a case was generated with. scipy spells the KS one "asymp".</summary>
+    internal static ExactMethod Method(JsonElement args) =>
+        args.GetProperty("method").GetString() switch
+        {
+            "auto" => ExactMethod.Auto,
+            "exact" => ExactMethod.Exact,
+            "asymptotic" or "asymp" => ExactMethod.Asymptotic,
+            var other => throw new InvalidDataException($"Unknown method '{other}'."),
+        };
 }
 ```
 
@@ -2800,14 +2813,6 @@ namespace Lodestar.Stats.Tests;
 /// </summary>
 public sealed class TTestOracleTests
 {
-    private static Alternative ParseAlternative(string value) => value switch
-    {
-        "two-sided" => Alternative.TwoSided,
-        "less" => Alternative.Less,
-        "greater" => Alternative.Greater,
-        _ => throw new InvalidDataException($"Unknown alternative '{value}'."),
-    };
-
     [Fact]
     public void Every_case_matches_scipy()
     {
@@ -2821,7 +2826,7 @@ public sealed class TTestOracleTests
             JsonElement args = c.GetProperty("args");
             double[] a = StatsCorpus.Doubles(c.GetProperty("a"));
             double[] b = StatsCorpus.Doubles(c.GetProperty("b"));
-            Alternative alternative = ParseAlternative(args.GetProperty("alternative").GetString()!);
+            Alternative alternative = StatsCorpus.Alternative(args);
 
             TTestResult result = call switch
             {
@@ -3141,12 +3146,27 @@ public static class TTest
 }
 ```
 
-- [ ] **Step 8: Fill in `TTestResult.ConfidenceInterval`**
+- [ ] **Step 8: Add `TTestResult.ConfidenceInterval`**
 
-Replace the `throw new NotImplementedException();` body in
-`src/Lodestar.Stats/TestResult.cs`:
+Task 1 shipped `TTestResult` without this method, deliberately. Add it now, as
+the last member of the record in `src/Lodestar.Stats/TestResult.cs`:
 
 ```csharp
+    /// <summary>The confidence interval for the difference this test measured.</summary>
+    /// <remarks>
+    /// A method rather than a property because it takes a level, which is how
+    /// scipy exposes it too (<c>TtestResult.confidence_interval</c>). Returning
+    /// a named tuple rather than a record keeps a two-double carrier from
+    /// costing a public type, a reference page and a sample file.
+    ///
+    /// A one-sided test's interval is half-open, not narrower: asking whether
+    /// the difference is greater than zero says nothing about how large it can
+    /// be, so the other bound is an infinity rather than a number.
+    /// </remarks>
+    /// <param name="level">The confidence level, strictly between 0 and 1.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="level"/> is NaN or outside <c>(0, 1)</c>.
+    /// </exception>
     public (double Low, double High) ConfidenceInterval(double level = 0.95)
     {
         if (double.IsNaN(level) || level <= 0.0 || level >= 1.0)
@@ -3332,33 +3352,7 @@ public sealed class WilcoxonOracleTests
 }
 ```
 
-- [ ] **Step 2: Add the two shared parsers to `StatsCorpus`**
-
-Append inside `StatsCorpus`:
-
-```csharp
-    /// <summary>The <c>alternative</c> a case was generated with.</summary>
-    internal static Alternative Alternative(JsonElement args) =>
-        args.GetProperty("alternative").GetString() switch
-        {
-            "two-sided" => Lodestar.Stats.Alternative.TwoSided,
-            "less" => Lodestar.Stats.Alternative.Less,
-            "greater" => Lodestar.Stats.Alternative.Greater,
-            var other => throw new InvalidDataException($"Unknown alternative '{other}'."),
-        };
-
-    /// <summary>The <c>method</c> a case was generated with. scipy spells the KS one "asymp".</summary>
-    internal static ExactMethod Method(JsonElement args) =>
-        args.GetProperty("method").GetString() switch
-        {
-            "auto" => ExactMethod.Auto,
-            "exact" => ExactMethod.Exact,
-            "asymptotic" or "asymp" => ExactMethod.Asymptotic,
-            var other => throw new InvalidDataException($"Unknown method '{other}'."),
-        };
-```
-
-- [ ] **Step 3: Write the edge tests**
+- [ ] **Step 2: Write the edge tests**
 
 `tests/Lodestar.Stats.Tests/RankTestEdgeTests.cs`:
 
@@ -3445,12 +3439,12 @@ public sealed class RankTestEdgeTests
 }
 ```
 
-- [ ] **Step 4: Run to verify they fail**
+- [ ] **Step 3: Run to verify they fail**
 
 Run: `dotnet test tests/Lodestar.Stats.Tests -c Release --filter "FullyQualifiedName~MannWhitney|FullyQualifiedName~Wilcoxon|FullyQualifiedName~RankTestEdge"`
 Expected: FAIL — neither type exists.
 
-- [ ] **Step 5: Write `src/Lodestar.Stats/MannWhitney.cs`**
+- [ ] **Step 4: Write `src/Lodestar.Stats/MannWhitney.cs`**
 
 ```csharp
 using Lodestar.Stats.Internal;
@@ -3600,7 +3594,7 @@ public static class MannWhitney
 }
 ```
 
-- [ ] **Step 6: Write `src/Lodestar.Stats/Wilcoxon.cs`**
+- [ ] **Step 5: Write `src/Lodestar.Stats/Wilcoxon.cs`**
 
 ```csharp
 using Lodestar.Stats.Internal;
@@ -3811,7 +3805,7 @@ public static class Wilcoxon
 }
 ```
 
-- [ ] **Step 7: Run, and expect to iterate**
+- [ ] **Step 6: Run, and expect to iterate**
 
 Run: `dotnet test tests/Lodestar.Stats.Tests -c Release --filter "FullyQualifiedName~MannWhitney|FullyQualifiedName~Wilcoxon|FullyQualifiedName~RankTestEdge"`
 
@@ -3836,7 +3830,7 @@ convention, not the corpus: a corpus regenerated to match a bug proves nothing.
 
 Expected once converged: PASS, **9 tests**.
 
-- [ ] **Step 8: Run the gates and commit**
+- [ ] **Step 7: Run the gates and commit**
 
 ```bash
 dotnet build Lodestar.slnx -c Release
@@ -6136,11 +6130,11 @@ internal static class TestResultSample
 }
 ```
 
-- [ ] **Step 5: Add an `E3` helper to `Inv` if it is not there**
+- [ ] **Step 5: Add the `E3` helper to `Inv`**
 
-`samples/Lodestar.Sample/Inv.cs` already carries `F3` and `List`. If it has no
-scientific-notation formatter, add one — the p-values here reach `1e-8`, which
-`F3` would print as `0.000`:
+Measured: `samples/Lodestar.Sample/Inv.cs` exposes `F0`, `F1`, `F3`, `F4`, `F5`
+and `List`, and no scientific format. Add one — the p-values here reach `1e-8`,
+which `F3` prints as `0.000`:
 
 ```csharp
     /// <summary>Three significant digits in scientific notation, invariant culture.</summary>
@@ -6229,8 +6223,8 @@ and a fixed-point format shows most of them as zero."
 
 **Files:**
 
-- Create: `docs/reference/stats.md` and `docs/reference/stats/tests/*.md` — the
-  nineteen type pages and seventeen method pages listed below
+- Create: `docs/reference/stats/tests.md` and `docs/reference/stats/tests/*.md` —
+  the nineteen type pages and seventeen method pages listed below
 - Modify: `docs/wiki-map.json`
 
 **Interfaces:**
@@ -6282,7 +6276,13 @@ The `Lodestar.Stats.Internal` namespace is **not** listed as covered: it is
 internal, so the gate never walks it, and listing it would demand pages for a
 log-gamma nobody can call.
 
-- [ ] **Step 2: Write `docs/reference/stats.md`, the index**
+- [ ] **Step 2: Write `docs/reference/stats/tests.md`, the index**
+
+It sits **inside** `docs/reference/stats/`, not beside it: the `pages` glob above
+is `docs/reference/stats/*.md`, and the test projects copy only what that glob
+matches into the output directory the reference gate reads. `Lodestar.Conformal`
+is the precedent — `docs/reference/conformal/prediction.md` next to
+`docs/reference/conformal/prediction/`.
 
 ```markdown
 # `Lodestar.Stats`
@@ -6293,20 +6293,21 @@ point is static.
 
 | test | what it asks | entry point |
 | --- | --- | --- |
-| Student / Welch *t* | do two samples have the same mean? | [`TTest`](stats/tests/ttest.md) |
-| Mann-Whitney *U* | the same question, assuming no shape | [`MannWhitney`](stats/tests/mannwhitney.md) |
-| Wilcoxon signed-rank | the same, on paired measurements | [`Wilcoxon`](stats/tests/wilcoxon.md) |
-| χ² | do counts match an expected distribution, or are two factors independent? | [`ChiSquare`](stats/tests/chisquare.md) |
-| Fisher exact | the same for a 2×2 table, at any sample size | [`FisherExact`](stats/tests/fisherexact.md) |
-| Kolmogorov-Smirnov | do two samples share a distribution? | [`KolmogorovSmirnov`](stats/tests/kolmogorovsmirnov.md) |
-| one-way ANOVA | do several groups share one mean? | [`OneWayAnova`](stats/tests/onewayanova.md) |
-| Kruskal-Wallis | the same, assuming no shape | [`KruskalWallis`](stats/tests/kruskalwallis.md) |
-| Shapiro-Wilk | could this sample be normal? | [`ShapiroWilk`](stats/tests/shapirowilk.md) |
-| Bonferroni / BH / BY | how many of these results are chance? | [`MultipleComparisons`](stats/tests/multiplecomparisons.md) |
+| Student / Welch *t* | do two samples have the same mean? | [`TTest`](tests/ttest.md) |
+| Mann-Whitney *U* | the same question, assuming no shape | [`MannWhitney`](tests/mannwhitney.md) |
+| Wilcoxon signed-rank | the same, on paired measurements | [`Wilcoxon`](tests/wilcoxon.md) |
+| χ² | do counts match an expected distribution, or are two factors independent? | [`ChiSquare`](tests/chisquare.md) |
+| Fisher exact | the same for a 2×2 table, at any sample size | [`FisherExact`](tests/fisherexact.md) |
+| Kolmogorov-Smirnov | do two samples share a distribution? | [`KolmogorovSmirnov`](tests/kolmogorovsmirnov.md) |
+| one-way ANOVA | do several groups share one mean? | [`OneWayAnova`](tests/onewayanova.md) |
+| Kruskal-Wallis | the same, assuming no shape | [`KruskalWallis`](tests/kruskalwallis.md) |
+| Shapiro-Wilk | could this sample be normal? | [`ShapiroWilk`](tests/shapirowilk.md) |
+| Bonferroni / BH / BY | how many of these results are chance? | [`MultipleComparisons`](tests/multiplecomparisons.md) |
 
-The [hypothesis-testing guide](../guides/hypothesis-testing.md) says which test
-answers which question, and the [Python equivalence table](../equivalence.md)
-maps each `scipy` call to its counterpart here.
+The [hypothesis-testing guide](../../guides/hypothesis-testing.md) says which
+test answers which question, and the
+[Python equivalence table](../../equivalence.md) maps each `scipy` call to its
+counterpart here.
 ```
 
 - [ ] **Step 3: Write the thirty-six pages on the established shape**
@@ -6404,7 +6405,7 @@ cannot throw fails as loudly as omitting one it can.
 ```bash
 dotnet test Lodestar.slnx -c Release
 npx markdownlint-cli2 "README.md" "CONTRIBUTING.md" "docs/**/*.md" "tools/README.md" "bench/README.md"
-git add docs/reference/stats.md docs/reference/stats docs/wiki-map.json
+git add docs/reference/stats docs/wiki-map.json
 git commit -m "Lodestar.Stats: the thirty-six reference pages and the wiki map
 
 Refs #442. Nineteen type pages and seventeen method pages, each with an executed
@@ -6881,7 +6882,7 @@ to a task:
 
 **2. Placeholder scan.** Three places say "resolve this against the code rather
 than the plan", and each names *how*: the Mann-Whitney and Wilcoxon tail
-conventions (Task 6 step 7), the KS exact recursion's normalisation (Task 8
+conventions (Task 6 step 6), the KS exact recursion's normalisation (Task 8
 step 3), and `Accord`'s 2017 API names (Task 13 step 2). Each gives the exact
 Python or `dotnet build` command that settles it, and each says which side to
 change — the code, never the corpus. The ADR number in Task 12 is deliberately
