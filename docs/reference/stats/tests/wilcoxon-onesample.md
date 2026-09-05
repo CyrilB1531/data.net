@@ -37,6 +37,11 @@ double p = result.PValue;      // => 0.0625
 either way, and this returns a statistic of `0.0` and a p-value of `1.0` rather than throwing;
 scipy answers the same way on the same input.
 
+**A NaN propagates.** There is no `nan_policy` here: a NaN anywhere in `differences` makes the
+statistic and the p-value `NaN`, checked before ranking — a NaN difference is neither greater
+than, less than nor equal to zero, so unguarded it would fall into the zero group along with
+every genuine tie at zero.
+
 **The exact route has a size bound this package added.** scipy's own signed-rank table is exact
 for any `n`, but its total, `2^n`, overflows a `double` to `+Infinity` past `n = 1023`, and every
 p-value it then divides would silently come out as exactly `0.0`. `ExactMethod.Exact` above 500

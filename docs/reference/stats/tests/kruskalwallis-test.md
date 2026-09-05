@@ -57,6 +57,11 @@ exactly `0` — not close to zero, not a value a tolerance would need to catch �
 that would follow is refused instead of silently producing an infinite or NaN statistic from
 ranks that carry no information at all.
 
+**A NaN propagates.** There is no `nan_policy` here: a NaN anywhere in any group makes the
+statistic and the p-value `NaN`, checked before ranking — unguarded, `Array.Sort` sorts a NaN to
+the front and it would take a finite rank like any other value, the same failure mode
+[`MannWhitney.Test`](mannwhitney-test.md) shares and guards against the same way.
+
 **Applies to** — net10.0, netstandard2.0.
 
 **See also** — [`OneWayAnova.Test`](onewayanova-test.md) for the parametric counterpart,

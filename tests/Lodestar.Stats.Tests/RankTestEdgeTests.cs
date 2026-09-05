@@ -127,6 +127,17 @@ public sealed class RankTestEdgeTests
     }
 
     [Fact]
+    public void A_NaN_in_either_sample_propagates_rather_than_ranking_it()
+    {
+        // Measured against scipy 1.18.0: mannwhitneyu([1, 2, nan], [3, 4, 5]) is
+        // (nan, nan); unguarded, Ranks.Average sorts NaN to the front and ranks it.
+        TestResult result = MannWhitney.Test([1.0, 2.0, double.NaN], [3.0, 4.0, 5.0]);
+
+        Assert.True(double.IsNaN(result.Statistic));
+        Assert.True(double.IsNaN(result.PValue));
+    }
+
+    [Fact]
     public void Wilcoxon_refuses_samples_of_different_length()
     {
         Assert.Throws<ArgumentException>(() => Wilcoxon.Paired([1.0, 2.0, 3.0], [1.0, 2.0]));
@@ -198,6 +209,17 @@ public sealed class RankTestEdgeTests
         string name = $"{zeroMethod}/{alternative}";
         StatsOracleAsserts.Statistic(statistic, result.Statistic, name);
         StatsOracleAsserts.PValue(pValue, result.PValue, name);
+    }
+
+    [Fact]
+    public void A_NaN_in_a_pair_propagates_rather_than_joining_the_zero_group()
+    {
+        // Measured against scipy 1.18.0: wilcoxon([1, 2, nan, 4], [3, 4, 5, 1]) is
+        // (nan, nan); unguarded, ComputeRankSums folds a NaN into the zero group.
+        TestResult result = Wilcoxon.Paired([1.0, 2.0, double.NaN, 4.0], [3.0, 4.0, 5.0, 1.0]);
+
+        Assert.True(double.IsNaN(result.Statistic));
+        Assert.True(double.IsNaN(result.PValue));
     }
 
     [Fact]

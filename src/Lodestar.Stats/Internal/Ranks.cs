@@ -113,4 +113,19 @@ internal static class Ranks
 
         return false;
     }
+
+    // Checked ahead of Average, never inside it: NaN sorts to the front under
+    // Array.Sort and would otherwise take a finite rank rather than none.
+    internal static bool HasNaN(ReadOnlySpan<double> values)
+    {
+        for (int i = 0; i < values.Length; i++)
+        {
+            if (double.IsNaN(values[i]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

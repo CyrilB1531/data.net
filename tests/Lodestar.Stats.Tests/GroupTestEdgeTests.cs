@@ -68,9 +68,91 @@ public sealed class GroupTestEdgeTests
     }
 
     [Fact]
+    public void A_NaN_in_a_group_propagates_rather_than_being_dropped()
+    {
+        // The spec's ruling: nan_policy is not a parameter here. Measured against
+        // scipy 1.18.0: kruskal([1, 2, nan], [3, 4, 5]) returns (nan, nan).
+        TestResult result = KruskalWallis.Test([1.0, 2.0, double.NaN], [3.0, 4.0, 5.0]);
+
+        Assert.True(double.IsNaN(result.Statistic));
+        Assert.True(double.IsNaN(result.PValue));
+    }
+
+    [Fact]
     public void Ks_refuses_an_empty_sample()
     {
         Assert.Throws<ArgumentException>(() => KolmogorovSmirnov.TwoSample([], [1.0, 2.0]));
+    }
+
+    [Fact]
+    public void A_NaN_in_either_sample_propagates_rather_than_hanging()
+    {
+        // Walk spun forever here before this guard existed (sorted[index] == NaN is
+        // always false). Measured against scipy 1.18.0: (nan, nan), location nan too.
+        KsResult result = KolmogorovSmirnov.TwoSample([1.0, 2.0, double.NaN], [3.0, 4.0, 5.0]);
+
+        Assert.True(double.IsNaN(result.Statistic));
+        Assert.True(double.IsNaN(result.PValue));
+        Assert.True(double.IsNaN(result.StatisticLocation));
+    }
+
+    [Fact]
+    public void Ks_refuses_an_exact_request_whose_table_is_too_large()
+    {
+        // n * m = 1,440,000, past the 1,000,000 bound: ExactPValue would allocate a
+        // fresh double[m+1] row on each of n+1 iterations.
+        double[] big = new double[1200];
+        double[] alsoBig = new double[1200];
+        for (int i = 0; i < 1200; i++)
+        {
+            big[i] = i;
+            alsoBig[i] = i + 0.5;
+        }
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => KolmogorovSmirnov.TwoSample(big, alsoBig, method: ExactMethod.Exact));
+    }
+
+    [Fact]
+    public void Ks_does_not_refuse_an_exact_request_at_the_bound()
+    {
+        // Exactly 1,000,000 (n = m = 1,000): the bound is inclusive, so this must
+        // still answer rather than refuse.
+        double[] a = new double[1000];
+        double[] b = new double[1000];
+        for (int i = 0; i < 1000; i++)
+        {
+            a[i] = i;
+            b[i] = i + 0.5;
+        }
+
+        KsResult result = KolmogorovSmirnov.TwoSample(a, b, method: ExactMethod.Exact);
+        Assert.True(result.PValue is >= 0.0 and <= 1.0);
+    }
+
+    [Fact]
+    public void Ks_auto_returns_without_throwing_past_the_exact_bound()
+    {
+        // long-comment: this test cannot fail the way the one above it can, and
+        // that needs to be on the record rather than discovered later.
+        // n * m = 1,440,000, past the 1,000,000 exact-table bound but also past
+        // Auto's own 10,000 threshold: Auto's own rule already routes this to
+        // asymptotic before the size guard is ever consulted, so removing the
+        // guard entirely does not make this fail (verified). It only proves Auto
+        // keeps answering rather than throwing once a second reason to fall back
+        // is layered on top of the first.
+        double[] big = new double[1200];
+        double[] alsoBig = new double[1200];
+        for (int i = 0; i < 1200; i++)
+        {
+            big[i] = i;
+            alsoBig[i] = i + 0.5;
+        }
+
+        KsResult auto = KolmogorovSmirnov.TwoSample(big, alsoBig, method: ExactMethod.Auto);
+        KsResult asymptotic = KolmogorovSmirnov.TwoSample(big, alsoBig, method: ExactMethod.Asymptotic);
+
+        Assert.Equal(asymptotic.PValue, auto.PValue, 1e-15);
     }
 
     [Fact]

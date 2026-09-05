@@ -109,6 +109,13 @@ public static class Wilcoxon
             throw new ArgumentException("The sample is empty.", nameof(differences));
         }
 
+        // Checked before the zero-drop below: a NaN difference is neither > 0,
+        // < 0 nor == 0, so ComputeRankSums would fold it into the zero group.
+        if (Ranks.HasNaN(differences))
+        {
+            return new TestResult(double.NaN, double.NaN);
+        }
+
         // Wilcox drops the zeros before ranking; the other two rank them and
         // differ only in what they do with the ranks afterwards. S1244: a
         // difference of exactly zero is the sentinel the three rules disagree

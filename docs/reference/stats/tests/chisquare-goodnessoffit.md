@@ -38,6 +38,13 @@ explicit `expected` answers a different question — not "is this uniform?" but 
 *this* distribution?" — and it must sum to within `1e-8` of the observed total, relative to that
 total, or the p-value would be comparing tables of different sizes.
 
+**A NaN or an infinity propagates.** There is no `nan_policy` here: a NaN or an infinite value
+anywhere in `observed` drives `statistic` itself to `NaN` (an `inf - inf`, then an `inf / inf`,
+inside the loop above), and the p-value follows it rather than throwing the
+`ArgumentOutOfRangeException` calling the incomplete gamma function on a `NaN` would otherwise
+raise. Compare [`ChiSquare.Contingency`](chisquare-contingency.md), which raises
+`ArgumentException` on a NaN cell instead, unchanged by this rule.
+
 **Applies to** — net10.0, netstandard2.0.
 
 **See also** — [`ChiSquare.Contingency`](chisquare-contingency.md), [`FisherExact.Test`](fisherexact-test.md)

@@ -45,7 +45,14 @@ public static class ChiSquare
         }
 
         int dof = observed.Length - 1;
-        return new TestResult(statistic, Gamma.RegularizedQ(dof / 2.0, statistic / 2.0));
+
+        // statistic is already NaN here for a NaN or an infinite observation (inf - inf,
+        // then inf / inf, above); Gamma.RegularizedQ's Validate would otherwise throw on it.
+        double pValue = double.IsNaN(statistic)
+            ? double.NaN
+            : Gamma.RegularizedQ(dof / 2.0, statistic / 2.0);
+
+        return new TestResult(statistic, pValue);
     }
 
     private static double[] UniformExpectation(int categories, double observedTotal)

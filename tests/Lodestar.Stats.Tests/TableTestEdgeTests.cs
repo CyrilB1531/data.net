@@ -29,6 +29,20 @@ public sealed class TableTestEdgeTests
     }
 
     [Fact]
+    public void GoodnessOfFit_a_NaN_or_an_infinity_propagates_rather_than_throwing()
+    {
+        // Measured against scipy 1.18.0: both cases are (nan, nan); unguarded, the
+        // NaN statistic reached Gamma.RegularizedQ's Validate, which threw on it.
+        TestResult nanResult = ChiSquare.GoodnessOfFit([1.0, double.NaN, 3.0]);
+        Assert.True(double.IsNaN(nanResult.Statistic));
+        Assert.True(double.IsNaN(nanResult.PValue));
+
+        TestResult infResult = ChiSquare.GoodnessOfFit([1.0, double.PositiveInfinity, 3.0]);
+        Assert.True(double.IsNaN(infResult.Statistic));
+        Assert.True(double.IsNaN(infResult.PValue));
+    }
+
+    [Fact]
     public void Yates_applies_to_a_two_by_two_and_to_nothing_else()
     {
         double[][] twoByTwo = [[10.0, 20.0], [30.0, 40.0]];

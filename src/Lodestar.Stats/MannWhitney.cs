@@ -73,6 +73,13 @@ public static class MannWhitney
         x.CopyTo(pooled);
         y.CopyTo(pooled.AsSpan(n));
 
+        // The spec's rule: no nan_policy parameter exists, so a NaN anywhere
+        // propagates rather than taking a false finite rank (Ranks.HasNaN's remark).
+        if (Ranks.HasNaN(pooled))
+        {
+            return new TestResult(double.NaN, double.NaN);
+        }
+
         double[] ranks = Ranks.Average(pooled);
         double rankSumX = 0.0;
         for (int i = 0; i < n; i++)

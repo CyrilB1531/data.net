@@ -41,6 +41,10 @@ not the same number: on this data it gives `0.004329` rather than `0.006392`, be
 computes an exact p-value on tied data too instead of refusing, and this package matches that
 rather than raising on a case scipy accepts.
 
+**A NaN propagates.** There is no `nan_policy` here: a NaN anywhere in either sample makes the
+statistic and the p-value `NaN`, checked before `Ranks.Average` ever runs — unguarded, `Array.Sort`
+sorts a NaN to the front and it would take a finite rank like any other value.
+
 **The exact route has a size bound `Auto` cannot cross.** `x.Length * y.Length` above 20,000 costs
 tens of seconds to enumerate — the table is `(m + 1) × (n·m + 1)` and grows with the square of
 that product. Passing `ExactMethod.Exact` past the bound throws; `ExactMethod.Auto` never does,

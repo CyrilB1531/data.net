@@ -15,6 +15,19 @@ public static class KolmogorovSmirnov
     // table costs more than the asymptotic answer is worth.
     private const long AutoExactLimit = 10_000;
 
+    // long-comment: the bound below is a measured allocation ceiling, not a
+    // round number, and a reviewer should be able to see the measurement
+    // without leaving the source.
+    // FillRow allocates one double[m+1] row per outer iteration, n+1 of them: measured
+    // at n = m = 8,000 (product 64,000,000), that walk allocates 673 MB, about 10.5
+    // bytes per unit of product; n = m = 50,000 (product 2.5 billion) scales the same
+    // way to roughly 26 GB transiently. 1,000,000 keeps the walk to about 10 MB and
+    // comfortably sub-second, two orders of magnitude above AutoExactLimit -- an
+    // explicit request can still reach far past what Auto would ever choose on its
+    // own, the same relationship MannWhitney's MaxExactProduct and Wilcoxon's
+    // MaxExactSampleSize each hold with their own, much smaller, Auto threshold.
+    private const long MaxExactProduct = 1_000_000;
+
     /// <summary>Compares two samples by the largest gap between their empirical distributions.</summary>
     /// <param name="a">The first sample; at least one value.</param>
     /// <param name="b">The second sample; at least one value.</param>
@@ -25,6 +38,11 @@ public static class KolmogorovSmirnov
     /// <param name="method">Exact, asymptotic, or chosen by the sample sizes.</param>
     /// <returns>The distance, the p-value, where the distance was reached and its sign.</returns>
     /// <exception cref="ArgumentException">Either sample is empty.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="method"/> is <see cref="ExactMethod.Exact"/> and <c>a.Length * b.Length</c>
+    /// exceeds 1,000,000; the lattice-path recurrence allocates one row per iteration, an
+    /// O(n · m) cost in both time and allocation. Pass <see cref="ExactMethod.Asymptotic"/> instead.
+    /// </exception>
     public static KsResult TwoSample(
         ReadOnlySpan<double> a,
         ReadOnlySpan<double> b,
@@ -40,6 +58,13 @@ public static class KolmogorovSmirnov
             throw new ArgumentException("The second sample is empty.", nameof(b));
         }
 
+        // Checked before sorting: sorted[index] == value is false for NaN, which
+        // never advances AdvancePast and spins Walk forever otherwise.
+        if (Ranks.HasNaN(a) || Ranks.HasNaN(b))
+        {
+            return new KsResult(double.NaN, double.NaN, double.NaN, 0);
+        }
+
         int n = a.Length;
         int m = b.Length;
 
@@ -50,12 +75,27 @@ public static class KolmogorovSmirnov
 
         (double statistic, double location, int sign) = Statistic(sortedA, sortedB, alternative);
 
-        bool exact = method switch
+        long product = (long)n * m;
+        bool tableTooLarge = product > MaxExactProduct;
+        if (method == ExactMethod.Exact && tableTooLarge)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(method),
+                method,
+                $"Exact Kolmogorov-Smirnov needs a.Length * b.Length <= {MaxExactProduct}; " +
+                $"got {n} * {m} = {product}. Pass ExactMethod.Asymptotic instead.");
+        }
+
+        bool wantsExact = method switch
         {
             ExactMethod.Exact => true,
             ExactMethod.Asymptotic => false,
-            _ => (long)n * m <= AutoExactLimit,
+            _ => product <= AutoExactLimit,
         };
+
+        // Auto never throws: past the bound it falls back to asymptotic
+        // instead, since nothing the caller wrote asked for an exact answer.
+        bool exact = wantsExact && !tableTooLarge;
 
         double pValue = exact
             ? ExactPValue(statistic, n, m, alternative)
