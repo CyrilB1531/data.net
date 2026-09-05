@@ -2620,10 +2620,11 @@ caveat every other container row in this document carries;
 [decision 0051](../decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md) records a
 case where a container read a full 3× slower than the dedicated machine on the same code, so treat
 the ratios below as directional rather than exact. Window: one `BenchmarkDotNet` run, `ShortRun`
-job (`LaunchCount=1, WarmupCount=3, IterationCount=3` — stated explicitly because it is a short
-configuration, not BenchmarkDotNet's default of up to 15 iterations), 2026-09-05, no other load on
-the container during the run; total run time 1 min 51 s across the 12 benchmarks (6 pairs × 2
-sample sizes).
+job — fewer iterations than the default, exact parameters in `bench/README.md` — 2026-09-05, no
+other load on the container during the run; total run time 1 min 51 s across the 12 benchmarks
+(6 pairs × 2 sample sizes). The short job matters for reading the table: three iterations is enough
+to see which side is faster by an order of magnitude, as every row below is, and not enough to
+trust the last digit of a ratio.
 
 | Method | SampleSize | Mean | Allocated |
 | --- | ---: | ---: | ---: |

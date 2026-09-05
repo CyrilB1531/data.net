@@ -1681,64 +1681,25 @@ families, at every input shape checked. Should a future corpus case turn up a re
 `scipy` remains the reference this package follows (`docs/equivalence.md`); `bench/README.md` is
 where that would be recorded, and the corpus itself would not change.
 
-### Measured
+### Configuration
 
-Intel Xeon Processor 2.80GHz, 1 CPU, 4 logical and 4 physical cores, .NET SDK 10.0.111 (host and
-job both .NET 10.0.11), **a shared cloud container** — not the Intel i7-4770S the rest of this
-guide is taken on, per [decision 0051](../docs/decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md)'s
-same caveat: absolute times are not comparable to a dedicated workstation's, ratios are the
-transferable part.
+`[Params(100, 10_000)]` on `SampleSize` sweeps both operands' length together, so the two rows per
+method are the same shapes `MannWhitney`'s own guard cares about: 100 is small enough for
+`ExactMethod.Auto` to still be a live question, and `10_000 * 10_000` is far past
+`MannWhitney.MaxExactProduct = 20_000`, so that row is where both implementations are forced onto
+the asymptotic path by design — the comparison worth taking at that size, not an artefact of one
+side falling back and the other not (see
+[`src/Lodestar.Stats/MannWhitney.cs`](../src/Lodestar.Stats/MannWhitney.cs)). `[GlobalSetup]` draws
+`_a` and `_b` from a fixed seed (442) so every run measures the same inputs, and builds the fixed
+2×2 `_table` the two chi-square rows share.
 
-**Configuration, stated exactly because it is a short one.** `--job short` —
-`ShortRun(LaunchCount=1, WarmupCount=3, IterationCount=3)` — against `[MemoryDiagnoser]`, one
-process, no default-job's 15 iterations. Three iterations is enough to see which side is faster by
-an order of magnitude, as every row here is, and not enough to trust the last digit of a ratio; the
-`RatioSD` column in the raw BenchmarkDotNet output (not reproduced here) is 3-11% on the
-Mann-Whitney rows, wider than a default job would leave it. Section 15 uses the same `--job short`
-for the same reason: a full run (`--filter '*'` with no `--job` override, BenchmarkDotNet's default
-job of up to 15 iterations) was not taken here — a stated short configuration beats an unstated long
-one, which is the whole reason this paragraph names its settings rather than only its numbers.
+`--job short` — `ShortRun(LaunchCount=1, WarmupCount=3, IterationCount=3)` — is what was actually
+run, against `[MemoryDiagnoser]`. Section 15 uses the same override for the same reason: a full run
+(`--filter '*'` with no `--job` override, BenchmarkDotNet's default job of up to 15 iterations) was
+not taken here. `docs/guides/performance.md` carries the resulting numbers, the machine, and the
+window, per this repository's own rule for where a fact belongs (`CLAUDE.md`'s "Where a fact
+belongs" table).
 
-| Method | SampleSize | Mean | Allocated |
-| --- | ---: | ---: | ---: |
-| `LodestarWelchT` | 100 | 1.322 μs | — |
-| `AccordWelchT` | 100 | 40.10 μs | 392 B |
-| `LodestarMannWhitney` | 100 | 11.52 μs | 8,944 B |
-| `AccordMannWhitney` | 100 | 58.71 μs | 23,336 B |
-| `LodestarChiSquare` | 100 | 380.0 ns | 200 B |
-| `AccordChiSquare` | 100 | 293.6 ns | 168 B |
-| `LodestarWelchT` | 10,000 | 52.21 μs | — |
-| `AccordWelchT` | 10,000 | 166.6 μs | 392 B |
-| `LodestarMannWhitney` | 10,000 | 5.078 ms | 880,312 B |
-| `AccordMannWhitney` | 10,000 | 14.67 ms | 2,241,217 B |
-| `LodestarChiSquare` | 10,000 | 379.7 ns | 200 B |
-| `AccordChiSquare` | 10,000 | 295.4 ns | 168 B |
-
-**Read this before quoting a ratio.** `LodestarWelchT` and `AccordWelchT` both allocate nothing
-proportional to `SampleSize` in their own right — `AccordWelchT`'s fixed 392 B is the same at both
-sizes, so it is the cost of constructing the `TwoSampleTTest` result object itself, not a per-sample
-cost — because both compute the two means and
-variances in one streaming pass; the 30× (at 100) and 3.2× (at 10,000) gap narrows as `SampleSize`
-grows because `Accord`'s fixed per-call overhead (its `HypothesisTest<T>` object graph and
-`TDistribution` construction) is amortised over more per-sample work at the larger size, not
-because either side's underlying algorithm changes complexity class.
-
-**`ChiSquare.Contingency` is the one family where the incumbent is faster** — 380 ns against 294
-ns, flat across `SampleSize` because the table has four cells regardless of how many observations
-produced it. Both figures are in the same sub-microsecond regime a caller will not notice against
-any real I/O; the gap is `Lodestar.Stats` building a fresh `Chi2ContingencyResult` (including the
-`double[][]` expected-frequency table the result carries and `Accord`'s `ChiSquareTest` does not
-expose) against `Accord` returning a lighter object over the same four numbers.
-
-**`MannWhitney.Test` shows the largest and most consistent gap** — 5.1× at 100 samples, 2.9× at
-10,000, `Lodestar.Stats` faster both times and allocating 61-62% less (8,944 B against 23,336 B at
-100; 880,312 B against 2,241,217 B at 10,000). At 10,000 samples both
-implementations take the guarded asymptotic path (`ExactMethod.Auto` refuses the exact table above
-`MannWhitney.MaxExactProduct = 20_000`, and `10_000 * 10_000` is far past it — see
-[`src/Lodestar.Stats/MannWhitney.cs`](../src/Lodestar.Stats/MannWhitney.cs)), which is the
-comparison worth taking at that size and not an artefact of one side falling back and the other
-not.
-
-Full raw BenchmarkDotNet output, including `Error`/`StdDev`/`RatioSD` per row, is not reproduced
-here; re-run the command above to reproduce it — the corpus is generated in `[GlobalSetup]` from a
-fixed seed (442), so every run measures the same inputs.
+Numbers are published in
+[`docs/guides/performance.md`](../docs/guides/performance.md#lodestarstats-against-accordstatistics-issue-442)
+— this section documents how to measure, not what was measured.
