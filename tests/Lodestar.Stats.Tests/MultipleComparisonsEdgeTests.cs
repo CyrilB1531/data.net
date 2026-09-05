@@ -62,4 +62,53 @@ public sealed class MultipleComparisonsEdgeTests
             Assert.True(by[i] >= bh[i] - 1e-15, $"by[{i}] = {by[i]} fell below bh[{i}] = {bh[i]}.");
         }
     }
+
+    [Fact]
+    public void A_family_at_the_ceiling_stays_at_one_under_every_correction()
+    {
+        // scipy.stats.false_discovery_control leaves an all-ones family at 1.0
+        // under both 'bh' and 'by'; Bonferroni's min(p * n, 1) does the same.
+        double[] p = [1.0, 1.0, 1.0, 1.0];
+
+        AssertBounded(MultipleComparisons.Bonferroni(p), [1.0, 1.0, 1.0, 1.0]);
+        AssertBounded(MultipleComparisons.BenjaminiHochberg(p), [1.0, 1.0, 1.0, 1.0]);
+        AssertBounded(MultipleComparisons.BenjaminiYekutieli(p), [1.0, 1.0, 1.0, 1.0]);
+    }
+
+    [Fact]
+    public void A_family_of_one_passes_through_unchanged_under_every_correction()
+    {
+        // n = 1 collapses every correction's formula to the identity: Bonferroni's
+        // p * 1, BH's p * 1 / 1, and BY's p * 1 * harmonic(1) / 1 all equal p.
+        double[] p = [0.037];
+
+        AssertBounded(MultipleComparisons.Bonferroni(p), [0.037]);
+        AssertBounded(MultipleComparisons.BenjaminiHochberg(p), [0.037]);
+        AssertBounded(MultipleComparisons.BenjaminiYekutieli(p), [0.037]);
+    }
+
+    [Fact]
+    public void A_zero_p_value_adjusts_to_zero_without_disturbing_the_rest()
+    {
+        // scipy.stats.false_discovery_control([0.0, 0.2, 0.9], method='bh') gives
+        // [0.0, 0.3, 0.9]; method='by' gives [0.0, 0.55, 1.0] (harmonic(3) ~=
+        // 1.8333333333333333). Bonferroni is min(p * 3, 1) elementwise.
+        double[] p = [0.0, 0.2, 0.9];
+
+        AssertBounded(MultipleComparisons.Bonferroni(p), [0.0, 0.6, 1.0]);
+        AssertBounded(MultipleComparisons.BenjaminiHochberg(p), [0.0, 0.3, 0.9]);
+        AssertBounded(MultipleComparisons.BenjaminiYekutieli(p), [0.0, 0.55, 1.0]);
+    }
+
+    /// <summary>Every adjusted value matches within tolerance and lies in <c>[0, 1]</c>, never NaN.</summary>
+    private static void AssertBounded(double[] actual, double[] expected)
+    {
+        Assert.Equal(expected.Length, actual.Length);
+        for (int i = 0; i < expected.Length; i++)
+        {
+            Assert.False(double.IsNaN(actual[i]), $"actual[{i}] was NaN.");
+            Assert.InRange(actual[i], 0.0, 1.0);
+            Assert.Equal(expected[i], actual[i], 1e-9);
+        }
+    }
 }
