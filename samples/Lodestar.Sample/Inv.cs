@@ -37,6 +37,15 @@ internal static class Inv
     /// <summary>A number to five decimals.</summary>
     public static string F5(double value) => value.ToString("F5", CultureInfo.InvariantCulture);
 
+    /// <summary>Three significant digits in scientific notation, invariant culture.</summary>
+    /// <remarks>
+    /// p-values span thirty orders of magnitude, so a fixed-point format prints
+    /// most of them as zero. tools/check_sample_culture.py is why the culture is
+    /// stated rather than inherited.
+    /// </remarks>
+    public static string E3(double value) =>
+        value.ToString("E3", System.Globalization.CultureInfo.InvariantCulture);
+
     /// <summary>A row of numbers, bracketed and comma-separated, each to three decimals.</summary>
     public static string List(IEnumerable<double> values) =>
         "[" + string.Join(", ", values.Select(F3)) + "]";

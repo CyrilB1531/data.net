@@ -31,7 +31,8 @@ SAMPLES = ROOT / "samples" / "Lodestar.Sample"
 
 # Packages whose samples have been split per class. Each new lot adds its own
 # name here, and this list emptying of its "waiting" half is what closes #280.
-CONVERTED = ["Lodestar.Text", "Lodestar.Conformal", "Lodestar.Abstractions", "Lodestar.Decomposition"]
+CONVERTED = ["Lodestar.Text", "Lodestar.Conformal", "Lodestar.Abstractions",
+             "Lodestar.Decomposition", "Lodestar.Stats"]
 WAITING = ["Lodestar.Fuzzy", "Lodestar.Embeddings", "Lodestar.Metrics"]
 
 DECLARATION = re.compile(

@@ -47,6 +47,20 @@ SplitConformalSample.Run();
 DecompositionSamples.Run();
 BkTreeSample.Run();
 BkTreeMatchSample.Run();
+TTestSample.Run();
+TTestResultSample.Run();
+MannWhitneySample.Run();
+WilcoxonSample.Run();
+ChiSquareSample.Run();
+Chi2ContingencyResultSample.Run();
+FisherExactSample.Run();
+KolmogorovSmirnovSample.Run();
+KsResultSample.Run();
+OneWayAnovaSample.Run();
+KruskalWallisSample.Run();
+ShapiroWilkSample.Run();
+MultipleComparisonsSample.Run();
+TestResultSample.Run();
 
 if (!PackagingGate.Verify())
 {

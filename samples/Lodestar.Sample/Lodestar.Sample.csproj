@@ -41,6 +41,7 @@
   <Import Project="../../src/Lodestar.Abstractions/Version.props" />
   <Import Project="../../src/Lodestar.Decomposition/Version.props" />
   <Import Project="../../src/Lodestar.Onnx/Version.props" />
+  <Import Project="../../src/Lodestar.Stats/Version.props" />
 
   <ItemGroup>
     <PackageReference Include="Lodestar.Text" Version="$(LodestarTextVersion)" />
@@ -51,6 +52,7 @@
     <PackageReference Include="Lodestar.Abstractions" Version="$(LodestarAbstractionsVersion)" />
     <PackageReference Include="Lodestar.Decomposition" Version="$(LodestarDecompositionVersion)" />
     <PackageReference Include="Lodestar.Onnx" Version="$(LodestarOnnxVersion)" />
+    <PackageReference Include="Lodestar.Stats" Version="$(LodestarStatsVersion)" />
   </ItemGroup>
 
 </Project>
