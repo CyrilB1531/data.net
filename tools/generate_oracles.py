@@ -7561,6 +7561,417 @@ def generate_mmr() -> dict:
     }
 
 
+# --- Hypothesis tests (#442) ----------------------------------------------
+
+STATS_LIBRARY = "scipy"
+CASES = "cases"
+PVALUE = "pvalue"
+STATISTIC = "statistic"
+
+
+def _stats_metadata(family: str, count: int) -> dict:
+    """The identity block every stats corpus carries.
+
+    The version is read from the installed distribution rather than written
+    down, so a corpus regenerated against a different scipy declares that fact
+    instead of silently replacing numbers under the old version's name.
+    """
+    return {
+        "library": STATS_LIBRARY,
+        "version": version(STATS_LIBRARY),
+        "family": family,
+        "count": count,
+    }
+
+
+def _stats_number(value: float) -> float | str:
+    """A corpus number, with the three non-finite values spelled as strings.
+
+    main() writes with allow_nan=False, so a bare Infinity would abort the whole
+    generation. Two of these corpora produce one legitimately: a one-sided
+    t-test's confidence interval is half-open, and Fisher's odds ratio is
+    infinite when a diagonal of the table is zero. The spelling is the one
+    tools/generate_oracles.py already uses for the ROC thresholds.
+
+    No rounding here, unlike the metrics encoder: a p-value at 1e-53 has to
+    survive the round trip to every bit the relative comparison checks.
+    """
+    if math.isnan(value):
+        return "NaN"
+    if math.isinf(value):
+        return "Infinity" if value > 0 else "-Infinity"
+    return float(value)
+
+
+def _stats_samples() -> list[dict]:
+    """Sample pairs that between them exercise every branch the tests have.
+
+    Balanced and unbalanced, tied and untied, small enough for the exact branch
+    and large enough for the asymptotic one, plus one pair separated far enough
+    that the p-value lands below 1e-15 -- which is where an absolute tolerance
+    would stop proving anything.
+    """
+    rng = SeededRandom(SEED + 442)
+    tiny_a = [1.0, 4.0, 7.0, 9.0]
+    tiny_b = [2.0, 3.0, 8.0, 12.0, 15.0]
+    tied_a = [1.0, 2.0, 2.0, 3.0, 5.0, 5.0]
+    tied_b = [2.0, 3.0, 3.0, 4.0, 5.0, 7.0]
+    wide_a = [round(rng.gauss(0.0, 1.0), 6) for _ in range(40)]
+    wide_b = [round(rng.gauss(3.0, 1.0), 6) for _ in range(40)]
+    return [
+        {"name": "small and untied, exact branch reachable", "a": tiny_a, "b": tiny_b},
+        {"name": "ties in both samples, auto falls back to asymptotic", "a": tied_a, "b": tied_b},
+        {"name": "unbalanced, one sample twice the other",
+         "a": tiny_a, "b": tiny_b + [20.0, 22.0, 25.0, 30.0, 33.0]},
+        {"name": "well separated, p-value below 1e-15", "a": wide_a, "b": wide_b},
+    ]
+
+
+def _stats_paired() -> list[dict]:
+    """Paired samples, including the zero differences Wilcoxon's zero_method is about."""
+    rng = SeededRandom(SEED + 443)
+    drifted = [round(rng.gauss(0.0, 1.0), 6) for _ in range(30)]
+    return [
+        {"name": "no zero differences", "x": [1.0, 3.0, 5.0, 7.0, 9.0, 11.0],
+         "y": [2.0, 3.5, 4.0, 8.0, 8.5, 13.0]},
+        {"name": "two zero differences", "x": [1.0, 3.0, 5.0, 7.0, 9.0, 11.0],
+         "y": [1.0, 3.5, 5.0, 8.0, 8.5, 13.0]},
+        {"name": "thirty pairs, asymptotic branch", "x": drifted,
+         "y": [v + 0.8 for v in drifted[:15]] + [v - 0.1 for v in drifted[15:]]},
+    ]
+
+
+def generate_stats_ttest() -> dict:
+    """Student, Welch, paired and one-sample t, against scipy.stats (#442)."""
+    from scipy import stats as sps
+
+    cases: list[dict] = []
+    for fx in _stats_samples():
+        for equal_var in (True, False):
+            for alternative in ("two-sided", "less", "greater"):
+                r = sps.ttest_ind(fx["a"], fx["b"], equal_var=equal_var,
+                                  alternative=alternative)
+                low, high = r.confidence_interval(0.95)
+                cases.append({
+                    "name": f"{fx['name']} | ind | equal_var={equal_var} | {alternative}",
+                    "call": "ttest_ind",
+                    "args": {"equal_var": equal_var, "alternative": alternative},
+                    "a": fx["a"], "b": fx["b"],
+                    STATISTIC: _stats_number(r.statistic), PVALUE: float(r.pvalue),
+                    "df": float(r.df),
+                    "ci_low": _stats_number(low), "ci_high": _stats_number(high),
+                })
+
+    for fx in _stats_paired():
+        for alternative in ("two-sided", "less", "greater"):
+            r = sps.ttest_rel(fx["x"], fx["y"], alternative=alternative)
+            low, high = r.confidence_interval(0.95)
+            cases.append({
+                "name": f"{fx['name']} | rel | {alternative}",
+                "call": "ttest_rel",
+                "args": {"alternative": alternative},
+                "a": fx["x"], "b": fx["y"],
+                STATISTIC: _stats_number(r.statistic), PVALUE: float(r.pvalue),
+                "df": float(r.df),
+                "ci_low": _stats_number(low), "ci_high": _stats_number(high),
+            })
+
+    for fx in _stats_samples():
+        for popmean in (0.0, 5.0):
+            for alternative in ("two-sided", "less", "greater"):
+                r = sps.ttest_1samp(fx["a"], popmean, alternative=alternative)
+                low, high = r.confidence_interval(0.95)
+                cases.append({
+                    "name": f"{fx['name']} | 1samp | mean={popmean} | {alternative}",
+                    "call": "ttest_1samp",
+                    "args": {"popmean": popmean, "alternative": alternative},
+                    "a": fx["a"], "b": [],
+                    STATISTIC: _stats_number(r.statistic), PVALUE: float(r.pvalue),
+                    "df": float(r.df),
+                    "ci_low": _stats_number(low), "ci_high": _stats_number(high),
+                })
+
+    return {"metadata": _stats_metadata("ttest", len(cases)), CASES: cases}
+
+
+def generate_stats_mannwhitney() -> dict:
+    """Mann-Whitney U, over both continuity settings and all three methods (#442)."""
+    from scipy import stats as sps
+
+    cases: list[dict] = []
+    for fx in _stats_samples():
+        for use_continuity in (True, False):
+            for method in ("auto", "asymptotic"):
+                for alternative in ("two-sided", "less", "greater"):
+                    r = sps.mannwhitneyu(fx["a"], fx["b"], use_continuity=use_continuity,
+                                         alternative=alternative, method=method)
+                    cases.append({
+                        "name": f"{fx['name']} | continuity={use_continuity} | "
+                                f"{method} | {alternative}",
+                        "call": "mannwhitneyu",
+                        "args": {"use_continuity": use_continuity,
+                                 "alternative": alternative, "method": method},
+                        "a": fx["a"], "b": fx["b"],
+                        STATISTIC: float(r.statistic), PVALUE: float(r.pvalue),
+                    })
+
+    # The exact branch asked for explicitly, including on tied data: measured,
+    # scipy computes there rather than refusing, and parity means matching that.
+    for fx in _stats_samples()[:3]:
+        for alternative in ("two-sided", "less", "greater"):
+            r = sps.mannwhitneyu(fx["a"], fx["b"], use_continuity=True,
+                                 alternative=alternative, method="exact")
+            cases.append({
+                "name": f"{fx['name']} | exact | {alternative}",
+                "call": "mannwhitneyu",
+                "args": {"use_continuity": True, "alternative": alternative,
+                         "method": "exact"},
+                "a": fx["a"], "b": fx["b"],
+                STATISTIC: float(r.statistic), PVALUE: float(r.pvalue),
+            })
+
+    return {"metadata": _stats_metadata("mannwhitney", len(cases)), CASES: cases}
+
+
+def generate_stats_wilcoxon() -> dict:
+    """Wilcoxon signed-rank, over the three zero methods (#442)."""
+    from scipy import stats as sps
+
+    cases: list[dict] = []
+    for fx in _stats_paired():
+        for zero_method in ("wilcox", "pratt", "zsplit"):
+            for correction in (False, True):
+                for method in ("auto", "asymptotic"):
+                    for alternative in ("two-sided", "less", "greater"):
+                        r = sps.wilcoxon(fx["x"], fx["y"], zero_method=zero_method,
+                                         correction=correction, alternative=alternative,
+                                         method=method)
+                        cases.append({
+                            "name": f"{fx['name']} | {zero_method} | "
+                                    f"correction={correction} | {method} | {alternative}",
+                            "call": "wilcoxon",
+                            "args": {"zero_method": zero_method, "correction": correction,
+                                     "alternative": alternative, "method": method},
+                            "x": fx["x"], "y": fx["y"],
+                            STATISTIC: float(r.statistic), PVALUE: float(r.pvalue),
+                        })
+
+    return {"metadata": _stats_metadata("wilcoxon", len(cases)), CASES: cases}
+
+
+def generate_stats_chisquare() -> dict:
+    """Goodness of fit and contingency, with Yates on and off (#442)."""
+    from scipy import stats as sps
+
+    goodness = [
+        {"name": "uniform expectation, six categories",
+         "observed": [16.0, 18.0, 16.0, 14.0, 12.0, 12.0], "expected": []},
+        # scipy 1.18.0's chisquare refuses an f_exp that does not sum to f_obs's
+        # sum (88.0); a uniform [16]*6 sums to 96, so this profile is non-uniform.
+        {"name": "explicit expectation",
+         "observed": [16.0, 18.0, 16.0, 14.0, 12.0, 12.0],
+         "expected": [20.0, 18.0, 16.0, 14.0, 12.0, 8.0]},
+        {"name": "a far tail, p below 1e-15",
+         "observed": [200.0, 10.0, 10.0, 10.0], "expected": []},
+    ]
+    tables = [
+        {"name": "2x2, Yates applies", "table": [[10.0, 20.0], [30.0, 40.0]]},
+        {"name": "2x2, strong association", "table": [[100.0, 10.0], [10.0, 100.0]]},
+        {"name": "3x2, Yates does not apply",
+         "table": [[10.0, 20.0], [30.0, 40.0], [15.0, 5.0]]},
+        {"name": "3x3", "table": [[10.0, 20.0, 30.0], [30.0, 40.0, 10.0], [5.0, 15.0, 25.0]]},
+    ]
+
+    cases: list[dict] = []
+    for fx in goodness:
+        expected = fx["expected"] or None
+        r = sps.chisquare(fx["observed"], f_exp=expected)
+        cases.append({
+            "name": f"{fx['name']} | chisquare",
+            "call": "chisquare",
+            "args": {"f_exp": fx["expected"]},
+            "observed": fx["observed"], "expected_input": fx["expected"],
+            STATISTIC: float(r.statistic), PVALUE: float(r.pvalue),
+        })
+
+    for fx in tables:
+        for correction in (True, False):
+            r = sps.chi2_contingency(np.array(fx["table"]), correction=correction)
+            cases.append({
+                "name": f"{fx['name']} | correction={correction}",
+                "call": "chi2_contingency",
+                "args": {"correction": correction},
+                "table": fx["table"],
+                STATISTIC: float(r.statistic), PVALUE: float(r.pvalue),
+                "dof": int(r.dof),
+                "expected_freq": [[float(v) for v in row] for row in r.expected_freq],
+            })
+
+    return {"metadata": _stats_metadata("chisquare", len(cases)), CASES: cases}
+
+
+def generate_stats_fisher() -> dict:
+    """Fisher's exact test on 2x2 tables, all three alternatives (#442)."""
+    from scipy import stats as sps
+
+    tables = [
+        {"name": "Fisher's tea tasting", "table": [[3, 1], [1, 3]]},
+        {"name": "a zero cell", "table": [[8, 2], [1, 5]]},
+        {"name": "two zero cells", "table": [[5, 0], [0, 5]]},
+        {"name": "large counts", "table": [[100, 40], [35, 120]]},
+        {"name": "an empty row is refused by the C# side", "table": [[7, 3], [2, 9]]},
+    ]
+
+    cases: list[dict] = []
+    for fx in tables:
+        for alternative in ("two-sided", "less", "greater"):
+            r = sps.fisher_exact(np.array(fx["table"]), alternative=alternative)
+            cases.append({
+                "name": f"{fx['name']} | {alternative}",
+                "call": "fisher_exact",
+                "args": {"alternative": alternative},
+                "table": fx["table"],
+                # The odds ratio is infinite when a diagonal is zero, which the
+                # "two zero cells" fixture is there to reach.
+                STATISTIC: _stats_number(r.statistic), PVALUE: float(r.pvalue),
+            })
+
+    return {"metadata": _stats_metadata("fisher", len(cases)), CASES: cases}
+
+
+def generate_stats_ks() -> dict:
+    """Two-sample Kolmogorov-Smirnov, exact and asymptotic (#442)."""
+    from scipy import stats as sps
+
+    cases: list[dict] = []
+    for fx in _stats_samples():
+        for method in ("auto", "asymp", "exact"):
+            for alternative in ("two-sided", "less", "greater"):
+                r = sps.ks_2samp(fx["a"], fx["b"], alternative=alternative, method=method)
+                cases.append({
+                    "name": f"{fx['name']} | {method} | {alternative}",
+                    "call": "ks_2samp",
+                    "args": {"alternative": alternative, "method": method},
+                    "a": fx["a"], "b": fx["b"],
+                    STATISTIC: float(r.statistic), PVALUE: float(r.pvalue),
+                    "statistic_location": float(r.statistic_location),
+                    "statistic_sign": int(r.statistic_sign),
+                })
+
+    return {"metadata": _stats_metadata("ks", len(cases)), CASES: cases}
+
+
+def _stats_groups() -> list[dict]:
+    """Group sets for the two k-sample tests."""
+    rng = SeededRandom(SEED + 444)
+    return [
+        {"name": "three balanced groups",
+         "groups": [[1.0, 2.0, 3.0, 4.0], [2.0, 3.0, 4.0, 5.0], [5.0, 6.0, 7.0, 8.0]]},
+        {"name": "unbalanced groups",
+         "groups": [[1.0, 2.0], [2.0, 3.0, 4.0, 5.0, 6.0], [5.0, 6.0, 7.0]]},
+        {"name": "ties across groups",
+         "groups": [[1.0, 2.0, 2.0], [2.0, 2.0, 3.0], [3.0, 3.0, 4.0]]},
+        {"name": "three separated groups, p below 1e-15",
+         "groups": [[round(rng.gauss(m, 1.0), 6) for _ in range(30)] for m in (0.0, 4.0, 8.0)]},
+    ]
+
+
+def generate_stats_anova() -> dict:
+    """One-way ANOVA, against scipy.stats.f_oneway (#442)."""
+    from scipy import stats as sps
+
+    cases = []
+    for fx in _stats_groups():
+        r = sps.f_oneway(*[np.array(g) for g in fx["groups"]])
+        cases.append({
+            "name": fx["name"], "call": "f_oneway", "args": {},
+            "groups": fx["groups"],
+            STATISTIC: float(r.statistic), PVALUE: float(r.pvalue),
+        })
+
+    return {"metadata": _stats_metadata("anova", len(cases)), CASES: cases}
+
+
+def generate_stats_kruskal() -> dict:
+    """Kruskal-Wallis, against scipy.stats.kruskal (#442)."""
+    from scipy import stats as sps
+
+    cases = []
+    for fx in _stats_groups():
+        r = sps.kruskal(*[np.array(g) for g in fx["groups"]])
+        cases.append({
+            "name": fx["name"], "call": "kruskal", "args": {},
+            "groups": fx["groups"],
+            STATISTIC: float(r.statistic), PVALUE: float(r.pvalue),
+        })
+
+    return {"metadata": _stats_metadata("kruskal", len(cases)), CASES: cases}
+
+
+def generate_stats_shapiro() -> dict:
+    """Shapiro-Wilk, against scipy.stats.shapiro (#442)."""
+    from scipy import stats as sps
+
+    rng = SeededRandom(SEED + 445)
+    samples = [
+        {"name": "seven normal draws, the smallest n Royston covers",
+         "x": [round(rng.gauss(0.0, 1.0), 6) for _ in range(7)]},
+        {"name": "twenty normal draws",
+         "x": [round(rng.gauss(0.0, 1.0), 6) for _ in range(20)]},
+        {"name": "fifty normal draws",
+         "x": [round(rng.gauss(0.0, 1.0), 6) for _ in range(50)]},
+        # SeededRandom exposes random/randint/randrange/choice/uniform/gauss and
+        # no expovariate, so the exponential draw is its own inverse CDF.
+        {"name": "two hundred exponential draws, p below 1e-15",
+         "x": [round(-math.log(1.0 - rng.random()), 6) for _ in range(200)]},
+        {"name": "a sample with ties",
+         "x": [1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 5.0, 9.0, 9.0]},
+    ]
+
+    cases = []
+    for fx in samples:
+        r = sps.shapiro(np.array(fx["x"]))
+        cases.append({
+            "name": fx["name"], "call": "shapiro", "args": {},
+            "x": fx["x"],
+            STATISTIC: float(r.statistic), PVALUE: float(r.pvalue),
+        })
+
+    return {"metadata": _stats_metadata("shapiro", len(cases)), CASES: cases}
+
+
+def generate_stats_multiple_comparisons() -> dict:
+    """Benjamini-Hochberg and Benjamini-Yekutieli from scipy; Bonferroni from its definition.
+
+    scipy has no Bonferroni, and adding statsmodels to reach one would widen the
+    surface generate_oracles.py depends on for a rule that is min(p * n, 1). The
+    corpus states the definition instead, the way #526 generated the BK-tree
+    corpus by brute force rather than by a second library.
+    """
+    from scipy import stats as sps
+
+    families = [
+        {"name": "four p-values, one clearly significant", "p": [0.01, 0.02, 0.2, 0.5]},
+        {"name": "already sorted, all small", "p": [0.001, 0.008, 0.039, 0.041, 0.042]},
+        {"name": "unsorted, with a tie", "p": [0.3, 0.02, 0.02, 0.9, 0.001]},
+        {"name": "a single p-value", "p": [0.04]},
+        {"name": "everything at one", "p": [1.0, 1.0, 1.0]},
+    ]
+
+    cases = []
+    for fx in families:
+        n = len(fx["p"])
+        cases.append({
+            "name": fx["name"], "call": "false_discovery_control", "args": {},
+            "p": fx["p"],
+            "bonferroni": [min(p * n, 1.0) for p in fx["p"]],
+            "bh": [float(v) for v in sps.false_discovery_control(np.array(fx["p"]), method="bh")],
+            "by": [float(v) for v in sps.false_discovery_control(np.array(fx["p"]), method="by")],
+        })
+
+    return {"metadata": _stats_metadata("multiple_comparisons", len(cases)), CASES: cases}
+
+
 def main() -> None:
     """Write every oracle deterministically, byte for byte.
 
@@ -7672,6 +8083,16 @@ def main() -> None:
         "bpe_no_split.json": generate_bpe_no_split,
         "wordpiece_added_tokens.json": generate_wordpiece_added_tokens,
         "bpe_prefix_space.json": generate_bpe_prefix_space,
+        "stats_ttest.json": generate_stats_ttest,
+        "stats_mannwhitney.json": generate_stats_mannwhitney,
+        "stats_wilcoxon.json": generate_stats_wilcoxon,
+        "stats_chisquare.json": generate_stats_chisquare,
+        "stats_fisher.json": generate_stats_fisher,
+        "stats_ks.json": generate_stats_ks,
+        "stats_anova.json": generate_stats_anova,
+        "stats_kruskal.json": generate_stats_kruskal,
+        "stats_shapiro.json": generate_stats_shapiro,
+        "stats_multiple_comparisons.json": generate_stats_multiple_comparisons,
     }
     for filename, gen in generators.items():
         payload = gen()

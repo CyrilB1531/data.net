@@ -1,0 +1,295 @@
+{
+ "metadata": {
+  "library": "scipy",
+  "version": "1.18.0",
+  "family": "fisher",
+  "count": 15
+ },
+ "cases": [
+  {
+   "name": "Fisher's tea tasting | two-sided",
+   "call": "fisher_exact",
+   "args": {
+    "alternative": "two-sided"
+   },
+   "table": [
+    [
+     3,
+     1
+    ],
+    [
+     1,
+     3
+    ]
+   ],
+   "statistic": 9.0,
+   "pvalue": 0.48571428571428565
+  },
+  {
+   "name": "Fisher's tea tasting | less",
+   "call": "fisher_exact",
+   "args": {
+    "alternative": "less"
+   },
+   "table": [
+    [
+     3,
+     1
+    ],
+    [
+     1,
+     3
+    ]
+   ],
+   "statistic": 9.0,
+   "pvalue": 0.9857142857142858
+  },
+  {
+   "name": "Fisher's tea tasting | greater",
+   "call": "fisher_exact",
+   "args": {
+    "alternative": "greater"
+   },
+   "table": [
+    [
+     3,
+     1
+    ],
+    [
+     1,
+     3
+    ]
+   ],
+   "statistic": 9.0,
+   "pvalue": 0.24285714285714283
+  },
+  {
+   "name": "a zero cell | two-sided",
+   "call": "fisher_exact",
+   "args": {
+    "alternative": "two-sided"
+   },
+   "table": [
+    [
+     8,
+     2
+    ],
+    [
+     1,
+     5
+    ]
+   ],
+   "statistic": 20.0,
+   "pvalue": 0.034965034965034975
+  },
+  {
+   "name": "a zero cell | less",
+   "call": "fisher_exact",
+   "args": {
+    "alternative": "less"
+   },
+   "table": [
+    [
+     8,
+     2
+    ],
+    [
+     1,
+     5
+    ]
+   ],
+   "statistic": 20.0,
+   "pvalue": 0.9991258741258742
+  },
+  {
+   "name": "a zero cell | greater",
+   "call": "fisher_exact",
+   "args": {
+    "alternative": "greater"
+   },
+   "table": [
+    [
+     8,
+     2
+    ],
+    [
+     1,
+     5
+    ]
+   ],
+   "statistic": 20.0,
+   "pvalue": 0.024475524475524483
+  },
+  {
+   "name": "two zero cells | two-sided",
+   "call": "fisher_exact",
+   "args": {
+    "alternative": "two-sided"
+   },
+   "table": [
+    [
+     5,
+     0
+    ],
+    [
+     0,
+     5
+    ]
+   ],
+   "statistic": "Infinity",
+   "pvalue": 0.007936507936507938
+  },
+  {
+   "name": "two zero cells | less",
+   "call": "fisher_exact",
+   "args": {
+    "alternative": "less"
+   },
+   "table": [
+    [
+     5,
+     0
+    ],
+    [
+     0,
+     5
+    ]
+   ],
+   "statistic": "Infinity",
+   "pvalue": 1.0
+  },
+  {
+   "name": "two zero cells | greater",
+   "call": "fisher_exact",
+   "args": {
+    "alternative": "greater"
+   },
+   "table": [
+    [
+     5,
+     0
+    ],
+    [
+     0,
+     5
+    ]
+   ],
+   "statistic": "Infinity",
+   "pvalue": 0.003968253968253969
+  },
+  {
+   "name": "large counts | two-sided",
+   "call": "fisher_exact",
+   "args": {
+    "alternative": "two-sided"
+   },
+   "table": [
+    [
+     100,
+     40
+    ],
+    [
+     35,
+     120
+    ]
+   ],
+   "statistic": 8.571428571428571,
+   "pvalue": 2.114784040251239e-17
+  },
+  {
+   "name": "large counts | less",
+   "call": "fisher_exact",
+   "args": {
+    "alternative": "less"
+   },
+   "table": [
+    [
+     100,
+     40
+    ],
+    [
+     35,
+     120
+    ]
+   ],
+   "statistic": 8.571428571428571,
+   "pvalue": 1.0
+  },
+  {
+   "name": "large counts | greater",
+   "call": "fisher_exact",
+   "args": {
+    "alternative": "greater"
+   },
+   "table": [
+    [
+     100,
+     40
+    ],
+    [
+     35,
+     120
+    ]
+   ],
+   "statistic": 8.571428571428571,
+   "pvalue": 1.3457866294642278e-17
+  },
+  {
+   "name": "an empty row is refused by the C# side | two-sided",
+   "call": "fisher_exact",
+   "args": {
+    "alternative": "two-sided"
+   },
+   "table": [
+    [
+     7,
+     3
+    ],
+    [
+     2,
+     9
+    ]
+   ],
+   "statistic": 10.5,
+   "pvalue": 0.029973122852379817
+  },
+  {
+   "name": "an empty row is refused by the C# side | less",
+   "call": "fisher_exact",
+   "args": {
+    "alternative": "less"
+   },
+   "table": [
+    [
+     7,
+     3
+    ],
+    [
+     2,
+     9
+    ]
+   ],
+   "statistic": 10.5,
+   "pvalue": 0.9982819038546593
+  },
+  {
+   "name": "an empty row is refused by the C# side | greater",
+   "call": "fisher_exact",
+   "args": {
+    "alternative": "greater"
+   },
+   "table": [
+    [
+     7,
+     3
+    ],
+    [
+     2,
+     9
+    ]
+   ],
+   "statistic": 10.5,
+   "pvalue": 0.024172422005239336
+  }
+ ]
+}
