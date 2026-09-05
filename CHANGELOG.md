@@ -5,10 +5,10 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-The eight packages (`Lodestar.Text`, `Lodestar.Embeddings`, `Lodestar.Fuzzy`,
+The nine packages (`Lodestar.Text`, `Lodestar.Embeddings`, `Lodestar.Fuzzy`,
 `Lodestar.Metrics` — published as `DataNet.*` up to 2026-08-15 — plus
-`Lodestar.Conformal`, `Lodestar.Abstractions`, `Lodestar.Decomposition` and
-`Lodestar.Onnx`, all newer than that rename)
+`Lodestar.Conformal`, `Lodestar.Abstractions`, `Lodestar.Decomposition`,
+`Lodestar.Onnx` and `Lodestar.Stats`, all newer than that rename)
 version and release **independently**, each from its own
 `src/<Package>/Version.props`, so entries are grouped per package. Releases up to
 and including `0.2.0` predate the split and covered all three at once — see
@@ -86,6 +86,26 @@ is one sentence, the issue and the commit; see
 #### Changed
 
 - **`Nmf.Fit(matrix, k)` accepts `k == min(rows, columns)`**, scikit-learn's own bound, where it refused any `k` at or above the column count — a bound inherited from the validation `TruncatedSvd` needs rather than from anything NMF does, so a square matrix at full rank was a fit there and an `ArgumentOutOfRangeException` here. The oracle corpus now freezes a `24 × 8` fit at `k = 8` against `NMF` itself, and `TruncatedSvd`'s own bound is untouched: `n_components >= n_features` is what scikit-learn refuses there too. ([#519](https://github.com/CyrilB1531/lodestar/issues/519))
+
+### Lodestar.Stats
+
+#### Added
+
+- **`Lodestar.Stats` is a new package: ten families of classical hypothesis
+  test at `scipy.stats` 1.18.0 parity.** Student and Welch *t*, Mann-Whitney
+  *U*, Wilcoxon signed-rank, χ² goodness-of-fit and contingency, Fisher exact,
+  two-sample Kolmogorov-Smirnov, one-way ANOVA, Kruskal-Wallis, Shapiro-Wilk,
+  and the Bonferroni, Benjamini-Hochberg and Benjamini-Yekutieli corrections.
+  Core tier: the tail probabilities come from the package's own internal
+  log-gamma, incomplete beta and incomplete gamma rather than from a numerical
+  dependency. `TTest.Independent` defaults to Welch where `scipy` defaults to
+  Student, which is the one deliberate divergence and has its row in
+  [`docs/equivalence.md`](docs/equivalence.md). Ten frozen corpora, each case
+  carrying the full argument set it was generated with, and p-values compared
+  at `1e-9` **relative** — ordinary cases reach `2.38e-53`, where the
+  repository's absolute tolerance would accept a zero.
+  ([#442](https://github.com/CyrilB1531/lodestar/issues/442), decision
+  [0081](docs/decisions/0081-the-stats-numerical-layer-stays-internal.md))
 
 ## Released — 2026-09-01
 
