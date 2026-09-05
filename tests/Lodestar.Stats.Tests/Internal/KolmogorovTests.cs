@@ -47,22 +47,8 @@ public sealed class KolmogorovTests
         }
     }
 
-    // Against scipy 1.18.0's kstwo.sf(d, n), independently reproduced in Python
-    // for KolmogorovSmirnov.TwoSample's own asymp corpus cases
-    // (task-8-report.md): the DirectSurvivalThreshold/UnderflowThreshold
-    // cases below exercise the Durbin matrix path or the Birnbaum closed
-    // form depending on n * d^2, not d alone -- see the fix-round-1 section
-    // of task-8-report.md for why d alone was wrong. The last five rows are
-    // fix-round-2's finding 3: n > 140, n * d^2 < 2.2, n * d^1.5 > 1.4 is
-    // the band scipy's own kstwo.sf hands off to the Pelz-Good asymptotic
-    // expansion in, and PelzGoodCdf is what these exercise.
-    // Fix-round-3: the reviewer's own three regression cases (row 6, Miller's
-    // approximation, n <= 140, n * d^2 well past the ExactRouteCeiling this
-    // round adds), the ExactRouteCeiling seam itself (rows 5/6, both sides,
-    // n = 140), the DirectSurvivalThreshold seam (rows 7/8, both sides,
-    // n = 200), and the row 9/10 seam (n = 500) -- all against scipy's
-    // kstwo.sf directly, task-8-report.md's fix-round-3 sweep has the
-    // full-domain measurement these are drawn from.
+    // Against scipy 1.18.0's kstwo.sf(d, n) (task-8-report.md): rows exercise the Durbin/Birnbaum
+    // dispatch by n*d^2, the Pelz-Good band (fix-round-2), and the fix-round-3 seam/regression cases.
     [Theory]
     [InlineData(2.0, 0.4, 0.82)]
     [InlineData(3.0, 1.0 / 3.0, 0.7777777777777778)]
@@ -89,16 +75,8 @@ public sealed class KolmogorovTests
         Assert.True(relative <= 1e-9, $"FiniteTwoSidedSf({n}, {d}) = {actual}, expected {expected}.");
     }
 
-    // Fix-round-1, finding 1: n = 201 is what KolmogorovSmirnov.TwoSample
-    // computes as the effective sample size for two n1 = m1 = 402 samples,
-    // one past the LargeSampleThreshold = 200 this method used to fall back
-    // to Sf at. scipy's kstwo.sf(0.114428, 201) is 0.009498083878988563; the
-    // old fallback returned Sf(sqrt(201) * 0.114428) = 0.010352291673092562
-    // instead, a large enough gap to flip a decision at alpha = 0.01. n = 201,
-    // d = 0.114428 lands in this method's exact route (n * d^2 = 2.63, past
-    // DirectSurvivalThreshold), so this is still the exact value, though the
-    // method as a whole is no longer exact everywhere past n = 140 -- see
-    // PelzGoodCdf's own facts below for the band where it isn't.
+    // Fix-round-1: n=201 was past the removed LargeSampleThreshold=200 fallback -- scipy's
+    // kstwo.sf gives 0.009498083878988563, the old Sf-fallback gave 0.010352291673092562 (flips alpha=0.01).
     [Fact]
     public void FiniteTwoSidedSf_no_longer_falls_back_past_the_former_threshold()
     {
@@ -108,12 +86,8 @@ public sealed class KolmogorovTests
         Assert.True(relative <= 1e-9, $"FiniteTwoSidedSf(201, 0.114428) = {actual}.");
     }
 
-    // Fix-round-1, finding 2: d < 0.5 with n large enough still drove
-    // 1 - DurbinCdf into the same collapse the d >= 0.5 guard was meant to
-    // avoid (n * d^2 = 27, comfortably past DirectSurvivalThreshold = 2.2,
-    // even though d itself is below 0.5). scipy's kstwo.sf(0.3, 300) is
-    // 1.92786406567219e-24; the old d >= 0.5 criterion took the 1 - CDF
-    // route here and lost the tail entirely.
+    // Fix-round-1: d < 0.5 with n*d^2 = 27 (past DirectSurvivalThreshold) still drove the old
+    // d>=0.5 criterion into 1-DurbinCdf's collapse -- scipy's kstwo.sf(0.3, 300) is 1.92786406567219e-24.
     [Fact]
     public void FiniteTwoSidedSf_does_not_collapse_below_0_5_when_n_times_d_squared_is_large()
     {
@@ -138,13 +112,8 @@ public sealed class KolmogorovTests
         Assert.Equal(0.0, Kolmogorov.FiniteTwoSidedSf(5.0, 1.5));
     }
 
-    // Fix-round-2, finding 1: n = 131, d = 0.1297709923664122 has
-    // n * d^2 = 2.206, past DirectSurvivalThreshold (2.2) -- fix-round-1
-    // applied that threshold at every n, so this used to take the direct
-    // survival-formula approximation (Miller's, worst measured 1.10e-6 off)
-    // instead of the exact route n <= 140 keeps available (Pomeranz in
-    // scipy, DurbinCdf here). scipy's kstwo.sf(0.1297709923664122, 131) is
-    // 0.022036162383739684.
+    // Fix-round-2: n=131, n*d^2=2.206 past DirectSurvivalThreshold -- applied at every n by
+    // fix-round-1, wrongly taking the direct approximation (1.10e-6 off) here; scipy gives 0.022036162383739684.
     [Fact]
     public void FiniteTwoSidedSf_stays_exact_through_n_140_regardless_of_n_times_d_squared_below_the_ceiling()
     {
@@ -154,19 +123,15 @@ public sealed class KolmogorovTests
         Assert.True(relative <= 1e-9, $"FiniteTwoSidedSf(131, 0.1297709923664122) = {actual}.");
     }
 
-    // Fix-round-3, the round's own defect: fix-round-2 restored the exact
-    // route for n <= 140 (the fact above) but gave it no upper bound, so it
-    // ran all the way to d = 0.5 -- exactly the 1 - CDF collapse the
-    // DirectSurvivalThreshold guard below exists to prevent, just reached
-    // from underneath n = 140 instead of above it. n = 140, d = 0.495 is the
-    // review's own example. The true value is roughly 3.36e-32; fix-round-2's
-    // code returned roughly 1.44e-15 instead, which is 2 to the power -51,
-    // the cancellation floor a double's precision gives 1 - x once x has
-    // rounded to exactly 1.0 -- not an approximation of the true value, its
-    // absence. Delete-and-confirm: removing ExactRouteCeiling's own check
-    // (routing every n <= 140 through DurbinCdf regardless of n * d^2,
-    // fix-round-2's actual shipped behaviour) reproduces that same
-    // 1.44e-15 (task-8-report.md's fix-round-3 has the transcript).
+    // long-comment: 1.44e-15 is not a rough approximation of the true
+    //     3.36e-32 -- it is exactly 2^-51, a double's cancellation floor for
+    //     1 - x once x has rounded to 1.0. That distinction is the reason
+    //     ExactRouteCeiling exists, so it needs to survive here, not just in
+    //     task-8-report.md's fix-round-3 transcript.
+    // Fix-round-3's own defect: fix-round-2's exact route for n <= 140 (the fact above) had no
+    // upper bound, reaching the same 1-CDF collapse from underneath n=140 instead of above it.
+    // Delete-and-confirm: removing ExactRouteCeiling (routing every n<=140 through DurbinCdf
+    // regardless of n*d^2, fix-round-2's shipped behaviour) reproduces the same 1.44e-15.
     [Fact]
     public void FiniteTwoSidedSf_does_not_collapse_past_the_exact_route_ceiling_below_n_140()
     {
@@ -176,14 +141,8 @@ public sealed class KolmogorovTests
         Assert.True(relative <= 1e-6, $"FiniteTwoSidedSf(140, 0.495) = {actual}.");
     }
 
-    // DirectSurvivalThreshold's own seam (n > 140): fix-round-1's defect was
-    // applying it below n = 140 too, where it should not apply at all (rows
-    // 5-6 use a different bound, ExactRouteCeiling, the fact above); this
-    // fact pins that above n = 140 it still must apply. Delete-and-confirm:
-    // removing this guard (routing every n * d^2 below its seam through
-    // 1 - DurbinCdf here too, never the direct survival formula) reproduces
-    // the identical collapse shape -- task-8-report.md's fix-round-3 has
-    // the transcript.
+    // DirectSurvivalThreshold's seam (n > 140), pinned separately from ExactRouteCeiling's
+    // (rows 5-6): delete-and-confirm reproduces the identical collapse shape (task-8-report.md).
     [Fact]
     public void FiniteTwoSidedSf_does_not_collapse_past_direct_survival_threshold_above_n_140()
     {
@@ -194,10 +153,8 @@ public sealed class KolmogorovTests
         Assert.True(relative <= 1e-6, $"FiniteTwoSidedSf(200, 0.45) = {actual}.");
     }
 
-    // Row 7 (n > 140, n * d^2 >= UnderflowThreshold): both sides of the seam
-    // underflow to an honest, exact 0.0 in scipy itself, not merely in this
-    // file -- there is no discontinuity to catch here, only confirmation
-    // that crossing it changes nothing observable.
+    // Row 7 seam (n*d^2 >= UnderflowThreshold): both sides underflow to an honest, exact 0.0
+    // in scipy itself too -- confirms crossing it changes nothing observable, not a bug.
     [Theory]
     [InlineData(2000.0, 0.4301161633521313)]
     [InlineData(2000.0, 0.4301163633521313)]

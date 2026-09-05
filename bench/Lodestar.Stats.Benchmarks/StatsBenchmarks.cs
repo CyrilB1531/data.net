@@ -55,8 +55,7 @@ public class StatsBenchmarks
     [Benchmark]
     public double LodestarChiSquare() => ChiSquare.Contingency(_table).PValue;
 
-    // yatesCorrection: true to match Lodestar.Stats' own default -- Continuity.Applied,
-    // which applies Yates's correction on a 2x2 table (ChiSquare.cs). Comparing against
+    // yatesCorrection: true matches Lodestar.Stats' own default (Continuity.Applied) --
     // Accord's own default (false) would time two different statistics under one name.
     [Benchmark]
     public double AccordChiSquare() =>

@@ -37,9 +37,8 @@ public sealed class MultipleComparisonsEdgeTests
     [Fact]
     public void Bonferroni_multiplies_by_the_family_size_and_clamps_at_one()
     {
-        // Per-element with a tolerance, not Assert.Equal on the arrays: 0.2 * 3
-        // is 0.6000000000000001 in IEEE double, one ULP off the literal 0.6, so
-        // an exact array comparison would fail on a correct implementation.
+        // Per-element with a tolerance, not Assert.Equal on the arrays: 0.2*3 is
+        // 0.6000000000000001 in IEEE double, one ULP off the literal 0.6.
         double[] expected = [0.12, 0.6, 1.0];
         double[] actual = MultipleComparisons.Bonferroni([0.04, 0.2, 0.9]);
 
@@ -90,9 +89,8 @@ public sealed class MultipleComparisonsEdgeTests
     [Fact]
     public void A_zero_p_value_adjusts_to_zero_without_disturbing_the_rest()
     {
-        // scipy.stats.false_discovery_control([0.0, 0.2, 0.9], method='bh') gives
-        // [0.0, 0.3, 0.9]; method='by' gives [0.0, 0.55, 1.0] (harmonic(3) ~=
-        // 1.8333333333333333). Bonferroni is min(p * 3, 1) elementwise.
+        // scipy's false_discovery_control(method='bh') gives [0.0, 0.3, 0.9]; 'by' gives
+        // [0.0, 0.55, 1.0] (harmonic(3) ~= 1.8333333333333333); Bonferroni is min(p*3, 1).
         double[] p = [0.0, 0.2, 0.9];
 
         AssertBounded(MultipleComparisons.Bonferroni(p), [0.0, 0.6, 1.0]);

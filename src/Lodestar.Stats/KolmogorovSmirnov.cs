@@ -64,28 +64,15 @@ public static class KolmogorovSmirnov
         return new KsResult(statistic, Math.Min(1.0, Math.Max(0.0, pValue)), location, sign);
     }
 
-    // Walks every distinct value across BOTH samples, not just until one of
-    // them is exhausted: the one-sided supremum can be attained past that
-    // point, where the shorter sample's empirical CDF has already reached 1
-    // and the other's is still climbing toward it. Stopping early is how a
-    // sample whose distribution never falls below the other's (D- = 0) still
-    // reported a nonzero location and the wrong sign -- the true zero is only
-    // reached at the last pooled value, which an early exit never visits
-    // (task-8-report.md, unbalanced and well-separated corpus cases).
-    //
-    // Both one-sided statistics are tracked unconditionally, not only the one
-    // the caller asked for: two-sided needs whichever of the two is larger,
-    // and scipy's own tie-break (first occurrence wins, via argmin/argmax)
-    // only falls out correctly if both running maxima are kept across the
-    // whole walk.
+    // Walks every value across BOTH samples, not until one is exhausted: stopping early
+    // reported the wrong D-/location past the shorter sample's end (task-8-report.md).
     private static (double Statistic, double Location, int Sign) Statistic(
         double[] sortedA, double[] sortedB, Alternative alternative)
     {
         (double above, double aboveLocation, double below, double belowLocation) = Walk(sortedA, sortedB);
 
-        // scipy clips only D- this way; D+ needs no clip, since the final
-        // pooled value always contributes a difference of exactly 0, which
-        // keeps its running maximum non-negative on its own.
+        // scipy clips only D-; D+ needs none, since the final pooled value's difference
+        // is always exactly 0, keeping its running maximum non-negative on its own.
         below = Math.Min(1.0, Math.Max(0.0, below));
 
         return Select(alternative, above, aboveLocation, below, belowLocation);
@@ -97,16 +84,8 @@ public static class KolmogorovSmirnov
         int n = sortedA.Length;
         int m = sortedB.Length;
 
-        // scipy builds each empirical CDF's step values via
-        // np.linspace(0, 1, count + 1), not by dividing at each step
-        // (_stats_py.py:8079): a precomputed reciprocal multiplied at each
-        // index, with the last entry forced to exactly 1.0 rather than left
-        // to accumulate rounding. That is not always the same double as
-        // index / count -- and where the two differ by a single ULP, it is
-        // enough to flip which of two candidate points wins an exact tie in
-        // the loop below, changing the reported location and sign though
-        // not the statistic itself. Matching the construction, not just the
-        // arithmetic value, is what matches the tie-break.
+        // scipy builds each ECDF via np.linspace(0,1,count+1) (index*(1/count), last=1.0),
+        // not index/count -- a ULP difference can flip which tied candidate wins the location/sign.
         double stepA = 1.0 / n;
         double stepB = 1.0 / m;
 
@@ -179,25 +158,14 @@ public static class KolmogorovSmirnov
             _ => throw new ArgumentOutOfRangeException(nameof(alternative), alternative, null),
         };
 
-    // The exact tail counts the lattice paths from (0,0) to (n,m) that step
-    // outside the d-boundary at some point, normalising by C(i+j,i) as it
-    // goes so the running value stays in [0,1] where the raw counts reach
-    // C(n+m,n) and overflow a double at a few hundred values each.
-    //
-    // Tracks the escaped mass directly rather than the complementary mass
-    // that stays inside: the two solve the identical recurrence (normalising
-    // commutes with the complement), but a well separated pair drives the
-    // inside mass to within 1e-17 of exactly 1.0, and 1.0 minus that collapsed
-    // to an exact 0.0 where the true p-value was still representable --
-    // reverting to the inside/1-inside form and rerunning the well-separated
-    // corpus case reproduces that exact collapse (task-8-report.md).
+    // Tracks escaped mass directly: for a well-separated pair, the complementary inside mass
+    // collapses to 1.0, and 1 - that returned 0 where the true p-value was representable (task-8-report.md).
     private static double ExactPValue(double d, int n, int m, Alternative alternative)
     {
         double bound = d - (0.5 / ((double)n * m));
 
-        // One row at a time: escaped[i][*] depends only on escaped[i-1][*] and
-        // its own already-filled entries, so the full (n+1)x(m+1) table is
-        // never needed at once.
+        // One row at a time: escaped[i][*] depends only on escaped[i-1][*] and its own
+        // already-filled entries, so the full (n+1)x(m+1) table is never needed at once.
         double[] row = new double[m + 1];
         for (int i = 0; i <= n; i++)
         {
@@ -248,13 +216,8 @@ public static class KolmogorovSmirnov
     {
         double effective = (double)n * m / (n + m);
 
-        // Two-sided reads the finite-sample Kolmogorov tail directly; scipy
-        // measurably disagrees with the n -> infinity limit at the sample
-        // sizes a two-sample test actually produces (Kolmogorov.FiniteTwoSidedSf's
-        // own remarks have the numbers). One-sided has no finite-sample
-        // closed form as simple as the limit's exp(-2 en d^2) -- Hodges'
-        // (1958) eqn. 5.3 correction below is what scipy's own asymp branch
-        // evaluates instead.
+        // Two-sided reads the finite-sample tail directly (FiniteTwoSidedSf's own remarks
+        // have the numbers); one-sided uses Hodges' (1958) eqn. 5.3 correction instead.
         return alternative == Alternative.TwoSided
             ? Kolmogorov.FiniteTwoSidedSf(effective, d)
             : OneSidedAsymptoticPValue(d, n, m);

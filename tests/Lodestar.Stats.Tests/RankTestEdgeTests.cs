@@ -161,8 +161,7 @@ public sealed class RankTestEdgeTests
         Assert.Equal(1.0, result.PValue);
     }
 
-    // Measured with scipy 1.18.0: wilcoxon([1,1,-1,2,-2,0], zero_method=...,
-    // correction=False, alternative=..., method="exact"). Ties (two 1's,
+    // Measured with scipy's wilcoxon(method="exact", correction=False): ties (two 1's,
     // two 2's) and a zero, so all three ZeroMethod rules disagree.
     private static readonly double[] TiedWithZero = [1.0, 1.0, -1.0, 2.0, -2.0, 0.0];
 

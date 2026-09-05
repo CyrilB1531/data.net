@@ -102,10 +102,8 @@ internal static class Kolmogorov
     private static readonly double ScaleUp = PowerOfTwo(ScaleBits);
     private static readonly double ScaleDown = PowerOfTwo(-ScaleBits);
 
-    // Math.ScaleB does not exist on netstandard2.0; multiplying by 2.0 (or
-    // 0.5) is exact at every step -- it only ever moves the exponent bits, the
-    // mantissa is untouched -- so a fixed number of exact steps stands in for
-    // it without pulling in System.Numerics or a bit-twiddled ldexp.
+    // Math.ScaleB does not exist on netstandard2.0; repeated multiply/divide by
+    // 2.0 is exact (only ever moves the exponent bits), standing in for it here.
     private static double PowerOfTwo(int exponent)
     {
         double factor = exponent >= 0 ? 2.0 : 0.5;
@@ -137,29 +135,12 @@ internal static class Kolmogorov
 
     /// <summary>The two-sided <b>finite-sample</b> Kolmogorov tail: P(D_n &gt; d), scipy's <c>kstwo.sf</c>.</summary>
     /// <remarks>
-    /// Distinct from <see cref="Sf"/>, which is that statistic's n -&gt;
-    /// infinity limit (scipy's <c>kstwobign</c>): the two disagree by
-    /// percent-level amounts even at n in the hundreds and the gap narrows
-    /// only as 1/sqrt(n) (measured in task-8-report.md's fix-round-1 sweep),
-    /// so no threshold short of an astronomical sample size would bring
-    /// <see cref="Sf"/> under this package's own tolerance. This method
-    /// reproduces scipy's own dispatch (the full decision table is on the
-    /// thresholds just above this method, attributed there) rather than
-    /// picking one route for every <paramref name="n"/>: <see cref="DurbinCdf"/>
-    /// only where the exact value is safe to compute as 1 - CDF (bounded on
-    /// <b>both</b> sides by n * d^2, not only the lower one -- fix-round-1
-    /// dropped the lower bound, fix-round-2 dropped the upper one), the
-    /// direct one-sided survival formula (<see cref="SmirnovSf"/>) wherever
-    /// scipy itself prefers it (exact once d &gt;= 0.5, an approximation it
-    /// still returns past either n * d^2 bound), and Pelz-Good's published
-    /// asymptotic expansion (<see cref="PelzGoodCdf"/>) exactly where scipy
-    /// stops computing the exact value altogether -- deliberately matching
-    /// scipy's answer in both approximated bands rather than a more
-    /// accurate one it does not return, since this package's contract is
-    /// parity (task-8-report.md, fix-round-2 finding 3 and fix-round-3).
-    /// <paramref name="n"/> is rounded, not truncated: it arrives as a
-    /// two-sample test's effective size n1*n2/(n1+n2), which is rarely
-    /// integral.
+    /// Distinct from <see cref="Sf"/> (scipy's <c>kstwobign</c>, the n -&gt; infinity limit): the two
+    /// disagree by percent-level amounts even at n in the hundreds, narrowing only as 1/sqrt(n) -- no
+    /// realistic n closes the gap. Reproduces scipy's own dispatch (decision table above the threshold
+    /// constants), including its approximated bands, since parity with scipy is the contract, not a
+    /// more accurate value scipy does not return. <paramref name="n"/> is rounded, not truncated -- it
+    /// is a two-sample test's effective size n1*n2/(n1+n2), rarely integral.
     /// </remarks>
     internal static double FiniteTwoSidedSf(double n, double d)
     {
@@ -178,22 +159,15 @@ internal static class Kolmogorov
 
         int count = Math.Max(1, (int)Math.Round(n, MidpointRounding.ToEven));
 
-        // Row 4 (and, for n = 1, the whole of row 3 too -- see the dispatch
-        // table above): exact, since D_n+ >= d and D_n- >= d cannot both
-        // hold once d >= 0.5.
+        // Row 4 (see the dispatch table above): exact, since D_n+ >= d and
+        // D_n- >= d cannot both hold once d >= 0.5.
         if (d >= 0.5)
         {
             return Math.Min(1.0, 2.0 * SmirnovSf(count, d));
         }
 
-        // d < 0.5 from here -- rows 1-3 are handled above or by DurbinCdf's
-        // own guard, see the dispatch table. Rows 5-6: through n = 140, the
-        // exact route through DurbinCdf is only safe up to n * d^2 = 4.
-        // Past that ceiling, 1 - DurbinCdf reaches the same collapse row 8's
-        // direct formula exists to prevent, just approached from the other
-        // side. Fix-round-1 applied that direct formula outside n <= 140
-        // altogether; fix-round-2 restored the exact route here without
-        // ever giving it this upper bound. This is fix-round-3.
+        // Rows 5-6 (d < 0.5, n <= 140): DurbinCdf's exact route is safe only up to
+        // n*d^2 = 4 -- past it, 1 - DurbinCdf collapses the way row 8 exists to prevent.
         if (count <= LargeSampleBranch)
         {
             double smallSampleDSquared = count * d * d;
@@ -209,34 +183,22 @@ internal static class Kolmogorov
             return 0.0;
         }
 
-        // Row 8. The direct one-sided survival formula, never 1 - (a CDF
-        // near 1): DurbinCdf(200, 0.9) rounds to exactly 1.0 in a double,
-        // and 1 minus that is an exact 0.0 where the true tail is still
-        // representable. 2 * SmirnovSf is exactly P(D_n > d) only for
-        // d >= 0.5 (handled above); below that it drops the D_n+/D_n-
-        // intersection term, which is scipy's own published approximation
-        // here (Li-Chien/Korolyuk) -- the gap it leaves is what
-        // DirectSurvivalThreshold keeps small enough that this file's own
-        // contract still holds.
+        // Row 8: DurbinCdf(200, 0.9) rounds to exactly 1.0, so 1 - DurbinCdf collapses
+        // to 0 where the true tail is still representable -- use the direct formula instead.
         if (countDSquared >= DirectSurvivalThreshold)
         {
             return Math.Min(1.0, 2.0 * SmirnovSf(count, d));
         }
 
-        // Rows 9-10: n * d^2 < 2.2. scipy's own exact route (its DMTW) is
-        // capped at n * d^1.5 <= 1.4, past which it hands off to Pelz-Good.
-        // This file follows the same cap, for the same reason as above --
-        // parity with what scipy returns, not a more accurate number it
-        // does not.
+        // Rows 9-10 (n*d^2 < 2.2): scipy's exact DMTW route is capped at n*d^1.5 <= 1.4;
+        // past it, Pelz-Good -- parity with what scipy returns, not a more accurate number.
         return count <= ExactMatrixCap && count * Math.Pow(d, 1.5) <= ExactSlopeThreshold
             ? 1.0 - DurbinCdf(count, d)
             : 1.0 - PelzGoodCdf(count, d);
     }
 
-    // Birnbaum's closed form for the one-sided finite-sample tail P(D_n+ > d):
-    // d * sum_{j=0}^{floor(n(1-d))} C(n,j) (j/n+d)^(j-1) (1-d-j/n)^(n-j).
-    // Evaluated in log space -- C(n,j) alone overflows a double well before n
-    // reaches the sizes this is actually invoked at.
+    // Birnbaum's closed form, P(D_n+ > d) = d*sum_j C(n,j)(j/n+d)^(j-1)(1-d-j/n)^(n-j),
+    // evaluated in log space since C(n,j) alone overflows a double at the sizes this hits.
     private static double SmirnovSf(int n, double d)
     {
         int jMax = (int)Math.Floor(n * (1.0 - d));
@@ -246,16 +208,8 @@ internal static class Kolmogorov
         {
             double a = (j / (double)n) + d;
 
-            // At j = jMax, 1 - d - j/n is mathematically exactly 0 for some
-            // (n, d) and lands a few ULPs below it for others, entirely from
-            // rounding in j/n -- never because the true probability went
-            // negative. Math.Log of that small negative is NaN, not the
-            // -Infinity a genuine 0 gives (Math.Exp(-Infinity) is a clean
-            // 0.0 term, correct: 0 raised to the positive power n - j
-            // really is 0), and NaN then propagates through the sum and out
-            // through KsResult.PValue. Reachable from the public TwoSample
-            // at an effective sample size of 200 and d = 0.32
-            // (task-8-report.md's fix-round-2 has the delete-and-confirm).
+            // b can land a few ULPs below 0 purely from rounding in j/n, never because the
+            // true probability went negative; Math.Log of that is NaN, unlike a genuine 0's -Infinity.
             double b = Math.Max(0.0, 1.0 - d - (j / (double)n));
 
             double logTerm = LogChoose(n, j) + ((j - 1) * Math.Log(a)) + ((n - j) * Math.Log(b));
@@ -275,21 +229,22 @@ internal static class Kolmogorov
     private static readonly double Sqrt2Pi = Math.Sqrt(2.0 * Math.PI);
     private static readonly double Sqrt3 = Math.Sqrt(3.0);
 
+    // long-comment: attribution CONTRIBUTING.md's Licensing and provenance
+    //     requires travel with the code, not only live in a report -- this
+    //     structure was read from scipy's own _kolmogn_PelzGood (ADR 0003
+    //     permits scipy, BSD-3, as a behavioural reference) and that has to
+    //     be visible here, not merely in task-8-report.md's fix-round-2.
     // Pelz & Good (1976): transforms the Li-Chien/Korolyuk large-n asymptotic
-    // expansion of the two-sided one-sample Kolmogorov CDF, via the
-    // functional equation for Jacobi theta functions, into a form that
-    // converges quickly for the small z = sqrt(n)*d this method is reached
-    // at -- the branch scipy's own kstwo.sf falls back to once DurbinCdf's
-    // own n * d^1.5 <= 1.4 cap (matched in FiniteTwoSidedSf) is exceeded.
-    // Deliberately less accurate than DurbinCdf would be here (this is an
-    // asymptotic expansion, not an exact computation): this package's
-    // contract is parity with what scipy actually returns, not a more
-    // accurate number scipy itself does not (task-8-report.md, fix-round-2,
-    // finding 3). The four-term expansion (k[0..3]), its coefficients and
-    // the two convergence sums in <see cref="PelzGoodConvergenceSums"/>
-    // follow scipy's own _kolmogn_PelzGood structurally (ADR 0003, scipy is
-    // BSD-3, attributed as fix-round-1's finding 4 established); the
-    // mathematics itself is Pelz & Good's, published.
+    // expansion of the two-sided one-sample Kolmogorov CDF into a form that
+    // converges quickly for the small z = sqrt(n)*d this method is reached at
+    // -- scipy's own fallback once DurbinCdf's n*d^1.5 <= 1.4 cap is exceeded.
+    // Deliberately less accurate than DurbinCdf would be here: an asymptotic
+    // expansion, not an exact computation, because this package's contract is
+    // parity with what scipy actually returns, not a more accurate number it
+    // does not. The mathematics is Pelz & Good's, published; the four-term
+    // expansion's structure (k[0..3], its coefficients, and the convergence
+    // sums in <see cref="PelzGoodConvergenceSums"/>) follows scipy's own
+    // _kolmogn_PelzGood.
     private static double PelzGoodCdf(int n, double d)
     {
         double z = Math.Sqrt(n) * d;
@@ -319,10 +274,8 @@ internal static class Kolmogorov
         return sum;
     }
 
-    // The four-term k[0..3] sum over odd m = 2*step-1, folding in one more
-    // term per iteration from the largest step down and rescaling the
-    // running total by q^(8*step) each time -- not a fixed ratio, since
-    // step itself changes every iteration.
+    // The four-term k[0..3] sum over odd m = 2*step-1, folding in one term per
+    // iteration from the largest step down, rescaling by q^(8*step) each time.
     private static double[] PelzGoodExpansion(double z, double zSquared, double q)
     {
         double zFour = zSquared * zSquared;
@@ -370,10 +323,8 @@ internal static class Kolmogorov
         return k;
     }
 
-    // A second, directly-summed pair of series (k[2] and k[3] only) that the
-    // Jacobi-theta transform in <see cref="PelzGoodExpansion"/> does not
-    // fold in on its own -- a different q (base) than that method's, and
-    // summed rather than accumulated via the qPower-per-step rescale above.
+    // A second, directly-summed pair of series (k[2], k[3] only) that
+    // <see cref="PelzGoodExpansion"/>'s transform does not fold in on its own -- a different q (base).
     private static (double K2, double K3) PelzGoodConvergenceSums(double z, double zSquared)
     {
         double zThree = zSquared * z;
@@ -400,19 +351,24 @@ internal static class Kolmogorov
         return (k2Extra, k3Extra);
     }
 
+    // long-comment: fix-round-1's finding 4 caught a wrong provenance claim
+    //     here ("no reference implementation transcribed") -- this is the
+    //     corrected version, and the distinction it draws (mathematics vs.
+    //     scaling-implementation detail) is exactly what was wrong before,
+    //     so it needs to stay explicit rather than collapse back to a claim
+    //     a future edit cannot check against ADR 0003.
     // Durbin's (1968) matrix method for P(D_n <= d), in the computationally
     // efficient form Marsaglia, Tsang and Wang (2003) gave it: write d as
     // (k-h)/n, build a (2k-1)-square transition matrix from h, raise it to
     // the n-th power and read the k-th diagonal entry, scaled by the
     // falling-factorial correction the loop below applies. The mathematics
-    // is theirs, published; ADR 0003 permits scipy (BSD-3) as a behavioural
-    // reference, and this implementation leans on it past the mathematics
-    // too -- ScaleBits equal to 128, giving a scale factor of two to the
-    // 128th, is scipy's own choice (its _E128/_EP128, _ksstats.py:73-75),
-    // not a value out of Marsaglia-Tsang-Wang, and the magnitude check below
-    // that triggers a rescale is scipy's placement of it, not independently
-    // derived. Both are scaling-implementation detail, not the mathematics
-    // itself, and are named plainly here rather than left for a diff to notice.
+    // is theirs, published. ADR 0003 permits scipy (BSD-3) as a behavioural
+    // reference, and this implementation leans on it past the mathematics too:
+    // ScaleBits = 128 is scipy's own choice (its _E128/_EP128,
+    // _ksstats.py:73-75), not a value out of Marsaglia-Tsang-Wang, and the
+    // magnitude check below that triggers a rescale is scipy's placement of
+    // it, not independently derived -- both are scaling-implementation
+    // detail, not the mathematics itself.
     private static double DurbinCdf(int n, double d)
     {
         double nd = n * d;
@@ -442,9 +398,8 @@ internal static class Kolmogorov
         return Math.Min(1.0, Math.Max(0.0, probability));
     }
 
-    // v is H's first column and last row; w is H's remaining diagonal bands.
-    // v[j] = (1 - h^(j+1)) / (j+1)!, except the final entry, which folds in the
-    // boundary term a plain geometric tail would miss; w[t] = 1/t!.
+    // v is H's first column and last row (v[j] = (1-h^(j+1))/(j+1)!, final entry folds
+    // in the boundary term a plain geometric tail would miss); w[t] = 1/t! is the rest.
     private static double[][] BuildTransitionMatrix(int size, double h)
     {
         double[] v = new double[size];
@@ -472,9 +427,8 @@ internal static class Kolmogorov
         {
             matrix[row][0] = v[row];
         }
-        // Overwrites whatever the band loop above left in the last row: every
-        // column of that row is v, reversed, not the shifted-diagonal pattern
-        // the rest of the matrix carries.
+        // Overwrites the band loop's last row: every column there is v, reversed,
+        // not the shifted-diagonal pattern the rest of the matrix carries.
         for (int column = 0; column < size; column++)
         {
             matrix[size - 1][column] = v[size - 1 - column];
@@ -483,9 +437,8 @@ internal static class Kolmogorov
         return matrix;
     }
 
-    // H^n by repeated squaring, holding the running power's own scale
-    // separately from H's -- the two drift apart because the power only
-    // accumulates a factor on the iterations where n's corresponding bit is set.
+    // H^n by repeated squaring, holding the running power's scale separately from
+    // H's -- they drift apart since the power only scales on bits of n that are set.
     private static (double Mantissa, int Exponent) RaiseToPower(double[][] matrix, int n, int k)
     {
         int size = matrix.Length;

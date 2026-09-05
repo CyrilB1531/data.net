@@ -4,23 +4,12 @@ namespace Lodestar.Stats;
 
 /// <summary>One-way analysis of variance: do several groups share one mean?</summary>
 /// <remarks>
-/// The k-sample generalisation of <see cref="TTest.Independent"/> with
-/// <see cref="Variance.Equal"/>: on two groups the F statistic is the square of
-/// Student's t, and the two p-values agree.
-///
-/// <para>
-/// A degenerate input where every group is internally constant <b>and</b> the
-/// groups share that same constant (so both the between- and within-group
-/// sums of squares are exactly zero) computes 0.0 / 0.0 and returns a
-/// <c>NaN</c> statistic and p-value, propagated rather than guarded against
-/// -- this matches scipy's own <c>f_oneway</c> on the same input, and a
-/// <c>NaN</c> here is an honest answer: an F statistic genuinely has no
-/// value when both its numerator and its denominator vanish. This is
-/// deliberately unlike <see cref="KruskalWallis"/>, whose analogous
-/// degenerate input (every pooled value tied) throws instead, because there
-/// the ranks used to compute the statistic are provably meaningless rather
-/// than merely indeterminate.
-/// </para>
+/// The k-sample generalisation of <see cref="TTest.Independent"/> with <see cref="Variance.Equal"/>:
+/// on two groups F is the square of Student's t, and the two p-values agree. A degenerate input
+/// where both the between- and within-group sums of squares are exactly zero returns a
+/// <c>NaN</c> statistic and p-value, propagated rather than guarded against -- matching scipy's
+/// own <c>f_oneway</c>, and unlike <see cref="KruskalWallis"/> (which throws on its analogous
+/// input, since the ranks there are provably meaningless rather than merely indeterminate).
 /// </remarks>
 public static class OneWayAnova
 {
@@ -61,12 +50,8 @@ public static class OneWayAnova
         double dfBetween = groups.Length - 1;
         double dfWithin = total - groups.Length;
 
-        // within = 0 while between > 0 (every group internally constant, but
-        // not at the same constant) makes this +Infinity rather than a NaN --
-        // FisherSf(+Infinity, ...) is already exact and returns 0.0, the
-        // mathematically honest answer for a perfect, noiseless separation.
-        // Deleting neither branch changes that: it falls out of ordinary IEEE
-        // division, not a guard written to catch it.
+        // within = 0, between > 0 makes this +Infinity, not NaN -- FisherSf(+Infinity, ...)
+        // is already exact and returns 0.0, honest for a perfect, noiseless separation.
         double statistic = (between / dfBetween) / (within / dfWithin);
 
         return new TestResult(statistic, Beta.FisherSf(statistic, dfBetween, dfWithin));

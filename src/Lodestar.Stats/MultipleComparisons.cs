@@ -2,14 +2,10 @@ namespace Lodestar.Stats;
 
 /// <summary>Adjusting a family of p-values for the number of tests in it.</summary>
 /// <remarks>
-/// Twenty tests at the five-percent level produce one significant result by
-/// chance alone. These three rules answer that, and they answer different
-/// questions: Bonferroni controls the chance of <i>any</i> false positive,
-/// while the Benjamini rules control the expected <i>proportion</i> of false
-/// positives among the results called significant.
-///
-/// Each returns adjusted p-values in the input's own order, so an adjusted
-/// value can be compared against the level the caller already had in mind.
+/// Twenty tests at the five-percent level produce one significant result by chance alone.
+/// Bonferroni controls the chance of <i>any</i> false positive; the Benjamini rules control
+/// the expected <i>proportion</i> of false positives among results called significant. Each
+/// returns adjusted p-values in the input's own order, comparable against the original level.
 /// </remarks>
 public static class MultipleComparisons
 {
@@ -80,9 +76,8 @@ public static class MultipleComparisons
         double[] adjusted = new double[n];
         double running = 1.0;
 
-        // Walking down from the largest and keeping the running minimum is what
-        // makes the result monotone: without it a p-value could be adjusted below
-        // a smaller one, and the ordering the caller reads would be a lie.
+        // Walking down from the largest, keeping the running minimum, is what keeps the
+        // result monotone -- without it a p-value could be adjusted below a smaller one.
         for (int rank = n; rank >= 1; rank--)
         {
             double scaled = sorted[rank - 1] * n * factor / rank;

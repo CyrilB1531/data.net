@@ -34,13 +34,8 @@ BENCH_DIR = ROOT / "bench" / "Lodestar.Text.Benchmarks"
 PROGRAM = BENCH_DIR / "Program.cs"
 PYTHON_DIR = ROOT / "bench" / "python"
 WORKFLOWS = ROOT / ".github" / "workflows"
-# Directories a [Benchmark] class can live in. Lodestar.NetStandard.Benchmarks is
-# deliberately absent: it links Lodestar.Text.Benchmarks' own .cs files rather than
-# declaring classes of its own (see its .csproj), so scanning it would just find the
-# same classes again under a second, coincidental path. Lodestar.Stats.Benchmarks
-# (#442 task 13) is the first package whose incumbent comparison could not live inside
-# Lodestar.Text.Benchmarks -- Accord.Statistics is unrelated to anything that project
-# references -- so this is a list rather than the single hard-coded directory it was.
+# Directories a [Benchmark] class can live in. Lodestar.NetStandard.Benchmarks is absent:
+# it links Lodestar.Text.Benchmarks' own .cs files rather than declaring classes of its own.
 CLASS_DIRS = [
     BENCH_DIR,
     ROOT / "bench" / "Lodestar.Stats.Benchmarks",

@@ -37,11 +37,8 @@ public static class KruskalWallis
         double weighted = WeightedRankSum(groups, ranks);
         double h = (12.0 / (total * (total + 1.0)) * weighted) - (3.0 * (total + 1.0));
 
-        // Ties shrink the spread of the ranks, so the statistic is divided by
-        // what is left of it. Every value tied leaves nothing: the correction
-        // term below is 1 - (t^3 - t)/(n^3 - n) with a single tie group
-        // spanning the whole pooled sample, i.e. t = n, which is exactly 0 --
-        // not close to it, not a value a tolerance would need to catch.
+        // Every value tied leaves nothing: with t = n (one tie group spanning the whole
+        // sample), 1 - (t^3-t)/(n^3-n) is exactly 0, not merely close to it.
         double tieCorrection = 1.0 -
             (Ranks.TieCorrection(pooled) / (((double)total * total * total) - total));
 

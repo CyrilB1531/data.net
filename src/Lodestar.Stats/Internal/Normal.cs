@@ -55,13 +55,8 @@ internal static class Normal
             return 0.0;
         }
 
-        // Symmetric about zero, so p > 1/2 reduces to its mirror 1 - p < 1/2:
-        // the widening below only ever proves the bracket for the small-tail
-        // side, the same restriction Beta.StudentQuantile places on its own
-        // helper. Without the reduction, a bracket built from p itself has no
-        // guarantee that its *negative* end's tail (1 - Sf(high)) still exceeds
-        // p once p is above one half -- p = 0.975 finds high = 1.0 already
-        // satisfies Sf(high) <= p, yet the true root -1.96 sits outside [-1, 1].
+        // Symmetric about zero: p > 1/2 reduces to its mirror 1 - p < 1/2 -- the bracket
+        // below only widens correctly for the small-tail side (p=0.975 unreduced wrongly satisfies at high=1.0).
         return p > 0.5 ? -BisectUpperTail(1.0 - p) : BisectUpperTail(p);
     }
 

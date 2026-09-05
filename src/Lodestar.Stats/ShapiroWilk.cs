@@ -4,14 +4,11 @@ namespace Lodestar.Stats;
 
 /// <summary>The Shapiro-Wilk test for normality, by Royston's AS R94.</summary>
 /// <remarks>
-/// Written from Royston's 1995 published description and its published
-/// polynomial constants (Applied Statistics 44:547-551), not from any
-/// implementation of it (ADR 0003).
-///
-/// The transform that turns the statistic into a p-value is fitted for
-/// <c>3 &lt;= n &lt;= 5000</c>. Outside that range there is no p-value to give,
-/// so this refuses rather than extrapolating a number a reader would take at
-/// face value; scipy warns and answers anyway.
+/// Written from Royston's 1995 published description and its polynomial constants (Applied
+/// Statistics 44:547-551), not from any implementation of it (ADR 0003). The transform that
+/// turns the statistic into a p-value is fitted for <c>3 &lt;= n &lt;= 5000</c>; outside that
+/// range this refuses rather than extrapolating a number a reader would take at face value --
+/// scipy warns and answers anyway.
 /// </remarks>
 public static class ShapiroWilk
 {
@@ -80,9 +77,8 @@ public static class ShapiroWilk
         return new TestResult(w, PValue(w, n));
     }
 
-    // Royston's weights: the Blom scores rescaled to unit length, with the
-    // largest one -- or two, above n = 5 -- replaced by his polynomial
-    // corrections, and the rest rescaled so the vector stays unit length.
+    // Royston's weights: Blom scores rescaled to unit length, the largest one (or two,
+    // above n = 5) replaced by his polynomial corrections, the rest rescaled to match.
     private static double[] Weights(int n)
     {
         double[] blom = new double[n];
@@ -119,9 +115,8 @@ public static class ShapiroWilk
             replacedCorrected += second * second;
         }
 
-        // What the corrected weights left for the rest to share. Dividing by the
-        // square root of it is what keeps the whole vector unit length after two
-        // of its entries were replaced by values that do not come from Blom.
+        // What the corrected weights left for the rest to share -- dividing by its square
+        // root keeps the whole vector unit length after two entries were replaced.
         double remaining =
             (sumSquares - (2.0 * replacedRaw)) / (1.0 - (2.0 * replacedCorrected));
         double scale = Math.Sqrt(remaining);

@@ -45,20 +45,16 @@ public static class Wilcoxon
     /// <param name="alternative">Which tail the p-value covers.</param>
     /// <param name="continuity">Whether the normal approximation gets the half-unit correction.</param>
     /// <param name="method">
-    /// Exact, asymptotic, or chosen by sample size and by whether ties or
-    /// zeros are present. Past the same size bound
-    /// <see cref="ExactMethod.Exact"/> is refused for,
-    /// <see cref="ExactMethod.Auto"/> falls back to asymptotic rather than
-    /// building the table -- it never throws.
+    /// Exact, asymptotic, or chosen by sample size and by whether ties or zeros are present.
+    /// Past the same size bound <see cref="ExactMethod.Exact"/> is refused for,
+    /// <see cref="ExactMethod.Auto"/> falls back to asymptotic rather than building the
+    /// table -- it never throws.
     /// </param>
     /// <returns>The smaller signed-rank sum, and the p-value.</returns>
-    /// <exception cref="ArgumentException">
-    /// The samples differ in length, or are empty.
-    /// </exception>
+    /// <exception cref="ArgumentException">The samples differ in length, or are empty.</exception>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="method"/> is <see cref="ExactMethod.Exact"/> and the
-    /// ranked sample exceeds 500 values. Pass
-    /// <see cref="ExactMethod.Asymptotic"/> instead.
+    /// <paramref name="method"/> is <see cref="ExactMethod.Exact"/> and the ranked sample
+    /// exceeds 500 values. Pass <see cref="ExactMethod.Asymptotic"/> instead.
     /// </exception>
     public static TestResult Paired(
         ReadOnlySpan<double> x,
@@ -90,19 +86,16 @@ public static class Wilcoxon
     /// <param name="alternative">Which tail the p-value covers.</param>
     /// <param name="continuity">Whether the normal approximation gets the half-unit correction.</param>
     /// <param name="method">
-    /// Exact, asymptotic, or chosen by the number of non-zero differences.
-    /// Past the same size bound <see cref="ExactMethod.Exact"/> is refused
-    /// for, <see cref="ExactMethod.Auto"/> falls back to asymptotic rather
-    /// than building the table -- it never throws.
+    /// Exact, asymptotic, or chosen by the number of non-zero differences. Past the same
+    /// size bound <see cref="ExactMethod.Exact"/> is refused for, <see cref="ExactMethod.Auto"/>
+    /// falls back to asymptotic rather than building the table -- it never throws.
     /// </param>
     /// <returns>The smaller signed-rank sum, and the p-value.</returns>
     /// <exception cref="ArgumentException"><paramref name="differences"/> is empty.</exception>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="method"/> is <see cref="ExactMethod.Exact"/> and the
-    /// zero-method-processed sample exceeds 500 values -- the exact
-    /// distribution's total, <c>2^n</c>, overflows to infinity past
-    /// <c>n = 1023</c> and every p-value it divides would silently become
-    /// exactly zero. Pass <see cref="ExactMethod.Asymptotic"/> instead.
+    /// <paramref name="method"/> is <see cref="ExactMethod.Exact"/> and the zero-method-processed
+    /// sample exceeds 500 values -- <c>2^n</c> overflows past <c>n = 1023</c>, silently zeroing
+    /// every p-value it divides. Pass <see cref="ExactMethod.Asymptotic"/> instead.
     /// </exception>
     public static TestResult OneSample(
         ReadOnlySpan<double> differences,

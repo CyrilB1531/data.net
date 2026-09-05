@@ -39,19 +39,16 @@ public static class MannWhitney
     /// on the exact branch, where there is nothing to approximate.
     /// </param>
     /// <param name="method">
-    /// Exact, asymptotic, or chosen by sample size and ties. Past the same
-    /// size bound <see cref="ExactMethod.Exact"/> is refused for,
-    /// <see cref="ExactMethod.Auto"/> falls back to asymptotic rather than
-    /// building the table -- it never throws.
+    /// Exact, asymptotic, or chosen by sample size and ties. Past the same size bound
+    /// <see cref="ExactMethod.Exact"/> is refused for, <see cref="ExactMethod.Auto"/>
+    /// falls back to asymptotic rather than building the table -- it never throws.
     /// </param>
     /// <returns>U for the first sample, and the p-value.</returns>
     /// <exception cref="ArgumentException">Either sample is empty.</exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="method"/> is <see cref="ExactMethod.Exact"/> and
-    /// <c>x.Length * y.Length</c> exceeds 20,000 — the exact table's build cost
-    /// grows with the square of that product, so a request that large is
-    /// refused rather than run for tens of seconds. Pass
-    /// <see cref="ExactMethod.Asymptotic"/> instead.
+    /// <c>x.Length * y.Length</c> exceeds 20,000; the table's build cost is quadratic
+    /// in that product. Pass <see cref="ExactMethod.Asymptotic"/> instead.
     /// </exception>
     public static TestResult Test(
         ReadOnlySpan<double> x,

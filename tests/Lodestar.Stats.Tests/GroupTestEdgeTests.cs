@@ -28,14 +28,8 @@ public sealed class GroupTestEdgeTests
         Assert.Equal(1.0, result.PValue, 1e-12);
     }
 
-    // The other half of the division the brief warns about: not "identical
-    // groups make the numerator zero" (the fact above), but "identical
-    // *within* every group makes the denominator zero". No guard throws here
-    // -- between / dfBetween divided by 0.0 / dfWithin is ordinary IEEE
-    // +Infinity, and Beta.FisherSf(+Infinity, ...) is already exact there,
-    // returning 0.0. Verified by probe before writing this fact
-    // (task-8-report.md): the statistic really does come back +Infinity, not
-    // NaN, so there is nothing here for a guard to catch.
+    // Identical *within* every group (not the fact above's between=0): within/dfWithin = 0
+    // gives ordinary IEEE +Infinity, and FisherSf(+Infinity, ...) is exact there, returning 0.0.
     [Fact]
     public void Anova_of_two_zero_variance_groups_is_certain()
     {
@@ -45,14 +39,8 @@ public sealed class GroupTestEdgeTests
         Assert.Equal(0.0, result.PValue);
     }
 
-    // Fix-round-1, finding 6: the fully degenerate quadrant of the same
-    // division -- every group internally constant AND every group the same
-    // constant, so both between and within are exactly 0.0. 0.0 / 0.0 is
-    // NaN, not +Infinity, and there is no guard against it: OneWayAnova.Test's
-    // own remarks say why (this matches scipy.stats.f_oneway on the same
-    // input -- verified directly, task-8-report.md). Kruskal-Wallis on the
-    // identical group shape instead throws (the fact above): the two are
-    // deliberately different, not an inconsistency to fix.
+    // Fully degenerate: both between and within are exactly 0.0, so 0.0/0.0 is NaN, not
+    // +Infinity -- matches scipy's own f_oneway; Kruskal-Wallis on the same shape throws instead.
     [Fact]
     public void Anova_of_two_identical_zero_variance_groups_is_nan()
     {
@@ -70,14 +58,8 @@ public sealed class GroupTestEdgeTests
             () => KruskalWallis.Test([1.0, 2.0], [], [3.0, 4.0]));
     }
 
-    // Not in the brief's own listing of this file, but the guard it pins is
-    // required reading (task-8-brief.md's "prove the guard is reachable"):
-    // deleting the tieCorrection <= 0.0 check in KruskalWallis.Test and
-    // rerunning this fact still throws, but the wrong thing --
-    // ArgumentOutOfRangeException from Gamma.Validate ("the argument must not
-    // be negative", actual value NaN), because h ends up 0.0 / 0.0 once the
-    // correction that was supposed to guard it is gone (task-8-report.md has
-    // the transcript).
+    // Deleting KruskalWallis's tieCorrection<=0 guard still throws, but the wrong thing --
+    // Gamma.Validate's ArgumentOutOfRangeException on NaN, since h becomes 0.0/0.0 (task-8-report.md).
     [Fact]
     public void Kruskal_refuses_a_pooled_sample_where_every_value_is_tied()
     {
@@ -102,15 +84,8 @@ public sealed class GroupTestEdgeTests
         Assert.Equal(1.0, result.PValue);
     }
 
-    // Fix-round-2, finding 2, exactly the input the review named: n1 = 100,
-    // n2 = 150 built so the statistic is exactly 7/30 (StatisticLocation 30,
-    // sign +1, verified against scipy's own ks_2samp construction). At the
-    // effective sample size this produces (60), fix-round-2's own finding 1
-    // fix routes this case through DurbinCdf rather than SmirnovSf, so it no
-    // longer exercises the clamp directly -- see the fact below for one that
-    // still does. Kept because the review asked for it by name and it is
-    // still the right regression to hold: a finite p-value matching scipy,
-    // not the NaN this shape once produced.
+    // Fix-round-2's own named input (n1=100, n2=150, statistic 7/30) -- now routed through
+    // DurbinCdf rather than SmirnovSf, kept as the regression the review asked for by name.
     [Fact]
     public void Ks_asymptotic_p_value_is_finite_at_seven_thirtieths()
     {
@@ -124,16 +99,8 @@ public sealed class GroupTestEdgeTests
         Assert.Equal(0.002347089884095932, result.PValue, 1e-9);
     }
 
-    // Fix-round-2, finding 2: the SmirnovSf reachability this package's
-    // contract actually needs pinned, at an input still routed through
-    // SmirnovSf after finding 1's dispatch fix -- n1 = n2 = 400 (effective
-    // size 200, past LargeSampleBranch) built so the statistic is exactly
-    // 0.32 (StatisticLocation 128, sign +1, verified against scipy). At the
-    // final term of the survival-formula sum, the quantity that should be
-    // exactly zero there lands a few ULPs negative; before the clamp this
-    // fact pins, a logarithm of that produced NaN, and every clamp after it
-    // in the call chain propagated that NaN rather than catching it
-    // (delete-and-confirm below).
+    // The SmirnovSf reachability this package's contract needs pinned (n1=n2=400, statistic
+    // 0.32, past LargeSampleBranch): before the clamp, a few-ULP-negative term's log gave NaN.
     [Fact]
     public void Ks_asymptotic_p_value_is_finite_at_the_smirnov_boundary()
     {

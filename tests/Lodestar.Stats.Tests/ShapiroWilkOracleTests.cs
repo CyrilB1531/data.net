@@ -19,9 +19,8 @@ public sealed class ShapiroWilkOracleTests
 
             TestResult result = ShapiroWilk.Test(StatsCorpus.Doubles(c.GetProperty("x")));
 
-            // The statistic is Royston's rational approximation on both sides, so
-            // it agrees to the repository's absolute tolerance; the p-value is a
-            // normal tail of a fitted transform, which is why it is relative.
+            // Statistic uses the absolute tolerance (Royston's approximation both sides);
+            // p-value is relative (a normal tail of a fitted transform).
             StatsOracleAsserts.Statistic(
                 c.GetProperty("statistic").GetDouble(), result.Statistic, name);
             StatsOracleAsserts.PValue(c.GetProperty("pvalue").GetDouble(), result.PValue, name);
