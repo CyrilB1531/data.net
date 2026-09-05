@@ -12,7 +12,7 @@ a later decision uses instead.
 | --- | --- | --- | --- | --- |
 | [`0001`](0001-target-framework.md) | Target frameworks: `net10.0` and `netstandard2.0` | accepted | 2026-08-01 (revised 2026-08-04) | — |
 | [`0002`](0002-unicode-comparison-unit.md) | Unicode comparison unit | accepted | 2026-08-01 | — |
-| [`0003`](0003-provenance-and-licensing.md) | Code provenance and license | accepted | 2026-08-01 | — |
+| [`0003`](0003-provenance-and-licensing.md) | Code provenance and license | accepted | 2026-08-01 | Named as a permissive reference alongside scikit-learn by [`0082`](0082-scipy-joins-the-allowed-permissive-references.md), which adds scipy — recorded here rather than in 0003's own body; see "Relationships not stated on a `**Status:**` line" below |
 | [`0004`](0004-levenshtein-myers-backlog.md) | Levenshtein: bit-parallel (Myers) optimization | accepted | 2026-08-01 (revised 2026-08-05) | backlog partially cleared by issue #208 (not an ADR — see the two `> **#208 update:**` blocks) |
 | [`0005`](0005-hamming-jellyfish-divergence.md) | Accepted divergence from jellyfish on combining marks (Hamming, Jaro) | accepted | 2026-08-01 | — |
 | [`0006`](0006-ratcliff-autojunk.md) | Ratcliff-Obershelp: difflib's autojunk heuristic | accepted | 2026-08-01 | — |
@@ -95,10 +95,10 @@ a later decision uses instead.
 
 ## What `accepted` means here
 
-All seventy-three carry `accepted`. None has been rejected or withdrawn — a status this table
+All eighty-two carry `accepted`. None has been rejected or withdrawn — a status this table
 would otherwise need a second word for. `0004` read a progress sentence
 (`single-word and blocked shipped`) where a status belongs; that sentence is now the opening line
-of its own `## Done` section, and its status reads `accepted` like the other seventy-two.
+of its own `## Done` section, and its status reads `accepted` like the other eighty-one.
 
 ## Relationships not stated on a `**Status:**` line
 
@@ -126,6 +126,16 @@ reader arriving at 0057 first can learn that its Consequences were corrected. Th
 shape, and the reader most likely to need it is the one who opens 0050 to find out what the
 metaspace transform is: 0050 §2 still says "two writings of one value", which `bpe_metaspace.json`
 answers with two texts in nine for the guard and two more for the scheme.
+
+[`0003`](0003-provenance-and-licensing.md) and
+[`0082`](0082-scipy-joins-the-allowed-permissive-references.md) are the same shape again, one-sided
+rather than mutual: 0082 names 0003 directly (it extends 0003's list of permissive behavioural
+references to include scipy), but 0003 was already `accepted` when 0082 was written, and
+`tools/check_adr_immutable.py` refuses a diff that edits an ADR that already existed at the base
+branch — 0082 amends 0003's rule without 0003 being allowed to say so itself. The pointer lives on
+0003's row above instead, so a reader opening 0003 first — to check what a permissive reference is
+allowed to be — learns that its list was extended, rather than reading a rule one revision behind
+what the repository actually does.
 
 `0013`'s partial supersession by `0014` is the one relationship already on a status line; its
 body adds the detail that only §1 (the oracle's normalizer scope) is superseded — §2 (the

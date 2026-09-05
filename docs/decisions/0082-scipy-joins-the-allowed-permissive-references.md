@@ -57,10 +57,13 @@ permissively licensed reference, extended here to name the specific package doin
 
 ## Consequences
 
-- `docs/decisions/README.md`'s row for [`0003`](0003-provenance-and-licensing.md) gains this
-  decision in its relationships column, the same way [`0012`](0012-per-package-versioning.md)
-  and [`0009`](0009-sample-consumes-a-local-feed.md) cross-reference each other without either
-  file being rewritten.
+- `docs/decisions/README.md`'s row for [`0003`](0003-provenance-and-licensing.md) gains a pointer
+  to this decision in its relationships column — one-sided, not a cross-reference: 0003 was
+  already `accepted` when this was written, so `tools/check_adr_immutable.py` refuses a diff that
+  edits it, and 0003's own body says nothing about scipy. The index carries the back-reference
+  instead, the same shape [`0057`](0057-the-npy-read-serves-a-stream-and-a-buffer-differently.md)
+  and [`0058`](0058-the-npy-ingest-is-memcpy-bound-and-the-allocation-is-not-the-cost.md) already
+  use for an amended decision that cannot name its own amendment.
 - A future package that reads scipy's own dispatch logic to settle a branch-selection question —
   rather than a formula it derives independently — cites this decision rather than reopening
   0003 or writing its own.
