@@ -76,7 +76,7 @@ timed; `bench/README.md`'s section 15 has the harness and the agreement checks.
 | `Lodestar.Conformal` | — | **No incumbent exists**, which is the finding rather than a gap in the harness — `bench/README.md` section 15 says what would change that |
 | `Lodestar.Decomposition` | ML.NET `ProjectToPrincipalComponents` | **Not like-for-like.** Centred dense PCA against uncentred sparse truncated SVD and a non-negative factorization — three different decompositions, so each side is checked against its own reconstruction error rather than against the other's numbers |
 | `Lodestar.Onnx` | ONNX Runtime itself | **Nothing to beat.** The package is a caller of the runtime, not a rival to it; what it adds is the pooling and the batching, which `bench/Lodestar.Text.Benchmarks -- '*BatchEmbedding*'` measures against a single-sequence loop |
-| `Lodestar.Stats` | — | **No maintained incumbent exists.** `Accord.Statistics` carried these tests but was last published in 2017 and its framework was archived in 2020; `MathNet.Numerics` ships the distributions a test needs and no tests at all — see [`docs/guides/hypothesis-testing.md`](docs/guides/hypothesis-testing.md#no-incumbent-to-compare-against) |
+| `Lodestar.Stats` | `Accord.Statistics` (archived, no longer maintained) | No case found where `Accord` and `scipy` (and therefore `Lodestar.Stats`) disagree; faster on the t-test and Mann-Whitney, behind on the fixed-size chi-square table — see [`docs/guides/hypothesis-testing.md`](docs/guides/hypothesis-testing.md#no-incumbent-to-compare-against) |
 
 Numbers with the machine that produced them are in
 [`docs/guides/performance.md`](docs/guides/performance.md); a shared runner's

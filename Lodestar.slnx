@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/bench/">
     <Project Path="bench/Lodestar.NetStandard.Benchmarks/Lodestar.NetStandard.Benchmarks.csproj" />
+    <Project Path="bench/Lodestar.Stats.Benchmarks/Lodestar.Stats.Benchmarks.csproj" />
     <Project Path="bench/Lodestar.Text.Benchmarks/Lodestar.Text.Benchmarks.csproj" />
   </Folder>
   <Folder Name="/src/">

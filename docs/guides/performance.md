@@ -2604,3 +2604,52 @@ hits from `k = 1` (23–27 KB) to `k = 4` (5.1–5.5 MB); `TreeWithinDistance` s
 result list comes to dominate both sides' allocation. [`docs/guides/dictionary-lookup.md`](dictionary-lookup.md) carries
 the reader-facing version of this table and its conclusion: the tree is worth using at `k = 1`,
 and a length-filtered scan is the better answer past it.
+
+## Lodestar.Stats against Accord.Statistics (issue #442)
+
+Full method, correctness cross-check, and how `Accord`'s 2017-era API names were resolved against
+the restored package:
+[`bench/README.md`](https://github.com/CyrilB1531/lodestar/blob/main/bench/README.md#18-lodestarstats-against-accordstatistics-issue-442).
+This section carries only the numbers, per this repository's own rule for where a fact belongs
+(`CLAUDE.md`'s "Where a fact belongs" table).
+
+Machine: Intel Xeon Processor 2.80GHz, 1 CPU, 4 logical and 4 physical cores (BenchmarkDotNet's own
+header), Ubuntu 24.04.4 LTS, .NET SDK 10.0.111, .NET 10.0.11 runtime — a hosted session container,
+not a dedicated benchmark machine, so **this row is indicative, not authoritative**, the same
+caveat every other container row in this document carries;
+[decision 0051](../decisions/0051-the-save-paths-cost-is-the-buffer-not-the-encoding.md) records a
+case where a container read a full 3× slower than the dedicated machine on the same code, so treat
+the ratios below as directional rather than exact. Window: one `BenchmarkDotNet` run, `ShortRun`
+job (`LaunchCount=1, WarmupCount=3, IterationCount=3` — stated explicitly because it is a short
+configuration, not BenchmarkDotNet's default of up to 15 iterations), 2026-09-05, no other load on
+the container during the run; total run time 1 min 51 s across the 12 benchmarks (6 pairs × 2
+sample sizes).
+
+| Method | SampleSize | Mean | Allocated |
+| --- | ---: | ---: | ---: |
+| `LodestarWelchT` | 100 | 1.322 μs | — |
+| `AccordWelchT` | 100 | 40.10 μs | 392 B |
+| `LodestarMannWhitney` | 100 | 11.52 μs | 8,944 B |
+| `AccordMannWhitney` | 100 | 58.71 μs | 23,336 B |
+| `LodestarChiSquare` | 100 | 380.0 ns | 200 B |
+| `AccordChiSquare` | 100 | 293.6 ns | 168 B |
+| `LodestarWelchT` | 10,000 | 52.21 μs | — |
+| `AccordWelchT` | 10,000 | 166.6 μs | 392 B |
+| `LodestarMannWhitney` | 10,000 | 5.078 ms | 880,312 B |
+| `AccordMannWhitney` | 10,000 | 14.67 ms | 2,241,217 B |
+| `LodestarChiSquare` | 10,000 | 379.7 ns | 200 B |
+| `AccordChiSquare` | 10,000 | 295.4 ns | 168 B |
+
+`Lodestar.Stats` is faster on `TTest.Independent` (30× at 100 samples, narrowing to 3.2× at
+10,000, as `Accord`'s fixed per-call overhead is amortised over more work) and on
+`MannWhitney.Test` (5.1× at 100, 2.9× at 10,000, allocating 61-62% less at both sizes — both sides
+take the guarded asymptotic path at 10,000, past `MannWhitney`'s own `20_000`-product exact-method
+bound). `Accord` is faster on `ChiSquare.Contingency` (roughly 380 ns against 294 ns, flat with
+sample size since a 2×2 table has four cells regardless of how many observations produced it) — the
+one family where this package's richer result (`Chi2ContingencyResult` carries the expected-value
+table; `Accord`'s `ChiSquareTest` does not expose one) costs more than it buys at this shape.
+
+**Correctness, not just speed.** All three families were checked against `scipy` on frozen
+`tests/oracles/stats_*.json` corpus cases through both implementations; no case disagreed beyond
+floating-point noise (the last one or two digits of a `double`, inside the `1e-9` tolerance
+`docs/equivalence.md` already uses). `bench/README.md` has the three cases and the exact figures.

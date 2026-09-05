@@ -78,7 +78,7 @@ falling back to the asymptotic answer instead. The three reference pages
 [`KolmogorovSmirnov.TwoSample`](../reference/stats/tests/kolmogorovsmirnov-twosample.md))
 each state their own bound, because it is not the same number twice.
 
-## No incumbent to compare against
+## No *maintained* incumbent to compare against
 
 `MathNet.Numerics` 5.0.0 (2022-04-03, 74.7M downloads) is the dominant
 third-party numerical library for .NET, and it ships probability distributions
@@ -88,5 +88,13 @@ the one .NET library that did carry them, was last published on
 **archived by its owner on 2020-11-19**. ML.NET does prediction: a t-test
 exists only in Azure ML Studio (classic), a retired hosted product, and
 Mann-Whitney only in Kusto/KQL — neither is a .NET library a project can
-reference. There is nothing current to benchmark against, which is itself the
-finding, the same shape as [`Lodestar.Conformal`](conformal.md)'s survey.
+reference. There is nothing *maintained* to benchmark against, which is itself
+the finding, the same shape as [`Lodestar.Conformal`](conformal.md)'s survey —
+but unlike `Lodestar.Conformal`'s case, `Accord.Statistics` is still
+installable, and #442's own constraint asks for a named .NET incumbent where
+one exists at all. `TTest.Independent`, `MannWhitney.Test` and
+`ChiSquare.Contingency` are benchmarked and cross-checked against it in
+[`bench/README.md`](https://github.com/CyrilB1531/lodestar/blob/main/bench/README.md#18-lodestarstats-against-accordstatistics-issue-442)
+and [`docs/guides/performance.md`](performance.md#lodestarstats-against-accordstatistics-issue-442) —
+archived is not the same as absent, and this package's own oracle discipline
+means the comparison is also a second opinion on `scipy`, not only a timing.
