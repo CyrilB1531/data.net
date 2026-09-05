@@ -7567,6 +7567,13 @@ STATS_LIBRARY = "scipy"
 CASES = "cases"
 PVALUE = "pvalue"
 STATISTIC = "statistic"
+ALTERNATIVE = "alternative"
+METHOD = "method"
+GREATER = "greater"
+TWO_SIDED = "two-sided"
+OBSERVED = "observed"
+GROUPS = "groups"
+TABLE = "table"
 
 
 def _stats_metadata(family: str, count: int) -> dict:
@@ -7648,14 +7655,14 @@ def generate_stats_ttest() -> dict:
     cases: list[dict] = []
     for fx in _stats_samples():
         for equal_var in (True, False):
-            for alternative in ("two-sided", "less", "greater"):
+            for alternative in (TWO_SIDED, "less", GREATER):
                 r = sps.ttest_ind(fx["a"], fx["b"], equal_var=equal_var,
                                   alternative=alternative)
                 low, high = r.confidence_interval(0.95)
                 cases.append({
                     "name": f"{fx['name']} | ind | equal_var={equal_var} | {alternative}",
                     "call": "ttest_ind",
-                    "args": {"equal_var": equal_var, "alternative": alternative},
+                    "args": {"equal_var": equal_var, ALTERNATIVE: alternative},
                     "a": fx["a"], "b": fx["b"],
                     STATISTIC: _stats_number(r.statistic), PVALUE: float(r.pvalue),
                     "df": float(r.df),
@@ -7663,13 +7670,13 @@ def generate_stats_ttest() -> dict:
                 })
 
     for fx in _stats_paired():
-        for alternative in ("two-sided", "less", "greater"):
+        for alternative in (TWO_SIDED, "less", GREATER):
             r = sps.ttest_rel(fx["x"], fx["y"], alternative=alternative)
             low, high = r.confidence_interval(0.95)
             cases.append({
                 "name": f"{fx['name']} | rel | {alternative}",
                 "call": "ttest_rel",
-                "args": {"alternative": alternative},
+                "args": {ALTERNATIVE: alternative},
                 "a": fx["x"], "b": fx["y"],
                 STATISTIC: _stats_number(r.statistic), PVALUE: float(r.pvalue),
                 "df": float(r.df),
@@ -7678,13 +7685,13 @@ def generate_stats_ttest() -> dict:
 
     for fx in _stats_samples():
         for popmean in (0.0, 5.0):
-            for alternative in ("two-sided", "less", "greater"):
+            for alternative in (TWO_SIDED, "less", GREATER):
                 r = sps.ttest_1samp(fx["a"], popmean, alternative=alternative)
                 low, high = r.confidence_interval(0.95)
                 cases.append({
                     "name": f"{fx['name']} | 1samp | mean={popmean} | {alternative}",
                     "call": "ttest_1samp",
-                    "args": {"popmean": popmean, "alternative": alternative},
+                    "args": {"popmean": popmean, ALTERNATIVE: alternative},
                     "a": fx["a"], "b": [],
                     STATISTIC: _stats_number(r.statistic), PVALUE: float(r.pvalue),
                     "df": float(r.df),
@@ -7702,7 +7709,7 @@ def generate_stats_mannwhitney() -> dict:
     for fx in _stats_samples():
         for use_continuity in (True, False):
             for method in ("auto", "asymptotic"):
-                for alternative in ("two-sided", "less", "greater"):
+                for alternative in (TWO_SIDED, "less", GREATER):
                     r = sps.mannwhitneyu(fx["a"], fx["b"], use_continuity=use_continuity,
                                          alternative=alternative, method=method)
                     cases.append({
@@ -7710,7 +7717,7 @@ def generate_stats_mannwhitney() -> dict:
                                 f"{method} | {alternative}",
                         "call": "mannwhitneyu",
                         "args": {"use_continuity": use_continuity,
-                                 "alternative": alternative, "method": method},
+                                 ALTERNATIVE: alternative, METHOD: method},
                         "a": fx["a"], "b": fx["b"],
                         STATISTIC: float(r.statistic), PVALUE: float(r.pvalue),
                     })
@@ -7718,14 +7725,14 @@ def generate_stats_mannwhitney() -> dict:
     # The exact branch asked for explicitly, including on tied data: measured,
     # scipy computes there rather than refusing, and parity means matching that.
     for fx in _stats_samples()[:3]:
-        for alternative in ("two-sided", "less", "greater"):
+        for alternative in (TWO_SIDED, "less", GREATER):
             r = sps.mannwhitneyu(fx["a"], fx["b"], use_continuity=True,
                                  alternative=alternative, method="exact")
             cases.append({
                 "name": f"{fx['name']} | exact | {alternative}",
                 "call": "mannwhitneyu",
-                "args": {"use_continuity": True, "alternative": alternative,
-                         "method": "exact"},
+                "args": {"use_continuity": True, ALTERNATIVE: alternative,
+                         METHOD: "exact"},
                 "a": fx["a"], "b": fx["b"],
                 STATISTIC: float(r.statistic), PVALUE: float(r.pvalue),
             })
@@ -7742,7 +7749,7 @@ def generate_stats_wilcoxon() -> dict:
         for zero_method in ("wilcox", "pratt", "zsplit"):
             for correction in (False, True):
                 for method in ("auto", "asymptotic"):
-                    for alternative in ("two-sided", "less", "greater"):
+                    for alternative in (TWO_SIDED, "less", GREATER):
                         r = sps.wilcoxon(fx["x"], fx["y"], zero_method=zero_method,
                                          correction=correction, alternative=alternative,
                                          method=method)
@@ -7751,7 +7758,7 @@ def generate_stats_wilcoxon() -> dict:
                                     f"correction={correction} | {method} | {alternative}",
                             "call": "wilcoxon",
                             "args": {"zero_method": zero_method, "correction": correction,
-                                     "alternative": alternative, "method": method},
+                                     ALTERNATIVE: alternative, METHOD: method},
                             "x": fx["x"], "y": fx["y"],
                             STATISTIC: float(r.statistic), PVALUE: float(r.pvalue),
                         })
@@ -7765,43 +7772,43 @@ def generate_stats_chisquare() -> dict:
 
     goodness = [
         {"name": "uniform expectation, six categories",
-         "observed": [16.0, 18.0, 16.0, 14.0, 12.0, 12.0], "expected": []},
+         OBSERVED: [16.0, 18.0, 16.0, 14.0, 12.0, 12.0], "expected": []},
         # scipy 1.18.0's chisquare refuses an f_exp that does not sum to f_obs's
         # sum (88.0); a uniform [16]*6 sums to 96, so this profile is non-uniform.
         {"name": "explicit expectation",
-         "observed": [16.0, 18.0, 16.0, 14.0, 12.0, 12.0],
+         OBSERVED: [16.0, 18.0, 16.0, 14.0, 12.0, 12.0],
          "expected": [20.0, 18.0, 16.0, 14.0, 12.0, 8.0]},
         {"name": "a far tail, p below 1e-15",
-         "observed": [200.0, 10.0, 10.0, 10.0], "expected": []},
+         OBSERVED: [200.0, 10.0, 10.0, 10.0], "expected": []},
     ]
     tables = [
-        {"name": "2x2, Yates applies", "table": [[10.0, 20.0], [30.0, 40.0]]},
-        {"name": "2x2, strong association", "table": [[100.0, 10.0], [10.0, 100.0]]},
+        {"name": "2x2, Yates applies", TABLE: [[10.0, 20.0], [30.0, 40.0]]},
+        {"name": "2x2, strong association", TABLE: [[100.0, 10.0], [10.0, 100.0]]},
         {"name": "3x2, Yates does not apply",
-         "table": [[10.0, 20.0], [30.0, 40.0], [15.0, 5.0]]},
-        {"name": "3x3", "table": [[10.0, 20.0, 30.0], [30.0, 40.0, 10.0], [5.0, 15.0, 25.0]]},
+         TABLE: [[10.0, 20.0], [30.0, 40.0], [15.0, 5.0]]},
+        {"name": "3x3", TABLE: [[10.0, 20.0, 30.0], [30.0, 40.0, 10.0], [5.0, 15.0, 25.0]]},
     ]
 
     cases: list[dict] = []
     for fx in goodness:
         expected = fx["expected"] or None
-        r = sps.chisquare(fx["observed"], f_exp=expected)
+        r = sps.chisquare(fx[OBSERVED], f_exp=expected)
         cases.append({
             "name": f"{fx['name']} | chisquare",
             "call": "chisquare",
             "args": {"f_exp": fx["expected"]},
-            "observed": fx["observed"], "expected_input": fx["expected"],
+            OBSERVED: fx[OBSERVED], "expected_input": fx["expected"],
             STATISTIC: float(r.statistic), PVALUE: float(r.pvalue),
         })
 
     for fx in tables:
         for correction in (True, False):
-            r = sps.chi2_contingency(np.array(fx["table"]), correction=correction)
+            r = sps.chi2_contingency(np.array(fx[TABLE]), correction=correction)
             cases.append({
                 "name": f"{fx['name']} | correction={correction}",
                 "call": "chi2_contingency",
                 "args": {"correction": correction},
-                "table": fx["table"],
+                TABLE: fx[TABLE],
                 STATISTIC: float(r.statistic), PVALUE: float(r.pvalue),
                 "dof": int(r.dof),
                 "expected_freq": [[float(v) for v in row] for row in r.expected_freq],
@@ -7815,22 +7822,22 @@ def generate_stats_fisher() -> dict:
     from scipy import stats as sps
 
     tables = [
-        {"name": "Fisher's tea tasting", "table": [[3, 1], [1, 3]]},
-        {"name": "a zero cell", "table": [[8, 2], [1, 5]]},
-        {"name": "two zero cells", "table": [[5, 0], [0, 5]]},
-        {"name": "large counts", "table": [[100, 40], [35, 120]]},
-        {"name": "an empty row is refused by the C# side", "table": [[7, 3], [2, 9]]},
+        {"name": "Fisher's tea tasting", TABLE: [[3, 1], [1, 3]]},
+        {"name": "a zero cell", TABLE: [[8, 2], [1, 5]]},
+        {"name": "two zero cells", TABLE: [[5, 0], [0, 5]]},
+        {"name": "large counts", TABLE: [[100, 40], [35, 120]]},
+        {"name": "an empty row is refused by the C# side", TABLE: [[7, 3], [2, 9]]},
     ]
 
     cases: list[dict] = []
     for fx in tables:
-        for alternative in ("two-sided", "less", "greater"):
-            r = sps.fisher_exact(np.array(fx["table"]), alternative=alternative)
+        for alternative in (TWO_SIDED, "less", GREATER):
+            r = sps.fisher_exact(np.array(fx[TABLE]), alternative=alternative)
             cases.append({
                 "name": f"{fx['name']} | {alternative}",
                 "call": "fisher_exact",
-                "args": {"alternative": alternative},
-                "table": fx["table"],
+                "args": {ALTERNATIVE: alternative},
+                TABLE: fx[TABLE],
                 # The odds ratio is infinite when a diagonal is zero, which the
                 # "two zero cells" fixture is there to reach.
                 STATISTIC: _stats_number(r.statistic), PVALUE: float(r.pvalue),
@@ -7846,12 +7853,12 @@ def generate_stats_ks() -> dict:
     cases: list[dict] = []
     for fx in _stats_samples():
         for method in ("auto", "asymp", "exact"):
-            for alternative in ("two-sided", "less", "greater"):
+            for alternative in (TWO_SIDED, "less", GREATER):
                 r = sps.ks_2samp(fx["a"], fx["b"], alternative=alternative, method=method)
                 cases.append({
                     "name": f"{fx['name']} | {method} | {alternative}",
                     "call": "ks_2samp",
-                    "args": {"alternative": alternative, "method": method},
+                    "args": {ALTERNATIVE: alternative, METHOD: method},
                     "a": fx["a"], "b": fx["b"],
                     STATISTIC: float(r.statistic), PVALUE: float(r.pvalue),
                     "statistic_location": float(r.statistic_location),
@@ -7866,13 +7873,13 @@ def _stats_groups() -> list[dict]:
     rng = SeededRandom(SEED + 444)
     return [
         {"name": "three balanced groups",
-         "groups": [[1.0, 2.0, 3.0, 4.0], [2.0, 3.0, 4.0, 5.0], [5.0, 6.0, 7.0, 8.0]]},
+         GROUPS: [[1.0, 2.0, 3.0, 4.0], [2.0, 3.0, 4.0, 5.0], [5.0, 6.0, 7.0, 8.0]]},
         {"name": "unbalanced groups",
-         "groups": [[1.0, 2.0], [2.0, 3.0, 4.0, 5.0, 6.0], [5.0, 6.0, 7.0]]},
+         GROUPS: [[1.0, 2.0], [2.0, 3.0, 4.0, 5.0, 6.0], [5.0, 6.0, 7.0]]},
         {"name": "ties across groups",
-         "groups": [[1.0, 2.0, 2.0], [2.0, 2.0, 3.0], [3.0, 3.0, 4.0]]},
+         GROUPS: [[1.0, 2.0, 2.0], [2.0, 2.0, 3.0], [3.0, 3.0, 4.0]]},
         {"name": "three separated groups, p below 1e-15",
-         "groups": [[round(rng.gauss(m, 1.0), 6) for _ in range(30)] for m in (0.0, 4.0, 8.0)]},
+         GROUPS: [[round(rng.gauss(m, 1.0), 6) for _ in range(30)] for m in (0.0, 4.0, 8.0)]},
     ]
 
 
@@ -7882,10 +7889,10 @@ def generate_stats_anova() -> dict:
 
     cases = []
     for fx in _stats_groups():
-        r = sps.f_oneway(*[np.array(g) for g in fx["groups"]])
+        r = sps.f_oneway(*[np.array(g) for g in fx[GROUPS]])
         cases.append({
             "name": fx["name"], "call": "f_oneway", "args": {},
-            "groups": fx["groups"],
+            GROUPS: fx[GROUPS],
             STATISTIC: float(r.statistic), PVALUE: float(r.pvalue),
         })
 
@@ -7898,10 +7905,10 @@ def generate_stats_kruskal() -> dict:
 
     cases = []
     for fx in _stats_groups():
-        r = sps.kruskal(*[np.array(g) for g in fx["groups"]])
+        r = sps.kruskal(*[np.array(g) for g in fx[GROUPS]])
         cases.append({
             "name": fx["name"], "call": "kruskal", "args": {},
-            "groups": fx["groups"],
+            GROUPS: fx[GROUPS],
             STATISTIC: float(r.statistic), PVALUE: float(r.pvalue),
         })
 
