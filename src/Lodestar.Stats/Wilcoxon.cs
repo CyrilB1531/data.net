@@ -25,6 +25,19 @@ public static class Wilcoxon
     // over instead.
     private const int AutoPermutationThreshold = 13;
 
+    // long-comment: the bound below is a measured overflow ceiling, not a
+    // round number, and a reviewer should see the measurement in the source.
+    // ExactPValue's total is Math.Pow(2.0, n): a normal, exact double for any
+    // n up to 1023, but n = 1024 overflows to +Infinity, and every p-value it
+    // divides then silently becomes exactly 0.0 rather than throwing --
+    // the same class of failure as StudentSf's far-tail collapse in Task 5.
+    // 500 leaves better than a two-times margin below that cliff while
+    // keeping RankDistributions.SignedRankCounts(n)'s O(n^2) table (about
+    // 125,000 entries, under 1 MB) trivially cheap to build. Auto's own
+    // threshold above caps the sample it would ever choose Exact for at 50,
+    // so this bound only ever binds an explicit ExactMethod.Exact request.
+    private const int MaxExactSampleSize = 500;
+
     /// <summary>Compares two paired samples by the ranks of their differences.</summary>
     /// <param name="x">The first measurement of each pair.</param>
     /// <param name="y">The second measurement of each pair, in the same order.</param>
@@ -32,12 +45,20 @@ public static class Wilcoxon
     /// <param name="alternative">Which tail the p-value covers.</param>
     /// <param name="continuity">Whether the normal approximation gets the half-unit correction.</param>
     /// <param name="method">
-    /// Exact, asymptotic, or chosen by sample size and by whether ties or zeros
-    /// are present.
+    /// Exact, asymptotic, or chosen by sample size and by whether ties or
+    /// zeros are present. Past the same size bound
+    /// <see cref="ExactMethod.Exact"/> is refused for,
+    /// <see cref="ExactMethod.Auto"/> falls back to asymptotic rather than
+    /// building the table -- it never throws.
     /// </param>
     /// <returns>The smaller signed-rank sum, and the p-value.</returns>
     /// <exception cref="ArgumentException">
     /// The samples differ in length, or are empty.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="method"/> is <see cref="ExactMethod.Exact"/> and the
+    /// ranked sample exceeds 500 values. Pass
+    /// <see cref="ExactMethod.Asymptotic"/> instead.
     /// </exception>
     public static TestResult Paired(
         ReadOnlySpan<double> x,
@@ -68,9 +89,21 @@ public static class Wilcoxon
     /// <param name="zeroMethod">What to do with differences that are exactly zero.</param>
     /// <param name="alternative">Which tail the p-value covers.</param>
     /// <param name="continuity">Whether the normal approximation gets the half-unit correction.</param>
-    /// <param name="method">Exact, asymptotic, or chosen by the number of non-zero differences.</param>
+    /// <param name="method">
+    /// Exact, asymptotic, or chosen by the number of non-zero differences.
+    /// Past the same size bound <see cref="ExactMethod.Exact"/> is refused
+    /// for, <see cref="ExactMethod.Auto"/> falls back to asymptotic rather
+    /// than building the table -- it never throws.
+    /// </param>
     /// <returns>The smaller signed-rank sum, and the p-value.</returns>
     /// <exception cref="ArgumentException"><paramref name="differences"/> is empty.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="method"/> is <see cref="ExactMethod.Exact"/> and the
+    /// zero-method-processed sample exceeds 500 values -- the exact
+    /// distribution's total, <c>2^n</c>, overflows to infinity past
+    /// <c>n = 1023</c> and every p-value it divides would silently become
+    /// exactly zero. Pass <see cref="ExactMethod.Asymptotic"/> instead.
+    /// </exception>
     public static TestResult OneSample(
         ReadOnlySpan<double> differences,
         ZeroMethod zeroMethod = ZeroMethod.Wilcox,
@@ -120,6 +153,22 @@ public static class Wilcoxon
 
         NullDistribution distribution = ChooseDistribution(
             method, differences.Length, Ranks.HasTies(magnitudes), zeroCount);
+
+        if (distribution == NullDistribution.Exact && ranked.Length > MaxExactSampleSize)
+        {
+            if (method == ExactMethod.Exact)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(method),
+                    method,
+                    $"Exact Wilcoxon needs at most {MaxExactSampleSize} ranked values; " +
+                    $"got {ranked.Length}. Pass ExactMethod.Asymptotic instead.");
+            }
+
+            // Auto never throws: past the bound it falls back to asymptotic
+            // instead, since nothing the caller wrote asked for an exact answer.
+            distribution = NullDistribution.Asymptotic;
+        }
 
         // long-comment: this line picks one of two arrays and the choice looks
         // arbitrary without the corpus evidence behind it.

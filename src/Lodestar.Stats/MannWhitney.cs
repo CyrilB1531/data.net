@@ -120,9 +120,9 @@ public static class MannWhitney
     // and atLeast" without the corpus history behind why it changed shape.
     // Measured against scipy 1.18.0: the exact branch never calls a CDF, only
     // a survival function, truncating the chosen statistic toward zero first.
-    // Less reads U2's survival rather than U1's CDF, which the null
-    // distribution's symmetry makes this equivalent when untied; under ties
-    // the truncation and the choice of which U feeds the lookup both matter,
+    // Less reads U2's survival rather than U1's CDF; the null distribution's
+    // symmetry makes the two equivalent when untied, but under ties the
+    // truncation and the choice of which U feeds the lookup both matter,
     // and no corpus case exercised that (task-6-report.md, fix round 1,
     // Finding 2).
     private static double ExactPValue(double u, int n, int m, Alternative alternative)

@@ -80,15 +80,24 @@ public sealed class RankTestEdgeTests
     [Fact]
     public void MannWhitney_auto_falls_back_to_asymptotic_past_the_bound_on_a_skewed_shape()
     {
+        // long-comment: an earlier version of this test used i*0.1 with no
+        // offset and passed for the wrong reason -- the fix is the +0.05
+        // below, and why it matters needs to stay visible next to it.
         // n=8 alone satisfies Auto's exact-branch size rule (the smaller
         // sample only), but n*m = 24,000 exceeds MaxExactProduct: Auto must
         // answer from the asymptotic branch rather than building a table
         // sized (m+1) x (n*m+1), or throwing the way an explicit Exact would.
+        // The +0.05 offset is load-bearing: without it every large[i] at
+        // i=10,40,70,... lands exactly on a small[] value (10*0.1 == 1.0),
+        // Ranks.HasTies(pooled) is true, and wantsExact is already false
+        // through the ties clause -- the tableTooLarge guard is never
+        // consulted and this test cannot fail regardless of its state
+        // (verified by deletion -- see task-6-report.md, fix round 2).
         double[] small = [1.0, 4.0, 7.0, 9.0, 11.0, 13.0, 15.0, 17.0];
         double[] large = new double[3000];
         for (int i = 0; i < large.Length; i++)
         {
-            large[i] = i * 0.1;
+            large[i] = (i * 0.1) + 0.05;
         }
 
         TestResult auto = MannWhitney.Test(small, large, method: ExactMethod.Auto);
@@ -190,5 +199,71 @@ public sealed class RankTestEdgeTests
         string name = $"{zeroMethod}/{alternative}";
         StatsOracleAsserts.Statistic(statistic, result.Statistic, name);
         StatsOracleAsserts.PValue(pValue, result.PValue, name);
+    }
+
+    [Fact]
+    public void Wilcoxon_refuses_an_exact_request_whose_table_is_too_large()
+    {
+        // 600 ranked values, past the 500 bound the refusal exists to keep
+        // Exact well clear of 2^n's overflow to Infinity at n = 1024.
+        double[] big = UntiedDifferences(600);
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => Wilcoxon.OneSample(big, method: ExactMethod.Exact));
+    }
+
+    [Fact]
+    public void Wilcoxon_does_not_refuse_an_exact_request_at_the_bound()
+    {
+        // Exactly 500 ranked values: the bound is inclusive, so this must
+        // still answer rather than refuse.
+        double[] atBound = UntiedDifferences(500);
+
+        TestResult result = Wilcoxon.OneSample(atBound, method: ExactMethod.Exact);
+        Assert.True(result.PValue is > 0.0 and <= 1.0);
+    }
+
+    [Fact]
+    public void Wilcoxon_auto_returns_below_the_bound()
+    {
+        double[] small = UntiedDifferences(10);
+
+        TestResult auto = Wilcoxon.OneSample(small, method: ExactMethod.Auto);
+        TestResult exact = Wilcoxon.OneSample(small, method: ExactMethod.Exact);
+
+        Assert.Equal(exact.PValue, auto.PValue, 1e-15);
+    }
+
+    [Fact]
+    public void Wilcoxon_auto_returns_without_throwing_above_the_bound()
+    {
+        // long-comment: this test cannot fail the way the two above it can,
+        // and that needs to be on the record rather than discovered later.
+        // 600 ranked values: past both AutoAsymptoticThreshold (50) and the
+        // 500 exact-table bound. Regression coverage, not a bound-guard
+        // test -- Auto's own fifty-value rule already routes this to
+        // Asymptotic before the size guard is ever consulted, so removing
+        // the guard entirely does not make this fail (verified). It only
+        // proves Auto keeps answering rather than throwing once a second
+        // reason to fall back is layered on top of the first.
+        double[] big = UntiedDifferences(600);
+
+        TestResult auto = Wilcoxon.OneSample(big, method: ExactMethod.Auto);
+        TestResult asymptotic = Wilcoxon.OneSample(big, method: ExactMethod.Asymptotic);
+
+        Assert.Equal(asymptotic.PValue, auto.PValue, 1e-15);
+    }
+
+    // Distinct, nonzero, unit-spaced differences: no ties, no zeros, so every
+    // ZeroMethod and every branch treats them identically.
+    private static double[] UntiedDifferences(int count)
+    {
+        double[] differences = new double[count];
+        for (int i = 0; i < count; i++)
+        {
+            differences[i] = i + 1.0;
+        }
+
+        return differences;
     }
 }
