@@ -46,16 +46,30 @@ internal static class Kolmogorov
         return q > 1.0 ? 1.0 : q;
     }
 
-    // scipy's own two cutoffs for evaluating a survival probability rather
-    // than a CDF (_ksstats.py's _kolmogn, the `if not cdf:` branch): past
-    // 370 the tail already underflows a double outright, so there is
-    // nothing left to compute; from 2.2 the direct one-sided survival
-    // formula stands in for 1 - CDF, which is where the cancellation this
-    // file exists to avoid actually happens. Neither is this file's own
-    // tuning -- both are scipy's, borrowed under ADR 0003 (scipy is BSD-3,
-    // an explicitly permitted behavioural reference).
+    // long-comment: attributing five borrowed cutoffs together needs more
+    //     than two lines, and each one is load-bearing -- fix-round-2 shipped
+    //     because one of them (DirectSurvivalThreshold) was applied outside
+    //     the branch scipy itself confines it to.
+    // Every threshold below is scipy's own, read from _ksstats.py's
+    // _kolmogn, borrowed under ADR 0003 (scipy is BSD-3, an explicitly
+    // permitted behavioural reference) rather than tuned in this file.
+    // LargeSampleBranch is the sample size where _kolmogn itself switches
+    // between two entirely different dispatch strategies -- everything past
+    // it belongs only inside that large-sample dispatch. Applying it at
+    // every sample size regardless, as fix-round-1 did, was a regression:
+    // a small sample whose scaled statistic sits in scipy's Pomeranz range
+    // has an exact answer available here too, through DurbinCdf, that the
+    // direct survival formula only approximates (task-8-report.md's
+    // fix-round-2 has the measurement). The remaining two cutoffs gate
+    // DurbinCdf itself, inside that same large-sample dispatch: past them
+    // scipy stops computing the exact value and falls back to Pelz-Good, so
+    // this file does too -- this package's contract is parity with what
+    // scipy returns, not a more accurate number scipy itself does not.
+    private const int LargeSampleBranch = 140;
     private const double UnderflowThreshold = 370.0;
     private const double DirectSurvivalThreshold = 2.2;
+    private const int ExactMatrixCap = 100_000;
+    private const double ExactSlopeThreshold = 1.4;
 
     private const int ScaleBits = 128;
     private static readonly double ScaleUp = PowerOfTwo(ScaleBits);
@@ -102,25 +116,17 @@ internal static class Kolmogorov
     /// only as 1/sqrt(n) (measured in task-8-report.md's fix-round-1 sweep),
     /// so no threshold short of an astronomical sample size would bring
     /// <see cref="Sf"/> under this package's own tolerance. This method
-    /// computes the exact finite-sample value for every <paramref name="n"/>
-    /// instead of ever falling back to the limit. <paramref name="n"/> is
-    /// rounded, not truncated: it arrives as a two-sample test's effective
-    /// size n1*n2/(n1+n2), which is rarely integral.
-    ///
-    /// <para>
-    /// <b>Known, bounded gap, out of this file's own scope.</b> For n past
-    /// 140, scipy's own <c>kstwo.sf</c> stops computing this exact value in a
-    /// narrow band (n * d^2 below <see cref="DirectSurvivalThreshold"/> but
-    /// large enough that its own DMTW shortcut is skipped too) and switches
-    /// to the Pelz-Good asymptotic expansion instead -- an approximation
-    /// this file does not implement. This method keeps computing the exact
-    /// value there rather than scipy's approximation of it, which disagrees
-    /// with <c>kstwo.sf</c> by up to roughly 4e-6 relative in that band
-    /// (measured, task-8-report.md's fix-round-1 sweep) -- small, bounded,
-    /// and not one of that round's four assigned findings, so left as a
-    /// documented gap for a future round rather than a fifth algorithm
-    /// implemented under this one's time budget.
-    /// </para>
+    /// reproduces scipy's own dispatch instead of picking one route for
+    /// every <paramref name="n"/>: exact (<see cref="SmirnovSf"/> or
+    /// <see cref="DurbinCdf"/>) through n = 140 and past it wherever scipy's
+    /// own exact route still applies, and Pelz-Good's published asymptotic
+    /// expansion (<see cref="PelzGoodCdf"/>) exactly where scipy itself
+    /// stops computing the exact value -- deliberately matching scipy's
+    /// answer there rather than a more accurate one it does not return,
+    /// since this package's contract is parity (task-8-report.md,
+    /// fix-round-2, finding 3). <paramref name="n"/> is rounded, not
+    /// truncated: it arrives as a two-sample test's effective size
+    /// n1*n2/(n1+n2), which is rarely integral.
     /// </remarks>
     internal static double FiniteTwoSidedSf(double n, double d)
     {
@@ -138,8 +144,30 @@ internal static class Kolmogorov
         }
 
         int count = Math.Max(1, (int)Math.Round(n, MidpointRounding.ToEven));
-        double countDSquared = count * d * d;
 
+        // scipy's own unconditional shortcut, any n: exact, since D_n+ >= d
+        // and D_n- >= d cannot both hold once d >= 0.5.
+        if (d >= 0.5)
+        {
+            return Math.Min(1.0, 2.0 * SmirnovSf(count, d));
+        }
+
+        // d < 0.5 from here. Through n = 140, scipy keeps computing the
+        // exact value regardless of n * d^2 (Pomeranz above 0.754693,
+        // Miller's approximation only past 4 -- neither reachable here,
+        // since this file's own DurbinCdf has no reason to trade accuracy
+        // for speed at a matrix size this small, unlike scipy choosing
+        // between three algorithms tuned for its own performance profile).
+        // Applying the n > 140 thresholds below at every n was fix-round-1's
+        // own regression: a small n with n * d^2 in [2.2, 4] has an exact
+        // route here, and the direct survival formula only approximates it
+        // (task-8-report.md's fix-round-2 measurement).
+        if (count <= LargeSampleBranch)
+        {
+            return 1.0 - DurbinCdf(count, d);
+        }
+
+        double countDSquared = count * d * d;
         if (countDSquared >= UnderflowThreshold)
         {
             return 0.0;
@@ -148,18 +176,24 @@ internal static class Kolmogorov
         // The direct one-sided survival formula, never 1 - (a CDF near 1):
         // DurbinCdf(200, 0.9) rounds to exactly 1.0 in a double, and 1 minus
         // that is an exact 0.0 where the true tail is still representable.
-        // Cutting over on d >= 0.5 alone missed this -- d < 0.5 with n large
-        // enough reaches the identical collapse (n = 300, d just under 0.5:
-        // task-8-report.md's fix-round-1 measurement has the 10^7 error this
-        // produced). n * d^2, not d alone, is what tracks how close the CDF
-        // sits to 1. 2 * SmirnovSf is exactly P(D_n > d) only for d >= 0.5,
-        // where D_n+ >= d and D_n- >= d cannot both hold; below that it
-        // drops that intersection term, which is scipy's own published
-        // approximation here (Li-Chien/Korolyuk), not this file's -- the
-        // gap it leaves is what DirectSurvivalThreshold keeps negligible.
-        return countDSquared >= DirectSurvivalThreshold
-            ? Math.Min(1.0, 2.0 * SmirnovSf(count, d))
-            : 1.0 - DurbinCdf(count, d);
+        // 2 * SmirnovSf is exactly P(D_n > d) only for d >= 0.5 (handled
+        // above); below that it drops the D_n+/D_n- intersection term,
+        // which is scipy's own published approximation here (Li-Chien/
+        // Korolyuk) -- the gap it leaves is what DirectSurvivalThreshold
+        // keeps small enough that this file's own contract still holds.
+        if (countDSquared >= DirectSurvivalThreshold)
+        {
+            return Math.Min(1.0, 2.0 * SmirnovSf(count, d));
+        }
+
+        // n > 140, n * d^2 < 2.2: scipy's own exact route (its DMTW) is
+        // capped at n * d^1.5 <= 1.4, past which it hands off to Pelz-Good.
+        // This file follows the same cap, for the same reason as above --
+        // parity with what scipy returns, not a more accurate number it
+        // does not.
+        return count <= ExactMatrixCap && count * Math.Pow(d, 1.5) <= ExactSlopeThreshold
+            ? 1.0 - DurbinCdf(count, d)
+            : 1.0 - PelzGoodCdf(count, d);
     }
 
     // Birnbaum's closed form for the one-sided finite-sample tail P(D_n+ > d):
@@ -174,7 +208,19 @@ internal static class Kolmogorov
         for (int j = 0; j <= jMax; j++)
         {
             double a = (j / (double)n) + d;
-            double b = 1.0 - d - (j / (double)n);
+
+            // At j = jMax, 1 - d - j/n is mathematically exactly 0 for some
+            // (n, d) and lands a few ULPs below it for others, entirely from
+            // rounding in j/n -- never because the true probability went
+            // negative. Math.Log of that small negative is NaN, not the
+            // -Infinity a genuine 0 gives (Math.Exp(-Infinity) is a clean
+            // 0.0 term, correct: 0 raised to the positive power n - j
+            // really is 0), and NaN then propagates through the sum and out
+            // through KsResult.PValue. Reachable from the public TwoSample
+            // at an effective sample size of 200 and d = 0.32
+            // (task-8-report.md's fix-round-2 has the delete-and-confirm).
+            double b = Math.Max(0.0, 1.0 - d - (j / (double)n));
+
             double logTerm = LogChoose(n, j) + ((j - 1) * Math.Log(a)) + ((n - j) * Math.Log(b));
             sum += Math.Exp(logTerm);
         }
@@ -184,6 +230,138 @@ internal static class Kolmogorov
 
     private static double LogChoose(int n, int k) =>
         Gamma.LogGamma(n + 1) - Gamma.LogGamma(k + 1) - Gamma.LogGamma(n - k + 1);
+
+    private const double MinLog = -708.0;
+    private const double PiSquared = Math.PI * Math.PI;
+    private const double PiFour = PiSquared * PiSquared;
+    private const double PiSix = PiSquared * PiFour;
+    private static readonly double Sqrt2Pi = Math.Sqrt(2.0 * Math.PI);
+    private static readonly double Sqrt3 = Math.Sqrt(3.0);
+
+    // Pelz & Good (1976): transforms the Li-Chien/Korolyuk large-n asymptotic
+    // expansion of the two-sided one-sample Kolmogorov CDF, via the
+    // functional equation for Jacobi theta functions, into a form that
+    // converges quickly for the small z = sqrt(n)*d this method is reached
+    // at -- the branch scipy's own kstwo.sf falls back to once DurbinCdf's
+    // own n * d^1.5 <= 1.4 cap (matched in FiniteTwoSidedSf) is exceeded.
+    // Deliberately less accurate than DurbinCdf would be here (this is an
+    // asymptotic expansion, not an exact computation): this package's
+    // contract is parity with what scipy actually returns, not a more
+    // accurate number scipy itself does not (task-8-report.md, fix-round-2,
+    // finding 3). The four-term expansion (k[0..3]), its coefficients and
+    // the two convergence sums in <see cref="PelzGoodConvergenceSums"/>
+    // follow scipy's own _kolmogn_PelzGood structurally (ADR 0003, scipy is
+    // BSD-3, attributed as fix-round-1's finding 4 established); the
+    // mathematics itself is Pelz & Good's, published.
+    private static double PelzGoodCdf(int n, double d)
+    {
+        double z = Math.Sqrt(n) * d;
+        double zSquared = z * z;
+
+        double qLog = -PiSquared / 8.0 / zSquared;
+        if (qLog < MinLog)
+        {
+            return 0.0;
+        }
+
+        double q = Math.Exp(qLog);
+        double[] k = PelzGoodExpansion(z, zSquared, q);
+
+        (double k2Correction, double k3Correction) = PelzGoodConvergenceSums(z, zSquared);
+        k[2] += k2Correction;
+        k[3] += k3Correction;
+
+        double sqrtN = Math.Sqrt(n);
+        double[] powersOfN = [1.0, sqrtN, n, n * sqrtN];
+        double sum = 0.0;
+        for (int i = 0; i < k.Length; i++)
+        {
+            sum += k[i] / powersOfN[i];
+        }
+
+        return sum;
+    }
+
+    // The four-term k[0..3] sum over odd m = 2*step-1, folding in one more
+    // term per iteration from the largest step down and rescaling the
+    // running total by q^(8*step) each time -- not a fixed ratio, since
+    // step itself changes every iteration.
+    private static double[] PelzGoodExpansion(double z, double zSquared, double q)
+    {
+        double zFour = zSquared * zSquared;
+        double zSix = zSquared * zFour;
+
+        double k1A = -zSquared;
+        double k1B = PiSquared / 4.0;
+        double k2A = (6.0 * zSix) + (2.0 * zFour);
+        double k2B = ((2.0 * zFour) - (5.0 * zSquared)) * PiSquared / 4.0;
+        double k2C = PiFour * (1.0 - (2.0 * zSquared)) / 16.0;
+        double k3D = PiSix * (5.0 - (30.0 * zSquared)) / 64.0;
+        double k3C = PiFour * ((-60.0 * zSquared) + (212.0 * zFour)) / 16.0;
+        double k3B = PiSquared * ((135.0 * zFour) - (96.0 * zSix)) / 4.0;
+        double k3A = (-30.0 * zSix) - (90.0 * zSquared * zSix);
+
+        double[] k = new double[4];
+        int maxStep = (int)Math.Ceiling(16.0 * z / Math.PI);
+        for (int step = maxStep; step >= 1; step--)
+        {
+            double m = (2.0 * step) - 1.0;
+            double mSquared = m * m;
+            double mFour = mSquared * mSquared;
+            double mSix = mSquared * mFour;
+            double qPower = Math.Pow(q, 8 * step);
+
+            k[0] = (k[0] * qPower) + 1.0;
+            k[1] = (k[1] * qPower) + k1A + (k1B * mSquared);
+            k[2] = (k[2] * qPower) + k2A + (k2B * mSquared) + (k2C * mFour);
+            k[3] = (k[3] * qPower) + k3A + (k3B * mSquared) + (k3C * mFour) + (k3D * mSix);
+        }
+
+        for (int i = 0; i < k.Length; i++)
+        {
+            k[i] *= q;
+            k[i] *= Sqrt2Pi;
+        }
+
+        double zSeven = zSix * z;
+        double zTen = zSix * zFour;
+        k[0] /= z;
+        k[1] /= 6.0 * zFour;
+        k[2] /= 72.0 * zSeven;
+        k[3] /= 6480.0 * zTen;
+
+        return k;
+    }
+
+    // A second, directly-summed pair of series (k[2] and k[3] only) that the
+    // Jacobi-theta transform in <see cref="PelzGoodExpansion"/> does not
+    // fold in on its own -- a different q (base) than that method's, and
+    // summed rather than accumulated via the qPower-per-step rescale above.
+    private static (double K2, double K3) PelzGoodConvergenceSums(double z, double zSquared)
+    {
+        double zThree = zSquared * z;
+        double zSix = zThree * zThree;
+        double q = Math.Exp(-PiSquared / 2.0 / zSquared);
+        double sqrt3Z = Sqrt3 * z;
+
+        int maxStep = (int)Math.Ceiling(16.0 * z / Math.PI);
+        double k2Extra = 0.0;
+        double k3Extra = 0.0;
+        for (int step = maxStep; step >= 1; step--)
+        {
+            double stepSquared = (double)step * step;
+            double stepPi = Math.PI * step;
+            double qPower = Math.Pow(q, stepSquared);
+
+            k2Extra += stepSquared * qPower;
+            k3Extra += (sqrt3Z + stepPi) * (sqrt3Z - stepPi) * stepSquared * qPower;
+        }
+
+        k2Extra *= PiSquared * Sqrt2Pi / (-36.0 * zThree);
+        k3Extra *= PiSquared * Sqrt2Pi / (216.0 * zSix);
+
+        return (k2Extra, k3Extra);
+    }
 
     // Durbin's (1968) matrix method for P(D_n <= d), in the computationally
     // efficient form Marsaglia, Tsang and Wang (2003) gave it: write d as

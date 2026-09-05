@@ -1,3 +1,4 @@
+using System.Linq;
 using Xunit;
 
 namespace Lodestar.Stats.Tests;
@@ -99,5 +100,51 @@ public sealed class GroupTestEdgeTests
 
         Assert.Equal(0.0, result.Statistic);
         Assert.Equal(1.0, result.PValue);
+    }
+
+    // Fix-round-2, finding 2, exactly the input the review named: n1 = 100,
+    // n2 = 150 built so the statistic is exactly 7/30 (StatisticLocation 30,
+    // sign +1, verified against scipy's own ks_2samp construction). At the
+    // effective sample size this produces (60), fix-round-2's own finding 1
+    // fix routes this case through DurbinCdf rather than SmirnovSf, so it no
+    // longer exercises the clamp directly -- see the fact below for one that
+    // still does. Kept because the review asked for it by name and it is
+    // still the right regression to hold: a finite p-value matching scipy,
+    // not the NaN this shape once produced.
+    [Fact]
+    public void Ks_asymptotic_p_value_is_finite_at_seven_thirtieths()
+    {
+        double[] a = [.. Enumerable.Range(1, 30).Select(i => (double)i), .. Enumerable.Repeat(1000.0, 70)];
+        double[] b = [.. Enumerable.Repeat(0.0, 10), .. Enumerable.Repeat(1000.0, 140)];
+
+        KsResult result = KolmogorovSmirnov.TwoSample(a, b, Alternative.TwoSided, ExactMethod.Asymptotic);
+
+        Assert.False(double.IsNaN(result.PValue), "PValue is NaN.");
+        Assert.Equal(7.0 / 30.0, result.Statistic, 1e-12);
+        Assert.Equal(0.002347089884095932, result.PValue, 1e-9);
+    }
+
+    // Fix-round-2, finding 2: the SmirnovSf reachability this package's
+    // contract actually needs pinned, at an input still routed through
+    // SmirnovSf after finding 1's dispatch fix -- n1 = n2 = 400 (effective
+    // size 200, past LargeSampleBranch) built so the statistic is exactly
+    // 0.32 (StatisticLocation 128, sign +1, verified against scipy). At the
+    // final term of the survival-formula sum, the quantity that should be
+    // exactly zero there lands a few ULPs negative; before the clamp this
+    // fact pins, a logarithm of that produced NaN, and every clamp after it
+    // in the call chain propagated that NaN rather than catching it
+    // (delete-and-confirm below).
+    [Fact]
+    public void Ks_asymptotic_p_value_is_finite_at_the_smirnov_boundary()
+    {
+        double[] a = [.. Enumerable.Range(1, 128).Select(i => (double)i), .. Enumerable.Repeat(1000.0, 272)];
+        double[] b = [.. Enumerable.Repeat(1000.0, 400)];
+
+        KsResult result = KolmogorovSmirnov.TwoSample(a, b, Alternative.TwoSided, ExactMethod.Asymptotic);
+
+        Assert.False(double.IsNaN(result.PValue), "PValue is NaN.");
+        Assert.Equal(0.32, result.Statistic, 1e-12);
+        double relative = Math.Abs(result.PValue - 1.0212075681507937e-18) / 1.0212075681507937e-18;
+        Assert.True(relative <= 1e-6, $"PValue = {result.PValue}.");
     }
 }

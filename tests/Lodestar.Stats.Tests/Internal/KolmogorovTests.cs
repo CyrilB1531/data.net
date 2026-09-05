@@ -52,12 +52,20 @@ public sealed class KolmogorovTests
     // (task-8-report.md): the DirectSurvivalThreshold/UnderflowThreshold
     // cases below exercise the Durbin matrix path or the Birnbaum closed
     // form depending on n * d^2, not d alone -- see the fix-round-1 section
-    // of task-8-report.md for why d alone was wrong.
+    // of task-8-report.md for why d alone was wrong. The last five rows are
+    // fix-round-2's finding 3: n > 140, n * d^2 < 2.2, n * d^1.5 > 1.4 is
+    // the band scipy's own kstwo.sf hands off to the Pelz-Good asymptotic
+    // expansion in, and PelzGoodCdf is what these exercise.
     [Theory]
     [InlineData(2.0, 0.4, 0.82)]
     [InlineData(3.0, 1.0 / 3.0, 0.7777777777777778)]
     [InlineData(3.0, 0.7, 0.054)]
     [InlineData(20.0, 0.9, 2.0006866455077592e-20)]
+    [InlineData(146.0, 0.122011, 0.023677600444463653)]
+    [InlineData(149.0, 0.07135223654394825, 0.41473880155231346)]
+    [InlineData(200.0, 0.06, 0.45015844138021865)]
+    [InlineData(500.0, 0.03, 0.7473166700457021)]
+    [InlineData(1000.0, 0.02, 0.8108971656895577)]
     public void FiniteTwoSidedSf_matches_scipy_kstwo(double n, double d, double expected)
     {
         double actual = Kolmogorov.FiniteTwoSidedSf(n, d);
@@ -70,14 +78,18 @@ public sealed class KolmogorovTests
     // one past the LargeSampleThreshold = 200 this method used to fall back
     // to Sf at. scipy's kstwo.sf(0.114428, 201) is 0.009498083878988563; the
     // old fallback returned Sf(sqrt(201) * 0.114428) = 0.010352291673092562
-    // instead, a large enough gap to flip a decision at alpha = 0.01. There
-    // is no fallback left to take: this is the exact value at every n now.
+    // instead, a large enough gap to flip a decision at alpha = 0.01. n = 201,
+    // d = 0.114428 lands in this method's exact route (n * d^2 = 2.63, past
+    // DirectSurvivalThreshold), so this is still the exact value, though the
+    // method as a whole is no longer exact everywhere past n = 140 -- see
+    // PelzGoodCdf's own facts below for the band where it isn't.
     [Fact]
     public void FiniteTwoSidedSf_no_longer_falls_back_past_the_former_threshold()
     {
         double actual = Kolmogorov.FiniteTwoSidedSf(201.0, 0.114428);
+        double relative = Math.Abs(actual - 0.009498083878988563) / 0.009498083878988563;
 
-        Assert.Equal(0.009498083878988563, actual, 1e-9);
+        Assert.True(relative <= 1e-9, $"FiniteTwoSidedSf(201, 0.114428) = {actual}.");
     }
 
     // Fix-round-1, finding 2: d < 0.5 with n large enough still drove
@@ -109,4 +121,21 @@ public sealed class KolmogorovTests
         Assert.Equal(0.0, Kolmogorov.FiniteTwoSidedSf(5.0, 1.0));
         Assert.Equal(0.0, Kolmogorov.FiniteTwoSidedSf(5.0, 1.5));
     }
+
+    // Fix-round-2, finding 1: n = 131, d = 0.1297709923664122 has
+    // n * d^2 = 2.206, past DirectSurvivalThreshold (2.2) -- fix-round-1
+    // applied that threshold at every n, so this used to take the direct
+    // survival-formula approximation (Miller's, worst measured 1.10e-6 off)
+    // instead of the exact route n <= 140 keeps available (Pomeranz in
+    // scipy, DurbinCdf here). scipy's kstwo.sf(0.1297709923664122, 131) is
+    // 0.022036162383739684.
+    [Fact]
+    public void FiniteTwoSidedSf_stays_exact_through_n_140_regardless_of_n_times_d_squared()
+    {
+        double actual = Kolmogorov.FiniteTwoSidedSf(131.0, 0.1297709923664122);
+        double relative = Math.Abs(actual - 0.022036162383739684) / 0.022036162383739684;
+
+        Assert.True(relative <= 1e-9, $"FiniteTwoSidedSf(131, 0.1297709923664122) = {actual}.");
+    }
+
 }
