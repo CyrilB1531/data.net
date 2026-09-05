@@ -36,4 +36,11 @@ public sealed class NormalTests
         // accept a hard zero here.
         Assert.Equal(1.0, Normal.Sf(10.0) / 7.61985302416047e-24, 1e-9);
     }
+
+    [Fact]
+    public void Erfc_and_Sf_are_zero_at_positive_infinity()
+    {
+        Assert.Equal(0.0, Normal.Erfc(double.PositiveInfinity));
+        Assert.Equal(0.0, Normal.Sf(double.PositiveInfinity));
+    }
 }

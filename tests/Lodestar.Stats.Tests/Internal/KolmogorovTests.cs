@@ -26,15 +26,23 @@ public sealed class KolmogorovTests
     }
 
     [Fact]
-    public void Sf_is_monotone_non_increasing()
+    public void Sf_clamps_to_one_at_lambda_0_1()
     {
-        // Not strict: at lambda = 0.1 the true value differs from 1.0 by ~7e-49,
-        // below a double's precision there -- scipy.stats.kstwobign.sf(0.1) also returns exactly 1.0.
-        double previous = 1.0;
-        for (double lambda = 0.1; lambda < 4.0; lambda += 0.1)
+        // The true value differs from 1.0 by ~7e-49, below a double's precision
+        // there -- scipy.stats.kstwobign.sf(0.1) also returns exactly 1.0.
+        Assert.Equal(1.0, Kolmogorov.Sf(0.1));
+    }
+
+    [Fact]
+    public void Sf_is_strictly_monotone_decreasing()
+    {
+        // Starting past 0.1 keeps every step strict: at 0.1 itself Sf clamps to
+        // exactly 1.0, which the fact above covers separately.
+        double previous = Kolmogorov.Sf(0.2);
+        for (double lambda = 0.3; lambda < 4.0; lambda += 0.1)
         {
             double current = Kolmogorov.Sf(lambda);
-            Assert.True(current <= previous, $"Q({lambda}) = {current} rose above {previous}.");
+            Assert.True(current < previous, $"Q({lambda}) = {current} did not fall below {previous}.");
             previous = current;
         }
     }

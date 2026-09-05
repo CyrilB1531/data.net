@@ -30,8 +30,8 @@ internal static class Gamma
     private const int MaxIterations = 300;
     private const double Epsilon = 3e-16;
 
-    // Smallest positive normal double: Lentz divides by the running denominator,
-    // so a zero one is nudged here instead of producing an infinity that never recovers.
+    // A floor well above where the recurrence's denominator would underflow: Lentz
+    // divides by it, so a zero one is nudged here instead of an infinity that never recovers.
     private const double Tiny = 1e-300;
 
     internal static double LogGamma(double x)
@@ -64,6 +64,13 @@ internal static class Gamma
     {
         Validate(a, x);
 
+        // a * log(x) - x is inf - inf = NaN at x = +inf, so the limit is taken
+        // here rather than through SeriesP/ContinuedFractionQ.
+        if (double.IsPositiveInfinity(x))
+        {
+            return 1.0;
+        }
+
         // Exact sentinel: x is validated to be non-negative above, and P(a, 0)
         // is 0 by definition, not a limit that rounding could have missed.
 #pragma warning disable S1244
@@ -79,6 +86,13 @@ internal static class Gamma
     internal static double RegularizedQ(double a, double x)
     {
         Validate(a, x);
+
+        // Same reasoning as RegularizedP: the limit is taken directly rather
+        // than through a computation that hits inf - inf at x = +inf.
+        if (double.IsPositiveInfinity(x))
+        {
+            return 0.0;
+        }
 
         // Exact sentinel: same reasoning as RegularizedP, Q(a, 0) = 1 by definition.
 #pragma warning disable S1244

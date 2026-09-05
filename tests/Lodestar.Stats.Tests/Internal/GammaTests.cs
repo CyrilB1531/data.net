@@ -77,4 +77,13 @@ public sealed class GammaTests
         Assert.Throws<ArgumentOutOfRangeException>(() => Gamma.RegularizedP(1.0, -1.0));
         Assert.Throws<ArgumentOutOfRangeException>(() => Gamma.RegularizedP(0.0, 1.0));
     }
+
+    [Fact]
+    public void RegularizedP_and_Q_take_the_limit_at_positive_infinity()
+    {
+        // a * log(x) - x is inf - inf = NaN at x = +inf if computed through the
+        // series or continued fraction; the limit must be taken directly instead.
+        Assert.Equal(1.0, Gamma.RegularizedP(3.0, double.PositiveInfinity));
+        Assert.Equal(0.0, Gamma.RegularizedQ(3.0, double.PositiveInfinity));
+    }
 }

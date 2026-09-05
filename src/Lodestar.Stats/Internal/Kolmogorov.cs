@@ -41,13 +41,8 @@ internal static class Kolmogorov
 
         double q = 2.0 * sum;
 
-        // The alternating series can overshoot at very small lambda, where the
-        // true answer is already 1 to every digit a double holds.
-        if (q > 1.0)
-        {
-            return 1.0;
-        }
-
-        return q < 0.0 ? 0.0 : q;
+        // Can overshoot at very small lambda, where the true value is already 1 to
+        // every digit a double holds; cannot undershoot, since decreasing terms keep every partial sum non-negative.
+        return q > 1.0 ? 1.0 : q;
     }
 }
