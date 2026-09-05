@@ -35,6 +35,10 @@ Two consequences worth acting on:
   [`MultipleComparisons`](../reference/stats/tests/multiplecomparisons.md) is
   for, and it is not optional once you are testing more than a couple of things.
 
+The step-up procedure below is
+[`MultipleComparisons.BenjaminiHochberg`](../reference/stats/tests/multiplecomparisons-benjaminihochberg.md),
+the one most people reach for first:
+
 ```csharp
 using Lodestar.Stats;
 
@@ -92,8 +96,10 @@ reference. There is nothing *maintained* to benchmark against, which is itself
 the finding, the same shape as [`Lodestar.Conformal`](conformal.md)'s survey —
 but unlike `Lodestar.Conformal`'s case, `Accord.Statistics` is still
 installable, and #442's own constraint asks for a named .NET incumbent where
-one exists at all. `TTest.Independent`, `MannWhitney.Test` and
-`ChiSquare.Contingency` are benchmarked and cross-checked against it in
+one exists at all. [`TTest.Independent`](../reference/stats/tests/ttest-independent.md),
+[`MannWhitney.Test`](../reference/stats/tests/mannwhitney-test.md) and
+[`ChiSquare.Contingency`](../reference/stats/tests/chisquare-contingency.md) are benchmarked and
+cross-checked against it in
 [`bench/README.md`](https://github.com/CyrilB1531/lodestar/blob/main/bench/README.md#18-lodestarstats-against-accordstatistics-issue-442)
 and [`docs/guides/performance.md`](performance.md#lodestarstats-against-accordstatistics-issue-442) —
 archived is not the same as absent, and this package's own oracle discipline

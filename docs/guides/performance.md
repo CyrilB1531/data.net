@@ -2641,11 +2641,13 @@ trust the last digit of a ratio.
 | `LodestarChiSquare` | 10,000 | 379.7 ns | 200 B |
 | `AccordChiSquare` | 10,000 | 295.4 ns | 168 B |
 
-`Lodestar.Stats` is faster on `TTest.Independent` (30× at 100 samples, narrowing to 3.2× at
-10,000, as `Accord`'s fixed per-call overhead is amortised over more work) and on
-`MannWhitney.Test` (5.1× at 100, 2.9× at 10,000, allocating 61-62% less at both sizes — both sides
-take the guarded asymptotic path at 10,000, past `MannWhitney`'s own `20_000`-product exact-method
-bound). `Accord` is faster on `ChiSquare.Contingency` (roughly 380 ns against 294 ns, flat with
+`Lodestar.Stats` is faster on
+[`TTest.Independent`](../reference/stats/tests/ttest-independent.md) (30× at 100 samples, narrowing
+to 3.2× at 10,000, as `Accord`'s fixed per-call overhead is amortised over more work) and on
+[`MannWhitney.Test`](../reference/stats/tests/mannwhitney-test.md) (5.1× at 100, 2.9× at 10,000,
+allocating 61-62% less at both sizes — both sides take the guarded asymptotic path at 10,000, past
+`MannWhitney`'s own `20_000`-product exact-method bound). `Accord` is faster on
+[`ChiSquare.Contingency`](../reference/stats/tests/chisquare-contingency.md) (roughly 380 ns against 294 ns, flat with
 sample size since a 2×2 table has four cells regardless of how many observations produced it) — the
 one family where this package's richer result (`Chi2ContingencyResult` carries the expected-value
 table; `Accord`'s `ChiSquareTest` does not expose one) costs more than it buys at this shape.

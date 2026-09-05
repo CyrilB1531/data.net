@@ -9,7 +9,8 @@ as a *behavior reference* only," naming rapidfuzz (MIT), jellyfish (MIT), textdi
 scikit-learn (BSD-3). It does not name scipy — no package before `Lodestar.Stats` (#442) had
 reason to consult it.
 
-`KolmogorovSmirnov.TwoSample` needs the finite-sample Kolmogorov distribution's survival
+[`KolmogorovSmirnov.TwoSample`](../reference/stats/tests/kolmogorovsmirnov-twosample.md) needs
+the finite-sample Kolmogorov distribution's survival
 function, `P(D_n > d)`. Durbin's (1968) recursion and the Marsaglia-Tsang-Wang (2003) scaling
 give the exact route; Pelz-Good's asymptotic expansion gives the other end. Between them is a
 **dispatch problem the published papers do not settle**: which of several exact methods, direct

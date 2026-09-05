@@ -21,8 +21,8 @@ was taken.
 **The numerical layer stays `internal`, reachable only through the ten test families that already
 use it.** No public surface, no reference page, no sample reference.
 
-**Refused: a public `Lodestar.Stats.Special` namespace.** Publishing `Beta.IncompleteRegularized`,
-`Gamma.IncompleteRegularized`, `Normal.Erfc` and the rest as their own namespace would make each
+**Refused: a public `Lodestar.Stats.Special` namespace.** Publishing `Beta.RegularizedIncomplete`,
+`Gamma.RegularizedQ`, `Normal.Erfc` and the rest as their own namespace would make each
 one a parity promise in its own right — its own reference page under the packaging gate, its own
 line in `docs/wiki-map.json`'s `covered` table, its own use in `samples/Lodestar.DocSnippets` to
 satisfy the packaging gate, and its own oracle corpus checked at the tolerance a general-purpose
@@ -57,8 +57,10 @@ consequence, rather than being a second accuracy target chosen independently.
 accommodate it.** `tests/oracles/*.json` compares floats at `1e-9` **absolute** everywhere else in
 the repository, and a statistic (the *t*, the *F*, the *U*, *W*, *H*, *D*) lives on a scale the
 data sets, so the repository's default is the right one for it. A p-value does not live on such a
-scale: measured on ordinary corpus cases — not adversarial ones — `TTest.Independent` reaches a
-p-value of `7.85e-26` and `OneWayAnova.Test` reaches `2.38e-53`. At `1e-9` absolute, an
+scale: measured on ordinary corpus cases — not adversarial ones —
+[`TTest.Independent`](../reference/stats/tests/ttest-independent.md) reaches a p-value of
+`7.85e-26` and [`OneWayAnova.Test`](../reference/stats/tests/onewayanova-test.md) reaches
+`2.38e-53`. At `1e-9` absolute, an
 implementation whose incomplete beta or incomplete gamma returned exactly `0.0` in the far tail
 would pass every one of those comparisons; the tail is exactly where a hand-written incomplete
 beta or incomplete gamma is most likely to go wrong, first through underflow and then through
