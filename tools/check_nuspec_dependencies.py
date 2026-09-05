@@ -55,6 +55,7 @@ METRICS = "Lodestar.Metrics"
 ABSTRACTIONS = "Lodestar.Abstractions"
 CONFORMAL = "Lodestar.Conformal"
 DECOMPOSITION = "Lodestar.Decomposition"
+STATS = "Lodestar.Stats"
 ONNX = "Lodestar.Onnx"
 ONNX_RUNTIME = "Microsoft.ML.OnnxRuntime"
 STJ = "System.Text.Json"
@@ -124,6 +125,12 @@ EXPECTED: dict[str, dict[str, dict[str, str]]] = {
         # CsrMatrix and its two dense-block products, with no Lodestar.Text behind them.
         NET: {ABSTRACTIONS: ABSTRACTIONS_FLOOR},
         NETSTANDARD: {ABSTRACTIONS: ABSTRACTIONS_FLOOR, **POLYFILLS},
+    },
+    STATS: {
+        # Nothing on net10.0, only the polyfills on netstandard2.0: a hypothesis test
+        # is arithmetic over arrays, with tail probabilities computed here, not fetched.
+        NET: {},
+        NETSTANDARD: {**POLYFILLS},
     },
 }
 

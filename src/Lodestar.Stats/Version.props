@@ -1,0 +1,16 @@
+<Project>
+
+  <!--
+    Lodestar.Stats owns its version here, independently of the other packages
+    (see docs/decisions/0012-per-package-versioning.md).
+
+    0.1.0 is this package's first release. Like Lodestar.Metrics and
+    Lodestar.Conformal it creates no inter-package edge — nothing depends on it
+    and it depends on nothing — so it releases on its own schedule rather than
+    matching the others.
+  -->
+  <PropertyGroup>
+    <LodestarStatsVersion>0.1.0</LodestarStatsVersion>
+  </PropertyGroup>
+
+</Project>
