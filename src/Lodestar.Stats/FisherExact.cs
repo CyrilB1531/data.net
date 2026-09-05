@@ -14,6 +14,10 @@ public static class FisherExact
     // <= would include or exclude one by rounding. scipy guards it the same way.
     private const double ProbabilityTolerance = 1e-7;
 
+    // Computed once rather than at every comparison; not a compile-time constant
+    // since Math.Log is not constant-evaluable in C#.
+    private static readonly double LogProbabilityTolerance = Math.Log(1.0 + ProbabilityTolerance);
+
     // long-comment: the bound below is a measured performance ceiling, not an
     // arbitrary round number, and a reviewer should be able to see the
     // measurement without leaving the source.
@@ -120,25 +124,26 @@ public static class FisherExact
         int lowest = Math.Max(0, columnOne - (total - rowOne));
         int highest = Math.Min(rowOne, columnOne);
 
-        double observed = HypergeometricProbability(a, rowOne, columnOne, total);
+        double observedLog = LogHypergeometricProbability(a, rowOne, columnOne, total);
 
         double pValue = 0.0;
         for (int k = lowest; k <= highest; k++)
         {
-            double probability = HypergeometricProbability(k, rowOne, columnOne, total);
+            double logProbability = LogHypergeometricProbability(k, rowOne, columnOne, total);
 
+            // Compared in log space: probability <= observed * (1 + tol) would admit
+            // only the tables that also underflowed once every probability here does.
             bool include = alternative switch
             {
                 Alternative.Less => k <= a,
                 Alternative.Greater => k >= a,
-                Alternative.TwoSided =>
-                    probability <= observed * (1.0 + ProbabilityTolerance),
+                Alternative.TwoSided => logProbability <= observedLog + LogProbabilityTolerance,
                 _ => throw new ArgumentOutOfRangeException(nameof(alternative), alternative, null),
             };
 
             if (include)
             {
-                pValue += probability;
+                pValue += Math.Exp(logProbability);
             }
         }
 
@@ -147,15 +152,10 @@ public static class FisherExact
 
     // C(rowOne, k) C(total - rowOne, columnOne - k) / C(total, columnOne), through
     // log-gamma: the binomials overflow a double well before the counts do.
-    private static double HypergeometricProbability(int k, int rowOne, int columnOne, int total)
-    {
-        double logProbability =
-            LogChoose(rowOne, k) +
-            LogChoose(total - rowOne, columnOne - k) -
-            LogChoose(total, columnOne);
-
-        return Math.Exp(logProbability);
-    }
+    private static double LogHypergeometricProbability(int k, int rowOne, int columnOne, int total) =>
+        LogChoose(rowOne, k) +
+        LogChoose(total - rowOne, columnOne - k) -
+        LogChoose(total, columnOne);
 
     private static double LogChoose(int n, int k)
     {

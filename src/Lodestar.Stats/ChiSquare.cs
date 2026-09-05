@@ -131,7 +131,7 @@ public static class ChiSquare
 
         (double[] rowTotals, double[] columnTotals, double total) =
             ComputeMarginals(table, rows, columns);
-        ValidateMarginals(rowTotals, columnTotals);
+        ValidateMarginals(table, rowTotals, columnTotals);
 
         double[][] expected = ComputeExpected(rowTotals, columnTotals, total, rows, columns);
         bool yates = continuity == Continuity.Applied && rows == 2 && columns == 2;
@@ -180,15 +180,17 @@ public static class ChiSquare
     // that level dropped before the test means anything. S1244: a marginal
     // that is exactly zero is the sentinel the guard exists for, not a value
     // with a tolerance band -- summing only non-negative cells, it cannot land
-    // near zero without landing on it.
-#pragma warning disable S1244
-    private static void ValidateMarginals(double[] rowTotals, double[] columnTotals)
+    // near zero without landing on it. S1172: table is read only through the
+    // nameof calls below, so the thrown exception names the public parameter
+    // the caller actually passed rather than one of this helper's own.
+#pragma warning disable S1244, S1172
+    private static void ValidateMarginals(double[][] table, double[] rowTotals, double[] columnTotals)
     {
         for (int i = 0; i < rowTotals.Length; i++)
         {
             if (rowTotals[i] == 0.0)
             {
-                throw new ArgumentException($"Row {i} totals zero.", nameof(rowTotals));
+                throw new ArgumentException($"Row {i} totals zero.", nameof(table));
             }
         }
 
@@ -196,11 +198,11 @@ public static class ChiSquare
         {
             if (columnTotals[j] == 0.0)
             {
-                throw new ArgumentException($"Column {j} totals zero.", nameof(columnTotals));
+                throw new ArgumentException($"Column {j} totals zero.", nameof(table));
             }
         }
     }
-#pragma warning restore S1244
+#pragma warning restore S1244, S1172
 
     private static double[][] ComputeExpected(
         double[] rowTotals, double[] columnTotals, double total, int rows, int columns)

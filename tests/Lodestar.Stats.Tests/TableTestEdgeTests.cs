@@ -97,6 +97,26 @@ public sealed class TableTestEdgeTests
     }
 
     [Fact]
+    public void FisherExact_matches_scipy_when_the_observed_probability_underflows()
+    {
+        // long-comment: pins scipy's own answer rather than a derived "small
+        // positive" one, because scipy is degenerate here too -- task-7-report.md,
+        // fix round 2, has the search that established that.
+        // Reachable inside the 1,000,000 guard (rowOne = columnOne = 500,000): the
+        // observed table's own log-probability is about -693,140, a hard double
+        // underflow. scipy 1.18.0 gives exactly 0.0 for both alternatives below,
+        // not a small positive number -- the true probability is roughly
+        // 10^-301,000, far below any double's representable range.
+        int[][] table = [[0, 500_000], [500_000, 0]];
+
+        TestResult twoSided = FisherExact.Test(table, Alternative.TwoSided);
+        TestResult less = FisherExact.Test(table, Alternative.Less);
+
+        StatsOracleAsserts.PValue(0.0, twoSided.PValue, "underflow two-sided");
+        StatsOracleAsserts.PValue(0.0, less.PValue, "underflow less");
+    }
+
+    [Fact]
     public void FisherExact_refuses_a_table_too_large_to_enumerate()
     {
         // The k-loop is O(total); a table this large would enumerate for however
