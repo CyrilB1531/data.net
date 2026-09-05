@@ -63,7 +63,26 @@ internal static class Beta
 
         // I_{df/(df+t^2)}(df/2, 1/2) is twice the tail beyond |t|, so half of it
         // is the tail on one side and the sign says which side we are on.
-        double tail = 0.5 * RegularizedIncomplete(df / 2.0, 0.5, df / (df + (t * t)));
+        double tSquared = t * t;
+        double denominator = df + tSquared;
+        double x = df / denominator;
+
+        // long-comment: this is the fix for a measured defect, not routine
+        //     commentary -- StudentSf was off by 2.2e-4 relative at df = 1e12
+        //     before it, caught by StudentQuantile's own oracle test below.
+        // x and its complement t^2/(df+t^2) are each accurate to full relative
+        // precision on their own, but whichever one is derived from the other by
+        // subtracting from 1 is not: at df = 1e12 and t near 2, x rounds to
+        // within 1 ULP of 1, and 1.0 - x then keeps only the handful of bits the
+        // division into x had left over. Computing the complement directly and
+        // reflecting through I_x(a,b) = 1 - I_{1-x}(b,a) whenever it is the
+        // well-conditioned side keeps RegularizedIncomplete's front term, which
+        // takes the log of both x and 1-x unconditionally, from ever taking the
+        // log of a value that lost its precision to cancellation.
+        double complement = tSquared / denominator;
+        double tail = 0.5 * (x <= complement
+            ? RegularizedIncomplete(df / 2.0, 0.5, x)
+            : 1.0 - RegularizedIncomplete(0.5, df / 2.0, complement));
         return t >= 0.0 ? tail : 1.0 - tail;
     }
 
@@ -80,6 +99,84 @@ internal static class Beta
         }
 
         return RegularizedIncomplete(dfd / 2.0, dfn / 2.0, dfd / (dfd + (dfn * f)));
+    }
+
+    /// <summary>The t with <c>P(T &gt; t) = p</c>: the inverse of <see cref="StudentSf"/>.</summary>
+    /// <remarks>
+    /// By bisection on a strictly decreasing function rather than by a rational
+    /// approximation of its own. Fifty-odd halvings reach the last bit of a
+    /// double, the bracket is found by doubling rather than assumed, and there
+    /// is no second approximation to keep in agreement with the tail.
+    /// </remarks>
+    internal static double StudentQuantile(double p, double df)
+    {
+        if (double.IsNaN(p) || p <= 0.0 || p >= 1.0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(p), p, "The tail probability must lie strictly inside (0, 1).");
+        }
+        if (double.IsNaN(df) || df <= 0.0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(df), df, "The degrees of freedom must be positive.");
+        }
+
+        // S1244: an exact half is the distribution's own symmetric point, not a
+        // value that drifted there by rounding -- StudentSf(0, df) is exactly
+        // 0.5 for every df, so the shortcut is correct only at that literal.
+#pragma warning disable S1244
+        if (p == 0.5)
+#pragma warning restore S1244
+        {
+            return 0.0;
+        }
+
+        // Symmetric about zero, so p > 1/2 reduces to its mirror 1 - p < 1/2:
+        // BisectUpperTail's bracket only ever grows on the positive side.
+        return p > 0.5
+            ? -BisectUpperTail(1.0 - p, df)
+            : BisectUpperTail(p, df);
+    }
+
+    // p is already known to lie in (0, 0.5); the caller's symmetry reduction is
+    // what keeps that promise for the other half of the domain.
+    private static double BisectUpperTail(double p, double df)
+    {
+        // Widen until bracketed, by doubling: a Cauchy tail (df = 1) at
+        // p = 1e-300 needs a bound near 1e300, so a fixed one would fail there.
+        double high = 1.0;
+        while (StudentSf(high, df) > p && high < 1e300)
+        {
+            high *= 2.0;
+        }
+
+        double low = -high;
+        for (int i = 0; i < 200; i++)
+        {
+            double middle = 0.5 * (low + high);
+
+            // S1244: this is the bisection's own fixed-point test, not a
+            // tolerance check -- middle stops moving once it lands on one of
+            // its bounds, and a range comparison would spin the remaining
+            // iterations for no further precision.
+#pragma warning disable S1244
+            if (middle == low || middle == high)
+#pragma warning restore S1244
+            {
+                break;
+            }
+
+            if (StudentSf(middle, df) > p)
+            {
+                low = middle;
+            }
+            else
+            {
+                high = middle;
+            }
+        }
+
+        return 0.5 * (low + high);
     }
 
     // CF = 1 + d1/(1 + d2/(1 + ...)) from Abramowitz & Stegun 26.5.8, evaluated

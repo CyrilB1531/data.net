@@ -35,6 +35,42 @@ public sealed record TTestResult(double Statistic, double PValue, double Df)
 
     /// <summary>Which tail was tested, which decides whether an interval is half-open.</summary>
     internal Alternative Alternative { get; init; }
+
+    /// <summary>The confidence interval for the difference this test measured.</summary>
+    /// <remarks>
+    /// A method, not a property, because it takes a level -- scipy exposes it
+    /// the same way via <c>TtestResult.confidence_interval</c>; a named tuple
+    /// avoids a public record for what is only a two-double carrier. A
+    /// one-sided interval is half-open, not narrower: it says nothing about how
+    /// far the difference could be, so the far bound is an infinity rather than a number.
+    /// </remarks>
+    /// <param name="level">The confidence level, strictly between 0 and 1.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="level"/> is NaN or outside <c>(0, 1)</c>.
+    /// </exception>
+    public (double Low, double High) ConfidenceInterval(double level = 0.95)
+    {
+        if (double.IsNaN(level) || level <= 0.0 || level >= 1.0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(level), level, "The confidence level must lie strictly inside (0, 1).");
+        }
+
+        // A one-sided test spends its whole error budget on one side, so the tail
+        // is 1 - level rather than half of it, and the other bound is infinite.
+        double tail = Alternative == Alternative.TwoSided ? (1.0 - level) / 2.0 : 1.0 - level;
+        double half = Internal.Beta.StudentQuantile(tail, Df) * StandardError;
+
+        return Alternative switch
+        {
+            Alternative.TwoSided => (Estimate - half, Estimate + half),
+            Alternative.Greater => (Estimate - half, double.PositiveInfinity),
+            Alternative.Less => (double.NegativeInfinity, Estimate + half),
+            // CA2208: Alternative is a field, not a parameter here -- a bad
+            // value stored on the result is a broken invariant, not a bad call.
+            _ => throw new InvalidOperationException($"Unrecognised alternative: {Alternative}."),
+        };
+    }
 }
 
 /// <summary>A contingency-table chi-square result.</summary>
