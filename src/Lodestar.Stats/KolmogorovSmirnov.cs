@@ -97,6 +97,19 @@ public static class KolmogorovSmirnov
         int n = sortedA.Length;
         int m = sortedB.Length;
 
+        // scipy builds each empirical CDF's step values via
+        // np.linspace(0, 1, count + 1), not by dividing at each step
+        // (_stats_py.py:8079): a precomputed reciprocal multiplied at each
+        // index, with the last entry forced to exactly 1.0 rather than left
+        // to accumulate rounding. That is not always the same double as
+        // index / count -- and where the two differ by a single ULP, it is
+        // enough to flip which of two candidate points wins an exact tie in
+        // the loop below, changing the reported location and sign though
+        // not the statistic itself. Matching the construction, not just the
+        // arithmetic value, is what matches the tie-break.
+        double stepA = 1.0 / n;
+        double stepB = 1.0 / m;
+
         double above = double.NegativeInfinity;
         double aboveLocation = double.NaN;
         double below = double.NegativeInfinity;
@@ -110,7 +123,7 @@ public static class KolmogorovSmirnov
             i = AdvancePast(sortedA, i, value);
             j = AdvancePast(sortedB, j, value);
 
-            double difference = ((double)i / n) - ((double)j / m);
+            double difference = Ecdf(i, n, stepA) - Ecdf(j, m, stepB);
             if (difference > above)
             {
                 above = difference;
@@ -125,6 +138,10 @@ public static class KolmogorovSmirnov
 
         return (above, aboveLocation, below, belowLocation);
     }
+
+    // scipy's np.linspace(0, 1, count + 1)[index]: index * (1 / count), with
+    // the final entry forced to exactly 1.0.
+    private static double Ecdf(int index, int count, double step) => index == count ? 1.0 : index * step;
 
     // S1244: a tie group is defined by literally equal input values, not
     // nearby ones -- the empirical CDF only steps at an exact observation.

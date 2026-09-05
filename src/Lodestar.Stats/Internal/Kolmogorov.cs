@@ -46,12 +46,16 @@ internal static class Kolmogorov
         return q > 1.0 ? 1.0 : q;
     }
 
-    // Above this effective sample size the finite-sample distribution and its
-    // n -> infinity limit (Sf above) already agree past the tolerance this
-    // package holds itself to, and the matrix cost below stops paying for
-    // itself: a few hundred squared is already a comfortable fraction of a
-    // second, and a few thousand squared is not.
-    private const int LargeSampleThreshold = 200;
+    // scipy's own two cutoffs for evaluating a survival probability rather
+    // than a CDF (_ksstats.py's _kolmogn, the `if not cdf:` branch): past
+    // 370 the tail already underflows a double outright, so there is
+    // nothing left to compute; from 2.2 the direct one-sided survival
+    // formula stands in for 1 - CDF, which is where the cancellation this
+    // file exists to avoid actually happens. Neither is this file's own
+    // tuning -- both are scipy's, borrowed under ADR 0003 (scipy is BSD-3,
+    // an explicitly permitted behavioural reference).
+    private const double UnderflowThreshold = 370.0;
+    private const double DirectSurvivalThreshold = 2.2;
 
     private const int ScaleBits = 128;
     private static readonly double ScaleUp = PowerOfTwo(ScaleBits);
@@ -93,15 +97,30 @@ internal static class Kolmogorov
     /// <summary>The two-sided <b>finite-sample</b> Kolmogorov tail: P(D_n &gt; d), scipy's <c>kstwo.sf</c>.</summary>
     /// <remarks>
     /// Distinct from <see cref="Sf"/>, which is that statistic's n -&gt;
-    /// infinity limit (scipy's <c>kstwobign</c>): measured against
-    /// <c>tests/oracles/stats_ks.json</c>'s <c>method="asymp"</c> cases, the two
-    /// disagree by orders of magnitude at the sample sizes a two-sample test
-    /// actually produces (n = 3, d = 0.7 gives 0.054 here against 0.106 from the
-    /// n -&gt; infinity limit), so the asymptotic branch needs this one, not
-    /// <see cref="Sf"/>, except where <paramref name="n"/> is large enough that
-    /// the two have converged. <paramref name="n"/> is rounded, not truncated:
-    /// it arrives as a two-sample test's effective size n1*n2/(n1+n2), which is
-    /// rarely integral.
+    /// infinity limit (scipy's <c>kstwobign</c>): the two disagree by
+    /// percent-level amounts even at n in the hundreds and the gap narrows
+    /// only as 1/sqrt(n) (measured in task-8-report.md's fix-round-1 sweep),
+    /// so no threshold short of an astronomical sample size would bring
+    /// <see cref="Sf"/> under this package's own tolerance. This method
+    /// computes the exact finite-sample value for every <paramref name="n"/>
+    /// instead of ever falling back to the limit. <paramref name="n"/> is
+    /// rounded, not truncated: it arrives as a two-sample test's effective
+    /// size n1*n2/(n1+n2), which is rarely integral.
+    ///
+    /// <para>
+    /// <b>Known, bounded gap, out of this file's own scope.</b> For n past
+    /// 140, scipy's own <c>kstwo.sf</c> stops computing this exact value in a
+    /// narrow band (n * d^2 below <see cref="DirectSurvivalThreshold"/> but
+    /// large enough that its own DMTW shortcut is skipped too) and switches
+    /// to the Pelz-Good asymptotic expansion instead -- an approximation
+    /// this file does not implement. This method keeps computing the exact
+    /// value there rather than scipy's approximation of it, which disagrees
+    /// with <c>kstwo.sf</c> by up to roughly 4e-6 relative in that band
+    /// (measured, task-8-report.md's fix-round-1 sweep) -- small, bounded,
+    /// and not one of that round's four assigned findings, so left as a
+    /// documented gap for a future round rather than a fifth algorithm
+    /// implemented under this one's time budget.
+    /// </para>
     /// </remarks>
     internal static double FiniteTwoSidedSf(double n, double d)
     {
@@ -119,17 +138,26 @@ internal static class Kolmogorov
         }
 
         int count = Math.Max(1, (int)Math.Round(n, MidpointRounding.ToEven));
-        if (count > LargeSampleThreshold)
+        double countDSquared = count * d * d;
+
+        if (countDSquared >= UnderflowThreshold)
         {
-            return Sf(Math.Sqrt(n) * d);
+            return 0.0;
         }
 
-        // d >= 0.5 evaluated directly through the one-sided survival formula,
-        // never through 1 - (a CDF near 1): DurbinCdf(200, 0.9) rounds to
-        // exactly 1.0 in a double, and 1 minus that is an exact 0.0 where the
-        // true tail is still representable (task-8-report.md, well-separated
-        // corpus case).
-        return d >= 0.5
+        // The direct one-sided survival formula, never 1 - (a CDF near 1):
+        // DurbinCdf(200, 0.9) rounds to exactly 1.0 in a double, and 1 minus
+        // that is an exact 0.0 where the true tail is still representable.
+        // Cutting over on d >= 0.5 alone missed this -- d < 0.5 with n large
+        // enough reaches the identical collapse (n = 300, d just under 0.5:
+        // task-8-report.md's fix-round-1 measurement has the 10^7 error this
+        // produced). n * d^2, not d alone, is what tracks how close the CDF
+        // sits to 1. 2 * SmirnovSf is exactly P(D_n > d) only for d >= 0.5,
+        // where D_n+ >= d and D_n- >= d cannot both hold; below that it
+        // drops that intersection term, which is scipy's own published
+        // approximation here (Li-Chien/Korolyuk), not this file's -- the
+        // gap it leaves is what DirectSurvivalThreshold keeps negligible.
+        return countDSquared >= DirectSurvivalThreshold
             ? Math.Min(1.0, 2.0 * SmirnovSf(count, d))
             : 1.0 - DurbinCdf(count, d);
     }
@@ -137,7 +165,7 @@ internal static class Kolmogorov
     // Birnbaum's closed form for the one-sided finite-sample tail P(D_n+ > d):
     // d * sum_{j=0}^{floor(n(1-d))} C(n,j) (j/n+d)^(j-1) (1-d-j/n)^(n-j).
     // Evaluated in log space -- C(n,j) alone overflows a double well before n
-    // reaches LargeSampleThreshold.
+    // reaches the sizes this is actually invoked at.
     private static double SmirnovSf(int n, double d)
     {
         int jMax = (int)Math.Floor(n * (1.0 - d));
@@ -159,10 +187,17 @@ internal static class Kolmogorov
 
     // Durbin's (1968) matrix method for P(D_n <= d), in the computationally
     // efficient form Marsaglia, Tsang and Wang (2003) gave it: write d as
-    // (k-h)/n, build a (2k-1)-square transition matrix from h, and read the
-    // answer off row k of n!/n^n * H^n. No reference implementation is
-    // transcribed (ADR 0003); H^n is repeated squaring with the same
-    // ScaleUp/ScaleDown rescaling this file already uses for the series sum.
+    // (k-h)/n, build a (2k-1)-square transition matrix from h, raise it to
+    // the n-th power and read the k-th diagonal entry, scaled by the
+    // falling-factorial correction the loop below applies. The mathematics
+    // is theirs, published; ADR 0003 permits scipy (BSD-3) as a behavioural
+    // reference, and this implementation leans on it past the mathematics
+    // too -- ScaleBits equal to 128, giving a scale factor of two to the
+    // 128th, is scipy's own choice (its _E128/_EP128, _ksstats.py:73-75),
+    // not a value out of Marsaglia-Tsang-Wang, and the magnitude check below
+    // that triggers a rescale is scipy's placement of it, not independently
+    // derived. Both are scaling-implementation detail, not the mathematics
+    // itself, and are named plainly here rather than left for a diff to notice.
     private static double DurbinCdf(int n, double d)
     {
         double nd = n * d;
@@ -194,7 +229,7 @@ internal static class Kolmogorov
 
     // v is H's first column and last row; w is H's remaining diagonal bands.
     // v[j] = (1 - h^(j+1)) / (j+1)!, except the final entry, which folds in the
-    // boundary term a plain geometric tail would miss; w[j] = 1/(j+1)!.
+    // boundary term a plain geometric tail would miss; w[t] = 1/t!.
     private static double[][] BuildTransitionMatrix(int size, double h)
     {
         double[] v = new double[size];

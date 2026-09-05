@@ -49,8 +49,10 @@ public sealed class KolmogorovTests
 
     // Against scipy 1.18.0's kstwo.sf(d, n), independently reproduced in Python
     // for KolmogorovSmirnov.TwoSample's own asymp corpus cases
-    // (task-8-report.md): d < 0.5 exercises the Durbin matrix path, d >= 0.5
-    // the Birnbaum closed form.
+    // (task-8-report.md): the DirectSurvivalThreshold/UnderflowThreshold
+    // cases below exercise the Durbin matrix path or the Birnbaum closed
+    // form depending on n * d^2, not d alone -- see the fix-round-1 section
+    // of task-8-report.md for why d alone was wrong.
     [Theory]
     [InlineData(2.0, 0.4, 0.82)]
     [InlineData(3.0, 1.0 / 3.0, 0.7777777777777778)]
@@ -63,15 +65,34 @@ public sealed class KolmogorovTests
         Assert.True(relative <= 1e-9, $"FiniteTwoSidedSf({n}, {d}) = {actual}, expected {expected}.");
     }
 
+    // Fix-round-1, finding 1: n = 201 is what KolmogorovSmirnov.TwoSample
+    // computes as the effective sample size for two n1 = m1 = 402 samples,
+    // one past the LargeSampleThreshold = 200 this method used to fall back
+    // to Sf at. scipy's kstwo.sf(0.114428, 201) is 0.009498083878988563; the
+    // old fallback returned Sf(sqrt(201) * 0.114428) = 0.010352291673092562
+    // instead, a large enough gap to flip a decision at alpha = 0.01. There
+    // is no fallback left to take: this is the exact value at every n now.
     [Fact]
-    public void FiniteTwoSidedSf_falls_back_to_the_n_to_infinity_limit_past_its_threshold()
+    public void FiniteTwoSidedSf_no_longer_falls_back_past_the_former_threshold()
     {
-        // n = 300 is past LargeSampleThreshold (200): the matrix path is
-        // skipped entirely in favour of Sf(sqrt(n) * d), so this is exact
-        // agreement with Sf, not merely close to it.
-        double expected = Kolmogorov.Sf(Math.Sqrt(300.0) * 0.1);
+        double actual = Kolmogorov.FiniteTwoSidedSf(201.0, 0.114428);
 
-        Assert.Equal(expected, Kolmogorov.FiniteTwoSidedSf(300.0, 0.1));
+        Assert.Equal(0.009498083878988563, actual, 1e-9);
+    }
+
+    // Fix-round-1, finding 2: d < 0.5 with n large enough still drove
+    // 1 - DurbinCdf into the same collapse the d >= 0.5 guard was meant to
+    // avoid (n * d^2 = 27, comfortably past DirectSurvivalThreshold = 2.2,
+    // even though d itself is below 0.5). scipy's kstwo.sf(0.3, 300) is
+    // 1.92786406567219e-24; the old d >= 0.5 criterion took the 1 - CDF
+    // route here and lost the tail entirely.
+    [Fact]
+    public void FiniteTwoSidedSf_does_not_collapse_below_0_5_when_n_times_d_squared_is_large()
+    {
+        double actual = Kolmogorov.FiniteTwoSidedSf(300.0, 0.3);
+        double relative = Math.Abs(actual - 1.92786406567219e-24) / 1.92786406567219e-24;
+
+        Assert.True(relative <= 1e-9, $"FiniteTwoSidedSf(300, 0.3) = {actual}.");
     }
 
     [Theory]

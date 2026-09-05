@@ -44,6 +44,23 @@ public sealed class GroupTestEdgeTests
         Assert.Equal(0.0, result.PValue);
     }
 
+    // Fix-round-1, finding 6: the fully degenerate quadrant of the same
+    // division -- every group internally constant AND every group the same
+    // constant, so both between and within are exactly 0.0. 0.0 / 0.0 is
+    // NaN, not +Infinity, and there is no guard against it: OneWayAnova.Test's
+    // own remarks say why (this matches scipy.stats.f_oneway on the same
+    // input -- verified directly, task-8-report.md). Kruskal-Wallis on the
+    // identical group shape instead throws (the fact above): the two are
+    // deliberately different, not an inconsistency to fix.
+    [Fact]
+    public void Anova_of_two_identical_zero_variance_groups_is_nan()
+    {
+        TestResult result = OneWayAnova.Test([5.0, 5.0], [5.0, 5.0]);
+
+        Assert.True(double.IsNaN(result.Statistic));
+        Assert.True(double.IsNaN(result.PValue));
+    }
+
     [Fact]
     public void Kruskal_refuses_fewer_than_two_groups_and_an_empty_group()
     {

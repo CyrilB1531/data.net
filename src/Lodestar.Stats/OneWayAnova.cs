@@ -7,6 +7,20 @@ namespace Lodestar.Stats;
 /// The k-sample generalisation of <see cref="TTest.Independent"/> with
 /// <see cref="Variance.Equal"/>: on two groups the F statistic is the square of
 /// Student's t, and the two p-values agree.
+///
+/// <para>
+/// A degenerate input where every group is internally constant <b>and</b> the
+/// groups share that same constant (so both the between- and within-group
+/// sums of squares are exactly zero) computes 0.0 / 0.0 and returns a
+/// <c>NaN</c> statistic and p-value, propagated rather than guarded against
+/// -- this matches scipy's own <c>f_oneway</c> on the same input, and a
+/// <c>NaN</c> here is an honest answer: an F statistic genuinely has no
+/// value when both its numerator and its denominator vanish. This is
+/// deliberately unlike <see cref="KruskalWallis"/>, whose analogous
+/// degenerate input (every pooled value tied) throws instead, because there
+/// the ranks used to compute the statistic are provably meaningless rather
+/// than merely indeterminate.
+/// </para>
 /// </remarks>
 public static class OneWayAnova
 {
