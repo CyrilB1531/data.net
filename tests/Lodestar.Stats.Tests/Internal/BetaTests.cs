@@ -81,6 +81,20 @@ public sealed class BetaTests
         Assert.Equal(1.0, actual / 2.7900927075996303e-13, 1e-9);
     }
 
+    [Fact]
+    public void StudentSf_does_not_collapse_the_far_tail_to_zero_at_moderate_df()
+    {
+        // Non-regression: df = 200, t = 10 has t^2 < df, so x = df/(df+t^2) is
+        // nowhere near 1 -- but I_x(100, 1/2) is still astronomically small,
+        // since Beta(100, 1/2) is concentrated near x = 1. Reflecting through
+        // 1 - I_{1-x}(1/2, 100) computed that as 1.0 minus something already
+        // within a few ULPs of 1, collapsing the result to exactly 0.0. Relative,
+        // not absolute: an absolute check at 1e-9 would pass that zero outright.
+        double actual = Beta.StudentSf(10.0, 200.0);
+
+        Assert.Equal(1.0, actual / 1.1887415722103823e-19, 1e-9);
+    }
+
     [Theory]
     // F(1, d) is the square of a t with d degrees of freedom, so the F upper
     // tail at f equals twice the t upper tail at sqrt(f).

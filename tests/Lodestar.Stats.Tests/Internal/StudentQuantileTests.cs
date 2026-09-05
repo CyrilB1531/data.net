@@ -38,13 +38,15 @@ public sealed class StudentQuantileTests
 
         // long-comment: explains a deliberate deviation from the plan's literal
         //     test value, which a reviewer needs the reasoning for.
-        // 1e8, not 1e12: past roughly 1e9 the Lanczos log-gamma the incomplete
-        // beta is built on loses precision to cancellation on its own -- it
-        // subtracts LogGamma(b + 1/2) from LogGamma(b) for a b whose logarithm
-        // is itself of order 1e13, so a difference of ~13 keeps only a handful
-        // of good bits. That is a pre-existing limit of the shared Gamma layer
-        // (not owned by this task), not of the bisection here: at 1e8 the
-        // quantile already agrees with the normal limit to 8e-9 relative.
+        // 1e8, not 1e12: StudentSf's reflection branch is in play at both, but
+        // which error dominates differs. At 1e8 the residual is genuinely
+        // Gamma.LogGamma's own precision at that magnitude (9.4e-8, confirmed
+        // by substituting scipy's gammaln, which drops it to 2.5e-8). At 1e12
+        // that substitution leaves the residual unchanged (1.254e-4) -- there the
+        // reflection itself is the cause: RegularizedIncomplete(0.5, 5e11,
+        // 3.84e-12) returns 1 - 0.05 with 6.6e-6 relative error, which the outer
+        // 1.0 - (...) amplifies roughly nineteenfold. Neither is owned by this
+        // task; 1e8 sits comfortably under the assertion's 1e-6 bound either way.
         Assert.Equal(1.9599639845400545, Beta.StudentQuantile(0.025, 1e8), 1e-6);
     }
 

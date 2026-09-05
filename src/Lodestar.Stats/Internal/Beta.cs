@@ -70,20 +70,37 @@ internal static class Beta
         // long-comment: this is the fix for a measured defect, not routine
         //     commentary -- StudentSf was off by 2.2e-4 relative at df = 1e12
         //     before it, caught by StudentQuantile's own oracle test below.
-        // x and its complement t^2/(df+t^2) are each accurate to full relative
-        // precision on their own, but whichever one is derived from the other by
-        // subtracting from 1 is not: at df = 1e12 and t near 2, x rounds to
-        // within 1 ULP of 1, and 1.0 - x then keeps only the handful of bits the
-        // division into x had left over. Computing the complement directly and
-        // reflecting through I_x(a,b) = 1 - I_{1-x}(b,a) whenever it is the
-        // well-conditioned side keeps RegularizedIncomplete's front term, which
-        // takes the log of both x and 1-x unconditionally, from ever taking the
-        // log of a value that lost its precision to cancellation.
+        // Direct evaluation of I_x(df/2, 1/2) is what the far-tail case needs:
+        // reflecting through I_x(a,b) = 1 - I_{1-x}(b,a) trades one cancellation
+        // for another one downstream -- 1.0 minus a value that is itself within
+        // a few ULPs of 1 collapses to exactly 0.0 once the true tail is below
+        // roughly 1e-16, which is reachable at ordinary df once t is large
+        // enough (df = 200, t = 10 already gets there). Reflection earns its
+        // keep only in the opposite regime, where x itself has already lost the
+        // precision direct evaluation needs: IsDirectlyAccurate below detects
+        // that by comparing the naive 1.0 - x against the complement computed
+        // by division, rather than by guessing a df or magnitude cutoff.
         double complement = tSquared / denominator;
-        double tail = 0.5 * (x <= complement
+        double tail = 0.5 * (IsDirectlyAccurate(x, complement)
             ? RegularizedIncomplete(df / 2.0, 0.5, x)
             : 1.0 - RegularizedIncomplete(0.5, df / 2.0, complement));
         return t >= 0.0 ? tail : 1.0 - tail;
+    }
+
+    // x <= 0.5 (t^2 >= df) is always safe: 1 - x is then at least 0.5, nowhere
+    // near a cancellation. Past that, direct evaluation stays accurate exactly
+    // as long as subtracting x from 1 still recovers its true complement --
+    // comparing the two is what tells them apart, not a fixed threshold on x,
+    // complement or df, none of which alone separates every case correctly.
+    private static bool IsDirectlyAccurate(double x, double complement)
+    {
+        if (x <= 0.5)
+        {
+            return true;
+        }
+
+        double naiveComplement = 1.0 - x;
+        return Math.Abs(naiveComplement - complement) <= complement * 1e-9;
     }
 
     /// <summary>The upper tail of the F distribution: P(F &gt; f).</summary>
