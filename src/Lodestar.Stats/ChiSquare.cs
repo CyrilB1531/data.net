@@ -113,7 +113,8 @@ public static class ChiSquare
     /// </param>
     /// <returns>The statistic, the p-value, the degrees of freedom and the expected table.</returns>
     /// <exception cref="ArgumentException">
-    /// The table is empty, ragged, holds a negative count, or has a zero row or column total.
+    /// The table is empty, ragged, holds a negative, infinite or NaN count, or has a zero row
+    /// or column total.
     /// </exception>
     // S2368: the table arrives from the caller already in this shape -- that is
     // how scipy.stats.chi2_contingency takes it, and how Chi2ContingencyResult
@@ -167,10 +168,14 @@ public static class ChiSquare
             for (int j = 0; j < columns; j++)
             {
                 double value = table[i][j];
-                if (value < 0.0 || double.IsNaN(value))
+
+                // Un-guarded, an infinite cell makes the statistic NaN and reaches
+                // Gamma.RegularizedQ's Validate, leaking that helper's own ParamName ("x").
+                if (value < 0.0 || double.IsNaN(value) || double.IsPositiveInfinity(value))
                 {
                     throw new ArgumentException(
-                        $"Cell [{i}][{j}] is {value}; counts must be non-negative.", nameof(table));
+                        $"Cell [{i}][{j}] is {value}; counts must be finite and non-negative.",
+                        nameof(table));
                 }
 
                 rowTotals[i] += value;

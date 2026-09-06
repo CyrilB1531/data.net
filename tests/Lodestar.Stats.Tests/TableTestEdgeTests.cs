@@ -90,6 +90,28 @@ public sealed class TableTestEdgeTests
     }
 
     [Fact]
+    public void Contingency_refuses_a_NaN_cell()
+    {
+        // Contingency is the one family that refuses rather than propagates a NaN --
+        // docs/equivalence.md's nan_policy row names this as the deliberate exception.
+        double[][] table = [[1.0, double.NaN], [3.0, 4.0]];
+
+        Assert.Throws<ArgumentException>(() => ChiSquare.Contingency(table));
+    }
+
+    [Fact]
+    public void Contingency_refuses_an_infinite_cell()
+    {
+        // +Infinity slipped past the value < 0.0 / IsNaN guard and leaked
+        // Gamma.Validate's own ParamName ("x") instead of naming the cell.
+        double[][] table = [[1.0, double.PositiveInfinity], [3.0, 4.0]];
+
+        ArgumentException exception =
+            Assert.Throws<ArgumentException>(() => ChiSquare.Contingency(table));
+        Assert.Equal("table", exception.ParamName);
+    }
+
+    [Fact]
     public void FisherExact_refuses_a_table_that_is_not_two_by_two()
     {
         Assert.Throws<ArgumentException>(() => FisherExact.Test([[1, 2, 3], [4, 5, 6]]));

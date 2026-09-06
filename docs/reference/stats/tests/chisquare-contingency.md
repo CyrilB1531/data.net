@@ -16,8 +16,12 @@ only, so asking for it on any other shape changes nothing — the same rule
 **Returns** — `Chi2ContingencyResult`: the statistic, the p-value, the degrees of freedom
 `(rows - 1) * (columns - 1)`, and the table independence would have produced.
 
-**Exceptions** — `ArgumentException` when `table` is empty, ragged, holds a negative count, or
-has a zero row or column total.
+**Exceptions** — `ArgumentException` when `table` is empty, ragged, holds a negative, infinite or
+NaN count, or has a zero row or column total. Unlike every other family in this package, a NaN or
+an infinite cell here is refused rather than propagated: a contingency table's cells are counts,
+not measurements, and the expected-frequency table divides by their marginals — a table that
+cannot produce a marginal has nothing for the test to run against. See the
+[Python equivalence table](../../../equivalence.md)'s `nan_policy` row.
 
 **Example** — a 2×2 preference table, with Yates's correction applied by default.
 
