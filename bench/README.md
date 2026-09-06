@@ -1612,3 +1612,94 @@ Numbers are published in
 and the reader-facing take-away is in
 [`docs/guides/dictionary-lookup.md`](../docs/guides/dictionary-lookup.md#where-the-tree-stops-paying) — this section
 documents how to measure, not what was measured.
+
+## 18. `Lodestar.Stats` against `Accord.Statistics` (issue #442)
+
+`Lodestar.Conformal`'s spec recorded "no .NET incumbent" and that was true there. It is not true
+for hypothesis tests: `Accord.Statistics` 3.8.0 is archived (November 2020, last published October
+2017) but still installable, and carried this exact surface before this package existed. Section 15
+already sets the pattern — a second implementation is a second opinion — and this section applies
+it a third time, in its own project rather than inside `Lodestar.Text.Benchmarks`, since nothing
+`Accord.Statistics` needs has anything to do with what that project already references.
+
+```bash
+dotnet run -c Release --project bench/Lodestar.Stats.Benchmarks -- --filter '*'
+```
+
+### Resolving `Accord`'s names against the restored package, not the plan
+
+The design spec guessed at `Accord`'s spellings from a 2017-era release. All three guesses turned
+out right, checked by loading the restored `netstandard2.0` asset of `Accord.Statistics.dll`
+through reflection and listing `Accord.Statistics.Testing`'s public types rather than trusting the
+guess:
+
+| family | `Lodestar.Stats` | `Accord.Statistics.Testing` |
+| --- | --- | --- |
+| independent-samples t-test | `TTest.Independent` | `TwoSampleTTest(double[], double[], assumeEqualVariances: false)` |
+| Mann-Whitney U | `MannWhitney.Test` | `MannWhitneyWilcoxonTest(double[], double[])` |
+| chi-square test of independence | `ChiSquare.Contingency` | `new ChiSquareTest(new Accord.Statistics.Analysis.ConfusionMatrix(a, b, c, d), yatesCorrection: …)` |
+
+No pair was dropped — `Accord` carries a counterpart for every one of the three families #442
+names, so nothing here records an absence.
+
+**`Accord.Statistics` 3.8.0 needed no NU1701 suppression.** The brief for this task expected one,
+reasoning from the package's `netstandard1.4` primary target. Measured instead: the `.nupkg` also
+ships a `lib/netstandard2.0` asset — inspected directly in the local NuGet cache — which is what a
+`net10.0` project restores against, confirmed by `dotnet restore` and `dotnet build` on
+`Lodestar.Stats.Benchmarks.csproj` producing no NU1701 or compatibility warning to suppress.
+`Accord.Math` and `Accord` (the two transitive dependencies) resolve the same way.
+
+**The chi-square comparison needs `yatesCorrection: true` to compare the same statistic.**
+`ChiSquare.Contingency`'s own default is `Continuity.Applied`, which is Yates's correction on a 2x2
+table ([`src/Lodestar.Stats/ChiSquare.cs`](../src/Lodestar.Stats/ChiSquare.cs)); `ChiSquareTest`'s
+own default is `yatesCorrection: false`. Left at their defaults the two rows would time two
+different statistics under one name — checked once by running both settings on the corpus case
+below, where `false` reproduces the *uncorrected* scipy figure and `true` the corrected one to the
+same precision as every other pair here.
+
+### The three families agree with `scipy`, not just with each other
+
+`Lodestar.Stats`' oracle discipline (`docs/equivalence.md`, `CLAUDE.md`'s "Conformance is proven by
+frozen oracles" section) means every one of its own numbers already traces to `scipy`. What this
+task adds is a second, independently-implemented set of numbers on the *same* inputs, and the check
+that all three agree everywhere they were compared — the benchmark's own random samples, plus one
+frozen corpus case per family from `tests/oracles/`:
+
+| case (from `tests/oracles/stats_*.json`) | `scipy` | `Lodestar.Stats` | `Accord` |
+| --- | --- | --- | --- |
+| `ttest_ind(a=[1,4,7,9], b=[2,3,8,12,15], equal_var=False)` | p = 0.3998549375410838 | p = 0.39985493754108214 | p = 0.39985493754108359 |
+| `mannwhitneyu(a=[1,4,7,9], b=[2,3,8,12,15], method="auto")` | p = 0.5555555555555556 | p = 0.55555555555555558 | p = 0.55555555555555558 |
+| `chi2_contingency([[10,20],[30,40]], correction=True)` | p = 0.5040358664525046 | p = 0.50403586645250453 | p = 0.50403586645250464 (`yatesCorrection: true`) |
+
+Every row agrees to 1e-9 or tighter — the differences shown are the last one or two digits of a
+`double`, the same order of noise `docs/equivalence.md`'s own `1e-9` tolerance exists to absorb, not
+a disagreement. **No case was found, in either the random samples the benchmark itself draws or
+these three frozen corpus cases, where `Accord` and `scipy` (and therefore `Lodestar.Stats`) part
+ways.** That is a reportable result in its own right: it means this package's oracle-driven
+implementation and the one incumbent both converge on the textbook formulas for these three
+families, at every input shape checked. Should a future corpus case turn up a real disagreement,
+`scipy` remains the reference this package follows (`docs/equivalence.md`); `bench/README.md` is
+where that would be recorded, and the corpus itself would not change.
+
+### Configuration
+
+`[Params(100, 10_000)]` on `SampleSize` sweeps both operands' length together, so the two rows per
+method are the same shapes `MannWhitney`'s own guard cares about: 100 is small enough for
+`ExactMethod.Auto` to still be a live question, and `10_000 * 10_000` is far past
+`MannWhitney.MaxExactProduct = 20_000`, so that row is where both implementations are forced onto
+the asymptotic path by design — the comparison worth taking at that size, not an artefact of one
+side falling back and the other not (see
+[`src/Lodestar.Stats/MannWhitney.cs`](../src/Lodestar.Stats/MannWhitney.cs)). `[GlobalSetup]` draws
+`_a` and `_b` from a fixed seed (442) so every run measures the same inputs, and builds the fixed
+2×2 `_table` the two chi-square rows share.
+
+`--job short` — `ShortRun(LaunchCount=1, WarmupCount=3, IterationCount=3)` — is what was actually
+run, against `[MemoryDiagnoser]`. Section 15 uses the same override for the same reason: a full run
+(`--filter '*'` with no `--job` override, BenchmarkDotNet's default job of up to 15 iterations) was
+not taken here. `docs/guides/performance.md` carries the resulting numbers, the machine, and the
+window, per this repository's own rule for where a fact belongs (`CLAUDE.md`'s "Where a fact
+belongs" table).
+
+Numbers are published in
+[`docs/guides/performance.md`](../docs/guides/performance.md#lodestarstats-against-accordstatistics-issue-442)
+— this section documents how to measure, not what was measured.

@@ -76,6 +76,7 @@ timed; `bench/README.md`'s section 15 has the harness and the agreement checks.
 | `Lodestar.Conformal` | — | **No incumbent exists**, which is the finding rather than a gap in the harness — `bench/README.md` section 15 says what would change that |
 | `Lodestar.Decomposition` | ML.NET `ProjectToPrincipalComponents` | **Not like-for-like.** Centred dense PCA against uncentred sparse truncated SVD and a non-negative factorization — three different decompositions, so each side is checked against its own reconstruction error rather than against the other's numbers |
 | `Lodestar.Onnx` | ONNX Runtime itself | **Nothing to beat.** The package is a caller of the runtime, not a rival to it; what it adds is the pooling and the batching, which `bench/Lodestar.Text.Benchmarks -- '*BatchEmbedding*'` measures against a single-sequence loop |
+| `Lodestar.Stats` | `Accord.Statistics` (archived, no longer maintained) | No case found where `Accord` and `scipy` (and therefore `Lodestar.Stats`) disagree; faster on the t-test and Mann-Whitney, behind on the fixed-size chi-square table — see [`docs/guides/hypothesis-testing.md`](docs/guides/hypothesis-testing.md#no-incumbent-to-compare-against) |
 
 Numbers with the machine that produced them are in
 [`docs/guides/performance.md`](docs/guides/performance.md); a shared runner's
@@ -128,7 +129,7 @@ A runnable version of the above, consuming the packages exactly as you would:
 ```bash
 for p in src/Lodestar.Abstractions src/Lodestar.Text src/Lodestar.Embeddings \
          src/Lodestar.Fuzzy src/Lodestar.Metrics src/Lodestar.Conformal \
-         src/Lodestar.Decomposition src/Lodestar.Onnx; do
+         src/Lodestar.Decomposition src/Lodestar.Onnx src/Lodestar.Stats; do
   dotnet pack "$p" -c Release -o ./artifacts
 done
 NUGET_PACKAGES=$(mktemp -d) dotnet run -c Release --project samples/Lodestar.Sample
@@ -190,6 +191,7 @@ Lodestar.slnx
 ├── src/Lodestar.Conformal/                 split conformal intervals and prediction sets (no dependencies)
 ├── src/Lodestar.Decomposition/             truncated SVD and non-negative matrix factorization over a CsrMatrix
 ├── src/Lodestar.Onnx/                      ONNX inference — the one package with an external dependency (decision 0076)
+├── src/Lodestar.Stats/                     classical hypothesis tests, at scipy.stats parity (no dependencies)
 ├── tests/                                  xUnit: two projects per package — net10.0, and a mirror linking the same sources against netstandard2.0
 ├── tests/oracles/                          frozen JSON corpora (generated from Python) + a synthetic ONNX model
 ├── bench/Lodestar.Text.Benchmarks/         BenchmarkDotNet: every non-netstandard benchmark, whatever package it measures
@@ -225,11 +227,11 @@ you whether to correct the document itself or something upstream of it.
 
 ## Publishing
 
-Eight NuGet packages are produced: `Lodestar.Abstractions`, `Lodestar.Text`,
+Nine NuGet packages are produced: `Lodestar.Abstractions`, `Lodestar.Text`,
 `Lodestar.Embeddings`, `Lodestar.Fuzzy`, `Lodestar.Metrics`, `Lodestar.Conformal`,
-`Lodestar.Decomposition` and `Lodestar.Onnx`. Seven of them are **core tier** and carry
-no external dependency; `Lodestar.Onnx` is the satellite that carries ONNX Runtime, which
-is the whole reason it is a package — [`decisions/0076`](docs/decisions/0076-a-core-package-carries-no-external-dependency.md).
+`Lodestar.Decomposition`, `Lodestar.Onnx` and `Lodestar.Stats`. Eight of them are **core tier**
+and carry no external dependency; `Lodestar.Onnx` is the satellite that carries ONNX Runtime,
+which is the whole reason it is a package — [`decisions/0076`](docs/decisions/0076-a-core-package-carries-no-external-dependency.md).
 **Each versions and releases on its own**: shared metadata
 (license, README, repository) lives in `Directory.Build.props`, while the version
 is declared per project in `src/<Package>/Version.props`. `Lodestar.Fuzzy` depends

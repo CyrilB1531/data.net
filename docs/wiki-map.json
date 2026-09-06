@@ -116,6 +116,17 @@
       "covered": {
         "Lodestar.Decomposition": "docs/reference/decomposition/factorization"
       }
+    },
+    "Lodestar.Stats": {
+      "wiki": "Stats",
+      "pages": [
+        "docs/guides/hypothesis-testing.md",
+        "docs/reference/stats/*.md",
+        "docs/reference/stats/*/*.md"
+      ],
+      "covered": {
+        "Lodestar.Stats": "docs/reference/stats/tests"
+      }
     }
   }
 }

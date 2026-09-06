@@ -112,6 +112,9 @@
     "VectorizerBenchmarks": [
       "src/Lodestar.Text/Vectorization/**",
       "src/Lodestar.Text/Text/**"
+    ],
+    "StatsBenchmarks": [
+      "src/Lodestar.Stats/**"
     ]
   },
   "harnesses": {

@@ -9,6 +9,7 @@ using Lodestar.Embeddings.Tokenization;
 using Lodestar.Fuzzy;
 using Lodestar.Metrics;
 using Lodestar.Onnx;
+using Lodestar.Stats;
 using Lodestar.Text.Distances;
 
 namespace Lodestar.Sample;
@@ -109,6 +110,10 @@ internal static class PackagingGate
         ["Lodestar.Metrics.AverageRow..ctor"] = ResultRecordCtor,
         ["Lodestar.Metrics.ClassRow..ctor"] = ResultRecordCtor,
         ["Lodestar.Metrics.PairConfusionMatrix..ctor"] = ResultRecordCtor,
+        ["Lodestar.Stats.Chi2ContingencyResult..ctor"] = ResultRecordCtor,
+        ["Lodestar.Stats.KsResult..ctor"] = ResultRecordCtor,
+        ["Lodestar.Stats.TTestResult..ctor"] = ResultRecordCtor,
+        ["Lodestar.Stats.TestResult..ctor"] = ResultRecordCtor,
         ["Lodestar.Text.Keywords.KeywordMatch..ctor"] = ResultRecordCtor,
     };
 
@@ -133,6 +138,7 @@ internal static class PackagingGate
             typeof(CsrMatrix).Assembly,
             typeof(TruncatedSvd).Assembly,
             typeof(OnnxTextEmbedder).Assembly,
+            typeof(TTest).Assembly,
         ];
 
         var packagedNames = packaged.Select(a => a.GetName().Name!).ToHashSet(StringComparer.Ordinal);

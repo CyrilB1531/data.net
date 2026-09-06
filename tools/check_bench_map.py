@@ -34,6 +34,12 @@ BENCH_DIR = ROOT / "bench" / "Lodestar.Text.Benchmarks"
 PROGRAM = BENCH_DIR / "Program.cs"
 PYTHON_DIR = ROOT / "bench" / "python"
 WORKFLOWS = ROOT / ".github" / "workflows"
+# Directories a [Benchmark] class can live in. Lodestar.NetStandard.Benchmarks is absent:
+# it links Lodestar.Text.Benchmarks' own .cs files rather than declaring classes of its own.
+CLASS_DIRS = [
+    BENCH_DIR,
+    ROOT / "bench" / "Lodestar.Stats.Benchmarks",
+]
 
 CLASS = re.compile(r"^\s*public\s+class\s+(\w+)", re.MULTILINE)
 # Program.cs dispatches with `case "name":`. It used a chain of `args[0] == "name"` until
@@ -49,15 +55,16 @@ FORWARDS_OPTIONS = re.compile(r"StartsWith\('-'\)")
 
 
 def declared_classes() -> dict[str, pathlib.Path]:
-    """Every class in the benchmark project carrying at least one [Benchmark]."""
+    """Every class in a benchmark project carrying at least one [Benchmark]."""
     found: dict[str, pathlib.Path] = {}
-    for path in sorted(BENCH_DIR.glob("*.cs")):
-        text = path.read_text(encoding="utf-8")
-        if "[Benchmark" not in text:
-            continue
-        match = CLASS.search(text)
-        if match:
-            found[match.group(1)] = path
+    for directory in CLASS_DIRS:
+        for path in sorted(directory.glob("*.cs")):
+            text = path.read_text(encoding="utf-8")
+            if "[Benchmark" not in text:
+                continue
+            match = CLASS.search(text)
+            if match:
+                found[match.group(1)] = path
     return found
 
 

@@ -12,7 +12,7 @@ a later decision uses instead.
 | --- | --- | --- | --- | --- |
 | [`0001`](0001-target-framework.md) | Target frameworks: `net10.0` and `netstandard2.0` | accepted | 2026-08-01 (revised 2026-08-04) | — |
 | [`0002`](0002-unicode-comparison-unit.md) | Unicode comparison unit | accepted | 2026-08-01 | — |
-| [`0003`](0003-provenance-and-licensing.md) | Code provenance and license | accepted | 2026-08-01 | — |
+| [`0003`](0003-provenance-and-licensing.md) | Code provenance and license | accepted | 2026-08-01 | Named as a permissive reference alongside scikit-learn by [`0082`](0082-scipy-joins-the-allowed-permissive-references.md), which adds scipy — recorded here rather than in 0003's own body; see "Relationships not stated on a `**Status:**` line" below |
 | [`0004`](0004-levenshtein-myers-backlog.md) | Levenshtein: bit-parallel (Myers) optimization | accepted | 2026-08-01 (revised 2026-08-05) | backlog partially cleared by issue #208 (not an ADR — see the two `> **#208 update:**` blocks) |
 | [`0005`](0005-hamming-jellyfish-divergence.md) | Accepted divergence from jellyfish on combining marks (Hamming, Jaro) | accepted | 2026-08-01 | — |
 | [`0006`](0006-ratcliff-autojunk.md) | Ratcliff-Obershelp: difflib's autojunk heuristic | accepted | 2026-08-01 | — |
@@ -90,13 +90,15 @@ a later decision uses instead.
 | [`0078`](0078-keybert-is-declared-nodeps-not-compiled-into-the-lock.md) | keybert is declared `--no-deps`, not compiled into the lock | accepted | 2026-09-04 | `keybert._mmr.mmr` — the one call the `Mmr` oracle makes — imports only `numpy` and `scikit-learn`, already pinned in `requirements.lock.txt`; `keybert` itself declares `sentence-transformers`, and through it `torch` and `transformers`, which `pip-compile` cannot exclude per-package. Declared instead in `tools/requirements-nodeps.txt`, hash-pinned, installed `--no-deps --require-hashes` by the *Oracles are reproducible* job alone — outside the lock four other CI jobs install from, two of them benchmark workflows needing no Python. The exception is bounded: a package qualifies for that file only when everything it imports is already on the lock's own graph |
 | [`0079`](0079-tied-textrank-scores-canonicalize-by-phrase-not-blas.md) | Tied TextRank scores in the oracle canonicalize by phrase, not by BLAS | accepted | 2026-09-04 | Two adjacent entries of `keywords_textrank.json` sat `1e-16` apart — one or two units in the last place — so `summa`'s descending sort ordered them by floating-point noise, and a runner's BLAS broke the near-tie the other way than the machine that froze the corpus. The *Oracles are reproducible* job failed on a pull request touching nothing near it. `generate_keywords_textrank` now sorts each maximal run of adjacent scores tied within `1e-9` by phrase, ordinally — the exact model `TextRankOracleTests` already applies on replay, so corpus and test agree by construction. Rejected: teaching `tools/compare_oracles.py` to tolerate a reordering, which would weaken an exact-order guarantee 97 other corpora rely on to serve one |
 | [`0080`](0080-match-rating-approach-comparison-uses-character-length-not-byte-length.md) | [`MatchRatingApproach.Compare`](../reference/text/phonetics/matchratingapproach-compare.md) measures codex length in characters, not bytes | accepted | 2026-09-04 | jellyfish 1.2.1's Rust `match_rating_codex`/`match_rating_comparison` measure a codex's six-character truncation and comparison thresholds in UTF-8 bytes, corrupting or refusing short non-Latin words the published 1977 algorithm has no such rule for (#313); MatchRatingApproach measures in characters throughout, matching jellyfish everywhere byte and character counts agree and pinning the two divergent cases as direct facts instead |
+| [`0081`](0081-the-stats-numerical-layer-stays-internal.md) | The stats numerical layer stays internal | accepted | 2026-09-05 | `Lodestar.Stats`' incomplete beta, incomplete gamma, normal CDF and Kolmogorov distribution (`Lodestar.Stats.Internal`) stay `internal` rather than a public `Lodestar.Stats.Special` namespace (a parity promise per function #442 does not ask for) or a move into `Lodestar.Abstractions` (a published floor between two packages for code one of them uses); records `erfc(x) = Q(1/2, x²)` over a rational fit of its own, and why `StatsOracleAsserts` compares a p-value at `1e-9` **relative** — measured, `7.85e-26` and `2.38e-53` on ordinary cases, where the repository's absolute default would accept a zero — without loosening `tools/compare_oracles.py` itself (#442) |
+| [`0082`](0082-scipy-joins-the-allowed-permissive-references.md) | scipy joins the allowed permissive references, for the Kolmogorov branch table | accepted | 2026-09-05 | Extends [`0003`](0003-provenance-and-licensing.md)'s named list of permissive behavioural references (rapidfuzz, jellyfish, textdistance, scikit-learn) to scipy (BSD-3), recorded as its own decision rather than an edit to 0003 per the immutability rule `tools/check_adr_immutable.py` enforces. `Internal/Kolmogorov.cs`'s ten-row branch-dispatch table and `DurbinCdf`'s two scaling constants read scipy's own `_ksstats.py` dispatch structurally — which formula applies where, not the formulas' own derivation — corrected from an inaccurate "nothing transcribed" comment found in task 8's review (#442) |
 
 ## What `accepted` means here
 
-All seventy-three carry `accepted`. None has been rejected or withdrawn — a status this table
+All eighty-two carry `accepted`. None has been rejected or withdrawn — a status this table
 would otherwise need a second word for. `0004` read a progress sentence
 (`single-word and blocked shipped`) where a status belongs; that sentence is now the opening line
-of its own `## Done` section, and its status reads `accepted` like the other seventy-two.
+of its own `## Done` section, and its status reads `accepted` like the other eighty-one.
 
 ## Relationships not stated on a `**Status:**` line
 
@@ -124,6 +126,16 @@ reader arriving at 0057 first can learn that its Consequences were corrected. Th
 shape, and the reader most likely to need it is the one who opens 0050 to find out what the
 metaspace transform is: 0050 §2 still says "two writings of one value", which `bpe_metaspace.json`
 answers with two texts in nine for the guard and two more for the scheme.
+
+[`0003`](0003-provenance-and-licensing.md) and
+[`0082`](0082-scipy-joins-the-allowed-permissive-references.md) are the same shape again, one-sided
+rather than mutual: 0082 names 0003 directly (it extends 0003's list of permissive behavioural
+references to include scipy), but 0003 was already `accepted` when 0082 was written, and
+`tools/check_adr_immutable.py` refuses a diff that edits an ADR that already existed at the base
+branch — 0082 amends 0003's rule without 0003 being allowed to say so itself. The pointer lives on
+0003's row above instead, so a reader opening 0003 first — to check what a permissive reference is
+allowed to be — learns that its list was extended, rather than reading a rule one revision behind
+what the repository actually does.
 
 `0013`'s partial supersession by `0014` is the one relationship already on a status line; its
 body adds the detail that only §1 (the oracle's normalizer scope) is superseded — §2 (the

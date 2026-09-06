@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- This package's version, owned here rather than repository-wide. -->
+  <Import Project="Version.props" />
+
+  <PropertyGroup>
+    <Version>$(LodestarStatsVersion)</Version>
+    <TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks>
+    <RootNamespace>Lodestar.Stats</RootNamespace>
+
+    <PackageId>Lodestar.Stats</PackageId>
+    <Description>Classical hypothesis tests for .NET at scipy.stats parity: Student and Welch t, Mann-Whitney U, Wilcoxon signed-rank, chi-square, Fisher exact, Kolmogorov-Smirnov, one-way ANOVA, Kruskal-Wallis, Shapiro-Wilk, and Bonferroni / Benjamini-Hochberg / Benjamini-Yekutieli corrections. Arrays in, statistic and p-value out. No model, no training loop, no dependencies.</Description>
+    <PackageTags>statistics;hypothesis-test;p-value;t-test;anova;mann-whitney;wilcoxon;chi-square;fisher-exact;shapiro-wilk;scipy;lodestar</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lodestar.Stats.Tests" />
+    <!-- Same suite, replayed against the netstandard2.0 build. -->
+    <InternalsVisibleTo Include="Lodestar.Stats.NetStandard.Tests" />
+  </ItemGroup>
+
+</Project>

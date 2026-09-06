@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/bench/">
     <Project Path="bench/Lodestar.NetStandard.Benchmarks/Lodestar.NetStandard.Benchmarks.csproj" />
+    <Project Path="bench/Lodestar.Stats.Benchmarks/Lodestar.Stats.Benchmarks.csproj" />
     <Project Path="bench/Lodestar.Text.Benchmarks/Lodestar.Text.Benchmarks.csproj" />
   </Folder>
   <Folder Name="/src/">
@@ -11,6 +12,7 @@
     <Project Path="src/Lodestar.Fuzzy/Lodestar.Fuzzy.csproj" />
     <Project Path="src/Lodestar.Metrics/Lodestar.Metrics.csproj" />
     <Project Path="src/Lodestar.Onnx/Lodestar.Onnx.csproj" />
+    <Project Path="src/Lodestar.Stats/Lodestar.Stats.csproj" />
     <Project Path="src/Lodestar.Text/Lodestar.Text.csproj" />
   </Folder>
   <Folder Name="/tests/">
@@ -27,6 +29,8 @@
     <Project Path="tests/Lodestar.Metrics.Tests/Lodestar.Metrics.Tests.csproj" />
     <Project Path="tests/Lodestar.Onnx.NetStandard.Tests/Lodestar.Onnx.NetStandard.Tests.csproj" />
     <Project Path="tests/Lodestar.Onnx.Tests/Lodestar.Onnx.Tests.csproj" />
+    <Project Path="tests/Lodestar.Stats.NetStandard.Tests/Lodestar.Stats.NetStandard.Tests.csproj" />
+    <Project Path="tests/Lodestar.Stats.Tests/Lodestar.Stats.Tests.csproj" />
     <Project Path="tests/Lodestar.Text.NetStandard.Tests/Lodestar.Text.NetStandard.Tests.csproj" />
     <Project Path="tests/Lodestar.Fuzzy.Tests/Lodestar.Fuzzy.Tests.csproj" />
     <Project Path="tests/Lodestar.Text.Tests/Lodestar.Text.Tests.csproj" />

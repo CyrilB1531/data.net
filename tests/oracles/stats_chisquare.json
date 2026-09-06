@@ -1,0 +1,360 @@
+{
+ "metadata": {
+  "library": "scipy",
+  "version": "1.18.0",
+  "family": "chisquare",
+  "count": 11
+ },
+ "cases": [
+  {
+   "name": "uniform expectation, six categories | chisquare",
+   "call": "chisquare",
+   "args": {
+    "f_exp": []
+   },
+   "observed": [
+    16.0,
+    18.0,
+    16.0,
+    14.0,
+    12.0,
+    12.0
+   ],
+   "expected_input": [],
+   "statistic": 2.0,
+   "pvalue": 0.8491450360846096
+  },
+  {
+   "name": "explicit expectation | chisquare",
+   "call": "chisquare",
+   "args": {
+    "f_exp": [
+     20.0,
+     18.0,
+     16.0,
+     14.0,
+     12.0,
+     8.0
+    ]
+   },
+   "observed": [
+    16.0,
+    18.0,
+    16.0,
+    14.0,
+    12.0,
+    12.0
+   ],
+   "expected_input": [
+    20.0,
+    18.0,
+    16.0,
+    14.0,
+    12.0,
+    8.0
+   ],
+   "statistic": 2.8,
+   "pvalue": 0.7307864865887586
+  },
+  {
+   "name": "a far tail, p below 1e-15 | chisquare",
+   "call": "chisquare",
+   "args": {
+    "f_exp": []
+   },
+   "observed": [
+    200.0,
+    10.0,
+    10.0,
+    10.0
+   ],
+   "expected_input": [],
+   "statistic": 470.86956521739137,
+   "pvalue": 9.801281007923163e-102
+  },
+  {
+   "name": "2x2, Yates applies | correction=True",
+   "call": "chi2_contingency",
+   "args": {
+    "correction": true
+   },
+   "table": [
+    [
+     10.0,
+     20.0
+    ],
+    [
+     30.0,
+     40.0
+    ]
+   ],
+   "statistic": 0.4464285714285714,
+   "pvalue": 0.5040358664525046,
+   "dof": 1,
+   "expected_freq": [
+    [
+     12.0,
+     18.0
+    ],
+    [
+     28.0,
+     42.0
+    ]
+   ]
+  },
+  {
+   "name": "2x2, Yates applies | correction=False",
+   "call": "chi2_contingency",
+   "args": {
+    "correction": false
+   },
+   "table": [
+    [
+     10.0,
+     20.0
+    ],
+    [
+     30.0,
+     40.0
+    ]
+   ],
+   "statistic": 0.7936507936507936,
+   "pvalue": 0.37299848361348686,
+   "dof": 1,
+   "expected_freq": [
+    [
+     12.0,
+     18.0
+    ],
+    [
+     28.0,
+     42.0
+    ]
+   ]
+  },
+  {
+   "name": "2x2, strong association | correction=True",
+   "call": "chi2_contingency",
+   "args": {
+    "correction": true
+   },
+   "table": [
+    [
+     100.0,
+     10.0
+    ],
+    [
+     10.0,
+     100.0
+    ]
+   ],
+   "statistic": 144.01818181818183,
+   "pvalue": 3.520591654384798e-33,
+   "dof": 1,
+   "expected_freq": [
+    [
+     55.0,
+     55.0
+    ],
+    [
+     55.0,
+     55.0
+    ]
+   ]
+  },
+  {
+   "name": "2x2, strong association | correction=False",
+   "call": "chi2_contingency",
+   "args": {
+    "correction": false
+   },
+   "table": [
+    [
+     100.0,
+     10.0
+    ],
+    [
+     10.0,
+     100.0
+    ]
+   ],
+   "statistic": 147.27272727272728,
+   "pvalue": 6.840881185196696e-34,
+   "dof": 1,
+   "expected_freq": [
+    [
+     55.0,
+     55.0
+    ],
+    [
+     55.0,
+     55.0
+    ]
+   ]
+  },
+  {
+   "name": "3x2, Yates does not apply | correction=True",
+   "call": "chi2_contingency",
+   "args": {
+    "correction": true
+   },
+   "table": [
+    [
+     10.0,
+     20.0
+    ],
+    [
+     30.0,
+     40.0
+    ],
+    [
+     15.0,
+     5.0
+    ]
+   ],
+   "statistic": 8.991008991008993,
+   "pvalue": 0.011159049504492227,
+   "dof": 2,
+   "expected_freq": [
+    [
+     13.75,
+     16.25
+    ],
+    [
+     32.083333333333336,
+     37.916666666666664
+    ],
+    [
+     9.166666666666666,
+     10.833333333333334
+    ]
+   ]
+  },
+  {
+   "name": "3x2, Yates does not apply | correction=False",
+   "call": "chi2_contingency",
+   "args": {
+    "correction": false
+   },
+   "table": [
+    [
+     10.0,
+     20.0
+    ],
+    [
+     30.0,
+     40.0
+    ],
+    [
+     15.0,
+     5.0
+    ]
+   ],
+   "statistic": 8.991008991008993,
+   "pvalue": 0.011159049504492227,
+   "dof": 2,
+   "expected_freq": [
+    [
+     13.75,
+     16.25
+    ],
+    [
+     32.083333333333336,
+     37.916666666666664
+    ],
+    [
+     9.166666666666666,
+     10.833333333333334
+    ]
+   ]
+  },
+  {
+   "name": "3x3 | correction=True",
+   "call": "chi2_contingency",
+   "args": {
+    "correction": true
+   },
+   "table": [
+    [
+     10.0,
+     20.0,
+     30.0
+    ],
+    [
+     30.0,
+     40.0,
+     10.0
+    ],
+    [
+     5.0,
+     15.0,
+     25.0
+    ]
+   ],
+   "statistic": 34.27682811016144,
+   "pvalue": 6.538538102062638e-07,
+   "dof": 4,
+   "expected_freq": [
+    [
+     14.594594594594595,
+     24.324324324324323,
+     21.08108108108108
+    ],
+    [
+     19.45945945945946,
+     32.432432432432435,
+     28.10810810810811
+    ],
+    [
+     10.945945945945946,
+     18.243243243243242,
+     15.81081081081081
+    ]
+   ]
+  },
+  {
+   "name": "3x3 | correction=False",
+   "call": "chi2_contingency",
+   "args": {
+    "correction": false
+   },
+   "table": [
+    [
+     10.0,
+     20.0,
+     30.0
+    ],
+    [
+     30.0,
+     40.0,
+     10.0
+    ],
+    [
+     5.0,
+     15.0,
+     25.0
+    ]
+   ],
+   "statistic": 34.27682811016144,
+   "pvalue": 6.538538102062638e-07,
+   "dof": 4,
+   "expected_freq": [
+    [
+     14.594594594594595,
+     24.324324324324323,
+     21.08108108108108
+    ],
+    [
+     19.45945945945946,
+     32.432432432432435,
+     28.10810810810811
+    ],
+    [
+     10.945945945945946,
+     18.243243243243242,
+     15.81081081081081
+    ]
+   ]
+  }
+ ]
+}
